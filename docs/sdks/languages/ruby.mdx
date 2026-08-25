@@ -1,15 +1,16 @@
 ---
 title: "Infisical Ruby SDK"
 sidebarTitle: "Ruby"
+description: "Fetch and manage secrets in a Ruby application with the official Infisical Ruby SDK."
 icon: "/images/sdks/languages/ruby.svg"
 ---
 
 If you're working with Ruby, the official Infisical Ruby SDK package is the easiest way to fetch and work with secrets for your application.
 
 - [Package](https://rubygems.org/gems/infisical-sdk)
-- [Github Repository](https://github.com/Infisical/ruby-sdk)
+- [GitHub Repository](https://github.com/Infisical/ruby-sdk)
 
-# Basic Usage
+# Basic usage
 
 ```ruby
 require "infisical"
@@ -45,7 +46,7 @@ This example demonstrates how to use the Infisical Ruby SDK in a simple Ruby app
 The SDK requires Ruby 3.0.0 or higher.
 
 ```console
-$ gem install infisical-sdk
+gem install infisical-sdk
 ```
 
 Or add it to your Gemfile:
@@ -66,7 +67,7 @@ client = Infisical::Client.new(
 )
 ```
 
-### Configuration Options
+### Configuration options
 
 <ParamField query="options" type="object">
   <Expandable title="properties">
@@ -84,7 +85,7 @@ client = Infisical::Client.new(
 
 The SDK authenticates as a [machine identity](/documentation/platform/identities/machine-identities). The most common authentication method is Universal Auth, which uses a client ID and client secret. If you already have a valid access token, you can also set it on the client directly.
 
-### Universal Auth
+### Universal auth
 
 Log in with a machine identity's client ID and client secret. On success, the returned access token is stored on the client and used for all subsequent requests.
 
@@ -109,7 +110,7 @@ client.auth.universal_auth_login(
   </Expandable>
 </ParamField>
 
-### Access Token
+### Access token
 
 If you already have a valid access token, set it on the client directly instead of logging in. This does not make a network request.
 
@@ -125,7 +126,7 @@ client.auth.access_token("YOUR_ACCESS_TOKEN")
 
 # Secrets
 
-### List Secrets
+### List secrets
 
 `client.secrets.list(options)`
 
@@ -169,7 +170,7 @@ secrets = client.secrets.list(
   </Expandable>
 </ParamField>
 
-### Retrieve Secret
+### Retrieve secret
 
 `client.secrets.get(secret_name, options)`
 
@@ -209,7 +210,7 @@ secret = client.secrets.get(
   </Expandable>
 </ParamField>
 
-### Create Secret
+### Create secret
 
 `client.secrets.create(secret_name, secret_value, options)`
 
@@ -258,7 +259,7 @@ secret = client.secrets.create(
   </Expandable>
 </ParamField>
 
-### Update Secret
+### Update secret
 
 `client.secrets.update(secret_name, options)`
 
@@ -307,7 +308,7 @@ secret = client.secrets.update(
   </Expandable>
 </ParamField>
 
-### Delete Secret
+### Delete secret
 
 `client.secrets.delete(secret_name, options)`
 
@@ -343,7 +344,7 @@ secret = client.secrets.delete(
   </Expandable>
 </ParamField>
 
-### The Secret object
+### The secret object
 
 Every secret operation returns an `Infisical::Models::Secret` with the following readers:
 

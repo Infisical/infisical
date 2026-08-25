@@ -1,4 +1,9 @@
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
+import { CaType } from "@app/hooks/api/ca";
+import {
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 export const getSanPlaceholder = (sanType: CertSubjectAlternativeNameType): string => {
   switch (sanType) {
@@ -30,6 +35,17 @@ export type SubjectAltName = {
   value: string;
 };
 
+export const sanTypeCandidatesFromValue = (value: string): CertSubjectAlternativeNameType[] => {
+  if (isIPv4(value) || isIPv6(value)) return [CertSubjectAlternativeNameType.IP_ADDRESS];
+  if (value.includes("@"))
+    return [CertSubjectAlternativeNameType.EMAIL, CertSubjectAlternativeNameType.UPN];
+  if (value.startsWith("http")) return [CertSubjectAlternativeNameType.URI];
+  return [CertSubjectAlternativeNameType.DNS_NAME];
+};
+
+export const detectSanTypeFromValue = (value: string): CertSubjectAlternativeNameType =>
+  sanTypeCandidatesFromValue(value)[0];
+
 export const formatSubjectAltNames = (subjectAltNames: SubjectAltName[]) => {
   return subjectAltNames
     .filter((san) => san.value.trim())
@@ -38,6 +54,13 @@ export const formatSubjectAltNames = (subjectAltNames: SubjectAltName[]) => {
       value: san.value.trim()
     }));
 };
+
+export const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+  Array.isArray(fieldErrors)
+    ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+        (rowError) => rowError?.value?.message
+      )
+    : undefined;
 
 export const filterUsages = <T extends Record<string, boolean>>(usages: T): string[] => {
   return Object.entries(usages)
@@ -48,7 +71,30 @@ export const filterUsages = <T extends Record<string, boolean>>(usages: T): stri
 export const getAttributeValue = (
   subjectAttributes: Array<{ type: string; value: string }> | undefined,
   type: string
-): string => {
-  const foundAttr = subjectAttributes?.find((attr) => attr.type === type);
-  return foundAttr?.value || "";
-};
+): string => subjectAttributes?.find((attr) => attr.type === type)?.value?.trim() || "";
+
+export type SubjectAttrKey =
+  | "commonName"
+  | "organization"
+  | "organizationalUnit"
+  | "country"
+  | "state"
+  | "locality";
+
+export const SUBJECT_ATTR_MAP: {
+  attrType: CertSubjectAttributeType;
+  requestKey: SubjectAttrKey;
+}[] = [
+  { attrType: CertSubjectAttributeType.COMMON_NAME, requestKey: "commonName" },
+  { attrType: CertSubjectAttributeType.ORGANIZATION, requestKey: "organization" },
+  { attrType: CertSubjectAttributeType.ORGANIZATIONAL_UNIT, requestKey: "organizationalUnit" },
+  { attrType: CertSubjectAttributeType.COUNTRY, requestKey: "country" },
+  { attrType: CertSubjectAttributeType.STATE, requestKey: "state" },
+  { attrType: CertSubjectAttributeType.LOCALITY, requestKey: "locality" }
+];
+
+export const isExternalTemplateCa = (externalCaType?: CaType | string | null) =>
+  externalCaType === CaType.ADCS || externalCaType === CaType.AZURE_AD_CS;
+
+export const EXTERNAL_CA_TEMPLATE_HINT =
+  "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";

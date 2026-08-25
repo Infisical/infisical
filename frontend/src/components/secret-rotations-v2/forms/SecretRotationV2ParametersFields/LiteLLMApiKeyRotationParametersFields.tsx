@@ -3,16 +3,18 @@ import { Controller, useFormContext } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Field,
+  FieldError,
   FilterableSelect,
-  FormControl,
   Input,
-  Tab,
-  TabList,
-  TabPanel,
   Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
   useListLiteLLMConnectionModels,
@@ -131,50 +133,58 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
 
   return (
     <Tabs defaultValue={ParameterTab.General}>
-      <TabList className="border-b border-mineshaft-500">
-        <Tab value={ParameterTab.General}>General</Tab>
-        <Tab value={ParameterTab.Advanced}>Advanced</Tab>
-      </TabList>
-      <TabPanel value={ParameterTab.General}>
+      <TabsList variant="project" className="w-full justify-start">
+        <TabsTrigger value={ParameterTab.General}>General</TabsTrigger>
+        <TabsTrigger value={ParameterTab.Advanced}>Advanced</TabsTrigger>
+      </TabsList>
+      <TabsContent value={ParameterTab.General} className="space-y-4">
         <Controller
           name="parameters.name"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Key Name"
-              tooltipText="A descriptive name for the generated key. Infisical appends a timestamp so each rotated key stays unique and records its creation time."
-            >
+          render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip
+                htmlFor="litellm-key-name"
+                tooltip="A descriptive name for the generated key. Infisical appends a timestamp so each rotated key stays unique and records its creation time."
+              >
+                Key Name
+              </FieldLabelWithTooltip>
               <Input
+                ref={ref}
+                id="litellm-key-name"
                 value={value}
+                onBlur={onBlur}
                 onChange={onChange}
                 placeholder="my-rotated-key"
                 maxLength={LITELLM_API_KEY_NAME_MAX_LENGTH}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
         <Controller
           name="parameters.userId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => {
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
             const selectedValue = resolveSelectedOption(users, selectedUser, value);
             return (
-              <FormControl
-                isOptional
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="User"
-                tooltipText="Associate the generated key with a LiteLLM user. Search by email."
-              >
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabelWithTooltip
+                  htmlFor="litellm-user"
+                  tooltip="Associate the generated key with a LiteLLM user. Search by email."
+                >
+                  User <span className="font-normal text-muted">(optional)</span>
+                </FieldLabelWithTooltip>
                 <FilterableSelect
+                  inputId="litellm-user"
                   isClearable
                   isLoading={
                     (userSearch !== debouncedUserSearch || isUsersFetching) && Boolean(connectionId)
                   }
                   isDisabled={!connectionId}
                   value={selectedValue}
+                  onBlur={onBlur}
                   onChange={(option) => {
                     const newValue = (option as SingleValue<TLiteLLMUser>) ?? null;
                     setSelectedUser(newValue);
@@ -188,31 +198,35 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                   placeholder="Search for a user..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             );
           }}
         />
         <Controller
           name="parameters.teamId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => {
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
             const selectedValue = resolveSelectedOption(teams, selectedTeam, value);
             return (
-              <FormControl
-                isOptional
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Team"
-                tooltipText="Associate the generated key with a LiteLLM team. Search by team alias."
-              >
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabelWithTooltip
+                  htmlFor="litellm-team"
+                  tooltip="Associate the generated key with a LiteLLM team. Search by team alias."
+                >
+                  Team <span className="font-normal text-muted">(optional)</span>
+                </FieldLabelWithTooltip>
                 <FilterableSelect
+                  inputId="litellm-team"
                   isClearable
                   isLoading={
                     (teamSearch !== debouncedTeamSearch || isTeamsFetching) && Boolean(connectionId)
                   }
                   isDisabled={!connectionId}
                   value={selectedValue}
+                  onBlur={onBlur}
                   onChange={(option) => {
                     const newValue = (option as SingleValue<TLiteLLMTeam>) ?? null;
                     setSelectedTeam(newValue);
@@ -226,27 +240,31 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                   placeholder="Search for a team..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             );
           }}
         />
         <Controller
           name="parameters.models"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isOptional
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Models"
-              tooltipText="Restrict the generated key to specific models. Leave empty to allow all models."
-            >
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip
+                htmlFor="litellm-models"
+                tooltip="Restrict the generated key to specific models. Leave empty to allow all models."
+              >
+                Models <span className="font-normal text-muted">(optional)</span>
+              </FieldLabelWithTooltip>
               <FilterableSelect
+                inputId="litellm-models"
                 isMulti
                 isLoading={isModelsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={models?.filter((model) => (value ?? []).includes(model.id)) ?? []}
+                onBlur={onBlur}
                 onChange={(option) => {
                   onChange((option as MultiValue<TLiteLLMModel>).map((model) => model.id));
                 }}
@@ -254,35 +272,36 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                 placeholder="Select models..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
-      </TabPanel>
-      <TabPanel value={ParameterTab.Advanced}>
+      </TabsContent>
+      <TabsContent value={ParameterTab.Advanced} className="space-y-4">
         <Controller
           name="parameters.additionalOptions"
           control={control}
           defaultValue={DEFAULT_LITELLM_OPTIONS}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isOptional
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Additional Key Options (JSON)"
-              tooltipText="Common fields: max_budget (number), tpm_limit / rpm_limit (numbers), metadata (object). user_id, team_id and models are set on the general tab; key_alias, auto_rotate, rotation_interval, duration, send_invite_email and key_type are managed by Infisical and cannot be set here."
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip tooltip="Common fields: max_budget (number), tpm_limit / rpm_limit (numbers), metadata (object). user_id, team_id and models are set on the general tab; key_alias, auto_rotate, rotation_interval, duration, send_invite_email and key_type are managed by Infisical and cannot be set here.">
+                Additional Key Options (JSON){" "}
+                <span className="font-normal text-muted">(optional)</span>
+              </FieldLabelWithTooltip>
               <TextArea
                 {...field}
-                reSize="none"
+                className="resize-none font-mono text-sm"
                 rows={10}
                 placeholder={DEFAULT_LITELLM_OPTIONS}
-                className="border-mineshaft-600 bg-mineshaft-900 font-mono text-sm"
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
-      </TabPanel>
+      </TabsContent>
     </Tabs>
   );
 };

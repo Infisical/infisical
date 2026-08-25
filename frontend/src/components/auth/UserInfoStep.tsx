@@ -33,6 +33,7 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import SecurityClient from "../utilities/SecurityClient";
+import Telemetry from "../utilities/telemetry/Telemetry";
 import { AuthPagePanel } from "./AuthPagePanel";
 
 const createUserInfoFormSchema = (isInvite: boolean, passwordPolicy: TPasswordPolicy) =>
@@ -108,6 +109,8 @@ export default function UserInfoStep({
   const submitLabel = isInvite ? String(t("signup.signup")) : "Continue";
 
   const onSubmit = async (formData: UserInfoFormData) => {
+    const telemetry = new Telemetry().getInstance();
+
     const latestBreachStatus = await validatePassword(formData.password);
     if (latestBreachStatus === "breached") {
       setError("password", {
@@ -129,6 +132,11 @@ export default function UserInfoStep({
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
+
+    // The distinct id has to match the one the backend captures signup events with, which is
+    // user.username: the lowercased email.
+    const signupEmail = email.toLowerCase();
+    telemetry.identify(signupEmail, signupEmail);
 
     if (isInfisicalCloud()) {
       window.dataLayer = window.dataLayer || [];

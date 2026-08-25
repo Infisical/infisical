@@ -1,5 +1,5 @@
 ---
-title: "Secret Insights"
+title: "Secret insights"
 sidebarTitle: "Insights"
 description: "Monitor upcoming rotations, reminders, stale secrets, and secret access patterns across your project."
 ---
@@ -17,9 +17,9 @@ The page is read-only. Every metric is computed from data already collected by I
 ![Secret Insights dashboard](/images/platform/insights/overview.png)
 
 
-## Accessing Insights
+## Accessing insights
 
-From a Secret Manager project, open the **Insights** tab in the project sidebar. The page is divided into four sections:
+From a Secrets Manager project, open the **Insights** tab in the project sidebar. The page is divided into four sections:
 
 - **Summary Cards** — three at-a-glance counters for rotations, reminders, and stale secrets.
 - **Audit Reports** — Generate point-in-time compliance exports.
@@ -33,7 +33,7 @@ The page also includes an **Audit Reports** card for generating exportable compl
 
 The three cards along the top of the page give you a quick read on what needs attention. Each card opens a popover with a table you can drill into; clicking a row jumps directly to the matching secret in the **Overview** page with the appropriate filters applied.
 
-### Upcoming Rotations
+### Upcoming rotations
 
 Counts secret rotations scheduled to run in the **next 7 days**.
 
@@ -46,7 +46,7 @@ Click **View Rotations** (or **View Failed Rotations**) to see the full list. Ea
 
 ![Secret Insights rotation](/images/platform/insights/rotations.png)
 
-### Upcoming Reminders
+### Upcoming reminders
 
 Counts secret reminders due in the **next 7 days**.
 
@@ -59,7 +59,7 @@ Click **View Upcoming Reminders** (or **View Overdue Reminders**) to see the lis
 
 ![Secret Insights reminders](/images/platform/insights/reminders.png)
 
-### Stale Secrets
+### Stale secrets
 
 Counts secrets that **haven't been modified in more than 90 days**.
 
@@ -69,7 +69,7 @@ Stale secrets aren't necessarily a problem — long-lived configuration values a
 
 ![Secret Insights stale secrets](/images/platform/insights/stale.png)
 
-## Audit Reports
+## Audit reports
 
 Audit Reports let you generate point-in-time compliance exports for a Secrets Management project — stale secrets, duplicate values, validation-rule violations, rotation status, upcoming reminders, and secret access history — and deliver them to one or more recipients as CSV attachments (one file per report type) in an email.
 
@@ -130,7 +130,7 @@ A single request can include any combination of the following. Each becomes its 
 | **Upcoming Reminders** | Secret reminders due within the next 7 days. |
 | **Secret Access Log** | Who accessed secrets over the last 30 days (actor, event type, secret, environment, path, IP, timestamp). |
 
-## Rotation & Reminder Calendar
+## Rotation & reminder calendar
 
 The calendar panel shows every upcoming rotation and reminder laid out on a month grid, so you can see the cadence of upcoming work at a glance.
 
@@ -147,7 +147,7 @@ The calendar panel shows every upcoming rotation and reminder laid out on a mont
 
 **Event details.** Click a pill to view its details, then use the **View in Overview** button to jump to the corresponding secret in the project Overview with filters applied.
 
-## Secret Access Volume
+## Secret access volume
 
 This panel shows how many times secrets have been read across the project over the **past 7 days**, plotted as a daily area chart.
 
@@ -159,7 +159,7 @@ Below the chart, the **Top actors** row lists the up-to-five identities that iss
 
 Use this panel to spot unusual spikes, identify the heaviest consumers of your secrets, and confirm that traffic patterns match what you expect from your services.
 
-## Authentication Methods
+## Authentication methods
 
 This panel shows the distribution of authentication methods used to read secrets over the **past 30 days**, plotted as a donut chart with a breakdown table beside it.
 

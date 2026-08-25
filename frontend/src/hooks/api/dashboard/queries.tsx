@@ -462,7 +462,9 @@ export const useGetProjectSecretsQuickSearch = (
     secretPath,
     search = "",
     environments,
-    tags
+    tags,
+    limit,
+    offset
   }: TGetDashboardProjectSecretsQuickSearchDTO,
   options?: Omit<
     UseQueryOptions<
@@ -485,7 +487,9 @@ export const useGetProjectSecretsQuickSearch = (
       search,
       projectId,
       environments,
-      tags
+      tags,
+      limit,
+      offset
     }),
     queryFn: () =>
       fetchProjectSecretsQuickSearch({
@@ -493,10 +497,12 @@ export const useGetProjectSecretsQuickSearch = (
         search,
         projectId,
         environments,
-        tags
+        tags,
+        limit,
+        offset
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
-      const { secrets, folders, dynamicSecrets, secretRotations } = data;
+      const { secrets, folders, dynamicSecrets, secretRotations, ...counts } = data;
 
       const groupedFolders = groupBy(folders, (folder) => folder.path);
       const groupedSecrets = groupBy(
@@ -514,6 +520,7 @@ export const useGetProjectSecretsQuickSearch = (
       );
 
       return {
+        ...counts,
         folders: groupedFolders,
         secrets: groupedSecrets,
         dynamicSecrets: groupedDynamicSecrets,

@@ -85,8 +85,8 @@ export type TServerConfig = {
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
-  licenseServerV2Enabled?: boolean;
   isCrossProjectSecretSharingEnabled?: boolean;
+  isClickhouseAuditLogEnabled?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)

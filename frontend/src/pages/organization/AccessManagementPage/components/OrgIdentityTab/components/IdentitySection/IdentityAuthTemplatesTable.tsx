@@ -202,7 +202,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                 />
               </TableHead>
               <TableHead>Host / URL</TableHead>
-              <TableHead className="w-5" />
+              <TableHead variant="action" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,7 +218,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                   <TableCell>
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell variant="action">
                     <Skeleton className="h-4 w-4" />
                   </TableCell>
                 </TableRow>
@@ -235,7 +235,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                       ? template.templateFields.kubernetesHost || "Gateway"
                       : template.templateFields.url}
                   </TableCell>
-                  <TableCell>
+                  <TableCell variant="action">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>

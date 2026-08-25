@@ -42,6 +42,7 @@ import {
   SanitizedUserSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
+import { ProjectAccessRequestCommentSchema } from "./project-access-request-schema";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
@@ -1094,25 +1095,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        comment: z
-          .string()
-          .trim()
-          .max(2500)
-          .refine(
-            (val) =>
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Comma,
-                CharacterType.Fullstop,
-                CharacterType.Spaces,
-                CharacterType.Exclamation
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
-            }
-          )
-          .optional()
+        comment: ProjectAccessRequestCommentSchema
       }),
       response: {
         200: z.object({
@@ -1280,7 +1263,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Retrieve only certificates available for PKI sync"),
         search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
-        status: z.string().optional().describe("Filter by certificate status"),
+        status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z
           .union([z.string().uuid(), z.array(z.string().uuid())])
           .transform((val) => (Array.isArray(val) ? val : [val]))
@@ -1434,6 +1417,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           totals: z.object({
             total: z.number(),
             active: z.number(),
+            renewed: z.number(),
             expiringSoon: z.number(),
             expired: z.number(),
             revoked: z.number()

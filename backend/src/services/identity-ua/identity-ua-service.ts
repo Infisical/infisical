@@ -35,6 +35,13 @@ import {
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import {
+  clearIdentityLockoutsForAuthMethod,
+  clearIdentityLockoutState,
+  getIdentityLockoutState,
+  identityLockoutLockKey,
+  persistIdentityLockoutState
+} from "../identity/identity-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLogin, shouldRecordIdentityLastLogin } from "../membership-identity/membership-identity-fns";
@@ -72,22 +79,16 @@ type TIdentityUaServiceFactoryDep = {
   >;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
     | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "getKeysByPattern"
-    | "deleteItems"
+    | "getItemPrimary"
+    | "setIndexedItemWithExpiry"
+    | "deleteIndexedItems"
+    | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
-
-type LockoutObject = {
-  lockedOut: boolean;
-  failedAttempts: number;
-};
 
 // debounce per-secret usage writes so login bursts on one unlimited secret don't pile up on its row lock
 const UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS = 10;
@@ -131,18 +132,13 @@ export const identityUaServiceFactory = ({
         trustedIps: identityUa.clientSecretTrustedIps as TIp[]
       });
 
-      const lockoutKey = KeyStorePrefixes.IdentityLockoutState(
-        identityUa.identityId,
-        IdentityAuthMethod.UNIVERSAL_AUTH,
-        clientId
-      );
+      const lockoutSelector = {
+        identityId: identityUa.identityId,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        slug: clientId
+      };
 
-      const lockoutRaw = await keyStore.getItem(lockoutKey);
-
-      let lockout: LockoutObject | undefined;
-      if (lockoutRaw) {
-        lockout = JSON.parse(lockoutRaw) as LockoutObject;
-      }
+      let lockout = await getIdentityLockoutState(lockoutSelector, keyStore);
 
       if (lockout && lockout.lockedOut && identityUa.lockoutEnabled) {
         throw new UnauthorizedError({
@@ -177,22 +173,21 @@ export const identityUaServiceFactory = ({
         if (identityUa.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 300, {
-              retryCount: 3,
-              retryDelay: 300,
-              retryJitter: 100
-            });
+            lock = await keyStore.acquireLock(
+              [identityLockoutLockKey(identityUa.identityId, IdentityAuthMethod.UNIVERSAL_AUTH, clientId)],
+              300,
+              {
+                retryCount: 3,
+                retryDelay: 300,
+                retryJitter: 100
+              }
+            );
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(lockoutKey);
-            if (lockoutRawNew) {
-              lockout = JSON.parse(lockoutRawNew) as LockoutObject;
-            } else {
-              lockout = {
-                lockedOut: false,
-                failedAttempts: 0
-              };
-            }
+            lockout = (await getIdentityLockoutState(lockoutSelector, keyStore)) ?? {
+              lockedOut: false,
+              failedAttempts: 0
+            };
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
@@ -211,10 +206,15 @@ export const identityUaServiceFactory = ({
               lockout.lockedOut = true;
             }
 
-            await keyStore.setItemWithExpiry(
-              lockoutKey,
-              lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
-              JSON.stringify(lockout)
+            await persistIdentityLockoutState(
+              {
+                ...lockoutSelector,
+                expiryInSeconds: lockout.lockedOut
+                  ? identityUa.lockoutDurationSeconds
+                  : identityUa.lockoutCounterResetSeconds
+              },
+              lockout,
+              keyStore
             );
           } catch (e) {
             if (lock === undefined) {
@@ -242,7 +242,7 @@ export const identityUaServiceFactory = ({
         });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
-        await keyStore.deleteItem(lockoutKey);
+        await clearIdentityLockoutState(lockoutSelector, keyStore);
       }
 
       const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -848,7 +848,8 @@ export const identityUaServiceFactory = ({
     ttl,
     actorAuthMethod,
     description,
-    numUsesLimit
+    numUsesLimit,
+    isActorSuperAdmin
   }: TCreateUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -926,6 +927,9 @@ export const identityUaServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
@@ -1137,7 +1141,8 @@ export const identityUaServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    clientSecretId
+    clientSecretId,
+    isActorSuperAdmin
   }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1223,6 +1228,9 @@ export const identityUaServiceFactory = ({
         });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     // Insert the revocation marker BEFORE flipping isClientSecretRevoked. If
     // the flip fails, tokens are already dead and a retry safely re-flips the
     // bit; flipping first would leave the secret flagged but tokens authentic.
@@ -1243,7 +1251,8 @@ export const identityUaServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    isActorSuperAdmin
   }: TClearUaLockoutsDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1288,9 +1297,10 @@ export const identityUaServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
-    const deleted = await keyStore.deleteItems({
-      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.UNIVERSAL_AUTH)
-    });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
+    const deleted = await clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.UNIVERSAL_AUTH, keyStore);
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };

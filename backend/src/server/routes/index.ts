@@ -74,6 +74,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -156,6 +157,8 @@ import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-confi
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
+import { gatewayProxyRegistryFactory } from "@app/ee/services/resource-auth-method/gateway-proxy-registry";
+import { resourceKubernetesAuthDALFactory } from "@app/ee/services/resource-auth-method/kubernetes-auth-dal";
 import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
 import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-auth-method/token-auth-dal";
@@ -618,6 +621,7 @@ export const registerRoutes = async (
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
+  const insightsDAL = insightsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -784,9 +788,9 @@ export const registerRoutes = async (
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
-  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // Created before licenseService so the latter can emit the user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, licenseClient });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -799,8 +803,8 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  // Usage metering: counts the metered features and reports them to the License Server. Inert while
-  // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
+  // Usage metering: counts the metered features and reports them to the License Server. Inert when no
+  // license server is configured (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
@@ -822,8 +826,8 @@ export const registerRoutes = async (
     source: usageSource
   });
 
-  // Flag-gated v2 billing surface. Drives the catalog, subscription, and entitlement reads off the
-  // real license server via licenseClient; no new tables.
+  // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
+  // server via licenseClient; no new tables.
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
@@ -1463,7 +1467,7 @@ export const registerRoutes = async (
     userAliasDAL,
     emailDomainDAL,
     identityTokenAuthDAL,
-    identityAccessTokenDAL,
+    identityAccessTokenService,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,
@@ -1630,6 +1634,7 @@ export const registerRoutes = async (
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const resourceKubernetesAuthDAL = resourceKubernetesAuthDALFactory(db);
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
@@ -1772,15 +1777,25 @@ export const registerRoutes = async (
     keyStore
   });
 
+  // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
+  // resourceAuthMethodService, so the proxy resolver cannot be a constructor dependency.
+  const gatewayProxyRegistry = gatewayProxyRegistryFactory();
+
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
+    resourceKubernetesAuthDAL,
     resourceTokenAuthDAL,
+    kmsService,
     gatewayV2DAL,
+    gatewayPoolDAL,
+    gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    licenseService,
+    gatewayProxyRegistry
   });
 
   const relayService = relayServiceFactory({
@@ -1831,6 +1846,14 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  gatewayProxyRegistry.register(async ({ gatewayV2Id, gatewayPoolId, targetHost, targetPort }) => {
+    if (gatewayPoolId) {
+      return gatewayPoolService.getPlatformConnectionDetailsByPoolId({ poolId: gatewayPoolId, targetHost, targetPort });
+    }
+    if (!gatewayV2Id) return undefined;
+    return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({ gatewayId: gatewayV2Id, targetHost, targetPort });
   });
 
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
@@ -1963,7 +1986,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     pamAccountDependencyDAL,
-    pamDiscoverySourceDAL
+    pamDiscoverySourceDAL,
+    projectDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -2439,7 +2463,6 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
-    licenseDAL,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -3112,6 +3135,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretRotationV2DAL,
     reminderDAL,
     folderDAL,
@@ -3122,7 +3146,11 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    orgDAL,
+    identityOrgMembershipDAL,
+    dynamicSecretLeaseDAL,
+    insightsDAL
   });
 
   const auditReportDAL = auditReportDALFactory(db);
@@ -3133,6 +3161,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotService,
     userDAL,
+    orgDAL,
     queueService
   });
   // Registers the BullMQ worker that generates the CSVs and emails them.
@@ -3140,6 +3169,7 @@ export const registerRoutes = async (
     queueService,
     auditReportDAL,
     projectDAL,
+    orgDAL,
     smtpService,
     secretV2BridgeDAL,
     folderDAL,
@@ -3148,7 +3178,10 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsService
+    kmsService,
+    insightsDAL,
+    dynamicSecretLeaseDAL,
+    identityOrgMembershipDAL
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({

@@ -107,18 +107,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/approval",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval"
     ),
-    RollbackPreviewPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
-    ),
-    CommitDetailsPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-    ),
-    CommitsPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId"
-    ),
     OverviewPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/overview",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/overview"
@@ -389,7 +377,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SignerDetailByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/"
     ),
     CodeSigningPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
@@ -417,7 +405,11 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     AccountsPage: setRoute(
       "/organizations/$orgId/pam/accounts",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/"
+    ),
+    FolderPage: setRoute(
+      "/organizations/$orgId/pam/accounts/$folderId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId"
     ),
     TemplatesPage: setRoute(
       "/organizations/$orgId/pam/templates",

@@ -4,10 +4,33 @@ import { twMerge } from "tailwind-merge";
 
 import { computeWordDiff, isSingleLine } from "@app/components/utilities/diff";
 import { Tag, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 
 import { DiffContainer } from "./DiffContainer";
 import { MultiLineDiff } from "./MultiLineDiff";
 import { SingleLineDiff } from "./SingleLineDiff";
+
+export const DiffFieldLabel = ({
+  label,
+  hasChanges,
+  showChangedMarker
+}: {
+  label: string;
+  hasChanges: boolean;
+  showChangedMarker?: boolean;
+}) => (
+  <div className="mb-0.5 flex items-center gap-1 text-xs font-medium text-label">
+    {label}
+    {showChangedMarker && hasChanges && (
+      <Badge
+        variant="warning"
+        className="min-h-3 px-1 py-0 text-[9px] leading-3 tracking-wide uppercase"
+      >
+        Changed
+      </Badge>
+    )}
+  </div>
+);
 
 // Inline text diff renderer (for Key, Comment, Multi-line Encoding)
 export const InlineTextDiff = ({

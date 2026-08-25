@@ -5,7 +5,7 @@ description: "Learn how to set metadata and leverage authentication attributes f
 
 Machine identities can have metadata set manually, just like users. In addition, during the machine authentication process (e.g., via OIDC), extra attributes called claims—are provided, which can be used in your ABAC policies.
 
-#### Setting Metadata on Machine Identities
+#### Setting metadata on machine identities
 
 <Tabs>
   <Tab title="Manually Configure Metadata">
@@ -23,7 +23,7 @@ Machine identities can have metadata set manually, just like users. In addition,
   </Tab>
 </Tabs>
 
-#### Accessing Attributes From Machine Identity Login
+#### Accessing attributes from machine identity login
 
 When machine identities authenticate, they may receive additional payloads/attributes from the service provider.
 For methods like OIDC, these come as claims in the token and can be made available in your policies.
@@ -95,7 +95,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
   </Tab>
 </Tabs>
 
-#### Template Helper Functions
+#### Template helper functions
 
 In addition to referencing attributes directly, you can use the `stripPrefix` helper function to transform attribute values within your policy templates.
 

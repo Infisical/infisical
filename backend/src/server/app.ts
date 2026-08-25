@@ -72,10 +72,17 @@ export const main = async ({
 }: TMain) => {
   const appCfg = getConfig();
 
+  // Infisical Cloud request IDs carry a region segment (req-us-, req-eu-) so an ID's
+  // origin is identifiable at a glance; self-hosted and dedicated stay bare req-.
+  let requestIdOrigin = "";
+  if (appCfg.INFISICAL_CLOUD) {
+    requestIdOrigin = appCfg.INTERNAL_REGION === "eu" ? "eu-" : "us-";
+  }
+
   const server = fastify({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(appCfg.NODE_ENV === "test" ? { logger: false } : { loggerInstance: logger }),
-    genReqId: () => `req-${alphaNumericNanoId(14)}`,
+    genReqId: () => `req-${requestIdOrigin}${alphaNumericNanoId(14)}`,
     // When TRUSTED_PROXY_CIDRS is configured, only requests from those sources have their
     // forwarded-IP headers honored. Unset preserves legacy behavior (trust all) for backcompat.
     trustProxy: appCfg.TRUSTED_PROXY_CIDRS ?? true,

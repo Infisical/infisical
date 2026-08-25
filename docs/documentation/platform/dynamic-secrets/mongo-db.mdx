@@ -1,21 +1,21 @@
 ---
-title: "Mongo DB"
-description: "Learn how to dynamically generate Mongo DB Database user credentials."
+title: "MongoDB"
+description: "Learn how to dynamically generate MongoDB Database user credentials."
 ---
 
 import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
 
-The Infisical Mongo DB dynamic secret allows you to generate Mongo DB Database credentials on demand based on configured role.
+The Infisical MongoDB dynamic secret allows you to generate MongoDB Database credentials on demand based on configured role.
 
 
 <Info>
-				If your using Mongo Atlas, please use [Atlas Dynamic Secret](./mongo-atlas) as MongoDB commands are not supported by atlas.
+				If your using MongoDB Atlas, please use [Atlas Dynamic Secret](./mongo-atlas) as MongoDB commands are not supported by atlas.
 </Info>
 
 ## Prerequisite
 Create a user with the required permission in your MongoDB instance. This user will be used to create new accounts on-demand.
 
-## Set up Dynamic Secrets with Mongo DB
+## Set up dynamic secrets with MongoDB
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -45,7 +45,7 @@ Create a user with the required permission in your MongoDB instance. This user w
 	</ParamField>
 
 	<ParamField path="Port" type="number">
-		Database port number. If your Mongo DB is cluster you can omit this.
+		Database port number. If your MongoDB is cluster you can omit this.
 	</ParamField>
 
 	<ParamField path="User" type="string" required>
@@ -107,13 +107,13 @@ Create a user with the required permission in your MongoDB instance. This user w
   </Step>
 </Steps>
 
-## Audit or Revoke Leases
+## Audit or revoke leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
-## Renew Leases
+## Renew leases
 To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 

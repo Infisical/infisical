@@ -1,9 +1,20 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, setHours, setMinutes } from "date-fns";
+import { TriangleAlertIcon } from "lucide-react";
 
-import { FilterableSelect, FormControl, Input, Switch } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldFeedback,
+  FieldLabel,
+  FilterableSelect,
+  Input,
+  Label,
+  Switch
+} from "@app/components/v3";
 import {
   getRotateAtLocal,
   IS_ROTATION_DUAL_CREDENTIALS,
@@ -25,74 +36,82 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
   const [type, isAutoRotationEnabled] = watch(["type", "isAutoRotationEnabled"]);
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Configure the connection rotation strategy for this Secret Rotation.
-      </p>
+    <div className="space-y-4">
       {!isUpdate && environments && (
         <Controller
           control={control}
           name="environment"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl label="Environment" isError={Boolean(error)} errorText={error?.message}>
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="secret-rotation-environment">Environment</FieldLabel>
               <FilterableSelect
-                value={value}
+                inputId="secret-rotation-environment"
+                value={value ?? null}
+                onBlur={onBlur}
                 onChange={onChange}
                 options={environments}
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option?.name}
                 getOptionValue={(option) => option?.id}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
       )}
 
       <SecretRotationV2ConnectionField isUpdate={isUpdate} />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Rotation Interval (In Days)"
-          >
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="secret-rotation-interval">Rotation Interval (In Days)</FieldLabel>
             <Input
+              ref={ref}
+              id="secret-rotation-interval"
               value={value}
               type="number"
+              onBlur={onBlur}
               onChange={onChange}
               min={1}
-              placeholder="my-secret-rotation"
+              placeholder="30"
+              isError={Boolean(error)}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
         control={control}
         name="rotationInterval"
       />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => {
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => {
           return (
-            <FormControl
-              label="Rotate At (Local Time)"
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="secret-rotation-rotate-at">Rotate At (Local Time)</FieldLabel>
               <Input
+                ref={ref}
+                id="secret-rotation-rotate-at"
                 type="time"
                 value={format(getRotateAtLocal(value), "HH:mm")}
+                onBlur={onBlur}
                 onChange={(e) => {
                   const time = e.target.value;
-                  if (time) {
-                    const [hours, minutes] = time.split(":").map((str) => parseInt(str, 10));
-                    const newSelectedDate = setHours(setMinutes(new Date(), minutes), hours);
-                    onChange({
-                      hours: newSelectedDate.getUTCHours(),
-                      minutes: newSelectedDate.getUTCMinutes()
-                    });
-                  }
+                  if (!time) return;
+                  const [hours, minutes] = time.split(":").map((str) => parseInt(str, 10));
+                  const newSelectedDate = setHours(setMinutes(new Date(), minutes), hours);
+                  const next = {
+                    hours: newSelectedDate.getUTCHours(),
+                    minutes: newSelectedDate.getUTCMinutes()
+                  };
+                  // Avoid mount/normalization writes that round-trip to the same UTC time.
+                  if (next.hours === value.hours && next.minutes === value.minutes) return;
+                  onChange(next);
                 }}
-                className="bg-mineshaft-700 text-white scheme-dark"
+                className="scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           );
         }}
         control={control}
@@ -101,47 +120,56 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
       <Controller
         control={control}
         name="isAutoRotationEnabled"
-        render={({ field: { value, onChange }, fieldState: { error } }) => {
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => {
           return (
-            <FormControl
-              helperText={
-                value
-                  ? "Secrets will automatically be rotated when the rotation interval specified above as elapsed."
-                  : "Secrets will not be rotated automatically. You can still rotate secrets manually."
-              }
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
+            <Field data-invalid={Boolean(error)} orientation="horizontal">
+              <FieldContent>
+                <Label htmlFor="auto-rotation-enabled">
+                  Auto-Rotation {value ? "Enabled" : "Disabled"}
+                </Label>
+                <FieldFeedback
+                  id="auto-rotation-enabled-feedback"
+                  description={
+                    value
+                      ? "Secrets will automatically be rotated when the rotation interval specified above has elapsed."
+                      : "Secrets will not be rotated automatically. You can still rotate secrets manually."
+                  }
+                  error={error?.message}
+                />
+              </FieldContent>
               <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                ref={ref}
                 id="auto-rotation-enabled"
-                thumbClassName="bg-mineshaft-800"
+                variant="project"
+                checked={value}
+                onBlur={onBlur}
                 onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p className="w-[9.6rem]">Auto-Rotation {value ? "Enabled" : "Disabled"}</p>
-              </Switch>
-            </FormControl>
+                aria-invalid={Boolean(error)}
+                aria-describedby="auto-rotation-enabled-feedback"
+              />
+            </Field>
           );
         }}
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
-        <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
-          <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
-          {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
-          may result in service interruptions. If you need to ensure service continuity, we
-          recommend disabling this option. <br />
-          <a
-            href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline decoration-yellow underline-offset-2 hover:text-mineshaft-200"
-          >
-            Read more
-          </a>
-          .
-        </div>
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            Due to {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set,
+            auto-rotation may result in service interruptions. If you need to ensure service
+            continuity, we recommend disabling this option.{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Read more
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
       )}
-    </>
+    </div>
   );
 };

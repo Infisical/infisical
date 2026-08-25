@@ -1,5 +1,5 @@
 ---
-title: "Environment Variables"
+title: "Environment variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
@@ -155,7 +155,7 @@ Example values:
   When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility with existing self-hosted deployments).
 
   <Warning>
-    If your deployment sits behind a reverse proxy (e.g. Nginx, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
+    If your deployment sits behind a reverse proxy (e.g. NGINX, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
   </Warning>
 </ParamField>
 
@@ -181,9 +181,9 @@ Defaults to reflecting the headers specified in the request's Access-Control-Req
 
 </ParamField>
 
-## Data Layer
+## Data layer
 
-The platform uses Postgres to persist all of its data and Redis for caching and background tasks.
+The platform uses PostgreSQL to persist all of its data and Redis for caching and background tasks.
 
 ### PostgreSQL
 
@@ -194,11 +194,11 @@ The platform uses Postgres to persist all of its data and Redis for caching and 
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
-  Postgres database connection string.
+  PostgreSQL database connection string.
 </ParamField>
 
 <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
-  Configure the SSL certificate for securing a Postgres connection by first encoding it in base64.
+  Configure the SSL certificate for securing a PostgreSQL connection by first encoding it in base64.
   Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
   Many cloud providers provide a CA certificate for their data regions that you can use to secure your connection with SSL.
@@ -224,16 +224,16 @@ The platform uses Postgres to persist all of its data and Redis for caching and 
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>
-  Postgres database read replica connection strings. It accepts a JSON string.
+  PostgreSQL database read replica connection strings. It accepts a JSON string.
 ```
 DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 ```
   <Expandable title="Format">
 	  <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
-	    Postgres read replica connection string.
+	    PostgreSQL read replica connection string.
     </ParamField>
     <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
-      Configure the SSL certificate for securing a Postgres replica connection by first encoding it in base64.
+      Configure the SSL certificate for securing a PostgreSQL replica connection by first encoding it in base64.
 	    Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
       If not provided it will use master SSL certificate.
@@ -242,9 +242,9 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
   </Expandable>
 </ParamField>
 
-#### Connection pool sizing (Optional)
+#### Connection pool sizing (optional)
 
-Each Infisical instance keeps its own pool of Postgres connections. The defaults suit a small deployment and
+Each Infisical instance keeps its own pool of PostgreSQL connections. The defaults suit a small deployment and
 most self-hosters never need to change them, but they become relevant once you run many instances: pools are
 **per instance**, so the total number of connections your database sees grows with your instance count.
 
@@ -268,7 +268,7 @@ easy to miss:
 
 Aim to keep the peak comfortably under `max_connections`, leaving headroom for migrations, admin tools, and
 your own `psql` sessions. If you are close to the limit, **lower `DB_POOL_MAX`** rather than raising
-`max_connections`: each Postgres connection costs memory on the server, and a large number of mostly-idle
+`max_connections`: each PostgreSQL connection costs memory on the server, and a large number of mostly-idle
 connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
 and raising it is the right move.
 
@@ -300,7 +300,7 @@ and raising it is the right move.
   open up to 30 replica connections in addition to its primary pool.
 </ParamField>
 
-### Audit Log PostgreSQL (Optional)
+### Audit log PostgreSQL (optional)
 
 <ParamField query="AUDIT_LOGS_DB_CONNECTION_URI" type="string" optional>
   Separate PostgreSQL connection string for audit log storage. If not set, audit logs are stored in the main database.
@@ -320,7 +320,7 @@ and raising it is the right move.
   This pool is separate from the primary pool, so it adds to your per-instance total.
 </ParamField>
 
-### ClickHouse (Optional)
+### ClickHouse (optional)
 
 ClickHouse can be used as an alternative audit log storage backend for high-volume deployments. See the [ClickHouse Setup Guide](/documentation/platform/audit-logs-clickhouse-setup) for more details.
 
@@ -346,7 +346,7 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
   Default: `{"async_insert":1,"wait_for_async_insert":0,"date_time_input_format":"best_effort"}`
 </ParamField>
 
-### Audit Log Behavior
+### Audit log behavior
 
 <ParamField query="DISABLE_POSTGRES_AUDIT_LOG_STORAGE" type="string" default="false">
   Disable storing audit logs in PostgreSQL. When set to `true`, audit logs are not written to PostgreSQL but are still sent to ClickHouse (if configured) and any configured [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams).
@@ -476,7 +476,7 @@ NODE_EXTRA_CA_CERTS=/path/to/ca.crt
 
 For Redis Sentinel or Cluster mode, use the `REDIS_SENTINEL_ENABLE_TLS` or `REDIS_CLUSTER_ENABLE_TLS` environment variables respectively.
 
-## Email Service
+## Email service
 
 Without email configuration, Infisical's core functions like sign-up/login and secret operations work, but this disables multi-factor authentication, email invites for projects, alerts for suspicious logins, and all other email-dependent features.
 
@@ -580,7 +580,7 @@ SMTP_FROM_NAME=Infisical
   1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
   2. Obtain your Mailgun credentials in Sending > Overview > SMTP
 
-![obtain mailhog api key estriction](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
+![obtain Mailhog credentials](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
 
 3. With your Mailgun credentials, you can now set up your SMTP environment variables:
 
@@ -851,7 +851,7 @@ When set, all visits to the Infisical login page will automatically redirect use
   information.
 </Accordion>
 
-## App Connections
+## App connections
 
 You can configure third-party app connections for re-use across Infisical Projects.
 
@@ -952,7 +952,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     </ParamField>
 </Accordion>
 
-## Secret Scanning
+## Secret scanning
 
 <Accordion title="GitHub">
   <ParamField query="SECRET_SCANNING_GIT_APP_ID" type="string" default="none" optional>
@@ -1106,7 +1106,7 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
   When set to `true`, Infisical stops recording the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters. Nothing is measured, exported, or held in memory for them. Only bounded-cardinality `InfisicalCore` metrics are emitted. Recommended when those meters are enabled with `OTEL_EXPORT_TYPE=prometheus` and label combinations turn over often (many secret paths, source IPs, or clients), because memory then grows with uptime until the process restarts. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
 </ParamField>
 
-## Identity Auth Method
+## Identity auth method
 
 <ParamField
   query="IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY"
@@ -1117,7 +1117,7 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
   to the server.
 </ParamField>
 
-## Environment Variable Overrides
+## Environment variable overrides
 
 If you can't directly access and modify environment variables, you can update them using the [Server Admin Console](/documentation/platform/admin-panel/server-admin).
 
