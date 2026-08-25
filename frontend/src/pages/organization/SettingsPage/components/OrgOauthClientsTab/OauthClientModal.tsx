@@ -18,6 +18,8 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -30,9 +32,6 @@ import {
   SheetHeader,
   SheetTitle,
   Switch,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   TextArea
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -157,12 +156,22 @@ const oauthClientFormSchema = z
 
 type TOauthClientForm = z.infer<typeof oauthClientFormSchema>;
 
-const FLOW_DESCRIPTIONS: Record<OauthClientFlow, string> = {
-  [OauthClientFlow.AuthorizationCode]:
-    "RFC 6749. The user signs in and approves the application in their browser. The token is limited to the scopes they consent to.",
-  [OauthClientFlow.TokenExchange]:
-    "RFC 8693. The application presents a user's token from your identity provider and receives that user's Infisical token. No browser and no consent screen, and the token carries that user's full permissions."
-};
+const FLOW_OPTIONS = [
+  {
+    value: OauthClientFlow.AuthorizationCode,
+    title: "Authorization code",
+    rfc: "RFC 6749",
+    description:
+      "The user signs in and approves the application in their browser. The token is limited to the scopes they consent to."
+  },
+  {
+    value: OauthClientFlow.TokenExchange,
+    title: "Token exchange",
+    rfc: "RFC 8693",
+    description:
+      "The application presents a user's token from your identity provider and receives that user's Infisical token. No browser and no consent screen, and the token carries that user's full permissions."
+  }
+] as const;
 
 type Props = {
   popUp: UsePopUpState<["clientForm"]>;
@@ -391,23 +400,29 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
                 render={({ field: { value, onChange } }) => (
                   <Field>
                     <FieldLabel>Flow</FieldLabel>
-                    <Tabs value={value} onValueChange={onChange}>
-                      <TabsList variant="org" aria-label="Flow">
-                        <TabsTrigger
-                          value={OauthClientFlow.AuthorizationCode}
-                          className="data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:flex-1"
+                    <RadioGroup value={value} onValueChange={onChange} aria-label="Flow">
+                      {FLOW_OPTIONS.map((option) => (
+                        <FieldLabel
+                          key={option.value}
+                          htmlFor={`oauth-client-flow-${option.value}`}
+                          variant="org"
                         >
-                          Authorization code
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value={OauthClientFlow.TokenExchange}
-                          className="data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:flex-1"
-                        >
-                          Token exchange
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    <FieldDescription>{FLOW_DESCRIPTIONS[value]}</FieldDescription>
+                          <Field orientation="horizontal">
+                            <FieldContent>
+                              <FieldTitle className="gap-1.5">
+                                {option.title}
+                                <span className="font-normal text-muted">({option.rfc})</span>
+                              </FieldTitle>
+                              <FieldDescription>{option.description}</FieldDescription>
+                            </FieldContent>
+                            <RadioGroupItem
+                              id={`oauth-client-flow-${option.value}`}
+                              value={option.value}
+                            />
+                          </Field>
+                        </FieldLabel>
+                      ))}
+                    </RadioGroup>
                   </Field>
                 )}
               />
