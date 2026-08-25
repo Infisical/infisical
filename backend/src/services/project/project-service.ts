@@ -1148,7 +1148,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_ghost_user" });
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
     const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({

@@ -49,7 +49,7 @@ const BLOCKER_COPY: Record<EncryptionRotationBlocker, string> = {
 };
 
 export const EncryptionKeyRotationSection = () => {
-  const { data: status, isPending } = useGetEncryptionStatus();
+  const { data: status, isPending, isError } = useGetEncryptionStatus();
   const { mutateAsync: createRotation, isPending: isCreating } = useCreateEncryptionKeyRotation();
   const { mutateAsync: discardRotation } = useDiscardEncryptionKeyRotation();
   const { mutateAsync: completeRotation, isPending: isCompleting } =
@@ -57,6 +57,26 @@ export const EncryptionKeyRotationSection = () => {
 
   const [generatedKey, setGeneratedKey] = useState<TCreatedEncryptionKeyRotation | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+
+  if (isError || (!isPending && !status)) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Root encryption key</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="warning">
+            <AlertTriangleIcon />
+            <AlertTitle>Encryption status could not be loaded</AlertTitle>
+            <AlertDescription>
+              Reload the page to try again. While this is unavailable you cannot generate, discard,
+              or remove an encryption key from here.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isPending || !status) return null;
 

@@ -63,4 +63,27 @@ describe("resolveKekBuffer", () => {
     expect(() => resolveKekBuffer(generateRootEncryptionKey(false), true)).toThrow();
     expect(() => resolveKekBuffer(generateRootEncryptionKey(true), false)).toThrow();
   });
+
+  // The instance is down when this throws, so the command it names is the operator's way out. Naming
+  // the wrong one loops them: the hex recipe read as base64 is 24 bytes, which reproduces this error.
+  test("the wrong-length error names the command that works for the key it was reading", () => {
+    expect(() => resolveInstanceEncryptionKeyBuffer({ ENCRYPTION_KEY: "tooshort" })).toThrow(/openssl rand -hex 16/);
+    expect(() => resolveInstanceEncryptionKeyBuffer({ ROOT_ENCRYPTION_KEY: "dG9vc2hvcnQ=" })).toThrow(
+      /openssl rand -base64 32/
+    );
+  });
+
+  test("and the command it names actually produces a key that resolves", () => {
+    for (const isFips of [false, true]) {
+      const command = isFips ? "openssl rand -base64 32" : "openssl rand -hex 16";
+      let message = "";
+      try {
+        resolveKekBuffer("tooshort", isFips);
+      } catch (err) {
+        message = err instanceof Error ? err.message : String(err);
+      }
+      expect(message).toContain(command);
+      expect(resolveKekBuffer(generateRootEncryptionKey(isFips), isFips)).toHaveLength(32);
+    }
+  });
 });

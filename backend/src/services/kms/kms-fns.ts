@@ -39,10 +39,13 @@ export const resolveInstanceEncryptionKeyBuffer = (envCfg: {
     });
   }
 
-  const buffer = Buffer.from(encryptionKey, envCfg.ENCRYPTION_KEY ? "utf8" : "base64");
+  const isUtf8Key = Boolean(envCfg.ENCRYPTION_KEY);
+  const buffer = Buffer.from(encryptionKey, isUtf8Key ? "utf8" : "base64");
   if (buffer.length !== 32) {
     throw new BadRequestError({
-      message: `The configured encryption key resolves to ${buffer.length} bytes, but 32 are required. Generate one with 'openssl rand -hex 16'.`
+      message: `The configured encryption key resolves to ${buffer.length} bytes, but 32 are required. Generate one with '${
+        isUtf8Key ? "openssl rand -hex 16" : "openssl rand -base64 32"
+      }'.`
     });
   }
 
