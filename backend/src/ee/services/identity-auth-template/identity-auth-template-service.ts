@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
@@ -36,6 +37,7 @@ import {
   TKubernetesTemplateFields,
   TLdapTemplateFields,
   TListIdentityAuthTemplatesDTO,
+  TSanitizedIdentityAuthTemplate,
   TUnlinkTemplateUsageDTO
 } from "./identity-auth-template-types";
 
@@ -83,15 +85,20 @@ export const identityAuthTemplateServiceFactory = ({
   // reach the client (the edit UI keeps a stored secret by omitting the field). A
   // has<Field> presence flag replaces each secret so the edit UI can offer an explicit
   // "clear stored value" action without ever reading the credential
-  const $redactTemplateSecrets = (authMethod: string, fields: Record<string, unknown>) => {
-    const secretFields = TEMPLATE_SECRET_FIELDS_BY_METHOD[authMethod as IdentityAuthTemplateMethod] ?? [];
+  const $sanitizeTemplate = (
+    template: TIdentityAuthTemplates,
+    fields: Record<string, unknown>
+  ): TSanitizedIdentityAuthTemplate => {
+    const secretFields = TEMPLATE_SECRET_FIELDS_BY_METHOD[template.authMethod as IdentityAuthTemplateMethod] ?? [];
     const redacted = { ...fields };
     secretFields.forEach((key) => {
       const value = redacted[key];
       delete redacted[key];
       redacted[`has${key.charAt(0).toUpperCase()}${key.slice(1)}`] = typeof value === "string" && value.length > 0;
     });
-    return redacted;
+    // authMethod is a plain string column; every row is written through the create route's
+    // discriminated body, so it is always one of the supported methods here
+    return { ...template, templateFields: redacted } as TSanitizedIdentityAuthTemplate;
   };
 
   // audit the platform-driven rewrite of linked identities; runs after the propagation
@@ -293,7 +300,7 @@ export const identityAuthTemplateServiceFactory = ({
       orgId: actorOrgId
     });
 
-    return { ...template, templateFields: $redactTemplateSecrets(authMethod, fieldsToPersist) };
+    return $sanitizeTemplate(template, fieldsToPersist);
   };
 
   const updateTemplate = async ({
@@ -496,7 +503,7 @@ export const identityAuthTemplateServiceFactory = ({
       orgId: template.orgId
     });
 
-    return { ...updatedTemplate, templateFields: $redactTemplateSecrets(template.authMethod, mergedTemplateFields) };
+    return $sanitizeTemplate(updatedTemplate, mergedTemplateFields);
   };
 
   const deleteTemplate = async ({
@@ -603,10 +610,7 @@ export const identityAuthTemplateServiceFactory = ({
     const decryptedTemplateFields = JSON.parse(
       decryptor({ cipherTextBlob: template.templateFields }).toString()
     ) as Record<string, unknown>;
-    return {
-      ...template,
-      templateFields: $redactTemplateSecrets(template.authMethod, decryptedTemplateFields)
-    };
+    return $sanitizeTemplate(template, decryptedTemplateFields);
   };
 
   const listTemplates = async ({
@@ -645,10 +649,7 @@ export const identityAuthTemplateServiceFactory = ({
           string,
           unknown
         >;
-        return {
-          ...doc,
-          templateFields: $redactTemplateSecrets(doc.authMethod, parsedTemplateFields)
-        };
+        return $sanitizeTemplate(doc, parsedTemplateFields);
       })
     };
   };
@@ -685,10 +686,7 @@ export const identityAuthTemplateServiceFactory = ({
         string,
         unknown
       >;
-      return {
-        ...doc,
-        templateFields: $redactTemplateSecrets(doc.authMethod, parsedTemplateFields)
-      };
+      return $sanitizeTemplate(doc, parsedTemplateFields);
     });
   };
 

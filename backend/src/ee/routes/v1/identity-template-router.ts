@@ -10,6 +10,8 @@ import {
 import {
   kubernetesTemplateFieldsBaseSchema,
   kubernetesTemplateFieldsCreateSchema,
+  kubernetesTemplateFieldsResponseSchema,
+  ldapTemplateFieldsResponseSchema,
   ldapTemplateFieldsSchema
 } from "@app/ee/services/identity-auth-template/identity-auth-template-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -22,9 +24,20 @@ const templateNameSchema = z
   .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
   .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH);
 
-// template credential fields (LDAP bindPass, Kubernetes tokenReviewerJwt) are stripped
-// server-side and never appear in responses
-const templateFieldsResponseSchema = z.record(z.string(), z.unknown());
+// one response shape per auth method, discriminated the same way the create body is.
+// Credential fields are stripped server-side by $sanitizeTemplate; declaring the
+// exact shape here documents each method's fields and makes the response serializer a
+// second barrier that drops anything undeclared
+const sanitizedTemplateSchema = z.discriminatedUnion("authMethod", [
+  IdentityAuthTemplatesSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.LDAP),
+    templateFields: ldapTemplateFieldsResponseSchema
+  }),
+  IdentityAuthTemplatesSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
+    templateFields: kubernetesTemplateFieldsResponseSchema
+  })
+]);
 
 export const registerIdentityTemplateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -55,9 +68,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         })
       ]),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: z.record(z.string(), z.unknown())
-        })
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -114,9 +125,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
           .optional()
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: z.record(z.string(), z.unknown())
-        })
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -214,9 +223,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: templateFieldsResponseSchema
-        })
+        200: sanitizedTemplateSchema
       }
     },
     handler: async (req) => {
@@ -254,9 +261,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: z.object({
-          templates: IdentityAuthTemplatesSchema.extend({
-            templateFields: templateFieldsResponseSchema
-          }).array(),
+          templates: sanitizedTemplateSchema.array(),
           totalCount: z.number()
         })
       }
@@ -295,9 +300,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         authMethod: z.nativeEnum(IdentityAuthTemplateMethod)
       }),
       response: {
-        200: IdentityAuthTemplatesSchema.extend({
-          templateFields: templateFieldsResponseSchema
-        }).array()
+        200: sanitizedTemplateSchema.array()
       }
     },
     handler: async (req) => {

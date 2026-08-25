@@ -62,6 +62,20 @@ export const kubernetesTemplateFieldsCreateSchema = kubernetesTemplateFieldsBase
   superRefineKubernetesConnectionFields
 );
 
+// response shapes: each write-only credential is replaced by a boolean presence flag,
+// mirroring $redactTemplateSecrets. Derived from the request schemas so a new template
+// field cannot reach the API undocumented, and so the response serializer drops anything
+// the redaction step misses
+export const ldapTemplateFieldsResponseSchema = ldapTemplateFieldsSchema.omit({ bindPass: true }).extend({
+  hasBindPass: z.boolean().describe("Whether a bind password is stored for this template")
+});
+
+export const kubernetesTemplateFieldsResponseSchema = kubernetesTemplateFieldsBaseSchema
+  .omit({ tokenReviewerJwt: true })
+  .extend({
+    hasTokenReviewerJwt: z.boolean().describe("Whether a token reviewer JWT is stored for this template")
+  });
+
 export const templateFieldPatchKeysByMethod = {
   ldap: Object.keys(ldapTemplateFieldsSchema.shape),
   kubernetes: Object.keys(kubernetesTemplateFieldsBaseSchema.shape)
