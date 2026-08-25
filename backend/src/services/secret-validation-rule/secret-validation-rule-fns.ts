@@ -182,7 +182,7 @@ type TSecretToValidate = {
   key: string;
   value?: string;
   previousValues?: string[];
-  duplicateOf?: { key: string; environment: string; path: string };
+  duplicateOf?: { key: string; environment: string; path: string; restricted?: boolean };
 };
 
 type TValidationRule = {
@@ -284,6 +284,9 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       }
 
       if (otherSecrets.enabled && secret.value !== undefined && secret.duplicateOf) {
+        if (secret.duplicateOf.restricted) {
+          return `${targetLabel} is already used by another secret within the project`;
+        }
         return `${targetLabel} is already used by secret "${secret.duplicateOf.key}" in environment "${secret.duplicateOf.environment}" at path "${secret.duplicateOf.path}"`;
       }
 

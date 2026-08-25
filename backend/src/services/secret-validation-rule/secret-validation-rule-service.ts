@@ -377,7 +377,8 @@ export const secretValidationRuleServiceFactory = ({
     envId,
     secretPath,
     secrets,
-    tx
+    tx,
+    canAccessLocation
   }: {
     projectId: string;
     environment: string;
@@ -385,6 +386,7 @@ export const secretValidationRuleServiceFactory = ({
     secretPath: string;
     secrets: { key: string; value?: string; secretId?: string }[];
     tx?: Knex;
+    canAccessLocation?: (dupEnvironment: string, dupPath: string) => boolean;
   }) => {
     if (!secrets.length) return;
 
@@ -460,7 +462,7 @@ export const secretValidationRuleServiceFactory = ({
 
     // We build the map of all duplicate secrets (ignoring scope) and afterwards check
     // if any of those are part of the scope of the rule.
-    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
+    const duplicateOfMap: Record<string, { key: string; environment: string; path: string; restricted?: boolean }> = {};
     if (duplicateValuesRule) {
       if (tx) {
         // If two concurrent requests try to add two secrets with the same value, both will not find
@@ -513,6 +515,19 @@ export const secretValidationRuleServiceFactory = ({
 
             const ruleSecretPath = duplicateValuesRule.secretPath;
 
+            const accessCache = new Map<string, boolean>();
+            const isLocationRestricted = (dupEnv: string, dupPath: string): boolean => {
+              if (!canAccessLocation) return false;
+
+              const cacheKey = `${dupEnv}:${dupPath}`;
+              let restricted = accessCache.get(cacheKey);
+              if (restricted === undefined) {
+                restricted = !canAccessLocation(dupEnv, dupPath);
+                accessCache.set(cacheKey, restricted);
+              }
+              return restricted;
+            };
+
             const blindIndexToExisting = new Map(
               existingDuplicates
                 .filter((dup) => {
@@ -520,14 +535,20 @@ export const secretValidationRuleServiceFactory = ({
                   const dupPath = folderIdToPath.get(dup.folderId) ?? "/";
                   return picomatch.isMatch(dupPath, ruleSecretPath, { strictSlashes: false });
                 })
-                .map((dup) => [
-                  dup.secretValueBlindIndex!,
-                  {
-                    key: dup.key,
-                    environment: dup.environment,
-                    path: folderIdToPath.get(dup.folderId) ?? "/"
-                  }
-                ])
+                .map((dup) => {
+                  const dupEnv = dup.environment;
+                  const dupPath = folderIdToPath.get(dup.folderId) ?? "/";
+
+                  return [
+                    dup.secretValueBlindIndex!,
+                    {
+                      key: dup.key,
+                      environment: dupEnv,
+                      path: dupPath,
+                      restricted: isLocationRestricted(dupEnv, dupPath)
+                    }
+                  ] as const;
+                })
             );
 
             for (let i = 0; i < secretsWithValues.length; i += 1) {

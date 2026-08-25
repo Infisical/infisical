@@ -431,7 +431,12 @@ export const secretV2BridgeServiceFactory = ({
         envId: folder.envId,
         secretPath,
         secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }],
-        tx
+        tx,
+        canAccessLocation: (dupEnv, dupPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment: dupEnv, secretPath: dupPath })
+          )
       });
 
       const [createdSecret] = await fnSecretBulkInsert({
@@ -739,7 +744,12 @@ export const secretV2BridgeServiceFactory = ({
           envId: folder.envId,
           secretPath,
           secrets: [{ key: finalKey, value: secretValue, secretId }],
-          tx
+          tx,
+          canAccessLocation: (dupEnv, dupPath) =>
+            permission.can(
+              ProjectPermissionSecretActions.DescribeSecret,
+              subject(ProjectPermissionSub.Secrets, { environment: dupEnv, secretPath: dupPath })
+            )
         });
       }
 
@@ -2197,7 +2207,12 @@ export const secretV2BridgeServiceFactory = ({
         envId: folder.envId,
         secretPath,
         secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
-        tx
+        tx,
+        canAccessLocation: (dupEnv, dupPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment: dupEnv, secretPath: dupPath })
+          )
       });
 
       const inputSecretsWithBlindIndex = await Promise.all(
@@ -2577,7 +2592,12 @@ export const secretV2BridgeServiceFactory = ({
             envId: folder.envId,
             secretPath,
             secrets: secretsToValidate,
-            tx
+            tx,
+            canAccessLocation: (dupEnv, dupPath) =>
+              permission.can(
+                ProjectPermissionSecretActions.DescribeSecret,
+                subject(ProjectPermissionSub.Secrets, { environment: dupEnv, secretPath: dupPath })
+              )
           });
         }
 
