@@ -53,7 +53,7 @@ const accessTokenTtlSchema = z
   .min(MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
   .max(MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
   .describe(
-    "How long, in seconds, the access tokens this application issues stay valid. A ceiling rather than an override: the instance and organization token lifetimes still apply, so the issued token's 'expires_in' is the shortest of the three."
+    "How long, in seconds, the access tokens this application issues stay valid. Cannot exceed the instance's login session lifetime. The organization's session length still applies on top, so the issued token's 'expires_in' is the shorter of the two."
   );
 
 const tokenExchangeIdpSatisfiesMfaSchema = z

@@ -498,15 +498,30 @@ describe("Access token TTL is per application", async () => {
     await deleteClient(client.id);
   });
 
-  // The application's TTL is a ceiling, not an override, so asking for longer than the instance
-  // allows must not widen it past JWT_AUTH_LIFETIME.
-  test("a TTL longer than the instance lifetime is capped, not honoured", async () => {
-    const { client, token } = await issueAccessToken(90 * 24 * 60 * 60);
+  // A TTL the instance can never honour is a configuration mistake, so it is rejected at the write
+  // rather than stored and quietly shortened at every issuance.
+  test("rejects a TTL longer than the instance lifetime", async () => {
+    const res = await createClient({
+      name: "e2e-access-token-ttl-over-instance-lifetime",
+      redirectUris: [REDIRECT_URI],
+      accessTokenTTL: 90 * 24 * 60 * 60
+    });
 
-    expect(client.accessTokenTTL).toBe(90 * 24 * 60 * 60);
-    expect(token.statusCode).toBe(200);
-    const { expires_in: expiresIn } = JSON.parse(token.payload) as { expires_in: number };
-    expect(expiresIn).toBeLessThan(client.accessTokenTTL);
+    expect(res.statusCode).toBe(400);
+    expect(res.payload).toContain("The access token lifetime cannot exceed");
+  });
+
+  test("rejects an update that raises the TTL past the instance lifetime", async () => {
+    const { client } = await issueAccessToken(3600);
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/oauth/clients/${client.id}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { accessTokenTTL: 90 * 24 * 60 * 60 }
+    });
+
+    expect(res.statusCode).toBe(400);
 
     await deleteClient(client.id);
   });

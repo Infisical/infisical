@@ -78,12 +78,21 @@ const sanitizeOauthClient = (client: TOauthClients) => {
   return rest;
 };
 
-// The column is a plain text[] in Postgres, so the generated schema types it as `string[]`. Every write
-// goes through the router's `grantTypesSchema`, so the narrowing holds.
 const getGrantTypes = (client: TOauthClients) => client.grantTypes as OauthGrantType[];
 
 const expiresInToSeconds = (expiresIn: string | number) =>
   typeof expiresIn === "number" ? expiresIn : Math.floor(ms(expiresIn) / 1000);
+
+const assertAccessTokenTtlWithinInstanceLimit = (accessTokenTTL?: number) => {
+  if (accessTokenTTL === undefined) return;
+
+  const instanceLimit = expiresInToSeconds(getConfig().JWT_AUTH_LIFETIME);
+  if (accessTokenTTL > instanceLimit) {
+    throw new BadRequestError({
+      message: `The access token lifetime cannot exceed ${instanceLimit} seconds.`
+    });
+  }
+};
 
 type TOauthTokenClaims = {
   authMethod: AuthMethod;
@@ -296,6 +305,8 @@ export const oauthClientServiceFactory = ({
   const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Create);
 
+    assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
+
     const { grantTypes, isTokenExchangeEnabled, redirectUris, tokenExchangeAudience, tokenExchangeIdpSatisfiesMfa } =
       await resolveGrantConfig({
         dto,
@@ -344,6 +355,8 @@ export const oauthClientServiceFactory = ({
 
   const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
+
+    assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
 
     const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
 
@@ -590,9 +603,9 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  // The application's own TTL is a ceiling, not an override: the instance's JWT_AUTH_LIFETIME and the
-  // org's session length still apply, so an application cannot hand out a token that outlives the org's
-  // policy. Refresh tokens follow the org alone, since they exist to outlive individual access tokens.
+  // Writes reject a TTL above JWT_AUTH_LIFETIME, but both it and the org's session length can be lowered
+  // after the fact, so issuance still caps rather than trusting the stored value. Refresh tokens follow
+  // the org alone, since they exist to outlive individual access tokens.
   const resolveTokenLifetimes = (client: Pick<TOauthClients, "accessTokenTTL">, org?: TOrganizations) => {
     const appCfg = getConfig();
     let accessTokenExpiresIn: string | number = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, client.accessTokenTTL);
