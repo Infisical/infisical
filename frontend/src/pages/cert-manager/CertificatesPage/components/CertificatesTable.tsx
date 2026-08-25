@@ -927,7 +927,11 @@ export const CertificatesTable = ({
                       !isExpired &&
                       !isExpiringWithinDay
                   );
-                  const { originalDisplayName } = getCertificateDisplayName(certificate, 64, "—");
+                  const { originalDisplayName } = getCertificateDisplayName(
+                    certificate,
+                    64,
+                    certificate.id
+                  );
 
                   return (
                     <TableRow
@@ -947,7 +951,11 @@ export const CertificatesTable = ({
                     >
                       {visibleColumns.has("sanCn") && (
                         <TableCell isTruncatable>
-                          <CertificateDisplayName cert={certificate} maxLength={64} fallback="—" />
+                          <CertificateDisplayName
+                            cert={certificate}
+                            maxLength={64}
+                            fallback={certificate.id}
+                          />
                         </TableCell>
                       )}
                       {visibleColumns.has("serialNumber") && (

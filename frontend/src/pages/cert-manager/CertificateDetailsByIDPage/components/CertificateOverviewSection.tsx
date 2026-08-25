@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
+import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import {
@@ -80,7 +81,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
           <DetailGroup>
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
-              <DetailValue>{certificate.commonName}</DetailValue>
+              <DetailValue>
+                {certificate.commonName || <span className="text-muted">—</span>}
+              </DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Status</DetailLabel>
@@ -223,7 +226,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(
+                        certificate,
+                        64,
+                        certificate.renewedFromCertificateId
+                      ).displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
@@ -242,7 +251,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
+                        .displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
