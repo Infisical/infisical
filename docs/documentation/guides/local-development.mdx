@@ -33,9 +33,21 @@ infisical --version
 
 If your application starts but behaves as though a value is missing, check what the CLI is injecting before you look at your application code. This prints one secret exactly as your application would receive it:
 
-```bash
+<CodeGroup>
+
+```bash macOS/Linux
 infisical run --env=dev -- printenv <YOUR_SECRET_KEY>
 ```
+
+```powershell Windows (PowerShell)
+infisical run --env=dev -- powershell -Command 'echo $env:<YOUR_SECRET_KEY>'
+```
+
+```batch Windows (Command Prompt)
+infisical run --env=dev -- cmd /c echo %<YOUR_SECRET_KEY>%
+```
+
+</CodeGroup>
 
 To see every key available in an environment, list the secrets directly:
 
@@ -78,8 +90,8 @@ The hook stops the commit when it finds something that looks like a secret. Chec
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="infisical: command not found">
-    The CLI isn't on your `PATH`. Run the install command for your platform again, then open a new terminal window so that it picks up the updated `PATH`.
+  <Accordion title="The infisical command isn't found">
+    Your shell reports `infisical: command not found`, or `infisical is not recognized` on Windows. The CLI isn't on your `PATH`. Run the install command for your platform again, then open a new terminal window so that it picks up the updated `PATH`.
   </Accordion>
   <Accordion title="Your application starts, but a secret is missing">
     The CLI is probably reading from a different environment or folder than the one holding your secret. Run `infisical secrets --env=dev --path=/` to see what it resolves to, confirm the environment slug in your project settings, and add `--path` if the secret lives in a folder rather than at the root.
