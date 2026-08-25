@@ -164,19 +164,19 @@ export const OauthClientModal = ({
       }}
     >
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit OAuth application" : "Add OAuth application"}
-          </DialogTitle>
-          <DialogDescription>
-            External platforms use this application to request delegated access to Infisical on a
-            user&apos;s behalf via OAuth 2.0, limited to that user&apos;s permissions.
-          </DialogDescription>
-        </DialogHeader>
         <form
           onSubmit={handleSubmit(onFormSubmit)}
-          className="flex min-h-0 min-w-0 flex-1 flex-col"
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-6"
         >
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing ? "Edit OAuth application" : "Add OAuth application"}
+            </DialogTitle>
+            <DialogDescription>
+              External platforms use this application to request delegated access to Infisical on a
+              user&apos;s behalf via OAuth 2.0, limited to that user&apos;s permissions.
+            </DialogDescription>
+          </DialogHeader>
           <DialogBody className="flex flex-col gap-6">
             <Controller
               control={control}

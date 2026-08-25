@@ -217,7 +217,10 @@ export const AlternativeScroll: Story = {
           <DialogTitle>Project details</DialogTitle>
           <DialogDescription>Review the project information before continuing.</DialogDescription>
         </DialogHeader>
-        <DialogBody className="flex flex-none flex-col gap-3 overflow-visible text-sm text-foreground">
+        <DialogBody
+          scroll="content"
+          className="flex flex-none flex-col gap-3 overflow-visible text-sm text-foreground"
+        >
           {Array.from({ length: 12 }).map((_, i) => (
             // eslint-disable-next-line react/no-array-index-key
             <p key={i}>
