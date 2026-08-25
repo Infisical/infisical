@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { FolderOpen, Layers, Plus, Search } from "lucide-react";
+import { Filter, FolderOpen, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageHeader } from "@app/components/v2";
@@ -15,19 +15,23 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Empty,
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableHead,
@@ -56,6 +60,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LaunchSessionSheet } from "../../components/LaunchSessionSheet";
+import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 import { RequestAccessSheet } from "../../components/RequestAccessSheet";
 import { PamDocsUrls } from "../../pam-docs-urls";
 import { AccountDetailSheet } from "../components/AccountDetailSheet";
@@ -64,7 +69,6 @@ import { CreateAccountSheet } from "../components/CreateAccountSheet";
 import { DeleteAccountModal } from "../components/DeleteAccountModal";
 import { DeleteFolderModal } from "../components/DeleteFolderModal";
 import { FolderAccountRow } from "../components/FolderAccountRow";
-import { FolderActionsMenu } from "../components/FolderActionsMenu";
 import { FolderDetailSheet } from "../components/FolderDetailSheet";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -97,6 +101,12 @@ export const PamFolderPage = () => {
   const arePermissionsResolved = Boolean(folder) && !isLoadingPermissions;
   const canCreateAccounts =
     arePermissionsResolved && can(PamResourcePermissionActions.CreateAccounts);
+  const canDeleteFolder = arePermissionsResolved && can(PamResourcePermissionActions.DeleteFolder);
+  const availableTabs = PAM_FOLDER_TABS.filter(
+    (tab) => arePermissionsResolved && (!tab.action || can(tab.action))
+  );
+  const configureTab =
+    availableTabs.find((tab) => tab.value === PamSheetTab.Configuration) ?? availableTabs[0];
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
@@ -149,6 +159,7 @@ export const PamFolderPage = () => {
     );
   };
 
+  const selectedTypeName = accountTypes.find((meta) => meta.type === selectedAccountType)?.name;
   const hasActiveFilters = Boolean(query || selectedAccountType);
   const isLoading = isLoadingFolders || isLoadingAccounts;
 
@@ -205,14 +216,103 @@ export const PamFolderPage = () => {
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
           <CardAction>
-            <div className="flex items-center gap-2">
-              {folder && (
-                <FolderActionsMenu
-                  folder={folder}
-                  onOpenTab={(tab) => setFolderSheetTab(tab)}
-                  onDelete={() => handlePopUpOpen("deleteFolder")}
+            <div className="flex items-center gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <MoreHorizontal />
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <DropdownMenuItem
+                          isDisabled={!configureTab}
+                          onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
+                        >
+                          <Settings />
+                          Configure
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    {!configureTab && arePermissionsResolved && (
+                      <TooltipContent side="right">
+                        You don&apos;t have permission to configure this folder
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                  <DropdownMenuSeparator />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <DropdownMenuItem
+                          variant="danger"
+                          isDisabled={!canDeleteFolder}
+                          onClick={() => handlePopUpOpen("deleteFolder")}
+                        >
+                          <Trash2 />
+                          Delete Folder
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    {!canDeleteFolder && arePermissionsResolved && (
+                      <TooltipContent side="right">
+                        You don&apos;t have permission to delete this folder
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        variant="outline"
+                        aria-label="Filter by account type"
+                        className={selectedAccountType ? "text-product-pam" : undefined}
+                      >
+                        <Filter />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>{selectedTypeName ?? "Filter by account type"}</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
+                  <DropdownMenuLabel>Account type</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={selectedAccountType || "all"}
+                    onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
+                  >
+                    <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+                    {accountTypes.map((meta) => (
+                      <DropdownMenuRadioItem key={meta.type} value={meta.type}>
+                        <img
+                          src={`/images/integrations/${meta.icon}`}
+                          alt={meta.name}
+                          className="size-4 rounded-sm"
+                        />
+                        {meta.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <InputGroup className="w-64">
+                <InputGroupAddon align="inline-start">
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  placeholder="Search accounts..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
-              )}
+              </InputGroup>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className={canCreateAccounts ? undefined : "cursor-not-allowed"}>
@@ -226,51 +326,15 @@ export const PamFolderPage = () => {
                     </Button>
                   </span>
                 </TooltipTrigger>
-                {!canCreateAccounts && arePermissionsResolved && (
-                  <TooltipContent>
-                    You don&apos;t have permission to create accounts in this folder
-                  </TooltipContent>
-                )}
+                <TooltipContent>
+                  {canCreateAccounts || !arePermissionsResolved
+                    ? "Add an account to this folder"
+                    : "You don't have permission to create accounts in this folder"}
+                </TooltipContent>
               </Tooltip>
             </div>
           </CardAction>
         </CardHeader>
-
-        <CardContent className="flex items-center gap-3">
-          <InputGroup className="flex-1">
-            <InputGroupAddon align="inline-start">
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              placeholder="Search accounts..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </InputGroup>
-
-          <Select
-            value={selectedAccountType}
-            onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
-          >
-            <SelectTrigger>
-              {!selectedAccountType && <Layers className="mr-1.5 size-4 text-muted" />}
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent position="popper" align="end" sideOffset={4}>
-              <SelectItem value="all">All types</SelectItem>
-              {accountTypes.map((meta) => (
-                <SelectItem key={meta.type} value={meta.type}>
-                  <img
-                    src={`/images/integrations/${meta.icon}`}
-                    alt={meta.name}
-                    className="mr-1.5 inline-block size-4 rounded-sm"
-                  />
-                  {meta.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
 
         {isLoading && (
           <CardContent>
@@ -323,6 +387,7 @@ export const PamFolderPage = () => {
       <CreateAccountSheet
         isOpen={popUp.createAccount.isOpen}
         defaultFolderId={folderId}
+        isFolderLocked
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("createAccount");
         }}

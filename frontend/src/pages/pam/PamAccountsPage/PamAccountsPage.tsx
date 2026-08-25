@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
+import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageHeader } from "@app/components/v2";
@@ -29,11 +29,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableHead,
@@ -54,7 +49,6 @@ import {
   useDeletePamFolder,
   useGetPamAccessCapabilities,
   useListPamAccounts,
-  useListPamAccountTypes,
   useListPamFolders
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -81,8 +75,6 @@ export const PamAccountsPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
-  const [selectedAccountType, setSelectedAccountType] = useState<string>("");
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
@@ -97,9 +89,6 @@ export const PamAccountsPage = () => {
   });
   // Product admins qualify even with zero folders: the create sheet lets them add one inline.
   const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
-
-  // Both admin and regular users filter by account type for a consistent view
-  const { data: accountTypes = [] } = useListPamAccountTypes();
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
@@ -123,16 +112,12 @@ export const PamAccountsPage = () => {
   // produces, and the match highlighting all read from the same settled value.
   const [debouncedSearch] = useDebounce(searchInput);
   const query = debouncedSearch.trim();
-  const filterActive = Boolean(query || selectedFolderId || selectedAccountType);
+  const filterActive = Boolean(query);
 
   // Filtering is done server-side in a single request across every folder the caller can read, so
   // searching doesn't have to open (and fetch) each folder just to filter its rows in the client.
   const { data: matches = [], isLoading: isLoadingMatches } = useListPamAccounts(
-    {
-      search: query || undefined,
-      accountType: selectedAccountType || undefined,
-      folderId: selectedFolderId || undefined
-    },
+    { search: query || undefined },
     { enabled: filterActive }
   );
 
@@ -146,14 +131,10 @@ export const PamAccountsPage = () => {
     return grouped;
   }, [matches]);
 
-  const allFolders = selectedFolderId
-    ? folders.filter((folder) => folder.id === selectedFolderId)
-    : folders;
-  // While filtering, only folders with matches are worth rendering.
+  // While searching, only folders with matches are worth rendering.
   const visibleFolders = filterActive
-    ? allFolders.filter((folder) => (matchesByFolder[folder.id]?.length ?? 0) > 0)
-    : allFolders;
-  const folderDropdownOptions = folders;
+    ? folders.filter((folder) => (matchesByFolder[folder.id]?.length ?? 0) > 0)
+    : folders;
 
   // First search has no cached matches to fall back on, so show skeletons instead of an empty table.
   const isSearching = filterActive && isLoadingMatches;
@@ -163,8 +144,8 @@ export const PamAccountsPage = () => {
   let emptyTitle: string;
   let emptyDescription: string;
   if (filterActive) {
-    emptyTitle = "No accounts match your filters";
-    emptyDescription = "Try adjusting your search or filters.";
+    emptyTitle = "No accounts match your search";
+    emptyDescription = "Try a different search term.";
   } else if (canManage) {
     emptyTitle = "No accounts yet";
     emptyDescription =
@@ -228,122 +209,82 @@ export const PamAccountsPage = () => {
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
           <CardAction>
-            <ButtonGroup>
-              {/* Always rendered — disabled rather than hidden, so the affordance is discoverable
-                  and the reason it's unavailable is explained in the tooltip. */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={canManage ? undefined : "cursor-not-allowed"}>
-                    <Button
+            <div className="flex items-center gap-3">
+              <InputGroup className="w-64">
+                <InputGroupAddon align="inline-start">
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  placeholder="Search accounts..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </InputGroup>
+
+              <ButtonGroup>
+                {/* Always rendered — disabled rather than hidden, so the affordance is discoverable
+                    and the reason it's unavailable is explained in the tooltip. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={canManage ? undefined : "cursor-not-allowed"}>
+                      <Button
+                        variant="pam"
+                        isDisabled={!canManage}
+                        className="rounded-r-none"
+                        onClick={() => handlePopUpOpen("createAccount")}
+                      >
+                        <Plus />
+                        Add Account
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canManage && (
+                    <TooltipContent>
+                      You don&apos;t have permission to create accounts in any folder
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
                       variant="pam"
-                      isDisabled={!canManage}
-                      className="rounded-r-none"
-                      onClick={() => handlePopUpOpen("createAccount")}
+                      aria-label="More create options"
+                      className="border-l-transparent"
                     >
-                      <Plus />
-                      Add Account
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!canManage && (
-                  <TooltipContent>
-                    You don&apos;t have permission to create accounts in any folder
-                  </TooltipContent>
-                )}
-              </Tooltip>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    variant="pam"
-                    aria-label="More create options"
-                    className="border-l-transparent"
+                      <ChevronDown />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={4}
+                    className="min-w-48"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <ChevronDown />
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={4}
-                  className="min-w-48"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DropdownMenuLabel>New</DropdownMenuLabel>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <DropdownMenuItem
-                          isDisabled={!capabilities?.isProductAdmin}
-                          onClick={() => handlePopUpOpen("createFolder")}
-                        >
-                          <FolderPlus />
-                          Add Folder
-                        </DropdownMenuItem>
-                      </div>
-                    </TooltipTrigger>
-                    {!capabilities?.isProductAdmin && (
-                      <TooltipContent side="left">
-                        Only product admins can create folders
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
+                    <DropdownMenuLabel>New</DropdownMenuLabel>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <DropdownMenuItem
+                            isDisabled={!capabilities?.isProductAdmin}
+                            onClick={() => handlePopUpOpen("createFolder")}
+                          >
+                            <FolderPlus />
+                            Add Folder
+                          </DropdownMenuItem>
+                        </div>
+                      </TooltipTrigger>
+                      {!capabilities?.isProductAdmin && (
+                        <TooltipContent side="left">
+                          Only product admins can create folders
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ButtonGroup>
+            </div>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex items-center gap-3">
-          <InputGroup className="flex-1">
-            <InputGroupAddon align="inline-start">
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              placeholder="Search accounts..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </InputGroup>
-
-          <Select
-            value={selectedFolderId}
-            onValueChange={(val) => setSelectedFolderId(val === "all" ? "" : val)}
-          >
-            <SelectTrigger>
-              <FolderOpen className="mr-1.5 size-4 text-muted" />
-              <SelectValue placeholder="All folders" />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value="all">All folders</SelectItem>
-              {folderDropdownOptions.map((folder) => (
-                <SelectItem key={folder.id} value={folder.id}>
-                  {folder.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={selectedAccountType}
-            onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
-          >
-            <SelectTrigger>
-              {!selectedAccountType && <Layers className="mr-1.5 size-4 text-muted" />}
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent position="popper" align="end" sideOffset={4}>
-              <SelectItem value="all">All types</SelectItem>
-              {accountTypes.map((meta) => (
-                <SelectItem key={meta.type} value={meta.type}>
-                  <img
-                    src={`/images/integrations/${meta.icon}`}
-                    alt={meta.name}
-                    className="mr-1.5 inline-block size-4 rounded-sm"
-                  />
-                  {meta.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
 
         {(isLoadingFolders || isSearching) && (
           <CardContent>
@@ -391,7 +332,11 @@ export const PamAccountsPage = () => {
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={setRequestAccount}
                   onDeleteAccount={(accountId, accountName, accountType) =>
-                    handlePopUpOpen("deleteAccount", { accountId, accountName, accountType })
+                    handlePopUpOpen("deleteAccount", {
+                      accountId,
+                      accountName,
+                      accountType
+                    })
                   }
                   onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
                   onFolderAddAccount={() =>

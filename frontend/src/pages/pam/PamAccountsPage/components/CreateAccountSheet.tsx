@@ -27,7 +27,13 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Button } from "@app/components/v3/generic/Button";
-import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel
+} from "@app/components/v3/generic/Field";
 import { Input } from "@app/components/v3/generic/Input";
 import {
   Select,
@@ -78,10 +84,18 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   defaultFolderId?: string;
+  // Set when the caller is scoped to one folder, so the account can't be filed somewhere else.
+  isFolderLocked?: boolean;
   onCreated?: (accountId: string) => void;
 };
 
-export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCreated }: Props) => {
+export const CreateAccountSheet = ({
+  isOpen,
+  onOpenChange,
+  defaultFolderId,
+  isFolderLocked = false,
+  onCreated
+}: Props) => {
   const createAccount = useCreatePamAccount();
 
   const { currentOrg } = useOrganization();
@@ -293,6 +307,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                       <FieldContent>
                         <Select
                           value={field.value}
+                          disabled={isFolderLocked}
                           onValueChange={(val) => {
                             if (val === CREATE_FOLDER_VALUE) {
                               setCreateFolderOpen(true);
@@ -333,6 +348,11 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                             </Tooltip>
                           </SelectContent>
                         </Select>
+                        {isFolderLocked && (
+                          <FieldDescription>
+                            The account is added to the folder you&apos;re viewing.
+                          </FieldDescription>
+                        )}
                       </FieldContent>
                     </Field>
                   )}
