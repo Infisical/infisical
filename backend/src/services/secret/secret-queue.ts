@@ -1604,43 +1604,37 @@ export const secretQueueFactory = ({
     logger.error(err, "Failed to sync integration %s", job?.id);
   });
 
-  queueService.start(
-    QueueName.SecretWebhook,
-    async (job) => {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: job.data.payload.projectId
-      });
+  queueService.start(QueueName.SecretWebhook, async (job) => {
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: job.data.payload.projectId
+    });
 
-      // Resolve changedBy from UUID to human-readable display name
-      let webhookEvent = job.data;
-      if (job.data.type === WebhookEvents.SecretModified) {
-        const { changedBy, changedByActorType } = job.data.payload;
-        if (changedBy && changedByActorType) {
-          const resolvedName = await resolveChangedByDisplayName(changedBy, changedByActorType as ActorType);
-          webhookEvent = {
-            ...job.data,
-            payload: { ...job.data.payload, changedBy: resolvedName }
-          };
-        }
+    // Resolve changedBy from UUID to human-readable display name
+    let webhookEvent = job.data;
+    if (job.data.type === WebhookEvents.SecretModified) {
+      const { changedBy, changedByActorType } = job.data.payload;
+      if (changedBy && changedByActorType) {
+        const resolvedName = await resolveChangedByDisplayName(changedBy, changedByActorType as ActorType);
+        webhookEvent = {
+          ...job.data,
+          payload: { ...job.data.payload, changedBy: resolvedName }
+        };
       }
+    }
 
-      await fnTriggerWebhook({
-        projectId: job.data.payload.projectId,
-        environment: job.data.payload.environment,
-        secretPath: job.data.payload.secretPath || "/",
-        projectEnvDAL,
-        projectDAL,
-        webhookDAL,
-        event: webhookEvent,
-        auditLogService,
-        secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
-      });
-    },
-    // Deduplication keeps at most one active job per project/environment/path, so ordering per
-    // path no longer relies on this worker being single-threaded.
-    { concurrency: 5 }
-  );
+    await fnTriggerWebhook({
+      projectId: job.data.payload.projectId,
+      environment: job.data.payload.environment,
+      secretPath: job.data.payload.secretPath || "/",
+      projectEnvDAL,
+      projectDAL,
+      webhookDAL,
+      event: webhookEvent,
+      auditLogService,
+      secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
+    });
+  });
 
   return {
     // depth is internal only field thus no need to make it available outside
