@@ -130,6 +130,15 @@ Example values:
   </Note>
 </ParamField>
 
+<ParamField query="WEBHOOK_TRIGGER_TIMEOUT_MS" type="number" default="15000" optional>
+  How long, in milliseconds, to wait for a webhook receiver to respond before the
+  delivery is aborted and recorded as failed. Must be between `1000` and `40000`.
+
+  Raise this when your receivers are slow to acknowledge. This value can also be set
+  from the [Server Admin Console](/documentation/platform/admin-panel/server-admin)
+  without redeploying, see [Environment variable overrides](#environment-variable-overrides).
+</ParamField>
+
 <ParamField
   query="KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN"
   type="bool"
