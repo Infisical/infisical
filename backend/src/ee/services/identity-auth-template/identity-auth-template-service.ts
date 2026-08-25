@@ -393,7 +393,8 @@ export const identityAuthTemplateServiceFactory = ({
           : null,
         encryptedKubernetesTokenReviewerJwt: merged.tokenReviewerJwt
           ? encryptor({ plainText: Buffer.from(merged.tokenReviewerJwt) }).cipherTextBlob
-          : null
+          : null,
+        isTokenReviewerJwtTemplateSourced: Boolean(merged.tokenReviewerJwt)
       };
       // gateway references are re-resolved (and re-authorized) only when the patch touches
       // them; linked rows keep their columns otherwise, so a gateway that was deleted after

@@ -1074,6 +1074,7 @@ export const identityKubernetesAuthServiceFactory = ({
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
           templateId: template?.id ?? null,
+          isTokenReviewerJwtTemplateSourced: Boolean(template && tokenReviewerJwt),
           verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
@@ -1488,8 +1489,10 @@ export const identityKubernetesAuthServiceFactory = ({
       updateQuery.encryptedKubernetesTokenReviewerJwt = encryptor({
         plainText: Buffer.from(tokenReviewerJwt)
       }).cipherTextBlob;
+      updateQuery.isTokenReviewerJwtTemplateSourced = Boolean(template);
     } else if (tokenReviewerJwt === null) {
       updateQuery.encryptedKubernetesTokenReviewerJwt = null;
+      updateQuery.isTokenReviewerJwtTemplateSourced = false;
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);
@@ -1501,7 +1504,9 @@ export const identityKubernetesAuthServiceFactory = ({
       : "";
 
     const updatedTokenReviewerJwt =
-      !updatedKubernetesAuth.templateId && updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+      !updatedKubernetesAuth.templateId &&
+      !updatedKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
+      updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
         ? decryptor({
             cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
           }).toString()
@@ -1582,10 +1587,15 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     // a template's reviewer JWT is an org-scoped write-only credential copied onto the
-    // identity row; identity-level readers must not be able to recover it. Manually
+    // identity row; identity-level readers must not be able to recover it, including
+    // after an unlink (the copied credential keeps its template provenance). Manually
     // configured identities keep read-back (the caller supplied that value themselves).
     let tokenReviewerJwt = "";
-    if (!identityKubernetesAuth.templateId && identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
+    if (
+      !identityKubernetesAuth.templateId &&
+      !identityKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
+      identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+    ) {
       tokenReviewerJwt = decryptor({
         cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
       }).toString();
