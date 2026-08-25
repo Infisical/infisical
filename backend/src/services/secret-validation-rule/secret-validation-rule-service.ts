@@ -460,7 +460,7 @@ export const secretValidationRuleServiceFactory = ({
 
     // We build the map of all duplicate secrets (ignoring scope) and afterwards check
     // if any of those are part of the scope of the rule.
-    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = Object.create(null);
+    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
     if (duplicateValuesRule) {
       if (tx) {
         // If two concurrent requests try to add two secrets with the same value, both will not find

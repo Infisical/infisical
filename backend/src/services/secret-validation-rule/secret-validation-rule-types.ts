@@ -56,7 +56,7 @@ export type TStringConstraint = {
 
 export type TUniqueSecretValueConstraint = {
   type: ConstraintType.UniqueSecretValue;
-  appliesTo: ConstraintTarget;
+  appliesTo: ConstraintTarget.SecretKey | ConstraintTarget.SecretValue;
   value: TUniqueSecretValueBody;
 };
 
