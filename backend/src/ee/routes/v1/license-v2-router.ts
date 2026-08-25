@@ -2,6 +2,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -220,7 +221,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ overview: BillingV2OverviewSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.licenseV2.getOverview({
         orgId: req.params.organizationId,
@@ -262,7 +263,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ products: BillingV2CatalogProductSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.licenseV2.getCatalog({
         orgId: req.params.organizationId,
@@ -383,7 +384,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
-      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
+      const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
       return server.services.licenseV2.buyProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
@@ -475,7 +476,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
       // user (this route is JWT-only) rather than trusting a client-supplied value.
-      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
+      const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
       return server.services.licenseV2.startTrial({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),

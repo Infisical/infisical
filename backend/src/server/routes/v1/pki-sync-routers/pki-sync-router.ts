@@ -124,7 +124,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const pkiSyncOptions = server.services.pkiSync.getPkiSyncOptions();
       return { pkiSyncOptions };
@@ -151,7 +151,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { certificateId, applicationId },
@@ -197,7 +197,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         200: PkiSyncSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -245,7 +245,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { offset, limit } = req.query;
@@ -308,7 +308,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
@@ -358,7 +358,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
