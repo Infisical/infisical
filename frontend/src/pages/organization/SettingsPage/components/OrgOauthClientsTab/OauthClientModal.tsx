@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -172,78 +173,83 @@ export const OauthClientModal = ({
             user&apos;s behalf via OAuth 2.0, limited to that user&apos;s permissions.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="oauth-client-name">Name</FieldLabel>
-                <Input
-                  id="oauth-client-name"
-                  placeholder="e.g. Coder"
-                  isError={Boolean(error)}
-                  {...field}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="oauth-client-description">Description (optional)</FieldLabel>
-                <Input
-                  id="oauth-client-description"
-                  placeholder="What this application is used for"
-                  isError={Boolean(error)}
-                  {...field}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="redirectUris"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="oauth-client-redirect-uris">Redirect URIs</FieldLabel>
-                <TextArea
-                  id="oauth-client-redirect-uris"
-                  placeholder="https://coder.example.com/external-auth/infisical/callback"
-                  rows={3}
-                  {...field}
-                />
-                <FieldDescription>
-                  One URI per line. The authorization flow only redirects to these exact URIs.
-                </FieldDescription>
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="requirePkce"
-            render={({ field: { value, onChange } }) => (
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>Require PKCE (S256)</FieldTitle>
+        <form
+          onSubmit={handleSubmit(onFormSubmit)}
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+        >
+          <DialogBody className="flex flex-col gap-6">
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="oauth-client-name">Name</FieldLabel>
+                  <Input
+                    id="oauth-client-name"
+                    placeholder="e.g. Coder"
+                    isError={Boolean(error)}
+                    {...field}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="oauth-client-description">Description (optional)</FieldLabel>
+                  <Input
+                    id="oauth-client-description"
+                    placeholder="What this application is used for"
+                    isError={Boolean(error)}
+                    {...field}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="redirectUris"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="oauth-client-redirect-uris">Redirect URIs</FieldLabel>
+                  <TextArea
+                    id="oauth-client-redirect-uris"
+                    placeholder="https://coder.example.com/external-auth/infisical/callback"
+                    rows={3}
+                    {...field}
+                  />
                   <FieldDescription>
-                    Reject authorization requests that do not include a PKCE code challenge.
+                    One URI per line. The authorization flow only redirects to these exact URIs.
                   </FieldDescription>
-                </FieldContent>
-                <Switch
-                  id="oauth-client-require-pkce"
-                  variant="org"
-                  checked={value}
-                  onCheckedChange={onChange}
-                />
-              </Field>
-            )}
-          />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="requirePkce"
+              render={({ field: { value, onChange } }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Require PKCE (S256)</FieldTitle>
+                    <FieldDescription>
+                      Reject authorization requests that do not include a PKCE code challenge.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    id="oauth-client-require-pkce"
+                    variant="org"
+                    checked={value}
+                    onCheckedChange={onChange}
+                  />
+                </Field>
+              )}
+            />
+          </DialogBody>
           <DialogFooter>
             <Button variant="ghost" type="button" onClick={() => handlePopUpClose("clientForm")}>
               Cancel
