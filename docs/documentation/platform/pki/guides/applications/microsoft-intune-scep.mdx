@@ -161,7 +161,12 @@ When a device requests a certificate, Infisical uses this connection to ask Intu
 
 ## Step 4: Configure Intune
 
-Intune needs two profiles per device platform: one that installs your CA certificate, and one that requests a device certificate. Create the trusted certificate profile first, because the SCEP profile references it.
+Intune needs two profiles per device platform:
+
+- A trusted certificate profile that installs your CA certificate on the device
+- An SCEP profile that requests a device certificate
+
+Create the trusted certificate profile first, because the SCEP profile references it.
 
 ### Download the CA certificate
 
@@ -296,6 +301,10 @@ Sync a target device, or wait for its next check-in, then confirm the certificat
 - Open the **Certificates** report on that profile to see each issued certificate with its thumbprint, serial number, and subject.
 - On the device, confirm two things are present: the device's own certificate, and your CA in the trusted roots. Use **Keychain Access** on macOS, or `certlm.msc` or `certmgr.msc` on Windows.
 - In Infisical, open your application and confirm the same certificates appear on the **Certificate Inventory** tab with their expiry dates.
+
+<Note>
+  Intune's check-in status and **Certificates** report can lag behind the device by several hours, even after you manually sync the device. If the certificates are present on the device but Intune hasn't updated, wait for its reporting to catch up before troubleshooting the enrollment.
+</Note>
 
 ![Certificates report on the SCEP profile listing issued certificates](/images/platform/pki/integrations/microsoft-intune/intune-device-certificate.png)
 
