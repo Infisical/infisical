@@ -42,7 +42,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const services = await server.services.appConnection.render.listServices(connectionId, req.permission);
@@ -71,7 +71,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const groups = await server.services.appConnection.render.listEnvironmentGroups(connectionId, req.permission);

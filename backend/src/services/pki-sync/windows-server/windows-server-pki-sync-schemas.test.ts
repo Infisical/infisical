@@ -78,8 +78,15 @@ describe("Windows Server postSyncCommand validation", () => {
   });
 
   test("rejects a command beyond the length limit", () => {
-    expect(parseCommand("a".repeat(2048)).success).toBe(true);
-    expect(parseCommand("a".repeat(2049)).success).toBe(false);
+    expect(parseCommand("a".repeat(8192)).success).toBe(true);
+    expect(parseCommand("a".repeat(8193)).success).toBe(false);
+  });
+
+  test("accepts a non-ASCII command", () => {
+    // The gateway base64-encodes the script, so the host's console code page cannot alter it on the
+    // way in and the operator is not restricted to ASCII.
+    expect(parseCommand("Write-Output 'café'").success).toBe(true);
+    expect(parseCommand("Restart-Service -Name 'W3SVC'\r\n\tWrite-Output 'ok'").success).toBe(true);
   });
 
   test("is optional", () => {

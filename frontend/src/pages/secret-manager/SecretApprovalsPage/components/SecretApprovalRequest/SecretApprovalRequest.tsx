@@ -415,6 +415,7 @@ export const SecretApprovalRequest = () => {
                     status,
                     committerUser,
                     committerUserId,
+                    committerIdentity,
                     hasMerged,
                     updatedAt,
                     policy,
@@ -436,7 +437,7 @@ export const SecretApprovalRequest = () => {
                   const committerName = committerUser
                     ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
                       committerUser.email
-                    : null;
+                    : (committerIdentity?.name ?? null);
 
                   let statusDisplay: {
                     label: string;
@@ -508,12 +509,13 @@ export const SecretApprovalRequest = () => {
                         <p className="truncate text-foreground">{policy.secretPath}</p>
                       </TableCell>
                       <TableCell>
-                        {committerUser ? (
+                        {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">
                             <span className="text-foreground">{committerName}</span>
-                            {committerUserId === userSession.id && (
+                            {committerUser && committerUserId === userSession.id && (
                               <Badge variant="neutral">You</Badge>
                             )}
+                            {committerIdentity && <Badge variant="neutral">Machine</Badge>}
                           </div>
                         ) : (
                           <span className="text-muted">Deleted User</span>

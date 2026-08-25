@@ -69,6 +69,7 @@ import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/key
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { takeRowScanWindow } from "@app/lib/fn";
 import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -1900,7 +1901,7 @@ export const secretRotationV2ServiceFactory = ({
   };
 
   const getQuickSearchSecretRotations = async (
-    { folderMappings, filters: { search, ...options }, projectId }: TQuickSearchSecretRotationsV2,
+    { folderMappings, filters: { search, limit, offset, orderDirection }, projectId }: TQuickSearchSecretRotationsV2,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -1919,9 +1920,12 @@ export const secretRotationV2ServiceFactory = ({
       )
     );
 
-    if (!permissiveFolderMappings.length) return [];
+    if (!permissiveFolderMappings.length) return { secretRotations: [], isLimitReached: false };
 
-    const secretRotations = await secretRotationV2DAL.find(
+    // this result is paged by offset across separate requests, so the query needs a total order
+    // (name alone ties across environments); scan one row past the limit to tell a full window
+    // from a truncated one
+    const scannedSecretRotations = await secretRotationV2DAL.find(
       {
         projectId,
         $search: {
@@ -1931,13 +1935,26 @@ export const secretRotationV2ServiceFactory = ({
           folderId: permissiveFolderMappings.map(({ folderId }) => folderId)
         }
       },
-      options
+      {
+        offset,
+        limit: limit ? limit + 1 : undefined,
+        sort: [
+          ["name", orderDirection === OrderByDirection.DESC ? "desc" : "asc"],
+          ["id", "asc"]
+        ]
+      }
     );
 
+    // measure window saturation before the per-rotation permission filter, or a truncated scan
+    // reads as complete whenever the filter drops rows
+    const { items: windowedSecretRotations, isLimitReached } = takeRowScanWindow(scannedSecretRotations, limit);
+
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
-    return secretRotations.filter((rotation) =>
+    const secretRotations = windowedSecretRotations.filter((rotation) =>
       permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     ) as TSecretRotationV2[];
+
+    return { secretRotations, isLimitReached };
   };
 
   const reconcileLocalAccountRotation = async (

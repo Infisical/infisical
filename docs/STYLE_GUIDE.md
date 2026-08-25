@@ -15,6 +15,7 @@ This guide defines how to write user-facing documentation for Infisical.
 9. **Be consistent** — Use the same terms throughout.
 10. **Structure by purpose** — Guides, concepts, overviews, and references have different shapes.
 11. **Use sentence case** — Write page titles, sidebar titles, and headings in sentence case.
+12. **Run the linter** — `make lint-docs` checks the mechanical rules in this guide.
 
 ---
 
@@ -138,11 +139,13 @@ Use `<Tabs>` when there are multiple ways to accomplish something:
 Use callouts to highlight important information:
 
 ```mdx
-<Note>Prerequisites or important context.</Note>
+<Note>Important context that applies to a specific part of the page.</Note>
 <Warning>Destructive actions or irreversible changes.</Warning>
 <Tip>Helpful suggestions or best practices.</Tip>
 <Info>Additional context that's good to know.</Info>
 ```
+
+Don't use callouts for page-level prerequisites. Put them under a `## Prerequisites` heading instead.
 
 ### Navigation
 
@@ -258,6 +261,8 @@ Always use sentence case for:
 - The `title` and `sidebarTitle` frontmatter fields
 - Markdown headings at every level
 
+Capitalize the first word after a colon: `## Step 1: Configure in Infisical`.
+
 Capitalize only the first word and proper nouns, product names, and acronyms such as Infisical, Docker, CLI, and ACME.
 
 ```mdx
@@ -326,18 +331,16 @@ If new content doesn't fit the existing flow, consider whether it belongs on thi
 
 If a page assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed — state it at the top. Readers shouldn't get stuck halfway through because they missed an unstated requirement.
 
-Use an `<Info>` callout for a short prerequisite list:
+Use a `## Prerequisites` section before the main content, even when the list is short:
 
 ```mdx
-<Info>
-Prerequisites:
+## Prerequisites
 
 - An Infisical account
 - A [Gateway](/documentation/platform/gateways/overview) that can reach your database
-</Info>
 ```
 
-Use a "Prerequisites" section before the main content when requirements need additional explanation. Reserve `<Note>` for prerequisite details that apply to a specific step rather than the whole page.
+Don't put page-level prerequisites in `<Info>` or other callouts. Reserve `<Note>` for requirement details that apply to a specific step rather than the whole page.
 
 ---
 
@@ -361,8 +364,11 @@ Structure depends on what the page is for. Don't force every page into the same 
 
 **All pages need:**
 
-- Frontmatter with `title`, `sidebarTitle`, and `description`
+- Frontmatter with a `title` and a `description`
 - An opening that orients the reader
+
+`sidebarTitle` is optional. Add one when the page title is too long for the sidebar or reads
+poorly out of context; otherwise the title is used.
 
 **How-to / Guide pages:**
 
@@ -387,3 +393,26 @@ Structure depends on what the page is for. Don't force every page into the same 
 - Examples where helpful
 
 Use the structure that best serves the reader for that type of content.
+
+---
+
+## 12. What Vale enforces
+
+Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs` from the
+repository root before opening a documentation pull request.
+
+Vale cannot see prose indented inside components, which is a large share of this repo. A clean
+run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.
+
+Vale covers the mechanical rules only: sentence case in headings and in the `title` and
+`sidebarTitle` fields, consistent product and vendor spellings, spelling against a curated
+vocabulary, `$` prompts in code blocks, placeholder names like `foo`, and more than two em
+dashes in one paragraph. The `description` frontmatter field is not checked automatically --
+watch for it in review.
+
+Everything else here -- providing context, writing for users, cross-referencing, choosing the
+right component, page structure -- is a judgment call that only a reviewer can make. A clean
+Vale run means nothing was mechanically wrong, not that the page is good.
+
+See `docs/CONTRIBUTING.MD` for how to add a word to the vocabulary, enforce a new spelling,
+or suppress a rule where Vale is wrong.

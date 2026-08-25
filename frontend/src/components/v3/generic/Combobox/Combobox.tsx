@@ -29,7 +29,7 @@ type ComboboxSharedProps<TOption> = {
   isLoading?: boolean;
   isError?: boolean;
   modal?: boolean;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
   contentClassName?: string;
 };
 
@@ -58,8 +58,8 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
 
 type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultipleProps<TOption>;
 
-const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
-const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
+const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
+const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
 
 const normalizeSearchText = (value: string) =>
   value
@@ -125,6 +125,7 @@ const ComboboxList = <TOption,>({
     <ComboboxPrimitive.List
       aria-label={ariaLabel}
       aria-busy={isLoading || undefined}
+      onWheel={(event) => event.stopPropagation()}
       className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
       style={{ maxHeight }}
     >
@@ -167,7 +168,7 @@ type ComboboxPopupProps = {
   children: React.ReactNode;
   className?: string;
   initialFocus?: React.RefObject<HTMLElement | null>;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
 };
 
 const ComboboxPopup = ({
@@ -179,7 +180,11 @@ const ComboboxPopup = ({
   portalContainer
 }: ComboboxPopupProps) => (
   <ComboboxPrimitive.Portal
-    container={portalContainer}
+    // Base UI treats an explicit null container as "not yet resolved" and never renders
+    // the popup, so a null (e.g. a ref read before attachment) must degrade to the
+    // document.body default. Prefer passing the RefObject itself: it is resolved lazily
+    // at open time.
+    container={portalContainer ?? undefined}
     data-slot="combobox-portal"
     className="pointer-events-auto"
   >
@@ -305,7 +310,12 @@ const SingleCombobox = <TOption,>({
           {...inputProps}
         />
         {!open && value != null && renderValue && (
-          <span className="pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground">
+          <span
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+              isDisabled && "opacity-50"
+            )}
+          >
             {renderValue(value)}
           </span>
         )}
@@ -477,12 +487,14 @@ const MultipleCombobox = <TOption,>({
                       className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
                     >
                       <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
-                      <ComboboxPrimitive.ChipRemove
-                        aria-label={`Remove ${label}`}
-                        className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <XIcon className="size-3" />
-                      </ComboboxPrimitive.ChipRemove>
+                      {!isDisabled && (
+                        <ComboboxPrimitive.ChipRemove
+                          aria-label={`Remove ${label}`}
+                          className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <XIcon className="size-3" />
+                        </ComboboxPrimitive.ChipRemove>
+                      )}
                     </ComboboxPrimitive.Chip>
                   );
                 })}
@@ -504,7 +516,7 @@ const MultipleCombobox = <TOption,>({
             {...inputProps}
           />
         </div>
-        {value.length > 0 && (
+        {value.length > 0 && !isDisabled && (
           <ComboboxPrimitive.Clear
             aria-label={clearAriaLabel}
             tabIndex={0}

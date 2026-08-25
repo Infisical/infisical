@@ -4,7 +4,12 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle, LookingForOrgPageLink } from "@app/components/v3";
+import {
+  AlertDescription,
+  AlertTitle,
+  DismissableAlert,
+  LookingForOrgPageLink
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 
@@ -100,7 +105,11 @@ export const OrgTabGroup = () => {
         <LookingForOrgPageLink page="settings" target="root" />
       </PageHeader>
       {selectedTab === "tab-org-general" && (
-        <Alert variant="info" className="mb-6">
+        <DismissableAlert
+          variant="info"
+          className="mb-6"
+          actionKey="org_general_settings_moved_banner_dismissed"
+        >
           <InfoIcon />
           <AlertTitle>Some Settings Have Moved</AlertTitle>
           <AlertDescription>
@@ -125,7 +134,7 @@ export const OrgTabGroup = () => {
               .
             </p>
           </AlertDescription>
-        </Alert>
+        </DismissableAlert>
       )}
       <Tabs orientation="vertical" value={selectedTab}>
         {visibleTabs

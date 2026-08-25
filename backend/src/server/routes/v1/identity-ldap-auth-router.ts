@@ -155,8 +155,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       description: "Login with LDAP Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
-        username: z.string().trim().nonempty("Username is required").describe(LDAP_AUTH.LOGIN.username),
-        password: z.string().trim().nonempty("Password is required").describe(LDAP_AUTH.LOGIN.password),
+        username: z
+          .string()
+          .trim()
+          .nonempty("Username is required")
+          .max(255, "Username cannot be longer than 255 characters")
+          .describe(LDAP_AUTH.LOGIN.username),
+        password: z
+          .string()
+          .trim()
+          .nonempty("Password is required")
+          .max(1024, "Password cannot be longer than 1024 characters")
+          .describe(LDAP_AUTH.LOGIN.password),
         organizationSlug: slugSchema().optional().describe(LDAP_AUTH.LOGIN.organizationSlug)
       }),
       response: {

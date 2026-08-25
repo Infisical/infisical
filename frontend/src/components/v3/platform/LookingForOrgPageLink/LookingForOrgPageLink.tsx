@@ -40,8 +40,7 @@ export const LookingForOrgPageLink = ({
   }
 
   const orgId = target === "root" ? (currentOrg.rootOrgId ?? "") : currentOrg.id;
-  const scopeLabel =
-    target === "root" ? "root org" : `${isSubOrganization ? "sub-" : ""}org`;
+  const scopeLabel = target === "root" ? "root org" : `${isSubOrganization ? "sub-" : ""}org`;
   const text = `${scopeLabel} ${label}`;
 
   return (

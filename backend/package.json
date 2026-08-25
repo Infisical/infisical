@@ -163,6 +163,7 @@
     "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@aws-sdk/client-ssm": "^3.1015.0",
     "@aws-sdk/client-sts": "^3.600.0",
+    "@aws-sdk/rds-signer": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1020.0",
     "@casl/ability": "^6.7.5",
     "@clickhouse/client": "^1.17.0",

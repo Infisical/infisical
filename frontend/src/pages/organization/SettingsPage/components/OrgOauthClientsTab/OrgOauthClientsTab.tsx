@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -23,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   CopyButton,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -51,6 +51,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
+  OauthGrantType,
   TOauthClient,
   useDeleteOauthClient,
   useGetOauthClients,
@@ -76,22 +77,20 @@ export const OrgOauthClientsTab = () => {
   const { mutateAsync: deleteOauthClient } = useDeleteOauthClient();
   const { mutateAsync: rotateOauthClientSecret } = useRotateOauthClientSecret();
 
+  const clientPendingDeletion = popUp?.deleteClient?.data as TOauthClient | undefined;
+
   const onDeleteClient = async () => {
-    const client = popUp?.deleteClient?.data as TOauthClient | undefined;
-    if (!client) return;
+    if (!clientPendingDeletion) return;
 
     try {
-      await deleteOauthClient({ clientDbId: client.id });
+      await deleteOauthClient({ clientDbId: clientPendingDeletion.id });
       createNotification({
         text: "Successfully deleted OAuth application",
         type: "success"
       });
       handlePopUpClose("deleteClient");
-    } catch (error) {
-      createNotification({
-        text: (error as Error)?.message || "Failed to delete OAuth application",
-        type: "error"
-      });
+    } catch {
+      // Reported by the mutation cache's global onError; caught here only to keep the dialog open.
     }
   };
 
@@ -113,11 +112,8 @@ export const OrgOauthClientsTab = () => {
         text: "Successfully rotated client secret",
         type: "success"
       });
-    } catch (error) {
-      createNotification({
-        text: (error as Error)?.message || "Failed to rotate client secret",
-        type: "error"
-      });
+    } catch {
+      // Reported by the mutation cache's global onError; caught here only to keep the dialog open.
     }
   };
 
@@ -188,6 +184,7 @@ export const OrgOauthClientsTab = () => {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Client ID</TableHead>
+                      <TableHead>Flow</TableHead>
                       <TableHead>PKCE</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="w-px text-right" aria-label="Actions" />
@@ -198,88 +195,107 @@ export const OrgOauthClientsTab = () => {
                       Array.from({ length: 3 }).map((_, idx) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableRow key={`oauth-client-skeleton-${idx}`}>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={6}>
                             <Skeleton className="h-5 w-full" />
                           </TableCell>
                         </TableRow>
                       ))}
-                    {filteredClients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium text-foreground">{client.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono text-xs">{client.clientId}</span>
-                            <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {client.requirePkce ? (
-                            <Badge variant="success">Required</Badge>
-                          ) : (
-                            <span className="text-muted">Optional</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                aria-label={`Actions for ${client.name}`}
-                              >
-                                <MoreHorizontal />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("clientForm", client)}
-                                  >
-                                    <Pencil />
-                                    Edit
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("rotateSecret", client)}
-                                  >
-                                    <RefreshCw />
-                                    Rotate Secret
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Delete}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("deleteClient", client)}
-                                  >
-                                    <Trash2 />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredClients.map((client) => {
+                      const usesAuthorizationCode = client.grantTypes.includes(
+                        OauthGrantType.AuthorizationCode
+                      );
+                      const usesTokenExchange = client.grantTypes.includes(
+                        OauthGrantType.TokenExchange
+                      );
+
+                      return (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium text-foreground">
+                            {client.name}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-xs">{client.clientId}</span>
+                              <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {[
+                              usesAuthorizationCode && "Authorization code",
+                              usesTokenExchange && "Token exchange"
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </TableCell>
+                          <TableCell>
+                            {!usesAuthorizationCode && (
+                              <span className="text-muted">Not applicable</span>
+                            )}
+                            {usesAuthorizationCode &&
+                              (client.requirePkce ? "Required" : "Optional")}
+                          </TableCell>
+                          <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  aria-label={`Actions for ${client.name}`}
+                                >
+                                  <MoreHorizontal />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("clientForm", client)}
+                                    >
+                                      <Pencil />
+                                      Edit
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("rotateSecret", client)}
+                                    >
+                                      <RefreshCw />
+                                      Rotate Secret
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Delete}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("deleteClient", client)}
+                                    >
+                                      <Trash2 />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -290,7 +306,6 @@ export const OrgOauthClientsTab = () => {
       <OauthClientModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
-        handlePopUpToggle={handlePopUpToggle}
         onCreated={(client, clientSecret) =>
           handlePopUpOpen("clientSecret", {
             clientName: client.name,
@@ -304,31 +319,15 @@ export const OrgOauthClientsTab = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <AlertDialog
-        open={popUp.deleteClient.isOpen}
+      <DeleteConfirmDialog
+        isOpen={popUp.deleteClient.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteClient", isOpen)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Trash2 />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              Delete &quot;{(popUp?.deleteClient?.data as TOauthClient | undefined)?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              External platforms using this application will no longer be able to access Infisical
-              on a user&apos;s behalf, and existing tokens will be revoked.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onDeleteClient}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Delete "${clientPendingDeletion?.name ?? ""}"?`}
+        description="External platforms using this application will no longer be able to access Infisical on a user's behalf, and existing tokens will be revoked."
+        confirmKey={clientPendingDeletion?.name ?? ""}
+        confirmLabel="Delete Application"
+        onConfirm={onDeleteClient}
+      />
       <AlertDialog
         open={popUp.rotateSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecret", isOpen)}

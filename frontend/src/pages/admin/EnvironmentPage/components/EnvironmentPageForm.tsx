@@ -52,7 +52,7 @@ export const GroupContainer = ({
   return (
     <AccordionItem value={group.name}>
       <AccordionTrigger>{group.name}</AccordionTrigger>
-      <AccordionContent>
+      <AccordionContent className="p-6">
         <div className="flex flex-col divide-y divide-border">
           {group.fields.map((field) => (
             <div

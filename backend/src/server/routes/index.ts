@@ -788,9 +788,9 @@ export const registerRoutes = async (
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
-  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // Created before licenseService so the latter can emit the user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, licenseClient });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -803,8 +803,8 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  // Usage metering: counts the metered features and reports them to the License Server. Inert while
-  // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
+  // Usage metering: counts the metered features and reports them to the License Server. Inert when no
+  // license server is configured (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
@@ -826,8 +826,8 @@ export const registerRoutes = async (
     source: usageSource
   });
 
-  // Flag-gated v2 billing surface. Drives the catalog, subscription, and entitlement reads off the
-  // real license server via licenseClient; no new tables.
+  // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
+  // server via licenseClient; no new tables.
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
@@ -853,14 +853,6 @@ export const registerRoutes = async (
   });
 
   const oauthClientDAL = oauthClientDALFactory(db);
-  const oauthClientService = oauthClientServiceFactory({
-    oauthClientDAL,
-    permissionService,
-    keyStore,
-    tokenService,
-    orgDAL,
-    userDAL
-  });
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
 
@@ -1106,6 +1098,19 @@ export const registerRoutes = async (
       pamAccountDAL
     })
   });
+
+  const oauthClientService = oauthClientServiceFactory({
+    oauthClientDAL,
+    permissionService,
+    keyStore,
+    tokenService,
+    orgDAL,
+    userDAL,
+    oidcConfigDAL,
+    userAliasDAL,
+    auditLogService
+  });
+
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -1986,7 +1991,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     pamAccountDependencyDAL,
-    pamDiscoverySourceDAL
+    pamDiscoverySourceDAL,
+    projectDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -2462,7 +2468,6 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
-    licenseDAL,
     identityMetadataDAL,
     keyStore,
     orgDAL,

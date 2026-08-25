@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
@@ -336,7 +337,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
@@ -389,7 +390,7 @@ export const registerApprovalPolicyEndpoints = ({
         let requesterEmail: string;
         let machineIdentityId: string | undefined;
 
-        if (req.auth.authMode === AuthMode.JWT) {
+        if (isUserSessionAuth(req.auth)) {
           requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
           requesterEmail = req.auth.user.email ?? "";
         } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
@@ -461,7 +462,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
@@ -682,7 +683,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
@@ -726,7 +727,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 

@@ -74,7 +74,9 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const dbInstance = db.replicaNode();
-      const baseQuery = dbInstance(TableName.ApprovalRequests).where({ type: policyType, projectId });
+      const baseQuery = dbInstance(TableName.ApprovalRequests)
+        .where({ type: policyType, projectId })
+        .orderBy("createdAt", "desc");
 
       if (options?.scopeType === null) {
         void baseQuery.whereNull("scopeType");

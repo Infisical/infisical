@@ -1,6 +1,6 @@
 import ms from "ms";
 
-import { CertSource } from "@app/hooks/api/certificates/enums";
+import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
 
 export const getCertSourceLabel = (source: TCertificateSource): string => {
@@ -13,6 +13,39 @@ export const getCertSourceLabel = (source: TCertificateSource): string => {
     default:
       return "Managed";
   }
+};
+
+export const RENEWAL_UNAVAILABLE_NO_PROFILE =
+  "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
+
+type TCertificateRenewalSource = {
+  profileId?: string | null;
+  source?: string | null;
+};
+
+export const isManagedCertificate = (certificate: TCertificateRenewalSource) =>
+  (certificate.source ?? CertSource.Issued) === CertSource.Issued;
+
+type TCertificateStatusSource = {
+  status?: string | null;
+  notAfter: string;
+  renewedByCertificateId?: string | null;
+};
+
+export const getCertificateDisplayStatus = (certificate: TCertificateStatusSource) => {
+  if (certificate.status === CertStatus.REVOKED) {
+    return { status: CertStatus.REVOKED, label: "Revoked", variant: "danger" as const };
+  }
+
+  if (new Date(certificate.notAfter) < new Date()) {
+    return { status: CertStatus.EXPIRED, label: "Expired", variant: "danger" as const };
+  }
+
+  if (certificate.renewedByCertificateId) {
+    return { status: CertStatus.RENEWED, label: "Renewed", variant: "neutral" as const };
+  }
+
+  return { status: CertStatus.ACTIVE, label: "Active", variant: "success" as const };
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {

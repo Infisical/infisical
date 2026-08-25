@@ -6,12 +6,12 @@ import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 // Mints a delegated OAuth access token for the seed user (an org admin) with the given scopes. It
 // reuses the same session (tokenVersionId/accessVersion) as the working jwtAuthToken, so it passes
 // signature + session validation and only differs by the oauthClientId/scopes claims.
-const signOauthToken = (scopes: string[]) =>
+const signOauthToken = (scopes: string[], tokenVersionId = seedData1.token.id) =>
   jwt.sign(
     {
       authTokenType: AuthTokenType.ACCESS_TOKEN,
       userId: seedData1.id,
-      tokenVersionId: seedData1.token.id,
+      tokenVersionId,
       authMethod: AuthMethod.EMAIL,
       organizationId: seedData1.organization.id,
       accessVersion: 1,
@@ -108,5 +108,31 @@ describe("OAuth delegated token scope enforcement", async () => {
     });
     // 200 (configured) or 404 (no TOTP set up) — the point is it is NOT 403/forbidden by auth mode.
     expect(res.statusCode).not.toBe(403);
+  });
+
+  const validate = async (token: string) =>
+    testServer.inject({
+      method: "GET",
+      url: `/api/v1/oauth/validate`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+  test("validate confirms a live delegated token", async () => {
+    const res = await validate(signOauthToken(["secrets:read"]));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload)).toEqual({ active: true });
+  });
+
+  // Revocation deletes the session row, so the token's session lookup misses. Middleware reads this
+  // endpoint to decide whether to obtain a fresh token, and a 404 there is indistinguishable from a
+  // wrong URL, so the dead-session case has to answer 401.
+  test("validate answers 401, not 404, for a revoked delegated token", async () => {
+    const res = await validate(signOauthToken(["secrets:read"], "00000000-0000-0000-0000-000000000000"));
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("a revoked delegated token is 401 on a data route too", async () => {
+    const res = await readSecrets(signOauthToken(["secrets:read"], "00000000-0000-0000-0000-000000000000"));
+    expect(res.statusCode).toBe(401);
   });
 });
