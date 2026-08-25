@@ -269,6 +269,19 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
     expectOauthError(res, 400, "unsupported_grant_type", "grant_type");
   });
 
+  // RFC 6749 section 5.2 keeps these apart: a parameter the caller forgot is `invalid_request`, and
+  // `unsupported_grant_type` is reserved for a grant type we do not implement.
+  test("rejects a missing grant type as invalid_request, not unsupported_grant_type", async () => {
+    const body = exchangeBody();
+    delete (body as Record<string, string>).grant_type;
+
+    expectOauthError(await postToken(body), 400, "invalid_request", "Missing 'grant_type'");
+  });
+
+  test("treats an empty grant type as missing", async () => {
+    expectOauthError(await postToken(exchangeBody({ grant_type: "" })), 400, "invalid_request", "Missing 'grant_type'");
+  });
+
   test("requires a subject token", async () => {
     const body = exchangeBody();
     delete (body as Record<string, string>).subject_token;

@@ -20,6 +20,8 @@ import { OauthTokenError, OauthTokenErrorCode, toOauthTokenError } from "@app/se
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
 
+const SUPPORTED_GRANT_TYPES = Object.values(OauthGrantType).join(", ");
+
 const redirectUriSchema = z
   .string()
   .url()
@@ -475,6 +477,13 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
 
       if (req.validationError) {
         const grantType = (req.body as { grant_type?: unknown } | undefined)?.grant_type;
+        if (grantType === undefined || grantType === null || grantType === "") {
+          throw new OauthTokenError({
+            code: OauthTokenErrorCode.InvalidRequest,
+            message: `Missing 'grant_type'. Supported values are: ${SUPPORTED_GRANT_TYPES}`
+          });
+        }
+
         const isKnownGrantType =
           typeof grantType === "string" && Object.values(OauthGrantType).includes(grantType as OauthGrantType);
 
@@ -482,7 +491,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           code: isKnownGrantType ? OauthTokenErrorCode.InvalidRequest : OauthTokenErrorCode.UnsupportedGrantType,
           message: isKnownGrantType
             ? describeValidationError(req.validationError)
-            : `Unsupported 'grant_type'. Supported values are: ${Object.values(OauthGrantType).join(", ")}`
+            : `Unsupported 'grant_type'. Supported values are: ${SUPPORTED_GRANT_TYPES}`
         });
       }
 
