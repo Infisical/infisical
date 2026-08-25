@@ -145,58 +145,68 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneOpts = (batchSize: number, statementTimeoutMs: number, interBatchSleepMs: number) => ({
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
     batchSize,
     statementTimeoutMs,
-    interBatchSleepMs
+    interBatchSleepMs,
+    onBatchCommitted
   });
 
   const hardDeleteProjectSecretVersionsInBatches = (
     projectId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretVersionsInBatches(
       db,
       projectFolderIdsSubquery(projectId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteProjectSecretReferencesInBatches = (
     projectId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretReferencesInBatches(
       db,
       projectFolderIdsSubquery(projectId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteProjectApprovalSecretLinksInBatches = (
     projectId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteApprovalSecretLinksInBatches(
       db,
       projectFolderIdsSubquery(projectId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteProjectSecretsInBatches = (
     projectId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretsInBatches(
       db,
       projectFolderIdsSubquery(projectId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,

@@ -244,58 +244,68 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneOpts = (batchSize: number, statementTimeoutMs: number, interBatchSleepMs: number) => ({
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
     batchSize,
     statementTimeoutMs,
-    interBatchSleepMs
+    interBatchSleepMs,
+    onBatchCommitted
   });
 
   const hardDeleteEnvironmentSecretVersionsInBatches = (
     envId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretVersionsInBatches(
       db,
       envFolderIdsSubquery(envId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteEnvironmentSecretReferencesInBatches = (
     envId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretReferencesInBatches(
       db,
       envFolderIdsSubquery(envId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteEnvironmentApprovalSecretLinksInBatches = (
     envId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteApprovalSecretLinksInBatches(
       db,
       envFolderIdsSubquery(envId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   const hardDeleteEnvironmentSecretsInBatches = (
     envId: string,
     batchSize: number,
     statementTimeoutMs: number,
-    interBatchSleepMs: number
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
   ) =>
     hardDeleteSecretsInBatches(
       db,
       envFolderIdsSubquery(envId),
-      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs)
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
     );
 
   return {

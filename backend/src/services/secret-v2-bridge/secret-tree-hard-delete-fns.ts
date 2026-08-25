@@ -16,6 +16,10 @@ export type TSecretTreePruneOpts = {
   batchSize: number;
   statementTimeoutMs: number;
   interBatchSleepMs: number;
+  // Called after each committed batch. Batches commit independently, so a later batch throwing must
+  // not lose the count of what already went: the caller needs it to report progress on the failure
+  // path, which is how an operator sees a stuck project converging across attempts.
+  onBatchCommitted?: (deleted: number) => void;
 };
 
 export const projectFolderIdsSubquery =
@@ -33,7 +37,7 @@ export const envFolderIdsSubquery =
 
 const runPruneBatches = async (
   db: Knex,
-  { batchSize, statementTimeoutMs, interBatchSleepMs }: TSecretTreePruneOpts,
+  { batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted }: TSecretTreePruneOpts,
   runBatch: (tx: Knex) => Promise<number>
 ) => {
   let totalAffected = 0;
@@ -45,6 +49,7 @@ const runPruneBatches = async (
       return count;
     });
     totalAffected += affected;
+    onBatchCommitted?.(affected);
     if (affected < batchSize) break;
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => {

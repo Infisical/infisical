@@ -97,7 +97,6 @@ export const projectCleanupQueueFactory = ({
   });
 
   const processProjectHardDelete = async (projectId: string) => {
-    // Declared outside the try so a failed run still reports how far the prune got.
     let deletedVersions = 0;
     let deletedReferences = 0;
     let nulledApprovalLinks = 0;
@@ -124,11 +123,14 @@ export const projectCleanupQueueFactory = ({
       // has no folderId/secretId FK and no other FK back to the project tree, so the project-delete
       // cascade would otherwise orphan all of these rows. Deleting by folderId is FK-safe and bounds the
       // final cascade's transaction size.
-      deletedVersions = await projectDAL.hardDeleteProjectSecretVersionsInBatches(
+      await projectDAL.hardDeleteProjectSecretVersionsInBatches(
         projectId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedVersions += deleted;
+        }
       );
 
       // 2) Same treatment for the two statements that actually time out inside the final cascade on a
@@ -136,23 +138,32 @@ export const projectCleanupQueueFactory = ({
       // secret_approval_requests_secrets_v2 SET NULL. Then the secrets themselves, so their remaining
       // per-secret CASCADE children run on a batch-sized statement instead of the whole project.
       // Order matters: deleting secrets first would just drag both cascades back into one statement.
-      deletedReferences = await projectDAL.hardDeleteProjectSecretReferencesInBatches(
+      await projectDAL.hardDeleteProjectSecretReferencesInBatches(
         projectId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedReferences += deleted;
+        }
       );
-      nulledApprovalLinks = await projectDAL.hardDeleteProjectApprovalSecretLinksInBatches(
+      await projectDAL.hardDeleteProjectApprovalSecretLinksInBatches(
         projectId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          nulledApprovalLinks += deleted;
+        }
       );
-      deletedSecrets = await projectDAL.hardDeleteProjectSecretsInBatches(
+      await projectDAL.hardDeleteProjectSecretsInBatches(
         projectId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedSecrets += deleted;
+        }
       );
 
       // 3) For big projects: mark envs for the env worker; the cron re-fires this job until drained.

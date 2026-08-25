@@ -74,7 +74,6 @@ export const projectEnvQueueFactory = ({
   });
 
   const processEnvHardDelete = async (envId: string, projectId: string) => {
-    // Declared outside the try so a failed run still reports how far the prune got.
     let deletedVersions = 0;
     let deletedReferences = 0;
     let nulledApprovalLinks = 0;
@@ -105,30 +104,42 @@ export const projectEnvQueueFactory = ({
 
       // secret_versions_v2 has no FK back to the folder/env tree, so the cascade below would orphan it.
       // must be deleted first, while its folders still exist to identify the rows.
-      deletedVersions = await projectEnvDAL.hardDeleteEnvironmentSecretVersionsInBatches(
+      await projectEnvDAL.hardDeleteEnvironmentSecretVersionsInBatches(
         envId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedVersions += deleted;
+        }
       );
 
-      deletedReferences = await projectEnvDAL.hardDeleteEnvironmentSecretReferencesInBatches(
+      await projectEnvDAL.hardDeleteEnvironmentSecretReferencesInBatches(
         envId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedReferences += deleted;
+        }
       );
-      nulledApprovalLinks = await projectEnvDAL.hardDeleteEnvironmentApprovalSecretLinksInBatches(
+      await projectEnvDAL.hardDeleteEnvironmentApprovalSecretLinksInBatches(
         envId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          nulledApprovalLinks += deleted;
+        }
       );
-      deletedSecrets = await projectEnvDAL.hardDeleteEnvironmentSecretsInBatches(
+      await projectEnvDAL.hardDeleteEnvironmentSecretsInBatches(
         envId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedSecrets += deleted;
+        }
       );
 
       const deleted = await projectEnvDAL.transaction(async (tx) => {
