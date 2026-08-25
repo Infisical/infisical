@@ -243,12 +243,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     return undefined;
   };
 
-  // Without an email service the invite step is skipped, so the counter tops out at 3.
-  const totalSteps = serverDetails?.emailConfigured ? 4 : 3;
+  // Step one (email entry and code verification) shows no counter, so the indicator numbers only
+  // the steps after it; without an email service the invite step is skipped too.
+  const totalSteps = serverDetails?.emailConfigured ? 3 : 2;
   const stepNumber = STEP_NUMBERS[section];
   const stepIndicator =
     !isInvite && stepNumber && stepNumber > 1 ? (
-      <OnboardingProgress currentStep={stepNumber} totalSteps={totalSteps} />
+      <OnboardingProgress currentStep={stepNumber - 1} totalSteps={totalSteps} />
     ) : undefined;
 
   const completeAsideDescription = (() => {
