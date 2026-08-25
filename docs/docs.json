@@ -27,44 +27,60 @@
   },
   "favicon": "/favicon.ico",
   "contextual": {
-    "options": ["assistant", "copy", "view", "chatgpt", "claude", "mcp"]
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp"
+    ]
   },
   "navigation": {
     "tabs": [
       {
-        "tab": "Platform",
+        "tab": "Get started",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Introduction",
             "pages": [
               "documentation/getting-started/overview",
-              "documentation/getting-started/introduction",
-              {
-                "group": "Concepts",
-                "pages": [
-                  "documentation/getting-started/concepts/deployment-models",
-                  "documentation/getting-started/concepts/platform-hierarchy",
-                  "documentation/getting-started/concepts/platform-iam",
-                  "documentation/getting-started/concepts/client-integrations",
-                  "documentation/getting-started/concepts/audit-logs"
-                ]
-              },
-              {
-                "group": "Guides",
-                "pages": [
-                  "documentation/guides/governance-models",
-                  "documentation/guides/organization-structure"
-                ]
-              }
+              "documentation/getting-started/introduction"
             ]
           },
           {
-            "group": "Platform reference",
+            "group": "Concepts",
             "pages": [
-              "documentation/platform/organization",
+              "documentation/getting-started/concepts/deployment-models",
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/platform/identities/overview",
+              "documentation/getting-started/concepts/client-integrations",
+              "documentation/getting-started/concepts/audit-logs"
+            ]
+          },
+          {
+            "group": "Migrate to Infisical",
+            "pages": [
+              "documentation/platform/external-migrations/overview",
+              "documentation/platform/external-migrations/doppler",
+              "documentation/platform/external-migrations/vault"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Platform",
+        "menu": [
+          {
+            "item": "Administration",
+            "icon": "gear",
+            "groups": [
               {
-                "group": "Projects",
+                "group": "Organization",
                 "pages": [
+                  "documentation/platform/organization",
+                  "documentation/platform/sub-organizations",
                   "documentation/platform/project",
                   "documentation/platform/project-templates",
                   {
@@ -75,194 +91,22 @@
                       "documentation/platform/kms-configuration/aws-hsm",
                       "documentation/platform/kms-configuration/gcp-kms"
                     ]
+                  },
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Admin console",
+                    "pages": [
+                      "documentation/platform/admin-panel/overview",
+                      "documentation/platform/admin-panel/org-admin-console"
+                    ]
                   }
                 ]
               },
               {
-                "group": "Identities",
-                "pages": [
-                  "documentation/platform/identities/overview",
-                  "documentation/platform/identities/user-identities",
-                  "documentation/platform/identities/machine-identities"
-                ]
-              },
-              "documentation/platform/oauth-applications",
-              {
-                "group": "Access control",
-                "pages": [
-                  "documentation/platform/access-controls/overview",
-                  "documentation/platform/access-controls/role-based-access-controls",
-                  {
-                    "group": "Attribute based access controls",
-                    "pages": [
-                      "documentation/platform/access-controls/abac/overview",
-                      "documentation/platform/access-controls/abac/managing-user-metadata",
-                      "documentation/platform/access-controls/abac/managing-machine-identity-attributes"
-                    ]
-                  },
-                  "documentation/platform/access-controls/additional-privileges",
-                  "documentation/platform/access-controls/temporary-access",
-                  "documentation/platform/access-controls/assume-privilege",
-                  "documentation/platform/access-controls/project-access-requests",
-                  "documentation/platform/groups"
-                ]
-              },
-              {
-                "group": "Audit logs",
-                "pages": [
-                  "documentation/platform/audit-logs",
-                  "documentation/platform/audit-logs-clickhouse-setup",
-                  "documentation/platform/audit-log-streams/audit-log-streams",
-                  "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
-                ]
-              },
-              {
-                "group": "App connections",
-                "pages": [
-                  "integrations/app-connections",
-                  "integrations/app-connections/overview",
-                  {
-                    "group": "Connections",
-                    "pages": [
-                      "integrations/app-connections/1password",
-                      "integrations/app-connections/anthropic",
-                      "integrations/app-connections/auth0",
-                      "integrations/app-connections/adcs",
-                      "integrations/app-connections/aws",
-                      "integrations/app-connections/azure-adcs",
-                      "integrations/app-connections/azure-app-configuration",
-                      "integrations/app-connections/azure-client-secrets",
-                      "integrations/app-connections/azure-devops",
-                      "integrations/app-connections/azure-dns",
-                      "integrations/app-connections/azure-entra-id",
-                      "integrations/app-connections/azure-key-vault",
-                      "integrations/app-connections/bitbucket",
-                      "integrations/app-connections/camunda",
-                      "integrations/app-connections/checkly",
-                      "integrations/app-connections/circleci",
-                      "integrations/app-connections/chef",
-                      "integrations/app-connections/cloud-66",
-                      "integrations/app-connections/cloudflare",
-                      "integrations/app-connections/convex",
-                      "integrations/app-connections/databricks",
-                      "integrations/app-connections/datadog",
-                      "integrations/app-connections/dbt",
-                      "integrations/app-connections/devin",
-                      "integrations/app-connections/digicert",
-                      "integrations/app-connections/digital-ocean",
-                      "integrations/app-connections/doppler",
-                      "integrations/app-connections/dns-made-easy",
-                      "integrations/app-connections/f5-big-ip",
-                      "integrations/app-connections/fireworks",
-                      "integrations/app-connections/flyio",
-                      "integrations/app-connections/gcp",
-                      "integrations/app-connections/github",
-                      "integrations/app-connections/github-radar",
-                      "integrations/app-connections/gitlab",
-                      "integrations/app-connections/godaddy",
-                      "integrations/app-connections/hashicorp-vault",
-                      "integrations/app-connections/hasura-cloud",
-                      "integrations/app-connections/heroku",
-                      "integrations/app-connections/humanitec",
-                      "integrations/app-connections/kemp-loadmaster",
-                      "integrations/app-connections/external-infisical",
-                      "integrations/app-connections/laravel-forge",
-                      "integrations/app-connections/ldap",
-                      "integrations/app-connections/litellm",
-                      "integrations/app-connections/ssh",
-                      "integrations/app-connections/mssql",
-                      "integrations/app-connections/microsoft-intune",
-                      "integrations/app-connections/mongodb",
-                      "integrations/app-connections/mysql",
-                      "integrations/app-connections/netlify",
-                      "integrations/app-connections/netscaler",
-                      "integrations/app-connections/northflank",
-                      "integrations/app-connections/nutanix-prism-central",
-                      "integrations/app-connections/ona",
-                      "integrations/app-connections/oci",
-                      "integrations/app-connections/octopus-deploy",
-                      "integrations/app-connections/okta",
-                      "integrations/app-connections/openai",
-                      "integrations/app-connections/openrouter",
-                      "integrations/app-connections/oracledb",
-                      "integrations/app-connections/ovh",
-                      "integrations/app-connections/postgres",
-                      "integrations/app-connections/qovery",
-                      "integrations/app-connections/railway",
-                      "integrations/app-connections/redis",
-                      "integrations/app-connections/render",
-                      "integrations/app-connections/rundeck",
-                      "integrations/app-connections/salesforce",
-                      "integrations/app-connections/servicenow",
-                      "integrations/app-connections/snowflake",
-                      "integrations/app-connections/spacelift",
-                      "integrations/app-connections/supabase",
-                      "integrations/app-connections/teamcity",
-                      "integrations/app-connections/terraform-cloud",
-                      "integrations/app-connections/travis-ci",
-                      "integrations/app-connections/trigger-dev",
-                      "integrations/app-connections/venafi",
-                      "integrations/app-connections/venafi-tpp",
-                      "integrations/app-connections/vercel",
-                      "integrations/app-connections/windmill",
-                      "integrations/app-connections/smb",
-                      "integrations/app-connections/winrm",
-                      "integrations/app-connections/zabbix"
-                    ]
-                  }
-                ]
-              },
-              "documentation/platform/event-subscriptions",
-              {
-                "group": "Workflow integrations",
-                "pages": [
-                  "documentation/platform/workflow-integrations/slack-integration",
-                  "documentation/platform/workflow-integrations/microsoft-teams-integration",
-                  "documentation/platform/workflow-integrations/servicenow-integration"
-                ]
-              },
-              {
-                "group": "External migrations",
-                "pages": [
-                  "documentation/platform/external-migrations/overview",
-                  "documentation/platform/external-migrations/doppler",
-                  "documentation/platform/external-migrations/vault"
-                ]
-              },
-              "documentation/platform/admin-panel/server-admin",
-              "documentation/platform/secret-sharing"
-            ]
-          },
-          {
-            "group": "Connectivity",
-            "pages": [
-              "documentation/setup/networking",
-              {
-                "group": "Gateway",
-                "pages": [
-                  "documentation/platform/gateways/overview",
-                  "documentation/platform/gateways/network-architecture",
-                  "documentation/platform/gateways/gateway-pools",
-                  "documentation/platform/gateways/gateway-deployment",
-                  {
-                    "group": "Relay deployment",
-                    "pages": [
-                      "documentation/platform/gateways/relay-deployment/overview",
-                      "documentation/platform/gateways/relay-deployment/terraform"
-                    ]
-                  },
-                  "documentation/platform/gateways/security"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Authentication methods",
-            "pages": [
-              {
-                "group": "User authentication",
+                "group": "Users and groups",
                 "pages": [
                   "integrations/user-authentication",
+                  "documentation/platform/identities/user-identities",
                   "documentation/platform/auth-methods/email-password",
                   {
                     "group": "SSO",
@@ -322,155 +166,181 @@
                       "documentation/platform/scim/group-mappings"
                     ]
                   },
-                  "documentation/platform/email-domain"
+                  "documentation/platform/groups",
+                  "documentation/platform/mfa",
+                  "documentation/platform/email-domain",
+                  "documentation/platform/github-org-sync"
                 ]
               },
               {
-                "group": "Machine identities",
+                "group": "Access control",
                 "pages": [
-                  "integrations/machine-authentication",
-                  "documentation/platform/identities/alicloud-auth",
-                  "documentation/platform/identities/aws-auth",
-                  "documentation/platform/identities/azure-auth",
-                  "documentation/platform/identities/gcp-auth",
-                  "documentation/platform/identities/jwt-auth",
-                  "documentation/platform/identities/kubernetes-auth",
-                  "documentation/platform/identities/oci-auth",
-                  "documentation/platform/identities/token-auth",
-                  "documentation/platform/identities/spiffe-auth",
-                  "documentation/platform/identities/tls-cert-auth",
-                  "documentation/platform/identities/universal-auth",
+                  "documentation/platform/access-controls/overview",
+                  "documentation/platform/access-controls/role-based-access-controls",
                   {
-                    "group": "OIDC auth",
+                    "group": "Attribute based access controls",
                     "pages": [
-                      "documentation/platform/identities/oidc-auth/general",
-                      "documentation/platform/identities/oidc-auth/azure",
-                      "documentation/platform/identities/oidc-auth/github",
-                      "documentation/platform/identities/oidc-auth/circleci",
-                      "documentation/platform/identities/oidc-auth/gitlab",
-                      "documentation/platform/identities/oidc-auth/terraform-cloud",
-                      "documentation/platform/identities/oidc-auth/spire"
+                      "documentation/platform/access-controls/abac/overview",
+                      "documentation/platform/access-controls/abac/managing-user-metadata",
+                      "documentation/platform/access-controls/abac/managing-machine-identity-attributes"
                     ]
                   },
+                  "documentation/platform/access-controls/additional-privileges",
+                  "documentation/platform/access-controls/temporary-access",
+                  "documentation/platform/access-controls/assume-privilege",
+                  "documentation/platform/access-controls/project-access-requests"
+                ]
+              },
+              {
+                "group": "Audit and notifications",
+                "pages": [
+                  "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
+                  "documentation/platform/audit-log-streams/audit-log-streams",
+                  "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit",
+                  "documentation/platform/event-subscriptions",
                   {
-                    "group": "LDAP auth",
+                    "group": "Workflow integrations",
                     "pages": [
-                      "documentation/platform/identities/ldap-auth/general",
-                      "documentation/platform/identities/ldap-auth/jumpcloud"
+                      "documentation/platform/workflow-integrations/slack-integration",
+                      "documentation/platform/workflow-integrations/microsoft-teams-integration",
+                      "documentation/platform/workflow-integrations/servicenow-integration"
                     ]
                   }
                 ]
               },
-              "documentation/platform/identities/auth-templates",
-              "documentation/platform/token",
-              "documentation/platform/mfa",
-              "documentation/platform/github-org-sync"
+              {
+                "group": "Rollout guides",
+                "pages": [
+                  "documentation/guides/organization-structure",
+                  "documentation/guides/governance-models"
+                ]
+              }
             ]
           },
           {
-            "group": "Self-host Infisical",
-            "pages": [
-              "self-hosting/overview",
+            "item": "Self-hosting",
+            "icon": "server",
+            "groups": [
               {
-                "group": "Installation methods",
+                "group": "Deploy and operate",
                 "pages": [
-                  "self-hosting/deployment-options/standalone-infisical",
-                  "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/aws-native",
-                  "self-hosting/deployment-options/gcp-native"
+                  "self-hosting/overview",
+                  "documentation/platform/admin-panel/server-admin",
+                  {
+                    "group": "Installation methods",
+                    "pages": [
+                      "self-hosting/deployment-options/standalone-infisical",
+                      "self-hosting/deployment-options/docker-compose",
+                      "self-hosting/deployment-options/aws-native",
+                      "self-hosting/deployment-options/gcp-native"
+                    ]
+                  },
+                  {
+                    "group": "Linux package",
+                    "pages": [
+                      "self-hosting/deployment-options/native/linux-package/installation",
+                      "self-hosting/deployment-options/native/linux-package/commands-configuration",
+                      "self-hosting/deployment-options/linux-upgrade"
+                    ]
+                  },
+                  {
+                    "group": "Helm charts",
+                    "pages": [
+                      "self-hosting/helm-charts/overview",
+                      "self-hosting/deployment-options/kubernetes-helm",
+                      "self-hosting/helm-charts/secrets-operator",
+                      "self-hosting/helm-charts/gateway",
+                      "self-hosting/helm-charts/pki-issuer",
+                      "self-hosting/helm-charts/csi-provider",
+                      "self-hosting/helm-charts/agent-injector"
+                    ]
+                  },
+                  "self-hosting/guides/replication",
+                  "self-hosting/guides/hsm-integration",
+                  "self-hosting/guides/upgrading-infisical",
+                  "self-hosting/configuration/envars",
+                  "self-hosting/guides/releases",
+                  "self-hosting/configuration/requirements",
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "self-hosting/guides/mongo-to-postgres",
+                      "self-hosting/guides/custom-certificates",
+                      "self-hosting/guides/automated-bootstrapping",
+                      "self-hosting/guides/production-hardening",
+                      "self-hosting/guides/monitoring-telemetry"
+                    ]
+                  },
+                  {
+                    "group": "Reference architectures",
+                    "pages": [
+                      "self-hosting/reference-architectures/aws-ecs",
+                      "self-hosting/reference-architectures/linux-deployment-ha",
+                      "self-hosting/reference-architectures/on-prem-k8s-ha",
+                      "self-hosting/reference-architectures/google-cloud-run"
+                    ]
+                  },
+                  "self-hosting/ee",
+                  "self-hosting/faq"
                 ]
-              },
-              {
-                "group": "Linux package",
-                "pages": [
-                  "self-hosting/deployment-options/native/linux-package/installation",
-                  "self-hosting/deployment-options/native/linux-package/commands-configuration",
-                  "self-hosting/deployment-options/linux-upgrade"
-                ]
-              },
-              {
-                "group": "Helm charts",
-                "pages": [
-                  "self-hosting/helm-charts/overview",
-                  "self-hosting/deployment-options/kubernetes-helm",
-                  "self-hosting/helm-charts/secrets-operator",
-                  "self-hosting/helm-charts/gateway",
-                  "self-hosting/helm-charts/pki-issuer",
-                  "self-hosting/helm-charts/csi-provider",
-                  "self-hosting/helm-charts/agent-injector"
-                ]
-              },
-              "self-hosting/guides/replication",
-              "self-hosting/guides/hsm-integration",
-              "self-hosting/guides/upgrading-infisical",
-              "self-hosting/configuration/envars",
-              "self-hosting/guides/releases",
-              "self-hosting/configuration/requirements",
-              {
-                "group": "Guides",
-                "pages": [
-                  "self-hosting/guides/mongo-to-postgres",
-                  "self-hosting/guides/custom-certificates",
-                  "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/production-hardening",
-                  "self-hosting/guides/monitoring-telemetry"
-                ]
-              },
-              {
-                "group": "Reference architectures",
-                "pages": [
-                  "self-hosting/reference-architectures/aws-ecs",
-                  "self-hosting/reference-architectures/linux-deployment-ha",
-                  "self-hosting/reference-architectures/on-prem-k8s-ha",
-                  "self-hosting/reference-architectures/google-cloud-run"
-                ]
-              },
-              "self-hosting/ee",
-              "self-hosting/faq"
+              }
             ]
           },
           {
-            "group": "Internals",
-            "pages": [
-              "internals/overview",
+            "item": "Internals",
+            "icon": "diagram-project",
+            "groups": [
               {
-                "group": "Permissions",
+                "group": "Internals",
                 "pages": [
-                  "internals/permissions/overview",
-                  "internals/permissions/project-permissions",
-                  "internals/permissions/organization-permissions",
-                  "internals/permissions/migration"
+                  "internals/overview",
+                  {
+                    "group": "Permissions",
+                    "pages": [
+                      "internals/permissions/overview",
+                      "internals/permissions/project-permissions",
+                      "internals/permissions/organization-permissions",
+                      "internals/permissions/migration"
+                    ]
+                  },
+                  {
+                    "group": "Architecture",
+                    "pages": [
+                      "internals/architecture/components",
+                      "internals/architecture/cloud"
+                    ]
+                  },
+                  "internals/security",
+                  "internals/service-tokens"
                 ]
-              },
-              {
-                "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
-              },
-              "internals/security",
-              "internals/service-tokens"
+              }
             ]
           },
           {
-            "group": "Contributing",
-            "pages": [
+            "item": "Contributing",
+            "icon": "code-pull-request",
+            "groups": [
               {
-                "group": "Getting started",
+                "group": "Contributing",
                 "pages": [
-                  "contributing/getting-started/overview",
-                  "contributing/getting-started/code-of-conduct",
-                  "contributing/getting-started/pull-requests"
-                ]
-              },
-              {
-                "group": "Contributing to platform",
-                "pages": [
-                  "contributing/platform/developing",
-                  "contributing/platform/pam-development",
-                  "contributing/platform/backend/how-to-create-a-feature",
-                  "contributing/platform/backend/folder-structure"
+                  {
+                    "group": "Getting started",
+                    "pages": [
+                      "contributing/getting-started/overview",
+                      "contributing/getting-started/code-of-conduct",
+                      "contributing/getting-started/pull-requests"
+                    ]
+                  },
+                  {
+                    "group": "Contributing to platform",
+                    "pages": [
+                      "contributing/platform/developing",
+                      "contributing/platform/pam-development",
+                      "contributing/platform/backend/how-to-create-a-feature",
+                      "contributing/platform/backend/folder-structure"
+                    ]
+                  }
                 ]
               }
             ]
@@ -482,6 +352,7 @@
         "menu": [
           {
             "item": "Secrets Management",
+            "icon": "vault",
             "groups": [
               {
                 "group": "Get started",
@@ -579,7 +450,9 @@
                       "integrations/platforms/apache-airflow",
                       {
                         "group": "AWS",
-                        "pages": ["integrations/platforms/aws/lambda"]
+                        "pages": [
+                          "integrations/platforms/aws/lambda"
+                        ]
                       },
                       "integrations/platforms/infisical-proxy",
                       {
@@ -877,36 +750,38 @@
                   }
                 ]
               }
-        ]
-      },
-      {
-        "item": "Secrets Scanning",
-        "groups": [
+            ]
+          },
           {
-            "group": "Secrets scanning",
-            "pages": [
-              "documentation/platform/secret-scanning/overview",
+            "item": "Secrets Scanning",
+            "icon": "radar",
+            "groups": [
               {
-                "group": "Concepts",
+                "group": "Secrets scanning",
                 "pages": [
-                  "documentation/platform/secret-scanning/concepts/secret-scanning"
+                  "documentation/platform/secret-scanning/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/secret-scanning/usage",
+                  "documentation/platform/secret-scanning/bitbucket",
+                  "documentation/platform/secret-scanning/github",
+                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
           },
           {
-            "group": "Product reference",
-            "pages": [
-              "documentation/platform/secret-scanning/usage",
-              "documentation/platform/secret-scanning/bitbucket",
-              "documentation/platform/secret-scanning/github",
-              "documentation/platform/secret-scanning/gitlab"
-            ]
-          }
-        ]
-      },
-      {
             "item": "Certificate Management",
+            "icon": "file-certificate",
             "groups": [
               {
                 "group": "Certificate management",
@@ -1091,6 +966,7 @@
           },
           {
             "item": "KMS",
+            "icon": "key",
             "groups": [
               {
                 "group": "Infisical KMS",
@@ -1111,6 +987,7 @@
           },
           {
             "item": "Privileged Access Management",
+            "icon": "user-shield",
             "groups": [
               {
                 "group": "Privileged access manager",
@@ -1205,8 +1082,174 @@
         ]
       },
       {
-            "tab": "CLI reference",
-            "groups": [
+        "tab": "Connect",
+        "groups": [
+          {
+            "group": "App connections",
+            "pages": [
+              "integrations/app-connections/overview",
+              {
+                "group": "Explore options",
+                "icon": "search",
+                "root": "integrations/app-connections",
+                "pages": [
+                  "integrations/app-connections/1password",
+                  "integrations/app-connections/anthropic",
+                  "integrations/app-connections/auth0",
+                  "integrations/app-connections/adcs",
+                  "integrations/app-connections/aws",
+                  "integrations/app-connections/azure-adcs",
+                  "integrations/app-connections/azure-app-configuration",
+                  "integrations/app-connections/azure-client-secrets",
+                  "integrations/app-connections/azure-devops",
+                  "integrations/app-connections/azure-dns",
+                  "integrations/app-connections/azure-entra-id",
+                  "integrations/app-connections/azure-key-vault",
+                  "integrations/app-connections/bitbucket",
+                  "integrations/app-connections/camunda",
+                  "integrations/app-connections/checkly",
+                  "integrations/app-connections/circleci",
+                  "integrations/app-connections/chef",
+                  "integrations/app-connections/cloud-66",
+                  "integrations/app-connections/cloudflare",
+                  "integrations/app-connections/convex",
+                  "integrations/app-connections/databricks",
+                  "integrations/app-connections/datadog",
+                  "integrations/app-connections/dbt",
+                  "integrations/app-connections/devin",
+                  "integrations/app-connections/digicert",
+                  "integrations/app-connections/digital-ocean",
+                  "integrations/app-connections/doppler",
+                  "integrations/app-connections/dns-made-easy",
+                  "integrations/app-connections/f5-big-ip",
+                  "integrations/app-connections/fireworks",
+                  "integrations/app-connections/flyio",
+                  "integrations/app-connections/gcp",
+                  "integrations/app-connections/github",
+                  "integrations/app-connections/github-radar",
+                  "integrations/app-connections/gitlab",
+                  "integrations/app-connections/godaddy",
+                  "integrations/app-connections/hashicorp-vault",
+                  "integrations/app-connections/hasura-cloud",
+                  "integrations/app-connections/heroku",
+                  "integrations/app-connections/humanitec",
+                  "integrations/app-connections/kemp-loadmaster",
+                  "integrations/app-connections/external-infisical",
+                  "integrations/app-connections/laravel-forge",
+                  "integrations/app-connections/ldap",
+                  "integrations/app-connections/litellm",
+                  "integrations/app-connections/ssh",
+                  "integrations/app-connections/mssql",
+                  "integrations/app-connections/microsoft-intune",
+                  "integrations/app-connections/mongodb",
+                  "integrations/app-connections/mysql",
+                  "integrations/app-connections/netlify",
+                  "integrations/app-connections/netscaler",
+                  "integrations/app-connections/northflank",
+                  "integrations/app-connections/nutanix-prism-central",
+                  "integrations/app-connections/ona",
+                  "integrations/app-connections/oci",
+                  "integrations/app-connections/octopus-deploy",
+                  "integrations/app-connections/okta",
+                  "integrations/app-connections/openai",
+                  "integrations/app-connections/openrouter",
+                  "integrations/app-connections/oracledb",
+                  "integrations/app-connections/ovh",
+                  "integrations/app-connections/postgres",
+                  "integrations/app-connections/qovery",
+                  "integrations/app-connections/railway",
+                  "integrations/app-connections/redis",
+                  "integrations/app-connections/render",
+                  "integrations/app-connections/rundeck",
+                  "integrations/app-connections/salesforce",
+                  "integrations/app-connections/servicenow",
+                  "integrations/app-connections/snowflake",
+                  "integrations/app-connections/spacelift",
+                  "integrations/app-connections/supabase",
+                  "integrations/app-connections/teamcity",
+                  "integrations/app-connections/terraform-cloud",
+                  "integrations/app-connections/travis-ci",
+                  "integrations/app-connections/trigger-dev",
+                  "integrations/app-connections/venafi",
+                  "integrations/app-connections/venafi-tpp",
+                  "integrations/app-connections/vercel",
+                  "integrations/app-connections/windmill",
+                  "integrations/app-connections/smb",
+                  "integrations/app-connections/winrm",
+                  "integrations/app-connections/zabbix"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Machine authentication",
+            "pages": [
+              "documentation/platform/identities/machine-identities",
+              {
+                "group": "Explore options",
+                "icon": "search",
+                "root": "integrations/machine-authentication",
+                "pages": [
+                  "documentation/platform/identities/universal-auth",
+                  "documentation/platform/identities/kubernetes-auth",
+                  "documentation/platform/identities/aws-auth",
+                  "documentation/platform/identities/gcp-auth",
+                  "documentation/platform/identities/azure-auth",
+                  {
+                    "group": "OIDC auth",
+                    "pages": [
+                      "documentation/platform/identities/oidc-auth/general",
+                      "documentation/platform/identities/oidc-auth/azure",
+                      "documentation/platform/identities/oidc-auth/github",
+                      "documentation/platform/identities/oidc-auth/circleci",
+                      "documentation/platform/identities/oidc-auth/gitlab",
+                      "documentation/platform/identities/oidc-auth/terraform-cloud",
+                      "documentation/platform/identities/oidc-auth/spire"
+                    ]
+                  },
+                  {
+                    "group": "LDAP auth",
+                    "pages": [
+                      "documentation/platform/identities/ldap-auth/general",
+                      "documentation/platform/identities/ldap-auth/jumpcloud"
+                    ]
+                  },
+                  "documentation/platform/identities/alicloud-auth",
+                  "documentation/platform/identities/oci-auth",
+                  "documentation/platform/identities/jwt-auth",
+                  "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/spiffe-auth",
+                  "documentation/platform/identities/tls-cert-auth",
+                  "documentation/platform/identities/auth-templates",
+                  "documentation/platform/token",
+                  "documentation/platform/oauth-applications"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Private networking",
+            "pages": [
+              "documentation/platform/gateways/overview",
+              "documentation/platform/gateways/network-architecture",
+              "documentation/platform/gateways/gateway-pools",
+              "documentation/platform/gateways/gateway-deployment",
+              {
+                "group": "Relay deployment",
+                "pages": [
+                  "documentation/platform/gateways/relay-deployment/overview",
+                  "documentation/platform/gateways/relay-deployment/terraform"
+                ]
+              },
+              "documentation/platform/gateways/security",
+              "documentation/setup/networking"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI reference",
+        "groups": [
           {
             "group": "Command line",
             "pages": [
@@ -1223,7 +1266,10 @@
                   "cli/commands/dynamic-secrets",
                   {
                     "group": "infisical pam",
-                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                    "pages": [
+                      "cli/commands/pam",
+                      "cli/commands/pam-agentic"
+                    ]
                   },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
@@ -1531,7 +1577,9 @@
               },
               {
                 "group": "Service tokens",
-                "pages": ["api-reference/endpoints/service-tokens/get"]
+                "pages": [
+                  "api-reference/endpoints/service-tokens/get"
+                ]
               }
             ]
           },
@@ -2404,11 +2452,15 @@
               },
               {
                 "group": "Audit logs",
-                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+                "pages": [
+                  "api-reference/endpoints/audit-logs/export-audit-log"
+                ]
               },
               {
                 "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
+                "pages": [
+                  "api-reference/endpoints/events/project-events"
+                ]
               }
             ]
           },
@@ -3485,11 +3537,15 @@
                   },
                   {
                     "group": "Ona",
-                    "pages": ["api-reference/endpoints/secret-syncs/ona/create"]
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ona/create"
+                    ]
                   },
                   {
                     "group": "OVH",
-                    "pages": ["api-reference/endpoints/secret-syncs/ovh/create"]
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ovh/create"
+                    ]
                   },
                   {
                     "group": "Qovery",
@@ -4291,7 +4347,9 @@
             "pages": [
               {
                 "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+                "pages": [
+                  "api-reference/endpoints/admin/bootstrap-instance"
+                ]
               }
             ]
           }
@@ -4302,7 +4360,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["sdks/overview"]
+            "pages": [
+              "sdks/overview"
+            ]
           },
           {
             "group": "SDK's",
@@ -4330,7 +4390,9 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": [
+        "https://app.infisical.com"
+      ]
     }
   },
   "background": {
