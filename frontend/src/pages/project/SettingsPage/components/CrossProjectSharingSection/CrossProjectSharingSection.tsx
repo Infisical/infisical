@@ -415,7 +415,7 @@ export const CrossProjectSharingSection = () => {
         <p className="max-w-2xl text-sm text-accent">
           Grant another project read access to a slice of this project&apos;s secrets. The target
           project can then import them, or reference them inline with{" "}
-          <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
+          <code className="rounded bg-container px-1 py-0.5 font-mono text-xs text-foreground">
             ${"{@project-a.SECRET}"}
           </code>
           .
@@ -423,7 +423,7 @@ export const CrossProjectSharingSection = () => {
       </CardHeader>
       <CardContent>
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-mineshaft-400">Linked Projects</span>
+          <span className="text-sm text-muted">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
         {grantsContent}
