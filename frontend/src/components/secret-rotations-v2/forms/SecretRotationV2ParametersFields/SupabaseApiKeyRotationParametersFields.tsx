@@ -2,7 +2,8 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Field, FieldError, FilterableSelect } from "@app/components/v3";
 import {
   TSupabaseProject,
   useSupabaseConnectionListProjects
@@ -17,7 +18,7 @@ const KEY_TYPE_OPTIONS = [
 
 const formatProjectOptionLabel = (option: TSupabaseProject) => (
   <span>
-    {option.name} <span className="text-mineshaft-400">(id: {option.id})</span>
+    {option.name} <span className="text-muted">(id: {option.id})</span>
   </span>
 );
 
@@ -42,17 +43,20 @@ export const SupabaseApiKeyRotationParametersFields = () => {
       <Controller
         name="parameters.projectRef"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Project"
-            tooltipText="The Supabase project to rotate the API key for"
-          >
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              htmlFor="supabase-project"
+              tooltip="The Supabase project to rotate the API key for"
+            >
+              Project
+            </FieldLabelWithTooltip>
             <FilterableSelect
+              inputId="supabase-project"
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={projects.find((p) => p.id === value) ?? null}
+              onBlur={onBlur}
               onChange={(option) => {
                 const v = option as SingleValue<TSupabaseProject>;
                 onChange(v?.id ?? null);
@@ -62,22 +66,27 @@ export const SupabaseApiKeyRotationParametersFields = () => {
               getOptionLabel={(option) => `${option.name} (id: ${option.id})`}
               getOptionValue={(option) => option.id}
               formatOptionLabel={formatProjectOptionLabel}
+              isError={Boolean(error)}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       <Controller
         name="parameters.keyType"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Key Type"
-            tooltipText="Publishable keys are safe to use in browsers and client-side code. Secret keys grant privileged access to the project API and should never be exposed publicly."
-          >
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              htmlFor="supabase-key-type"
+              tooltip="Publishable keys are safe to use in browsers and client-side code. Secret keys grant privileged access to the project API and should never be exposed publicly."
+            >
+              Key Type
+            </FieldLabelWithTooltip>
             <FilterableSelect
+              inputId="supabase-key-type"
               value={KEY_TYPE_OPTIONS.find((o) => o.value === value) ?? null}
+              onBlur={onBlur}
               onChange={(option) =>
                 onChange(
                   (option as SingleValue<{ label: string; value: SupabaseApiKeyType }>)?.value ??
@@ -88,8 +97,10 @@ export const SupabaseApiKeyRotationParametersFields = () => {
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
               placeholder="Select a key type..."
+              isError={Boolean(error)}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
     </>

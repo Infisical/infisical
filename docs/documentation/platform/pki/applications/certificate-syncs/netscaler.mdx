@@ -16,7 +16,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
 - The NetScaler must be accessible over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview))
 - User account with permissions to manage SSL certificates and bind them to vservers
 
-## Create a NetScaler Sync
+## Create a NetScaler sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -110,7 +110,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
   NetScaler caps `sslcertkey` names at **63 characters**. Full UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each resolve to 32 characters, so combining two of them exceeds the limit and the schema is rejected when you save the sync. For tight schemas, use `{{shortCertificateId}}` (22 characters) in place of `{{certificateId}}`, optionally with a short prefix or `{{commonName}}`.
 </Note>
 
-## Certificate Management
+## Certificate management
 
 The NetScaler Certificate Sync provides:
 
@@ -126,7 +126,7 @@ The NetScaler Certificate Sync provides:
   automatically deployed as they are issued or renewed.
 </Note>
 
-## How It Works
+## How it works
 
 Infisical automatically keeps your NetScaler certificates in sync:
 
@@ -136,14 +136,14 @@ Infisical automatically keeps your NetScaler certificates in sync:
 
 Changes are saved to the running configuration so they persist across reboots.
 
-## Certificate Renewal Behavior
+## Certificate renewal behavior
 
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
 - **Preserve enabled (default)**: The existing certkey object is updated in place with the new certificate content. The certkey name and any vServer bindings are preserved. This is ideal for production environments where services reference the certkey by name.
 - **Preserve disabled**: A new certkey object is created with a unique name. The original certkey remains on the NetScaler. Both certificates coexist until the original is revoked or removed.
 
-## Removing Certificates
+## Removing certificates
 
 When certificate removal is enabled and a certificate is no longer active in Infisical:
 
@@ -152,7 +152,7 @@ When certificate removal is enabled and a certificate is no longer active in Inf
 3. Deletes the certificate and key files from `/nsconfig/ssl/`.
 4. Saves the configuration.
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to NetScaler using the sync certificates functionality. This is useful for:
 
@@ -171,7 +171,7 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
   extracted from the system.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">

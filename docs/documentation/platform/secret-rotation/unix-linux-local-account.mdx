@@ -1,5 +1,5 @@
 ---
-title: "Unix/Linux Local Account Rotation"
+title: "Unix/Linux local account rotation"
 description: "Learn how to automatically rotate Unix/Linux local account passwords."
 ---
 
@@ -16,12 +16,12 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
 - Create an [SSH Connection](/integrations/app-connections/ssh) with the **Secret Rotation** requirements
 - Ensure your network security policies allow incoming requests from Infisical to this rotation provider, if network restrictions apply.
 
-## Create a Unix/Linux Local Account Rotation in Infisical
+## Create a Unix/Linux local account rotation in Infisical
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
-        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+        1. Navigate to your Secrets Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secrets Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
         2. Select the **Unix/Linux Local Account** option.
         ![Select Unix/Linux Local Account](/images/secret-rotations-v2/unix-linux-local-account/select-unix-linux-local-account-option.png)
@@ -67,7 +67,7 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
         8. Your **Unix/Linux Local Account** credentials are now available for use via the mapped secrets.
         ![Rotation Created](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-created.png)
 
-        ### Reconcile Unix/Linux Local Account
+        ### Reconcile Unix/Linux local account
 
         If you suspect the credentials are out of sync (for example, after a manual password change on the server), you can regain access by using **Reconcile**. This will use the configured SSH App Connection's root account to reset the target user's password and sync it with Infisical.
 

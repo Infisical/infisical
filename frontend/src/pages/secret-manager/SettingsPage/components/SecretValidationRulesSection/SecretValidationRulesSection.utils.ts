@@ -275,10 +275,11 @@ export const ruleFormSchema = z.object({
   description: z.string().max(500).optional(),
   environment: z.string().nullable().default(null),
   folderPath: z.string().min(1, "Folder path is required").default("/**"),
+  // Mirrors the API rule config shape (see backend `SecretValidationRuleSchema`).
   enforcement: z.discriminatedUnion("type", [
-    z.object({ type: z.literal(RuleType.StaticSecrets), inputs: staticSecretsInputsSchema }),
-    z.object({ type: z.literal(RuleType.DynamicSecrets), inputs: dynamicSecretsInputsSchema }),
-    z.object({ type: z.literal(RuleType.SecretRotations), inputs: secretRotationsInputsSchema })
+    z.object({ type: z.literal(RuleType.StaticSecrets), ...staticSecretsInputsSchema.shape }),
+    z.object({ type: z.literal(RuleType.DynamicSecrets), ...dynamicSecretsInputsSchema.shape }),
+    z.object({ type: z.literal(RuleType.SecretRotations), ...secretRotationsInputsSchema.shape })
   ])
 });
 

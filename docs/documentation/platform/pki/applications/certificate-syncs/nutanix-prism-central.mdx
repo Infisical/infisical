@@ -18,7 +18,7 @@ Before setting up the sync, gather the following from your Nutanix environment:
 - A Prism Central account or API key with the **Cluster Admin** role on the target cluster.
 - A [Nutanix Prism Central Connection](/integrations/app-connections/nutanix-prism-central) correctly configured.
 
-## Create a Nutanix Prism Central Sync
+## Create a Nutanix Prism Central sync
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -105,7 +105,7 @@ Before setting up the sync, gather the following from your Nutanix environment:
   </Tab>
 </Tabs>
 
-## How It Works
+## How it works
 
 Infisical automatically keeps your Nutanix Prism Central cluster certificate in sync:
 
@@ -117,7 +117,7 @@ The cluster begins using the new certificate within a few seconds, with no resta
   Each Nutanix Prism Central sync targets a single cluster. To update multiple clusters, create one sync per cluster.
 </Note>
 
-## Certificate Management
+## Certificate management
 
 The Nutanix Prism Central Certificate Sync provides:
 
@@ -128,7 +128,7 @@ The Nutanix Prism Central Certificate Sync provides:
   Certificate removal is not supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
 </Note>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to the Nutanix cluster using the sync certificates functionality. This is useful for:
 
@@ -138,7 +138,7 @@ You can manually trigger certificate synchronization to the Nutanix cluster usin
 
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
-## Certificate Renewal Behavior
+## Certificate renewal behavior
 
 When a certificate is renewed in Infisical, the renewed certificate is automatically pushed to the Nutanix cluster on the next sync. If **Auto-Sync** is enabled, this happens without any manual action.
 
@@ -162,7 +162,7 @@ When a certificate is renewed in Infisical, the renewed certificate is automatic
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="NetScaler" icon="network-wired" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">

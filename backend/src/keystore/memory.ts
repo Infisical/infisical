@@ -10,6 +10,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
   const listStore: Record<string, string[]> = {};
   const hashStore: Record<string, Record<string, string>> = {};
+  const sortedSetStore: Record<string, Record<string, number>> = {};
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
 
@@ -82,6 +83,32 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
+    },
+    setIndexedItemWithExpiry: async ({ indexKey, member, itemKey, value, expiryInSeconds, indexed }) => {
+      store[itemKey] = value;
+      if (!sortedSetStore[indexKey]) sortedSetStore[indexKey] = {};
+      if (indexed) {
+        sortedSetStore[indexKey][member] = Date.now() + expiryInSeconds * 1000;
+      } else {
+        delete sortedSetStore[indexKey][member];
+      }
+    },
+    deleteIndexedItems: async ({ indexKey, members, itemKeys }) => {
+      itemKeys.forEach((key) => delete store[key]);
+      members.forEach((member) => delete sortedSetStore[indexKey]?.[member]);
+    },
+    sortedSetRangeByScore: async (key, min, max) => {
+      const lower = min === "-inf" ? -Infinity : Number(min);
+      const upper = max === "+inf" ? Infinity : Number(max);
+      return Object.entries(sortedSetStore[key] ?? {})
+        .filter(([, score]) => score >= lower && score <= upper)
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
+    },
+    sortedSetMembersPrimary: async (key) => {
+      return Object.entries(sortedSetStore[key] ?? {})
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
     },
     pgIncrementBy: async () => {
       return 1;
@@ -163,6 +190,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       return listStore[key]?.length ?? 0;
     },
     streamAdd: async () => null,
+    streamLength: async () => 0,
     streamRange: async () => [],
     streamTrim: async () => 0,
     streamCollect: async () => ({ entries: [], lastId: null })

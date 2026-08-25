@@ -19,7 +19,6 @@ export {
   useGetUserProjects,
   useGetUserProjectsByType,
   useGetUserWorkspaceMemberships,
-  useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,

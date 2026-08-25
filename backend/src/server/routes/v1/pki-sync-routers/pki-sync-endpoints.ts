@@ -74,7 +74,7 @@ export const registerSyncPkiEndpoints = ({
         200: z.object({ pkiSyncs: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
 
@@ -113,7 +113,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -152,7 +152,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const pkiSync = await server.services.pkiSync.createPkiSync(
         { ...req.body, projectId: req.body.projectId ?? req.internalCertManagerProjectId, destination },
@@ -181,8 +181,10 @@ export const registerSyncPkiEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
           destination,
-          orgId: req.permission.orgId
+          isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
         }
       });
 
@@ -209,7 +211,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -226,6 +228,18 @@ export const registerSyncPkiEndpoints = ({
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
             hasPostSyncCommand: Boolean(pkiSync.syncOptions?.postSyncCommand)
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiSyncUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
+          destination: pkiSync.destination,
+          isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
         }
       });
 
@@ -251,7 +265,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -276,8 +290,9 @@ export const registerSyncPkiEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          destination: pkiSync.destination,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
+          destination: pkiSync.destination
         }
       });
 
@@ -303,7 +318,7 @@ export const registerSyncPkiEndpoints = ({
         200: z.object({ message: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -338,7 +353,7 @@ export const registerSyncPkiEndpoints = ({
           200: z.object({ message: z.string() })
         }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
 
@@ -374,7 +389,7 @@ export const registerSyncPkiEndpoints = ({
           200: z.object({ message: z.string() })
         }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
 

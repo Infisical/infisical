@@ -47,6 +47,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
@@ -247,6 +248,16 @@ import {
   SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
+import {
+  hasOverviewScopeChanged,
+  hasSensitiveOverviewSearchState,
+  normalizeOverviewEnvironments,
+  parseOverviewTags,
+  resolveOverviewEnvironmentSlugs,
+  serializeOverviewResourceFilter,
+  stripSensitiveOverviewSearchState,
+  updateOverviewSecretPath
+} from "./overviewSearchState";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -271,10 +282,6 @@ export enum RowType {
   HoneyToken = "honeyToken",
   ProxiedService = "proxiedService"
 }
-
-type Filter = {
-  [key in RowType]: boolean;
-};
 
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
@@ -305,6 +312,7 @@ const OverviewPageContent = () => {
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
+      tags: el.tags,
       filterBy: el.filterBy
     })
   });
@@ -331,7 +339,8 @@ const OverviewPageContent = () => {
     ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
-  const [searchFilter, setSearchFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState(routerSearch.search);
+  const [tagFilter, setTagFilter] = useState(() => parseOverviewTags(routerSearch.tags));
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -358,11 +367,21 @@ const OverviewPageContent = () => {
   //   }
   // };
 
-  const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
-  const [tagFilter, setTagFilter] = useState<Record<string, boolean>>({});
-  const [filterHistory, setFilterHistory] = useState<
-    Map<string, { filter: Filter; searchFilter: string }>
-  >(new Map());
+  const filter = useMemo(() => {
+    const nextFilter = { ...DEFAULT_FILTER_STATE };
+
+    routerSearch.filterBy
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
+      .forEach((rowType) => {
+        nextFilter[rowType] = true;
+      });
+
+    if (Object.keys(tagFilter).length > 0) nextFilter[RowType.Secret] = true;
+
+    return nextFilter;
+  }, [routerSearch.filterBy, tagFilter]);
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -406,8 +425,13 @@ const OverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    const onRouteChangeStart = () => {
-      resetSelectedEntries();
+    const onRouteChangeStart = (event: {
+      fromLocation: { pathname: string; search: unknown };
+      toLocation: { pathname: string; search: unknown };
+    }) => {
+      if (hasOverviewScopeChanged(event.fromLocation, event.toLocation)) {
+        resetSelectedEntries();
+      }
     };
 
     const unsubscribeRouterEvent = router.subscribe("onLoad", onRouteChangeStart);
@@ -455,68 +479,67 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
-  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
-  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
-  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
-  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
-  // matters most for `environments`: re-selecting the same environment from the reference tree
-  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
-  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
-  // updates the params without remounting.
+  const selectedEnvironmentSlugs = useMemo(
+    () =>
+      resolveOverviewEnvironmentSlugs(routerSearch.environments, storedEnvIds, userAvailableEnvs),
+    [routerSearch.environments, storedEnvIds, userAvailableEnvs]
+  );
+
   useEffect(() => {
-    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
-    const hasEnvLink = Boolean(envSlugs?.length);
+    if (routerSearch.search) setSearchFilter(routerSearch.search);
+    if (routerSearch.tags !== undefined) setTagFilter(parseOverviewTags(routerSearch.tags));
+  }, [routerSearch.search, routerSearch.tags]);
 
-    if (!search && !filterBy && !hasEnvLink) return;
-    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
-    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+  useEffect(() => {
+    const requestedSlugs = normalizeOverviewEnvironments(
+      routerSearch.environments,
+      userAvailableEnvs.map((env) => env.slug)
+    );
+    const isCanonical =
+      requestedSlugs.length === routerSearch.environments.length &&
+      requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
+    const shouldNormalizeEnvironments = userAvailableEnvs.length > 0 && !isCanonical;
+    const shouldStripSensitiveState = hasSensitiveOverviewSearchState(routerSearch);
+    const normalizedEnvironments = selectedEnvironmentSlugs.length
+      ? selectedEnvironmentSlugs
+      : undefined;
 
-    if (envSlugs && envSlugs.length > 0) {
-      const envIds = userAvailableEnvs
-        .filter((env) => envSlugs.includes(env.slug))
-        .map((env) => env.id);
-      if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
-      }
-    }
+    if (!shouldNormalizeEnvironments && !shouldStripSensitiveState) return;
 
-    if (search || filterBy) {
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
-      }
-      setFilter(initialFilter);
+    navigate({
+      search: (prev) => {
+        const nextSearch = shouldStripSensitiveState
+          ? stripSensitiveOverviewSearchState(prev)
+          : prev;
 
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
+        return {
+          ...nextSearch,
+          environments: shouldNormalizeEnvironments
+            ? normalizedEnvironments
+            : nextSearch.environments
+        };
+      },
+      replace: true
+    });
+  }, [navigate, routerSearch, selectedEnvironmentSlugs, userAvailableEnvs]);
 
-    navigate({ search: query, replace: true });
-  }, [
-    routerSearch.search,
-    routerSearch.filterBy,
-    routerSearch.environments?.join(","),
-    userAvailableEnvs.length
-  ]);
-
-  const filteredEnvs = useMemo(() => {
-    if (!storedEnvIds.length) return [];
-    return userAvailableEnvs.filter((env) => storedEnvIds.includes(env.id));
-  }, [storedEnvIds, userAvailableEnvs]);
+  const filteredEnvs = useMemo(
+    () => userAvailableEnvs.filter((env) => selectedEnvironmentSlugs.includes(env.slug)),
+    [selectedEnvironmentSlugs, userAvailableEnvs]
+  );
 
   const setFilteredEnvs = useCallback(
     (value: SetStateAction<ProjectEnv[]>) => {
-      setStoredEnvIds((prev) => {
-        const prevEnvs = userAvailableEnvs.filter((env) => prev.includes(env.id));
-        const next = typeof value === "function" ? value(prevEnvs) : value;
-        return next.map((env) => env.id);
+      const next = typeof value === "function" ? value(filteredEnvs) : value;
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          environments: next.length > 0 ? next.map((env) => env.slug) : undefined
+        })
       });
+      setStoredEnvIds(next.map((env) => env.id));
     },
-    [setStoredEnvIds, userAvailableEnvs]
+    [filteredEnvs, navigate, setStoredEnvIds]
   );
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
@@ -542,9 +565,8 @@ const OverviewPageContent = () => {
   }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
-    data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
-      count: 0,
-      folderId: ""
+    data: { count: singleEnvCommitCount } = {
+      count: 0
     },
     isPending: isSingleEnvCommitCountPending,
     isFetching: isSingleEnvCommitCountFetching
@@ -832,6 +854,7 @@ const OverviewPageContent = () => {
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
+    shouldBlockNavigation: ({ current, next }) => hasOverviewScopeChanged(current, next),
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {
@@ -918,6 +941,9 @@ const OverviewPageContent = () => {
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
+    null
+  );
 
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
@@ -937,7 +963,7 @@ const OverviewPageContent = () => {
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
-  const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
+  const handleViewCommitHistory = (envSlug: string) => {
     if (!subscription?.pitRecovery) {
       handlePopUpOpen("upgradePlan", {
         text: "You can use point-in-time recovery if you upgrade your Infisical plan."
@@ -947,25 +973,8 @@ const OverviewPageContent = () => {
 
     if (!canReadCommits) return;
 
-    let targetFolderId = preloadedFolderId;
-    if (!targetFolderId) {
-      try {
-        const res = await apiRequest.get<{ count: number; folderId: string }>(
-          "/api/v1/pit/commits/count",
-          { params: { environment: envSlug, path: secretPath, projectId } }
-        );
-        targetFolderId = res.data.folderId;
-      } catch {
-        createNotification({ type: "error", text: "Failed to load commit history" });
-        return;
-      }
-    }
-
-    navigate({
-      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      params: { orgId, projectId, folderId: targetFolderId, environment: envSlug },
-      search: (query: Record<string, string | string[]>) => ({ ...query, secretPath })
-    });
+    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
 
   const handleAddSecretImport = () => {
@@ -2193,62 +2202,66 @@ const OverviewPageContent = () => {
     handlePopUpClose("confirmDisableBatchMode");
   }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
-  const handleResetSearch = (path: string) => {
-    const restore = filterHistory.get(path);
-    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
-    const el = restore?.searchFilter ?? "";
-    setSearchFilter(el);
-  };
-
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
 
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
-
     navigate({
       search: (prev) => ({
-        ...prev,
-        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        ...updateOverviewSecretPath(
+          prev,
+          `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        )
       })
-    }).then(() => {
-      setFilter(DEFAULT_FILTER_STATE);
-      setSearchFilter("");
     });
   };
+
+  const handleSearchChange = useCallback((search: string) => setSearchFilter(search), []);
 
   const handleClearTags = useCallback(() => {
     setTagFilter({});
   }, []);
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
-      setFilter((state) => {
-        const newValue = !state[rowType];
-        if (rowType === RowType.Secret && !newValue) {
-          setTagFilter({});
-        }
-        return {
-          ...state,
-          [rowType]: newValue
-        };
-      }),
-    []
+    (rowType: RowType) => {
+      const nextFilter = { ...filter, [rowType]: !filter[rowType] };
+      if (rowType === RowType.Secret && filter[rowType]) setTagFilter({});
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType))
+        }),
+        replace: true
+      });
+    },
+    [filter, navigate]
   );
 
-  const handleToggleTag = useCallback((tagSlug: string) => {
-    setTagFilter((state) => {
-      const isActivating = !state[tagSlug];
-      if (isActivating) {
-        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+  const handleToggleTag = useCallback(
+    (tagSlug: string) => {
+      const isEnabling = !tagFilter[tagSlug];
+      setTagFilter((prev) => {
+        const next = { ...prev };
+        if (next[tagSlug]) delete next[tagSlug];
+        else next[tagSlug] = true;
+        return next;
+      });
+
+      if (isEnabling && !filter[RowType.Secret]) {
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            filterBy: [
+              ...Object.values(RowType).filter((type) => filter[type]),
+              RowType.Secret
+            ].join(",")
+          }),
+          replace: true
+        });
       }
-      return { ...state, [tagSlug]: isActivating };
-    });
-  }, []);
+    },
+    [filter, navigate, tagFilter]
+  );
 
   const allRowsSelectedOnPage = useMemo(() => {
     if (
@@ -2650,7 +2663,7 @@ const OverviewPageContent = () => {
                     (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
                   }
                 />
-                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
+                <FolderBreadcrumb secretPath={secretPath} />
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (
@@ -2671,10 +2684,20 @@ const OverviewPageContent = () => {
                   />
                 )}
                 <ResourceSearchInput
-                  key={secretPath}
                   value={searchFilter}
                   tags={tags}
-                  onChange={setSearchFilter}
+                  onChange={handleSearchChange}
+                  onSelectResult={({ search, tags: selectedTags }) => {
+                    setSearchFilter(search);
+                    if (selectedTags !== undefined) {
+                      setTagFilter(
+                        selectedTags.reduce<Record<string, boolean>>((acc, tag) => {
+                          acc[tag] = true;
+                          return acc;
+                        }, {})
+                      );
+                    }
+                  }}
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />
@@ -2882,7 +2905,7 @@ const OverviewPageContent = () => {
                         type="button"
                         onClick={() => {
                           if (singleVisibleEnv) {
-                            handleViewCommitHistory(singleVisibleEnv.slug, singleEnvFolderId);
+                            handleViewCommitHistory(singleVisibleEnv.slug);
                           }
                         }}
                       >
@@ -3125,10 +3148,7 @@ const OverviewPageContent = () => {
                                     type="button"
                                     onClick={() => {
                                       if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
+                                        handleViewCommitHistory(singleVisibleEnv.slug);
                                       }
                                     }}
                                   >
@@ -3473,7 +3493,6 @@ const OverviewPageContent = () => {
         </Card>
       </div>
       <Sheet
-        modal={false}
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
@@ -3783,6 +3802,18 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
+      {commitHistoryEnv && (
+        <CommitHistorySheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCommitHistoryEnv(null);
+          }}
+          projectId={projectId}
+          environment={commitHistoryEnv.slug}
+          environmentName={commitHistoryEnv.name}
+          secretPath={secretPath}
+        />
+      )}
       <HoneyTokenDetailsDrawer
         projectId={projectId}
         honeyTokenId={detailsDrawerHoneyTokenId}

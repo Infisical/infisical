@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { AxiosError } from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
@@ -21,6 +20,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import {
   projectIdentityMembershipQuery,
   useCreateIdentityProjectAdditionalPrivilege,
@@ -30,7 +30,8 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
-import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { pamKeys, useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import {
@@ -45,19 +46,6 @@ import {
   createProjectIdentitySchema,
   TCreateProjectIdentityForm
 } from "./schema";
-
-const UNIVERSAL_AUTH_DEFAULTS = {
-  clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-  accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-  accessTokenTTL: 2592000,
-  accessTokenMaxTTL: 2592000,
-  accessTokenNumUsesLimit: 0,
-  accessTokenPeriod: 0,
-  lockoutEnabled: true,
-  lockoutThreshold: 3,
-  lockoutDurationSeconds: 300,
-  lockoutCounterResetSeconds: 30
-};
 
 const buildTemplatePermissions = (
   projectType: ProjectType,
@@ -85,6 +73,7 @@ const buildTemplatePermissions = (
 type Props = {
   projectId: string;
   projectType: ProjectType;
+  productLabel: string;
   canGrantPrivileges: boolean;
   onClose: () => void;
 };
@@ -92,17 +81,34 @@ type Props = {
 export const CreateProjectIdentityForm = ({
   projectId,
   projectType,
+  productLabel,
   canGrantPrivileges,
   onClose
 }: Props) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isCertManager = projectType === ProjectType.CertificateManager;
+  const isPam = projectType === ProjectType.PAM;
 
-  const { data: roles } = useGetProjectRoles(projectId, projectType);
+  const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
-  const defaultRole = isCertManager
-    ? { slug: ProjectMembershipRole.Member, name: "Member" }
-    : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
+  // PAM product membership is only ever Admin or Member, and PAM has no externally visible project, so
+  // the generic role copy ("...over a project") is replaced with the product's own wording.
+  const roles = useMemo(() => {
+    if (!isPam) return projectRoles;
+
+    return (projectRoles ?? []).flatMap((role) => {
+      const productRole = PAM_PRODUCT_ROLE_OPTIONS.find((option) => option.value === role.slug);
+      if (!productRole) return [];
+
+      return [{ ...role, name: productRole.label, description: productRole.description }];
+    });
+  }, [projectRoles, isPam]);
+
+  const defaultRole =
+    isCertManager || isPam
+      ? { slug: ProjectMembershipRole.Member, name: "Member" }
+      : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
   const form = useForm<TCreateProjectIdentityForm>({
     resolver: zodResolver(createProjectIdentitySchema),
@@ -145,22 +151,28 @@ export const CreateProjectIdentityForm = ({
   const { mutateAsync: createProjectIdentity } = useCreateProjectIdentity();
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
+  const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
   const onSubmit = async (data: TCreateProjectIdentityForm) => {
+    let authAttachFailed = false;
+
     try {
       let identityId: string;
 
       if (data.mode === CreateProjectIdentityMode.Create) {
+        // PAM's membership PATCH takes a single product role rather than the generic roles array, so
+        // the role is set at creation time instead of through a follow-up membership update.
         const created = await createProjectIdentity({
           name: data.name!.trim(),
           projectId,
-          hasDeleteProtection: true
+          hasDeleteProtection: true,
+          ...(isPam && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
         });
         identityId = created.id;
 
-        if (data.role?.slug) {
+        if (!isPam && data.role?.slug) {
           await updateMembership({
             roles: [{ role: data.role.slug }],
             identityId,
@@ -169,15 +181,37 @@ export const CreateProjectIdentityForm = ({
           });
         }
 
-        await addUniversalAuth({ projectId, identityId, ...UNIVERSAL_AUTH_DEFAULTS });
+        // The identity and its membership already exist by now, so a failed auth attach must not be
+        // reported as a failed creation — retrying would just create a duplicate identity.
+        try {
+          await addUniversalAuth({ projectId, identityId, ...UNIVERSAL_AUTH_DEFAULTS });
+        } catch {
+          authAttachFailed = true;
+        }
       } else {
         identityId = data.identity!.id;
-        await createMembership({
-          projectId,
-          projectType,
-          identityId,
-          role: data.role?.slug || undefined
-        });
+
+        // PAM keeps its own add-member endpoint, which enforces the product-admin check, the
+        // admin/member-only roles, and the rejection of identities scoped to another project.
+        if (isPam) {
+          await addPamProductIdentityMember({
+            projectId,
+            identityId,
+            role: data.role.slug
+          });
+        } else {
+          await createMembership({
+            projectId,
+            projectType,
+            identityId,
+            role: data.role?.slug || undefined
+          });
+        }
+      }
+
+      // The PAM tab reads its own product-membership list, which the generic mutations don't know about.
+      if (isPam) {
+        queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;
@@ -198,7 +232,12 @@ export const CreateProjectIdentityForm = ({
         }
       }
 
-      if (grantFailed) {
+      if (authAttachFailed) {
+        createNotification({
+          text: "Machine identity created, but attaching Universal Auth failed. Add an auth method from the identity page.",
+          type: "error"
+        });
+      } else if (grantFailed) {
         createNotification({
           text: `Machine identity ${
             data.mode === CreateProjectIdentityMode.Assign ? "added" : "created"
@@ -222,16 +261,8 @@ export const CreateProjectIdentityForm = ({
           params: { identityId }
         });
       }
-    } catch (err) {
-      const message = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
-      createNotification({
-        text:
-          message ??
-          (data.mode === CreateProjectIdentityMode.Assign
-            ? "Failed to add machine identity"
-            : "Failed to create machine identity"),
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 
@@ -256,7 +287,7 @@ export const CreateProjectIdentityForm = ({
                     }
                   }}
                 >
-                  <TabsList className="w-full">
+                  <TabsList aria-label="Identity assignment mode" className="w-full">
                     <TabsTrigger value={CreateProjectIdentityMode.Create}>Create New</TabsTrigger>
                     <TabsTrigger value={CreateProjectIdentityMode.Assign}>
                       Assign Existing
@@ -268,9 +299,7 @@ export const CreateProjectIdentityForm = ({
             <p className="text-sm text-muted">
               {mode === CreateProjectIdentityMode.Assign
                 ? "Reuse an existing machine identity from your organization."
-                : `Create a dedicated machine identity managed at the ${
-                    isCertManager ? "Certificate Manager" : "project"
-                  } level.`}
+                : `Create a dedicated machine identity managed at the ${productLabel} level.`}
             </p>
           </div>
 
@@ -350,7 +379,7 @@ export const CreateProjectIdentityForm = ({
         <SheetFooter className="border-t">
           <Button
             type="submit"
-            variant="project"
+            variant={isPam ? "pam" : "project"}
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >

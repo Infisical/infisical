@@ -6,6 +6,7 @@ import { Label } from "../Label";
 import { Separator } from "../Separator";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -80,7 +81,7 @@ export const WithForm: Story = {
     docs: {
       description: {
         story:
-          "Embed form fields inside `DialogContent` for create / edit flows. Keep the description short and place inputs between the header and footer — the dialog's grid layout gives consistent `gap-4` spacing between sections."
+          "Embed form fields inside `DialogContent` for create / edit flows. Keep the description short and place inputs between the header and footer — the padded shell gives each section consistent spacing while the footer breaks out to the dialog edges."
       }
     }
   },
@@ -156,7 +157,7 @@ export const ScrollableContent: Story = {
     docs: {
       description: {
         story:
-          "For long content, anchor the header and footer while the middle scrolls — common for terms, changelogs, and audit log previews. Wrap the scroll region between two `Separator`s in a single column so the rules sit flush against the scrolling content (the parent's gap would otherwise push padding between them)."
+          "`DialogContent` is capped to the available viewport height. Put long content in `DialogBody` so the middle owns scrolling while the padded header and full-width footer remain anchored. Portaled selects, popovers, and tooltips can still escape the scroll region."
       }
     }
   },
@@ -170,9 +171,9 @@ export const ScrollableContent: Story = {
           <DialogTitle>Terms of service</DialogTitle>
           <DialogDescription>Please review the terms before continuing.</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col">
+        <DialogBody className="flex flex-col">
           <Separator />
-          <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto py-4 text-sm text-foreground">
+          <div className="flex flex-col gap-3 py-4 text-sm text-foreground">
             {Array.from({ length: 10 }).map((_, i) => (
               // eslint-disable-next-line react/no-array-index-key
               <p key={i}>
@@ -184,12 +185,52 @@ export const ScrollableContent: Story = {
             ))}
           </div>
           <Separator />
-        </div>
+        </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost">Decline</Button>
           </DialogClose>
           <Button>Accept</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};
+
+export const AlternativeScroll: Story = {
+  name: "Alternative: Scrollable Body",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "An alternative scroll composition keeps the header, body, and footer in one scroll flow while the sticky footer remains visible at the bottom. Use this when the footer should follow the content naturally but remain available during scrolling."
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open scroll dialog</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Project details</DialogTitle>
+          <DialogDescription>Review the project information before continuing.</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="flex flex-none flex-col gap-3 overflow-visible text-sm text-foreground">
+          {Array.from({ length: 12 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <p key={i}>
+              <span className="font-medium">Detail {i + 1}.</span> This content remains inside the
+              scrollable body while the dialog header and footer stay visible.
+            </p>
+          ))}
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button>Continue</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

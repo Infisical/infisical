@@ -1,11 +1,10 @@
-import opentelemetry from "@opentelemetry/api";
-
 import { AccessScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
@@ -47,6 +46,9 @@ type TProjectCleanupQueueFactoryDep = {
     | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
+    | "hardDeleteProjectSecretReferencesInBatches"
+    | "hardDeleteProjectApprovalSecretLinksInBatches"
+    | "hardDeleteProjectSecretsInBatches"
     | "softDeleteProjectEnvironments"
     | "countProjectEnvironments"
     | "deleteById"
@@ -80,7 +82,7 @@ export const projectCleanupQueueFactory = ({
   }
 
   // ── observability ─────────────────────────────────────────────────────────────
-  const meter = opentelemetry.metrics.getMeter("InfisicalCore");
+  const meter = resolveCoreMeter();
   // Per-pod, last-tick value: only the pod that won the cron redlock updates this; other pods report 0.
   // Alarms must aggregate with max() across pods, else a "stuck at cap" backlog gets diluted to ~0.
   let lastDiscoveryCount = 0;
@@ -95,6 +97,11 @@ export const projectCleanupQueueFactory = ({
   });
 
   const processProjectHardDelete = async (projectId: string) => {
+    let deletedVersions = 0;
+    let deletedReferences = 0;
+    let nulledApprovalLinks = 0;
+    let deletedSecrets = 0;
+
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectDeleteLock(projectId)], PROJECT_DELETE_LOCK_TTL_MS)
       .catch(() => null);
@@ -116,25 +123,61 @@ export const projectCleanupQueueFactory = ({
       // has no folderId/secretId FK and no other FK back to the project tree, so the project-delete
       // cascade would otherwise orphan all of these rows. Deleting by folderId is FK-safe and bounds the
       // final cascade's transaction size.
-      const deletedVersions = await projectDAL.hardDeleteProjectSecretVersionsInBatches(
+      await projectDAL.hardDeleteProjectSecretVersionsInBatches(
         projectId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedVersions += deleted;
+        }
       );
 
-      // 2) For big projects: mark envs for the env worker; the cron re-fires this job until drained.
+      // 2) Same treatment for the two statements that actually time out inside the final cascade on a
+      // project with a large secret graph: the secret_references_v2 CASCADE and the
+      // secret_approval_requests_secrets_v2 SET NULL. Then the secrets themselves, so their remaining
+      // per-secret CASCADE children run on a batch-sized statement instead of the whole project.
+      // Order matters: deleting secrets first would just drag both cascades back into one statement.
+      await projectDAL.hardDeleteProjectSecretReferencesInBatches(
+        projectId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedReferences += deleted;
+        }
+      );
+      await projectDAL.hardDeleteProjectApprovalSecretLinksInBatches(
+        projectId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          nulledApprovalLinks += deleted;
+        }
+      );
+      await projectDAL.hardDeleteProjectSecretsInBatches(
+        projectId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedSecrets += deleted;
+        }
+      );
+
+      // 3) For big projects: mark envs for the env worker; the cron re-fires this job until drained.
       const envCount = await projectDAL.countProjectEnvironments(projectId);
       if (envCount > ENV_DELEGATION_THRESHOLD) {
         const marked = await projectDAL.softDeleteProjectEnvironments(projectId);
         logger.info(
-          { projectId, envCount, marked },
+          { projectId, envCount, marked, deletedVersions, deletedReferences, nulledApprovalLinks, deletedSecrets },
           `project-hard-delete: waiting on env drain [projectId=${projectId}] [envsRemaining=${envCount}] [newlyMarked=${marked}]`
         );
         return;
       }
 
-      // 3) Final cascade in one transaction — handles the remaining (smaller) child tables, including
+      // 4) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
       const deleted = await projectDAL.transaction(async (tx) => {
@@ -188,11 +231,14 @@ export const projectCleanupQueueFactory = ({
       });
 
       logger.info(
-        { projectId, deletedVersions },
-        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
+        { projectId, deletedVersions, deletedReferences, nulledApprovalLinks, deletedSecrets },
+        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}] [referencesPruned=${deletedReferences}] [approvalLinksNulled=${nulledApprovalLinks}] [secretsPruned=${deletedSecrets}]`
       );
     } catch (err) {
-      logger.error({ err, projectId }, `project-hard-delete: failed [projectId=${projectId}]`);
+      logger.error(
+        { err, projectId, deletedVersions, deletedReferences, nulledApprovalLinks, deletedSecrets },
+        `project-hard-delete: failed [projectId=${projectId}] [versionsPruned=${deletedVersions}] [referencesPruned=${deletedReferences}] [approvalLinksNulled=${nulledApprovalLinks}] [secretsPruned=${deletedSecrets}]`
+      );
       throw err; // surface to BullMQ so it retries (attempts: 3) and the generic failure metric fires
     } finally {
       await lock.release();

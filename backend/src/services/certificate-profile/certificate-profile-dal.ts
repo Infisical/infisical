@@ -8,6 +8,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import {
   EnrollmentType,
@@ -637,7 +638,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     options: {
       offset?: number;
       limit?: number;
-      status?: "active" | "expired" | "revoked";
+      status?: CertStatus;
       search?: string;
     } = {},
     tx?: Knex
@@ -658,13 +659,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (status) {
         switch (status) {
-          case "active":
-            query = query.where("notAfter", ">", now).whereNull("revokedAt");
+          case CertStatus.ACTIVE:
+            query = query.where("notAfter", ">", now).whereNull("revokedAt").whereNull("renewedByCertificateId");
             break;
-          case "expired":
+          case CertStatus.RENEWED:
+            query = query.where("notAfter", ">", now).whereNull("revokedAt").whereNotNull("renewedByCertificateId");
+            break;
+          case CertStatus.EXPIRED:
             query = query.where("notAfter", "<=", now).whereNull("revokedAt");
             break;
-          case "revoked":
+          case CertStatus.REVOKED:
             query = query.whereNotNull("revokedAt");
             break;
           default:

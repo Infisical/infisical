@@ -33,8 +33,8 @@ type Props = {
 
 export const ConstraintCard = ({ index, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
-  const constraintType = watch(`enforcement.inputs.constraints.${index}.type`);
-  const allConstraints = watch("enforcement.inputs.constraints");
+  const constraintType = watch(`enforcement.constraints.${index}.type`);
+  const allConstraints = watch("enforcement.constraints");
   const ruleType = watch("enforcement.type");
   // Generated-credential rules currently only target the generated password.
   const isGeneratedCredentialRule =
@@ -98,7 +98,7 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               <label className="text-xs font-medium text-muted">Applies to</label>
               <Controller
                 control={control}
-                name={`enforcement.inputs.constraints.${index}.appliesTo`}
+                name={`enforcement.constraints.${index}.appliesTo`}
                 render={({ field: { value, onChange } }) => (
                   <Select value={value} onValueChange={onChange}>
                     <SelectTrigger>
@@ -146,7 +146,7 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
           </label>
           <Controller
             control={control}
-            name={`enforcement.inputs.constraints.${index}.value`}
+            name={`enforcement.constraints.${index}.value`}
             render={({ field, fieldState: { error } }) => (
               <div>
                 <Input

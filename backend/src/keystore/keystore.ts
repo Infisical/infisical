@@ -39,6 +39,7 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
@@ -50,6 +51,7 @@ export const KeyStorePrefixes = {
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
     `wait-until-ready-project-environments-operation-${projectId}`,
   ProjectEnvironmentLock: (projectId: string) => `project-environment-lock-${projectId}` as const,
+  CreateFolderLock: (envId: string) => `create-folder-lock-${envId}` as const,
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
@@ -76,6 +78,7 @@ export const KeyStorePrefixes = {
     `identity-trusted-ips:${identityId}:${authMethod}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
+  IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
@@ -142,7 +145,9 @@ export const KeyStorePrefixes = {
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+  // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
+  // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
+  InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
@@ -159,17 +164,20 @@ export const KeyStorePrefixes = {
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
-    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
-  IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
-    `lockout:identity:${identityId}:${authMethod}:*` as const,
-  IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
+    `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
+  // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
+  IdentityLockoutIndex: (identityId: string) => `lockout:identity:{${identityId}}` as const,
+  IdentityLockoutMember: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
 
-  TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
-    `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+  TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
+    `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
-  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
+
+  // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
+  NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
+    `native-integration-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
@@ -197,6 +205,8 @@ export const KeyStoreTtls = {
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
+  InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -221,11 +231,11 @@ export const KeyStoreTtls = {
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
-  SecretReplicationSuccessInSeconds: 10
+  SecretReplicationSuccessInSeconds: 10,
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
 };
 
 type TDeleteItems = {
@@ -278,9 +288,16 @@ export type TKeyStoreFactory = {
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
   // stream operations
-  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamAdd: (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen?: number,
+    expiryInSeconds?: number
+  ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamLength: (key: string) => Promise<number>;
   streamCollect: (
     key: string,
     batchSize: number,
@@ -289,6 +306,19 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
+  // sorted-set indexed items: item key gets native TTL; optional index member is scored by the same
+  // deadline and pruned on write.
+  setIndexedItemWithExpiry: (arg: {
+    indexKey: string;
+    member: string;
+    itemKey: string;
+    value: string;
+    expiryInSeconds: number;
+    indexed: boolean;
+  }) => Promise<void>;
+  deleteIndexedItems: (arg: { indexKey: string; members: string[]; itemKeys: string[] }) => Promise<void>;
+  sortedSetRangeByScore: (key: string, min: string | number, max: string | number) => Promise<string[]>;
+  sortedSetMembersPrimary: (key: string) => Promise<string[]>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -515,6 +545,79 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
+  // KEYS[1] indexKey (ZSET), KEYS[2] itemKey (payload string).
+  // ARGV[1] member, ARGV[2] value, ARGV[3] expiryInSeconds, ARGV[4] expiresAt score (ms),
+  // ARGV[5] indexed ('1' | '0'), ARGV[6] now (ms, stale-index prune cutoff).
+  const INDEXED_ITEM_UPSERT = `
+    redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
+
+    if ARGV[5] == '1' then
+      redis.call('ZADD', KEYS[1], ARGV[4], ARGV[1])
+    else
+      redis.call('ZREM', KEYS[1], ARGV[1])
+    end
+
+    redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[6])
+
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    else
+      local current = redis.call('TTL', KEYS[1])
+      local wanted = tonumber(ARGV[3])
+      if current < 0 or current < wanted then
+        redis.call('EXPIRE', KEYS[1], wanted)
+      end
+    end
+
+    return 1
+  `;
+
+  const setIndexedItemWithExpiry: TKeyStoreFactory["setIndexedItemWithExpiry"] = async ({
+    indexKey,
+    member,
+    itemKey,
+    value,
+    expiryInSeconds,
+    indexed
+  }) => {
+    const now = Date.now();
+    await primaryRedis.eval(
+      INDEXED_ITEM_UPSERT,
+      2,
+      indexKey,
+      itemKey,
+      member,
+      value,
+      String(expiryInSeconds),
+      String(now + expiryInSeconds * 1000),
+      indexed ? "1" : "0",
+      String(now)
+    );
+  };
+
+  const DELETE_INDEXED_ITEMS = `
+    for i = 1, #ARGV do
+      redis.call('ZREM', KEYS[1], ARGV[i])
+    end
+    for i = 2, #KEYS do
+      redis.call('DEL', KEYS[i])
+    end
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    end
+    return 1
+  `;
+
+  const deleteIndexedItems: TKeyStoreFactory["deleteIndexedItems"] = async ({ indexKey, members, itemKeys }) => {
+    if (!members.length && !itemKeys.length) return;
+    await primaryRedis.eval(DELETE_INDEXED_ITEMS, itemKeys.length + 1, indexKey, ...itemKeys, ...members);
+  };
+
+  const sortedSetRangeByScore = async (key: string, min: string | number, max: string | number) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).zrangebyscore(key, min, max);
+
+  const sortedSetMembersPrimary = async (key: string) => primaryRedis.zrange(key, 0, -1);
+
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -526,12 +629,31 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
+  const streamAdd = async (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen = 1_000_000,
+    expiryInSeconds?: number
+  ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);
     }
-    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+
+    if (!expiryInSeconds) {
+      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    }
+
+    const results = await primaryRedis
+      .multi()
+      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
+      .expire(key, expiryInSeconds)
+      .exec();
+
+    const [addError, entryId] = results?.[0] ?? [null, null];
+    if (addError) throw addError;
+    return (entryId as string | null) ?? null;
   };
 
   const streamRange = async (key: string, start: string, end: string, count?: number) => {
@@ -540,6 +662,8 @@ export const keyStoreFactory = (
     }
     return primaryRedis.xrange(key, start, end);
   };
+
+  const streamLength = async (key: string) => primaryRedis.xlen(key);
 
   const streamTrim = async (key: string, minId: string, inclusive = false) => {
     let id = minId;
@@ -620,11 +744,16 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
+    setIndexedItemWithExpiry,
+    deleteIndexedItems,
+    sortedSetRangeByScore,
+    sortedSetMembersPrimary,
     listPush,
     listRange,
     listRemove,
     listLength,
     streamAdd,
+    streamLength,
     streamRange,
     streamTrim,
     streamCollect

@@ -35,16 +35,25 @@ import {
  * This allows applyProfileDefaults to correctly apply defaults for missing fields
  * (e.g., ACME clients like CertBot often omit CN, putting domain only in SAN).
  */
+export const parseCsr = (csr: string): x509.Pkcs10CertificateRequest => {
+  try {
+    return new x509.Pkcs10CertificateRequest(csr);
+  } catch {
+    throw new BadRequestError({
+      message: "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request."
+    });
+  }
+};
+
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
   const subject = extractDnParts(csrObj.subjectName);
 
   // Only include keys for fields that have values, so applyProfileDefaults
   // can distinguish "absent" (use default) from "explicitly set".
   const certificateRequest: TCertificateRequest = {};
   if (subject.commonName) certificateRequest.commonName = subject.commonName;
-  const domainComponents = csrObj.subjectName.getField("DC");
-  if (domainComponents.length > 0) certificateRequest.domainComponents = domainComponents;
+  if (subject.domainComponents?.length) certificateRequest.domainComponents = subject.domainComponents;
   if (subject.organization) certificateRequest.organization = subject.organization;
   if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
   if (subject.locality) certificateRequest.locality = subject.locality;
@@ -119,7 +128,7 @@ export const buildSubjectOverrideForCsr = (
     "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
   >
 ): string => {
-  const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
+  const csrSubject = extractDnParts(parseCsr(csr).subjectName);
 
   return createDistinguishedName({
     commonName: csrSubject.commonName ?? request.commonName,
@@ -138,7 +147,7 @@ export const buildSubjectOverrideForCsr = (
  * @returns Object containing keyAlgorithm and signatureAlgorithm
  */
 export const extractAlgorithmsFromCSR = (csr: string) => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
 
   // Extract key algorithm from public key
   const { publicKey } = csrObj;

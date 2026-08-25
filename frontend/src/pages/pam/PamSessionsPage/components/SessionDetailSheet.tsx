@@ -62,15 +62,20 @@ const decodeBase64Utf8 = (b64: string): string => {
   }
 };
 
-// matches ANSI/VT escape sequences emitted by a terminal (colors, cursor moves, etc.)
-const ANSI_ESCAPE_REGEX =
-  // eslint-disable-next-line no-control-regex
-  /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[a-zA-Z\d]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
+// Only reached for recordings written before gateways rendered the terminal themselves, which the `rendered` flag distinguishes.
+const LEGACY_ANSI_ESCAPE_REGEX = new RegExp(
+  [
+    "\u001B[\\]PX^_][\\s\\S]*?(?:\u0007|\u001B\\\\)",
+    "(?:\u001B\\[|\u009B)[0-?]*[ -/]*[@-~]",
+    "\u001B[()*+\\-./][ -~]",
+    "\u001B[@-Z\\\\-_]"
+  ].join("|"),
+  "g"
+);
 
-// turns raw terminal bytes into readable log text by stripping escape sequences
-const cleanTerminalOutput = (raw: string): string =>
+const cleanLegacyTerminalOutput = (raw: string): string =>
   raw
-    .replace(ANSI_ESCAPE_REGEX, "")
+    .replace(LEGACY_ANSI_ESCAPE_REGEX, "")
     // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
     .trim();
@@ -82,7 +87,8 @@ const getLogText = (log: TPamSessionLog): string => {
   if ("data" in log) {
     // resize events carry window dimensions, not terminal content. skip them
     if (log.eventType === "resize") return "";
-    return cleanTerminalOutput(decodeBase64Utf8(log.data));
+    const data = decodeBase64Utf8(log.data);
+    return log.rendered ? data.trim() : cleanLegacyTerminalOutput(data);
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;
@@ -274,7 +280,11 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
         </Badge>
       )
     },
-    { label: "Email", value: session.actorEmail },
+    // identityId is SET NULL on identity deletion; a machine session with a deleted identity
+    // has neither actor FK and an empty actorEmail
+    session.identityId || (!session.userId && !session.actorEmail)
+      ? { label: "Actor", value: "Machine Identity" }
+      : { label: "Email", value: session.actorEmail },
     { label: "Folder", value: session.folderName || emptyValue },
     {
       label: "Started",

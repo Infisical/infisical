@@ -38,6 +38,7 @@ import {
   CertSubjectAlternativeNameType,
   CrlReason
 } from "@app/services/certificate/certificate-types";
+import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { ExternalMetadataSchema } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -58,7 +59,6 @@ import {
   TUpdateAwsAcmPublicCaCertificateAuthorityDTO
 } from "./aws-acm-public-ca-certificate-authority-types";
 import {
-  buildIdempotencyToken,
   generateAcmPassphrase,
   mapCertKeyAlgorithmToAcm,
   validateAcmIssuanceInputs
@@ -406,7 +406,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyAlgorithm?: CertKeyAlgorithm;

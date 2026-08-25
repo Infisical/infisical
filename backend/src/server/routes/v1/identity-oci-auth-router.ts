@@ -301,7 +301,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         actorOrgId: req.permission.orgId,
         ...req.body,
         identityId: req.params.identityId,
-        allowedUsernames: req.body.allowedUsernames || null
+        allowedUsernames: req.body.allowedUsernames || null,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -346,7 +347,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getOciAuth",
@@ -421,7 +422,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

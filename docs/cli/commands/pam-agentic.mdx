@@ -1,0 +1,161 @@
+---
+title: "pam agentic access"
+description: "Run an AI agent against your PAM accounts through local, brokered connections"
+---
+
+```bash
+infisical pam agentic access [flags] -- <agent command>
+```
+
+## Description
+
+Open every PAM account the caller can launch as a local connection point, then start your agent. The agent connects to the accounts its task needs; the CLI never connects to an account itself, and no credential reaches the agent.
+
+Claude Code, Codex, and Gemini receive their instructions in their own format. Any other agent, including one you developed, reads them from the file named by `INFISICAL_PAM_CONTEXT_FILE`, which every run exports.
+
+Everything after `--` is the command that starts your agent. The separator is required whenever that command has flags of its own.
+
+```bash
+# a coding agent, with every account you can launch
+infisical pam agentic access -- claude
+
+# another coding agent, its own flags, two accounts
+infisical pam agentic access --account prod/orders-db,prod/bastion -- codex --model gpt-5
+
+# your own agent, unattended, as a machine identity
+export INFISICAL_AUTH_METHOD=universal-auth
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+
+infisical pam agentic access --reason "nightly triage agent" -- python triage_agent.py
+```
+
+<Note>
+  For the full picture, including what the agent is told, what the sandbox does and does not protect, and how gated accounts behave mid-run, see [AI Agents](/documentation/platform/pam/ai-agents/overview). To open a single account for yourself instead, use [`infisical pam access`](/cli/commands/pam).
+</Note>
+
+## Flags
+
+<AccordionGroup>
+  <Accordion title="--account">
+    Account to expose, as `folder/account`. Repeatable, and also accepts a comma-separated list. Defaults to every account you can launch.
+
+    If you name an account that cannot be used, the command stops and says why.
+
+    ```bash
+    # Example
+    infisical pam agentic access --account prod/orders-db --account prod/bastion -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--duration">
+    How long each PAM session may last, capped by the account's template. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
+
+    Default value: `1h`
+
+    ```bash
+    # Example
+    infisical pam agentic access --duration 30m -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--reason">
+    Reason for access, recorded for audit. There is nobody to prompt here, so an account whose template requires a reason needs this flag.
+
+    ```bash
+    # Example
+    infisical pam agentic access --reason "investigating INC-4021" -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--agent">
+    Override agent detection. Accepts `claude`, `codex`, `gemini`, or `generic`. Detection normally comes from the command name, so this is for a wrapper script or an unusual binary name. An agent of your own needs nothing here: it reads `INFISICAL_PAM_CONTEXT_FILE` regardless.
+
+    ```bash
+    # Example
+    infisical pam agentic access --agent claude -- ./my-claude-wrapper.sh
+    ```
+  </Accordion>
+
+  <Accordion title="--token">
+    Run as a machine identity using an access token you already have. Service tokens are rejected.
+
+    Set `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` (or `INFISICAL_TOKEN`) instead of passing the flag, so the token stays out of your shell history and out of process listings.
+
+    ```bash
+    # Example
+    export INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN=<access-token>
+    infisical pam agentic access -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--auth-method">
+    Authenticate as a machine identity with its own credentials instead of a ready-made `--token`. Accepts `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, and `ldap-auth`.
+
+    Prefer this over `--token` for a long run: the credentials are kept valid for its whole duration.
+
+    Every input has an environment variable, and **secrets should go through the environment rather than a flag**:
+
+    | Input | Flag | Environment variable |
+    |---|---|---|
+    | Auth method | `--auth-method` | `INFISICAL_AUTH_METHOD` |
+    | Client ID | `--client-id` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` |
+    | Client secret | `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` |
+    | Machine identity ID | `--machine-identity-id` | `INFISICAL_MACHINE_IDENTITY_ID` |
+    | Kubernetes token path | `--service-account-token-path` | `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` |
+    | GCP IAM key file path | `--service-account-key-file-path` | `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` |
+    | JWT (`oidc-auth`, `jwt-auth`) | `--jwt` | `INFISICAL_JWT` |
+    | LDAP credentials | `--ldap-username`, `--ldap-password` | `INFISICAL_LDAP_USERNAME`, `INFISICAL_LDAP_PASSWORD` |
+
+    ```bash
+    # Example
+    export INFISICAL_AUTH_METHOD=kubernetes
+    export INFISICAL_MACHINE_IDENTITY_ID=<identity-id>
+    infisical pam agentic access -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--organization-slug">
+    Scope the session to a sub-organization the machine identity can reach. Defaults to the organization the identity was created in.
+  </Accordion>
+
+  <Accordion title="--no-approval-request">
+    Don't file [access requests](/documentation/platform/pam/access-requests/overview) for accounts that require approval. Those accounts stay unusable for the run.
+
+    By default, a request is filed the first time the agent reaches for a gated account, and the account works once a reviewer approves it.
+  </Accordion>
+
+  <Accordion title="--no-sandbox">
+    Run the agent without the sandbox, so nothing local restricts what it can read on this host. Keep the sandbox on wherever your operating system provides one; this flag is required on Windows, where none is available.
+
+    See [The sandbox](/documentation/platform/pam/ai-agents/overview#the-sandbox) for what it covers.
+  </Accordion>
+
+  <Accordion title="--log-file">
+    Where to write proxy logs while the agent runs.
+
+    Default value: `~/.infisical/pam-agentic/access.log`
+
+    ```bash
+    # Example
+    infisical pam agentic access --log-file /tmp/pam.log -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+  </Accordion>
+</AccordionGroup>
+
+## Account types
+
+Database, SSH, Kubernetes, and Windows RDP accounts are supported. See [Supported account types](/documentation/platform/pam/ai-agents/overview#supported-account-types).
+
+## Error messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Invalid duration format` | Malformed `--duration` value | Use formats like `1h`, `30m`, `2h30m` |
+| `cannot start the following accounts` | A named `--account` is unusable | Read the reason listed for each, or drop the flag to take every account you can launch |
+| `requires a reason for access` | The account's template requires one | Pass `--reason` |
+| `failed to check sandbox support on this host` | No sandbox available on this host | Install bubblewrap on Linux, or pass `--no-sandbox` deliberately |

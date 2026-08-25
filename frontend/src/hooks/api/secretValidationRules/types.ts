@@ -72,24 +72,26 @@ export type TSecretRotationsInputs = {
   constraints: TConstraint[];
 };
 
-export type TSecretValidationRuleInputs =
-  | TStaticSecretsInputs
-  | TDynamicSecretsInputs
-  | TSecretRotationsInputs;
+// A rule's type-specific configuration: the per-type fields sit alongside
+// `type`, which discriminates them. Mirror of backend `TSecretValidationRuleConfig`.
+export type TSecretValidationRuleConfig =
+  | ({ type: SecretValidationRuleType.StaticSecrets } & TStaticSecretsInputs)
+  | ({ type: SecretValidationRuleType.DynamicSecrets } & TDynamicSecretsInputs)
+  | ({ type: SecretValidationRuleType.SecretRotations } & TSecretRotationsInputs);
 
-export type TSecretValidationRule = {
+type TSecretValidationRuleBase = {
   id: string;
   name: string;
   description?: string | null;
   projectId: string;
   envId: string | null;
   secretPath: string;
-  type: SecretValidationRuleType;
-  inputs: TSecretValidationRuleInputs;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+export type TSecretValidationRule = TSecretValidationRuleBase & TSecretValidationRuleConfig;
 
 export type TListSecretValidationRulesDTO = {
   projectId: string;
@@ -101,10 +103,7 @@ export type TCreateSecretValidationRuleDTO = {
   description?: string | null;
   environmentSlug?: string;
   secretPath: string;
-  rule: {
-    type: SecretValidationRuleType;
-    inputs: TSecretValidationRuleInputs;
-  };
+  rule: TSecretValidationRuleConfig;
 };
 
 export type TUpdateSecretValidationRuleDTO = {
@@ -114,8 +113,8 @@ export type TUpdateSecretValidationRuleDTO = {
   description?: string | null;
   environmentSlug?: string | null;
   secretPath?: string;
-  type?: SecretValidationRuleType;
-  inputs?: TSecretValidationRuleInputs;
+  // Replaced as a whole when supplied; omit to leave the stored config untouched.
+  rule?: TSecretValidationRuleConfig;
   isActive?: boolean;
 };
 

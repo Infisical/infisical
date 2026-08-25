@@ -26,10 +26,10 @@ export const AddAlertModal = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
         <SheetHeader className="border-b">
           <SheetTitle>{isEditing ? "Edit Alert" : "Add Alert"}</SheetTitle>
-          <SheetDescription>
+          <SheetDescription className="sr-only">
             Route notifications when a resource event and condition are met.
           </SheetDescription>
         </SheetHeader>

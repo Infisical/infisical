@@ -1,5 +1,5 @@
 ---
-title: "User and Machine Identities"
+title: "User and machine identities"
 sidebarTitle: "Overview"
 description: "Learn more about identities to interact with resources in Infisical."
 ---
@@ -24,11 +24,11 @@ Both people and machines are able to utilize corresponding clients (e.g., Dashbo
   </Card>
 </CardGroup>
 
-## Calculating Identity Counts
+## Calculating identity counts
 
 Understanding how to calculate your identity requirements helps with capacity planning and licensing.
 
-### User Identities
+### User identities
 
 User identity count is straightforward—it equals the number of human users who need access to Infisical. This includes developers, DevOps/platform engineers, security administrators, and any other team members requiring direct Infisical access.
 
@@ -36,7 +36,7 @@ User identity count is straightforward—it equals the number of human users who
   User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
 </Tip>
 
-### Machine Identities
+### Machine identities
 
 If you're familiar with cloud provider IAM concepts, Infisical machine identities work the same way:
 
@@ -53,7 +53,7 @@ Just as you don't create a new IAM role for every EC2 instance or a new service 
   **Key principle**: If multiple machines require identical permissions to the same secrets, they share a single machine identity—just like multiple EC2 instances can assume the same IAM role.
 </Info>
 
-#### How to Calculate Machine Identities
+#### How to calculate machine identities
 
 Consider these factors when determining your machine identity count:
 
@@ -114,11 +114,11 @@ Consider these factors when determining your machine identity count:
   Group services by their secret access requirements, not by the number of service instances or replicas.
 </Accordion>
 
-## Best Practices
+## Best practices
 
 While consolidating machine identities reduces management overhead, **more granular identities provide stronger security** through least-privilege access and reduced blast radius. The right balance depends on your security requirements.
 
-### When to Use Separate Identities
+### When to use separate identities
 
 Create distinct machine identities to enforce security boundaries between:
 
@@ -133,7 +133,7 @@ Create distinct machine identities to enforce security boundaries between:
   **Blast radius consideration**: If a machine identity is compromised, an attacker gains access to everything that identity can access. Design your identity boundaries around "what's the worst case if this credential leaks?"
 </Warning>
 
-### When Consolidation is Acceptable
+### When consolidation is acceptable
 
 Sharing a machine identity across workloads is appropriate when:
 
@@ -141,7 +141,7 @@ Sharing a machine identity across workloads is appropriate when:
 - **Stateless workers** — Horizontally scaled workers performing the same job
 - **Tightly coupled services** — Services that are deployed together and share a security boundary
 
-### Kubernetes Best Practices
+### Kubernetes best practices
 
 For Kubernetes environments, we recommend mapping machine identities at the **namespace level**:
 
@@ -174,7 +174,7 @@ For Kubernetes environments, we recommend mapping machine identities at the **na
   This ensures that a compromised pod in `team-analytics` cannot access payment processing credentials, even if an attacker gains cluster-level access.
 </Accordion>
 
-### Quick Assessment Questions
+### Quick assessment questions
 
 When planning your machine identity strategy, consider:
 

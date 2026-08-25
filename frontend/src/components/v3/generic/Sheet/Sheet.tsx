@@ -6,6 +6,13 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 
+const isAllowedOutsideInteraction = (target: EventTarget | null) =>
+  Boolean(
+    (target as HTMLElement)?.closest?.(
+      "[data-sonner-toast], [data-slot='combobox-portal'], .react-select-menu-portal"
+    )
+  );
+
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
@@ -43,6 +50,7 @@ function SheetContent({
   children,
   side = "right",
   onPointerDownOutside,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
@@ -53,10 +61,18 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         onPointerDownOutside={(e) => {
-          if ((e.target as HTMLElement)?.closest?.("[data-sonner-toast]")) {
+          if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
+            return;
           }
           onPointerDownOutside?.(e);
+        }}
+        onInteractOutside={(e) => {
+          if (isAllowedOutsideInteraction(e.target)) {
+            e.preventDefault();
+            return;
+          }
+          onInteractOutside?.(e);
         }}
         className={cn(
           "fixed z-50 flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",

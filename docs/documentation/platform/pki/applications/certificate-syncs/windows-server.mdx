@@ -4,7 +4,8 @@ sidebarTitle: "Windows Server"
 description: "Deploy certificates to Windows servers over WinRM."
 ---
 
-import PostSyncCommandPlaceholders from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-placeholders.mdx";
+import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
+import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
 
 Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
 
@@ -15,14 +16,14 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 ## Prerequisites
 
 - A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
-- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway.
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
 - The connection user must be able to write to the destination directory
 
 <Note>
   Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with. HTTPS is also supported.
 </Note>
 
-## Create a Windows Server Sync
+## Create a Windows Server sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -47,7 +48,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Post-Sync Command**, or leave it empty:
-            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available placeholders and what happens when the command fails.
+            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
 
         6. Configure the **Details**:
             - **Name**: The name of your sync.
@@ -90,7 +91,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
     </Tab>
 </Tabs>
 
-## Export Formats
+## Export formats
 
 The file extension is set by the export format, not by the name schema. The name schema only provides the base file name.
 
@@ -110,15 +111,15 @@ PEM (.pem extension)
   C:\certs\app.example.com.key        private key (when included)
 ```
 
-## How It Works
+## How it works
 
 When syncing certificates, Infisical asks the Gateway to open a WinRM session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically so a reader never sees a partially written certificate or key.
 
-## Removing Certificates
+## Removing certificates
 
 When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
 
-## Post-Sync Commands
+## Post-sync commands
 
 Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
 
@@ -128,31 +129,20 @@ The field accepts a whole script, so several steps can run in one go: put each o
 
 Your Gateway runs the command, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
 
-The command runs on the target server, not on Infisical, and only after the whole delivery has finished:
+<Note>
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. A command longer than 2048 characters needs **v0.43.124 or later**, because earlier Gateways cap it at 2048 and reject the sync even though the form accepted the command. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+</Note>
 
-```mermaid
-sequenceDiagram
-    participant I as Infisical
-    participant G as Gateway
-    participant S as Target server
-    I->>G: Deliver certificate files
-    G->>S: Write files
-    G->>S: Remove files for certificates no longer synced
-    Note over G,S: Only once the server is in its final state
-    I->>G: Run the post-sync command
-    G->>S: Execute as the connection's account
-    S-->>G: Output and outcome
-    G-->>I: Success, or the reason it failed
-```
+<PostSyncCommandFlow />
 
-### Setting a Command
+### Setting a command
 
 <Steps>
   <Step title="Open the sync's Post-Sync Command step">
     Edit the sync and select **Post-Sync Command**.
   </Step>
   <Step title="Write the command">
-    Use a placeholder wherever you need a value from the run:
+    Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
 
     ```powershell
     Import-PfxCertificate -FilePath {{certificatePath}} -CertStoreLocation Cert:\LocalMachine\My -Password (ConvertTo-SecureString {{pkcs12Password}} -AsPlainText -Force)
@@ -163,15 +153,17 @@ sequenceDiagram
   </Step>
 </Steps>
 
-### Available Placeholders
+### Available variables
 
-<PostSyncCommandPlaceholders />
+<PostSyncCommandVariables />
 
-### Length Limit
+### Length limit
 
-A command is limited to 2048 characters. Windows caps a command line at 8191 characters and the command is sent to PowerShell encoded, which expands it, so the substituted values count against the same budget. If a long command combined with a sync that delivers many certificates does not fit, the sync reports it clearly. Move the logic into a script file on the server and call that script instead.
+A command is limited to 8192 characters, counted after the variables are substituted. For anything longer, put the logic in a script on the server and call that script.
 
-### Post-Sync Command FAQ
+Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or later. See the Gateway version note above.
+
+### Post-sync command FAQ
 
 <AccordionGroup>
   <Accordion title="When exactly does the command run?">
@@ -201,7 +193,7 @@ A command is limited to 2048 characters. Windows caps a command line at 8191 cha
   </Accordion>
 </AccordionGroup>
 
-### Least Privilege
+### Least privilege
 
 The command runs as the account the WinRM Connection authenticates with, so constraining that account bounds what any command can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
 
@@ -218,7 +210,7 @@ Delivery runs over the Gateway inside your network, so traffic never crosses the
   - **HTTPS mode** adds TLS, so the Gateway also verifies the host's identity and encrypts the full session. Keep certificate verification enabled so it only connects to a host presenting a valid, trusted certificate.
 </Note>
 
-## Using Synced Certificates with IIS Centralized Certificate Store
+## Using synced certificates with IIS centralized certificate store
 
 IIS can serve a synced PKCS#12 certificate directly from a local folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
 
@@ -239,7 +231,7 @@ These are IIS requirements, configured once on the Windows host (the CCS feature
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Linux Server" icon="linux" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">

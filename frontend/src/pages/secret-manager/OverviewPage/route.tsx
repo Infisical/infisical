@@ -12,6 +12,7 @@ const SecretOverviewPageQuerySchema = z.object({
   environments: z.array(z.string()).catch([]),
   dynamicSecretId: z.string().optional(),
   honeyTokenId: z.string().optional(),
+  tags: z.string().optional(),
   filterBy: z.string().optional()
 });
 
@@ -21,7 +22,15 @@ export const Route = createFileRoute(
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
   search: {
-    middlewares: [stripSearchParams({ secretPath: "/", search: "", environments: [] })]
+    middlewares: [
+      stripSearchParams({
+        secretPath: "/",
+        search: "",
+        environments: [],
+        tags: undefined,
+        filterBy: undefined
+      })
+    ]
   },
   beforeLoad: ({ context, params }) => ({
     ...context,

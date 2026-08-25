@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { LICENSE_SERVER_ERROR_NAME, licenseErrorMessage, readLicenseRequestId } from "./license-client-errors";
 import {
   billingProfileResponseSchema,
   catalogResponseSchema,
@@ -86,6 +87,7 @@ const throwIfResponseError = async (res: Response): Promise<void> => {
   if (res.ok) {
     return;
   }
+  const requestId = readLicenseRequestId(res);
   if (res.status >= 400 && res.status < 500) {
     const body = (await res.json().catch(() => null)) as {
       error?: string;
@@ -97,12 +99,18 @@ const throwIfResponseError = async (res: Response): Promise<void> => {
     // `error`; older servers used `message`, so read both as the fallback.
     const code = body?.details?.code;
     const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.error || body?.message;
+    logger.warn(licenseErrorMessage(requestId, `request rejected [status=${res.status}] [code=${code ?? "none"}]`));
     throw new BadRequestError({
-      message,
+      name: LICENSE_SERVER_ERROR_NAME,
+      message: licenseErrorMessage(requestId, message ?? "Billing request failed"),
       details: code ? { code } : undefined
     });
   }
-  throw new InternalServerError({ message: "Billing service error" });
+  logger.error(licenseErrorMessage(requestId, `request failed [status=${res.status}]`));
+  throw new InternalServerError({
+    name: LICENSE_SERVER_ERROR_NAME,
+    message: licenseErrorMessage(requestId, "Billing service error")
+  });
 };
 
 export const licenseServerBackend = (
@@ -163,7 +171,10 @@ export const licenseServerBackend = (
     if (!parsed.success) {
       // A schema mismatch must NOT be silently read as "no subscription" — that hides a real (often
       // paid) subscription behind the free state. Log it so contract drift is visible, then degrade.
-      logger.error({ err: parsed.error }, `license-client: /subscription failed schema validation [orgId=${orgId}]`);
+      logger.error(
+        { err: parsed.error },
+        licenseErrorMessage(readLicenseRequestId(res), `/subscription failed schema validation [orgId=${orgId}]`)
+      );
       return null;
     }
     if (!parsed.data.status) {
@@ -359,8 +370,9 @@ export const licenseServerBackend = (
 // Stripe-backed billing (checkout, portal, subscription mutations, cloud plan, billing profile) does
 // not exist for self-hosted licenses; the license is managed out-of-band. These reject so a caller
 // never silently no-ops.
+// No request is made, so there is no license request id to carry — only the shared prefix.
 const notSupportedOnSelfHosted = (operation: string) => (): Promise<never> =>
-  Promise.reject(new Error(`license operation "${operation}" is not supported for self-hosted licenses`));
+  Promise.reject(new Error(`license-client: operation "${operation}" is not supported for self-hosted licenses`));
 
 // Backend for a self-hosted License Server v2 license. Unlike the cloud backend (which mints an RS256
 // service JWT), it exchanges the license key for a short-lived JWT at the token endpoint and sends that
@@ -417,7 +429,10 @@ export const licenseServerSelfHostedBackend = (
       const body: unknown = await res.json();
       const parsed = subscriptionResponseSchema.safeParse(body);
       if (!parsed.success) {
-        logger.error({ err: parsed.error }, "license-client: /subscription failed schema validation (self-hosted)");
+        logger.error(
+          { err: parsed.error },
+          licenseErrorMessage(readLicenseRequestId(res), "/subscription failed schema validation (self-hosted)")
+        );
         return null;
       }
       if (!parsed.data.status) {

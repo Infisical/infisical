@@ -1,6 +1,6 @@
 ---
-title: "Certificate Profiles"
-sidebarTitle: "Certificate Profiles"
+title: "Certificate profiles"
+sidebarTitle: "Certificate profiles"
 description: "Create reusable certificate templates that teams consume through Applications."
 ---
 
@@ -10,7 +10,7 @@ A certificate profile combines a [Certificate Authority](/documentation/platform
   Think of a profile as the "shape" of a certificate — it defines the CA that signs it, the rules it must follow, and sensible defaults for common fields.
 </Info>
 
-## Why Profiles?
+## Why profiles?
 
 Profiles solve a common problem: you want consistency across certificates without requiring every team to understand PKI details.
 
@@ -20,7 +20,7 @@ Profiles solve a common problem: you want consistency across certificates withou
 | Risk of misconfiguration | Guardrails enforced automatically |
 | Duplicate setup across services | One profile used by many Applications |
 
-## Create a Certificate Profile
+## Create a certificate profile
 
 Navigate to **Certificate Manager → Certificate Profiles** and click **Create Profile**.
 
@@ -38,7 +38,7 @@ Navigate to **Certificate Manager → Certificate Profiles** and click **Create 
   If **Issuer Type** is `Self-Signed`, the profile only supports API enrollment and issues self-signed certificates.
 </Note>
 
-### Profile Defaults
+### Profile defaults
 
 The **Certificate Details** tab lets you pre-configure sensible defaults for certificate fields. When a requester doesn't specify a value, the profile default is applied automatically. This simplifies certificate requests — teams can issue certificates without making decisions about every field.
 
@@ -62,7 +62,7 @@ Defaults can be configured for:
   If the certificate policy is updated after the profile is saved, existing defaults may no longer comply. Certificate requests will fail at validation until you update the profile defaults to match the new policy.
 </Warning>
 
-## How Profiles Are Used
+## How profiles are used
 
 Profiles are consumed through [Applications](/documentation/platform/pki/applications/overview). The workflow separates responsibilities between product and application administrators:
 
@@ -104,7 +104,7 @@ This separation means:
   </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Certificate Policies" icon="shield-check" href="/documentation/platform/pki/settings/policies">

@@ -12,7 +12,7 @@ const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGI
         <Badge variant="neutral" className="mr-auto ml-1">
           {props.data.slug}
         </Badge>
-        {isSelected && <CheckIcon className="ml-2 size-4 text-primary" />}
+        {isSelected && <CheckIcon className="ml-2 size-4" />}
       </div>
     </components.Option>
   );

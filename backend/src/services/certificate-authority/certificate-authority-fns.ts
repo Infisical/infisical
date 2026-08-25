@@ -16,7 +16,7 @@ import {
   CertStatus,
   TAltNameType
 } from "../certificate/certificate-types";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -35,6 +35,12 @@ export const createSerialNumber = () => {
   return randomBytes.toString("hex");
 };
 
+// on anything short-lived these belong together: backdating the start without pushing out the
+// expiry leaves the certificate rejected as expired by a host whose clock runs ahead of ours
+export const getNotBeforeWithClockSkew = (issuedAt: Date) => new Date(issuedAt.getTime() - CERT_CLOCK_SKEW_MS);
+
+export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.getTime() + CERT_CLOCK_SKEW_MS);
+
 export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {
   if (ca.projectId !== profile.projectId) {
     throw new ForbiddenRequestError({
@@ -50,18 +56,18 @@ export const assertCaInProfileProject = (ca: { projectId: string }, profile: { p
 export const createDistinguishedName = (parts: TDNParts) => {
   // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
   const jsonName: Array<{ [type: string]: string[] }> = [];
+
+  if (parts.domainComponents) {
+    for (const dc of [...parts.domainComponents].reverse()) {
+      if (dc) jsonName.push({ DC: [dc] });
+    }
+  }
   if (parts.country) jsonName.push({ C: [parts.country] });
   if (parts.organization) jsonName.push({ O: [parts.organization] });
   if (parts.ou) jsonName.push({ OU: [parts.ou] });
   if (parts.province) jsonName.push({ ST: [parts.province] });
   if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
   if (parts.locality) jsonName.push({ L: [parts.locality] });
-  // DC is multi-valued and ordered; emit one RDN per value in the given order (after CN, AD-style).
-  if (parts.domainComponents) {
-    for (const dc of parts.domainComponents) {
-      if (dc) jsonName.push({ DC: [dc] });
-    }
-  }
 
   // Create Name object from JSON and convert to properly escaped string
   const name = new x509.Name(jsonName);
@@ -78,13 +84,30 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
   return values.length > 0 ? values[values.length - 1] : undefined;
 };
 
+const DOMAIN_COMPONENT_RDN_KEYS = new Set(["DC", "0.9.2342.19200300.100.1.25"]);
+
+/**
+ * Reads a DC chain into display order, most specific component first. An RDNSequence is encoded
+ * root-first, so the encoded order is reversed. Reading it any other way would let the same bytes
+ * denote two different domains, and a CSR forwarded to an external CA keeps whatever it encoded.
+ */
+const extractDomainComponentsInDisplayOrder = (name: x509.Name): string[] | undefined => {
+  const domainComponents = name
+    .toJSON()
+    .flatMap((rdn) =>
+      Object.entries(rdn).flatMap(([key, values]) => (DOMAIN_COMPONENT_RDN_KEYS.has(key) ? values : []))
+    );
+
+  if (domainComponents.length === 0) return undefined;
+
+  return domainComponents.reverse();
+};
+
 /**
  * Extract DN parts directly from an x509 Name object.
  * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
  */
 export const extractDnParts = (name: x509.Name): TDNParts => {
-  // DC is multi-valued (ordered); keep all values rather than the last-wins single-value helper.
-  const domainComponents = name.getField("DC");
   return {
     country: getNameField(name, "C"),
     organization: getNameField(name, "O"),
@@ -92,7 +115,7 @@ export const extractDnParts = (name: x509.Name): TDNParts => {
     province: getNameField(name, "ST"),
     commonName: getNameField(name, "CN"),
     locality: getNameField(name, "L"),
-    domainComponents: domainComponents.length > 0 ? domainComponents : undefined
+    domainComponents: extractDomainComponentsInDisplayOrder(name)
   };
 };
 

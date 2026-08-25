@@ -1,0 +1,12 @@
+Go to the directory of the codebase you are working on and link it to your Infisical project.
+
+```bash
+cd /path/to/your/project
+infisical init
+```
+
+Select your organization and project when prompted. This creates an `.infisical.json` file with your [local project settings](/cli/project-config), so the commands you run next don't need a project ID.
+
+<Note>
+  `.infisical.json` holds no secret values, so you can safely commit it to version control. Everyone who clones the repository is then pointed at the same project.
+</Note>

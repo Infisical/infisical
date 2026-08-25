@@ -2,13 +2,13 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
+import { Alert, AlertDescription } from "../Alert";
 import { Button } from "../Button";
-import { Input } from "../Input";
-import { Label } from "../Label";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "./AlertDialog";
+import { DiscardChangesAlertDialog } from "./DiscardChangesAlertDialog";
 
 /**
  * AlertDialogs are modal confirmation dialogs for irreversible or high-consequence actions —
@@ -112,6 +113,44 @@ export const DestructiveAction: Story = {
   )
 };
 
+export const WithAlertDescription: Story = {
+  name: "Example: Alert as Description",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `AlertDialogDescription asChild` to present the dialog description as an Alert while keeping it programmatically associated with the dialog. This is useful when the consequence needs stronger visual emphasis than supporting text alone."
+      }
+    }
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="danger">
+          <TrashIcon />
+          Remove privilege
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove additional privilege?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This policy will no longer grant additional access to this user.
+              </AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="danger">Remove privilege</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+};
+
 export const WithMedia: Story = {
   name: "Example: With Media",
   parameters: {
@@ -150,13 +189,45 @@ export const WithMedia: Story = {
   )
 };
 
+const DiscardChangesStory = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Close Editor
+      </Button>
+      <DiscardChangesAlertDialog
+        open={open}
+        onOpenChange={setOpen}
+        onDiscard={() => setOpen(false)}
+        title="Discard Changes?"
+        description="Your unsaved changes to this configuration will be lost."
+      />
+    </>
+  );
+};
+
+export const DiscardChanges: Story = {
+  name: "Example: Discard Changes",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `DiscardChangesAlertDialog` when dismissing an editor or setup flow would remove unsaved form changes. The owning feature remains responsible for dirty state and reset behavior."
+      }
+    }
+  },
+  render: () => <DiscardChangesStory />
+};
+
 export const SmallSize: Story = {
   name: "Example: Small Size",
   parameters: {
     docs: {
       description: {
         story:
-          'Pass `size="sm"` to `AlertDialogContent` for a compact dialog — header content remains left-aligned and footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
+          'Pass `size="sm"` to `AlertDialogContent` for a narrow, centered dialog with footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
       }
     }
   },
@@ -191,45 +262,30 @@ export const SmallSize: Story = {
 
 const CONFIRMATION_KEYWORD = "delete";
 
-const TypedConfirmationStory = () => {
-  const [confirmation, setConfirmation] = useState("");
-  const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
-
-  return (
-    <AlertDialog onOpenChange={(open) => !open && setConfirmation("")}>
-      <AlertDialogTrigger asChild>
-        <Button variant="danger">
-          <TrashIcon />
-          Delete project
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete project?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently remove the project and all of its secrets, integrations, and audit
-            history. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="alert-dialog-confirmation">Type &quot;delete&quot; to confirm</Label>
-          <Input
-            id="alert-dialog-confirmation"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="danger" disabled={!isConfirmed}>
-            Delete project
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+const TypedConfirmationStory = () => (
+  <AlertDialog confirmationValue={CONFIRMATION_KEYWORD}>
+    <AlertDialogTrigger asChild>
+      <Button variant="danger">
+        <TrashIcon />
+        Delete project
+      </Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete project?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This will permanently remove the project and all of its secrets, integrations, and audit
+          history. This action cannot be undone.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogConfirmationField />
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction variant="danger">Delete project</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
 
 export const TypedConfirmation: Story = {
   name: "Example: Typed Confirmation",

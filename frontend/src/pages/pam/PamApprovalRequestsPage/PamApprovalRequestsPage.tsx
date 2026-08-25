@@ -43,6 +43,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { getRequestStatusInfo } from "../components/approvalRequestStatus";
 import { formatDuration } from "../components/formatDuration";
+import { getRequesterSubtitle } from "../components/requesterDisplay";
 import { ApprovalRequestDetailSheet } from "./components/ApprovalRequestDetailSheet";
 
 const RequestRow = ({
@@ -60,7 +61,7 @@ const RequestRow = ({
       <TableCell className="h-[50px]">
         <div className="flex flex-col">
           <span className="text-sm">{request.requesterName}</span>
-          <span className="text-xs text-muted">{request.requesterEmail}</span>
+          <span className="text-xs text-muted">{getRequesterSubtitle(request)}</span>
         </div>
       </TableCell>
       <TableCell className="text-sm">
