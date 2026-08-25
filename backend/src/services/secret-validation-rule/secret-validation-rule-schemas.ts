@@ -152,53 +152,12 @@ const inputsSchemaMap: Record<SecretValidationRuleType, z.ZodSchema<TSecretValid
   [SecretValidationRuleType.SecretRotations]: secretRotationsInputsSchema
 };
 
-/**
- * Converts legacy constraint types stored in encrypted blobs to the current
- * `unique-secret-value` format.  Called before Zod parsing so that rules
- * created before the consolidation keep working without a data migration
- * (the encrypted blob cannot be transformed by a SQL migration).
- */
-const migrateConstraints = (rawInputs: unknown): unknown => {
-  if (!rawInputs || typeof rawInputs !== "object") return rawInputs;
-  const inputs = rawInputs as Record<string, unknown>;
-  if (!Array.isArray(inputs.constraints)) return rawInputs;
-
-  inputs.constraints = inputs.constraints.map((c: Record<string, unknown>) => {
-    if (c.type === "prevent-value-reuse") {
-      return {
-        type: ConstraintType.UniqueSecretValue,
-        appliesTo: c.appliesTo,
-        value: {
-          secretVersions: {
-            enabled: true,
-            versions: Math.min(Number(c.value) || 10, MAX_PREVENT_VALUE_REUSE_VERSIONS)
-          },
-          otherSecrets: { enabled: false }
-        }
-      };
-    }
-    if (c.type === "prevent-duplicated-values") {
-      return {
-        type: ConstraintType.UniqueSecretValue,
-        appliesTo: c.appliesTo,
-        value: {
-          secretVersions: { enabled: false, versions: 1 },
-          otherSecrets: { enabled: true }
-        }
-      };
-    }
-    return c;
-  });
-
-  return inputs;
-};
-
 export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) => {
   const schema = inputsSchemaMap[type as SecretValidationRuleType];
   if (!schema) {
     throw new Error(`Unknown secret validation rule type: ${type}`);
   }
-  return schema.parse(migrateConstraints(inputs));
+  return schema.parse(inputs);
 };
 
 export const SecretValidationRuleResponseSchema = SecretValidationRulesSchema.omit({

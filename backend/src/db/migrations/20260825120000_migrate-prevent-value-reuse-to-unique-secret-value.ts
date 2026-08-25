@@ -30,16 +30,6 @@ const migrateConstraint = (c: RawConstraint): RawConstraint => {
       }
     };
   }
-  if (c.type === "prevent-duplicated-values") {
-    return {
-      type: "unique-secret-value",
-      appliesTo: c.appliesTo,
-      value: {
-        secretVersions: { enabled: false, versions: 1 },
-        otherSecrets: { enabled: true }
-      }
-    };
-  }
   return c;
 };
 
@@ -85,9 +75,7 @@ export async function up(knex: Knex): Promise<void> {
       continue;
     }
 
-    const hasLegacy = decryptedInputs.constraints.some(
-      (c: RawConstraint) => c.type === "prevent-value-reuse" || c.type === "prevent-duplicated-values"
-    );
+    const hasLegacy = decryptedInputs.constraints.some((c: RawConstraint) => c.type === "prevent-value-reuse");
     if (!hasLegacy) {
       // eslint-disable-next-line no-continue
       continue;
