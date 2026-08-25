@@ -5,7 +5,9 @@ description: "Run your application on your own machine with secrets pulled from 
 ---
 
 import InstallCli from "/snippets/cli/install-cli.mdx";
-import InjectSecretsLocally from "/snippets/cli/inject-secrets-locally.mdx";
+import LogIn from "/snippets/cli/local-development/log-in.mdx";
+import LinkProject from "/snippets/cli/local-development/link-project.mdx";
+import StartApplication from "/snippets/cli/local-development/start-application.mdx";
 
 This guide shows you how to inject secrets from Infisical into your local application without using a `.env` file. You'll install the [Infisical CLI](/cli/overview), link your codebase to your Infisical project, and start your application through `infisical run`.
 
@@ -27,7 +29,21 @@ infisical --version
 
 ## Step 2: Inject secrets into your application
 
-<InjectSecretsLocally />
+<Note>
+  If you prefer to learn by watching, follow along with our [step-by-step video tutorial](https://www.youtube.com/watch?v=zYCeELjcgQ4).
+</Note>
+
+### Log in to Infisical
+
+<LogIn />
+
+### Link your codebase to your project
+
+<LinkProject />
+
+### Start your application with secrets injected
+
+<StartApplication />
 
 ## Confirm secrets are injected
 

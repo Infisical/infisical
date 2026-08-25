@@ -3,17 +3,33 @@ title: "Quickstart"
 description: "Manage secrets with Infisical CLI"
 ---
 
-import InjectSecretsLocally from "/snippets/cli/inject-secrets-locally.mdx";
+import LogIn from "/snippets/cli/local-development/log-in.mdx";
+import LinkProject from "/snippets/cli/local-development/link-project.mdx";
+import StartApplication from "/snippets/cli/local-development/start-application.mdx";
 
 The CLI is designed for a variety of secret management applications ranging from local development to CI/CD and production scenarios.
 
 <Tabs>
   <Tab title="Local development">
-    The steps below authenticate the CLI with your own account, link a codebase to an Infisical project, and inject the secrets you have access to into your local development process as environment variables.
+  The steps below authenticate the CLI with your own account, link a codebase to an Infisical project, and inject the secrets you have access to into your local development process as environment variables.
 
-    <InjectSecretsLocally />
+  <Note>
+    If you prefer to learn by watching, follow along with our [step-by-step video tutorial](https://www.youtube.com/watch?v=zYCeELjcgQ4).
+  </Note>
 
-    For installation instructions, troubleshooting, and related local workflows such as personal overrides and secret scanning, see the [local development guide](/documentation/guides/local-development).
+  ## Step 1: Log in to Infisical
+
+  <LogIn />
+
+  ## Step 2: Link your codebase to your project
+
+  <LinkProject />
+
+  ## Step 3: Start your application with secrets injected
+
+  <StartApplication />
+
+  For installation instructions, troubleshooting, and related local workflows such as personal overrides and secret scanning, see the [local development guide](/documentation/guides/local-development).
 
   </Tab>
 

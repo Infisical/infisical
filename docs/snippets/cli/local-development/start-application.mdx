@@ -1,38 +1,3 @@
-<Note>
-  If you prefer to learn by watching, follow along with our [step-by-step video tutorial](https://www.youtube.com/watch?v=zYCeELjcgQ4).
-</Note>
-
-### Log in to Infisical
-
-Authenticate the CLI with your Infisical account.
-
-```bash
-infisical login
-```
-
-The prompt asks which instance you want to use. Select **Infisical Cloud (US)**, **Infisical Cloud (EU)**, or **Self-hosted**, then finish signing in through your browser.
-
-<Note>
-  On a machine with no browser, such as a remote SSH session, WSL 2, or Codespaces, run `infisical login -i` to log in from the terminal instead.
-</Note>
-
-### Link your codebase to your project
-
-Go to the directory of the codebase you are working on and link it to your Infisical project.
-
-```bash
-cd /path/to/your/project
-infisical init
-```
-
-Select your organization and project when prompted. This creates an `.infisical.json` file with your [local project settings](/cli/project-config), so the commands you run next don't need a project ID.
-
-<Note>
-  `.infisical.json` holds no secret values, so you can safely commit it to version control. Everyone who clones the repository is then pointed at the same project.
-</Note>
-
-### Start your application with secrets injected
-
 Run your usual start command through `infisical run`, placing it after the `--` separator.
 
 <CodeGroup>
