@@ -699,8 +699,8 @@ export const ReviewAccessRequestModal = ({
           <div className="flex">{badge}</div>
         </TooltipTrigger>
         <TooltipContent className="max-w-lg">
-          <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
-          <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-mineshaft-500 overflow-y-auto rounded-sm">
+          <div className="mb-1 text-sm text-foreground">Reviewers</div>
+          <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-border overflow-y-auto rounded-sm">
             {approver.reviewers.map((el, idx) => (
               <div
                 key={`reviewer-${idx + 1}`}
@@ -753,7 +753,7 @@ export const ReviewAccessRequestModal = ({
               </p>
             </div>
             <div className="">
-              <div className="mt-4 mb-2 text-mineshaft-200">
+              <div className="mt-4 mb-2 text-foreground">
                 <div
                   className={twMerge(
                     "grid gap-x-8 gap-y-4",
@@ -887,7 +887,7 @@ export const ReviewAccessRequestModal = ({
                                   {group.conditions.map((condition, idx) => (
                                     <div
                                       key={`${group.key}-condition-${idx + 1}`}
-                                      className="text-xs text-mineshaft-200"
+                                      className="text-xs text-foreground"
                                     >
                                       <span className="text-muted">{condition.field}</span>{" "}
                                       {condition.operator}{" "}
