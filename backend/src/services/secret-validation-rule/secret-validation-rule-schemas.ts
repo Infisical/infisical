@@ -25,20 +25,12 @@ const GENERATED_CONSTRAINT_TYPES = [
   ConstraintType.RequiredPrefix,
   ConstraintType.RequiredSuffix
 ] as const;
-const STATIC_STRING_CONSTRAINT_TYPES = [
-  ...GENERATED_CONSTRAINT_TYPES,
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues
-] as const;
+const STATIC_STRING_CONSTRAINT_TYPES = [...GENERATED_CONSTRAINT_TYPES] as const;
 
 /** Embed description + example so Mintlify/OpenAPI curl samples include enum fields. */
 const openApiField = (description: string, example: string) => JSON.stringify({ description, example });
 
-const SECRET_VALUE_ONLY_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues,
-  ConstraintType.UniqueSecretValue
-];
+const SECRET_VALUE_ONLY_CONSTRAINTS: ConstraintType[] = [ConstraintType.UniqueSecretValue];
 
 const valueRequiredRefinement = (c: TConstraint) => {
   if (c.type === ConstraintType.UniqueSecretValue) return true;
@@ -48,22 +40,12 @@ const valueRequiredRefinement = (c: TConstraint) => {
 const preventValueReuseTargetRefinement = (c: TConstraint) =>
   !SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.appliesTo === ConstraintTarget.SecretValue;
 
-const preventValueReuseRangeRefinement = (c: TConstraint) => {
-  if (c.type !== ConstraintType.PreventValueReuse) return true;
-  const num = Number(c.value);
-  return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
-};
-
 const withConstraintRefinements = <T extends z.ZodType<TConstraint>>(schema: T) =>
   schema
     .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
     .refine(preventValueReuseTargetRefinement, {
       message: "This constraint type can only apply to secret values",
       path: ["appliesTo"]
-    })
-    .refine(preventValueReuseRangeRefinement, {
-      message: `Prevent value reuse version count must be between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
-      path: ["value"]
     });
 
 const uniqueSecretValueConstraintSchema = z.object({
@@ -166,12 +148,53 @@ const inputsSchemaMap: Record<SecretValidationRuleType, z.ZodSchema<TSecretValid
   [SecretValidationRuleType.SecretRotations]: secretRotationsInputsSchema
 };
 
+/**
+ * Converts legacy constraint types stored in encrypted blobs to the current
+ * `unique-secret-value` format.  Called before Zod parsing so that rules
+ * created before the consolidation keep working without a data migration
+ * (the encrypted blob cannot be transformed by a SQL migration).
+ */
+const migrateConstraints = (rawInputs: unknown): unknown => {
+  if (!rawInputs || typeof rawInputs !== "object") return rawInputs;
+  const inputs = rawInputs as Record<string, unknown>;
+  if (!Array.isArray(inputs.constraints)) return rawInputs;
+
+  inputs.constraints = inputs.constraints.map((c: Record<string, unknown>) => {
+    if (c.type === "prevent-value-reuse") {
+      return {
+        type: ConstraintType.UniqueSecretValue,
+        appliesTo: c.appliesTo,
+        value: {
+          secretVersions: {
+            enabled: true,
+            versions: Math.min(Number(c.value) || 10, MAX_PREVENT_VALUE_REUSE_VERSIONS)
+          },
+          otherSecrets: { enabled: false }
+        }
+      };
+    }
+    if (c.type === "prevent-duplicated-values") {
+      return {
+        type: ConstraintType.UniqueSecretValue,
+        appliesTo: c.appliesTo,
+        value: {
+          secretVersions: { enabled: false, versions: 1 },
+          otherSecrets: { enabled: true }
+        }
+      };
+    }
+    return c;
+  });
+
+  return inputs;
+};
+
 export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) => {
   const schema = inputsSchemaMap[type as SecretValidationRuleType];
   if (!schema) {
     throw new Error(`Unknown secret validation rule type: ${type}`);
   }
-  return schema.parse(inputs);
+  return schema.parse(migrateConstraints(inputs));
 };
 
 export const SecretValidationRuleResponseSchema = SecretValidationRulesSchema.omit({

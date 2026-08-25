@@ -177,12 +177,8 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
 
   const Icon = constraintOption?.icon;
   const placeholder = constraintOption?.placeholder;
-  const isPreventValueReuse = constraintType === ConstraintType.PreventValueReuse;
-  const isPreventDuplicatedValues = constraintType === ConstraintType.PreventDuplicatedValues;
   const isNumericInput =
-    constraintType === ConstraintType.MinLength ||
-    constraintType === ConstraintType.MaxLength ||
-    constraintType === ConstraintType.PreventValueReuse;
+    constraintType === ConstraintType.MinLength || constraintType === ConstraintType.MaxLength;
 
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -209,14 +205,6 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Applies to</label>
                 <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
-              </div>
-            );
-          }
-          if (isPreventValueReuse || isPreventDuplicatedValues) {
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Applies to</label>
-                <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
               </div>
             );
           }
@@ -251,46 +239,27 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
             </div>
           );
         })()}
-        {!isPreventDuplicatedValues && (
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">
-              <div className="flex items-center gap-1">
-                {CONSTRAINT_VALUE_LABELS[constraintType]}
-                {constraintType === ConstraintType.PreventValueReuse && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="ml-1 size-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent side="left" align="start" className="max-w-xs">
-                      <p className="text-sm">
-                        When a secret is updated, its new value is validated against the specified
-                        number of prior versions.
-                      </p>
-                      <p className="mt-2 text-xs text-muted">Maximum: 25 versions</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted">
+            {CONSTRAINT_VALUE_LABELS[constraintType]}
+          </label>
+          <Controller
+            control={control}
+            name={`enforcement.constraints.${index}.value`}
+            render={({ field, fieldState: { error } }) => (
+              <div>
+                <Input
+                  {...field}
+                  value={field.value as string}
+                  type={isNumericInput ? "number" : "text"}
+                  placeholder={placeholder?.toString() || undefined}
+                  isError={Boolean(error)}
+                />
+                {error?.message && <p className="mt-1 text-xs text-danger">{error.message}</p>}
               </div>
-            </label>
-            <Controller
-              control={control}
-              name={`enforcement.constraints.${index}.value`}
-              render={({ field, fieldState: { error } }) => (
-                <div>
-                  <Input
-                    {...field}
-                    type={isNumericInput ? "number" : "text"}
-                    min={isPreventValueReuse ? 1 : undefined}
-                    max={isPreventValueReuse ? MAX_PREVENT_VALUE_REUSE_VERSIONS : undefined}
-                    placeholder={placeholder?.toString() || undefined}
-                    isError={Boolean(error)}
-                  />
-                  {error?.message && <p className="mt-1 text-xs text-danger">{error.message}</p>}
-                </div>
-              )}
-            />
-          </div>
-        )}
+            )}
+          />
+        </div>
       </div>
     </div>
   );

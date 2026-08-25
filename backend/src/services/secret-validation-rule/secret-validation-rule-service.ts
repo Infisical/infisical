@@ -19,7 +19,6 @@ import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret
 import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
 import { MAX_PREVENT_VALUE_REUSE_VERSIONS, parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
 import {
-  ConstraintTarget,
   ConstraintType,
   DynamicSecretRuleProvider,
   SecretRotationRuleProvider,
@@ -385,30 +384,23 @@ export const secretValidationRuleServiceFactory = ({
       )
     }));
 
-    // filter to rules that actually match this environment + path so we don't trigger expensive version-history lookups for unrelated PreventValueReuse rules.
+    // Filter to rules that actually match this environment + path so we don't
+    // trigger expensive version-history lookups for unrelated rules.
     const matchingRules = parsedRules.filter((r) => {
       if (r.envId && r.envId !== envId) return false;
       return picomatch.isMatch(secretPath, r.secretPath, { strictSlashes: false });
     });
 
-    const hasPreventValueReuseConstraint = matchingRules.some((r) =>
-      r.inputs.constraints?.some(
-        (c) =>
-          (c.type === ConstraintType.PreventValueReuse && c.appliesTo === ConstraintTarget.SecretValue) ||
-          (c.type === ConstraintType.UniqueSecretValue && c.value.secretVersions.enabled)
-      )
+    const hasVersionHistoryConstraint = matchingRules.some((r) =>
+      r.inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.secretVersions.enabled)
     );
 
     const duplicateValuesRule = matchingRules.find((r) =>
-      r.inputs.constraints?.some(
-        (c) =>
-          (c.type === ConstraintType.PreventDuplicatedValues && c.appliesTo === ConstraintTarget.SecretValue) ||
-          (c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled)
-      )
+      r.inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled)
     );
 
     const previousValuesMap: Record<string, string[]> = {};
-    if (hasPreventValueReuseConstraint) {
+    if (hasVersionHistoryConstraint) {
       const secretIdsToCheck = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
       if (secretIdsToCheck.length) {
         const allVersions = await Promise.all(
@@ -436,7 +428,7 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
-    // Build a map of secret key -> duplicate info for the PreventDuplicatedValues constraint.
+    // Build a map of secret key -> duplicate info for the UniqueSecretValue.otherSecrets constraint.
     // Uses the blind index to find existing secrets with the same value within the rule's scope.
     const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
     if (duplicateValuesRule) {

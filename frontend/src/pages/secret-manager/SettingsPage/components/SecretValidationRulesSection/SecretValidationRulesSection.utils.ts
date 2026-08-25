@@ -1,5 +1,4 @@
 import {
-  CopyXIcon,
   DatabaseIcon,
   HashIcon,
   HistoryIcon,
@@ -17,8 +16,6 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse",
-  PreventDuplicatedValues = "prevent-duplicated-values",
   UniqueSecretValue = "unique-secret-value"
 }
 
@@ -73,26 +70,6 @@ export const CONSTRAINT_OPTIONS: {
     icon: TextIcon
   },
   {
-    type: ConstraintType.PreventValueReuse,
-    label: "Prevent Value Repetition",
-    description: "Prevent reusing previous secret values",
-    cardDescription:
-      "When a secret is updated, its new value is checked against the specified number of prior versions to prevent reuse of previous values.",
-    placeholder: 10,
-    icon: HistoryIcon,
-    allowedTargets: [ConstraintTarget.SecretValue]
-  },
-  {
-    type: ConstraintType.PreventDuplicatedValues,
-    label: "Prevent Duplicate Values",
-    description: "Prevent multiple secrets from sharing the same value",
-    cardDescription:
-      "When a secret is created or updated, its value is checked against all other secrets in the selected scope to prevent duplicates.",
-    placeholder: "",
-    icon: CopyXIcon,
-    allowedTargets: [ConstraintTarget.SecretValue]
-  },
-  {
     type: ConstraintType.UniqueSecretValue,
     label: "Value Uniqueness",
     description: "Rejects an update when the new value matches a value already in use",
@@ -109,8 +86,6 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
-  [ConstraintType.PreventValueReuse]: "Previous versions",
-  [ConstraintType.PreventDuplicatedValues]: "",
   [ConstraintType.UniqueSecretValue]: "Versions to check"
 };
 
@@ -120,8 +95,6 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Repetition",
-  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicate Values",
   [ConstraintType.UniqueSecretValue]: "Value Uniqueness"
 };
 
@@ -169,19 +142,15 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
   }
 ];
 
-// PreventValueReuse is intentionally static-secret-only. For dynamic secrets
+// UniqueSecretValue is intentionally static-secret-only. For dynamic secrets
 // each lease is independent so reuse has no meaning; for rotations we drive
 // uniqueness through password generation (length/regex) rather than failing a
 // rotation at issue time because the generator happened to land on a prior
 // value.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues,
   ConstraintType.UniqueSecretValue
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues,
   ConstraintType.UniqueSecretValue
 ];
 
@@ -192,9 +161,7 @@ const STRING_CONSTRAINT_TYPES = [
   ConstraintType.MaxLength,
   ConstraintType.RegexPattern,
   ConstraintType.RequiredPrefix,
-  ConstraintType.RequiredSuffix,
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues
+  ConstraintType.RequiredSuffix
 ] as const;
 
 const stringConstraintSchema = z
@@ -203,31 +170,12 @@ const stringConstraintSchema = z
     appliesTo: z.nativeEnum(ConstraintTarget),
     value: z.string()
   })
-  .refine(
-    (c) =>
-      c.type === ConstraintType.PreventValueReuse ||
-      c.type === ConstraintType.PreventDuplicatedValues ||
-      c.value.length > 0,
-    {
-      message: "Value is required",
-      path: ["value"]
-    }
-  )
+  .refine((c) => c.value.length > 0, {
+    message: "Value is required",
+    path: ["value"]
+  })
   .superRefine((c, ctx) => {
-    if (c.type === ConstraintType.PreventValueReuse) {
-      const num = Number(c.value);
-
-      const isAboveMaxVersions =
-        Number.isInteger(num) && (num < 1 || num > MAX_PREVENT_VALUE_REUSE_VERSIONS);
-
-      if (isAboveMaxVersions) {
-        ctx.addIssue({
-          path: ["value"],
-          code: z.ZodIssueCode.custom,
-          message: `Must be a number between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`
-        });
-      }
-    } else if (c.type === ConstraintType.MinLength) {
+    if (c.type === ConstraintType.MinLength) {
       const num = Number(c.value);
 
       if (num <= 0) {
