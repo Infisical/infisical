@@ -10,9 +10,9 @@ export async function up(knex: Knex): Promise<void> {
   const hasActivatedAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "activatedAt");
   const hasSupersededAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "supersededAt");
   const hasLastResolvedAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "lastResolvedAt");
-  const hasKekFingerprint = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "kekFingerprint");
+  const hasKekLabel = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "kekLabel");
 
-  if (!hasActivatedAt || !hasSupersededAt || !hasLastResolvedAt || !hasKekFingerprint) {
+  if (!hasActivatedAt || !hasSupersededAt || !hasLastResolvedAt || !hasKekLabel) {
     await knex.schema.alterTable(TableName.KmsServerRootConfig, (t) => {
       // NULL means a pending rotation nobody has booted with yet.
       if (!hasActivatedAt) t.timestamp("activatedAt");
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       // Stamped by each instance at boot on the row its key opened. Positive evidence that an instance
       // still holds that key; absence proves nothing, since an instance that never restarts never stamps.
       if (!hasLastResolvedAt) t.timestamp("lastResolvedAt");
-      if (!hasKekFingerprint) t.string("kekFingerprint", 64);
+      if (!hasKekLabel) t.string("kekLabel", 64);
     });
   }
 
@@ -45,11 +45,11 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Survives the ciphertext it describes: once the GC deletes a superseded copy, this is the only
-  // record tying a fingerprint to the window it was active.
+  // record tying a label to the window it was active.
   if (!(await knex.schema.hasTable(TableName.KmsKekHistory))) {
     await knex.schema.createTable(TableName.KmsKekHistory, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("kekFingerprint", 64).notNullable();
+      t.string("kekLabel", 64).notNullable();
       t.timestamp("activatedAt").notNullable();
       t.timestamp("supersededAt");
       t.timestamp("retiredAt");
@@ -62,7 +62,7 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   // Only the sentinel is readable by pre-rotation code, so the other rows cannot survive.
-  const columns = ["activatedAt", "supersededAt", "lastResolvedAt", "kekFingerprint"];
+  const columns = ["activatedAt", "supersededAt", "lastResolvedAt", "kekLabel"];
   const present: string[] = [];
   for (const column of columns) {
     // eslint-disable-next-line no-await-in-loop

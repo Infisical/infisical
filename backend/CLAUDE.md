@@ -458,8 +458,9 @@ rotatable, and three invariants hold that up.
 `KMS_ROOT_CONFIG_UUID` is always the current one. That id is no longer "the config row", it is a
 compatibility handle: an app version predating rotation looks the row up by id and knows nothing about
 pending rotations or retained copies, so keeping the active key there is what lets such a version boot. New
-code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, pending, retained), which
-is why there is no `kekFingerprint` column. Fingerprints exist only as human labels in `kms_kek_history`.
+code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, pending, retained), so
+`kekLabel` is never a lookup key. It exists on both tables purely as a human label, derived from the key so
+an operator can recompute it and match an archived key to a backup; nothing resolves a row by it.
 
 **A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/rotations` writes a
 *pending* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row

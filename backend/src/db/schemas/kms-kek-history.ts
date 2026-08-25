@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const KmsKekHistorySchema = z.object({
   id: z.string().uuid(),
-  kekFingerprint: z.string(),
+  kekLabel: z.string(),
   activatedAt: z.date(),
   supersededAt: z.date().nullable().optional(),
   retiredAt: z.date().nullable().optional(),

@@ -3953,12 +3953,12 @@ export const ENCRYPTION_KEY_ROTATION = {
   STATUS: {
     description:
       "Report the state of the instance encryption key: which key is active, whether a rotation is staged or awaiting completion, and what is blocking one.",
-    activeFingerprint:
-      "A non-reversible label for the key this instance is currently running with. Use it to identify which archived key a database backup needs.",
+    activeLabel:
+      "A non-reversible label derived from the key this instance is currently running with. Recompute it from an archived key to confirm which one a database backup needs.",
     pendingRotation:
       "A generated key that has not been applied yet. Staging a rotation changes nothing until an instance starts with the new key.",
-    pendingFingerprint:
-      "Fingerprint of the generated key, so you can confirm the value you are about to deploy is the one you copied.",
+    pendingLabel:
+      "Label of the generated key, so you can confirm the value you are about to deploy is the one you copied.",
     lastResolvedAt:
       "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists.",
     history:
@@ -3969,8 +3969,8 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
     replacePending:
       "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
-    fingerprint:
-      "A non-reversible label for the new key. Record it alongside the key so a backup can be matched to it later.",
+    label:
+      "A non-reversible label derived from the new key. Record it alongside the key so a backup can be matched to it later.",
     key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
     removesRetainedKey:
       "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."

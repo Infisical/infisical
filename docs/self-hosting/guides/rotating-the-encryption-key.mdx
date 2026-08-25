@@ -34,7 +34,7 @@ one, think about it, and discard it with no consequences.
 
   <Step title="Store the key">
     The key is shown once and is never recoverable. Copy it into your secret store before closing the
-    dialog, together with the **fingerprint** shown beside it.
+    dialog, together with the **label** shown beside it.
 
     If you think the key was exposed while copying it, select **Discard generated key**. It stops working
     immediately and you can generate another.
@@ -84,14 +84,14 @@ one, think about it, and discard it with no consequences.
 Pick one of these and make it explicit, rather than leaving it to chance:
 
 - **Archive the old key.** Keep it in your secret store for at least as long as your oldest restorable
-  backup, labelled with the fingerprint from the **Key history** table. That table is kept permanently, so
+  backup, tagged with the label from the **Key history** table. That table is kept permanently, so
   a restored backup can always be matched to the key it needs.
 - **Crypto-shred.** Remove the old key, take a fresh full backup immediately, and expire backups taken
   before the rotation. A backup nobody can decrypt is also a backup that cannot leak.
 
 The **Key history** table lists every key the instance has used and when. If an instance ever fails to
 start with "the configured encryption key does not decrypt this database's root key", the error names the
-fingerprint it needs, which you can look up there.
+label it needs, which you can look up there.
 
 ## Rolling back
 

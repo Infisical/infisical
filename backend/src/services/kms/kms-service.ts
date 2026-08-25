@@ -31,7 +31,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
-  getKekFingerprint,
+  getKekLabel,
   KMS_LEGACY_ENCRYPTION_KEY_UUID,
   KMS_ROOT_CONFIG_UUID,
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
@@ -1484,9 +1484,9 @@ export const kmsServiceFactory = ({
   };
 
   /** Null under HSM, where no env key is involved. */
-  const $currentKekFingerprint = () => {
+  const $currentKekLabel = () => {
     try {
-      return getKekFingerprint($getBasicEncryptionKey());
+      return getKekLabel($getBasicEncryptionKey());
     } catch {
       return null;
     }
@@ -1507,7 +1507,7 @@ export const kmsServiceFactory = ({
    * The moment a rotation takes effect. Driven by a booting pod rather than the rotate endpoint, so
    * that generating a key is inert and an operator who never deploys it has changed nothing.
    */
-  const $promoteRotation = async (pendingId: string, fingerprint: string | null) => {
+  const $promoteRotation = async (pendingId: string, label: string | null) => {
     return kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
@@ -1529,7 +1529,7 @@ export const kmsServiceFactory = ({
         {
           encryptedRootKey: sentinel.encryptedRootKey,
           encryptionStrategy: sentinel.encryptionStrategy,
-          kekFingerprint: sentinel.kekFingerprint,
+          kekLabel: sentinel.kekLabel,
           activatedAt: sentinel.activatedAt ?? sentinel.createdAt,
           supersededAt: now
         },
@@ -1541,7 +1541,7 @@ export const kmsServiceFactory = ({
         {
           encryptedRootKey: pending.encryptedRootKey,
           encryptionStrategy: pending.encryptionStrategy,
-          kekFingerprint: pending.kekFingerprint ?? fingerprint,
+          kekLabel: pending.kekLabel ?? label,
           activatedAt: now,
           supersededAt: null
         },
@@ -1550,11 +1550,11 @@ export const kmsServiceFactory = ({
 
       await kmsRootConfigDAL.deleteAllPending(tx);
 
-      const promotedFingerprint = pending.kekFingerprint ?? fingerprint;
+      const promotedLabel = pending.kekLabel ?? label;
       const previous = await kmsKekHistoryDAL.findCurrent(tx);
       if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
-      if (promotedFingerprint) {
-        await kmsKekHistoryDAL.create({ kekFingerprint: promotedFingerprint, activatedAt: now }, tx);
+      if (promotedLabel) {
+        await kmsKekHistoryDAL.create({ kekLabel: promotedLabel, activatedAt: now }, tx);
       }
 
       // Exactly one retained key survives a promotion.
@@ -1562,14 +1562,12 @@ export const kmsServiceFactory = ({
       for (const stale of olderRetained) {
         // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
         await kmsRootConfigDAL.deleteById(stale.id, tx);
-        const entry = stale.kekFingerprint
-          ? history.find((e) => e.kekFingerprint === stale.kekFingerprint && !e.retiredAt)
-          : undefined;
+        const entry = stale.kekLabel ? history.find((e) => e.kekLabel === stale.kekLabel && !e.retiredAt) : undefined;
         // eslint-disable-next-line no-await-in-loop
         if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: now }, tx);
         logger.info(
-          `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [fingerprint=${
-            stale.kekFingerprint ?? "unknown"
+          `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${
+            stale.kekLabel ?? "unknown"
           }]`
         );
       }
@@ -1636,26 +1634,24 @@ export const kmsServiceFactory = ({
         if (skipRotationState) return rootKey;
 
         if (!row.activatedAt && row.id !== KMS_ROOT_CONFIG_UUID) {
-          const fingerprint = $currentKekFingerprint();
+          const label = $currentKekLabel();
           // eslint-disable-next-line no-await-in-loop
-          const promoted = await $promoteRotation(row.id, fingerprint);
+          const promoted = await $promoteRotation(row.id, label);
           if (promoted) {
             logger.info(
-              `KMS: Promoted pending encryption key rotation [fingerprint=${fingerprint ?? "hsm"}] [rotationId=${
-                row.id
-              }]`
+              `KMS: Promoted pending encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`
             );
           }
         }
 
         // Rows written before the label existed get it from the pod that can actually decrypt them,
         // which is the only place the value is derivable.
-        if (!row.kekFingerprint) {
-          const fingerprint = $currentKekFingerprint();
-          if (fingerprint) {
+        if (!row.kekLabel) {
+          const label = $currentKekLabel();
+          if (label) {
             // eslint-disable-next-line no-await-in-loop
             await kmsRootConfigDAL
-              .updateById(row.id, { kekFingerprint: fingerprint })
+              .updateById(row.id, { kekLabel: label })
               .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to label a root key row"));
           }
         }
@@ -1670,8 +1666,8 @@ export const kmsServiceFactory = ({
             .updateById(row.id, { lastResolvedAt: new Date() })
             .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to record use of a superseded root key"));
           logger.warn(
-            `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [fingerprint=${
-              $currentKekFingerprint() ?? "hsm"
+            `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [label=${
+              $currentKekLabel() ?? "hsm"
             }]. Roll it onto the current key before the previous one is removed.`
           );
         }
@@ -1680,14 +1676,14 @@ export const kmsServiceFactory = ({
       }
     }
 
-    const fingerprint = $currentKekFingerprint();
+    const label = $currentKekLabel();
     const history = await kmsKekHistoryDAL.findHistory().catch(() => []);
-    const known = history.map((entry) => entry.kekFingerprint).join(", ");
+    const known = history.map((entry) => entry.kekLabel).join(", ");
     logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
     throw new InternalServerError({
-      message: `The configured encryption key (fingerprint ${fingerprint ?? "unknown"}) does not decrypt this database's root key. ${
+      message: `The configured encryption key (label ${label ?? "unknown"}) does not decrypt this database's root key. ${
         known
-          ? `This database was last written with encryption key fingerprint(s): ${known}. Set the matching key and restart.`
+          ? `This database was last written with encryption key label(s): ${known}. Set the matching key and restart.`
           : "Set the encryption key this database was created with and restart."
       }`
     });
@@ -1748,12 +1744,12 @@ export const kmsServiceFactory = ({
   };
 
   /**
-   * Backfills the key an instance already runs with, so a pre-rotation dump still has a fingerprint an
+   * Backfills the key an instance already runs with, so a pre-rotation dump still has a label an
    * operator can match against an archived key.
    */
   const $ensureKekHistory = async () => {
-    const fingerprint = $currentKekFingerprint();
-    if (!fingerprint) return;
+    const label = $currentKekLabel();
+    if (!label) return;
 
     const current = await kmsKekHistoryDAL.findCurrent();
     if (current) return;
@@ -1764,7 +1760,7 @@ export const kmsServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
         if (await kmsKekHistoryDAL.findCurrent(tx)) return;
         await kmsKekHistoryDAL.create(
-          { kekFingerprint: fingerprint, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() },
+          { kekLabel: label, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() },
           tx
         );
       })
@@ -1802,7 +1798,7 @@ export const kmsServiceFactory = ({
     return cipher.encrypt(ROOT_ENCRYPTION_KEY, kekBuffer);
   };
 
-  const getCurrentKekFingerprint = () => $currentKekFingerprint();
+  const getCurrentKekLabel = () => $currentKekLabel();
 
   const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
     // A fleet-wide cutover. Unguarded, a switch to HSM would not take effect while a retained software
@@ -1834,10 +1830,10 @@ export const kmsServiceFactory = ({
     }
 
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
-      const currentFingerprint = $currentKekFingerprint();
-      if (kmsRootConfig.kekFingerprint && currentFingerprint && kmsRootConfig.kekFingerprint !== currentFingerprint) {
+      const currentLabel = $currentKekLabel();
+      if (kmsRootConfig.kekLabel && currentLabel && kmsRootConfig.kekLabel !== currentLabel) {
         throw new BadRequestError({
-          message: `This instance is running with encryption key fingerprint '${currentFingerprint}', but the active root key was written with '${kmsRootConfig.kekFingerprint}'. Restart it with the current encryption key before changing the root key encryption strategy.`
+          message: `This instance is running with encryption key label '${currentLabel}', but the active root key was written with '${kmsRootConfig.kekLabel}'. Restart it with the current encryption key before changing the root key encryption strategy.`
         });
       }
     }
@@ -1878,7 +1874,7 @@ export const kmsServiceFactory = ({
         {
           encryptedRootKey,
           encryptionStrategy: strategy,
-          kekFingerprint: strategy === RootKeyEncryptionStrategy.Software ? $currentKekFingerprint() : null
+          kekLabel: strategy === RootKeyEncryptionStrategy.Software ? $currentKekLabel() : null
         },
         tx
       );
@@ -1890,7 +1886,7 @@ export const kmsServiceFactory = ({
   return {
     startService,
     encryptRootKeyForKek,
-    getCurrentKekFingerprint,
+    getCurrentKekLabel,
     generateKmsKey,
     rotateKmsKey,
     deleteInternalKms,

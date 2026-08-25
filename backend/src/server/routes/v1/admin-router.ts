@@ -651,13 +651,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           status: z.object({
-            activeFingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.activeFingerprint),
+            activeLabel: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.activeLabel),
             encryptionStrategy: z.string().nullable(),
             pendingRotation: z
               .object({
                 id: z.string().uuid(),
                 createdAt: z.date(),
-                fingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingFingerprint)
+                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingLabel)
               })
               .nullable()
               .describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingRotation),
@@ -666,12 +666,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 id: z.string().uuid(),
                 supersededAt: z.date(),
                 lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.lastResolvedAt),
-                fingerprint: z.string().nullable()
+                label: z.string().nullable()
               })
               .nullable(),
             history: z
               .object({
-                kekFingerprint: z.string(),
+                label: z.string(),
                 activatedAt: z.date(),
                 supersededAt: z.date().nullish(),
                 retiredAt: z.date().nullish()
@@ -711,10 +711,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         201: z.object({
           rotation: z.object({
             id: z.string().uuid(),
-            fingerprint: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.fingerprint),
+            label: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.label),
             key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
             removesRetainedKey: z
-              .object({ fingerprint: z.string().nullable(), lastResolvedAt: z.date().nullable() })
+              .object({ label: z.string().nullable(), lastResolvedAt: z.date().nullable() })
               .optional()
               .describe(ENCRYPTION_KEY_ROTATION.CREATE.removesRetainedKey)
           })

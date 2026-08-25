@@ -7,7 +7,7 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { getKekFingerprint, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
+import { getKekLabel, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 import { TKmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -30,7 +30,7 @@ const ABANDONED_ROTATION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const STRAGGLER_EVIDENCE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 type TEncryptionKeyRotationServiceFactoryDep = {
-  kmsService: Pick<TKmsServiceFactory, "encryptRootKeyForKek" | "getCurrentKekFingerprint">;
+  kmsService: Pick<TKmsServiceFactory, "encryptRootKeyForKek" | "getCurrentKekLabel">;
   kmsRootConfigDAL: Pick<
     TKmsRootConfigDALFactory,
     | "findById"
@@ -74,13 +74,13 @@ export const encryptionKeyRotationServiceFactory = ({
     const [retained] = retainedRows;
 
     return {
-      activeFingerprint: kmsService.getCurrentKekFingerprint(),
+      activeLabel: kmsService.getCurrentKekLabel(),
       encryptionStrategy: sentinel?.encryptionStrategy ?? null,
       pendingRotation: pendingRows[0]
         ? {
             id: pendingRows[0].id,
             createdAt: pendingRows[0].createdAt,
-            fingerprint: pendingRows[0].kekFingerprint ?? null
+            label: pendingRows[0].kekLabel ?? null
           }
         : null,
       retainedKey: retained
@@ -88,11 +88,11 @@ export const encryptionKeyRotationServiceFactory = ({
             id: retained.id,
             supersededAt: retained.supersededAt as Date,
             lastResolvedAt: retained.lastResolvedAt ?? null,
-            fingerprint: retained.kekFingerprint ?? null
+            label: retained.kekLabel ?? null
           }
         : null,
-      history: history.map(({ kekFingerprint, activatedAt, supersededAt, retiredAt }) => ({
-        kekFingerprint,
+      history: history.map(({ kekLabel, activatedAt, supersededAt, retiredAt }) => ({
+        label: kekLabel,
         activatedAt,
         supersededAt,
         retiredAt
@@ -148,32 +148,32 @@ export const encryptionKeyRotationServiceFactory = ({
       const isFipsEnabled = crypto.isFipsModeEnabled();
       const key = generateRootEncryptionKey(isFipsEnabled);
       const kekBuffer = resolveKekBuffer(key, isFipsEnabled);
-      const fingerprint = getKekFingerprint(kekBuffer);
+      const label = getKekLabel(kekBuffer);
 
       const row = await kmsRootConfigDAL.create(
         {
           encryptedRootKey: kmsService.encryptRootKeyForKek(kekBuffer),
           encryptionStrategy: RootKeyEncryptionStrategy.Software,
-          kekFingerprint: fingerprint,
+          kekLabel: label,
           activatedAt: null
         },
         tx
       );
 
-      return { row, retained, key, fingerprint };
+      return { row, retained, key, label };
     });
     const pending = staged.row;
 
-    logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [fingerprint=${staged.fingerprint}]`);
+    logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [label=${staged.label}]`);
 
     return {
       id: pending.id,
-      fingerprint: staged.fingerprint,
+      label: staged.label,
       key: staged.key,
       ...(staged.retained
         ? {
             removesRetainedKey: {
-              fingerprint: staged.retained.kekFingerprint ?? null,
+              label: staged.retained.kekLabel ?? null,
               lastResolvedAt: staged.retained.lastResolvedAt ?? null
             }
           }
@@ -190,9 +190,9 @@ export const encryptionKeyRotationServiceFactory = ({
     const deleted = await kmsRootConfigDAL.deleteById(row.id, tx);
     if (!deleted) return false;
 
-    if (row.kekFingerprint) {
+    if (row.kekLabel) {
       const history = await kmsKekHistoryDAL.findHistory(tx);
-      const entry = history.find((e) => e.kekFingerprint === row.kekFingerprint && !e.retiredAt);
+      const entry = history.find((e) => e.kekLabel === row.kekLabel && !e.retiredAt);
       if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: new Date() }, tx);
     }
 
@@ -222,9 +222,7 @@ export const encryptionKeyRotationServiceFactory = ({
         });
       }
 
-      logger.info(
-        `Encryption key rotation discarded [rotationId=${rotationId}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
-      );
+      logger.info(`Encryption key rotation discarded [rotationId=${rotationId}] [label=${row.kekLabel ?? "unknown"}]`);
     });
   };
 
@@ -264,7 +262,7 @@ export const encryptionKeyRotationServiceFactory = ({
       }
 
       logger.info(
-        `Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+        `Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}] [label=${row.kekLabel ?? "unknown"}]`
       );
     });
   };
@@ -286,7 +284,7 @@ export const encryptionKeyRotationServiceFactory = ({
       });
       if (removed)
         logger.info(
-          `Discarded an encryption key rotation that was never applied [rotationId=${row.id}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+          `Discarded an encryption key rotation that was never applied [rotationId=${row.id}] [label=${row.kekLabel ?? "unknown"}]`
         );
     }
 
@@ -318,7 +316,7 @@ export const encryptionKeyRotationServiceFactory = ({
       });
       if (removed)
         logger.info(
-          `Removed a superseded encryption key [retainedKeyId=${row.id}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+          `Removed a superseded encryption key [retainedKeyId=${row.id}] [label=${row.kekLabel ?? "unknown"}]`
         );
     }
 

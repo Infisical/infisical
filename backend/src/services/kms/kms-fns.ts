@@ -52,14 +52,15 @@ export const resolveInstanceEncryptionKeyBuffer = (envCfg: {
   return buffer;
 };
 
-const KEK_FINGERPRINT_DOMAIN = "infisical:kek-fingerprint:v1";
+const KEK_LABEL_DOMAIN = "infisical:kek-fingerprint:v1";
 
 /**
  * A label, never a lookup key: it lets an operator match a restored dump against an archived key.
+ * Derived from the key, so an operator holding an archived key can recompute it and confirm the match.
  * Truncated SHA-256 over a 128-bit-minimum key is not reversible, so it is safe to log and expose.
  */
-export const getKekFingerprint = (keyBuffer: Buffer) =>
-  crypto.nativeCrypto.createHash("sha256").update(KEK_FINGERPRINT_DOMAIN).update(keyBuffer).digest("hex").slice(0, 32);
+export const getKekLabel = (keyBuffer: Buffer) =>
+  crypto.nativeCrypto.createHash("sha256").update(KEK_LABEL_DOMAIN).update(keyBuffer).digest("hex").slice(0, 32);
 
 export const getByteLengthForSymmetricEncryptionAlgorithm = (encryptionAlgorithm: SymmetricKeyAlgorithm) => {
   switch (encryptionAlgorithm) {

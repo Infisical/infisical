@@ -4,17 +4,17 @@ export enum RotationBlocker {
 }
 
 export type TEncryptionStatus = {
-  activeFingerprint: string | null;
+  activeLabel: string | null;
   encryptionStrategy: string | null;
-  pendingRotation: { id: string; createdAt: Date; fingerprint: string | null } | null;
+  pendingRotation: { id: string; createdAt: Date; label: string | null } | null;
   retainedKey: {
     id: string;
     supersededAt: Date;
     lastResolvedAt: Date | null;
-    fingerprint: string | null;
+    label: string | null;
   } | null;
   history: {
-    kekFingerprint: string;
+    label: string;
     activatedAt: Date;
     supersededAt?: Date | null;
     retiredAt?: Date | null;
@@ -33,12 +33,12 @@ export type TCompleteRotationDTO = {
 
 export type TCreatedRotation = {
   id: string;
-  fingerprint: string;
+  label: string;
   /** Returned exactly once. Never stored, never logged. */
   key: string;
   /**
    * Set when the previous rotation's key has not been removed yet. Applying this key removes it
    * immediately, so an instance still running it will fail to restart.
    */
-  removesRetainedKey?: { fingerprint: string | null; lastResolvedAt: Date | null };
+  removesRetainedKey?: { label: string | null; lastResolvedAt: Date | null };
 };

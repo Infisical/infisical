@@ -119,15 +119,15 @@ export const EncryptionKeyRotationSection = () => {
             <KeyRoundIcon className="size-4 text-foreground/60" />
             <span className="text-foreground/70">Active key</span>
             <Badge variant="neutral" className="font-mono">
-              {status.activeFingerprint ?? "managed by HSM"}
+              {status.activeLabel ?? "managed by HSM"}
             </Badge>
           </div>
 
-          {status.pendingRotation?.fingerprint && (
+          {status.pendingRotation?.label && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-foreground/70">Generated key awaiting deployment</span>
               <Badge variant="info" className="font-mono">
-                {status.pendingRotation.fingerprint}
+                {status.pendingRotation.label}
               </Badge>
             </div>
           )}
@@ -203,21 +203,21 @@ export const EncryptionKeyRotationSection = () => {
             <div>
               <p className="mb-2 text-sm font-medium">Key history</p>
               <p className="mb-2 text-xs text-foreground/60">
-                Kept after a key is removed. Use the fingerprint to work out which archived key a
-                restored backup needs.
+                Kept after a key is removed. Use the label to work out which archived key a restored
+                backup needs.
               </p>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fingerprint</TableHead>
+                    <TableHead>Label</TableHead>
                     <TableHead>Active from</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {status.history.map((entry) => (
-                    <TableRow key={entry.kekFingerprint + entry.activatedAt}>
-                      <TableCell className="font-mono text-xs">{entry.kekFingerprint}</TableCell>
+                    <TableRow key={entry.label + entry.activatedAt}>
+                      <TableCell className="font-mono text-xs">{entry.label}</TableCell>
                       <TableCell>{new Date(entry.activatedAt).toLocaleString()}</TableCell>
                       <TableCell>
                         {!entry.supersededAt && <Badge variant="success">Active</Badge>}
@@ -257,8 +257,8 @@ export const EncryptionKeyRotationSection = () => {
             </div>
 
             <div>
-              <p className="mb-1.5 text-sm font-medium">Fingerprint</p>
-              <p className="font-mono text-xs text-foreground/70">{generatedKey?.fingerprint}</p>
+              <p className="mb-1.5 text-sm font-medium">Label</p>
+              <p className="font-mono text-xs text-foreground/70">{generatedKey?.label}</p>
               <p className="mt-1 text-xs text-foreground/60">
                 Store this alongside the key. It is how you identify which key a database backup
                 needs.

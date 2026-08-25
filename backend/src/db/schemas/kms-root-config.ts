@@ -18,7 +18,7 @@ export const KmsRootConfigSchema = z.object({
   activatedAt: z.date().nullable().optional(),
   supersededAt: z.date().nullable().optional(),
   lastResolvedAt: z.date().nullable().optional(),
-  kekFingerprint: z.string().nullable().optional()
+  kekLabel: z.string().nullable().optional()
 });
 
 export type TKmsRootConfig = z.infer<typeof KmsRootConfigSchema>;

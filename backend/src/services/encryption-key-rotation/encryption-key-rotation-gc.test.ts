@@ -9,7 +9,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const retainedRow = (overrides: Record<string, unknown> = {}) => ({
   id: "11111111-1111-1111-1111-111111111111",
-  kekFingerprint: "a".repeat(32),
+  kekLabel: "a".repeat(32),
   supersededAt: new Date(Date.now() - (RETENTION_DAYS + 1) * DAY_MS),
   lastResolvedAt: null,
   activatedAt: new Date(Date.now() - (RETENTION_DAYS + 2) * DAY_MS),
@@ -41,7 +41,7 @@ const buildService = (snapshot: ReturnType<typeof retainedRow>, underLock: unkno
     updateById: vi.fn()
   };
   const service = encryptionKeyRotationServiceFactory({
-    kmsService: { encryptRootKeyForKek: vi.fn(), getCurrentKekFingerprint: vi.fn() },
+    kmsService: { encryptRootKeyForKek: vi.fn(), getCurrentKekLabel: vi.fn() },
     kmsRootConfigDAL: kmsRootConfigDAL as never,
     kmsKekHistoryDAL: kmsKekHistoryDAL as never,
     envConfig: { KMS_ROOT_KEY_RETENTION_DAYS: RETENTION_DAYS },
