@@ -319,9 +319,15 @@ blanket revocation would just sign everyone out. The session tag is per client, 
 because `assertValidOauthClientGrantConfig` rejects the exchange grant alongside `authorization_code`, so
 a service needing both registers twice.
 
-That sweep only reaps sessions that already exist, so **the exchange rechecks the client on the primary
-after creating its own session** (`findByIdOnPrimary` + `hasClientAuthorityChanged`, re-running the
-sweep). The other grants read an existing session rather than creating one, so they don't need it.
+That sweep only reaps sessions that already exist, so **the exchange rechecks the client after creating
+its own session** (`findByIdForUpdate` + `hasClientAuthorityChanged`, re-running the sweep). The other
+grants read an existing session rather than creating one, so they don't need it. The recheck has to be a
+**locking** read on the primary, and both halves of that are load-bearing: each withdrawal path writes the
+client and sweeps sessions inside one transaction, so a plain read still sees the pre-withdrawal row until
+that transaction commits, and would clear a token whose session the sweep has already scanned past. A
+replica read has the same hole for the length of the replication lag. Keeping the write and the sweep
+atomic is what makes the lock the fix here; splitting them so the write commits first would reopen a
+window where the sweep can fail on its own and leave the tokens live.
 
 **Everything the exchange fetches from the IdP is cached for 10 minutes; nothing read from our own
 database is**, so an admin editing the SSO config takes effect on the next request while the provider

@@ -741,11 +741,7 @@ export const oauthClientServiceFactory = ({
         message: "Failed to create a session for the user this token identifies."
       });
 
-    // A revocation can land between authenticating the client and inserting the session above, deleting
-    // nothing because the session did not exist yet. Every withdrawal path commits its client write
-    // before deleting sessions, so re-reading the client here catches it -- on the primary, since the
-    // replica can still be serving the pre-revocation row.
-    const currentClient = await oauthClientDAL.findByIdOnPrimary(client.id);
+    const currentClient = await oauthClientDAL.findByIdForUpdate(client.id);
     if (hasClientAuthorityChanged(client, currentClient, OauthGrantType.TokenExchange)) {
       await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
       throw new OauthTokenError({

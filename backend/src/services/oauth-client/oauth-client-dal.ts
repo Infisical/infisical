@@ -8,13 +8,13 @@ export type TOauthClientDALFactory = ReturnType<typeof oauthClientDALFactory>;
 export const oauthClientDALFactory = (db: TDbClient) => {
   const oauthClientOrm = ormify(db, TableName.OauthClient);
 
-  const findByIdOnPrimary = async (id: string) => {
+  const findByIdForUpdate = async (id: string) => {
     try {
-      return await db(TableName.OauthClient).where({ id }).first();
+      return await db(TableName.OauthClient).where({ id }).forUpdate().first();
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindOauthClientByIdOnPrimary" });
+      throw new DatabaseError({ error, name: "FindOauthClientByIdForUpdate" });
     }
   };
 
-  return { ...oauthClientOrm, findByIdOnPrimary };
+  return { ...oauthClientOrm, findByIdForUpdate };
 };
