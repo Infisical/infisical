@@ -390,7 +390,7 @@ export const secretValidationRuleServiceFactory = ({
   }) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, undefined, tx);
     if (!rules.length) return;
 
     // Secret values and rule inputs share the SecretManager data key, so one
@@ -439,7 +439,8 @@ export const secretValidationRuleServiceFactory = ({
           secretIdsToCheck.map((sId) =>
             secretVersionV2BridgeDAL.find(
               { secretId: sId },
-              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS }
+              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS },
+              tx
             )
           )
         );
@@ -472,7 +473,7 @@ export const secretValidationRuleServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueUniqueCheck(projectId)]);
       }
 
-      const project = await projectDAL.findById(projectId);
+      const project = await projectDAL.findById(projectId, tx);
       if (project.secretBlindIndexEnabled) {
         const { generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -510,7 +511,7 @@ export const secretValidationRuleServiceFactory = ({
 
           if (existingDuplicates.length) {
             const folderIds = [...new Set(existingDuplicates.map((d) => d.folderId))];
-            const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+            const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, tx);
             const folderIdToPath = new Map(folderIds.map((id, i) => [id, folderPaths[i]?.path ?? "/"]));
 
             const ruleSecretPath = duplicateValuesRule.secretPath;
