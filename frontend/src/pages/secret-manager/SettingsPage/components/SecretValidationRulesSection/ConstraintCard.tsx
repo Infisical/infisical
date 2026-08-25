@@ -23,10 +23,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { projectKeys, useEnableSecretBlindIndex } from "@app/hooks/api/projects";
-import {
-  secretInsightsKeys,
-  useGetSecretBlindIndexStatus
-} from "@app/hooks/api/secretInsights";
+import { secretInsightsKeys, useGetSecretBlindIndexStatus } from "@app/hooks/api/secretInsights";
 
 import {
   CONSTRAINT_OPTIONS,

@@ -68,33 +68,39 @@ const uniqueSecretValueConstraintSchema = z.object({
     })
 });
 
+const staticStringConstraintSchema = z.object({
+  type: z
+    .enum(STATIC_STRING_CONSTRAINT_TYPES)
+    .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
+  appliesTo: z
+    .enum(STATIC_RULE_TARGETS)
+    .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
+  value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
+});
+
+const generatedConstraintSchema = z.object({
+  type: z
+    .enum(GENERATED_CONSTRAINT_TYPES)
+    .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeGenerated, ConstraintType.MinLength)),
+  appliesTo: z
+    .enum(GENERATED_RULE_TARGETS)
+    .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
+  value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
+});
+
+// Plain constraint schemas (no refinements) so the OpenAPI spec generator can
+// introspect the concrete object shapes. Business-rule refinements are applied
+// separately in the validated input schemas used by parseSecretValidationRuleInputs.
 const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
   if (ruleType === SecretValidationRuleType.StaticSecrets) {
-    const stringSchema = z.object({
-      type: z
-        .enum(STATIC_STRING_CONSTRAINT_TYPES)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
-      appliesTo: z
-        .enum(STATIC_RULE_TARGETS)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
-      value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-    });
-
-    return withConstraintRefinements(z.union([stringSchema, uniqueSecretValueConstraintSchema]));
+    return z.union([staticStringConstraintSchema, uniqueSecretValueConstraintSchema]);
   }
-
-  return withConstraintRefinements(
-    z.object({
-      type: z
-        .enum(GENERATED_CONSTRAINT_TYPES)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeGenerated, ConstraintType.MinLength)),
-      appliesTo: z
-        .enum(GENERATED_RULE_TARGETS)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
-      value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-    })
-  );
+  return generatedConstraintSchema;
 };
+
+// Refined constraint schemas for runtime validation (service layer).
+const buildValidatedConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
+  withConstraintRefinements(buildConstraintSchemaForRuleType(ruleType));
 
 export const staticSecretsInputsSchema = z.object({
   constraints: z
@@ -143,15 +149,25 @@ export const SecretValidationRuleSchema = z.discriminatedUnion("type", [
   })
 ]);
 
-// Map of type → inputs schema, used for runtime parsing
-const inputsSchemaMap: Record<SecretValidationRuleType, z.ZodSchema<TSecretValidationRuleInputs>> = {
-  [SecretValidationRuleType.StaticSecrets]: staticSecretsInputsSchema,
-  [SecretValidationRuleType.DynamicSecrets]: dynamicSecretsInputsSchema,
-  [SecretValidationRuleType.SecretRotations]: secretRotationsInputsSchema
+// Validated input schemas for runtime parsing (service layer). These carry the
+// business-rule refinements that the plain schemas above intentionally omit so
+// the OpenAPI spec generator can introspect the concrete constraint shapes.
+const validatedInputsSchemaMap: Record<SecretValidationRuleType, z.ZodSchema<TSecretValidationRuleInputs>> = {
+  [SecretValidationRuleType.StaticSecrets]: z.object({
+    constraints: z.array(buildValidatedConstraintSchemaForRuleType(SecretValidationRuleType.StaticSecrets)).min(1)
+  }),
+  [SecretValidationRuleType.DynamicSecrets]: z.object({
+    providers: z.array(z.nativeEnum(DynamicSecretRuleProvider)).min(1, "Select at least one provider"),
+    constraints: z.array(buildValidatedConstraintSchemaForRuleType(SecretValidationRuleType.DynamicSecrets)).min(1)
+  }),
+  [SecretValidationRuleType.SecretRotations]: z.object({
+    providers: z.array(z.nativeEnum(SecretRotationRuleProvider)).min(1, "Select at least one provider"),
+    constraints: z.array(buildValidatedConstraintSchemaForRuleType(SecretValidationRuleType.SecretRotations)).min(1)
+  })
 };
 
 export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) => {
-  const schema = inputsSchemaMap[type as SecretValidationRuleType];
+  const schema = validatedInputsSchemaMap[type as SecretValidationRuleType];
   if (!schema) {
     throw new Error(`Unknown secret validation rule type: ${type}`);
   }
