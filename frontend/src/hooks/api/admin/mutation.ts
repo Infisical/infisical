@@ -196,9 +196,9 @@ export const useUpdateServerEncryptionStrategy = () => {
 export const useCreateEncryptionKeyRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ supersede }: { supersede?: boolean } = {}) => {
+    mutationFn: async ({ replacePending }: { replacePending?: boolean } = {}) => {
       const { data } = await apiRequest.post<{ rotation: TCreatedEncryptionKeyRotation }>(
-        `/api/v1/admin/encryption/rotations${supersede ? "?supersede=true" : ""}`
+        `/api/v1/admin/encryption/rotations${replacePending ? "?replacePending=true" : ""}`
       );
 
       return data.rotation;

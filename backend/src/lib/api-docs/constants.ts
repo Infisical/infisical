@@ -3967,12 +3967,12 @@ export const ENCRYPTION_KEY_ROTATION = {
   CREATE: {
     description:
       "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
-    supersede:
+    replacePending:
       "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
     fingerprint:
       "A non-reversible label for the new key. Record it alongside the key so a backup can be matched to it later.",
     key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
-    supersedesRetainedKey:
+    removesRetainedKey:
       "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
   },
   DISCARD: {

@@ -102,7 +102,7 @@ export const encryptionKeyRotationServiceFactory = ({
   };
 
   /** Inert by design: the active key is untouched until a pod boots with the new value. */
-  const createRotation = async ({ supersede }: TCreateRotationDTO): Promise<TCreatedRotation> => {
+  const createRotation = async ({ replacePending }: TCreateRotationDTO): Promise<TCreatedRotation> => {
     const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
     if (!sentinel) throw new NotFoundError({ message: "KMS root config not found" });
 
@@ -114,9 +114,10 @@ export const encryptionKeyRotationServiceFactory = ({
     }
 
     const existingPending = await kmsRootConfigDAL.findPending();
-    if (existingPending.length && !supersede) {
+    if (existingPending.length && !replacePending) {
       throw new BadRequestError({
-        message: "A rotation is already pending. Deploy that key, discard it, or retry with supersede to replace it."
+        message:
+          "A rotation is already pending. Deploy that key, discard it, or retry with replacePending=true to replace it."
       });
     }
 
@@ -128,10 +129,10 @@ export const encryptionKeyRotationServiceFactory = ({
 
       const stillPending = await kmsRootConfigDAL.findPending(tx);
       if (stillPending.length) {
-        if (!supersede) {
+        if (!replacePending) {
           throw new BadRequestError({
             message:
-              "A rotation is already pending. Deploy that key, discard it, or retry with supersede to replace it."
+              "A rotation is already pending. Deploy that key, discard it, or retry with replacePending=true to replace it."
           });
         }
         await kmsRootConfigDAL.deleteAllPending(tx);
@@ -171,7 +172,7 @@ export const encryptionKeyRotationServiceFactory = ({
       key: staged.key,
       ...(staged.retained
         ? {
-            supersedesRetainedKey: {
+            removesRetainedKey: {
               fingerprint: staged.retained.kekFingerprint ?? null,
               lastResolvedAt: staged.retained.lastResolvedAt ?? null
             }
@@ -271,7 +272,7 @@ export const encryptionKeyRotationServiceFactory = ({
   const runGarbageCollection = async () => {
     const [retained, pending] = await Promise.all([kmsRootConfigDAL.findRetained(), kmsRootConfigDAL.findPending()]);
 
-    // Supersede caps pending at one, so this is for the admin who generated a key and walked away.
+    // replacePending caps pending at one, so this is for the admin who generated a key and walked away.
     const now = Date.now();
     const abandoned = pending.filter((row) => now - new Date(row.createdAt).getTime() >= ABANDONED_ROTATION_MAX_AGE_MS);
     for (const row of abandoned) {

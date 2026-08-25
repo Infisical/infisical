@@ -86,7 +86,7 @@ export const EncryptionKeyRotationSection = () => {
   const canRotate = rotateBlockers.length === 0;
 
   const handleGenerate = async () => {
-    const rotation = await createRotation({ supersede: Boolean(status.pendingRotation) });
+    const rotation = await createRotation({ replacePending: Boolean(status.pendingRotation) });
     setGeneratedKey(rotation);
   };
 
@@ -265,7 +265,7 @@ export const EncryptionKeyRotationSection = () => {
               </p>
             </div>
 
-            {generatedKey?.supersedesRetainedKey && (
+            {generatedKey?.removesRetainedKey && (
               <Alert variant="warning">
                 <AlertTriangleIcon />
                 <AlertTitle>This will remove your previous key</AlertTitle>
@@ -274,11 +274,10 @@ export const EncryptionKeyRotationSection = () => {
                     The key from your last rotation has not been removed yet. Applying this new key
                     removes it immediately, and any instance still running it will fail to restart.
                   </p>
-                  {generatedKey.supersedesRetainedKey.lastResolvedAt && (
+                  {generatedKey.removesRetainedKey.lastResolvedAt && (
                     <p className="mt-2">
                       An instance started on it{" "}
-                      {new Date(generatedKey.supersedesRetainedKey.lastResolvedAt).toLocaleString()}
-                      .
+                      {new Date(generatedKey.removesRetainedKey.lastResolvedAt).toLocaleString()}.
                     </p>
                   )}
                 </AlertDescription>

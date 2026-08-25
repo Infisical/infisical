@@ -705,7 +705,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "createAdminEncryptionKeyRotation",
       description: ENCRYPTION_KEY_ROTATION.CREATE.description,
       querystring: z.object({
-        supersede: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.supersede)
+        replacePending: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.replacePending)
       }),
       response: {
         201: z.object({
@@ -713,10 +713,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             id: z.string().uuid(),
             fingerprint: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.fingerprint),
             key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
-            supersedesRetainedKey: z
+            removesRetainedKey: z
               .object({ fingerprint: z.string().nullable(), lastResolvedAt: z.date().nullable() })
               .optional()
-              .describe(ENCRYPTION_KEY_ROTATION.CREATE.supersedesRetainedKey)
+              .describe(ENCRYPTION_KEY_ROTATION.CREATE.removesRetainedKey)
           })
         })
       }
@@ -728,7 +728,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const rotation = await server.services.encryptionKeyRotation.createRotation({
-        supersede: req.query.supersede
+        replacePending: req.query.replacePending
       });
 
       // The key appears here and nowhere else, so it must not be cached along the way.

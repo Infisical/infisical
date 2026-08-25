@@ -465,7 +465,7 @@ is why there is no `kekFingerprint` column. Fingerprints exist only as human lab
 *pending* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
 delete. `$resolveRootKey` promotes it on the first boot that decrypts it: the sentinel takes the new
 ciphertext, the old one moves to a retained copy, and **every** pending row is dropped (an abandoned pending
-row is a live working key, so a superseded key left in someone's clipboard must not be able to promote
+row is a live working key, so a replaced pending key left in someone's clipboard must not be able to promote
 itself later). There is no rollback after promotion, only the retention window during which the old key still
 boots.
 

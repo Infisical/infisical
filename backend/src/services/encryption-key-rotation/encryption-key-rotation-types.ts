@@ -23,7 +23,7 @@ export type TEncryptionStatus = {
 };
 
 export type TCreateRotationDTO = {
-  supersede?: boolean;
+  replacePending?: boolean;
 };
 
 export type TCompleteRotationDTO = {
@@ -40,5 +40,5 @@ export type TCreatedRotation = {
    * Set when the previous rotation's key has not been removed yet. Applying this key removes it
    * immediately, so an instance still running it will fail to restart.
    */
-  supersedesRetainedKey?: { fingerprint: string | null; lastResolvedAt: Date | null };
+  removesRetainedKey?: { fingerprint: string | null; lastResolvedAt: Date | null };
 };
