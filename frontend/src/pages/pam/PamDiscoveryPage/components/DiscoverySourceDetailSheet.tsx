@@ -47,6 +47,7 @@ import {
 import {
   PamAccountType,
   PamDiscoverySchedule,
+  PamDiscoveryType,
   pamKeys,
   TPamDiscoveredAccount,
   TPamDiscoverySource,
@@ -370,6 +371,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const source = sources.find((s) => s.id === sourceId);
   const typeMeta = discoveryTypes.find((t) => t.type === source?.discoveryType);
+  const showDependencies = source?.discoveryType !== PamDiscoveryType.Postgres;
   const credentialAccount = adminAccounts.find((a) => a.id === source?.credentialAccountId);
   const credentialAccountLabel = (() => {
     if (!credentialAccount) return "View account";
@@ -519,7 +521,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                     </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="w-40">Type</TableHead>
-                    <TableHead className="w-40">Dependencies</TableHead>
+                    {showDependencies && <TableHead className="w-40">Dependencies</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -552,13 +554,15 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {hasDeps ? (
-                            <Badge variant="neutral">{account.dependencyCount}</Badge>
-                          ) : (
-                            <span className="text-sm text-muted">-</span>
-                          )}
-                        </TableCell>
+                        {showDependencies && (
+                          <TableCell>
+                            {hasDeps ? (
+                              <Badge variant="neutral">{account.dependencyCount}</Badge>
+                            ) : (
+                              <span className="text-sm text-muted">-</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
