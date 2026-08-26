@@ -8,7 +8,6 @@ import { logger } from "@app/lib/logger";
 
 import { PamAccountType, PamPostgresAuthMethod } from "../../pam/pam-enums";
 import { executeWithGateway, sweepReachableTargets } from "../pam-discovery-fns";
-import { expandTargets } from "../pam-discovery-targets";
 import {
   TDiscoveredAccount,
   TDiscoveryCredentialAccount,
@@ -20,7 +19,6 @@ import {
 const QUERY_TIMEOUT_MS = 20 * 1000;
 const SCAN_CONCURRENCY = 32;
 const SWEEP_DIAL_TIMEOUT_MS = 3 * 1000;
-const MAX_SWEEP_TARGETS = 65536;
 const MAX_ACCOUNTS_PER_HOST = 2000;
 const MAX_ACCOUNTS_PER_SCAN = 50000;
 
@@ -89,7 +87,7 @@ const toPostgresAccount = (account: TDiscoveryCredentialAccount): TPostgresAccou
   };
 };
 
-// an IAM token is minted per host/port/user pair, which a sweep across arbitrary targets cannot do, so only password accounts can drive a scan
+// an IAM token is minted per host/port/user, so it can't be reused across targets
 const isUsableAccount = (account: TPostgresAccount) => Boolean(account.password);
 
 export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
@@ -99,7 +97,7 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
   gatewayV2Service
 }) => {
   const accounts = credentialAccounts.map(toPostgresAccount);
-  const config = configuration as { cidrRanges: string[] };
+  const config = configuration as { hosts: string[] };
 
   const enumerateInstance = (host: string, port: number, account: TPostgresAccount) =>
     executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
@@ -225,26 +223,26 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
       });
     }
 
-    const targets = expandTargets(config.cidrRanges);
+    const targets = [...new Set(config.hosts.map((host) => host.trim()).filter(Boolean))];
     const usablePorts = [...new Set(accounts.filter(isUsableAccount).map((a) => a.port))];
+    const candidatePairs = targets.flatMap((host) => usablePorts.map((port) => ({ host, port })));
 
-    const sweepTargets = targets.flatMap((host) => usablePorts.map((port) => ({ host, port })));
-    if (sweepTargets.length > MAX_SWEEP_TARGETS) {
-      throw new BadRequestError({
-        message: `Scan expands to ${sweepTargets.length} host-port combinations, exceeding the limit of ${MAX_SWEEP_TARGETS}. Reduce the target ranges or the number of distinct credential ports.`
-      });
-    }
-    const open = await sweepReachableTargets(sweepTargets, gatewayId, gatewayV2Service, SWEEP_DIAL_TIMEOUT_MS, signal);
+    const open = await sweepReachableTargets(
+      candidatePairs,
+      gatewayId,
+      gatewayV2Service,
+      SWEEP_DIAL_TIMEOUT_MS,
+      signal
+    );
 
-    // scan every reachable host:port pair, plus any pair a credential account names outright
-    const instancesToScan = sweepTargets.filter(
+    const instancesToScan = candidatePairs.filter(
       ({ host, port }) => open.has(`${host}:${port}`) || accounts.some((a) => a.host === host && a.port === port)
     );
 
     if (!instancesToScan.length) {
       throw new BadRequestError({
         message:
-          "No hosts were reachable on the credential ports in the target range. Check the targets, that the gateway can reach them, and that PostgreSQL is listening."
+          "None of the targets were reachable on the credential accounts' ports. Check the hosts, that the gateway can reach them, and that PostgreSQL is listening."
       });
     }
 

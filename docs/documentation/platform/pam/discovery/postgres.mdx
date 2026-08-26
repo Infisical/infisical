@@ -4,7 +4,7 @@ sidebarTitle: "PostgreSQL"
 description: "Scan PostgreSQL instances for login roles and import them into PAM."
 ---
 
-PostgreSQL discovery scans a set of PostgreSQL instances, enumerates the roles that can log in, stages them for review, and lets you import them into PAM as [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql). You point a source at the instances to scan and the [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) to scan with.
+PostgreSQL discovery scans a set of PostgreSQL instances, enumerates the roles that can log in, stages them for review, and lets you import them into PAM as [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql). You list the instances to scan and the [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) to scan with.
 
 All scan traffic is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
 
@@ -12,8 +12,8 @@ All scan traffic is tunneled through an Infisical [Gateway](/documentation/platf
 
 A PostgreSQL scan connects entirely through the Gateway:
 
-1. Each **CIDR range** is expanded into a list of target hosts; individual IPs and hostnames are used as-is (hostnames are resolved by the gateway in the target network).
-2. Each host is probed on the ports of your credential accounts, so unreachable hosts are skipped before any login is attempted.
+1. Each target you list is one instance to scan. Hostnames are resolved by the gateway in the target network.
+2. Each target is probed on the ports of your credential accounts, so unreachable ones are skipped before any login is attempted.
 3. For each reachable host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one connects.
 4. It reads the roles defined on the instance.
 5. Each role that can log in is staged as a **PostgreSQL** account scoped to that instance. `postgres` on two instances becomes two separate staged accounts.
@@ -33,7 +33,7 @@ The scanning account needs no special grant or elevated privileges. Any role tha
 </Note>
 
 <Warning>
-Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, which a scan across a range of hosts cannot do, so IAM accounts are skipped as credential accounts.
+Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. IAM accounts are skipped as credential accounts.
 </Warning>
 
 ## Creating a source
@@ -49,7 +49,7 @@ Only password authentication can drive a scan. An AWS IAM account's token is min
     | **Credential Accounts** | One or more [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) used to connect and scan |
     | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
     | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
-    | **Targets** | IP addresses, IPv4 CIDR ranges, or hostnames to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
+    | **Targets** | IP addresses or hostnames of the instances to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
   </Step>
   <Step title="Save">
     Click **Add Source**. The source appears in the Discovery table.

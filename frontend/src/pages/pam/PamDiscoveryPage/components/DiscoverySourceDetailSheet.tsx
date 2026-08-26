@@ -256,7 +256,7 @@ const HostRangeConfigForm = ({
     schedule: source.schedule,
     gatewayId: source.gatewayId ?? null,
     gatewayPoolId: source.gatewayPoolId ?? null,
-    ...hostRangeDiscoveryConfigFromSource(source.discoveryConfiguration)
+    ...hostRangeDiscoveryConfigFromSource(discoveryType, source.discoveryConfiguration)
   };
 
   const {
@@ -288,7 +288,7 @@ const HostRangeConfigForm = ({
         schedule: data.schedule,
         gatewayId: data.gatewayId,
         gatewayPoolId: data.gatewayPoolId,
-        configuration: buildHostRangeDiscoveryConfiguration(data)
+        configuration: buildHostRangeDiscoveryConfiguration(discoveryType, data)
       },
       { onSuccess: () => createNotification({ type: "success", text: "Discovery source updated" }) }
     );
@@ -317,6 +317,7 @@ const HostRangeConfigForm = ({
         />
         <HostRangeDiscoveryConfigFields
           control={control as unknown as Control<THostRangeDiscoveryConfigFields>}
+          discoveryType={discoveryType}
         />
       </ConfigCard>
 

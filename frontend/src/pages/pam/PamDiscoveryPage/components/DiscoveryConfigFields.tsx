@@ -166,19 +166,28 @@ export const DiscoveryConfigFields = ({
   );
 };
 
-// Sources that scan a host range with a set of credential accounts
 export const HOST_RANGE_SOURCES = {
   [PamDiscoveryType.Unix]: {
     accountType: PamAccountType.SSH,
     placeholder: "Select SSH accounts",
     warning:
-      "Password accounts send their password to every host scanned in the range, including hosts you don't control. We recommend a key or certificate account for scanning."
+      "Password accounts send their password to every host scanned in the range, including hosts you don't control. We recommend a key or certificate account for scanning.",
+    configKey: "cidrRanges",
+    allowCidr: true,
+    targetsPlaceholder: "10.0.0.0/24, 192.168.1.10, host.internal",
+    targetsDescription:
+      "IP addresses, IPv4 CIDR ranges, or hostnames, one per line or comma-separated."
   },
   [PamDiscoveryType.Postgres]: {
     accountType: PamAccountType.Postgres,
     placeholder: "Select PostgreSQL accounts",
     warning:
-      "The account password is sent to every host scanned in the range, including hosts you don't control. Only scan ranges you trust."
+      "The account password is sent to every instance scanned, including any you don't control. Only list hosts you trust.",
+    configKey: "hosts",
+    allowCidr: false,
+    targetsPlaceholder: "192.168.1.10, db-primary.internal",
+    targetsDescription:
+      "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
   }
 } as const;
 
@@ -189,7 +198,7 @@ export const isHostRangeDiscoveryType = (
 ): type is THostRangeDiscoveryType => Boolean(type && type in HOST_RANGE_SOURCES);
 
 export const hostRangeDiscoveryConfigFormShape = {
-  cidrRanges: z.string().min(1, "At least one target is required"),
+  targets: z.string().min(1, "At least one target is required"),
   credentialAccountIds: z.array(z.string()).min(1, "Select at least one account")
 };
 
@@ -198,29 +207,34 @@ export type THostRangeDiscoveryConfigFields = z.infer<
 >;
 
 export const HOST_RANGE_DISCOVERY_CONFIG_DEFAULTS: THostRangeDiscoveryConfigFields = {
-  cidrRanges: "",
+  targets: "",
   credentialAccountIds: []
 };
 
-const parseCidrRanges = (value: string): string[] =>
+const parseTargets = (value: string): string[] =>
   value
     .split(/[\n,]/)
     .map((v) => v.trim())
     .filter(Boolean);
 
 export const hostRangeDiscoveryConfigFromSource = (
+  discoveryType: THostRangeDiscoveryType,
   config: Record<string, unknown>
-): THostRangeDiscoveryConfigFields => ({
-  cidrRanges: Array.isArray(config.cidrRanges) ? (config.cidrRanges as string[]).join("\n") : "",
-  credentialAccountIds: Array.isArray(config.credentialAccountIds)
-    ? (config.credentialAccountIds as string[])
-    : []
-});
+): THostRangeDiscoveryConfigFields => {
+  const stored = config[HOST_RANGE_SOURCES[discoveryType].configKey];
+  return {
+    targets: Array.isArray(stored) ? (stored as string[]).join("\n") : "",
+    credentialAccountIds: Array.isArray(config.credentialAccountIds)
+      ? (config.credentialAccountIds as string[])
+      : []
+  };
+};
 
 export const buildHostRangeDiscoveryConfiguration = (
+  discoveryType: THostRangeDiscoveryType,
   data: THostRangeDiscoveryConfigFields
 ): Record<string, unknown> => ({
-  cidrRanges: parseCidrRanges(data.cidrRanges),
+  [HOST_RANGE_SOURCES[discoveryType].configKey]: parseTargets(data.targets),
   credentialAccountIds: data.credentialAccountIds
 });
 
@@ -274,27 +288,37 @@ export const CredentialAccountsField = ({
 };
 
 export const HostRangeDiscoveryConfigFields = ({
-  control
+  control,
+  discoveryType
 }: {
   control: Control<THostRangeDiscoveryConfigFields>;
-}) => (
-  <Controller
-    control={control}
-    name="cidrRanges"
-    render={({ field, fieldState }) => (
-      <Field>
-        <FieldLabel>Targets</FieldLabel>
-        <FieldContent>
-          <TextArea {...field} rows={3} placeholder="10.0.0.0/24, 192.168.1.10, host.internal" />
-          <FieldDescription>
-            IP addresses, IPv4 CIDR ranges, or hostnames, one per line or comma-separated.
-          </FieldDescription>
-          <FieldError>{fieldState.error?.message}</FieldError>
-        </FieldContent>
-      </Field>
-    )}
-  />
-);
+  discoveryType: THostRangeDiscoveryType;
+}) => {
+  const { allowCidr, targetsPlaceholder, targetsDescription } = HOST_RANGE_SOURCES[discoveryType];
+
+  return (
+    <Controller
+      control={control}
+      name="targets"
+      rules={{
+        validate: (value: string) =>
+          allowCidr || !parseTargets(value).some((t) => t.includes("/"))
+            ? true
+            : "CIDR ranges are not supported. List each instance by IP address or hostname."
+      }}
+      render={({ field, fieldState }) => (
+        <Field>
+          <FieldLabel>Targets</FieldLabel>
+          <FieldContent>
+            <TextArea {...field} rows={3} placeholder={targetsPlaceholder} />
+            <FieldDescription>{targetsDescription}</FieldDescription>
+            <FieldError>{fieldState.error?.message}</FieldError>
+          </FieldContent>
+        </Field>
+      )}
+    />
+  );
+};
 
 // Shared credential-account + schedule fields, used by both the create modal and the edit tab.
 export const CredentialAccountField = ({

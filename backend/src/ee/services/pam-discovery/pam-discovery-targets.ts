@@ -18,8 +18,11 @@ const isValidIpv4Target = (value: string) => {
   return net.isIPv4(base) && isValidIpOrCidr(value);
 };
 
-const isValidTarget = (value: string) =>
-  isValidIpv4Target(value) || (value.length <= 253 && HOSTNAME_REGEX.test(value));
+const isValidHostname = (value: string) => value.length <= 253 && HOSTNAME_REGEX.test(value);
+
+const isValidTarget = (value: string) => isValidIpv4Target(value) || isValidHostname(value);
+
+const isValidHost = (value: string) => (net.isIPv4(value) && isValidIpOrCidr(value)) || isValidHostname(value);
 
 // expands cidr ranges / bare ips / hostnames into the deduped set of target hosts. Enforces IPv4-only CIDRs and the host cap
 export const expandTargets = (cidrRanges: string[]): string[] => {
@@ -47,11 +50,14 @@ export const expandTargets = (cidrRanges: string[]): string[] => {
   return [...hosts];
 };
 
-// shared by every host-range discovery source: validates each entry, then that the set expands within the cap
-export const DiscoveryTargetsSchema = z
-  .array(z.string().trim().min(1))
-  .min(1)
-  .max(50)
+const targetList = z.array(z.string().trim().min(1)).min(1).max(50);
+
+// for sources that name instances outright; a CIDR would spray the credential across hosts it can't authenticate on
+export const DiscoveryHostsSchema = targetList.refine((hosts) => hosts.every(isValidHost), {
+  message: "Each target must be a valid IPv4 address or hostname. CIDR ranges are not supported."
+});
+
+export const DiscoveryTargetsSchema = targetList
   .refine((ranges) => ranges.every(isValidTarget), {
     message: "Each target must be a valid IPv4 address, IPv4 CIDR range, or hostname"
   })

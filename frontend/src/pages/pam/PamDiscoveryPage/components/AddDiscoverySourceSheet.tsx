@@ -262,7 +262,7 @@ const HostRangeSourceForm = ({
         name: data.name,
         credentialAccountId: data.credentialAccountIds[0],
         schedule: data.schedule,
-        configuration: buildHostRangeDiscoveryConfiguration(data),
+        configuration: buildHostRangeDiscoveryConfiguration(discoveryType, data),
         ...(gateway.gatewayId ? { gatewayId: gateway.gatewayId } : {}),
         ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {})
       },
@@ -309,6 +309,7 @@ const HostRangeSourceForm = ({
         />
         <HostRangeDiscoveryConfigFields
           control={control as unknown as Control<THostRangeDiscoveryConfigFields>}
+          discoveryType={discoveryType}
         />
       </FormShell>
     </form>
