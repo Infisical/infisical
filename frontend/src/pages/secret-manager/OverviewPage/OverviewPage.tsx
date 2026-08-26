@@ -84,6 +84,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Pagination,
   Sheet,
   SheetContent,
@@ -2747,6 +2748,22 @@ const OverviewPageContent = () => {
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
                 <div className="flex shrink-0 items-center gap-2">
+                  {canManageCurrentFolderAccess && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="Manage Access"
+                          className="relative"
+                          size="md"
+                          variant="outline"
+                          onClick={handleCurrentFolderAccessOpen}
+                        >
+                          <UsersIcon />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Manage Access</TooltipContent>
+                    </Tooltip>
+                  )}
                   <EnvironmentSelect
                     selectedEnvs={filteredEnvs}
                     setSelectedEnvs={setFilteredEnvs}
@@ -2756,25 +2773,7 @@ const OverviewPageContent = () => {
                     }
                   />
                 </div>
-                <FolderBreadcrumb secretPath={secretPath}>
-                  {canManageCurrentFolderAccess && (
-                    <>
-                      <Divider orientation="vertical" className="mx-1 h-4 shrink-0" />
-                      <Button
-                        className="group h-fit shrink-0 p-1 text-muted transition-colors hover:text-foreground"
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Manage Access"
-                        onClick={handleCurrentFolderAccessOpen}
-                      >
-                        <div className="flex items-center gap-2 text-mineshaft-100/80 transition-all group-hover:text-mineshaft-50">
-                          <UsersIcon className="size-4" />
-                          Manage Access
-                        </div>
-                      </Button>
-                    </>
-                  )}
-                </FolderBreadcrumb>
+                <FolderBreadcrumb secretPath={secretPath} />
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
