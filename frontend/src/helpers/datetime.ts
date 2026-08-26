@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import ms from "ms";
 
 export enum Timezone {
   Local = "local",
@@ -21,6 +22,16 @@ export const formatDateTime = ({
     return `${format(utcDate, dateFormat)}`;
   }
   return format(date, dateFormat);
+};
+
+export const parseDurationMs = (duration?: string | null): number | null => {
+  if (!duration) return null;
+  try {
+    const parsed = ms(duration);
+    return typeof parsed === "number" && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
 };
 
 export const SECONDS_PER_DAY = 86400;

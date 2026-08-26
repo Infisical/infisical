@@ -43,19 +43,19 @@ export const Default: Story = {
     <Accordion {...args} className="w-80">
       <AccordionItem value="section-1">
         <AccordionTrigger>Section One</AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent className="p-6">
           Content for section one. This is a basic example of accordion content.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="section-2">
         <AccordionTrigger>Section Two</AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent className="p-6">
           Content for section two. Each section can be expanded independently.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="section-3">
         <AccordionTrigger>Section Three</AccordionTrigger>
-        <AccordionContent>Content for section three.</AccordionContent>
+        <AccordionContent className="p-6">Content for section three.</AccordionContent>
       </AccordionItem>
     </Accordion>
   )
@@ -80,19 +80,19 @@ export const Ghost: Story = {
     <Accordion {...args} className="w-80">
       <AccordionItem value="section-1">
         <AccordionTrigger>Section One</AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent className="p-6">
           Content for section one. This is a basic example of accordion content.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="section-2">
         <AccordionTrigger>Section Two</AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent className="p-6">
           Content for section two. Each section can be expanded independently.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="section-3">
         <AccordionTrigger>Section Three</AccordionTrigger>
-        <AccordionContent>Content for section three.</AccordionContent>
+        <AccordionContent className="p-6">Content for section three.</AccordionContent>
       </AccordionItem>
     </Accordion>
   )

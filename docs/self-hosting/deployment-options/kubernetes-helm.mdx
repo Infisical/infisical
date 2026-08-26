@@ -17,7 +17,7 @@ Learn how to deploy **Infisical** on Kubernetes using the official Helm chart. T
   This guide assumes familiarity with Kubernetes. If you're new to Kubernetes, consider starting with the [Docker Compose guide](/self-hosting/deployment-options/docker-compose) for simpler deployments.
 </Warning>
 
-## System Requirements
+## System requirements
 
 The following are minimum requirements for running Infisical on Kubernetes:
 
@@ -38,7 +38,7 @@ The following are minimum requirements for running Infisical on Kubernetes:
 
 For production deployments with many users or secrets, increase these values accordingly.
 
-## Deployment Steps
+## Deployment steps
 
 <Steps>
   <Step title="Create a namespace">
@@ -184,7 +184,7 @@ Your Infisical instance should now be running on Kubernetes. Access it via the i
 
 ![self-hosted sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
 
-## Default Helm Values
+## Default Helm values
 
 ```yaml
 # -- Overrides the default release name
@@ -418,13 +418,13 @@ ingress-nginx:
     ingressClass: infisical-nginx
 ```
 
-## Production Hardening
+## Production hardening
 
 <Warning>
   The PostgreSQL PVC contains all your encrypted secrets. Never delete this PVC unless you intend to lose all data. Always back up before any maintenance operations.
 </Warning>
 
-### Additional Configuration
+### Additional configuration
 
 <AccordionGroup>
   <Accordion title="SMTP/Email Configuration">

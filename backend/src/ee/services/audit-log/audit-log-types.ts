@@ -34,6 +34,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -211,6 +212,9 @@ export enum EventType {
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -812,6 +816,7 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
+  GET_PKI_SIGNING_OPERATION = "get-pki-signing-operation",
   PKI_SIGNER_SIGN = "pki-signer-sign",
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
@@ -844,6 +849,7 @@ export enum EventType {
   DELETE_OAUTH_CLIENT = "delete-oauth-client",
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+  OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -928,6 +934,7 @@ interface UserActorMetadata {
   username: string;
   permission?: Record<string, unknown>;
   authMethod?: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -2100,6 +2107,25 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
+  };
+}
+
+interface UpdateUserOrgMembershipEvent {
+  type: EventType.UPDATE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+    metadataKeys?: string[];
+  };
+}
+
+interface DeleteUserOrgMembershipEvent {
+  type: EventType.DELETE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
   };
 }
 
@@ -3975,6 +4001,8 @@ interface RenewCertificate {
     newCertificateId: string;
     profileName: string;
     commonName: string;
+    renewalKeySource: CertificateRenewalKeySource;
+    changedAttributes: TRenewalAuditChange[];
   };
 }
 
@@ -4056,6 +4084,7 @@ interface CreateCmekEvent {
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4070,8 +4099,10 @@ interface UpdateCmekEvent {
   type: EventType.UPDATE_CMEK;
   metadata: {
     keyId: string;
+    keyName: string;
     name?: string;
     description?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4723,7 +4754,17 @@ interface GetPkiSigningOperationsEvent {
   type: EventType.GET_PKI_SIGNING_OPERATIONS;
   metadata: {
     signerId: string;
+    signerName: string;
     count: number;
+  };
+}
+
+interface GetPkiSigningOperationEvent {
+  type: EventType.GET_PKI_SIGNING_OPERATION;
+  metadata: {
+    signerId: string;
+    signerName: string;
+    operationId: string;
   };
 }
 
@@ -6733,6 +6774,10 @@ interface CreateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6742,6 +6787,10 @@ interface UpdateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6768,6 +6817,18 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+  };
+}
+
+interface OauthClientTokenExchangeEvent {
+  type: EventType.OAUTH_CLIENT_TOKEN_EXCHANGE;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    clientName: string;
+    subjectUserId: string;
+    subjectExternalId: string;
+    tokenVersionId: string;
   };
 }
 
@@ -6819,7 +6880,7 @@ interface GatewayEnrollEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -6832,6 +6893,8 @@ interface ResourceAuthMethodLoginEvent {
     principalArn?: string;
     accountId?: string;
     enrollmentTokenId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6845,6 +6908,8 @@ interface ResourceAuthMethodLoginFailedEvent {
     message: string;
     principalArn?: string;
     accountId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6858,6 +6923,10 @@ interface ResourceAuthMethodUpdateEvent {
     stsEndpoint?: string;
     allowedPrincipalArns?: string;
     allowedAccountIds?: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    allowedAudience?: string;
   };
 }
 
@@ -7218,6 +7287,8 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | UpdateUserOrgMembershipEvent
+  | DeleteUserOrgMembershipEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent
@@ -7461,6 +7532,7 @@ export type Event =
   | GetPkiSignersEvent
   | GetPkiSignerPublicKeyEvent
   | GetPkiSigningOperationsEvent
+  | GetPkiSigningOperationEvent
   | PkiSignerSignEvent
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
@@ -7683,6 +7755,7 @@ export type Event =
   | DeleteOauthClientEvent
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
+  | OauthClientTokenExchangeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

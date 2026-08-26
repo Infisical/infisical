@@ -48,16 +48,13 @@ const SanitizedSuperAdminSchema = z.object({
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
   createdAt: z.date().optional(),
-  trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
-  trustOidcEmails: z.boolean().nullish(),
   onboardingCompleted: z.boolean().optional(),
   adminIdentityIds: z.string().array().nullable().optional(),
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
   isSecretScanningDisabled: z.boolean().optional(),
   isPublicSecretSharingDisabled: z.boolean().optional(),
-  licenseServerV2Enabled: z.boolean().optional(),
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
@@ -118,7 +115,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-            licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
             isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
             isClickhouseAuditLogEnabled,
             latestAvailableVersion
@@ -134,7 +130,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-          licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
@@ -157,9 +152,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         allowSignUp: z.boolean().optional(),
         allowedSignUpDomain: AllowedEmailDomainsSchema.optional().nullable(),
-        trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
-        trustOidcEmails: z.boolean().optional(),
         onboardingCompleted: z.boolean().optional(),
         defaultAuthOrgId: z.string().optional().nullable(),
         enabledLoginMethods: z

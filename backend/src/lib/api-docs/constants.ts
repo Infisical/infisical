@@ -1093,7 +1093,8 @@ export const PROJECTS = {
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
-    status: "Filter by certificate status.",
+    status:
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -1518,6 +1519,10 @@ export const DASHBOARD = {
     includeSecretRotations: "Whether to include secret rotations in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 
@@ -2140,7 +2145,17 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2436,13 +2451,15 @@ export const KMS = {
     encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
-      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
+    hasDeleteProtection: "Prevents deletion of the key when enabled."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
-    isDisabled: "The flag to enable or disable this key."
+    isDisabled: "The flag to enable or disable this key.",
+    hasDeleteProtection: "Enable or disable delete protection for this key."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -3860,24 +3877,45 @@ export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
-      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    kubernetesHost:
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayId:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayId.",
+    caCertificate:
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
+    tokenReviewerJwt:
+      "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
+    allowedNamespaces:
+      "The comma-separated list of Kubernetes namespaces whose service accounts are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedNames:
+      "The comma-separated list of Kubernetes service account names that are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedAudience:
+      "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

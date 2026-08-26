@@ -23,7 +23,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -50,9 +49,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
   IconButton,
-  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -106,7 +103,6 @@ export const GatewayTab = withPermission(
     const [search, setSearch] = useState("");
     const [poolSearch, setPoolSearch] = useState("");
     const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
@@ -282,21 +278,21 @@ export const GatewayTab = withPermission(
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <Table className="min-w-[57rem] table-fixed">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-80 min-w-80">
+                      <TableHead>
                         <TableHeadLabel>Name</TableHeadLabel>
                       </TableHead>
                       {showPoolsTab && (
-                        <TableHead className="w-[28%]">
+                        <TableHead>
                           <TableHeadLabel>Pools</TableHeadLabel>
                         </TableHead>
                       )}
-                      <TableHead className="w-36">
+                      <TableHead>
                         <TableHeadLabel>Connected</TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-40">
+                      <TableHead>
                         <TableHeadLabel
                           trailing={
                             <Tooltip>
@@ -312,7 +308,7 @@ export const GatewayTab = withPermission(
                           Health Check
                         </TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-12" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -344,7 +340,7 @@ export const GatewayTab = withPermission(
                               : undefined
                           }
                         >
-                          <TableCell className="min-w-80">
+                          <TableCell>
                             <div className="flex min-w-0 items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -365,7 +361,7 @@ export const GatewayTab = withPermission(
                             </div>
                           </TableCell>
                           {showPoolsTab && (
-                            <TableCell className="min-w-0">
+                            <TableCell>
                               {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
                                 <OverflowBadgeList
                                   items={gatewayPoolMap.get(el.id) ?? []}
@@ -396,7 +392,7 @@ export const GatewayTab = withPermission(
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
-                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                          <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton aria-label="Gateway options" variant="ghost" size="sm">
@@ -472,10 +468,10 @@ export const GatewayTab = withPermission(
               </Dialog>
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
-                onOpenChange={(open) => {
-                  if (!open) setDeleteConfirmation("");
-                  handlePopUpToggle("deleteGateway", open);
-                }}
+                confirmationValue={
+                  (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                }
+                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -484,26 +480,12 @@ export const GatewayTab = withPermission(
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogConfirmationField>
-                    <Field>
-                      <AlertDialogConfirmationLabel
-                        htmlFor="delete-gateway-confirmation"
-                        confirmationValue={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                      />
-                      <Input
-                        id="delete-gateway-confirmation"
-                        value={deleteConfirmation}
-                        onChange={(event) => setDeleteConfirmation(event.target.value)}
-                        placeholder={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </Field>
-                  </AlertDialogConfirmationField>
+                  <AlertDialogConfirmationField
+                    inputProps={{
+                      placeholder:
+                        (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                    }}
+                  />
                   <Alert variant="danger" appearance="borderless">
                     <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
@@ -516,10 +498,6 @@ export const GatewayTab = withPermission(
                     <AlertDialogAction
                       variant="danger"
                       isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                      isDisabled={
-                        deleteConfirmation !==
-                        ((popUp.deleteGateway.data as { name?: string })?.name || "gateway")
-                      }
                       onClick={(event) => {
                         event.preventDefault();
                         handleDeleteGateway();
@@ -557,5 +535,9 @@ export const GatewayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgGatewayPermissionActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+  {
+    action: OrgGatewayPermissionActions.ListGateways,
+    subject: OrgPermissionSubjects.Gateway,
+    accessRestrictedMode: "dialog"
+  }
 );

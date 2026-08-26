@@ -1,6 +1,6 @@
 ---
-title: "Event Subscriptions"
-sidebarTitle: "Events Subscriptions"
+title: "Event subscriptions"
+sidebarTitle: "Events subscriptions"
 description: "Subscribe to events in Infisical for real-time updates"
 ---
 
@@ -11,7 +11,7 @@ description: "Subscribe to events in Infisical for real-time updates"
 
 Event Subscriptions allow you to receive real-time notifications when specific actions occur within your Infisical projects. You can subscribe to changes such as secret modifications, with support for additional resource types coming soon.
 
-## How It Works
+## How it works
 
 Event Subscriptions use [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to deliver real-time updates to your applications:
 
@@ -25,7 +25,7 @@ Event Subscriptions use [Server-Sent Events (SSE)](https://developer.mozilla.org
   maintains an active connection to receive events.
 </Note>
 
-## Supported Events
+## Supported events
 
 You can subscribe to the following event types:
 
@@ -39,7 +39,7 @@ You can subscribe to the following event types:
 | `secret:import-mutation` | Triggered when a secret changes via an import |
 
 
-## Permissions Setup
+## Permissions setup
 
 To receive events, the machine identity must have the **Secret Events** permission with the appropriate actions enabled.
 
@@ -72,7 +72,7 @@ To receive events, the machine identity must have the **Secret Events** permissi
   </Step>
 </Steps>
 
-### Filtering Events with Conditions
+### Filtering events with conditions
 
 You can scope events to specific secret paths, environments, or other conditions.
 
@@ -80,7 +80,7 @@ You can scope events to specific secret paths, environments, or other conditions
 
 This allows you to receive only the events relevant to your use case, reducing noise and improving efficiency.
 
-## Getting Started
+## Getting started
 
 Event Subscriptions are currently available via the [Events API](/api-reference/endpoints/events). Support for SDKs, Kubernetes Operator, and other integrations is coming soon.
 
@@ -88,13 +88,13 @@ Event Subscriptions are currently available via the [Events API](/api-reference/
 
 You need an authentication token from a machine identity. Follow the [machine identities documentation](/documentation/platform/identities/machine-identities#authentication-methods) to set up authentication.
 
-### Subscribing to Events
+### Subscribing to events
 
 To subscribe to events, make a request to the events endpoint with your project ID and optional filters.
 
 ![Postman Subscription](/images/platform/events/postman-subscribe.png)
 
-#### Request Parameters
+#### Request parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -147,7 +147,7 @@ curl -X POST -N --location \
   }'
 ```
 
-### Response Format
+### Response format
 
 <AccordionGroup>
 <Accordion title="Secret Changes">

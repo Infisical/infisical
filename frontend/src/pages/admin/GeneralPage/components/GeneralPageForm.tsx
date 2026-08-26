@@ -40,9 +40,7 @@ enum SignUpModes {
 const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
   allowedSignUpDomain: allowedEmailDomainsSchema.optional().nullable(),
-  trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
-  trustOidcEmails: z.boolean(),
   defaultAuthOrgId: z.string(),
   authConsentContent: z.string().optional().default(""),
   pageFrameContent: z.string().optional().default("")
@@ -65,9 +63,7 @@ export const GeneralPageForm = () => {
       // eslint-disable-next-line
       signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain,
-      trustSamlEmails: config.trustSamlEmails ?? false,
       trustLdapEmails: config.trustLdapEmails ?? false,
-      trustOidcEmails: config.trustOidcEmails ?? false,
       defaultAuthOrgId: config.defaultAuthOrgId ?? "",
       authConsentContent: config.authConsentContent ?? "",
       pageFrameContent: config.pageFrameContent ?? ""
@@ -80,22 +76,13 @@ export const GeneralPageForm = () => {
   const organizations = useGetOrganizations();
 
   const onFormSubmit = async (formData: TDashboardForm) => {
-    const {
-      allowedSignUpDomain,
-      trustSamlEmails,
-      trustLdapEmails,
-      trustOidcEmails,
-      authConsentContent,
-      pageFrameContent
-    } = formData;
+    const { allowedSignUpDomain, trustLdapEmails, authConsentContent, pageFrameContent } = formData;
 
     await updateServerConfig({
       defaultAuthOrgId: formData.defaultAuthOrgId || null,
       allowSignUp: signUpMode !== SignUpModes.Disabled,
       allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
-      trustSamlEmails,
       trustLdapEmails,
-      trustOidcEmails,
       authConsentContent,
       pageFrameContent
     });
@@ -207,42 +194,30 @@ export const GeneralPageForm = () => {
             />
 
             <Separator />
-            <div>
-              <FieldTitle>Trust Emails</FieldTitle>
-              <FieldDescription>
-                Select if you want Infisical to trust external emails from SAML/LDAP/OIDC identity
-                providers. If set to false, then Infisical will prompt SAML/LDAP/OIDC provisioned
-                users to verify their email upon their first login.
-              </FieldDescription>
-            </div>
-            {(
-              [
-                ["trustSamlEmails", "SAML"],
-                ["trustLdapEmails", "LDAP"],
-                ["trustOidcEmails", "OIDC"]
-              ] as const
-            ).map(([name, label]) => (
-              <Controller
-                key={name}
-                control={control}
-                name={name}
-                render={({ field, fieldState: { error } }) => (
-                  <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldTitle>Trust {label} emails</FieldTitle>
-                      <FieldError>{error?.message}</FieldError>
-                    </FieldContent>
-                    <Switch
-                      id={`trust-${label.toLowerCase()}-emails`}
-                      aria-label={`Trust ${label} emails`}
-                      variant="neutral"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </Field>
-                )}
-              />
-            ))}
+            <Controller
+              control={control}
+              name="trustLdapEmails"
+              render={({ field, fieldState: { error } }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Trust LDAP emails</FieldTitle>
+                    <FieldDescription>
+                      Trust email addresses provisioned by LDAP identity providers. When disabled,
+                      LDAP users must verify their email address on first login. SAML and OIDC users
+                      skip verification when their organization enforces SSO.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </FieldContent>
+                  <Switch
+                    id="trust-ldap-emails"
+                    aria-label="Trust LDAP emails"
+                    variant="neutral"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </Field>
+              )}
+            />
 
             <Separator />
             <div>

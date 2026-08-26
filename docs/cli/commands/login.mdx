@@ -31,11 +31,11 @@ If you have added multiple users, you can switch between the users by using the 
       Both flags are ideal for capturing the token in environment variables or CI/CD pipelines.
     </Info>
 
-### Authentication Methods
+### Authentication methods
 
 The Infisical CLI supports two main categories of authentication: User Authentication and Machine Identity Authentication.
 
-#### User Authentication
+#### User authentication
 
 User authentication is designed for individual developers and supports multiple login flows.
 
@@ -101,7 +101,7 @@ User authentication is designed for individual developers and supports multiple 
 </Accordion>
 </AccordionGroup>
 
-#### Machine Identity Authentication
+#### Machine identity authentication
 
 Machine identity authentication methods are designed for automated systems, services, and CI/CD pipelines.
 
@@ -549,7 +549,7 @@ The login command supports a number of flags that you can use for different auth
   </Accordion>
   </AccordionGroup>
 
-### User Authentication Examples
+### User authentication examples
 
 The following examples demonstrate different ways to authenticate as a user with the Infisical CLI.
 
@@ -569,7 +569,7 @@ The following examples demonstrate different ways to authenticate as a user with
   <Accordion title="Direct Login (Non-Interactive)">
     Direct login is ideal for CI/CD pipelines and automation scripts where browser-based authentication is not possible.
 
-    #### Using Command-Line Flags
+    #### Using command-line flags
 
     ```bash
     # Basic direct login (defaults to US Cloud)
@@ -585,7 +585,7 @@ The following examples demonstrate different ways to authenticate as a user with
     export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --plain --silent)
     ```
 
-    #### Using Environment Variables (Recommended for CI/CD)
+    #### Using environment variables (recommended for CI/CD)
 
     ```bash
     # Set credentials as environment variables
@@ -716,7 +716,7 @@ The following examples demonstrate different ways to authenticate as a user with
 
 </Accordion>
 
-### Machine Identity Authentication Quick Start
+### Machine identity authentication quick start
 
 In this example we'll be using the `universal-auth` method to login to obtain an Infisical access token, which we will then use to fetch secrets with.
 

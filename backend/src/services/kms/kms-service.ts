@@ -136,6 +136,7 @@ export const kmsServiceFactory = ({
     orgId,
     isReserved = true,
     isExportable = true,
+    hasDeleteProtection = false,
     tx,
     name,
     projectId,
@@ -180,6 +181,7 @@ export const kmsServiceFactory = ({
           orgId,
           isReserved,
           isExportable,
+          hasDeleteProtection,
           projectId,
           description
         },
@@ -603,6 +605,7 @@ export const kmsServiceFactory = ({
       name,
       isReserved,
       isExportable = true,
+      hasDeleteProtection = false,
       projectId,
       orgId,
       keyUsage,
@@ -685,6 +688,7 @@ export const kmsServiceFactory = ({
           orgId,
           isReserved,
           isExportable,
+          hasDeleteProtection,
           projectId,
           kmipMetadata
         },

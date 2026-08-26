@@ -115,14 +115,43 @@ export const assertKmipServerResource = (resource: { type: string }, methodName:
 
 // All auth method values surfaced anywhere in the system.
 //
-//   - 'aws' / 'token' — stored in resource_auth_methods.method, settable via the API.
-//   - 'identity'      — legacy state, derived from gateways_v2.identityId. Returned in
-//                       the API view but never stored in the registry and never
-//                       accepted as input to set/mint operations. The "settable" subset
-//                       is enforced by the discriminated TSetAuthMethodInput type
-//                       (which only accepts aws/token), not by this enum-like const.
+//   - 'aws' / 'kubernetes' / 'token': stored in resource_auth_methods.method and settable
+//     via the API.
+//   - 'identity': legacy state, derived from gateways_v2.identityId. Returned in the API
+//     view but never stored in the registry and never accepted as input to set/mint
+//     operations. The "settable" subset is enforced by the discriminated
+//     TSetAuthMethodInput type (which only accepts aws/kubernetes/token), not by this
+//     enum-like const.
+// Reason codes attached to a failed login and recorded on the audit log. Produced here and read
+// back in the gateway router, so they need a single definition.
+export const ResourceAuthLoginFailureReason = {
+  MethodMismatch: "method_mismatch",
+  ConfigMissing: "config_missing",
+  TokenReviewForbidden: "token_review_forbidden",
+  TokenReviewRequestFailed: "token_review_request_failed",
+  TokenReviewMalformedResponse: "token_review_malformed_response",
+  TokenReviewError: "token_review_error",
+  NotAServiceAccount: "not_a_service_account",
+  NoAllowlistConfigured: "no_allowlist_configured",
+  NamespaceNotAllowed: "namespace_not_allowed",
+  NameNotAllowed: "name_not_allowed",
+  AudienceNotAllowed: "audience_not_allowed",
+  GatewayProxyUnavailable: "gateway_proxy_unavailable"
+} as const;
+
+// Who performs the TokenReview. Api means Infisical does, using the configured reviewer token.
+// Gateway means the proxying gateway does, using its own in-cluster service account, which needs
+// no Kubernetes host or reviewer token but requires that gateway to be a pod in the cluster.
+export const KubernetesTokenReviewMode = {
+  Api: "api",
+  Gateway: "gateway"
+} as const;
+
+export type TKubernetesTokenReviewMode = (typeof KubernetesTokenReviewMode)[keyof typeof KubernetesTokenReviewMode];
+
 export const ResourceAuthMethodType = {
   Aws: "aws",
+  Kubernetes: "kubernetes",
   Token: "token",
   Identity: "identity"
 } as const;

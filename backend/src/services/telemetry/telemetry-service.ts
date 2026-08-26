@@ -81,7 +81,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -280,9 +280,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const plan = await licenseService.getPlan(orgId);
+      const [plan, seatUsage] = await Promise.all([
+        licenseService.getPlan(orgId),
+        licenseService.getOrgSeatUsage(orgId)
+      ]);
       properties.plan = plan.slug ?? "free";
-      properties.seat_count = plan.membersUsed;
+      properties.seat_count = seatUsage.membersUsed;
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }

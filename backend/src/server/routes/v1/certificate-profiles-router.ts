@@ -258,7 +258,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.createProfile({
         actor: req.permission.type,
@@ -385,7 +385,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { profiles, totalCount } = await server.services.certificateProfile.listProfiles({
         actor: req.permission.type,
@@ -489,7 +489,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileByIdWithConfigs({
         actor: req.permission.type,
@@ -537,7 +537,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileBySlug({
         actor: req.permission.type,
@@ -662,7 +662,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.updateProfile({
         actor: req.permission.type,
@@ -722,7 +722,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.deleteProfile({
         actor: req.permission.type,
@@ -794,7 +794,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificates = await server.services.certificateProfile.getProfileCertificates({
         actor: req.permission.type,
@@ -832,7 +832,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const response = await server.services.certificateProfile.getLatestActiveCertificateBundle({
         actor: req.permission.type,

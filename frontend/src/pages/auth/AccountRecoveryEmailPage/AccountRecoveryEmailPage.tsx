@@ -5,7 +5,7 @@ import { MailCheck } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import { EmailServiceSetupModal } from "@app/components/v2";
+import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
 import { Button, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
 import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";

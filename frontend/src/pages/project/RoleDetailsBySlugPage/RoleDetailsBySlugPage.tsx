@@ -1,35 +1,45 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import {
+  ChevronLeftIcon,
+  CopyIcon,
+  EllipsisIcon,
+  InfoIcon,
+  PencilIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  PageHeader
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { DeleteProjectRoleDialog } from "@app/pages/project/RoleDetailsBySlugPage/components/DeleteProjectRoleDialog";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
+import { EditProjectRoleDialog } from "@app/pages/project/RoleDetailsBySlugPage/components/EditProjectRoleDialog";
 import { RolePermissionsSection } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
-
-import { RoleModal } from "./components/RoleModal";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -38,6 +48,7 @@ const Page = () => {
     select: (el) => el.roleSlug as string
   });
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
   const orgId = currentOrg?.id || "";
@@ -46,7 +57,7 @@ const Page = () => {
   const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string, currentProject?.type);
   const displayName = data?.name ?? "";
 
-  const { mutateAsync: deleteProjectRole } = useDeleteProjectRole();
+  const { mutateAsync: deleteProjectRole, isPending: isDeletingRole } = useDeleteProjectRole();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
@@ -59,6 +70,7 @@ const Page = () => {
 
     await deleteProjectRole({
       projectId,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       id: data.id
     });
 
@@ -82,6 +94,7 @@ const Page = () => {
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (data?.slug ?? "") as ProjectMembershipRole
   );
+  const canEditRole = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
 
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
@@ -149,9 +162,6 @@ const Page = () => {
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
                         onClick={() =>
                           handlePopUpOpen("role", {
                             roleSlug
@@ -170,9 +180,6 @@ const Page = () => {
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
                         onClick={() => {
                           handlePopUpOpen("duplicateRole");
                         }}
@@ -203,28 +210,32 @@ const Page = () => {
             )}
           </PageHeader>
           {isCertManager && isCustomRole && (
-            <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-200">
-              <p className="font-medium text-mineshaft-100">
-                Custom roles act as Member in Certificate Manager
-              </p>
-              <p className="mt-1 text-mineshaft-300">
+            <Alert variant="info" className="mb-4">
+              <InfoIcon />
+              <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
+              <AlertDescription>
                 In the new Certificate Manager flow, access is granted through Application
                 memberships (Admin or Member). Permissions defined here only apply to legacy
                 endpoints — users with this role are treated as Member at the project level and only
                 see resources inside Applications they are explicitly added to.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
-          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />
+          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole || !canEditRole} />
         </div>
       )}
-      <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <EditProjectRoleDialog
+        isOpen={popUp.role.isOpen}
+        role={data}
+        onOpenChange={(isOpen) => handlePopUpToggle("role", isOpen)}
+      />
+      <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure you want to delete the project role ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => onDeleteRoleSubmit()}
+        roleName={data?.name ?? "project role"}
+        confirmationKey="confirm"
+        isPending={isDeletingRole}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        onConfirm={onDeleteRoleSubmit}
       />
       <DuplicateProjectRoleModal
         isOpen={popUp.duplicateRole.isOpen}

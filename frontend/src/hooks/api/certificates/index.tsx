@@ -6,6 +6,7 @@ export {
   useDeleteCert,
   useDownloadCertPkcs12,
   useImportCertificate,
+  useImportPkcs12Entries,
   useRenewCertificate,
   useRevokeCert,
   useTriggerCertificateRequestValidation,

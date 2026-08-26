@@ -1,13 +1,13 @@
 ---
-title: "Migration Guide"
+title: "Migration guide"
 description: "Guide for migrating permissions in Infisical"
 ---
 
-# Migrating from Permission V1 to Permission V2
+# Migrating from permission V1 to permission V2
 
 This guide provides instructions for upgrading from the legacy V1 permissions system to the more powerful V2 permissions system in Infisical.
 
-## Why Upgrade to V2?
+## Why upgrade to V2?
 
 The V2 permissions system offers several advantages over V1:
 
@@ -16,11 +16,11 @@ The V2 permissions system offers several advantages over V1:
 - **Conditional permissions**: Apply permissions based on specific criteria
 - **Array-based actions**: Cleaner syntax for multiple actions
 
-## Migration Steps
+## Migration steps
 
 When upgrading to V2 permissions (i.e., when moving from using the `permissions` to `permissions_v2` field in your Terraform configurations, or upgrading to the V2 permission API), you'll need to update your permission structure as follows:
 
-### 1. Expand Secret Permissions
+### 1. Expand secret permissions
 
 Any permissions for `secrets` should be expanded to include equivalent permissions for:
 
@@ -28,7 +28,7 @@ Any permissions for `secrets` should be expanded to include equivalent permissio
 - `secret-folders` (except for read permissions)
 - `dynamic-secrets`
 
-### 2. Map Dynamic Secret Actions
+### 2. Map dynamic secret actions
 
 For dynamic secrets, the actions need to be mapped differently:
 
@@ -39,7 +39,7 @@ For dynamic secrets, the actions need to be mapped differently:
 | `edit`    | `edit-root-credential` (also adds `lease` permission) |
 | `delete`  | `delete-root-credential`                              |
 
-### 3. Update Configuration Format
+### 3. Update configuration format
 
 V2 permissions use a different syntax, with actions stored in arrays and an optional `inverted` flag:
 
@@ -58,7 +58,7 @@ V2 permissions use a different syntax, with actions stored in arrays and an opti
 }
 ```
 
-## Example Migration
+## Example migration
 
 Here's a complete example showing how to migrate a role from V1 to V2:
 
@@ -110,7 +110,7 @@ resource "infisical_project_role" "example" {
 }
 ```
 
-## Important Considerations
+## Important considerations
 
 - When moving to V2 permissions, make sure to include all the necessary expanded permissions based on your original `secrets` permissions.
 - V2 permissions give you the ability to use conditions and inversion, which are not available in V1.

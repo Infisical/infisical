@@ -13,7 +13,7 @@ Infisical supports three webhook types: General, Slack, and Microsoft Teams. Use
 
 ![webhook-create](../../images/webhook-create.png)
 
-## Secret Key Verification
+## Secret key verification
 
 A secret key is a way for users to verify that a webhook request was sent by Infisical and is intended for the correct integration.
 
@@ -23,7 +23,7 @@ The header will be in the format `t=<timestamp>;<signature>`. You can then gener
 
 If the signature in the header matches the signature that you generated, then you can be sure that the request was sent by Infisical and is intended for your integration. The timestamp in the header ensures that the request is not replayed.
 
-## Event Filtering
+## Event filtering
 
 By default, webhooks trigger on every supported event. You can narrow this down under **Advanced Settings** when creating a webhook, and only receive the events you care about. You can also change the events on existing webhooks by clicking **Edit** and selecting the events you want.
 
@@ -35,7 +35,7 @@ Supported events:
 - **Change Request Modified** (`secrets.change-request.modified`): triggered when a secret change request in the configured scope is created, reviewed, closed, reopened, or merged.
 - **Access Request Modified** (`secrets.access-request.modified`): triggered when an access request is created, edited, reviewed, or revoked.
 
-### Webhook Payload Format
+### Webhook payload format
 
 Every payload has a top-level `timestamp` field, in epoch milliseconds, set to when Infisical sent the webhook.
 

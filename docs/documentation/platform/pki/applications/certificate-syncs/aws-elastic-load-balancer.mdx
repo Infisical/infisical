@@ -20,7 +20,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
   If your AWS Connection uses the **Assume Role** method and is created within Certificate Manager, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
 </Tip>
 
-## Create an ELB Sync
+## Create an ELB sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -133,7 +133,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
     </Tab>
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 Your AWS Elastic Load Balancer Certificate Sync will:
 
@@ -142,7 +142,7 @@ Your AWS Elastic Load Balancer Certificate Sync will:
 - **Expiration Handling**: Optionally remove expired certificates from listeners and ACM (if enabled).
 - **Tagging**: Automatically tag certificates in ACM with an InfisicalCertificate tag for easy identification and management.
 
-## Setting Default Certificates
+## Setting default certificates
 
 You can set a certificate as the default for all configured listeners. The default certificate is used when a client connects without specifying a hostname via SNI (Server Name Indication).
 
@@ -173,7 +173,7 @@ You can set a certificate as the default for all configured listeners. The defau
     </Tab>
 </Tabs>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to AWS Elastic Load Balancer using the sync certificates functionality. This is useful for:
 
@@ -191,7 +191,7 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
   synced to your load balancers.
 </Note>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">

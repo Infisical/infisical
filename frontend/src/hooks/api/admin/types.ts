@@ -85,7 +85,6 @@ export type TServerConfig = {
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
-  licenseServerV2Enabled?: boolean;
   isCrossProjectSecretSharingEnabled?: boolean;
   isClickhouseAuditLogEnabled?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
@@ -93,9 +92,7 @@ export type TServerConfig = {
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   createdAt?: string;
-  trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
-  trustOidcEmails?: boolean;
   onboardingCompleted?: boolean;
   isSecretScanningDisabled?: boolean;
   kubernetesAutoFetchServiceAccountToken?: boolean;
