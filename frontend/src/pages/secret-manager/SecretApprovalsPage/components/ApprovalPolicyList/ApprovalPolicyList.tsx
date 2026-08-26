@@ -1,10 +1,21 @@
 import { useMemo, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, FilterIcon, PlusIcon, SearchIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CircleAlertIcon,
+  FilterIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  AccessRestrictedNotice,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
   CardAction,
@@ -34,7 +45,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionSub,
@@ -82,26 +96,34 @@ type PolicyFilters = {
 };
 
 const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Project) => {
-  const { data: accessPolicies, isPending: isAccessPoliciesLoading } = useGetAccessApprovalPolicies(
-    {
-      projectSlug: currentProject?.slug as string,
-      options: {
-        enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentProject?.slug
-      }
-    }
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
   );
-  const { data: secretPolicies, isPending: isSecretPoliciesLoading } = useGetSecretApprovalPolicies(
-    {
-      projectId: currentProject?.id as string,
-      options: {
-        enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentProject?.id
-      }
+  const {
+    data: accessPolicies,
+    isPending: isAccessPoliciesLoading,
+    isError: isAccessPoliciesError,
+    isFetching: isAccessPoliciesFetching,
+    refetch: refetchAccessPolicies
+  } = useGetAccessApprovalPolicies({
+    projectSlug: currentProject?.slug as string,
+    options: {
+      enabled: canReadPolicies && !!currentProject?.slug
     }
-  );
+  });
+  const {
+    data: secretPolicies,
+    isPending: isSecretPoliciesLoading,
+    isError: isSecretPoliciesError,
+    isFetching: isSecretPoliciesFetching,
+    refetch: refetchSecretPolicies
+  } = useGetSecretApprovalPolicies({
+    projectId: currentProject?.id as string,
+    options: {
+      enabled: canReadPolicies && !!currentProject?.id
+    }
+  });
 
   // merge data sorted by updatedAt
   const policies = [
@@ -114,7 +136,11 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
 
   return {
     policies,
-    isLoading: isAccessPoliciesLoading || isSecretPoliciesLoading
+    isLoading: canReadPolicies && (isAccessPoliciesLoading || isSecretPoliciesLoading),
+    isError: isAccessPoliciesError || isSecretPoliciesError,
+    isRetrying: isAccessPoliciesFetching || isSecretPoliciesFetching,
+    refetchAccessPolicies,
+    refetchSecretPolicies
   };
 };
 
@@ -128,13 +154,60 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const { data: groups } = useListWorkspaceGroups(currentProject?.id || "");
+  const {
+    data: members,
+    isError: isMembersError,
+    isFetching: isMembersFetching,
+    isPending: isMembersPending,
+    refetch: refetchMembers
+  } = useGetWorkspaceUsers(projectId, true);
+  const {
+    data: groups,
+    isError: isGroupsError,
+    isFetching: isGroupsFetching,
+    isPending: isGroupsPending,
+    refetch: refetchGroups
+  } = useListWorkspaceGroups(currentProject?.id || "");
 
-  const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
-    permission,
-    currentProject
+  const {
+    policies,
+    isLoading: isPoliciesLoading,
+    isError: isPoliciesError,
+    isRetrying: isPoliciesRetrying,
+    refetchAccessPolicies,
+    refetchSecretPolicies
+  } = useApprovalPolicies(permission, currentProject);
+
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
   );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canEditPolicies = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canDeletePolicies = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.SecretApproval
+  );
+  const isApproverOptionsError = isMembersError || isGroupsError;
+  const isApproverOptionsLoading = isMembersPending || isGroupsPending;
+  const isApproverOptionsRetrying = isMembersFetching || isGroupsFetching;
+  let approverOptionsDisabledReason: string | undefined;
+
+  if (isApproverOptionsLoading) {
+    approverOptionsDisabledReason = "Approver options are loading";
+  } else if (isApproverOptionsError) {
+    approverOptionsDisabledReason = "Approver options are unavailable";
+  }
+
+  const addPolicyDisabledReason = canCreatePolicies
+    ? approverOptionsDisabledReason
+    : "Access restricted";
 
   const [filters, setFilters] = useState<PolicyFilters>({
     type: null,
@@ -253,208 +326,271 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
             Implement granular policies for access requests and secrets management
           </CardDescription>
           <CardAction>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.SecretApproval}
-            >
-              {(isAllowed) => (
-                <Button
-                  onClick={() => {
-                    if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan");
-                      return;
-                    }
-                    handlePopUpOpen("policyForm");
-                  }}
-                  variant="project"
-                  isDisabled={!isAllowed}
-                >
-                  <PlusIcon />
-                  Add Policy
-                </Button>
-              )}
-            </ProjectPermissionCan>
+            <Tooltip open={addPolicyDisabledReason ? undefined : false}>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    onClick={() => {
+                      if (subscription && !subscription?.secretApproval) {
+                        handlePopUpOpen("upgradePlan");
+                        return;
+                      }
+                      handlePopUpOpen("policyForm");
+                    }}
+                    variant="project"
+                    isDisabled={Boolean(addPolicyDisabledReason)}
+                  >
+                    <PlusIcon />
+                    Add Policy
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{addPolicyDisabledReason}</TooltipContent>
+            </Tooltip>
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <EnvironmentFilterSelect
-              environments={currentProject.environments}
-              selectedEnvironmentIds={filters.environmentIds}
-              onChange={(environmentIds) => setFilters((prev) => ({ ...prev, environmentIds }))}
-            />
-            <InputGroup className="flex-1">
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search policies by name, type, environment or secret path..."
-              />
-            </InputGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  aria-label="Filter policies"
-                  variant={filters.type !== null ? "project" : "outline"}
-                >
-                  <FilterIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
-                align="end"
-              >
-                <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={filters.type ?? "all"}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      type: value === "all" ? null : (value as PolicyType)
-                    }))
-                  }
-                >
-                  <DropdownMenuRadioItem value="all">All Policies</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={PolicyType.AccessPolicy}>
-                    Access Policy
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value={PolicyType.ChangePolicy}>
-                    Change Policy
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {(isPoliciesLoading || filteredPolicies.length > 0) && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <div className="flex items-center">
-                      Name
-                      <IconButton
-                        variant="ghost-muted"
-                        size="xs"
-                        className={getClassName(PolicyOrderBy.Name)}
-                        aria-label="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Name)}
-                      >
-                        {getColSortIcon(PolicyOrderBy.Name)}
-                      </IconButton>
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center">
-                      Environment
-                      <IconButton
-                        variant="ghost-muted"
-                        size="xs"
-                        className={getClassName(PolicyOrderBy.Environment)}
-                        aria-label="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Environment)}
-                      >
-                        {getColSortIcon(PolicyOrderBy.Environment)}
-                      </IconButton>
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center">
-                      Secret Path
-                      <IconButton
-                        variant="ghost-muted"
-                        size="xs"
-                        className={getClassName(PolicyOrderBy.SecretPath)}
-                        aria-label="sort"
-                        onClick={() => handleSort(PolicyOrderBy.SecretPath)}
-                      >
-                        {getColSortIcon(PolicyOrderBy.SecretPath)}
-                      </IconButton>
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center">
-                      Type
-                      <IconButton
-                        variant="ghost-muted"
-                        size="xs"
-                        className={getClassName(PolicyOrderBy.Type)}
-                        aria-label="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Type)}
-                      >
-                        {getColSortIcon(PolicyOrderBy.Type)}
-                      </IconButton>
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-5" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isPoliciesLoading &&
-                  Array.from({ length: 5 }).map((_, idx) => (
-                    // eslint-disable-next-line react/no-array-index-key
-                    <TableRow key={`policy-skeleton-${idx}`}>
-                      <TableCell>
-                        <Skeleton className="h-5" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5" />
-                      </TableCell>
+          {!canReadPolicies ? (
+            <AccessRestrictedNotice title="Access Restricted" />
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <EnvironmentFilterSelect
+                  environments={currentProject.environments}
+                  selectedEnvironmentIds={filters.environmentIds}
+                  onChange={(environmentIds) => setFilters((prev) => ({ ...prev, environmentIds }))}
+                />
+                <InputGroup className="flex-1">
+                  <InputGroupAddon>
+                    <SearchIcon />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search policies by name, type, environment or secret path..."
+                    aria-label="Search approval policies"
+                  />
+                </InputGroup>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      aria-label="Filter policies"
+                      variant={filters.type !== null ? "project" : "outline"}
+                    >
+                      <FilterIcon />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+                    align="end"
+                  >
+                    <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={filters.type ?? "all"}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          type: value === "all" ? null : (value as PolicyType)
+                        }))
+                      }
+                    >
+                      <DropdownMenuRadioItem value="all">All Policies</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value={PolicyType.AccessPolicy}>
+                        Access Policy
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value={PolicyType.ChangePolicy}>
+                        Change Policy
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {isPoliciesError && (
+                <Alert variant="danger">
+                  <CircleAlertIcon />
+                  <AlertTitle>Could not load all approval policies</AlertTitle>
+                  <AlertDescription>
+                    <span>Retry to restore the complete policy list.</span>
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      isPending={isPoliciesRetrying}
+                      isDisabled={isPoliciesRetrying}
+                      onClick={() => {
+                        refetchAccessPolicies().catch(() => undefined);
+                        refetchSecretPolicies().catch(() => undefined);
+                      }}
+                    >
+                      <RefreshCwIcon />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isApproverOptionsError && (
+                <Alert variant="danger">
+                  <CircleAlertIcon />
+                  <AlertTitle>Could not load approver options</AlertTitle>
+                  <AlertDescription>
+                    <span>Retry before creating or editing an approval policy.</span>
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      isPending={isApproverOptionsRetrying}
+                      isDisabled={isApproverOptionsRetrying}
+                      onClick={() => {
+                        refetchMembers().catch(() => undefined);
+                        refetchGroups().catch(() => undefined);
+                      }}
+                    >
+                      <RefreshCwIcon />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {(isPoliciesLoading || filteredPolicies.length > 0) && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <div className="flex items-center">
+                          Name
+                          <IconButton
+                            variant="ghost-muted"
+                            size="xs"
+                            className={getClassName(PolicyOrderBy.Name)}
+                            aria-label="Sort by name"
+                            onClick={() => handleSort(PolicyOrderBy.Name)}
+                          >
+                            {getColSortIcon(PolicyOrderBy.Name)}
+                          </IconButton>
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center">
+                          Environment
+                          <IconButton
+                            variant="ghost-muted"
+                            size="xs"
+                            className={getClassName(PolicyOrderBy.Environment)}
+                            aria-label="Sort by environment"
+                            onClick={() => handleSort(PolicyOrderBy.Environment)}
+                          >
+                            {getColSortIcon(PolicyOrderBy.Environment)}
+                          </IconButton>
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center">
+                          Secret Path
+                          <IconButton
+                            variant="ghost-muted"
+                            size="xs"
+                            className={getClassName(PolicyOrderBy.SecretPath)}
+                            aria-label="Sort by secret path"
+                            onClick={() => handleSort(PolicyOrderBy.SecretPath)}
+                          >
+                            {getColSortIcon(PolicyOrderBy.SecretPath)}
+                          </IconButton>
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center">
+                          Type
+                          <IconButton
+                            variant="ghost-muted"
+                            size="xs"
+                            className={getClassName(PolicyOrderBy.Type)}
+                            aria-label="Sort by type"
+                            onClick={() => handleSort(PolicyOrderBy.Type)}
+                          >
+                            {getColSortIcon(PolicyOrderBy.Type)}
+                          </IconButton>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-5" />
                     </TableRow>
-                  ))}
-                {!isPoliciesLoading &&
-                  !!currentProject &&
-                  filteredPolicies
-                    ?.slice(offset, perPage * page)
-                    .map((policy) => (
-                      <ApprovalPolicyRow
-                        policy={policy}
-                        key={policy.id}
-                        members={members}
-                        groups={groups}
-                        onEdit={() => handlePopUpOpen("policyForm", policy)}
-                        onDelete={() => handlePopUpOpen("deletePolicy", policy)}
-                      />
-                    ))}
-              </TableBody>
-            </Table>
-          )}
-          {!isPoliciesLoading && !policies?.length && (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No Policies Found</EmptyTitle>
-                <EmptyDescription>
-                  Create a policy to require approval for secret changes and access requests.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-          {Boolean(!filteredPolicies.length && policies.length && !isPoliciesLoading) && (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No Policies Match Search</EmptyTitle>
-                <EmptyDescription>Try adjusting your search or filters.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-          {Boolean(filteredPolicies.length) && (
-            <Pagination
-              count={filteredPolicies.length}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={handlePerPageChange}
-            />
+                  </TableHeader>
+                  <TableBody>
+                    {isPoliciesLoading &&
+                      Array.from({ length: 5 }).map((_, idx) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <TableRow key={`policy-skeleton-${idx}`}>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    {!isPoliciesLoading &&
+                      !!currentProject &&
+                      filteredPolicies
+                        ?.slice(offset, perPage * page)
+                        .map((policy) => (
+                          <ApprovalPolicyRow
+                            policy={policy}
+                            key={policy.id}
+                            members={members}
+                            groups={groups}
+                            canEdit={
+                              canEditPolicies &&
+                              !isApproverOptionsLoading &&
+                              !isApproverOptionsError
+                            }
+                            canDelete={canDeletePolicies}
+                            editDisabledReason={approverOptionsDisabledReason}
+                            onEdit={() => handlePopUpOpen("policyForm", policy)}
+                            onDelete={() => handlePopUpOpen("deletePolicy", policy)}
+                          />
+                        ))}
+                  </TableBody>
+                </Table>
+              )}
+              {!isPoliciesLoading && !isPoliciesError && !policies?.length && (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No Policies Found</EmptyTitle>
+                    <EmptyDescription>
+                      Create a policy to require approval for secret changes and access requests.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+              {Boolean(
+                !filteredPolicies.length &&
+                  policies.length &&
+                  !isPoliciesLoading &&
+                  !isPoliciesError
+              ) && (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No Policies Match Search</EmptyTitle>
+                    <EmptyDescription>Try adjusting your search or filters.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+              {Boolean(filteredPolicies.length) && (
+                <Pagination
+                  count={filteredPolicies.length}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -464,6 +600,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
         members={members}
+        groups={groups}
+        hasApproverOptionsError={isApproverOptionsError}
+        isRetryingApproverOptions={isApproverOptionsRetrying}
+        onRetryApproverOptions={() => {
+          refetchMembers().catch(() => undefined);
+          refetchGroups().catch(() => undefined);
+        }}
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
       {popUp.deletePolicy.data && (
