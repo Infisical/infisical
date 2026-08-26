@@ -2297,7 +2297,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     folderCommitService,
     notificationService,
-    telemetryService
+    telemetryService,
+    secretValidationRuleService
   });
 
   const secretService = secretServiceFactory({

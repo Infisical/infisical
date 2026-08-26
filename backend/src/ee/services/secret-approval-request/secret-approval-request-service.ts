@@ -67,6 +67,7 @@ import {
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -162,6 +163,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -195,7 +197,8 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService,
   notificationService,
-  telemetryService
+  telemetryService,
+  secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -1836,6 +1839,23 @@ export const secretApprovalRequestServiceFactory = ({
       })),
       project.secretDetectionIgnoreValues || []
     );
+
+    const secretsToValidate: { key: string; value?: string }[] = [
+      ...(data[SecretOperations.Create] || []).map((s) => ({ key: s.secretKey, value: s.secretValue })),
+      ...(data[SecretOperations.Update] || [])
+        .filter((s) => s.secretValue)
+        .map((s) => ({ key: s.secretKey, value: s.secretValue }))
+    ];
+
+    if (secretsToValidate.length) {
+      await secretValidationRuleService.validateSecrets({
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: secretsToValidate
+      });
+    }
 
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];
