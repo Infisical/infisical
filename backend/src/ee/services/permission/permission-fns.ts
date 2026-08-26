@@ -6,7 +6,6 @@ import { z } from "zod";
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -20,6 +19,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import { OrgPermissionSet } from "./org-permission";
+import { TPermissionDALFactory } from "./permission-dal";
 import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ActionAllowedConditions,
@@ -450,30 +450,43 @@ const handlebarsClient = (() => {
   return hbs;
 })();
 
-export const getFolderPermissionVersionFingerprint = async (
-  projectId: string,
-  keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">
-) => String((await keyStore.pgGetIntItem(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId))) ?? 0);
-
 export const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
   role: U
 ): boolean =>
   !role.isTemporary ||
   Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
 
-// Empty string when the actor holds no active folder grants: the folder-permission version counter is
-// project-wide, so a bump from another actor's grant re-fetches the cached blob, but an actor whose own
-// list is still empty must keep a stable fingerprint (and therefore a stable ETag). Active-filtering at
-// compute time makes a temporary grant's expiry flip the fingerprint without any counter bump.
-export const computeFolderScopedPrivilegeFingerprint = (
-  privileges: TCachedFolderScopedPrivileges["privileges"]
-): string => {
-  const active = privileges.filter(isActiveRole);
-  if (!active.length) return "";
-  const stable = active
-    .map(({ id, folderId, role, environmentSlug, secretPath }) => ({ id, folderId, role, environmentSlug, secretPath }))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  return generateCacheKeyFromData(stable);
+export const getFolderPermissionVersionFingerprint = async (
+  projectId: string,
+  keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">
+) => String((await keyStore.pgGetIntItem(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId))) ?? 0);
+
+export const getProjectPermissionFingerprint = async (
+  {
+    projectId,
+    orgId,
+    actorId,
+    actorType
+  }: {
+    projectId: string;
+    orgId: string;
+    actorId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+  },
+  {
+    permissionDAL,
+    keyStore
+  }: {
+    permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
+    keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">;
+  }
+): Promise<string> => {
+  const [membershipFingerprint, folderVersion] = await Promise.all([
+    permissionDAL.getPermissionFingerprint({ projectId, orgId, actorId, actorType }),
+    getFolderPermissionVersionFingerprint(projectId, keyStore)
+  ]);
+
+  return `${membershipFingerprint}:${folderVersion}`;
 };
 
 export const fetchFolderScopedPrivileges = async (

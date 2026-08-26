@@ -96,10 +96,6 @@ export const KeyStorePrefixes = {
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
-  ProjectFolderPermissionMarker: (projectId: string, actorType: string, actorId: string) =>
-    `project-folder-permission-marker:${projectId}:${actorType}:${actorId}` as const,
-  ProjectFolderPermissionData: (projectId: string, actorType: string, actorId: string) =>
-    `project-folder-permission-data:${projectId}:${actorType}:${actorId}` as const,
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
@@ -202,9 +198,6 @@ export const KeyStoreTtls = {
   IdentityTrustedIpsInSeconds: 300, // 5 minutes
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
-  // Folder-scoped privilege cache must outlive the project permission cache above
-  ProjectFolderPermissionMarkerTtlSeconds: 15,
-  ProjectFolderPermissionDataTtlSeconds: 900, // 15 minutes
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
 

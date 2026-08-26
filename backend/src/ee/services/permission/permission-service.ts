@@ -72,12 +72,11 @@ import {
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildFolderScopedPrivilegeRules,
-  computeFolderScopedPrivilegeFingerprint,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
   filterOverriddenFolderScopedDenyRules,
-  getFolderPermissionVersionFingerprint,
+  getProjectPermissionFingerprint,
   handlebarsClient,
   isActiveRole,
   validateOrgSSO
@@ -483,16 +482,27 @@ export const permissionServiceFactory = ({
     }
   };
 
+  const reviveCachedFolderGrants = (cached: TCachedProjectPermission): TCachedProjectPermission => {
+    const privileges = cached.folderScopedPrivileges ?? [];
+    for (const priv of privileges) {
+      if (priv.temporaryAccessEndTime) {
+        priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime);
+      }
+    }
+    return { ...cached, folderScopedPrivileges: privileges };
+  };
+
   type TCachedProjectPermission = {
     permissionData: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>;
     projectDetails: TProjects;
     username: string;
     canBypassSso: boolean;
+    folderScopedPrivileges: TCachedFolderScopedPrivileges["privileges"];
   };
 
-  // Postgres row expiry for the folder-permission version counter. Must comfortably exceed the 15m
-  // data TTL: an expired row reads as 0 and the next bump re-inserts at 1, so a short expiry lets a
-  // live cached blob's fingerprint collide with the resurrected counter and re-validate stale data.
+  // Postgres row expiry for the folder-permission version counter. Must comfortably exceed the 10m
+  // permission data TTL: an expired row reads as 0 and the next bump re-inserts at 1, so a short expiry
+  // lets a live cached blob's fingerprint collide with the resurrected counter and re-validate stale data.
   const FOLDER_PERMISSION_VERSION_TTL = "2d";
 
   const invalidateProjectFolderPermissionCache: TPermissionServiceFactory["invalidateProjectFolderPermissionCache"] =
@@ -507,39 +517,8 @@ export const permissionServiceFactory = ({
       }
     };
 
-  const $getFolderScopedPrivileges = async (
-    projectId: string,
-    actor: ActorType.USER | ActorType.IDENTITY,
-    actorId: string
-  ): Promise<TCachedFolderScopedPrivileges> =>
-    requestMemoize(requestMemoKeys.folderScopedPrivileges({ projectId, actor, actorId }), () =>
-      withCacheFingerprint<TCachedFolderScopedPrivileges>({
-        keyStore,
-        dataKey: KeyStorePrefixes.ProjectFolderPermissionData(projectId, actor, actorId),
-        markerKey: KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, actor, actorId),
-        markerTtlSeconds: KeyStoreTtls.ProjectFolderPermissionMarkerTtlSeconds,
-        dataTtlSeconds: KeyStoreTtls.ProjectFolderPermissionDataTtlSeconds,
-        fingerprintFetcher: () => getFolderPermissionVersionFingerprint(projectId, keyStore),
-        dataFetcher: () =>
-          fetchFolderScopedPrivileges(projectId, actor, actorId, {
-            additionalPrivilegeDAL,
-            secretFolderDAL
-          }),
-        reviver: (parsed: TCachedFolderScopedPrivileges) => {
-          for (const priv of parsed.privileges) {
-            if (priv.temporaryAccessEndTime) {
-              priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime);
-            }
-          }
-        }
-      })
-    );
-
-  const getProjectFolderPermissionFingerprint: TPermissionServiceFactory["getProjectFolderPermissionFingerprint"] =
-    async ({ projectId, actor, actorId }) => {
-      const { privileges } = await $getFolderScopedPrivileges(projectId, actor, actorId);
-      return computeFolderScopedPrivilegeFingerprint(privileges);
-    };
+  const getProjectPermissionFingerprintForActor: TPermissionServiceFactory["getProjectPermissionFingerprint"] = (dto) =>
+    getProjectPermissionFingerprint(dto, { permissionDAL, keyStore });
 
   const $fetchProjectPermissionData = async (
     projectId: string,
@@ -615,7 +594,16 @@ export const permissionServiceFactory = ({
       }
     }
 
-    return { permissionData, projectDetails, username, canBypassSso };
+    // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
+    // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a
+    // stale grant never restricts an admin.
+    const folderScopedPrivileges =
+      projectDetails.type === ProjectType.SecretManager && !hasActiveProjectAdminRole(permissionData)
+        ? (await fetchFolderScopedPrivileges(projectId, actor, actorId, { additionalPrivilegeDAL, secretFolderDAL }))
+            .privileges
+        : [];
+
+    return { permissionData, projectDetails, username, canBypassSso, folderScopedPrivileges };
   };
 
   const getProjectPermission: TPermissionServiceFactory["getProjectPermission"] = async ({
@@ -687,7 +675,7 @@ export const permissionServiceFactory = ({
         markerTtlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
         dataTtlSeconds: KeyStoreTtls.ProjectPermissionDataTtlSeconds,
         fingerprintFetcher: () =>
-          permissionDAL.getPermissionFingerprint({
+          getProjectPermissionFingerprintForActor({
             projectId,
             orgId: actorOrgId,
             actorId,
@@ -697,6 +685,7 @@ export const permissionServiceFactory = ({
           $fetchProjectPermissionData(projectId, actorOrgId, actionProjectType, narrowedActor, actorId),
         reviver: (parsed: TCachedProjectPermission) => {
           reviveCachedPermissionDates(parsed.permissionData);
+          return reviveCachedFolderGrants(parsed);
         }
       });
 
@@ -711,22 +700,17 @@ export const permissionServiceFactory = ({
         });
       }
 
-      // Folder-scoped privileges live in their own cache because they need to be outlive the project permission cache.
-      // Admins cannot receive folder grants, but a grant can predate a promotion to admin; skip
-      // evaluation so such a stale grant never restricts an admin.
-      let folderScopedPrivileges: TProjectFolderScopedPrivilege[] = [];
-      if (projectDetails.type === ProjectType.SecretManager && !hasActiveProjectAdminRole(permissionData)) {
-        const folderCached = await $getFolderScopedPrivileges(projectId, narrowedActor, actorId);
-        folderScopedPrivileges = folderCached.privileges
-          .filter(isActiveRole)
-          .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
-            id,
-            folderId,
-            role,
-            environmentSlug,
-            secretPath
-          }));
-      }
+      // Filtered per request rather than at fetch time, so a temporary grant lapsing takes effect
+      // immediately instead of waiting for the cached blob to be refetched.
+      const folderScopedPrivileges: TProjectFolderScopedPrivilege[] = cached.folderScopedPrivileges
+        .filter(isActiveRole)
+        .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+          id,
+          folderId,
+          role,
+          environmentSlug,
+          secretPath
+        }));
 
       const projectDetailsCtx = {
         id: projectDetails.id,
@@ -1460,6 +1444,6 @@ export const permissionServiceFactory = ({
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,
-    getProjectFolderPermissionFingerprint
+    getProjectPermissionFingerprint: getProjectPermissionFingerprintForActor
   };
 };

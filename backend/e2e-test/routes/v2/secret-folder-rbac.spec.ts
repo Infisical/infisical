@@ -62,8 +62,6 @@ let permissionService: TPermissionServiceFactory;
 
 let permissionDataKey: string;
 let permissionMarkerKey: string;
-let folderDataKey: string;
-let folderMarkerKey: string;
 const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(projectId);
 
 beforeAll(async () => {
@@ -148,8 +146,6 @@ beforeAll(async () => {
     memberUserId,
     ActionProjectType.SecretManager
   );
-  folderDataKey = KeyStorePrefixes.ProjectFolderPermissionData(projectId, ActorType.USER, memberUserId);
-  folderMarkerKey = KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, ActorType.USER, memberUserId);
 
   await testDb(TableName.AuthTokenSession).insert({
     id: memberSessionId,
@@ -176,14 +172,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+  await testRedis.del(permissionDataKey, permissionMarkerKey);
   await testDb(TableName.AuthTokenSession).where({ id: memberSessionId }).del();
   await testDb(TableName.Membership).where({ actorUserId: memberUserId }).del();
   await testDb(TableName.Users).whereIn("id", [memberUserId, grantHolderUserId]).del();
 });
 
-const clearMemberPermissionCaches = () =>
-  testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+const clearMemberPermissionCaches = () => testRedis.del(permissionDataKey, permissionMarkerKey);
 
 const createFolder = async (dto: { path: string; name: string }) => {
   const res = await testServer.inject({
@@ -239,39 +234,67 @@ const moveFolder = async (dto: { folderId: string; destinationPath: string }) =>
   return res.json();
 };
 
+const renameFolder = async (dto: { id: string; path: string; name: string }) => {
+  const res = await testServer.inject({
+    method: "PATCH",
+    url: `/api/v2/folders/${dto.id}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      projectId,
+      environment: seedData1.environment.slug,
+      path: dto.path,
+      name: dto.name
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().folder;
+};
+
 const getFolderVersion = async () => {
   const row = await testDb(TableName.KeyValueStore).where({ key: folderVersionKey }).first();
   return Number(row?.integerValue ?? 0);
 };
 
 describe("Folder-scoped privilege permissions", () => {
-  test("folder permission cache outlives the project permission cache", async () => {
-    await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+  test("folder grants ride in the project permission blob, under one cache key", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-one-cache" });
 
-    await permissionService.getProjectPermission(permissionArg);
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-folder-rbac-one-cache",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
 
-    const [permissionDataTtl, permissionMarkerTtl, folderDataTtl, folderMarkerTtl] = await Promise.all([
-      testRedis.ttl(permissionDataKey),
-      testRedis.ttl(permissionMarkerKey),
-      testRedis.ttl(folderDataKey),
-      testRedis.ttl(folderMarkerKey)
-    ]);
+    try {
+      await clearMemberPermissionCaches();
+      await permissionService.getProjectPermission(permissionArg);
 
-    expect(permissionDataTtl).toBeGreaterThan(540);
-    expect(permissionDataTtl).toBeLessThanOrEqual(600);
-    expect(permissionMarkerTtl).toBeGreaterThan(0);
-    expect(permissionMarkerTtl).toBeLessThanOrEqual(10);
+      const [cachedBlob, permissionDataTtl, permissionMarkerTtl] = await Promise.all([
+        testRedis.get(permissionDataKey),
+        testRedis.ttl(permissionDataKey),
+        testRedis.ttl(permissionMarkerKey)
+      ]);
 
-    expect(folderDataTtl).toBeGreaterThan(840);
-    expect(folderDataTtl).toBeLessThanOrEqual(900);
-    expect(folderMarkerTtl).toBeGreaterThan(10);
-    expect(folderMarkerTtl).toBeLessThanOrEqual(15);
+      expect(permissionDataTtl).toBeGreaterThan(540);
+      expect(permissionDataTtl).toBeLessThanOrEqual(600);
+      expect(permissionMarkerTtl).toBeGreaterThan(0);
+      expect(permissionMarkerTtl).toBeLessThanOrEqual(10);
 
-    expect(folderDataTtl).toBeGreaterThan(permissionDataTtl);
-    expect(folderMarkerTtl).toBeGreaterThan(permissionMarkerTtl);
+      const { payload } = JSON.parse(cachedBlob as string) as { payload: { folderScopedPrivileges: unknown[] } };
+      expect(payload.folderScopedPrivileges).toHaveLength(1);
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
   });
 
-  test("computes the folder path, survives a folder move, and refetches on version bump", async () => {
+  test("computes the folder path, refetches on an ancestor rename, and follows a move", async () => {
     const folderA = await createFolder({ path: "/", name: "rbac-a" });
     const folderB = await createFolder({ path: "/rbac-a", name: "rbac-b" });
     const folderDest = await createFolder({ path: "/", name: "rbac-dest" });
@@ -287,7 +310,7 @@ describe("Folder-scoped privilege permissions", () => {
     });
 
     // the raw insert bypasses the version bump, so force a cold fetch
-    await testRedis.del(folderDataKey, folderMarkerKey);
+    await clearMemberPermissionCaches();
     const before = await permissionService.getProjectPermission(permissionArg);
     expect(before.folderScopedPrivileges).toEqual([
       expect.objectContaining({
@@ -319,25 +342,41 @@ describe("Folder-scoped privilege permissions", () => {
 
     const versionBefore = await getFolderVersion();
 
+    // renaming the grant's parent leaves the privilege row untouched and only changes the derived
+    // path, so the version counter is the only thing that can signal it
+    await renameFolder({ id: folderA.id, path: "/", name: "rbac-a-renamed" });
+
+    const [rowAfterRename] = await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-folder-rbac" });
+    expect(rowAfterRename.folderId).toBe(folderB.id);
+
+    const versionAfterRename = await getFolderVersion();
+    expect(versionAfterRename).toBeGreaterThan(versionBefore);
+
+    // simulate marker expiry only: the stale data blob with the pre-rename fingerprint stays,
+    // so the refetch below is driven by the version bump, not by a cold cache
+    await testRedis.del(permissionMarkerKey);
+    const afterRename = await permissionService.getProjectPermission(permissionArg);
+    expect(afterRename.folderScopedPrivileges).toEqual([
+      expect.objectContaining({ folderId: folderB.id, secretPath: "/rbac-a-renamed/rbac-b" })
+    ]);
+
     await moveFolder({ folderId: folderA.id, destinationPath: "/rbac-dest" });
 
     const [privilegeRow] = await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-folder-rbac" });
     expect(privilegeRow).toBeDefined();
     expect(privilegeRow.folderId).not.toBe(folderB.id);
 
-    const versionAfter = await getFolderVersion();
-    expect(versionAfter).toBeGreaterThan(versionBefore);
+    const versionAfterMove = await getFolderVersion();
+    expect(versionAfterMove).toBeGreaterThan(versionAfterRename);
 
-    // simulate marker expiry only: the stale data blob with the pre-move fingerprint stays,
-    // so the refetch below is driven by the version bump, not by a cold cache
-    await testRedis.del(folderMarkerKey);
+    await testRedis.del(permissionMarkerKey);
     const after = await permissionService.getProjectPermission(permissionArg);
     expect(after.folderScopedPrivileges).toEqual([
       expect.objectContaining({
         folderId: privilegeRow.folderId,
         role: SecretFolderRole.Read,
         environmentSlug: seedData1.environment.slug,
-        secretPath: "/rbac-dest/rbac-a/rbac-b"
+        secretPath: "/rbac-dest/rbac-a-renamed/rbac-b"
       })
     ]);
 
@@ -345,11 +384,11 @@ describe("Folder-scoped privilege permissions", () => {
     expect(await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-folder-rbac" })).toEqual([]);
 
     const versionAfterDelete = await getFolderVersion();
-    expect(versionAfterDelete).toBeGreaterThan(versionAfter);
+    expect(versionAfterDelete).toBeGreaterThan(versionAfterMove);
 
-    // the folder cache marker lives 15s past the grant's deletion; drop it so later specs sharing
+    // the permission marker lives 10s past the grant's deletion; drop it so later specs sharing
     // this user don't build abilities from the stale folder deny
-    await testRedis.del(folderDataKey, folderMarkerKey);
+    await clearMemberPermissionCaches();
   });
 
   test("ignores folder grants once the holder becomes a project admin", async () => {
@@ -367,7 +406,7 @@ describe("Folder-scoped privilege permissions", () => {
 
     const grantedPath = { environment: seedData1.environment.slug, secretPath: "/rbac-admin-skip" };
 
-    await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+    await clearMemberPermissionCaches();
     const asMember = await permissionService.getProjectPermission(permissionArg);
     expect(
       asMember.permission.can(ProjectPermissionSecretActions.Edit, subject(ProjectPermissionSub.Secrets, grantedPath))
@@ -380,7 +419,7 @@ describe("Folder-scoped privilege permissions", () => {
       .update({ role: ProjectMembershipRole.Admin });
 
     try {
-      await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+      await clearMemberPermissionCaches();
       const asAdmin = await permissionService.getProjectPermission(permissionArg);
       expect(asAdmin.folderScopedPrivileges).toEqual([]);
       expect(
@@ -393,7 +432,7 @@ describe("Folder-scoped privilege permissions", () => {
     }
 
     await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
-    await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+    await clearMemberPermissionCaches();
   });
 });
 

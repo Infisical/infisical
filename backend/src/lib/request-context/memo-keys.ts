@@ -56,9 +56,6 @@ export const requestMemoKeys = {
   }) =>
     `permission:resource:${projectId}:${resourceType}:${resourceId}:${actor}:${actorId}:${actorAuthMethod}:${actorOrgId ?? ""}`,
 
-  folderScopedPrivileges: ({ projectId, actor, actorId }: { projectId: string; actor: ActorType; actorId: string }) =>
-    `permission:folder-scoped-privileges:${projectId}:${actor}:${actorId}`,
-
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 
   userFindById: (userId: string) => `user:findById:${userId}`,

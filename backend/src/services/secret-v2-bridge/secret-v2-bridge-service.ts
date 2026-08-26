@@ -11,7 +11,6 @@ import {
   TSecretsV2
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -144,8 +143,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectFolderPermissionFingerprint">;
-  permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -193,7 +191,6 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   folderDAL,
   permissionService,
-  permissionDAL,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -1284,30 +1281,25 @@ export const secretV2BridgeServiceFactory = ({
     } = dto;
 
     let permissionFingerprint = "";
-    let folderPermissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // Cache the fingerprint for the marker window so repeated polls
-      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
-      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
-      // Folder-scoped grants are excluded from getPermissionFingerprint (they live behind their own
-      // version-counter cache), so they get their own actor-scoped fingerprint: empty when the actor
-      // holds no folder grants, keeping other actors' grant changes from churning this actor's ETag.
-      [permissionFingerprint, folderPermissionFingerprint] = await Promise.all([
-        withCache({
-          keyStore,
-          key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
-          ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
-          fetcher: () =>
-            permissionDAL.getPermissionFingerprint({
-              projectId,
-              orgId: actorOrgId,
-              actorId,
-              actorType: actor
-            })
-        }),
-        permissionService.getProjectFolderPermissionFingerprint({ projectId, actor, actorId })
-      ]);
+      // Cache the fingerprint for the marker window so repeated polls skip the per-request DB query.
+      // Same 10s TTL as getProjectPermission's marker, so no new staleness. This gates only the Etag
+      // cache, the real permission check is still done on the getProjectPermission call. It is the same
+      // fingerprint that validates the permission cache, so folder grants are covered here too — at the
+      // cost of its project-wide folder-version half churning this ETag on any folder change.
+      permissionFingerprint = await withCache({
+        keyStore,
+        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+        fetcher: () =>
+          permissionService.getProjectPermissionFingerprint({
+            projectId,
+            orgId: actorOrgId,
+            actorId,
+            actorType: actor
+          })
+      });
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
@@ -1328,7 +1320,7 @@ export const secretV2BridgeServiceFactory = ({
       throwOnMissingReadValuePermission,
       ...params
     });
-    const etagField = `${actorId}:${permissionFingerprint}:${folderPermissionFingerprint}:${requestParamsHash}`;
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
     const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
