@@ -302,6 +302,7 @@ const HostRangeConfigForm = ({
           control={control as unknown as Control<{ credentialAccountIds: string[] }>}
           accountType={sourceMeta.accountType}
           placeholder={sourceMeta.placeholder}
+          description={sourceMeta.description}
           warning={sourceMeta.warning}
         />
         <GatewayField

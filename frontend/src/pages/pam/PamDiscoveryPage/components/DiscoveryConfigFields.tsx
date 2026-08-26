@@ -170,6 +170,8 @@ export const HOST_RANGE_SOURCES = {
   [PamDiscoveryType.Unix]: {
     accountType: PamAccountType.SSH,
     placeholder: "Select SSH accounts",
+    description:
+      "A target is matched to an account by host, otherwise each account is tried until one connects.",
     warning:
       "Password accounts send their password to every host scanned in the range, including hosts you don't control. We recommend a key or certificate account for scanning.",
     configKey: "cidrRanges",
@@ -181,6 +183,8 @@ export const HOST_RANGE_SOURCES = {
   [PamDiscoveryType.Postgres]: {
     accountType: PamAccountType.Postgres,
     placeholder: "Select PostgreSQL accounts",
+    description:
+      "The username and password authenticate to each instance scanned. The account's database and TLS settings are reused for the connection.",
     warning:
       "The account password is sent to every instance scanned, including any you don't control. Only list hosts you trust.",
     configKey: "hosts",
@@ -242,11 +246,13 @@ export const CredentialAccountsField = ({
   control,
   accountType,
   placeholder,
+  description,
   warning
 }: {
   control: Control<{ credentialAccountIds: string[] }>;
   accountType: PamAccountType;
   placeholder: string;
+  description: string;
   warning: string;
 }) => {
   const { data: accounts = [] } = useListPamAccounts();
@@ -271,10 +277,7 @@ export const CredentialAccountsField = ({
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}
               placeholder={placeholder}
             />
-            <FieldDescription>
-              A target is matched to an account by host, otherwise each account is tried until one
-              connects.
-            </FieldDescription>
+            <FieldDescription>{description}</FieldDescription>
             <FieldError>{fieldState.error?.message}</FieldError>
             <Alert variant="warning" className="mt-1">
               <AlertTriangle />

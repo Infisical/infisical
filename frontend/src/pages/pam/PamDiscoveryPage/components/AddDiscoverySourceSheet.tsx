@@ -294,6 +294,7 @@ const HostRangeSourceForm = ({
           control={control as unknown as Control<{ credentialAccountIds: string[] }>}
           accountType={source.accountType}
           placeholder={source.placeholder}
+          description={source.description}
           warning={source.warning}
         />
         <GatewayField
