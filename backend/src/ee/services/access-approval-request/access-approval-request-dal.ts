@@ -720,13 +720,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
     try {
-      let docs = await findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
-      // A caller that just committed a write reads its own row here, and a replica may not have
-      // replayed it yet. Confirm a miss against the primary so a lagging replica cannot make a
-      // committed request look absent.
-      if (!docs.length && !tx) {
-        docs = await findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, db.primaryNode());
-      }
+      const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
+      const docs = await sql;
       const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
@@ -867,9 +862,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           }
         ]
       });
-      // A caller that just committed a write reads its own row here, and a replica may not have
-      // replayed it yet. Confirm a miss against the primary so a lagging replica cannot make a
-      // committed request look absent.
       if (!formattedDoc?.[0]) return;
       return {
         ...formattedDoc[0],

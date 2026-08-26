@@ -9,7 +9,6 @@ import {
   SecretKeyEncoding,
   SecretType,
   TableName,
-  TSecretApprovalRequests,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
@@ -169,10 +168,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
-
-// findById reads from a replica, which can lag the write that triggered a webhook event. Callers
-// holding the primary-side row pass it so the payload's mutable fields cannot go stale.
-type TChangeRequestPrimaryRow = Pick<TSecretApprovalRequests, "status" | "hasMerged" | "updatedAt">;
 
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDAL,
@@ -482,6 +477,14 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
+  // A transaction always runs against the primary, so this read cannot miss a write that has just
+  // committed the way a replica read can. A caller-supplied transaction is used directly, since the
+  // row it needs is only visible inside it.
+  const $findChangeRequestOnPrimary = (requestId: string, tx?: Knex) =>
+    tx
+      ? secretApprovalRequestDAL.findById(requestId, tx)
+      : secretApprovalRequestDAL.transaction((trx) => secretApprovalRequestDAL.findById(requestId, trx));
+
   const $queueChangeRequestWebhook = async ({
     action,
     secretApprovalRequest,
@@ -489,7 +492,6 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     environmentName,
     secretPath,
-    primaryRow,
     isBypassed,
     tx
   }: {
@@ -499,7 +501,6 @@ export const secretApprovalRequestServiceFactory = ({
     environment: string;
     environmentName?: string;
     secretPath: string;
-    primaryRow?: TChangeRequestPrimaryRow;
     isBypassed?: boolean;
     tx?: Knex;
   }) => {
@@ -514,7 +515,6 @@ export const secretApprovalRequestServiceFactory = ({
     const cfg = getConfig();
     // Taking every mutable field from one source keeps a caller-supplied null from being read as
     // "not provided" and silently replaced by the replica's value.
-    const currentState = primaryRow ?? secretApprovalRequest;
     const { committerUser } = secretApprovalRequest;
     const requestedBy: TWebhookActor | null = secretApprovalRequest.committerUserId
       ? {
@@ -544,8 +544,8 @@ export const secretApprovalRequestServiceFactory = ({
             id: secretApprovalRequest.id,
             slug: secretApprovalRequest.slug,
             url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?requestId=${secretApprovalRequest.id}`,
-            status: currentState.status,
-            hasMerged: currentState.hasMerged,
+            status: secretApprovalRequest.status,
+            hasMerged: secretApprovalRequest.hasMerged,
             isBypassed: isBypassed ?? Boolean(secretApprovalRequest.bypassReason),
             policy: {
               id: secretApprovalRequest.policy.id,
@@ -554,14 +554,14 @@ export const secretApprovalRequestServiceFactory = ({
             },
             requestedBy,
             createdAt: secretApprovalRequest.createdAt.toISOString(),
-            updatedAt: currentState.updatedAt.toISOString()
+            updatedAt: secretApprovalRequest.updatedAt.toISOString()
           }
         }
       },
       {
-        // The job id must differ per delivery. A stable id would let BullMQ deduplicate every
-        // state change after the first on the same request and drop it without a trace.
-        jobId: `change-request-webhook-${secretApprovalRequest.id}-${action}-${Date.now()}-${alphaNumericNanoId(6)}`,
+        // A stable job id would let BullMQ deduplicate every state change after the first on the
+        // same request and drop it without a trace, so each delivery gets its own.
+        jobId: `change-request-webhook-${secretApprovalRequest.id}-${alphaNumericNanoId(6)}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -648,7 +648,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const reviewedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const reviewedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
       const [reviewedFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
         secretApprovalRequest.folderId
       ]);
@@ -735,7 +735,7 @@ export const secretApprovalRequestServiceFactory = ({
     const statusAction =
       status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
     try {
-      const changedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const changedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
       const [statusFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
         secretApprovalRequest.folderId
       ]);
@@ -746,8 +746,7 @@ export const secretApprovalRequestServiceFactory = ({
           projectId: secretApprovalRequest.projectId,
           environment: statusFolder.environmentSlug,
           environmentName: statusFolder.environmentName,
-          secretPath: statusFolder.path,
-          primaryRow: updatedRequest
+          secretPath: statusFolder.path
         });
       } else {
         logger.warn(
@@ -1375,7 +1374,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const mergedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const mergedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
       if (mergedRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Merged,
@@ -1384,7 +1383,6 @@ export const secretApprovalRequestServiceFactory = ({
           environment: folder.environmentSlug,
           environmentName: folder.environmentName,
           secretPath: folder.path,
-          primaryRow: mergeStatus.approval,
           isBypassed: isMergedViaBypass
         });
       } else {
@@ -1893,7 +1891,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const createdRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
       if (createdRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Created,
@@ -2414,7 +2412,7 @@ export const secretApprovalRequestServiceFactory = ({
     try {
       // A caller-supplied transaction has not committed yet, so the reads have to go through it
       // to see the request at all, and to avoid checking out a second connection while it is open.
-      const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id, providedTx);
+      const createdRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id, providedTx);
       if (createdRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Created,

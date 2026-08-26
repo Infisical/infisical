@@ -2,12 +2,7 @@ import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import {
-  ActionProjectType,
-  ProjectMembershipRole,
-  TAccessApprovalRequests,
-  TemporaryPermissionMode
-} from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -93,13 +88,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
-// findById reads from a replica, which can lag the write that triggered a webhook event. Callers
-// holding the primary-side row pass it so the payload's mutable fields cannot go stale.
-type TAccessRequestPrimaryRow = Pick<
-  TAccessApprovalRequests,
-  "status" | "isTemporary" | "temporaryRange" | "approvedAt" | "revokedAt" | "updatedAt"
->;
-
 export const accessApprovalRequestServiceFactory = ({
   groupDAL,
   projectDAL,
@@ -119,17 +107,20 @@ export const accessApprovalRequestServiceFactory = ({
   notificationService,
   queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  // A transaction always runs against the primary, so this read cannot miss a write that has just
+  // committed the way a replica read can.
+  const $findAccessRequestOnPrimary = (requestId: string) =>
+    accessApprovalRequestDAL.transaction((tx) => accessApprovalRequestDAL.findById(requestId, tx));
+
   const $queueAccessRequestWebhook = async ({
     action,
     accessApprovalRequest,
     projectId,
-    primaryRow,
     isBypassed
   }: {
     action: AccessRequestWebhookAction;
     accessApprovalRequest: NonNullable<Awaited<ReturnType<TAccessApprovalRequestDALFactory["findById"]>>>;
     projectId: string;
-    primaryRow?: TAccessRequestPrimaryRow;
     isBypassed?: boolean;
   }) => {
     let envSlug: string;
@@ -167,9 +158,6 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const cfg = getConfig();
-    // Taking every mutable field from one source keeps a caller-supplied null from being read as
-    // "not provided" and silently replaced by the replica's value.
-    const currentState = primaryRow ?? accessApprovalRequest;
     const { requestedByUser } = accessApprovalRequest;
     const requestedBy: TWebhookActor | null = accessApprovalRequest.requestedByUserId
       ? {
@@ -198,7 +186,7 @@ export const accessApprovalRequestServiceFactory = ({
           request: {
             id: accessApprovalRequest.id,
             url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?selectedTab=resource-requests&requestId=${accessApprovalRequest.id}`,
-            status: currentState.status,
+            status: accessApprovalRequest.status,
             isBypassed:
               isBypassed ??
               (accessApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft &&
@@ -212,23 +200,23 @@ export const accessApprovalRequestServiceFactory = ({
               )
             },
             requestedAccess: {
-              isTemporary: currentState.isTemporary,
-              temporaryRange: currentState.temporaryRange || null,
+              isTemporary: accessApprovalRequest.isTemporary,
+              temporaryRange: accessApprovalRequest.temporaryRange || null,
               permissions: requestedPermissions
             },
             requestedBy,
             expiresAt: accessApprovalRequest.expiresAt?.toISOString() ?? null,
-            approvedAt: currentState.approvedAt?.toISOString() ?? null,
-            revokedAt: currentState.revokedAt?.toISOString() ?? null,
+            approvedAt: accessApprovalRequest.approvedAt?.toISOString() ?? null,
+            revokedAt: accessApprovalRequest.revokedAt?.toISOString() ?? null,
             createdAt: accessApprovalRequest.createdAt.toISOString(),
-            updatedAt: currentState.updatedAt.toISOString()
+            updatedAt: accessApprovalRequest.updatedAt.toISOString()
           }
         }
       },
       {
-        // The job id must differ per delivery. A stable id would let BullMQ deduplicate every
-        // state change after the first on the same request and drop it without a trace.
-        jobId: `access-request-webhook-${accessApprovalRequest.id}-${action}-${Date.now()}-${alphaNumericNanoId(6)}`,
+        // A stable job id would let BullMQ deduplicate every state change after the first on the
+        // same request and drop it without a trace, so each delivery gets its own.
+        jobId: `access-request-webhook-${accessApprovalRequest.id}-${alphaNumericNanoId(6)}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -451,13 +439,12 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const created = await accessApprovalRequestDAL.findById(approval.id);
+      const created = await $findAccessRequestOnPrimary(approval.id);
       if (created) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Created,
           accessApprovalRequest: created,
-          projectId: project.id,
-          primaryRow: approval
+          projectId: project.id
         });
       } else {
         logger.warn(
@@ -660,13 +647,12 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const edited = await accessApprovalRequestDAL.findById(requestId);
+      const edited = await $findAccessRequestOnPrimary(requestId);
       if (edited) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Edited,
           accessApprovalRequest: edited,
-          projectId: accessApprovalRequest.projectId,
-          primaryRow: approval
+          projectId: accessApprovalRequest.projectId
         });
       } else {
         logger.warn(
@@ -901,10 +887,6 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
-    // Captured from inside the transaction so the webhook payload can read the request's
-    // post-write state from the primary rather than a possibly lagging replica.
-    let reviewedRequest: TAccessRequestPrimaryRow | undefined;
-
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
       let reviewForThisActorProcessing: {
         id: string;
@@ -943,11 +925,7 @@ export const accessApprovalRequestServiceFactory = ({
       }
 
       if (status === ApprovalStatus.REJECTED) {
-        reviewedRequest = await accessApprovalRequestDAL.updateById(
-          accessApprovalRequest.id,
-          { status: ApprovalStatus.REJECTED },
-          tx
-        );
+        await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { status: ApprovalStatus.REJECTED }, tx);
         return reviewForThisActorProcessing;
       }
 
@@ -960,9 +938,6 @@ export const accessApprovalRequestServiceFactory = ({
         (meetsStandardApprovalThreshold || isBreakGlassApprovalAttempt)
       ) {
         const currentRequestState = await accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx);
-        // Read through tx, so it is primary-side. It stands in when a concurrent review already
-        // granted the privilege and the update below is therefore skipped.
-        reviewedRequest = currentRequestState;
         let privilegeIdToSet = currentRequestState?.privilegeId || null;
 
         if (!privilegeIdToSet) {
@@ -1003,7 +978,7 @@ export const accessApprovalRequestServiceFactory = ({
             );
             privilegeIdToSet = privilege.id;
           }
-          reviewedRequest = await accessApprovalRequestDAL.updateById(
+          await accessApprovalRequestDAL.updateById(
             accessApprovalRequest.id,
             {
               privilegeId: privilegeIdToSet,
@@ -1074,15 +1049,14 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const reviewed = await accessApprovalRequestDAL.findById(accessApprovalRequest.id);
+      const reviewed = await $findAccessRequestOnPrimary(accessApprovalRequest.id);
       if (reviewed) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Reviewed,
           accessApprovalRequest: reviewed,
           projectId: accessApprovalRequest.projectId,
-          primaryRow: reviewedRequest,
-          // The helper derives this from approvedByUserId, which the re-read above may not carry
-          // yet on a lagging replica. The flag the review itself acted on is authoritative here.
+          // The helper otherwise infers this from the policy and the approver. The flag the review
+          // itself acted on is authoritative, so pass it rather than re-deriving it.
           isBypassed: isBreakGlassApprovalAttempt
         });
       } else {
@@ -1171,13 +1145,12 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const revoked = await accessApprovalRequestDAL.findById(requestId);
+      const revoked = await $findAccessRequestOnPrimary(requestId);
       if (revoked) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Revoked,
           accessApprovalRequest: revoked,
-          projectId: accessApprovalRequest.projectId,
-          primaryRow: updatedRequest
+          projectId: accessApprovalRequest.projectId
         });
       } else {
         logger.warn(
