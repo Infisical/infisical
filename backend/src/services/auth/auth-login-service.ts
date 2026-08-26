@@ -30,7 +30,8 @@ import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
   authAttemptCounter,
-  recordAuthAttemptMetric
+  recordAuthAttemptMetric,
+  recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
 import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -483,6 +484,7 @@ export const authLoginServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
       const { iv, tag, ciphertext, encoding } = crypto
         .encryption()
         .symmetric()

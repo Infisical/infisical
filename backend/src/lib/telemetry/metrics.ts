@@ -764,3 +764,32 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
   });
 };
+
+// -- Legacy root-key usage (InfisicalCore meter) -----------------------------------------------------
+// The pre-KMS tier pins the instance root encryption key, so it can never be rotated while anything
+// still uses it. This counter is the evidence for when that tier can be deleted.
+export const legacyRootKeyUsageCounter = infisicalCoreMeter.createCounter("infisical.legacy_root_key.usage", {
+  description:
+    "Reads and writes that still use the instance root encryption key directly instead of the KMS envelope, by surface."
+});
+
+export type LegacyRootKeySurface =
+  | "project_bot"
+  | "user_private_key"
+  | "blind_index"
+  | "external_migration"
+  | "org_bot"
+  | "project_ghost_user";
+
+export const recordLegacyRootKeyUsageMetric = (params: {
+  operation: "encrypt" | "decrypt";
+  surface: LegacyRootKeySurface;
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    legacyRootKeyUsageCounter.add(1, {
+      "legacy_key.operation": params.operation,
+      "legacy_key.surface": params.surface
+    });
+  });
+};
