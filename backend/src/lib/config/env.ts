@@ -481,6 +481,18 @@ const envSchema = z
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
     /* ----------------------------------------------------------------------------- */
 
+    /* Webhooks ----------------------------------------------------------------------------- */
+    WEBHOOK_TRIGGER_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(40 * 1000)
+      .default(15 * 1000)
+      .describe(
+        "Wall-clock ceiling for a single outbound webhook delivery before it is aborted. Capped at 40s because the webhook test endpoint delivers inline in the request path."
+      ),
+    /* ----------------------------------------------------------------------------- */
+
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
 
@@ -1065,6 +1077,16 @@ export const overwriteSchema: {
         key: "DISABLE_PUBLIC_SECRET_SHARING",
         description:
           "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
+      }
+    ]
+  },
+  webhooks: {
+    name: "Webhooks",
+    fields: [
+      {
+        key: "WEBHOOK_TRIGGER_TIMEOUT_MS",
+        description:
+          "How long, in milliseconds, to wait for a webhook receiver to respond before the delivery is aborted. Defaults to 15000. Must be between 1000 and 40000."
       }
     ]
   }

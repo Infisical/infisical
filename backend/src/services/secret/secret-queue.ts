@@ -140,6 +140,7 @@ export type TGetSecrets = {
 
 const MAX_SYNC_SECRET_DEPTH = 5;
 const SYNC_SECRET_DEBOUNCE_INTERVAL_MS = 3000;
+const WEBHOOK_DEBOUNCE_INTERVAL_MS = 1000;
 
 export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
@@ -703,10 +704,14 @@ export const secretQueueFactory = ({
         }
       },
       {
-        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+        deduplication: {
+          id: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+          keepLastIfActive: true,
+          replace: true
+        },
         removeOnFail: { count: 5 },
         removeOnComplete: true,
-        delay: 1000,
+        delay: WEBHOOK_DEBOUNCE_INTERVAL_MS,
         attempts: 5,
         backoff: {
           type: "exponential",

@@ -2,6 +2,7 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -14,8 +15,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { TWebhookPayloads, WebhookEvents, WebhookType } from "./webhook-types";
-
-const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 
 export const decryptWebhookDetails = (webhook: TWebhooks, decryptor: (value: Buffer) => string) => {
   const { encryptedPassKey, encryptedUrl } = webhook;
@@ -38,6 +37,7 @@ export const triggerWebhookRequest = async (
   decryptor: (value: Buffer) => string,
   data: Record<string, unknown>
 ) => {
+  const appCfg = getConfig();
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
@@ -51,8 +51,8 @@ export const triggerWebhookRequest = async (
 
   const req = await safeRequest.post(url, payload, {
     headers,
-    timeout: WEBHOOK_TRIGGER_TIMEOUT,
-    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+    timeout: appCfg.WEBHOOK_TRIGGER_TIMEOUT_MS,
+    signal: AbortSignal.timeout(appCfg.WEBHOOK_TRIGGER_TIMEOUT_MS)
   });
 
   return req;
@@ -460,6 +460,7 @@ export const fnTriggerWebhook = async ({
       } as TWebhookPayloads;
       const payload = getWebhookPayload(formattedEvent);
       if (!payload) return;
+      logger.info({ hookId: hook.id }, "Triggering webhook");
       return triggerWebhookRequest(hook, secretManagerDecryptor, payload);
     })
   );

@@ -1265,7 +1265,11 @@ export const secretRotationV2ServiceFactory = ({
         }
       },
       {
-        jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
+        deduplication: {
+          id: `secret-rotation-webhook-${secretRotation.id}`,
+          keepLastIfActive: true,
+          replace: true
+        },
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
