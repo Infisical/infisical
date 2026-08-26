@@ -15,31 +15,53 @@ const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
 export async function up(knex: Knex): Promise<void> {
-  const stmtResult = await knex.raw("SHOW statement_timeout");
-  const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
-  const lockResult = await knex.raw("SHOW lock_timeout");
-  const originalLockTimeout = lockResult.rows[0].lock_timeout;
+  // statement_timeout / lock_timeout are session-local, so they have to run on the same pooled
+  // connection as the CREATE INDEX CONCURRENTLY calls they govern.
+  const connection = await knex.client.acquireConnection();
+  const raw = (sql: string) => knex.raw(sql).connection(connection);
 
   try {
-    await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
-    await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
+    const stmtResult = await raw("SHOW statement_timeout");
+    const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
+    const lockResult = await raw("SHOW lock_timeout");
+    const originalLockTimeout = lockResult.rows[0].lock_timeout;
 
-    if (await knex.schema.hasTable(TableName.UserAliases)) {
-      for await (const { name, columns } of INDEXES) {
-        await knex.raw(`
-          CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}"
-          ON ${TableName.UserAliases} (${columns.join(", ")})
-        `);
+    try {
+      await raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
+      await raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
+
+      if (await knex.schema.hasTable(TableName.UserAliases)) {
+        for (const { name, columns } of INDEXES) {
+          // A cancelled or failed CREATE INDEX CONCURRENTLY leaves behind an INVALID index that
+          // IF NOT EXISTS would happily skip over, so drop it before retrying.
+          // eslint-disable-next-line no-await-in-loop
+          const invalid = await raw(
+            `SELECT 1 FROM pg_class c JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = '${name}' AND NOT i.indisvalid`
+          );
+          if (invalid.rows.length > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
+          }
+
+          // eslint-disable-next-line no-await-in-loop
+          await raw(`
+            CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}"
+            ON ${TableName.UserAliases} (${columns.join(", ")})
+          `);
+        }
       }
+    } finally {
+      await raw(`SET statement_timeout = '${originalStatementTimeout}'`);
+      await raw(`SET lock_timeout = '${originalLockTimeout}'`);
     }
   } finally {
-    await knex.raw(`SET statement_timeout = '${originalStatementTimeout}'`);
-    await knex.raw(`SET lock_timeout = '${originalLockTimeout}'`);
+    await knex.client.releaseConnection(connection);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  for await (const { name } of INDEXES) {
+  for (const { name } of INDEXES) {
+    // eslint-disable-next-line no-await-in-loop
     await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
   }
 }
