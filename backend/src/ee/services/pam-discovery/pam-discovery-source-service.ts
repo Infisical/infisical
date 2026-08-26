@@ -223,10 +223,17 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
 
     // discovery transmits a password to every scanned host, so a password account may only be used by an actor
-    // allowed to view its secret. PostgreSQL scans are always password-based, so every one of them qualifies.
+    // allowed to view its secret
     if (account.accountType === PamAccountType.SSH || account.accountType === PamAccountType.Postgres) {
       const { decryptor } = await getProjectCipher(projectId);
       const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
+
+      if (account.accountType === PamAccountType.Postgres && authMethod === PamPostgresAuthMethod.AwsIam) {
+        throw new BadRequestError({
+          message: `PostgreSQL account '${account.name}' uses AWS IAM authentication, which cannot scan. Its login token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. Select an account that authenticates with a password.`
+        });
+      }
+
       const sendsPassword =
         account.accountType === PamAccountType.Postgres
           ? authMethod !== PamPostgresAuthMethod.AwsIam

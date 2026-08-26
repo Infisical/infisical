@@ -33,7 +33,7 @@ The scanning account needs no special grant or elevated privileges. Any role tha
 </Note>
 
 <Warning>
-Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. IAM accounts are skipped as credential accounts.
+Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. IAM accounts cannot be used as credential accounts.
 </Warning>
 
 ## Creating a source
