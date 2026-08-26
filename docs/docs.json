@@ -71,7 +71,6 @@
             "icon": "vault",
             "pages": [
               "documentation/platform/secrets-mgmt/overview",
-              "documentation/platform/secret-sharing",
               {
                 "group": "Get started",
                 "pages": [
@@ -86,7 +85,8 @@
                       "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
-                  }
+                  },
+                  "documentation/platform/secret-sharing"
                 ]
               },
               {
