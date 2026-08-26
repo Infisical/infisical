@@ -28,6 +28,7 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -53,6 +54,7 @@ type TProjectMembershipServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
@@ -93,6 +95,7 @@ export const projectMembershipServiceFactory = ({
   membershipUserDAL,
   userDAL,
   userAliasDAL,
+  orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
   usageMeteringService,
@@ -199,9 +202,12 @@ export const projectMembershipServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
+    const org = await requestMemoize(requestMemoKeys.orgFindById(project.orgId), () => orgDAL.findById(project.orgId));
+
     const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
       identifiers: unmatched,
       orgId: project.orgId,
+      rootOrgId: org?.rootOrgId,
       userAliasDAL,
       userDAL
     });
