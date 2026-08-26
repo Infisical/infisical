@@ -501,9 +501,6 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
     const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that

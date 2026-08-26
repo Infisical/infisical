@@ -474,11 +474,11 @@ export const superAdminServiceFactory = ({
       envOverridesUpdated = true;
     }
 
-    // A caller that only sends fields this API no longer recognises (the removed trustSamlEmails /
-    // trustOidcEmails switches, for instance) leaves nothing to write. Knex rejects an empty
-    // update, so treat it as a no-op instead of failing the request.
     if (!Object.values(updatedData).some((value) => value !== undefined)) {
-      return getServerCfg();
+      throw new BadRequestError({
+        message:
+          "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
+      });
     }
 
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
