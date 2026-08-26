@@ -6,7 +6,6 @@ import {
   Badge,
   Button,
   FilterableSelect,
-  Input,
   Label,
   Sheet,
   SheetContent,
@@ -24,18 +23,14 @@ import {
   useListFolderAccessUsers
 } from "@app/hooks/api/folderAccess";
 
-import { DEFAULT_TEMPORARY_RANGE, TEMPORARY_RANGE_PRESETS } from "./folder-access.const";
-import {
-  isValidTemporaryRange,
-  TFolderAccessActor,
-  toIdentityActor,
-  toUserActor
-} from "./folder-access.utils";
+import { DEFAULT_TEMPORARY_RANGE } from "./folder-access.const";
+import { TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
 import {
   FolderAccessActorMultiValueLabel,
   FolderAccessActorOption
 } from "./FolderAccessActorOption";
 import { FolderTierRadioGroup } from "./FolderTierRadioGroup";
+import { TemporaryAccessPopover } from "./TemporaryAccessPopover";
 
 const CANDIDATE_LIMIT = 100;
 
@@ -88,8 +83,9 @@ export const AddFolderAccessSheet = ({
     [users, identities]
   );
 
-  const isRangeValid = !isTemporary || isValidTemporaryRange(range);
-  const isSubmitDisabled = !selected.length || !isRangeValid;
+  // the backend rejects a temporary full-access grant, so the form must not offer one
+  const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
+  const isSubmitDisabled = !selected.length || isFullAccessTemporary;
 
   const reset = () => {
     setSearch("");
@@ -190,47 +186,26 @@ export const AddFolderAccessSheet = ({
           <div className="space-y-2">
             <Label>Permission</Label>
             <FolderTierRadioGroup value={tier} onValueChange={setTier} />
+            {isFullAccessTemporary && (
+              <p className="text-xs text-danger">
+                Full Access cannot be temporary. Remove the expiration or choose a lower tier.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Temporary access</Label>
-            {isTemporary ? (
-              <div className="space-y-2">
-                <Input
-                  value={range}
-                  onChange={(e) => setRange(e.target.value)}
-                  placeholder={DEFAULT_TEMPORARY_RANGE}
-                  isError={!isRangeValid}
-                />
-                <div className="flex items-center gap-1.5">
-                  {TEMPORARY_RANGE_PRESETS.map((preset) => (
-                    <Button
-                      key={preset}
-                      variant="outline"
-                      size="xs"
-                      onClick={() => setRange(preset)}
-                    >
-                      {preset}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="ml-auto"
-                    onClick={() => setIsTemporary(false)}
-                  >
-                    Remove expiration
-                  </Button>
-                </div>
-                {!isRangeValid && (
-                  <p className="text-xs text-danger">Enter a duration such as 30m, 4h or 1d.</p>
-                )}
-              </div>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setIsTemporary(true)}>
-                Add temporary access
-              </Button>
-            )}
+            <TemporaryAccessPopover
+              isTemporary={isTemporary}
+              range={range}
+              label={isTemporary ? `Expires in ${range}` : "No expiration"}
+              description="Access is revoked automatically once the duration elapses."
+              onApply={(nextRange) => {
+                setRange(nextRange);
+                setIsTemporary(true);
+              }}
+              onRemove={() => setIsTemporary(false)}
+            />
           </div>
         </div>
 

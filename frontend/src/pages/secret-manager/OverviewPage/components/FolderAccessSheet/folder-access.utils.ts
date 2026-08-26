@@ -66,6 +66,38 @@ export const expiryOf = (access: TFolderAccess | null) =>
     ? new Date(access.temporaryAccessEndTime)
     : null;
 
-export const formatExpiryShort = (date: Date) => format(date, "MMM d");
+export const formatExpiryFull = (expiresAt: Date) => format(expiresAt, "MMM d, yyyy, h:mm a");
 
-export const formatExpiryFull = (date: Date) => format(date, "MMM d, yyyy, h:mm a");
+export const formatExpirationTime = (expiresAt: string, now: number, suffix?: string) => {
+  const remainingSeconds = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
+  if (remainingSeconds === 0) {
+    return {
+      expiresAt: new Date(expiresAt),
+      isExpired: true,
+      value: "Expired"
+    };
+  }
+
+  const days = Math.floor(remainingSeconds / 86400);
+  const hours = Math.floor((remainingSeconds % 86400) / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+
+  if (days > 0)
+    return {
+      expiresAt: new Date(expiresAt),
+      isExpired: false,
+      value: `${days}d ${hours}h${suffix ? ` ${suffix}` : ""}`
+    };
+  if (hours > 0) {
+    return {
+      expiresAt: new Date(expiresAt),
+      isExpired: false,
+      value: `${hours}h ${minutes}m${suffix ? ` ${suffix}` : ""}`
+    };
+  }
+  return {
+    isExpired: false,
+    value: `${minutes}m ${seconds}s${suffix ? ` ${suffix}` : ""}`
+  };
+};

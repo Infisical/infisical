@@ -8,7 +8,7 @@ import { FOLDER_ROLE_TIERS } from "./folder-access.const";
 type Props = {
   activeTier?: SecretFolderRole | null;
   headerNote?: string;
-  temporaryLabel: string;
+  temporaryLabel: string | React.ReactNode;
   onSelectTier: (tier: SecretFolderRole) => void;
   onEditTemporaryAccess: () => void;
   onRemove?: () => void;

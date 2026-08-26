@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { format, formatDistance } from "date-fns";
+import { format } from "date-fns";
 import {
   CircleAlertIcon,
   ClockAlertIcon,
@@ -54,6 +54,7 @@ import {
 } from "@app/hooks/api/folderAccess";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
+  formatExpirationTime,
   toIdentityActor,
   toUserActor
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
@@ -142,6 +143,18 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     setDeleteTarget(null);
   };
 
+  const timedFolderAccess = useMemo(() => {
+    return (folderAccess || []).map((row) => {
+      return {
+        ...row,
+        remainingTime:
+          row.isTemporary && row.temporaryAccessEndTime
+            ? formatExpirationTime(row.temporaryAccessEndTime, new Date().getTime(), "remaining")
+            : null
+      };
+    });
+  }, [folderAccess]);
+
   return (
     <>
       <Card>
@@ -173,7 +186,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
           )}
           {!isError &&
             !isPending &&
-            (folderAccess?.length ? (
+            (timedFolderAccess?.length ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -185,22 +198,16 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {folderAccess.map((row) => {
-                    const isExpired =
-                      row.isTemporary && new Date() > new Date(row.temporaryAccessEndTime || "");
-
+                  {timedFolderAccess.map(({ remainingTime, ...row }) => {
                     let text = "Permanent";
                     let toolTipText = "Non-Expiring Access";
                     if (row.isTemporary) {
-                      if (isExpired) {
+                      if (remainingTime?.isExpired) {
                         text = "Access Expired";
                         toolTipText = "Timed Access Expired";
                       } else {
-                        text = formatDistance(
-                          new Date(row.temporaryAccessEndTime || ""),
-                          new Date()
-                        );
-                        toolTipText = `Until ${format(
+                        text = remainingTime?.value ?? "N/A";
+                        toolTipText = `Expires ${format(
                           new Date(row.temporaryAccessEndTime || ""),
                           "yyyy-MM-dd hh:mm:ss aaa"
                         )}`;
@@ -225,9 +232,9 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                               <TooltipTrigger asChild>
                                 <Badge
                                   className="capitalize"
-                                  variant={isExpired ? "danger" : "warning"}
+                                  variant={remainingTime?.isExpired ? "danger" : "warning"}
                                 >
-                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                  {remainingTime?.isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}
                                 </Badge>
                               </TooltipTrigger>

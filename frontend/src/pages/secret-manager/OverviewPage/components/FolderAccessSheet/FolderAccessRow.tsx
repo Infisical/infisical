@@ -22,9 +22,8 @@ import {
   TEMPORARY_RANGE_PRESETS
 } from "./folder-access.const";
 import {
-  expiryOf,
+  formatExpirationTime,
   formatExpiryFull,
-  formatExpiryShort,
   isValidTemporaryRange,
   TFolderAccessActor
 } from "./folder-access.utils";
@@ -51,10 +50,13 @@ export const FolderAccessRow = ({
   const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
 
   const { access } = actor;
-  const expiresAt = expiryOf(access);
-  const isExpired = Boolean(expiresAt && expiresAt.getTime() <= Date.now());
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
+
+  const remainingTime =
+    access?.isTemporary && access?.temporaryAccessEndTime
+      ? formatExpirationTime(access.temporaryAccessEndTime, Date.now())
+      : null;
 
   const openTemporary = () => {
     setRange(access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
@@ -71,16 +73,17 @@ export const FolderAccessRow = ({
         <p className="truncate text-xs text-muted">{actor.subtitle}</p>
       </div>
 
-      {expiresAt && (
+      {Boolean(remainingTime && remainingTime?.expiresAt) && (
         <Tooltip>
           <TooltipTrigger>
-            <Badge variant={isExpired ? "danger" : "neutral"} className="shrink-0">
+            <Badge variant={remainingTime?.isExpired ? "danger" : "neutral"} className="shrink-0">
               <ClockIcon />
-              {isExpired ? "Expired" : "Expires"} {formatExpiryShort(expiresAt)}
+              {remainingTime?.isExpired ? "Access Expired" : `Expires in ${remainingTime?.value}`}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            Access {isExpired ? "expired" : "expires"} {formatExpiryFull(expiresAt)}
+            Access {remainingTime?.isExpired ? "expired" : "expires"} on{" "}
+            {formatExpiryFull(remainingTime?.expiresAt || new Date())}
           </TooltipContent>
         </Tooltip>
       )}
@@ -117,7 +120,7 @@ export const FolderAccessRow = ({
                 ) : (
                   <Button variant="outline" size="sm" isDisabled={isDisabled}>
                     <TriangleAlertIcon className="text-warning" />
-                    Access via project role
+                    Access from project role
                     <ChevronDownIcon />
                   </Button>
                 )}
@@ -130,9 +133,16 @@ export const FolderAccessRow = ({
                     : `Set folder access for ${firstName}. This overrides their project role inside this folder.`
                 }
                 temporaryLabel={
-                  expiresAt
-                    ? `Edit temporary access · ${isExpired ? "expired" : "until"} ${formatExpiryShort(expiresAt)}`
-                    : "Add temporary access"
+                  remainingTime && remainingTime?.expiresAt ? (
+                    <div className="flex flex-col gap-1">
+                      <p>Edit temporary access</p>
+                      <p className="text-xs text-foreground opacity-50">
+                        {remainingTime.isExpired ? "Expired" : "Expires in"} {remainingTime.value}
+                      </p>
+                    </div>
+                  ) : (
+                    "Add temporary access"
+                  )
                 }
                 onSelectTier={onSetTier}
                 onEditTemporaryAccess={openTemporary}
@@ -170,7 +180,7 @@ export const FolderAccessRow = ({
             <p className="text-xs text-danger">Enter a duration such as 30m, 4h or 1d.</p>
           )}
           <div className="flex justify-between gap-2">
-            {expiresAt ? (
+            {remainingTime && remainingTime.expiresAt ? (
               <Button
                 variant="ghost"
                 size="sm"

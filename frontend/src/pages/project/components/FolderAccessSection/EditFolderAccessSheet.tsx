@@ -1,15 +1,11 @@
 import { useState } from "react";
-import { ChevronDownIcon, ClockIcon, FolderIcon, InfoIcon } from "lucide-react";
+import { FolderIcon, InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
-  Input,
   Label,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -26,16 +22,14 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import {
-  DEFAULT_TEMPORARY_RANGE,
-  TEMPORARY_RANGE_PRESETS
-} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
+import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   expiryOf,
   formatExpiryFull,
   isValidTemporaryRange
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { FolderTierRadioGroup } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderTierRadioGroup";
+import { TemporaryAccessPopover } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/TemporaryAccessPopover";
 
 import { TFolderAccessSectionActor } from "./types";
 
@@ -58,15 +52,12 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const [isTemporary, setIsTemporary] = useState(access.isTemporary);
   const [range, setRange] = useState(access.temporaryRange ?? DEFAULT_TEMPORARY_RANGE);
   const [rangeTouched, setRangeTouched] = useState(false);
-  const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
-  const [draftRange, setDraftRange] = useState(range);
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
 
   const currentExpiry = expiryOf(access);
   const isRangeValid = !isTemporary || isValidTemporaryRange(range);
-  const isDraftRangeValid = isValidTemporaryRange(draftRange);
   const tierChanged = tier !== access.permission;
   const temporalChanged = isTemporary !== access.isTemporary || (isTemporary && rangeTouched);
   const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
@@ -78,11 +69,6 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
     if (rangeTouched) temporaryLabel = `Expires in ${range}`;
     else if (currentExpiry) temporaryLabel = `Expires ${formatExpiryFull(currentExpiry)}`;
   }
-
-  const openTemporary = (nextOpen: boolean) => {
-    if (nextOpen) setDraftRange(isTemporary ? range : DEFAULT_TEMPORARY_RANGE);
-    setIsTemporaryOpen(nextOpen);
-  };
 
   const handleSave = async () => {
     // an untouched temporal state is omitted entirely so a tier-only edit does not restart the
@@ -153,80 +139,20 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
 
         <div className="space-y-2">
           <Label>Temporary access</Label>
-          <Popover open={isTemporaryOpen} onOpenChange={openTemporary}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full justify-between">
-                <span className="flex items-center gap-2">
-                  <ClockIcon className="size-3.5" />
-                  {temporaryLabel}
-                </span>
-                <ChevronDownIcon />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="w-72 space-y-3 p-4"
-              onFocusOutside={(e) => e.preventDefault()}
-            >
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Temporary access</p>
-                <p className="text-xs text-muted">
-                  Access is revoked automatically once the duration elapses.
-                  {access.isTemporary && " Applying a new duration restarts the window from now."}
-                </p>
-              </div>
-              <Input
-                value={draftRange}
-                onChange={(e) => setDraftRange(e.target.value)}
-                placeholder={DEFAULT_TEMPORARY_RANGE}
-              />
-              <div className="flex gap-1.5">
-                {TEMPORARY_RANGE_PRESETS.map((preset) => (
-                  <Button
-                    key={preset}
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setDraftRange(preset)}
-                  >
-                    {preset}
-                  </Button>
-                ))}
-              </div>
-              {!isDraftRangeValid && (
-                <p className="text-xs text-danger">Enter a duration such as 30m, 4h or 1d.</p>
-              )}
-              <div className="flex justify-between gap-2">
-                {isTemporary ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-danger"
-                    onClick={() => {
-                      setIsTemporary(false);
-                      setIsTemporaryOpen(false);
-                    }}
-                  >
-                    Remove expiration
-                  </Button>
-                ) : (
-                  <span />
-                )}
-                <Button
-                  variant="project"
-                  size="sm"
-                  isDisabled={!isDraftRangeValid}
-                  onClick={() => {
-                    setRange(draftRange);
-                    setRangeTouched(true);
-                    setIsTemporary(true);
-                    setIsTemporaryOpen(false);
-                  }}
-                >
-                  Apply
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <TemporaryAccessPopover
+            isTemporary={isTemporary}
+            range={range}
+            label={temporaryLabel}
+            description={`Access is revoked automatically once the duration elapses.${
+              access.isTemporary ? " Applying a new duration restarts the window from now." : ""
+            }`}
+            onApply={(nextRange) => {
+              setRange(nextRange);
+              setRangeTouched(true);
+              setIsTemporary(true);
+            }}
+            onRemove={() => setIsTemporary(false)}
+          />
         </div>
       </div>
 
