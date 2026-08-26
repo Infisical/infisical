@@ -8,6 +8,7 @@ import {
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamHeartbeatStatus,
   PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
@@ -634,6 +635,17 @@ export type TPamPasswordRequirements = {
   length: number;
   required: { lowercase: number; uppercase: number; digits: number; symbols: number };
   allowedSymbols?: string;
+};
+
+export type TPamAccountHeartbeat = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  status: PamHeartbeatStatus | null;
+  lastCheckedAt: string | null;
+  lastHealthyAt: string | null;
+  nextCheckAt: string | null;
+  templateName: string;
+  lastMessage: string | null;
 };
 
 export type TPamAccountRotation = {

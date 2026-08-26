@@ -99,6 +99,8 @@ import { pamAccessRequestServiceFactory } from "@app/ee/services/pam-access-requ
 import { pamFolderNotificationConfigDALFactory } from "@app/ee/services/pam-access-request/pam-folder-notification-config-dal";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountHeartbeatQueueServiceFactory } from "@app/ee/services/pam-account-heartbeat/pam-account-heartbeat-queue";
+import { pamAccountHeartbeatServiceFactory } from "@app/ee/services/pam-account-heartbeat/pam-account-heartbeat-service";
 import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-queue";
 import { pamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
@@ -1990,6 +1992,16 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
+    pamAccountDAL,
+    gatewayService,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    permissionService,
+    projectDAL
+  });
+
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     pamAccountDAL,
@@ -3804,6 +3816,14 @@ export const registerRoutes = async (
     pamAccountRotationService
   });
 
+  await pamAccountHeartbeatQueueServiceFactory({
+    queueService,
+    cronJob,
+    auditLogService,
+    pamAccountDAL,
+    pamAccountHeartbeatService
+  });
+
   const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
@@ -3996,6 +4016,7 @@ export const registerRoutes = async (
     pamAccount: pamAccountService,
     pamDiscovery: pamDiscoveryService,
     pamAccountRotation: pamAccountRotationService,
+    pamAccountHeartbeat: pamAccountHeartbeatService,
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,

@@ -25,6 +25,13 @@ export enum PamProductRole {
   Member = "member"
 }
 
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
+}
+
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",

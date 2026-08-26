@@ -623,6 +623,94 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:accountId/heartbeat",
+    schema: {
+      operationId: "getPamAccountCredentialHealth",
+      description: "Get a PAM account's credential health",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeat: z.object({
+            enabled: z.boolean(),
+            intervalSeconds: z.number().nullable(),
+            status: z.string().nullable(),
+            lastCheckedAt: z.date().nullable(),
+            lastHealthyAt: z.date().nullable(),
+            nextCheckAt: z.date().nullable(),
+            templateName: z.string(),
+            lastMessage: z.string().nullable()
+          })
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const heartbeat = await server.services.pamAccountHeartbeat.getHeartbeat(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+      return { heartbeat };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/heartbeat/check",
+    schema: {
+      operationId: "checkPamAccountCredentialHealth",
+      description: "Run a credential health check on a PAM account now",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeatStatus: z.string(),
+          message: z.string().optional()
+        })
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccountHeartbeat.checkAccount(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_HEARTBEAT,
+          metadata: {
+            accountId: req.params.accountId,
+            accountType: result.accountType,
+            heartbeatStatus: result.status,
+            manual: true,
+            ...(result.message ? { message: result.message } : {})
+          }
+        }
+      });
+
+      // A failed check is a recorded result, not a failed request: the caller asked us to check, and we did.
+      return { heartbeatStatus: result.status, ...(result.message ? { message: result.message } : {}) };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:accountId/rotation/rotate",
     schema: {

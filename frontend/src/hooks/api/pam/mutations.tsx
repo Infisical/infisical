@@ -779,6 +779,22 @@ export const useCreatePamAccessRequest = () => {
   });
 };
 
+export const useCheckPamAccountHeartbeat = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: { accountId: string }) => {
+      const { data } = await apiRequest.post<{ heartbeatStatus: string; message?: string }>(
+        `/api/v1/pam/accounts/${accountId}/heartbeat/check`
+      );
+      return data;
+    },
+    onSettled: (_, __, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountHeartbeat(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+    }
+  });
+};
+
 export const useRotatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({

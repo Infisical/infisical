@@ -24,7 +24,13 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
-import { PamAccessStatus, PamAccountType, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PamAccessStatus,
+  PamAccountType,
+  PamHeartbeatStatus,
+  PamProductRole,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -46,7 +52,11 @@ import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-t
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
-import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
+import {
+  buildGatewayConnectionTest,
+  CLOUD_CONNECTION_VALIDATORS,
+  TestConnectionMode
+} from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   applyForcedFields,
@@ -326,7 +336,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     };
   };
 
-  // throws to block create/update when the account can't reach/authenticate its target
+  // Throws to block create/update when the account can't reach/authenticate its target. Returns whether the
+  // credential itself was proven, which is false when the probe could only reach the host.
   const assertConnectionOk = async (
     accountType: PamAccountType,
     connectionDetails: Record<string, unknown>,
@@ -338,7 +349,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       templateGatewayPoolId?: string | null;
     },
     orgId: string
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
       try {
@@ -348,11 +359,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           message: `Connection test failed: ${err instanceof Error ? err.message : "unable to validate credentials"}`
         });
       }
-      return;
+      return true;
     }
 
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
-    if (!test) return;
+    if (!test) return false;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -377,6 +388,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (result && !result.ok) {
       throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
+
+    // A TCP probe only proves the host answered, so it cannot stand in for a verified credential.
+    return Boolean(result?.ok) && test.request.mode !== TestConnectionMode.Tcp;
   };
 
   const create = async ({
@@ -469,8 +483,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
+    let credentialVerified = false;
     if (!skipConnectionTest) {
-      await assertConnectionOk(
+      credentialVerified = await assertConnectionOk(
         accountType,
         validatedConnectionDetails,
         validatedCredentials,
@@ -487,20 +502,38 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
 
+    // Only a probe that authenticated proves the credential; discovery imports skip the test entirely, and some
+    // account types can only be reached, not logged into. Those start unverified.
+    const credentialProvenAt = credentialVerified ? new Date() : null;
+
     try {
-      const account = await pamAccountDAL.create({
-        projectId,
-        name,
-        description,
-        folderId,
-        templateId,
-        encryptedConnectionDetails,
-        encryptedCredentials,
-        credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
-        gatewayId,
-        gatewayPoolId,
-        recordingConnectionId,
-        settingsOverrides: settingsOverrides ?? null
+      const account = await pamAccountDAL.transaction(async (tx) => {
+        const created = await pamAccountDAL.create(
+          {
+            projectId,
+            name,
+            description,
+            folderId,
+            templateId,
+            encryptedConnectionDetails,
+            encryptedCredentials,
+            credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
+            gatewayId,
+            gatewayPoolId,
+            recordingConnectionId,
+            settingsOverrides: settingsOverrides ?? null,
+            ...(credentialProvenAt
+              ? {
+                  heartbeatStatus: PamHeartbeatStatus.Healthy,
+                  lastHeartbeatAt: credentialProvenAt,
+                  lastHeartbeatHealthyAt: credentialProvenAt
+                }
+              : {})
+          },
+          tx
+        );
+        await pamAccountDAL.reconcileHeartbeatScheduleForAccount(created.id, tx);
+        return created;
       });
 
       const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
@@ -744,6 +777,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         // atomically with the write so a failure can't leave a stale nextRotationAt.
         if (templateId !== undefined || credentials || routingChanged) {
           await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
+          await pamAccountDAL.reconcileHeartbeatScheduleForAccount(accountId, tx);
         }
         return updated;
       });

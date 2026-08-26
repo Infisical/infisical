@@ -11,6 +11,11 @@ export const PamRotationConfigSchema = z.object({
   intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
 });
 
+export const PamHeartbeatConfigSchema = z.object({
+  enabled: z.boolean(),
+  intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
+});
+
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
   region: z.nativeEnum(AWSRegion),
@@ -27,6 +32,7 @@ export const PamTemplateSettingsSchema = z.object({
   recordingS3Config: PamRecordingS3ConfigSchema.optional(),
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotation: PamRotationConfigSchema.optional(),
+  heartbeat: PamHeartbeatConfigSchema.optional(),
   sessionLogMaskingPatterns: z.string().optional()
 });
 
@@ -37,3 +43,4 @@ export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
 export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamRotationConfig = z.infer<typeof PamRotationConfigSchema>;
+export type TPamHeartbeatConfig = z.infer<typeof PamHeartbeatConfigSchema>;

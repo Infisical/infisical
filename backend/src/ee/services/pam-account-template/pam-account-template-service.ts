@@ -39,7 +39,10 @@ const SAFE_PASSWORD_SYMBOLS = "!@#$%^&*()-_=+[]{}|:,.<>/~";
 
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "reconcileRotationScheduleForTemplate">;
+  pamAccountDAL: Pick<
+    TPamAccountDALFactory,
+    "reconcileRotationScheduleForTemplate" | "reconcileHeartbeatScheduleForTemplate"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
 
@@ -224,6 +227,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
           await pamAccountDAL.reconcileRotationScheduleForTemplate(
             templateId,
             { rescheduleReady: newInterval !== undefined && oldInterval !== newInterval },
+            tx
+          );
+
+          const oldHeartbeat = PamTemplateSettingsSchema.safeParse(existing.settings).data?.heartbeat;
+          const newHeartbeat = PamTemplateSettingsSchema.safeParse(settings).data?.heartbeat;
+          await pamAccountDAL.reconcileHeartbeatScheduleForTemplate(
+            templateId,
+            { rescheduleAll: oldHeartbeat?.intervalSeconds !== newHeartbeat?.intervalSeconds },
             tx
           );
         }

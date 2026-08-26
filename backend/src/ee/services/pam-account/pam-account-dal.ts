@@ -5,7 +5,8 @@ import { TableName, TPamAccounts } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccountType, PamHeartbeatStatus } from "../pam/pam-enums";
+import { computeNextHeartbeatAt, heartbeatJitterCapSeconds } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import {
   ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL,
   ACCOUNT_WILL_ROTATE_SQL,
@@ -280,6 +281,93 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return Number(result[0]?.count ?? 0);
   };
 
+  // Due and enabled. Mirrors dueRotationQuery, minus the rotatable-type filter: heartbeat covers every account type.
+  const dueHeartbeatQuery = (now: Date, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .join(TableName.Project, `${TableName.PamAccount}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .whereNotNull(`${TableName.PamAccount}.nextHeartbeatAt`)
+      .where(`${TableName.PamAccount}.nextHeartbeatAt`, "<=", now)
+      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true'`);
+
+  const findAccountsToHeartbeat = async (now: Date, limit: number, tx?: Knex): Promise<TPamAccountDetail[]> => {
+    return (await dueHeartbeatQuery(now, tx)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .orderBy(`${TableName.PamAccount}.nextHeartbeatAt`, "asc")
+      .limit(limit)
+      .select(detailSelect)) as unknown as TPamAccountDetail[];
+  };
+
+  const countAccountsToHeartbeat = async (now: Date, tx?: Knex): Promise<number> => {
+    const result = await dueHeartbeatQuery(now, tx).count<[{ count: string }]>(`${TableName.PamAccount}.id`);
+    return Number(result[0]?.count ?? 0);
+  };
+
+  // Bulk reschedule when a template's heartbeat settings change. Accounts already stopped by a rejected credential
+  // stay stopped: a settings change is not the human event that clears that.
+  const reconcileHeartbeatScheduleForTemplate = async (
+    templateId: string,
+    opts?: { rescheduleAll?: boolean },
+    tx?: Knex
+  ): Promise<void> => {
+    const dbClient = tx || db;
+    const template = await dbClient(TableName.PamAccountTemplate)
+      .where({ id: templateId })
+      .first<{ settings: unknown } | undefined>("settings");
+    if (!template) return;
+
+    const heartbeat = PamTemplateSettingsSchema.safeParse(template.settings).data?.heartbeat;
+
+    if (!heartbeat?.enabled || heartbeat.intervalSeconds == null) {
+      await dbClient(TableName.PamAccount)
+        .where({ templateId })
+        .whereNotNull("nextHeartbeatAt")
+        .update({ nextHeartbeatAt: null });
+      return;
+    }
+
+    const { intervalSeconds } = heartbeat;
+    const jitterCapSeconds = heartbeatJitterCapSeconds(intervalSeconds);
+
+    // NULL-safe on purpose: an account that has never been checked has a null status, and `whereNot` would drop it.
+    const update = dbClient(TableName.PamAccount)
+      .where({ templateId })
+      .whereRaw(`("heartbeatStatus" is null or "heartbeatStatus" <> ?)`, [PamHeartbeatStatus.InvalidCredentials]);
+    if (!opts?.rescheduleAll) {
+      void update.whereNull("nextHeartbeatAt");
+    }
+    await update.update({
+      nextHeartbeatAt: dbClient.raw(
+        `GREATEST(COALESCE(??, now()) + make_interval(secs => ?), now()) + make_interval(secs => floor(random() * ?)::int)`,
+        ["lastHeartbeatAt", intervalSeconds, jitterCapSeconds]
+      ) as unknown as Date
+    });
+  };
+
+  const reconcileHeartbeatScheduleForAccount = async (accountId: string, tx?: Knex): Promise<void> => {
+    const account = await findByIdWithDetails(accountId, tx ?? db);
+    if (!account) return;
+
+    const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
+    const current = account.nextHeartbeatAt ?? null;
+
+    let nextHeartbeatAt: Date | null = current;
+    if (!heartbeat?.enabled || heartbeat.intervalSeconds == null) {
+      nextHeartbeatAt = null;
+    } else if (!current) {
+      nextHeartbeatAt = computeNextHeartbeatAt({
+        anchor: account.lastHeartbeatAt ?? null,
+        intervalSeconds: heartbeat.intervalSeconds,
+        now: new Date()
+      });
+    }
+
+    if ((nextHeartbeatAt?.getTime() ?? null) !== (current?.getTime() ?? null)) {
+      await (tx || db)(TableName.PamAccount).where({ id: accountId }).update({ nextHeartbeatAt });
+    }
+  };
+
   // Total PAM accounts across the org's projects (excluding soft-deleted projects), used to enforce the
   // plan's maxPamAccounts at creation time.
   const countByOrgId = async (orgId: string, tx?: Knex): Promise<number> => {
@@ -409,6 +497,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     findByIdsWithDetails,
     findAccountsToRotate,
     countAccountsToRotate,
+    findAccountsToHeartbeat,
+    countAccountsToHeartbeat,
+    reconcileHeartbeatScheduleForTemplate,
+    reconcileHeartbeatScheduleForAccount,
     countByOrgId,
     findRotationCandidates,
     reconcileRotationScheduleForTemplate,

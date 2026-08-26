@@ -71,6 +71,8 @@ const settingsSchema = z
     settings: z.object({
       sessionLogMaskingPatterns: z.string().optional(),
       rotationEnabled: z.boolean().optional(),
+      heartbeatEnabled: z.boolean().optional(),
+      heartbeatIntervalSeconds: z.number().optional(),
       rotationIntervalSeconds: z.number().nullable().optional(),
       pwLength: z.coerce.number().optional(),
       pwUppercase: z.coerce.number().optional(),
@@ -289,6 +291,8 @@ const SettingsTab = ({
       settings: {
         sessionLogMaskingPatterns: "",
         rotationEnabled: false,
+        heartbeatEnabled: true,
+        heartbeatIntervalSeconds: 86400,
         rotationIntervalSeconds: 86400,
         pwLength: 32,
         pwUppercase: 1,
@@ -326,6 +330,10 @@ const SettingsTab = ({
               enabled?: boolean;
               intervalSeconds?: number | null;
             };
+            const heartbeat = (settings.heartbeat ?? {}) as {
+              enabled?: boolean;
+              intervalSeconds?: number | null;
+            };
             const pw = (settings.passwordRequirements ?? {}) as {
               length?: number;
               required?: {
@@ -338,6 +346,8 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
+              heartbeatEnabled: heartbeat.enabled ?? true,
+              heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
               pwLength: pw.length ?? 32,
@@ -370,6 +380,7 @@ const SettingsTab = ({
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
   const rotationEnabled = watch("settings.rotationEnabled");
+  const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
@@ -400,6 +411,12 @@ const SettingsTab = ({
     } else {
       delete settings.sessionLogMaskingPatterns;
     }
+
+    const isHeartbeatOn = Boolean(data.settings.heartbeatEnabled);
+    settings.heartbeat = {
+      enabled: isHeartbeatOn,
+      intervalSeconds: isHeartbeatOn ? (data.settings.heartbeatIntervalSeconds ?? 86400) : null
+    };
 
     if (isRotatableTemplateType) {
       const isRotationOn = Boolean(data.settings.rotationEnabled);
@@ -686,6 +703,63 @@ const SettingsTab = ({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Credential Health</CardTitle>
+          <CardDescription>
+            Infisical checks that stored credentials still work, and shows the result on each
+            account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="settings.heartbeatEnabled"
+              render={({ field }) => (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">Check credentials</p>
+                  <Switch
+                    variant="pam"
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                  />
+                </div>
+              )}
+            />
+            {heartbeatEnabled && (
+              <Controller
+                control={control}
+                name="settings.heartbeatIntervalSeconds"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Check every</FieldLabel>
+                    <Select
+                      value={String(field.value ?? 86400)}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
+                          <SelectItem key={option.seconds} value={String(option.seconds)}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      How often accounts using this template are checked.
+                    </FieldDescription>
+                  </Field>
+                )}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {showGatewaySettings && (
         <Card>

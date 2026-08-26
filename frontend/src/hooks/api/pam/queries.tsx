@@ -25,6 +25,7 @@ import {
   TPamAccessRequest,
   TPamAccount,
   TPamAccountDependency,
+  TPamAccountHeartbeat,
   TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
@@ -102,6 +103,7 @@ export const pamKeys = {
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "stale", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  accountHeartbeat: (accountId: string) => [...pamKeys.account(), "heartbeat", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
   rotationCandidates: (accountId: string) =>
@@ -307,6 +309,19 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountHeartbeat = (accountId?: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pamKeys.accountHeartbeat(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ heartbeat: TPamAccountHeartbeat }>(
+        `/api/v1/pam/accounts/${accountId}/heartbeat`
+      );
+      return data.heartbeat;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
   });
 };
 
