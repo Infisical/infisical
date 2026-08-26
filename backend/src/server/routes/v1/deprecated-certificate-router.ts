@@ -35,7 +35,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.omit({ orderId: true })
         })
       }
     },
@@ -534,7 +534,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.omit({ orderId: true })
         })
       }
     },

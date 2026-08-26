@@ -747,7 +747,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema),
+          certificates: z.array(CertificatesSchema.omit({ orderId: true })),
           totalCount: z.number()
         })
       }

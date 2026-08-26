@@ -87,6 +87,7 @@ type TCertificateServiceFactoryDep = {
     | "create"
     | "findById"
     | "findWithFullDetails"
+    | "findLatestRenewalOf"
     | "updateById"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -271,6 +272,8 @@ export const certificateServiceFactory = ({
       }
     }
 
+    const latestRenewalCertificateId = await certificateDAL.findLatestRenewalOf(cert);
+
     return {
       cert: {
         ...cert,
@@ -280,6 +283,7 @@ export const certificateServiceFactory = ({
         caName,
         profileName,
         applicationName,
+        latestRenewalCertificateId,
         metadata: certMetadata
       }
     };

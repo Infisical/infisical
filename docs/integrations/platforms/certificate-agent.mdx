@@ -13,9 +13,12 @@ description: "Learn how to use Infisical CLI Agent to manage certificates automa
 The Infisical Agent is a client daemon that is packaged into the [Infisical CLI](/cli/overview).
 It can be used to request a certificate from Infisical using the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles), persist it to a specified path on the filesystem, and automatically monitor and renew it before expiration.
 
+It can also run in distribution mode, where it fetches a certificate that already exists in Infisical by ID instead of requesting a new one. This lets many machines share a single centrally managed certificate, such as a wildcard certificate, without each of them triggering an issuance against the certificate authority.
+
 The Infisical Agent is notable:
 
 - Automating certificate management: The agent can request, persist, monitor, and renew certificates from Infisical automatically without manual intervention. It also supports post-event hooks to execute custom commands after certificate issuance, renewal, or failure events.
+- Distributing a shared certificate: The agent can deliver an existing certificate to many machines and pick up server-side renewals of it automatically.
 - Leveraging workload identity: The agent can authenticate with Infisical as a [machine identity](/documentation/platform/identities/machine-identities) using an infrastructure-native authentication method such as [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), [GCP Auth](/documentation/platform/identities/gcp-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), etc.
 
 The typical workflow for using the agent involves installing the Infisical CLI on the target machine, creating a configuration file defining the certificate to request and how it should be managed, and then starting the agent with that configuration so it can request, persist, monitor, and renew the certificate before it expires.
@@ -290,8 +293,9 @@ The table below provides a complete list of parameters that can be configured in
 
 | Parameter                            | Required                                               | Description                                                                                                                                                                                                                        |
 | ------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profile-name`                       | Yes                                                    | The name of the [certificate profile](/documentation/platform/pki/certificates/profiles) to request a certificate against (e.g., `web-server-12345`)                                                                               |
-| `project-slug`                       | Yes                                                    | The slug of the project to request a certificate against (e.g., `my-project-slug`)                                                                                                                                                 |
+| `certificate-id`                     | Conditional                                            | The ID of an existing certificate in Infisical to deliver instead of requesting a new one. See [Distributing an existing certificate](/integrations/platforms/certificate-agent#distributing-an-existing-certificate). Cannot be combined with `profile-name`, `project-slug`, `application-name`, `attributes`, or a CSR.                                                                               |
+| `profile-name`                       | Conditional                                            | The name of the [certificate profile](/documentation/platform/pki/certificates/profiles) to request a certificate against (e.g., `web-server-12345`). Not used when `certificate-id` is set.                                                                               |
+| `project-slug`                       | Conditional                                            | The slug of the project to request a certificate against (e.g., `my-project-slug`). Not used when `certificate-id` is set.                                                                                                                                                 |
 | `common-name`                        | Optional                                               | The common name for the certificate (e.g. `www.example.com`)                                                                                                                                                                       |
 | `alt-names`                          | Optional                                               | The list of subject alternative names for the certificate (e.g., `["www.example.com", "api.example.com"]`)                                                                                                                         |
 | `ttl`                                | Optional (uses profile default if not specified)       | The time-to-live duration for the certificate, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.)                                                                                                                      |
@@ -307,14 +311,102 @@ The table below provides a complete list of parameters that can be configured in
 | `file-output.chain.path`             | Optional                                               | The path to store the certificate chain in the filesystem.                                                                                                                                                                         |
 | `file-output.chain.permission`       | Optional (defaults to `0600`)                          | The octal permissions for the chain file (e.g. `0644`)                                                                                                                                                                             |
 | `file-output.chain.omit-root`        | Optional (defaults to `true`)                          | Whether to exclude the root CA certificate from the returned certificate chain                                                                                                                                                     |
-| `lifecycle.renew-before-expiry`      | Optional (auto-renewal is disabled if not set)         | Duration before certificate expiration when renewal checks should begin, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.)                                                                                            |
+| `lifecycle.renew-before-expiry`      | Optional (auto-renewal is disabled if not set)         | Duration before certificate expiration when renewal checks should begin, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.). Ignored when `certificate-id` is set, because the agent delivers a certificate rather than renewing one.                                                                                            |
 | `lifecycle.status-check-interval`    | Optional (defaults to `10s`)                           | How frequently the agent checks certificate status and renewal needs, specified as a duration string (e.g. `10s`, `30m`, `1d`, etc.)                                                                                               |
+| `lifecycle.use-latest`               | Optional (defaults to `false`)                         | Whether the agent should deliver the most recent renewal of the certificate named by `certificate-id` instead of that certificate itself. Only valid together with `certificate-id`.                                                                                               |
 | `post-hooks.on-issuance.command`     | Optional                                               | The shell command to execute after a certificate is successfully issued for the first time (e.g., `systemctl reload nginx`, `/usr/local/bin/reload-service.sh`)                                                                    |
 | `post-hooks.on-issuance.timeout`     | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-issuance post-hook command before it is terminated (e.g., `30`, `60`, `120`)                                                                                                          |
 | `post-hooks.on-renewal.command`      | Optional                                               | The shell command to execute after a certificate is successfully renewed (e.g., `systemctl reload nginx`, `docker restart web-server`)                                                                                             |
 | `post-hooks.on-renewal.timeout`      | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-renewal post-hook command before it is terminated (e.g., `30`, `60`, `120`)                                                                                                           |
 | `post-hooks.on-failure.command`      | Optional                                               | The shell command to execute when certificate issuance or renewal fails (e.g., `logger 'Certificate renewal failed'`, `/usr/local/bin/alert.sh`)                                                                                   |
 | `post-hooks.on-failure.timeout`      | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-failure post-hook command before it is terminated (e.g., `10`, `30`, `60`)                                                                                                            |
+
+### Distributing an existing certificate
+
+By default, the agent requests a new certificate from a certificate profile each time it starts on a new machine. That suits machines that each need their own identity. It does not suit machines meant to serve the same certificate: ten web servers behind a load balancer terminating TLS for `*.example.com` should share one wildcard certificate, not hold ten.
+
+Set `certificate-id` to the ID of a certificate that already exists in Infisical and the agent delivers that certificate instead of issuing one. Nothing reaches the certificate authority, and your certificate inventory does not grow with your fleet.
+
+Copy the ID from the certificate's page in Infisical, or take it from the response of the [issue certificate](/api-reference/endpoints/certificates/create-certificate) endpoint.
+
+```yaml distribution-agent-config.yaml
+version: v2
+
+infisical:
+  address: "https://app.infisical.com"
+
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+certificates:
+  - certificate-id: "8f2a1c40-5f3b-4e7a-9c21-b3d4e5f60718"
+    lifecycle:
+      status-check-interval: "6h"
+    file-output:
+      certificate:
+        path: "/etc/ssl/certs/wildcard.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/wildcard-chain.crt"
+        permission: "0644"
+      private-key:
+        path: "/etc/ssl/private/wildcard.key"
+        permission: "0600"
+```
+
+`certificate-id` replaces the fields that describe a new certificate. Combining it with `profile-name`, `project-slug`, `application-name`, `attributes`, `csr`, or `csr-path` is rejected when the agent starts, rather than silently ignored.
+
+<Warning>
+  `lifecycle.renew-before-expiry` has no effect in distribution mode. The agent delivers a certificate, it does not renew one, so a renewal threshold has nothing to act on. The agent logs a warning and carries on. To have it deliver renewals made in Infisical, use [`lifecycle.use-latest`](/integrations/platforms/certificate-agent#keeping-up-with-renewals) instead.
+</Warning>
+
+<Note>
+  The machine identity the agent authenticates as needs permission to read the certificate you point it at. Without it, the agent reports the authorization failure and leaves any files it has already written untouched.
+</Note>
+
+#### Keeping up with renewals
+
+[Renewing a certificate](/documentation/platform/pki/applications/certificate-renewal) produces a new certificate with its own ID, and the certificate it replaced stays valid until its own expiry. An agent pinned to the original ID therefore keeps serving the original until it expires.
+
+Set `lifecycle.use-latest` to `true` and the agent delivers the most recent renewal instead:
+
+```yaml
+certificates:
+  - certificate-id: "8f2a1c40-5f3b-4e7a-9c21-b3d4e5f60718"
+    lifecycle:
+      status-check-interval: "6h"
+      use-latest: true
+    post-hooks:
+      on-renewal:
+        command: "systemctl reload nginx"
+        timeout: 30
+    file-output:
+      certificate:
+        path: "/etc/ssl/certs/wildcard.crt"
+        permission: "0644"
+      private-key:
+        path: "/etc/ssl/private/wildcard.key"
+        permission: "0600"
+```
+
+Renewing the certificate once in Infisical then reaches every machine running the agent, with no configuration change and no manual step on the machines. Leave `certificate-id` pointing at the certificate you started from. You never need to update it, and Infisical resolves the most recent renewal for you however many times the certificate has been renewed.
+
+The agent rewrites the files only when the certificate it resolves to changes, and runs the `on-renewal` hook when that happens. Use that hook to reload whatever service consumes the certificate. When nothing has changed, the agent writes nothing and runs no hooks, including across a restart: it compares what it resolves against the certificate already on disk, not just against what it delivered earlier in the same run.
+
+<Note>
+  Leaving `use-latest` unset keeps the agent on exactly the certificate you named. Choose that when you want a deliberate step before a new certificate reaches production.
+</Note>
+
+**What to expect in less common cases:**
+
+- A revoked or expired certificate is reported and runs the `on-failure` hook, but the agent does not overwrite what is already on disk. The machine keeps serving the last certificate known to be good.
+- A certificate that Infisical does not hold a private key for, such as one issued from a certificate signing request or through ACME, is written along with its chain. The agent logs a warning and skips the private key file. If such a certificate would *replace* one already delivered, the agent refuses the write instead, because overwriting the certificate while leaving the previous key in place would put a non-matching pair on disk and the `on-renewal` hook would reload a service onto it.
+- `status-check-interval` sets how often the agent checks, and so how quickly a renewal reaches the machine.
+- Keep the certificate named in `certificate-id`, even after it has been renewed. The agent starts from it, so deleting it leaves a restarted agent unable to resolve. Certificates that replaced it can be deleted safely, including the one directly after it.
+- `use-latest` requires an Infisical server that supports it. Against an older self-hosted instance the agent cannot tell that a renewal exists, so it logs a warning and stays on the certificate it already delivered. Upgrade the server, or leave `use-latest` unset and point `certificate-id` at the current certificate.
 
 ### Post-event hooks
 
@@ -553,4 +645,51 @@ certificates:
       on-renewal:
         command: "systemctl reload nginx && logger 'Certificate renewed'"
         timeout: 30
+```
+
+### Distributing a shared wildcard certificate
+
+The configuration below instructs the agent to fetch an existing wildcard certificate by ID rather than issue a new one, and to keep it current as the certificate is renewed in Infisical. The same file can be deployed unchanged to every machine that terminates TLS for the domain.
+
+```yaml
+version: v2
+
+# Infisical server configuration
+infisical:
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# Infisical authentication configuration
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+# Certificate configuration
+certificates:
+  - certificate-id: "8f2a1c40-5f3b-4e7a-9c21-b3d4e5f60718"
+    lifecycle:
+      status-check-interval: "6h" # How often to check certificate status and renewal needs
+      use-latest: true # Deliver the most recent renewal of the certificate above
+    file-output:
+      private-key:
+        path: "/etc/ssl/private/wildcard.example.com.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/wildcard.example.com.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/wildcard.example.com.chain.crt"
+        permission: "0644"
+    post-hooks:
+      on-renewal:
+        command: "systemctl reload nginx"
+        timeout: 30
+      on-failure:
+        command: "logger 'Shared certificate could not be refreshed'"
+        timeout: 10
 ```
