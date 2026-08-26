@@ -22,7 +22,8 @@ make lint-docs          # every .mdx file in docs/
 
 The configuration lives in `docs/.vale.ini` and `docs/.vale/styles/`. The Vale version CI
 installs is pinned in `docs/.vale-version`, and both targets warn when the version you have
-installed differs. The config pins `.mdx` to the Markdown parser, so behavior is tied to the
+installed differs. CI verifies the download against the checksums published with that
+release. The config pins `.mdx` to the Markdown parser, so behavior is tied to the
 version.
 
 Both targets call `docs/scripts/lint-docs.sh`, and so does the `Check docs style` GitHub
