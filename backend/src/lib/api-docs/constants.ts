@@ -1836,8 +1836,7 @@ export const FOLDER_ACCESS = {
     offset:
       "The offset to start from, applied to the users with access and the users without access independently. If you enter 10, each list starts from its 10th user.",
     limit: "The number of users to return in each of the two lists.",
-    search:
-      "The text string that user names and email addresses will be filtered by, applied to both lists.",
+    search: "The text string that user names and email addresses will be filtered by, applied to both lists.",
     users:
       "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
     usersWithoutAccess:

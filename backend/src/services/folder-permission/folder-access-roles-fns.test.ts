@@ -11,8 +11,8 @@ import {
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import {
-  BUILT_IN_PROJECT_ROLE_NAMES,
   buildFolderAccessRoster,
+  BUILT_IN_PROJECT_ROLE_NAMES,
   collectDistinctRoles,
   FOLDER_ACCESS_PROBES,
   matchesSearch,
@@ -368,7 +368,11 @@ describe("splitFolderAccessRoster", () => {
     expect(withAccess.map((entry) => entry.actor.userId)).toEqual(["admin", "former-admin", "custom-admin"]);
     // only a currently active built-in admin is one: an expired temporary admin and a custom role
     // slugged "admin" are ordinary grantees
-    expect(withAccess.map((entry) => entry.membership.isProjectAdmin)).toEqual([true, false, false]);
+    expect(withAccess).toMatchObject([
+      { membership: { isProjectAdmin: true } },
+      { membership: { isProjectAdmin: false } },
+      { membership: { isProjectAdmin: false } }
+    ]);
   });
 
   test("keeps an admin out of the without-access list even when no role grants folder access", () => {

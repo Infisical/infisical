@@ -52,7 +52,6 @@ import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
-  Divider,
   Modal,
   ModalContent,
   PageHeader
