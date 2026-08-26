@@ -370,6 +370,6 @@ export const encryptionKeyRotationServiceFactory = ({
     createRotation,
     deleteStagedKey,
     deleteExpiringKey,
-    runGarbageCollection: removeInactiveKeys
+    removeInactiveKeys
   };
 };

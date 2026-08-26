@@ -62,7 +62,7 @@ describe("encryption key rotation garbage collection", () => {
     const row = retainedRow();
     const { service, deleteById } = buildService(row, row);
 
-    await service.runGarbageCollection();
+    await service.removeInactiveKeys();
 
     expect(deleteById).toHaveBeenCalledWith(row.id, expect.anything());
   });
@@ -73,7 +73,7 @@ describe("encryption key rotation garbage collection", () => {
     const snapshot = retainedRow({ lastResolvedAt: null });
     const { service, deleteById } = buildService(snapshot, retainedRow({ lastResolvedAt: new Date() }));
 
-    await service.runGarbageCollection();
+    await service.removeInactiveKeys();
 
     expect(deleteById).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ describe("encryption key rotation garbage collection", () => {
     const row = retainedRow({ lastResolvedAt: stale });
     const { service, deleteById } = buildService(row, row);
 
-    await service.runGarbageCollection();
+    await service.removeInactiveKeys();
 
     expect(deleteById).toHaveBeenCalledWith(row.id, expect.anything());
   });
@@ -92,7 +92,7 @@ describe("encryption key rotation garbage collection", () => {
     const snapshot = retainedRow();
     const { service, deleteById } = buildService(snapshot, retainedRow({ supersededAt: null }));
 
-    await service.runGarbageCollection();
+    await service.removeInactiveKeys();
 
     expect(deleteById).not.toHaveBeenCalled();
   });
