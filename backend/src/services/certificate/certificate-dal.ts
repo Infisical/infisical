@@ -744,15 +744,12 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
 
-  const findLatestRenewalOf = async (
-    anchor: { id: string; orderId: string },
-    tx?: Knex
-  ): Promise<string | null> => {
+  const findLatestRenewalOf = async (anchor: { id: string; orderId: string }, tx?: Knex): Promise<string | null> => {
     try {
       // Walks the anchor's own descendants rather than the whole order. A certificate renewed twice
       // leaves two branches sharing one orderId, and the sibling branch never replaced this anchor,
       // so picking the newest row in the order can hand back a certificate for a different name.
-      const result = await (tx || db.replicaNode()).raw(
+      const result = await (tx || db.replicaNode()).raw<{ rows: { id: string }[] }>(
         `
         WITH RECURSIVE descendants AS (
           SELECT id, "createdAt", status, "notAfter", 1 AS depth
@@ -780,7 +777,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         ]
       );
 
-      return (result.rows as { id: string }[])[0]?.id ?? null;
+      return result.rows[0]?.id ?? null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest renewal of certificate" });
     }
