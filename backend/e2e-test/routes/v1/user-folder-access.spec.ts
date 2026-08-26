@@ -759,7 +759,7 @@ describe("User folder access CRUD", () => {
         expect(groupUser).toBeDefined();
         expect(groupUser!.folderRBACAccess).toBeNull();
         // both groups carry the member role, so it is reported once
-        expect(groupUser!.membership).toEqual({ id: null, roles: [memberRole] });
+        expect(groupUser!.membership).toEqual({ id: null, isProjectAdmin: false, roles: [memberRole] });
       });
 
       test("counts an actor once however many memberships reach them", async () => {
