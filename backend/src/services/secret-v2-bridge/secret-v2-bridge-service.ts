@@ -1350,10 +1350,7 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath: path
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     recordSecretReadMetric({
       environment,
