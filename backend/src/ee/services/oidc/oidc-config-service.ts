@@ -91,7 +91,7 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "find" | "updateById"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -319,6 +319,7 @@ export const oidcConfigServiceFactory = ({
               externalId,
               assertedEmail: sanitizedEmail,
               orgId,
+              rootOrgId: organization.rootOrgId,
               userDAL,
               userAliasDAL,
               orgDAL,

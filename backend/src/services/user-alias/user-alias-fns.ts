@@ -198,9 +198,10 @@ type TAdoptProvisionedShadowUserDTO = {
   // Caller has already sanitized this and verified its domain against the org.
   assertedEmail: string;
   orgId: string;
+  rootOrgId?: string | null;
   userDAL: Pick<TUserDALFactory, "findOne" | "updateById">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "find">;
   tx: Knex;
 };
 
@@ -217,6 +218,7 @@ export const adoptProvisionedShadowUser = async ({
   externalId,
   assertedEmail,
   orgId,
+  rootOrgId,
   userDAL,
   userAliasDAL,
   orgDAL,
@@ -241,15 +243,28 @@ export const adoptProvisionedShadowUser = async ({
   if (existingAlias) return null;
 
   // Keeps this to placeholders the org itself created through an authorized invite.
-  const [orgMembership] = await orgDAL.findMembership(
+  const orgMemberships = await orgDAL.findMembership(
     {
       [`${TableName.Membership}.actorUserId` as "actorUserId"]: candidate.id,
-      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
       [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
     },
     { tx }
   );
-  if (!orgMembership) return null;
+  if (!orgMemberships.some((membership) => membership.scopeOrgId === orgId)) return null;
+
+  // That membership proves the placeholder belongs to this org, not that it belongs only to this
+  // org. Username lookup is global, so a second tenant that invited the same identifier shares the
+  // row, and adopting it would hand this org's IdP subject that tenant's memberships and project
+  // access. Sub-orgs of one root are one tenant; anything reaching past that is left alone. A
+  // project membership always implies an org membership in the same org, so this covers both.
+  const familyRootOrgId = rootOrgId || orgId;
+  const outsideOrgIds = unique(
+    orgMemberships.map((membership) => membership.scopeOrgId).filter((scopeOrgId) => scopeOrgId !== orgId)
+  );
+  if (outsideOrgIds.length) {
+    const outsideOrgs = await orgDAL.find({ $in: { id: outsideOrgIds } }, { tx });
+    if (outsideOrgs.some((org) => (org.rootOrgId || org.id) !== familyRootOrgId)) return null;
+  }
 
   // Postgres aborts the whole transaction on a constraint violation, so the update needs its own
   // savepoint: without one, the recovery lookup below and every write the caller still owes after

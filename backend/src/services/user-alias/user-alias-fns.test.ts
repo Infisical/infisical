@@ -98,14 +98,18 @@ const shadowUser = (overrides: Partial<TUsers> = {}) =>
     ...overrides
   }) as TUsers;
 
+const OTHER_ORG_ID = "org-2";
+
 const buildDeps = ({
   candidate = shadowUser(),
   existingAlias = null,
-  membership = [{ id: "membership-1" }]
+  membership = [{ id: "membership-1", scopeOrgId: ORG_ID }],
+  orgs = []
 }: {
   candidate?: TUsers | null;
   existingAlias?: object | null;
   membership?: object[];
+  orgs?: object[];
 } = {}) => {
   const userDAL = {
     findOne: vi.fn().mockResolvedValue(candidate),
@@ -114,7 +118,10 @@ const buildDeps = ({
       .mockImplementation((id: string, update: Partial<TUsers>) => ({ ...shadowUser(), ...update, id }))
   };
   const userAliasDAL = { findOne: vi.fn().mockResolvedValue(existingAlias) };
-  const orgDAL = { findMembership: vi.fn().mockResolvedValue(membership) };
+  const orgDAL = {
+    findMembership: vi.fn().mockResolvedValue(membership),
+    find: vi.fn().mockResolvedValue(orgs)
+  };
   // A real tx aborts on the unique violation, so the update has to run inside a savepoint for the
   // recovery lookup (and the caller's remaining writes) to stay runnable. `transaction` off a tx is
   // knex's savepoint; the handle is distinct here so the tests can tell the two scopes apart.
@@ -124,11 +131,16 @@ const buildDeps = ({
   return { userDAL, userAliasDAL, orgDAL, tx, savepoint };
 };
 
-const adopt = ({ tx, savepoint: _savepoint, ...deps }: ReturnType<typeof buildDeps>, externalId = EXTERNAL_ID) =>
+const adopt = (
+  { tx, savepoint: _savepoint, ...deps }: ReturnType<typeof buildDeps>,
+  externalId = EXTERNAL_ID,
+  rootOrgId: string | null = null
+) =>
   adoptProvisionedShadowUser({
     externalId,
     assertedEmail: ASSERTED_EMAIL,
     orgId: ORG_ID,
+    rootOrgId,
     tx: tx as unknown as Knex,
     ...deps
   });
@@ -189,10 +201,37 @@ describe("adoptProvisionedShadowUser", () => {
   });
 
   test("declines when the placeholder holds no membership in this org", async () => {
-    const deps = buildDeps({ membership: [] });
+    const deps = buildDeps({ membership: [{ id: "membership-1", scopeOrgId: OTHER_ORG_ID }] });
 
     expect(await adopt(deps)).toBeNull();
     expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  // Username lookup is global, so another tenant that invited the same identifier shares this row.
+  // Adopting it would hand this org's IdP subject that tenant's memberships and project access.
+  test("declines when the placeholder also holds a membership in an unrelated org", async () => {
+    const deps = buildDeps({
+      membership: [
+        { id: "membership-1", scopeOrgId: ORG_ID },
+        { id: "membership-2", scopeOrgId: OTHER_ORG_ID }
+      ],
+      orgs: [{ id: OTHER_ORG_ID, rootOrgId: null }]
+    });
+
+    expect(await adopt(deps)).toBeNull();
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("adopts when the extra membership is a sub-org of this one, which is the same tenant", async () => {
+    const deps = buildDeps({
+      membership: [
+        { id: "membership-1", scopeOrgId: ORG_ID },
+        { id: "membership-2", scopeOrgId: OTHER_ORG_ID }
+      ],
+      orgs: [{ id: OTHER_ORG_ID, rootOrgId: ORG_ID }]
+    });
+
+    expect((await adopt(deps))?.username).toBe(ASSERTED_EMAIL);
   });
 
   test("yields to the winner when a concurrent write takes the asserted email first", async () => {

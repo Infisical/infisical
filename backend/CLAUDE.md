@@ -378,9 +378,22 @@ in, leaving a placeholder account keyed on the identifier instead of the mailbox
 `adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
 and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
 human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
-(any alias, any org), ghosts, and anything without a membership in the org doing the login. It also
-recovers from a unique violation on `users.username`, because the caller's preceding read is not a
-lock. SAML and LDAP have structurally identical branches and are deliberately not wired up.
+(any alias, any org), ghosts, and anything without a membership in the org doing the login.
+
+It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
+family, and that one is the security-critical check rather than a tidiness one. The username lookup
+that finds the placeholder is global, so a second tenant that invited the same identifier shares the
+row; adopting it would hand the login org's IdP subject that tenant's memberships, and
+`selectOrganization` accepts a membership in any status (promoting `Invited` to `Accepted` on
+arrival), so nothing downstream stops the inherited access from being used. A project membership
+always implies an org membership in the same org, so the org-scope check covers project access too.
+
+Adoption also recovers from a unique violation on `users.username`, because the caller's preceding
+read is not a lock. That recovery has to run inside a savepoint (`tx.transaction()`, which knex
+compiles to `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` on the same connection): Postgres aborts the whole
+transaction on a constraint violation, so an unscoped retry would fail with `25P02`, taking the
+caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
+branches and are deliberately not wired up.
 
 ### Permission System (CASL)
 
