@@ -3,6 +3,7 @@ import {
   components,
   DropdownIndicatorProps,
   GroupProps,
+  MenuListProps,
   MultiValueRemoveProps,
   OptionProps
 } from "react-select";
@@ -41,3 +42,10 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
 export const Group = <T,>(props: GroupProps<T>) => {
   return <components.Group {...props} />;
 };
+
+export const MenuList = <T,>({ innerProps, ...props }: MenuListProps<T>) => (
+  <components.MenuList
+    {...props}
+    innerProps={{ ...innerProps, onWheel: (event) => event.stopPropagation() }}
+  />
+);
