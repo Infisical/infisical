@@ -343,6 +343,7 @@ const awsCreateValues: TAwsIamFormValues = {
     region: "us-east-1",
     policyArns: "must-clear",
     policyDocument: "must-clear",
+    userGroups: "must-clear",
     sessionPolicyArns: "session-policy"
   }
 };
@@ -367,7 +368,8 @@ testDynamicSecretProviderContract({
         inputs: {
           ...awsCreateValues.inputs,
           policyArns: "",
-          policyDocument: ""
+          policyDocument: "",
+          userGroups: ""
         }
       },
       maxTTL: "24h",
@@ -414,6 +416,7 @@ testDynamicSecretProviderContract({
         defaultTTL: "1h",
         inputs: {
           ...awsEditInputs,
+          roleArn: "",
           sessionPolicyArns: "",
           sessionPolicyDocument: ""
         },
@@ -430,6 +433,31 @@ testDynamicSecretProviderContract({
       }
     ]
   }
+});
+
+describe("AWS IAM payload sanitization", () => {
+  it("clears a retained role ARN when Assume Role is not selected", () => {
+    const payload = getAwsIamCreatePayload(
+      {
+        ...awsCreateDefaults,
+        name: "aws-secret",
+        inputs: {
+          method: DynamicSecretAwsIamAuth.AccessKey,
+          credentialType: DynamicSecretAwsIamCredentialType.IamUser,
+          accessKey: "AKIAEXAMPLE",
+          secretAccessKey: "secret",
+          roleArn: "arn:aws:iam::123:role/stale",
+          region: "us-east-1"
+        } as TAwsIamFormValues["inputs"]
+      },
+      createContext
+    );
+
+    assert.equal(
+      (payload.provider.inputs as typeof payload.provider.inputs & { roleArn?: string }).roleArn,
+      ""
+    );
+  });
 });
 
 const gcpDefaultScopes = [

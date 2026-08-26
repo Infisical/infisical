@@ -117,7 +117,8 @@ const sanitize = (inputs: TAwsIamFormValues["inputs"]): TAwsInputs => {
   const sessionSupported = !isIamUser && inputs.method === DynamicSecretAwsIamAuth.AssumeRole;
   return {
     ...inputs,
-    ...(!isIamUser && { policyArns: "", policyDocument: "" }),
+    ...(!isIamUser && { policyArns: "", policyDocument: "", userGroups: "" }),
+    ...(inputs.method !== DynamicSecretAwsIamAuth.AssumeRole && { roleArn: "" }),
     ...(!sessionSupported && { sessionPolicyArns: "", sessionPolicyDocument: "" })
   } as TAwsInputs;
 };
