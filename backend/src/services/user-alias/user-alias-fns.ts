@@ -1,7 +1,15 @@
-import { TUserAliases, TUsers } from "@app/db/schemas";
+import { Knex } from "knex";
 
+import { AccessScope, TableName, TUserAliases, TUsers } from "@app/db/schemas";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { DatabaseError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
+import { sanitizeEmail } from "@app/lib/validator/validate-email";
+
+import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "./user-alias-dal";
+import { UserAliasType } from "./user-alias-types";
 
 type TEnsureSsoAccountVerifiedDTO = {
   user: TUsers;
@@ -83,4 +91,176 @@ export const ensureSsoAccountVerified = async ({
     user: { ...user, isAccepted: true, isEmailVerified: true },
     userAlias: { ...userAlias, isEmailVerified: true }
   };
+};
+
+type TResolveAliasUserIdsDTO = {
+  identifiers: string[];
+  aliases: Pick<TUserAliases, "externalId" | "userId">[];
+};
+
+/**
+ * Alias types scoped to one org. Social aliases carry a NULL orgId and are global, so letting them
+ * resolve a provisioning identifier would let an org admin name a user in another tenant.
+ */
+export const ORG_SCOPED_USER_ALIAS_TYPES = [UserAliasType.OIDC, UserAliasType.SAML, UserAliasType.LDAP];
+
+export const resolveAliasUserIds = ({ identifiers, aliases }: TResolveAliasUserIdsDTO) => {
+  // externalId is case-sensitive, so don't fold it. Folding could collapse two different IdP
+  // subjects onto one identifier.
+  const userIdsByExternalId = new Map<string, Set<string>>();
+  aliases.forEach((alias) => {
+    const userIds = userIdsByExternalId.get(alias.externalId);
+    if (userIds) {
+      userIds.add(alias.userId);
+    } else {
+      userIdsByExternalId.set(alias.externalId, new Set([alias.userId]));
+    }
+  });
+
+  const userIdByIdentifier = new Map<string, string>();
+  const ambiguousIdentifiers: string[] = [];
+
+  identifiers.forEach((identifier) => {
+    const matchedUserIds = userIdsByExternalId.get(identifier);
+    if (!matchedUserIds?.size) return;
+
+    // Several aliases on the same user (an OIDC row plus a SAML row) is one account, not a
+    // conflict. Two different users is a real conflict, and guessing wrong grants access to the
+    // wrong person, so bail.
+    if (matchedUserIds.size > 1) {
+      ambiguousIdentifiers.push(identifier);
+      return;
+    }
+
+    const [userId] = [...matchedUserIds];
+    userIdByIdentifier.set(identifier, userId);
+  });
+
+  return { userIdByIdentifier, ambiguousIdentifiers };
+};
+
+type TResolveUsersBySsoExternalIdDTO = {
+  identifiers: string[];
+  orgId: string;
+  // Sub-orgs usually have no IdP of their own, so a member's alias lives on the root org.
+  rootOrgId?: string | null;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  userDAL: Pick<TUserDALFactory, "find">;
+  tx?: Knex;
+};
+
+/**
+ * Maps an IdP identifier (a UPN, say) to the user its SSO alias points at. Only call this once an
+ * exact username lookup has missed, so an alias can never shadow a real account.
+ */
+export const resolveUsersBySsoExternalId = async ({
+  identifiers,
+  orgId,
+  rootOrgId,
+  userAliasDAL,
+  userDAL,
+  tx
+}: TResolveUsersBySsoExternalIdDTO): Promise<{ resolved: Map<string, TUsers>; ambiguousIdentifiers: string[] }> => {
+  const empty = { resolved: new Map<string, TUsers>(), ambiguousIdentifiers: [] };
+
+  const candidates = unique(identifiers.filter(Boolean));
+  if (!candidates.length) return empty;
+
+  const aliases = await userAliasDAL.findBySsoExternalIds(
+    {
+      externalIds: candidates,
+      aliasTypes: ORG_SCOPED_USER_ALIAS_TYPES,
+      orgIds: rootOrgId ? [orgId, rootOrgId] : [orgId]
+    },
+    tx
+  );
+  if (!aliases.length) return empty;
+
+  const { userIdByIdentifier, ambiguousIdentifiers } = resolveAliasUserIds({ identifiers, aliases });
+  const userIds = unique([...userIdByIdentifier.values()]);
+  if (!userIds.length) return { resolved: new Map<string, TUsers>(), ambiguousIdentifiers };
+
+  // Ghosts hold project key material, so they must never be reachable by a provisioning identifier.
+  const users = await userDAL.find({ $in: { id: userIds }, isGhost: false }, { tx });
+  const userById = new Map(users.map((user) => [user.id, user]));
+
+  const resolved = new Map<string, TUsers>();
+  userIdByIdentifier.forEach((userId, identifier) => {
+    const user = userById.get(userId);
+    if (user) resolved.set(identifier, user);
+  });
+
+  return { resolved, ambiguousIdentifiers };
+};
+
+type TAdoptProvisionedShadowUserDTO = {
+  externalId: string;
+  // Caller has already sanitized this and verified its domain against the org.
+  assertedEmail: string;
+  orgId: string;
+  userDAL: Pick<TUserDALFactory, "findOne" | "updateById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  tx: Knex;
+};
+
+/**
+ * Provisioning can name someone by their IdP identifier before they have ever logged in, which
+ * leaves a placeholder account keyed on that identifier instead of their mailbox. On first login we
+ * adopt the placeholder and rewrite it to the asserted mailbox, rather than creating a second
+ * account and stranding whatever the placeholder was granted.
+ *
+ * Returns null if there is nothing safe to adopt. Only call this once a lookup on the asserted
+ * email has missed.
+ */
+export const adoptProvisionedShadowUser = async ({
+  externalId,
+  assertedEmail,
+  orgId,
+  userDAL,
+  userAliasDAL,
+  orgDAL,
+  tx
+}: TAdoptProvisionedShadowUserDTO): Promise<TUsers | null> => {
+  // We fold case here even though resolveUsersBySsoExternalId doesn't, because this is a username
+  // lookup and usernames are canonically lowercase (validateEmail rejects uppercase ones). The
+  // placeholder's username came from lowercasing the provisioner's input, so match that form.
+  const shadowUsername = sanitizeEmail(externalId);
+  if (!shadowUsername || shadowUsername === assertedEmail) return null;
+
+  const candidate = await userDAL.findOne({ username: shadowUsername }, tx);
+  if (!candidate) return null;
+
+  // Ghosts hold project key material. The rest prove nobody ever claimed this account: accepted,
+  // email-verified, or has a password all mean it belongs to someone.
+  if (candidate.isGhost || candidate.isAccepted || candidate.isEmailVerified || candidate.hashedPassword) return null;
+
+  // Any alias, in any org, means some IdP already owns this account. Without this check one org's
+  // IdP could steal an account bound to another's.
+  const existingAlias = await userAliasDAL.findOne({ userId: candidate.id }, tx);
+  if (existingAlias) return null;
+
+  // Keeps this to placeholders the org itself created through an authorized invite.
+  const [orgMembership] = await orgDAL.findMembership(
+    {
+      [`${TableName.Membership}.actorUserId` as "actorUserId"]: candidate.id,
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+      [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+    },
+    { tx }
+  );
+  if (!orgMembership) return null;
+
+  try {
+    return await userDAL.updateById(candidate.id, { username: assertedEmail, email: assertedEmail }, tx);
+  } catch (err) {
+    // The caller's read showed nobody held the asserted email, but a read isn't a lock, so a
+    // concurrent login or invite can grab it first (users.username is globally unique). Yield to
+    // whoever won: same end state as the uncontended path, placeholder left alone.
+    if (err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation) {
+      const winner = await userDAL.findOne({ username: assertedEmail }, tx);
+      if (winner) return winner;
+    }
+    throw err;
+  }
 };

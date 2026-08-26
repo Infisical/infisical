@@ -8,7 +8,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -34,6 +34,8 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
@@ -50,6 +52,7 @@ type TProjectMembershipServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
@@ -89,6 +92,7 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
+  userAliasDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
   usageMeteringService,
@@ -180,6 +184,41 @@ export const projectMembershipServiceFactory = ({
     return projectMembers.map((m) => ({ ...m, isGroupMember: false }));
   };
 
+  /**
+   * A provisioning system may name a member by its IdP identifier (a UPN, say) instead of their
+   * username. Map those to usernames up front so everything downstream keys on the same value,
+   * including the group-membership lookup that decides whose project key survives. Usernames win,
+   * so an alias can never shadow a real account.
+   */
+  const $toCanonicalUsernames = async (identifiers: string[], projectId: string) => {
+    const deduped = unique(identifiers);
+    const existingUsers = await userDAL.find({ $in: { username: deduped } });
+    const unmatched = deduped.filter((identifier) => !existingUsers.some((el) => el.username === identifier));
+    if (!unmatched.length) return deduped;
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+      identifiers: unmatched,
+      orgId: project.orgId,
+      userAliasDAL,
+      userDAL
+    });
+
+    if (ambiguousIdentifiers.length) {
+      throw new BadRequestError({
+        message: `Identifier(s) ${ambiguousIdentifiers
+          .map((el) => `'${el}'`)
+          .join(
+            ", "
+          )} match more than one SSO account in this organization. Use the user's email address instead, or contact support to resolve the duplicate.`
+      });
+    }
+
+    return unique(deduped.map((identifier) => resolved.get(identifier)?.username ?? identifier));
+  };
+
   const getProjectMembershipByUsername = async ({
     actorId,
     actor,
@@ -198,7 +237,10 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
-    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
+    const [canonicalUsername] = await $toCanonicalUsernames([username], projectId);
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, {
+      username: canonicalUsername
+    });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
     return membership;
   };
@@ -323,11 +365,9 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 
-    const usernamesAndEmails = [...emails, ...usernames];
+    const usernamesAndEmails = await $toCanonicalUsernames([...emails, ...usernames], projectId);
 
-    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, [
-      ...new Set(usernamesAndEmails.map((element) => element))
-    ]);
+    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, usernamesAndEmails);
 
     if (projectMembers.length !== usernamesAndEmails.length) {
       throw new BadRequestError({

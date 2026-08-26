@@ -335,6 +335,53 @@ never becomes a synchronous dependency of the middleware's own request path. The
 (rejections evicted, in-flight promise shared, expiry rebuilding the SSRF-pinned agent) are documented in
 `oauth-token-exchange-fns.ts`.
 
+### Resolving Users From Provisioning Identifiers
+
+Every invite / removal path resolves a person by `users.username` (which always equals their email),
+never by `users.email` and never by a join. An external provisioning system, though, often knows
+people only by the identifier its IdP asserts, a UPN like `m249913@one.example.com` rather than the
+mailbox `robert@example.com`. SSO login already records that identifier as
+`user_aliases.externalId`, so the two are reconcilable without making `username` diverge from
+`email`.
+
+`resolveUsersBySsoExternalId` in `src/services/user-alias/user-alias-fns.ts` is the one place that
+does it, backed by `userAliasDAL.findBySsoExternalIds`. Callers run it **only after an exact
+`username` lookup has missed**, so an alias can never shadow a real account. It is wired into
+`$getUsers` (`membership-user-service.ts`, the single funnel for org, project, and cert-manager
+invites), `project-membership-service.ts` (removal and membership read-back), and PAM's
+`addProductUserMembers`.
+
+Four invariants, each load-bearing:
+
+- **Scope by `orgId` *and* `aliasType`.** `user_aliases.orgId` is NULL for the global
+  google/github/gitlab aliases, so `whereIn("orgId", ...)` excludes them outright and the
+  `ORG_SCOPED_USER_ALIAS_TYPES` filter is the second lock. Without both, an org admin could name a
+  user in another tenant.
+- **Match `externalId` exactly, never folded.** It is a case-sensitive identifier (OIDC Core defines
+  `sub` that way, as does SAML for nameID) and is stored verbatim, so folding case could collapse two
+  distinct IdP subjects onto one identifier. The known consequence: because both invite routes
+  lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
+  mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
+  input validation so the exact identifier survives to the query, not loosening the comparison.
+  Note the one deliberate exception: `adoptProvisionedShadowUser` *does* lowercase, because it looks
+  the identifier up in the `users.username` namespace, where lowercase is canonical.
+- **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
+  org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
+  users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
+  granting access to the wrong person. Several aliases on the *same* user are not a conflict.
+- **Dedupe resolved users by `id`.** An identifier now reaches a user by either their username or
+  their alias, so one request can name the same person twice. Undeduped, that violates
+  `membership_unique_user_org` and surfaces as a 500.
+
+A related case sits on the login side: provisioning can name someone before they have ever logged
+in, leaving a placeholder account keyed on the identifier instead of the mailbox.
+`adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
+and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
+human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
+(any alias, any org), ghosts, and anything without a membership in the org doing the login. It also
+recovers from a unique violation on `users.username`, because the caller's preceding read is not a
+lock. SAML and LDAP have structurally identical branches and are deliberately not wired up.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:

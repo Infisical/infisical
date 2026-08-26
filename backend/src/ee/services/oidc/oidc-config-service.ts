@@ -15,6 +15,7 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -56,7 +57,11 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
+import {
+  adoptProvisionedShadowUser,
+  ensureSsoAccountVerified,
+  isStaleSsoAlias
+} from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -304,6 +309,29 @@ export const oidcConfigServiceFactory = ({
           },
           tx
         );
+
+        // Provisioning may have already made a placeholder for this person keyed on their IdP
+        // identifier instead of their mailbox. Adopt it rather than creating a second account and
+        // stranding whatever it was granted on one nobody can log into.
+        if (!newUser) {
+          newUser =
+            (await adoptProvisionedShadowUser({
+              externalId,
+              assertedEmail: sanitizedEmail,
+              orgId,
+              userDAL,
+              userAliasDAL,
+              orgDAL,
+              tx
+            })) ?? undefined;
+
+          if (newUser) {
+            logger.info(
+              { userId: newUser.id, orgId, externalId },
+              `Adopted provisioned placeholder account on first OIDC login [userId=${newUser.id}] [orgId=${orgId}] [externalId=${externalId}] [username=${sanitizedEmail}]`
+            );
+          }
+        }
 
         if (!newUser) {
           newUser = await userDAL.create(
