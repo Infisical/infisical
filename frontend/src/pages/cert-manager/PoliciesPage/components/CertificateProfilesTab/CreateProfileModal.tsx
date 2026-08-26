@@ -51,6 +51,7 @@ import {
 } from "@app/hooks/api/certificatePolicies";
 import {
   IssuerType,
+  TCertificateProfile,
   TCertificateProfileDefaults,
   TCertificateProfileWithDetails,
   TCreateCertificateProfileDTO,
@@ -463,9 +464,16 @@ interface Props {
   onClose: () => void;
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit" | "clone";
+  onComplete?: (profile: TCertificateProfile) => void;
 }
 
-export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
+export const CreateProfileModal = ({
+  isOpen,
+  onClose,
+  profile,
+  mode = "create",
+  onComplete
+}: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { orgId, projectId } = useParams({ strict: false }) as {
@@ -798,7 +806,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         createData.defaults = serializedDefaults;
       }
 
-      await createProfile.mutateAsync(createData);
+      const createdProfile = await createProfile.mutateAsync(createData);
+      onComplete?.(createdProfile);
     }
 
     createNotification({

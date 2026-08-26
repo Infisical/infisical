@@ -25,6 +25,7 @@ import {
   codeSigningScopeFieldLabels,
   MONOSPACED_SCOPE_FIELDS
 } from "@app/hooks/api/signers";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import {
   ApprovalStepsSection,
@@ -165,7 +166,7 @@ const PageContent = () => {
                 projectId: currentProject.id,
                 applicationName
               },
-              search: { selectedTab: "requests" }
+              search: { selectedTab: ApplicationTab.Requests }
             });
             return;
           }
@@ -331,7 +332,7 @@ const PageContent = () => {
             projectId: currentProject.id,
             applicationName
           }}
-          search={{ selectedTab: "requests" }}
+          search={{ selectedTab: ApplicationTab.Requests }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
