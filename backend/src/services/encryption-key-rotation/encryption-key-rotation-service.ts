@@ -132,6 +132,17 @@ export const encryptionKeyRotationServiceFactory = ({
     const result = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
+      // Re-read under the lock: a strategy change to HSM holds the same lock, so without this a
+      // Software staged row could be written onto an instance that now wraps with an HSM.
+      const sentinelNow = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      if (!sentinelNow) throw new NotFoundError({ message: "KMS root config not found" });
+      if (sentinelNow.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
+        throw new BadRequestError({
+          message:
+            "This instance wraps its root key with an HSM, so there is no environment variable to rotate. Rotate the key on the HSM itself, or switch the encryption strategy to software first."
+        });
+      }
+
       // Read under the lock so the warning describes the key that will actually be removed on promotion.
       const [retained] = await kmsRootConfigDAL.findRetained(tx);
 
