@@ -470,39 +470,43 @@ export const AccessApprovalRequest = ({
                 </div>
               )}
             </div>
-            <Combobox
-              aria-label="Filter environments"
-              className="w-[200px]"
-              options={environmentOptions}
-              value={environmentOptions.find((option) => option.value === envFilter) ?? null}
-              onValueChange={(option) => setEnvFilter(option.value)}
-              onClear={() => setEnvFilter(undefined)}
-              getOptionValue={(option) => option.value}
-              getOptionLabel={(option) => option.label}
-              clearAriaLabel="Clear environment filter"
-              searchPlaceholder="Filter environments"
-              searchAriaLabel="Filter environments"
-              emptyMessage="No results found."
-              placeholder="All Environments"
-            />
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+            <div className="w-[200px] max-w-full shrink-0">
               <Combobox
-                aria-label="Filter users"
-                className="w-[220px]"
-                options={requesterOptions}
-                value={
-                  requesterOptions.find((option) => option.value === requestedByFilter) ?? null
-                }
-                onValueChange={(option) => setRequestedByFilter(option.value)}
-                onClear={() => setRequestedByFilter(undefined)}
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
                 getOptionValue={(option) => option.value}
                 getOptionLabel={(option) => option.label}
-                clearAriaLabel="Clear user filter"
-                searchPlaceholder="Filter users"
-                searchAriaLabel="Filter users"
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
                 emptyMessage="No results found."
-                placeholder="All Users"
+                placeholder="All Environments"
               />
+            </div>
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <div className="w-[220px] max-w-full shrink-0">
+                <Combobox
+                  aria-label="Filter users"
+                  className="w-full"
+                  options={requesterOptions}
+                  value={
+                    requesterOptions.find((option) => option.value === requestedByFilter) ?? null
+                  }
+                  onValueChange={(option) => setRequestedByFilter(option.value)}
+                  onClear={() => setRequestedByFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear user filter"
+                  searchPlaceholder="Filter users"
+                  searchAriaLabel="Filter users"
+                  emptyMessage="No results found."
+                  placeholder="All Users"
+                />
+              </div>
             )}
           </div>
           {!areRequestsPending && filteredRequests?.length === 0 && !isFiltered && (
