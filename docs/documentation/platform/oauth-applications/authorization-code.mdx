@@ -1,0 +1,178 @@
+---
+title: Authorization code
+description: "Let external platforms request delegated access to Infisical on a user's behalf using OAuth 2.0."
+---
+
+The **authorization code** flow lets an [OAuth application](/documentation/platform/oauth-applications/overview) request **delegated access** to Infisical on behalf of one of your users. The platform never sees the user's password or session; instead it runs a standard authorization code flow, the user reviews and approves the request on an Infisical consent screen, and the platform receives short-lived access and refresh tokens scoped to that user.
+
+A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
+
+<Info>
+  This page covers the browser-based flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
+</Info>
+
+<Note>
+  A delegated OAuth token can never do more than the user who authorized it. Scopes only **narrow** what the token can do; they never grant access the user does not already have. When the user's access changes or their session is revoked, every token issued for them through OAuth is affected immediately.
+</Note>
+
+## Concept
+
+This flow turns Infisical into an OAuth 2.0 authorization server. The model has three parties:
+
+- **OAuth application (client)** - the external platform you register in Infisical. It holds a client ID and client secret.
+- **User (resource owner)** - the Infisical user who authorizes the application to act on their behalf.
+- **Infisical (authorization + resource server)** - issues the tokens and serves the protected API.
+
+Every action the token takes is attributed to the user, with the requesting application recorded alongside it in the audit log.
+
+### Flow
+
+```mermaid
+sequenceDiagram
+  participant App as External App
+  participant Browser as User's Browser
+  participant Infis as Infisical
+
+  App->>Browser: Redirect to /api/v1/oauth/authorize
+  Browser->>Infis: GET /authorize (client_id, redirect_uri, scope, PKCE)
+  Infis->>Browser: Show consent screen (login + MFA if required)
+  Browser->>Infis: User approves
+  Infis->>Browser: Redirect to redirect_uri with authorization code
+  Browser->>App: Deliver authorization code
+  App->>Infis: POST /api/v1/oauth/token (code + client credentials + PKCE verifier)
+  Infis->>App: access_token + refresh_token + scope
+  App->>Infis: API request with access_token (e.g. GET /api/v4/secrets)
+  Infis->>App: Secrets (limited to user's permissions ∩ granted scopes)
+```
+
+## Scopes
+
+Scopes are a coarse, named contract for what a delegated token is allowed to do. The requested scopes are passed as a space-delimited `scope` parameter on the authorization request and are shown to the user on the consent screen.
+
+| Scope          | Grants                          |
+| -------------- | ------------------------------- |
+| `secrets:read` | Read secrets, folders, and imports |
+
+<Note>
+  `secrets:read` is the only scope available today, supporting the read-only `infisical run` use case. Requesting an unrecognized scope rejects the authorization request rather than silently dropping it.
+</Note>
+
+## Creating an OAuth application
+
+<Steps>
+  <Step title="Open the OAuth Applications settings">
+    Head to **Organization Settings** and open **OAuth Applications** from the sidebar. You need permission to manage OAuth applications.
+  </Step>
+  <Step title="Add an application">
+    Press **Add Application** and fill in the details:
+
+    - **Name** (required): A friendly name shown to users on the consent screen.
+    - **Description** (optional): A short note about what the application is used for. Also shown on the consent screen.
+    - **Flow**: Leave **Authorization code** selected. See [token exchange](/documentation/platform/oauth-applications/token-exchange) for the other flow.
+    - **Redirect URIs** (required): One URI per line. The authorization flow will only ever redirect to one of these exact URIs. Each must use `https://`; `http://` is allowed only for loopback addresses such as `localhost`, `127.0.0.1`, and `::1`.
+    - **Require PKCE (S256)**: When enabled, authorization requests that do not include a PKCE code challenge are rejected. Recommended for public clients.
+    - **Access token lifetime**: How long the tokens this application issues stay valid, 1 day by default.
+  </Step>
+  <Step title="Store the credentials">
+    On creation, Infisical shows the **Client ID** and **Client Secret**.
+
+    <Warning>
+      The client secret is shown only once. Store it securely. If it is lost, you can rotate it from the application's menu, but you cannot retrieve the original value.
+    </Warning>
+
+    Register these credentials with the external platform as its OAuth provider configuration.
+  </Step>
+</Steps>
+
+## OAuth 2.0 endpoints
+
+All endpoints are served under the `/api/v1/oauth` prefix.
+
+### Authorization endpoint
+
+```
+GET /api/v1/oauth/authorize
+```
+
+Query parameters:
+
+- `response_type` (required): Must be `code`.
+- `client_id` (required): The application's client ID.
+- `redirect_uri` (required): Must exactly match one of the application's registered redirect URIs.
+- `scope` (optional): Space-delimited list of requested scopes (for example, `secrets:read`).
+- `state` (optional but recommended): Opaque value echoed back on the callback to prevent CSRF.
+- `code_challenge` / `code_challenge_method` (optional, `S256`): PKCE parameters. Required if the application has **Require PKCE** enabled.
+
+Infisical validates the client and redirect URI, then presents the consent screen. After the user approves, Infisical redirects to `redirect_uri` with a one-time `code` (and the `state`, if provided). If the user denies, it redirects with `error=access_denied`.
+
+### Token endpoint
+
+```
+POST /api/v1/oauth/token
+```
+
+Exchanges an authorization code for tokens, or refreshes an existing token. Client credentials may be sent either as HTTP Basic auth (`Authorization: Basic <base64(client_id:client_secret)>`) or in the request body as `client_id` and `client_secret`.
+
+To exchange an authorization code:
+
+- `grant_type=authorization_code`
+- `code`: The authorization code from the callback.
+- `redirect_uri`: Must match the one used in the authorize request.
+- `code_verifier`: The PKCE verifier (required when a code challenge was used).
+
+To refresh:
+
+- `grant_type=refresh_token`
+- `refresh_token`: A previously issued refresh token.
+
+The response contains:
+
+```json
+{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "refresh_token": "...",
+  "scope": "secrets:read"
+}
+```
+
+[Access token lifetime](/documentation/platform/oauth-applications/overview#managing-applications) defaults to 1 day. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
+
+`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client exchanges a new authorization code when the access token expires.
+
+### Validation endpoint
+
+```
+GET /api/v1/oauth/validate
+```
+
+A lightweight introspection endpoint. Send the delegated access token as a Bearer token; a `200` with `{ "active": true }` confirms the token is valid.
+
+Any other status means the token is not usable. A `401` covers an expired, revoked, or otherwise dead token, including one whose application was deleted. Middleware should treat any 4xx from this endpoint as a signal to obtain a fresh token rather than to retry.
+
+## Accessing the API
+
+Use the access token as a standard Bearer token on the supported read-only secret endpoints:
+
+```bash
+curl https://app.infisical.com/api/v4/secrets \
+  -H "Authorization: Bearer <access_token>" \
+  --get \
+  --data-urlencode "projectId=<project-id>" \
+  --data-urlencode "environment=dev"
+```
+
+## Security model
+
+- **Read-only by design.** `secrets:read` is the only scope available and grants read actions alone, so a token from this flow reads secrets and reaches nothing else, administration included. The [shared limits](/documentation/platform/oauth-applications/overview#what-a-delegated-token-can-never-do) apply on top.
+- **MFA is enforced at consent.** If the user's organization requires MFA, the consent flow requires the matching MFA challenge to be completed before an authorization code is issued.
+- **Strict redirect URIs.** Authorization only ever redirects to an exact registered URI. Non-loopback URIs must use `https://`.
+- **One-time authorization codes.** Codes are single-use, short-lived, and bound to the client and redirect URI they were issued for.
+- **PKCE support.** Applications can require PKCE (S256) to protect public clients against code interception.
+
+## Revoking access
+
+Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry.
+
+Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-applications/token-exchange) application behaves differently, because there the secret is sufficient on its own.

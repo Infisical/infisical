@@ -141,6 +141,7 @@ export const FolderTableRow = ({
             <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
+                  aria-label="Move folder"
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
@@ -159,6 +160,7 @@ export const FolderTableRow = ({
             <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
+                  aria-label="Edit folder"
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
@@ -177,6 +179,7 @@ export const FolderTableRow = ({
             <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
+                  aria-label="Discard pending folder changes"
                   variant="ghost"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   size="xs"
@@ -194,6 +197,7 @@ export const FolderTableRow = ({
             <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
+                  aria-label="Delete folder"
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"

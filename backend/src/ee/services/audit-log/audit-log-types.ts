@@ -849,6 +849,7 @@ export enum EventType {
   DELETE_OAUTH_CLIENT = "delete-oauth-client",
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+  OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -933,6 +934,7 @@ interface UserActorMetadata {
   username: string;
   permission?: Record<string, unknown>;
   authMethod?: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -6772,6 +6774,10 @@ interface CreateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6781,6 +6787,10 @@ interface UpdateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6807,6 +6817,18 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+  };
+}
+
+interface OauthClientTokenExchangeEvent {
+  type: EventType.OAUTH_CLIENT_TOKEN_EXCHANGE;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    clientName: string;
+    subjectUserId: string;
+    subjectExternalId: string;
+    tokenVersionId: string;
   };
 }
 
@@ -7733,6 +7755,7 @@ export type Event =
   | DeleteOauthClientEvent
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
+  | OauthClientTokenExchangeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

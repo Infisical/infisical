@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { CreateTagDTO, DeleteTagDTO, UserWsTags, WsTag } from "./types";
+import { CreateTagDTO, DeleteTagDTO, UpdateTagDTO, UserWsTags, WsTag } from "./types";
 
 const projectTags = {
   getWsTags: (projectID: string) => ["project-tags", { projectID }] as const
@@ -51,6 +51,43 @@ export const useDeleteWsTag = () => {
     },
     onSuccess: (tagData) => {
       queryClient.invalidateQueries({ queryKey: projectTags.getWsTags(tagData?.projectId) });
+    }
+  });
+};
+
+export const useUpdateWsTag = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WsTag, object, UpdateTagDTO>({
+    mutationFn: async ({ tagID, projectId, tagColor, tagSlug }) => {
+      const { data } = await apiRequest.patch<{ tag: WsTag }>(
+        `/api/v1/projects/${projectId}/tags/${tagID}`,
+        { color: tagColor, slug: tagSlug }
+      );
+      return data.tag;
+    },
+    onSuccess: (_tagData, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: projectTags.getWsTags(projectId) });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [queryRoot, queryParams] = query.queryKey;
+
+          return (
+            queryRoot === "dashboard" &&
+            (queryParams as { projectId?: string } | undefined)?.projectId === projectId
+          );
+        }
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [queryParams, queryRoot] = query.queryKey;
+
+          return (
+            queryRoot === "secrets" &&
+            (queryParams as { projectId?: string } | undefined)?.projectId === projectId
+          );
+        }
+      });
     }
   });
 };

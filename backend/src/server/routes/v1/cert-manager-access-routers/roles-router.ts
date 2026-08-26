@@ -28,7 +28,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     method: "GET",
     url: "/roles",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listCertManagerRoles",
       response: {
@@ -64,7 +64,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     method: "GET",
     url: "/roles/slug/:roleSlug",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getCertManagerRoleBySlug",
       params: z.object({ roleSlug: z.string().trim().min(1) }),

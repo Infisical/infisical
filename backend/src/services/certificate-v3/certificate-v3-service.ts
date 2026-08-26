@@ -415,7 +415,6 @@ export const certificateV3ServiceFactory = ({
         actorContext.actor !== ActorType.EST_ACCOUNT &&
         actorContext.actor !== ActorType.SCEP_ACCOUNT &&
         actorContext.actorId &&
-        actorContext.actorAuthMethod &&
         actorContext.actorOrgId
       ) {
         const { permission } = await permissionService.getResourcePermission({
@@ -424,7 +423,7 @@ export const certificateV3ServiceFactory = ({
           projectId: profile.projectId,
           resourceType: ResourceType.CertificateApplication,
           resourceId: explicit,
-          actorAuthMethod: actorContext.actorAuthMethod,
+          actorAuthMethod: actorContext.actorAuthMethod ?? null,
           actorOrgId: actorContext.actorOrgId
         });
         ForbiddenError.from(permission).throwUnlessCan(
