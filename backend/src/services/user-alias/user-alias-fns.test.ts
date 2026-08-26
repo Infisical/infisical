@@ -115,16 +115,21 @@ const buildDeps = ({
   };
   const userAliasDAL = { findOne: vi.fn().mockResolvedValue(existingAlias) };
   const orgDAL = { findMembership: vi.fn().mockResolvedValue(membership) };
+  // A real tx aborts on the unique violation, so the update has to run inside a savepoint for the
+  // recovery lookup (and the caller's remaining writes) to stay runnable. `transaction` off a tx is
+  // knex's savepoint; the handle is distinct here so the tests can tell the two scopes apart.
+  const savepoint = { savepoint: true };
+  const tx = { transaction: vi.fn((cb: (sp: unknown) => unknown) => Promise.resolve(cb(savepoint))), savepoint };
 
-  return { userDAL, userAliasDAL, orgDAL };
+  return { userDAL, userAliasDAL, orgDAL, tx, savepoint };
 };
 
-const adopt = (deps: ReturnType<typeof buildDeps>, externalId = EXTERNAL_ID) =>
+const adopt = ({ tx, savepoint: _savepoint, ...deps }: ReturnType<typeof buildDeps>, externalId = EXTERNAL_ID) =>
   adoptProvisionedShadowUser({
     externalId,
     assertedEmail: ASSERTED_EMAIL,
     orgId: ORG_ID,
-    tx: {} as Knex,
+    tx: tx as unknown as Knex,
     ...deps
   });
 
@@ -138,7 +143,7 @@ describe("adoptProvisionedShadowUser", () => {
     expect(deps.userDAL.updateById).toHaveBeenCalledWith(
       "shadow-1",
       { username: ASSERTED_EMAIL, email: ASSERTED_EMAIL },
-      {}
+      deps.savepoint
     );
   });
 
@@ -147,7 +152,7 @@ describe("adoptProvisionedShadowUser", () => {
 
     await adopt(deps, "M249913@One.Example.com");
 
-    expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: EXTERNAL_ID }, {});
+    expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: EXTERNAL_ID }, deps.tx);
   });
 
   test("declines when the identifier is already the asserted email", async () => {
@@ -199,6 +204,11 @@ describe("adoptProvisionedShadowUser", () => {
     deps.userDAL.findOne.mockResolvedValueOnce(shadowUser()).mockResolvedValueOnce(winner);
 
     expect(await adopt(deps)).toBe(winner);
+    // The write was scoped to the savepoint, and the recovery lookup runs outside it on the
+    // caller's transaction. Reversed, the aborted transaction would fail the lookup with 25P02.
+    expect(deps.tx.transaction).toHaveBeenCalledTimes(1);
+    expect(deps.userDAL.updateById).toHaveBeenCalledWith(expect.anything(), expect.anything(), deps.savepoint);
+    expect(deps.userDAL.findOne).toHaveBeenLastCalledWith({ username: ASSERTED_EMAIL }, deps.tx);
   });
 
   test("rethrows a unique violation that no concurrent write explains", async () => {

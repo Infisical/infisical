@@ -251,8 +251,13 @@ export const adoptProvisionedShadowUser = async ({
   );
   if (!orgMembership) return null;
 
+  // Postgres aborts the whole transaction on a constraint violation, so the update needs its own
+  // savepoint: without one, the recovery lookup below and every write the caller still owes after
+  // this call would fail with 25P02 instead.
   try {
-    return await userDAL.updateById(candidate.id, { username: assertedEmail, email: assertedEmail }, tx);
+    return await tx.transaction((savepoint) =>
+      userDAL.updateById(candidate.id, { username: assertedEmail, email: assertedEmail }, savepoint)
+    );
   } catch (err) {
     // The caller's read showed nobody held the asserted email, but a read isn't a lock, so a
     // concurrent login or invite can grab it first (users.username is globally unique). Yield to
