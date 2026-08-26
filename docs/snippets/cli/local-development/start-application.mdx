@@ -31,10 +31,15 @@ infisical run --env=dev -- dotnet run
 The CLI fetches the secrets you have access to and passes them to your application as environment variables. Your application reads them the same way it always has, through `process.env` in Node.js or `os.environ` in Python, so you don't need to change any application code.
 
 <Note>
-  **If your secrets live in [folders](/documentation/platform/folder), add `--recursive`.** By default `infisical run` only injects the secrets sitting at the root of the environment, so anything inside a folder is skipped and your application starts without it.
+  By default, `infisical run` only injects the secrets sitting at the root of the environment, so anything inside a folder is skipped. If your secrets live in [folders](/documentation/platform/folder), you can specify a folder to include using `--path`:
 
   ```bash
-  infisical run --env=dev --recursive -- npm run dev
+  infisical run --env=dev --path="/backend" -- npm run dev
+  ```
+
+  If you also need the secrets in that folder's subfolders, add `--recursive`:
+  ```bash
+  infisical run --env=dev --path="/backend" --recursive -- npm run dev
   ```
 </Note>
 

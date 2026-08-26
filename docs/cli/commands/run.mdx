@@ -185,13 +185,17 @@ infisical run -- npm run dev
   <Accordion title="--recursive">
     By default, `infisical run` only injects the secrets that sit directly in `--path` (the root of the environment, `/`, unless you set it). Secrets inside folders are left out. Add `--recursive` to also inject the secrets in every subfolder of `--path`.
 
-    ```bash
-    # Example - every secret in the environment
-    infisical run --recursive -- npm run dev
+    If your secrets sit in one folder, `--path` alone is enough. Use `--recursive` when that folder has subfolders you also need.
 
+    ```bash
     # Example - every secret under /backend and its subfolders
     infisical run --path="/backend" --recursive -- npm run dev
+
+    # Example - every secret in the environment, from every folder
+    infisical run --recursive -- npm run dev
     ```
+
+    Since `--recursive` widens what gets injected, scope it with `--path` so your application only receives the secrets it needs.
 
     Default value: `false`
 
