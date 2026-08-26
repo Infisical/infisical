@@ -16,14 +16,24 @@ linter from the repository root:
 
 ```
 brew install vale
-make lint-docs
+make lint-docs-branch   # only the .mdx files this branch touched
+make lint-docs          # every .mdx file in docs/
 ```
 
-The configuration lives in `docs/.vale.ini` and `docs/.vale/styles/`. Vale 3.17.1 or later is
-expected; the config pins `.mdx` to the Markdown parser, so behavior is tied to the version.
+The configuration lives in `docs/.vale.ini` and `docs/.vale/styles/`. The Vale version CI
+installs is pinned in `docs/.vale-version`, and both targets warn when the version you have
+installed differs. The config pins `.mdx` to the Markdown parser, so behavior is tied to the
+version.
 
-`make lint-docs` is the same `vale` invocation that Mintlify's Vale CI check runs, so local
-and CI results match. You can also run `vale <path>` directly on a subset.
+Both targets call `docs/scripts/lint-docs.sh`, and so does the `Check docs style` GitHub
+workflow, which runs only on pull requests that touch `docs/` and lints the files the pull
+request changed. Local and CI results therefore match. You can also run `vale <path>`
+directly on a subset. A run fails only on errors; warnings and suggestions are printed but
+do not block.
+
+Mintlify runs its own Vale check against this same config, and its results do not always
+agree with ours -- it is a separate build we do not control. `Check docs style` is the check
+to go by.
 
 What it checks: sentence case in headings and in the `title`/`sidebarTitle` frontmatter
 fields, the enforced spellings in
