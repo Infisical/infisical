@@ -1,28 +1,27 @@
 ---
-title: "User and machine identities"
-sidebarTitle: "Identities"
-description: "Learn more about identities to interact with resources in Infisical."
+title: "Identity and access"
+sidebarTitle: "Identity and access"
+icon: "id-card"
+description: "Understand who and what can reach Infisical, how each one proves it, and what they are allowed to do."
 ---
 
-To interact with secrets and resource with Infisical, it is important to understand the concept of identities. 
-Identities can be of two types: 
-- **People** (e.g., developers, platform engineers, administrators)
-- **Machines** (e.g., machine entities for managing secrets in CI/CD pipelines, production applications, and more)
-
-Both people and machines are able to utilize corresponding clients (e.g., Dashboard UI, CLI, SDKs, API, Kubernetes Operator) together with allowed authentication methods (e.g., email & password, SAML SSO, LDAP, OIDC, Universal Auth).
+Everything that reaches Infisical does so as an identity. There are two kinds of identities:
 
 <CardGroup cols={2}>
-  <Card href="./user-identities" title="People (User Identities)" icon="people" >
-    Learn more about the concept on user identities in Infisical. 
+  <Card title="User Identities" icon="user" href="/documentation/platform/identities/user-identities">
+    People who sign in through the dashboard or the CLI.
   </Card>
-  <Card
-    title="Machine Identities"
-    href="./machine-identities"
-    icon="computer"
-  >
-    Understand the concept of machine identities in Infisical. 
+  <Card title="Machine Identities" icon="robot" href="/documentation/platform/identities/machine-identities">
+    Applications, pipelines, and clusters that authenticate with no person present.
   </Card>
 </CardGroup>
+
+Authenticating and being authorized are two separate steps. Your permissions are decided by the roles and policies you've been given, which are covered under access control:
+
+<Card title="Access Control" icon="shield-halved" href="/documentation/platform/access-controls/overview">
+  Roles, attributes, and approvals that decide what an identity may do.
+</Card>
+
 
 ## Calculating identity counts
 
