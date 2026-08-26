@@ -4,7 +4,8 @@
 # workflow call this script so local and CI results cannot drift apart.
 #
 #   lint-docs.sh --all                      every .mdx file under docs/
-#   lint-docs.sh --changed [--base <ref>]   only .mdx files this branch touched
+#   lint-docs.sh --changed [--base <ref>]   only .mdx files this branch touched, or every
+#                                           file when the branch changes a lint input
 #
 # Exits non-zero when Vale reports an error.
 
@@ -15,6 +16,8 @@ DOCS_DIR="$REPO_ROOT/docs"
 
 MODE=all
 BASE=main
+
+LINT_INPUTS='^docs/\.vale\.ini$|^docs/\.vale/|^docs/\.vale-version$|^docs/scripts/lint-docs\.sh$'
 
 usage() {
   echo "Usage: lint-docs.sh [--all | --changed] [--base <ref>]" >&2
@@ -53,6 +56,19 @@ if ! MERGE_BASE="$(git -C "$REPO_ROOT" merge-base "$BASE" HEAD 2>/dev/null)"; th
   exit 1
 fi
 
+CHANGED="$(
+  {
+    git -C "$REPO_ROOT" diff --name-only "$MERGE_BASE" -- docs
+    git -C "$REPO_ROOT" ls-files --others --exclude-standard -- docs
+  } | sort -u
+)"
+
+if printf '%s\n' "$CHANGED" | grep -Eq "$LINT_INPUTS"; then
+  echo "Lint configuration changed. Linting every .mdx file instead of just the branch's."
+  echo
+  exec vale --glob='*.mdx' .
+fi
+
 FILES=()
 while IFS= read -r path; do
   case "$path" in
@@ -61,12 +77,7 @@ while IFS= read -r path; do
   esac
   [ -f "$REPO_ROOT/$path" ] || continue
   FILES+=("${path#docs/}")
-done < <(
-  {
-    git -C "$REPO_ROOT" diff --name-only --diff-filter=ACMR "$MERGE_BASE" -- docs
-    git -C "$REPO_ROOT" ls-files --others --exclude-standard -- docs
-  } | sort -u
-)
+done <<< "$CHANGED"
 
 if [ ${#FILES[@]} -eq 0 ]; then
   echo "No .mdx files changed against $BASE. Nothing to lint."

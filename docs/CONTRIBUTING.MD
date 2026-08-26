@@ -27,9 +27,11 @@ version.
 
 Both targets call `docs/scripts/lint-docs.sh`, and so does the `Check docs style` GitHub
 workflow, which runs only on pull requests that touch `docs/` and lints the files the pull
-request changed. Local and CI results therefore match. You can also run `vale <path>`
-directly on a subset. A run fails only on errors; warnings and suggestions are printed but
-do not block.
+request changed. A branch that edits the configuration itself -- `.vale.ini`, a file under
+`.vale/styles/`, `.vale-version`, or the script -- is linted in full instead, since a rule
+change reaches pages the branch never touched. Local and CI results therefore match. You can
+also run `vale <path>` directly on a subset. A run fails only on errors; warnings and
+suggestions are printed but do not block.
 
 Mintlify runs its own Vale check against this same config, and its results do not always
 agree with ours -- it is a separate build we do not control. `Check docs style` is the check
