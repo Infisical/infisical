@@ -1,15 +1,13 @@
 import { Helmet } from "react-helmet";
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
-import { useOrganization, useProject } from "@app/context";
+import { LookingForOrgPageLink } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
 
 export const AuditLogsPage = () => {
   const { currentProject } = useProject();
-  const { isSubOrganization } = useOrganization();
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <div className="mx-auto flex flex-col justify-between text-white">
@@ -24,16 +22,7 @@ export const AuditLogsPage = () => {
             title={isCertManager ? "Audit logs" : "Project Audit logs"}
             description="Audit logs for security and compliance teams to monitor information access."
           >
-            <Link
-              to="/organizations/$orgId/audit-logs"
-              params={{
-                orgId: currentProject.orgId
-              }}
-              className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-            >
-              <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization audit
-              logs?
-            </Link>
+            <LookingForOrgPageLink page="auditLogs" />
           </PageHeader>
           <LogsSection pageView project={currentProject} />
         </div>

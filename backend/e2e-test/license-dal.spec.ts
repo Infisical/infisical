@@ -205,21 +205,18 @@ describe("license-dal billable org-actor count", () => {
   });
 
   // Billable identities: i1 (SM), i4 (KMS via group), i3 (projectless root), i5 (projectless sub-org).
-  // Excluded: i2 (PAM only).
-  test("countOfOrgIdentities counts only billable identities, including sub-orgs", async () => {
-    const count = await licenseDAL.countOfOrgIdentities(ROOT_ORG_ID, testDb);
-    expect(count).toBe(4);
-  });
-
+  // Excluded: i2 (PAM only). Counted here through the combined total (5 users + 4 identities), since
+  // the identity-only counter has no callers.
   test("countOrgUsersAndIdentities returns the combined billable total", async () => {
     const count = await licenseDAL.countOrgUsersAndIdentities(ROOT_ORG_ID, testDb);
     expect(count).toBe(9);
   });
 
   test("scoping to an unrelated org yields zero", async () => {
-    const users = await licenseDAL.countOfOrgMembers(randomUUID(), testDb);
-    const identities = await licenseDAL.countOfOrgIdentities(randomUUID(), testDb);
+    const unrelatedOrgId = randomUUID();
+    const users = await licenseDAL.countOfOrgMembers(unrelatedOrgId, testDb);
+    const usersAndIdentities = await licenseDAL.countOrgUsersAndIdentities(unrelatedOrgId, testDb);
     expect(users).toBe(0);
-    expect(identities).toBe(0);
+    expect(usersAndIdentities).toBe(0);
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
+import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -48,16 +49,13 @@ const SanitizedSuperAdminSchema = z.object({
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
   createdAt: z.date().optional(),
-  trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
-  trustOidcEmails: z.boolean().nullish(),
   onboardingCompleted: z.boolean().optional(),
   adminIdentityIds: z.string().array().nullable().optional(),
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
   isSecretScanningDisabled: z.boolean().optional(),
   isPublicSecretSharingDisabled: z.boolean().optional(),
-  licenseServerV2Enabled: z.boolean().optional(),
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
@@ -118,7 +116,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-            licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
             isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
             isClickhouseAuditLogEnabled,
             latestAvailableVersion
@@ -134,7 +131,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-          licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
@@ -157,9 +153,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         allowSignUp: z.boolean().optional(),
         allowedSignUpDomain: AllowedEmailDomainsSchema.optional().nullable(),
-        trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
-        trustOidcEmails: z.boolean().optional(),
         onboardingCompleted: z.boolean().optional(),
         defaultAuthOrgId: z.string().optional().nullable(),
         enabledLoginMethods: z
@@ -634,6 +628,191 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       await server.services.superAdmin.updateRootEncryptionStrategy(req.body.strategy);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/encryption/root-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getAdminEncryptionRootKey",
+      description: ENCRYPTION_KEY_ROTATION.ROOT_KEY.description,
+      response: {
+        200: z.object({
+          rootKey: z.object({
+            encryptionStrategy: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.encryptionStrategy),
+            active: z.object({
+              label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.active.label),
+              activatedAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.active.activatedAt)
+            }),
+            staged: z
+              .object({
+                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.label),
+                createdAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.createdAt)
+              })
+              .nullable()
+              .describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.description),
+            expiring: z
+              .object({
+                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.label),
+                supersededAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.supersededAt),
+                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.lastResolvedAt),
+                expiresAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.expiresAt)
+              })
+              .nullable()
+              .describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.description)
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const rootKey = await server.services.encryptionKeyRotation.getRootKey();
+
+      return { rootKey };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/encryption/root-key/rotations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAdminEncryptionKeyRotations",
+      description: ENCRYPTION_KEY_ROTATION.ROTATIONS.description,
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).default(0).describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.limit)
+      }),
+      response: {
+        200: z.object({
+          rotations: z
+            .object({
+              label: z.string().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.label),
+              activatedAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.activatedAt),
+              supersededAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.supersededAt),
+              retiredAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.retiredAt)
+            })
+            .array(),
+          totalCount: z.number().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.totalCount)
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      return server.services.encryptionKeyRotation.listRotations({
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/encryption/root-key/rotations",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "createAdminEncryptionKeyRotation",
+      description: ENCRYPTION_KEY_ROTATION.CREATE.description,
+      body: z.object({
+        replaceStaged: z.boolean().default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.replaceStaged)
+      }),
+      response: {
+        201: z.object({
+          rotation: z.object({
+            label: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.label),
+            key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
+            removesExpiringKey: z
+              .object({ label: z.string().nullable(), lastResolvedAt: z.date().nullable() })
+              .optional()
+              .describe(ENCRYPTION_KEY_ROTATION.CREATE.removesExpiringKey)
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      const rotation = await server.services.encryptionKeyRotation.createRotation({
+        replaceStaged: req.body.replaceStaged
+      });
+
+      // The key appears here and nowhere else, so it must not be cached along the way.
+      void res.header("Cache-Control", "no-store");
+      void res.status(201);
+      return { rotation };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/encryption/root-key/staged",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deleteAdminStagedEncryptionKey",
+      description: ENCRYPTION_KEY_ROTATION.DELETE_STAGED.description,
+      body: z.object({
+        label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_STAGED.label)
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.body.label });
+
+      void res.status(204);
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/encryption/root-key/expiring",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deleteAdminExpiringEncryptionKey",
+      description: ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.description,
+      body: z.object({
+        label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.label),
+        force: z.boolean().default(false).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.force)
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      await server.services.encryptionKeyRotation.deleteExpiringKey({
+        label: req.body.label,
+        force: req.body.force
+      });
+
+      void res.status(204);
     }
   });
 

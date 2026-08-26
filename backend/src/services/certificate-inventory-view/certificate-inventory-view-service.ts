@@ -50,6 +50,14 @@ const SYSTEM_VIEWS: TSystemView[] = [
     createdByUserId: null
   },
   {
+    id: "system-renewed",
+    name: "Renewed",
+    filters: { status: ["renewed"] },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
     id: "system-expired",
     name: "Expired",
     filters: { status: ["expired"] },

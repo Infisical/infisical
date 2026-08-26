@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 
+import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmailServiceSetupModal, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,

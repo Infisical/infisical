@@ -225,11 +225,16 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
   const { data: session, isLoading } = useGetPamSessionById(sessionId ?? "");
   const isActive = session?.status === PamSessionStatus.Active;
 
-  const { data: accountPerm } = usePamAccountPermission(session?.accountId ?? "");
-  const canTerminate = accountPerm?.permission.can(
-    PamResourcePermissionActions.TerminateSessions,
-    PamResourcePermissionSub.PamResource
+  const { data: accountPerm } = usePamAccountPermission(
+    session?.accountId ?? "",
+    Boolean(session?.accountId)
   );
+  const canTerminate =
+    !session?.accountId ||
+    accountPerm?.permission.can(
+      PamResourcePermissionActions.TerminateSessions,
+      PamResourcePermissionSub.PamResource
+    );
 
   const {
     events,

@@ -42,7 +42,7 @@ import {
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY" | "SITE_URL">;
+  envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   // Same metered-feature/count-fn pairs the usage pipeline registers; used to seed a purchase's initial
@@ -389,7 +389,10 @@ export const licenseV2ServiceFactory = ({
 
     return { planTier: plan.tier, quantities, declaredUsage };
   };
-  const isSelfHostedLicense = Boolean(envConfig.LICENSE_KEY);
+  // Any non-cloud instance gets the read-only "managed" billing view: a self-hosted license is
+  // provisioned out-of-band, and an unlicensed instance has no billing surface to drive at all. Only
+  // cloud has per-org self-serve subscriptions.
+  const isSelfHostedLicense = !envConfig.isCloud;
 
   const ensureBillingRead = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -1026,8 +1029,6 @@ export const licenseV2ServiceFactory = ({
   };
 
   return {
-    // Billing surface (portal, checkout, overview) goes live only at full v2 cutover, not during read-compare.
-    isEnabled: () => envConfig.LICENSE_SERVER_V2_MODE === "on",
     getOverview,
     refreshEntitlements,
     getCatalog,
