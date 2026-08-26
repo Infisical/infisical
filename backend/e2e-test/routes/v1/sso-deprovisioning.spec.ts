@@ -16,7 +16,9 @@ const createdOrgIds: string[] = [];
 const mailbox = () => `p-${crypto.randomUUID()}@mail.example.local`;
 const upn = () => `m${crypto.randomInt(100000, 999999)}@${UPN_DOMAIN}`;
 
-/** A member with an SSO alias whose externalId is a UPN, mirroring the customer's shape. */
+/**
+ * A member with an SSO alias whose externalId is a UPN, mirroring the customer's shape.
+ */
 const seedAliasedMember = async (opts: { externalId: string; aliasOrgId?: string | null } & { email?: string }) => {
   const email = opts.email ?? mailbox();
   const [user] = await testDb(TableName.Users)
@@ -68,7 +70,9 @@ const giveProjectKey = (userId: string) =>
     nonce: "nonce"
   });
 
-/** Puts the user in a group that is itself a member of the project. */
+/**
+ * Puts the user in a group that is itself a member of the project.
+ */
 const giveGroupProjectAccess = async (userId: string) => {
   const [group] = await testDb(TableName.Groups)
     .insert({ orgId: ORG_ID, name: `g-${crypto.randomUUID()}`, slug: `g-${crypto.randomUUID()}` })

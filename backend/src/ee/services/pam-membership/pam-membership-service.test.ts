@@ -122,12 +122,12 @@ describe("pamMembership addProductUserMembers", () => {
       orgMemberUserIds: [one.id, two.id]
     });
 
-    await expect(add(service, [IDENTIFIER])).rejects.toThrow(/match more than one SSO account/);
+    await expect(add(service, [IDENTIFIER])).rejects.toThrow("match more than one SSO account");
   });
 
   test("still rejects an identifier nothing resolves, naming what the caller sent", async () => {
     const { service } = buildService();
 
-    await expect(add(service, [IDENTIFIER])).rejects.toThrow(new RegExp(`'${IDENTIFIER}'`));
+    await expect(add(service, [IDENTIFIER])).rejects.toThrow(`'${IDENTIFIER}'`);
   });
 });
