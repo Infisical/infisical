@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 
-import { TableName } from "@app/db/schemas";
-import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -137,10 +136,7 @@ describe("SSO alias resolution is tenant scoped", () => {
       await makeUserWithAlias({ externalId: identifier, orgId: org.id, aliasType });
     }
 
-    const { resolved } = await resolveAs(
-      org.id,
-      Object.values(ids)
-    );
+    const { resolved } = await resolveAs(org.id, Object.values(ids));
 
     wanted.forEach((t) => expect(resolved.has(ids[t])).toBe(true));
     refused.forEach((t) => expect(resolved.has(ids[t])).toBe(false));
@@ -268,6 +264,37 @@ describe("SSO alias resolution is tenant scoped", () => {
         username: asserted,
         email: asserted
       });
+    });
+
+    // `sub` is case-sensitive per OIDC Core, so this is a second subject the IdP could hand to a
+    // different human. Folding it onto the placeholder would give that human whatever the first
+    // subject was provisioned for, and the resulting alias would be stored verbatim, leaving the
+    // grant unreachable from the provisioning side (which matches externalId exactly) afterwards.
+    test("a subject differing only by case cannot adopt another subject's placeholder", async () => {
+      const org = await makeOrg();
+      const identifier = `ph-${crypto.randomUUID()}@tenant.example`;
+      const placeholder = await seedPlaceholder(identifier, org.id);
+
+      const adopted = await adoptAs(org.id, identifier.toUpperCase(), `other-${crypto.randomUUID()}@tenant.example`);
+
+      expect(adopted).toBeNull();
+      await expect(testDb(TableName.Users).where({ id: placeholder.id }).first()).resolves.toMatchObject({
+        username: identifier,
+        email: identifier
+      });
+    });
+
+    test("the placeholder stays adoptable by the subject it was actually provisioned for", async () => {
+      const org = await makeOrg();
+      const identifier = `ph-${crypto.randomUUID()}@tenant.example`;
+      const asserted = `real-${crypto.randomUUID()}@tenant.example`;
+      const placeholder = await seedPlaceholder(identifier, org.id);
+
+      expect(await adoptAs(org.id, identifier.toUpperCase(), `other-${crypto.randomUUID()}@tenant.example`)).toBeNull();
+      const adopted = await adoptAs(org.id, identifier, asserted);
+
+      expect(adopted?.user.id).toBe(placeholder.id);
+      expect(adopted?.adoptedFromUsername).toBe(identifier);
     });
   });
 

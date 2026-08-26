@@ -230,11 +230,13 @@ export const adoptProvisionedShadowUser = async ({
   orgDAL,
   tx
 }: TAdoptProvisionedShadowUserDTO): Promise<TAdoptProvisionedShadowUserResult | null> => {
-  // We fold case here even though resolveUsersBySsoExternalId doesn't, because this is a username
-  // lookup and usernames are canonically lowercase (validateEmail rejects uppercase ones). The
-  // placeholder's username came from lowercasing the provisioner's input, so match that form.
+  // Only an identifier that is already canonical can name the placeholder, whose username came from
+  // lowercasing the provisioner's input. A differently-cased identifier is a *different* subject
+  // (OIDC Core defines `sub` as case-sensitive), so folding onto that match would hand it whatever
+  // the other subject was granted, and would not work end to end anyway: the alias written here is
+  // verbatim, and resolveUsersBySsoExternalId never folds when looking it up again.
   const shadowUsername = sanitizeEmail(externalId);
-  if (!shadowUsername || shadowUsername === assertedEmail) return null;
+  if (!shadowUsername || shadowUsername !== externalId || shadowUsername === assertedEmail) return null;
 
   const candidate = await userDAL.findOne({ username: shadowUsername }, tx);
   if (!candidate) return null;

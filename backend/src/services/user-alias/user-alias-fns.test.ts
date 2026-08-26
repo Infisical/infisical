@@ -160,12 +160,20 @@ describe("adoptProvisionedShadowUser", () => {
     );
   });
 
-  test("looks the placeholder up by the sanitized identifier, so a mixed-case claim still matches", async () => {
+  // `sub` is case-sensitive, so this is a different subject from EXTERNAL_ID, not the same person
+  // typed differently. Adopting on a folded match would hand it the other subject's access.
+  test("declines an identifier that is not already canonical, rather than folding it onto a placeholder", async () => {
     const deps = buildDeps();
 
-    await adopt(deps, "M249913@One.Example.com");
+    expect(await adopt(deps, "M249913@One.Example.com")).toBeNull();
+    expect(deps.userDAL.findOne).not.toHaveBeenCalled();
+  });
 
-    expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: EXTERNAL_ID }, deps.tx);
+  test("declines an identifier padded with whitespace, which sanitizing would otherwise trim into a match", async () => {
+    const deps = buildDeps();
+
+    expect(await adopt(deps, ` ${EXTERNAL_ID} `)).toBeNull();
+    expect(deps.userDAL.findOne).not.toHaveBeenCalled();
   });
 
   test("declines when the identifier is already the asserted email", async () => {

@@ -363,8 +363,13 @@ Four invariants, each load-bearing:
   lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
   mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
   input validation so the exact identifier survives to the query, not loosening the comparison.
-  Note the one deliberate exception: `adoptProvisionedShadowUser` *does* lowercase, because it looks
-  the identifier up in the `users.username` namespace, where lowercase is canonical.
+  `adoptProvisionedShadowUser` does not fold either. It derives its lookup key with `sanitizeEmail`
+  because it searches the `users.username` namespace, where lowercase is canonical, but it then
+  **refuses any identifier that is not already canonical** rather than adopting on the folded match.
+  It once did adopt, and that was a real hole: a subject differing only by case is a different
+  subject, so it could take over the placeholder provisioned for another one and inherit its grants.
+  Folding bought nothing anyway, since the alias written afterwards is verbatim and this exact-match
+  lookup could never find it again, stranding the grant where provisioning cannot manage it.
 - **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
   org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
   users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
@@ -378,7 +383,8 @@ in, leaving a placeholder account keyed on the identifier instead of the mailbox
 `adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
 and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
 human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
-(any alias, any org), ghosts, and anything without a membership in the org doing the login.
+(any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
+anything without a membership in the org doing the login.
 
 It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
 family, and that one is the security-critical check rather than a tidiness one. The username lookup
@@ -402,6 +408,12 @@ findable. That event must never fire on the unique-violation recovery path, wher
 is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
 line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
 it.
+
+That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
+`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+Do not special-case this event past the retention gate; treat the application log as the floor and
+the audit event as the addition for licensed instances.
 
 ### Permission System (CASL)
 
