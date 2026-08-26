@@ -21,7 +21,7 @@ jobs:
         run: helm lint helm-charts/infisical-nkp
 
       - name: Run helm template
-        run: helm template infisical helm-charts/infisical-nkp > /dev/null
+        run: helm template infisical helm-charts/infisical-nkp --set config.siteUrl=https://infisical.example.com > /dev/null
 
   release:
     needs: test-helm

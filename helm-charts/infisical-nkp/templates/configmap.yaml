@@ -1,3 +1,13 @@
+{{- /*
+config.siteUrl is mandatory. Infisical uses SITE_URL to lock down CORS and to
+build every absolute URL it emits (invite / password-reset / verification
+links, SSO and OAuth redirect URIs, WebAuthn relying party). Fail the install
+early with a clear message rather than deploying a silently degraded instance.
+*/ -}}
+{{- $siteUrl := required "config.siteUrl is required: set it to the external URL users will reach Infisical at, e.g. https://infisical.example.com" .Values.config.siteUrl -}}
+{{- if not (regexMatch "^https?://[^/]+$" $siteUrl) -}}
+{{- fail (printf "config.siteUrl must be an origin of the form http(s)://<hostname> with no path suffix or trailing slash (Infisical cannot be served under a path prefix); got %q" $siteUrl) -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,6 +15,6 @@ metadata:
   labels:
     {{- include "infisical.labels" . | nindent 4 }}
 data:
-  SITE_URL: {{ .Values.config.siteUrl | quote }}
+  SITE_URL: {{ $siteUrl | quote }}
   PORT: {{ .Values.config.port | quote }}
   TELEMETRY_ENABLED: {{ .Values.config.telemetryEnabled | quote }}
