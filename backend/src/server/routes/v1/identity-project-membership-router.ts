@@ -799,8 +799,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
           identitiesWithoutAccess: SanitizedFolderAccessIdentitySchema.array().describe(
             FOLDER_ACCESS.LIST_IDENTITIES.identitiesWithoutAccess
           ),
-          totalCount: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCount),
-          totalCountWithoutAccess: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCountWithoutAccess)
+          totalCount: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCount)
         })
       }
     },

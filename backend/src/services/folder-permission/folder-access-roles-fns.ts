@@ -99,8 +99,10 @@ export const toCachedProjectMemberRole = (row: TProjectMemberRoleRow): TCachedPr
 
 export const buildFolderAccess = <TActor extends TProjectMemberActor>(
   entries: TProjectMember<TActor>[],
-  folder: TFolderLocation
+  folder: TFolderLocation,
+  totalCount: number
 ): TCachedFolderAccess<TActor> => ({
+  totalCount,
   grantingRoleKeys: collectDistinctRoles(entries)
     .filter((role) => roleGrantsFolderAccess(role, folder))
     .map((role) => role.key),
@@ -180,21 +182,3 @@ export const splitFolderAccess = <TActor extends TProjectMemberActor>({
 
   return { withAccess, withoutAccess };
 };
-
-export const matchesSearch = (search: string | undefined, fields: (string | null | undefined)[]) => {
-  if (!search) return true;
-  const term = search.toLowerCase();
-  return fields.some((field) => Boolean(field && field.toLowerCase().includes(term)));
-};
-
-export const sortFolderAccessEntries = <T>(entries: T[], sortKey: (entry: T) => [name: string, tieBreak: string]) =>
-  [...entries].sort((a, b) => {
-    const [aName, aTieBreak] = sortKey(a);
-    const [bName, bTieBreak] = sortKey(b);
-    return aName.toLowerCase().localeCompare(bName.toLowerCase()) || aTieBreak.localeCompare(bTieBreak);
-  });
-
-export const paginateFolderAccessEntries = <T>(entries: T[], offset: number, limit: number) => ({
-  items: entries.slice(offset, offset + limit),
-  totalCount: entries.length
-});

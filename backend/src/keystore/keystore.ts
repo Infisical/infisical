@@ -103,10 +103,10 @@ export const KeyStorePrefixes = {
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
-  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string) =>
-    `project-folder-access-marker:${projectId}:${folderId}:${actorType}` as const,
-  ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string) =>
-    `project-folder-access-data:${projectId}:${folderId}:${actorType}` as const,
+  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string, page: string) =>
+    `project-folder-access-marker:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
+    `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
 
   KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
 

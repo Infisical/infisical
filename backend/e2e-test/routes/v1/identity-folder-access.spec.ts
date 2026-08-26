@@ -327,13 +327,15 @@ describe("Identity folder access CRUD", () => {
       identities: TFolderAccessIdentity[];
       identitiesWithoutAccess: TFolderAccessIdentity[];
       totalCount: number;
-      totalCountWithoutAccess: number;
     }> => {
       // the folder access list is cached behind a 20s marker; tests mutate memberships and list right away
-      await testRedis.del(
-        KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.IDENTITY),
-        KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.IDENTITY)
-      );
+      const cached = (
+        await Promise.all([
+          testRedis.keys(KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.IDENTITY, "*")),
+          testRedis.keys(KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.IDENTITY, "*"))
+        ])
+      ).flat();
+      if (cached.length) await testRedis.del(...cached);
       const res = await testServer.inject({
         method: "GET",
         url: folderAccessIdentitiesUrl(query),
@@ -364,7 +366,7 @@ describe("Identity folder access CRUD", () => {
         expect(excluded!.membership.roles).toEqual([
           { id: null, slug: ProjectMembershipRole.NoAccess, name: "No Access" }
         ]);
-        expect(before.totalCountWithoutAccess).toBeGreaterThan(0);
+        expect(before.identitiesWithoutAccess.length).toBeGreaterThan(0);
 
         const createRes = await testServer.inject({
           method: "POST",

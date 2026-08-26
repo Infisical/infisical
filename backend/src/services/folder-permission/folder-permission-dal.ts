@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { sqlNestRelationships } from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
@@ -15,6 +16,8 @@ type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
 type TProjectScope = { projectId: string; orgId: string };
 
 type TProjectActor = { actorId: string; actorType: TFolderActorType };
+
+type TFolderMemberPage = { limit: number; offset: number; search?: string };
 
 type TMemberRoleQueryRow = {
   membershipRoleId: string | null;
@@ -56,6 +59,25 @@ const $userColumns = (conn: Knex) => [
   conn.ref("lastName").withSchema(TableName.Users).as("lastName")
 ];
 
+const USER_SEARCH_COLUMNS = [
+  `${TableName.Users}.username`,
+  `${TableName.Users}.email`,
+  `${TableName.Users}.firstName`,
+  `${TableName.Users}.lastName`
+];
+
+const IDENTITY_SEARCH_COLUMNS = [`${TableName.Identity}.name`];
+
+const $userPageColumns = (conn: Knex) => [
+  conn.ref("id").withSchema(TableName.Users).as("actorId"),
+  conn.ref("username").withSchema(TableName.Users).as("username")
+];
+
+const $identityPageColumns = (conn: Knex) => [
+  conn.ref("id").withSchema(TableName.Identity).as("actorId"),
+  conn.ref("name").withSchema(TableName.Identity).as("name")
+];
+
 const $identityColumns = (conn: Knex) => [
   conn.ref("id").withSchema(TableName.Identity).as("identityId"),
   conn.ref("name").withSchema(TableName.Identity).as("name")
@@ -77,10 +99,42 @@ const $directMembershipId = (conn: Knex) => conn.ref("id").withSchema(TableName.
 // null::uuid keeps the union column typed like memberships.id in the direct branch
 const $noDirectMembershipId = (conn: Knex) => conn.raw("null::uuid as ??", ["directMembershipId"]);
 
-// sqlNestRelationships maps an actor from the first row it meets, so the direct membership row
-// must sort ahead of the group rows for membershipId to be the actor's own membership.
-const $memberRows = (direct: Knex.QueryBuilder, viaGroup: Knex.QueryBuilder) =>
-  direct.unionAll([viaGroup], true).orderBy("directMembershipId", "asc", "last");
+const $memberRows = (direct: Knex.QueryBuilder, viaGroup: Knex.QueryBuilder) => direct.unionAll([viaGroup], true);
+
+const $orderMemberRows = (qb: Knex.QueryBuilder, nameColumn: string, idColumn: string) =>
+  qb.orderByRaw(`lower(??) COLLATE "en-x-icu" asc, ?? asc, ?? asc nulls last`, [
+    nameColumn,
+    idColumn,
+    "directMembershipId"
+  ]);
+
+const $searchFilter = (qb: Knex.QueryBuilder, columns: string[], search?: string) => {
+  if (!search) return;
+  const term = `%${sanitizeSqlLikeString(search)}%`;
+  void qb.where((sub) => {
+    columns.forEach((column, idx) => {
+      if (idx === 0) void sub.whereILike(column, term);
+      else void sub.orWhereILike(column, term);
+    });
+  });
+};
+
+const $pageActorIds = (conn: Knex, actorRows: Knex.QueryBuilder, nameColumn: string, page: TFolderMemberPage) =>
+  conn
+    .from(actorRows.as("page_actors"))
+    .select("actorId")
+    .groupBy(["actorId", nameColumn])
+    .orderByRaw(`lower(??) COLLATE "en-x-icu" asc, ?? asc`, [nameColumn, "actorId"]) // the en-x-icu collation sorts unicode other ASCII
+    .limit(page.limit)
+    .offset(page.offset);
+
+const $countActors = async (conn: Knex, actorRows: Knex.QueryBuilder) => {
+  const row = await conn
+    .from(actorRows.as("count_actors"))
+    .countDistinct("actorId as count")
+    .first<{ count: string }>();
+  return Number(row?.count ?? 0);
+};
 
 const $toMemberRole = (el: TMemberRoleQueryRow): TProjectMemberRoleRow => ({
   membershipRoleId: el.membershipRoleId as string,
@@ -135,9 +189,56 @@ const $actorMembershipIds = (conn: Knex, scope: TProjectScope, { actorId, actorT
     : $identityMembershipIds(conn, scope, actorId);
 
 export const folderPermissionDALFactory = (db: TDbClient) => {
-  const findProjectUsersWithRoles = async (scope: TProjectScope, tx?: Knex) => {
+  const $userActorRows = (conn: Knex, scope: TProjectScope, search?: string) => {
+    const direct: Knex.QueryBuilder = $projectMemberships(conn, scope)
+      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+      .whereNotNull(`${TableName.Membership}.actorUserId`)
+      .where(`${TableName.Users}.isGhost`, false)
+      .select($userPageColumns(conn));
+
+    const viaGroup = $projectMemberships(conn, scope)
+      .join(
+        TableName.UserGroupMembership,
+        `${TableName.UserGroupMembership}.groupId`,
+        `${TableName.Membership}.actorGroupId`
+      )
+      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
+      .whereNotNull(`${TableName.Membership}.actorGroupId`)
+      .where(`${TableName.Users}.isGhost`, false)
+      .select($userPageColumns(conn));
+
+    $searchFilter(direct, USER_SEARCH_COLUMNS, search);
+    $searchFilter(viaGroup, USER_SEARCH_COLUMNS, search);
+
+    return direct.unionAll([viaGroup], true);
+  };
+
+  const $identityActorRows = (conn: Knex, scope: TProjectScope, search?: string) => {
+    const direct: Knex.QueryBuilder = $projectMemberships(conn, scope)
+      .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+      .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+      .select($identityPageColumns(conn));
+
+    const viaGroup = $projectMemberships(conn, scope)
+      .join(
+        TableName.IdentityGroupMembership,
+        `${TableName.IdentityGroupMembership}.groupId`,
+        `${TableName.Membership}.actorGroupId`
+      )
+      .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityGroupMembership}.identityId`)
+      .whereNotNull(`${TableName.Membership}.actorGroupId`)
+      .select($identityPageColumns(conn));
+
+    $searchFilter(direct, IDENTITY_SEARCH_COLUMNS, search);
+    $searchFilter(viaGroup, IDENTITY_SEARCH_COLUMNS, search);
+
+    return direct.unionAll([viaGroup], true);
+  };
+
+  const findProjectUsersWithRoles = async (scope: TProjectScope, page: TFolderMemberPage, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
+      const pageIds = $pageActorIds(conn, $userActorRows(conn, scope, page.search), "username", page);
 
       const direct = $projectMemberships(conn, scope)
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
@@ -145,6 +246,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Users}.isGhost`, false)
+        .whereIn(`${TableName.Users}.id`, pageIds)
         .select([...$userColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
 
       // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
@@ -160,11 +262,19 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .where(`${TableName.Users}.isGhost`, false)
+        .whereIn(`${TableName.Users}.id`, pageIds)
         .select([...$userColumns(conn), $noDirectMembershipId(conn), ...$roleColumns(conn)]);
 
-      const rows = (await $memberRows(direct, viaGroup)) as TUserMemberQueryRow[];
+      const [rows, totalCount] = await Promise.all([
+        $orderMemberRows(
+          conn.from($memberRows(direct, viaGroup).as("member_rows")).select("*"),
+          "username",
+          "userId"
+        ) as Promise<TUserMemberQueryRow[]>,
+        $countActors(conn, $userActorRows(conn, scope, page.search))
+      ]);
 
-      return sqlNestRelationships({
+      const data = sqlNestRelationships({
         data: rows,
         key: "userId",
         parentMapper: (el): { actor: TProjectMemberUser } => ({
@@ -179,20 +289,24 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toMemberRole }]
       });
+
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindProjectUsersWithRoles" });
     }
   };
 
-  const findProjectIdentitiesWithRoles = async (scope: TProjectScope, tx?: Knex) => {
+  const findProjectIdentitiesWithRoles = async (scope: TProjectScope, page: TFolderMemberPage, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
+      const pageIds = $pageActorIds(conn, $identityActorRows(conn, scope, page.search), "name", page);
 
       const direct = $projectMemberships(conn, scope)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereIn(`${TableName.Identity}.id`, pageIds)
         .select([...$identityColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
 
       const viaGroup = $projectMemberships(conn, scope)
@@ -205,11 +319,19 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .whereIn(`${TableName.Identity}.id`, pageIds)
         .select([...$identityColumns(conn), $noDirectMembershipId(conn), ...$roleColumns(conn)]);
 
-      const rows = (await $memberRows(direct, viaGroup)) as TIdentityMemberQueryRow[];
+      const [rows, totalCount] = await Promise.all([
+        $orderMemberRows(
+          conn.from($memberRows(direct, viaGroup).as("member_rows")).select("*"),
+          "name",
+          "identityId"
+        ) as Promise<TIdentityMemberQueryRow[]>,
+        $countActors(conn, $identityActorRows(conn, scope, page.search))
+      ]);
 
-      return sqlNestRelationships({
+      const data = sqlNestRelationships({
         data: rows,
         key: "identityId",
         parentMapper: (el): { actor: TProjectMemberIdentity } => ({
@@ -217,6 +339,8 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toMemberRole }]
       });
+
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindProjectIdentitiesWithRoles" });
     }

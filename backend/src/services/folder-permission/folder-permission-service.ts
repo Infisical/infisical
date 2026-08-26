@@ -12,14 +12,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import {
-  buildFolderAccess,
-  matchesSearch,
-  paginateFolderAccessEntries,
-  reviveFolderAccess,
-  sortFolderAccessEntries,
-  splitFolderAccess
-} from "./folder-access-roles-fns";
+import { buildFolderAccess, reviveFolderAccess, splitFolderAccess } from "./folder-access-roles-fns";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
   assertFullAccessIsPermanent,
@@ -72,6 +65,8 @@ type TFolderPermissionServiceFactoryDep = {
 type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
 
 type TProjectScope = { projectId: string; orgId: string };
+
+type TFolderMemberPage = { limit: number; offset: number; search?: string };
 
 type TFolderAccessItem<TActor extends TProjectMemberActor> = {
   actor: TActor;
@@ -215,13 +210,22 @@ export const folderPermissionServiceFactory = ({
   };
 
   const $getFolderAccess = <TActor extends TProjectMemberActor>(
-    { projectId, orgId, folder, actorType }: TProjectScope & { folder: TResolvedFolder; actorType: TFolderActorType },
-    fetchMembers: () => Promise<TProjectMember<TActor>[]>
-  ) =>
-    withCacheFingerprint<TCachedFolderAccess<TActor>>({
+    {
+      projectId,
+      orgId,
+      folder,
+      actorType,
+      page
+    }: TProjectScope & { folder: TResolvedFolder; actorType: TFolderActorType; page: TFolderMemberPage },
+    fetchMembers: () => Promise<{ data: TProjectMember<TActor>[]; totalCount: number }>
+  ) => {
+    // if we don't take the search in consideration, it can create a cache key that does not have anything.
+    const pageKey = `${page.offset}:${page.limit}:${page.search ?? ""}`;
+
+    return withCacheFingerprint<TCachedFolderAccess<TActor>>({
       keyStore,
-      dataKey: KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, actorType),
-      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, actorType),
+      dataKey: KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, actorType, pageKey),
+      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, actorType, pageKey),
       markerTtlSeconds: KeyStoreTtls.ProjectFolderAccessMarkerTtlSeconds,
       dataTtlSeconds: KeyStoreTtls.ProjectFolderAccessDataTtlSeconds,
       // the key is by folder id but the granting roles are evaluated against the folder's path, and a
@@ -230,24 +234,27 @@ export const folderPermissionServiceFactory = ({
         const fingerprint = await folderPermissionDAL.getFolderAccessFingerprint({ projectId, orgId, actorType });
         return `${fingerprint}|${folder.environmentSlug}|${folder.path}`;
       },
-      dataFetcher: async () => buildFolderAccess(await fetchMembers(), folder),
+      dataFetcher: async () => {
+        const { data, totalCount } = await fetchMembers();
+        return buildFolderAccess(data, folder, totalCount);
+      },
       reviver: reviveFolderAccess
     });
+  };
 
   const $listFolderAccessActors = async <TActor extends TProjectMemberActor>(
     dto: TListFolderAccessActorsDTO,
     {
       actorType,
       fetchMembers,
-      actorIdOf,
-      searchFields,
-      sortKey
+      actorIdOf
     }: {
       actorType: TFolderActorType;
-      fetchMembers: (scope: TProjectScope) => Promise<TProjectMember<TActor>[]>;
+      fetchMembers: (
+        scope: TProjectScope,
+        page: TFolderMemberPage
+      ) => Promise<{ data: TProjectMember<TActor>[]; totalCount: number }>;
       actorIdOf: (actor: TActor) => string;
-      searchFields: (actor: TActor) => (string | null)[];
-      sortKey: (actor: TActor) => [name: string, tieBreak: string];
     }
   ) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
@@ -257,16 +264,21 @@ export const folderPermissionServiceFactory = ({
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
 
+    const page = { limit, offset, search };
     const actorField = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
     // grants stay out of the cached folder access so a grant or revoke is visible on the very next request
     const [folderAccess, grants] = await Promise.all([
-      $getFolderAccess<TActor>({ projectId, orgId, folder, actorType }, () => fetchMembers({ projectId, orgId })),
+      $getFolderAccess<TActor>({ projectId, orgId, folder, actorType, page }, () =>
+        fetchMembers({ projectId, orgId }, page)
+      ),
       additionalPrivilegeDAL.find({ projectId, folderId: folder.id, $notNull: [actorField] })
     ]);
     const grantByActorId = new Map(
       grants.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant])
     );
 
+    // the page is one slice of the project roster; the split only says which of the two lists each of
+    // its actors belongs to, so the totals are not per-list
     const { withAccess, withoutAccess } = splitFolderAccess({
       folderAccess,
       grantByActorId,
@@ -274,28 +286,16 @@ export const folderPermissionServiceFactory = ({
       now: new Date()
     });
 
-    const page = (entries: TFolderAccessEntry<TActor>[]) =>
-      paginateFolderAccessEntries(
-        sortFolderAccessEntries(
-          entries.filter((entry) => matchesSearch(search, searchFields(entry.actor))),
-          (entry) => sortKey(entry.actor)
-        ),
-        offset,
-        limit
-      );
     const toItem = ({ actor, membership, grant }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => ({
       actor,
       membership,
       folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null
     });
 
-    const withAccessPage = page(withAccess);
-    const withoutAccessPage = page(withoutAccess);
     return {
-      withAccess: withAccessPage.items.map(toItem),
-      totalCount: withAccessPage.totalCount,
-      withoutAccess: withoutAccessPage.items.map(toItem),
-      totalCountWithoutAccess: withoutAccessPage.totalCount
+      withAccess: withAccess.map(toItem),
+      withoutAccess: withoutAccess.map(toItem),
+      totalCount: folderAccess.totalCount
     };
   };
 
@@ -312,17 +312,14 @@ export const folderPermissionServiceFactory = ({
 
     const result = await $listFolderAccessActors<TProjectMemberUser>(dto, {
       actorType: ActorType.USER,
-      fetchMembers: (scope) => folderPermissionDAL.findProjectUsersWithRoles(scope),
-      actorIdOf: (user) => user.userId,
-      searchFields: (user) => [user.username, user.email, user.firstName, user.lastName],
-      sortKey: (user) => [user.username, user.userId]
+      fetchMembers: (scope, page) => folderPermissionDAL.findProjectUsersWithRoles(scope, page),
+      actorIdOf: (user) => user.userId
     });
 
     return {
       users: result.withAccess.map(toUser),
       usersWithoutAccess: result.withoutAccess.map(toUser),
-      totalCount: result.totalCount,
-      totalCountWithoutAccess: result.totalCountWithoutAccess
+      totalCount: result.totalCount
     };
   };
 
@@ -336,17 +333,14 @@ export const folderPermissionServiceFactory = ({
 
     const result = await $listFolderAccessActors<TProjectMemberIdentity>(dto, {
       actorType: ActorType.IDENTITY,
-      fetchMembers: (scope) => folderPermissionDAL.findProjectIdentitiesWithRoles(scope),
-      actorIdOf: (identity) => identity.identityId,
-      searchFields: (identity) => [identity.name],
-      sortKey: (identity) => [identity.name, identity.identityId]
+      fetchMembers: (scope, page) => folderPermissionDAL.findProjectIdentitiesWithRoles(scope, page),
+      actorIdOf: (identity) => identity.identityId
     });
 
     return {
       identities: result.withAccess.map(toIdentity),
       identitiesWithoutAccess: result.withoutAccess.map(toIdentity),
-      totalCount: result.totalCount,
-      totalCountWithoutAccess: result.totalCountWithoutAccess
+      totalCount: result.totalCount
     };
   };
 
@@ -369,8 +363,6 @@ export const folderPermissionServiceFactory = ({
       grantRows.map((row) => row.folderId as string)
     );
 
-    // a grant whose folder no longer resolves (soft-deleted environment) is omitted, matching how
-    // the permission layer treats it
     const folderAccess = grantRows
       .flatMap((row, idx) => {
         const folder = folders[idx];

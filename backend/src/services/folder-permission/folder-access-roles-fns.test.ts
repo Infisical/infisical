@@ -15,11 +15,8 @@ import {
   BUILT_IN_PROJECT_ROLE_NAMES,
   collectDistinctRoles,
   FOLDER_ACCESS_PROBES,
-  matchesSearch,
-  paginateFolderAccessEntries,
   reviveFolderAccess,
   roleGrantsFolderAccess,
-  sortFolderAccessEntries,
   splitFolderAccess,
   TDistinctProjectRole,
   toCachedProjectMemberRole
@@ -225,9 +222,11 @@ describe("buildFolderAccess", () => {
         { actor: user("member"), roles: [roleRow()] },
         { actor: user("locked"), roles: [roleRow({ role: ProjectMembershipRole.NoAccess })] }
       ],
-      folder
+      folder,
+      7
     );
 
+    expect(folderAccess.totalCount).toBe(7);
     expect(folderAccess.grantingRoleKeys).toEqual([ProjectMembershipRole.Member]);
     expect(folderAccess.actors).toEqual([
       { actor: user("member"), roles: [cachedRole()] },
@@ -241,6 +240,7 @@ describe("reviveFolderAccess", () => {
   test("restores temporaryAccessEndTime dates after a JSON round trip", () => {
     const folderAccess: TCachedFolderAccess<TProjectMemberUser> = {
       grantingRoleKeys: [],
+      totalCount: 1,
       actors: [{ actor: user("u"), roles: [cachedRole({ isTemporary: true, temporaryAccessEndTime: future })] }]
     };
 
@@ -251,11 +251,11 @@ describe("reviveFolderAccess", () => {
 
 describe("splitFolderAccess", () => {
   const split = (
-    folderAccess: TCachedFolderAccess<TProjectMemberUser>,
+    folderAccess: Omit<TCachedFolderAccess<TProjectMemberUser>, "totalCount">,
     grants: [string, TAdditionalPrivileges][] = []
   ) =>
     splitFolderAccess({
-      folderAccess,
+      folderAccess: { ...folderAccess, totalCount: folderAccess.actors.length },
       grantByActorId: new Map(grants),
       actorIdOf: (actor) => actor.userId,
       now
@@ -402,35 +402,5 @@ describe("splitFolderAccess", () => {
     });
 
     expect(withAccess[0].membership.roles).toHaveLength(1);
-  });
-});
-
-describe("matchesSearch", () => {
-  test("matches case-insensitively across any field and skips empty fields", () => {
-    expect(matchesSearch("ALICE", [null, "alice@example.com"])).toBe(true);
-    expect(matchesSearch("bob", ["alice", null, undefined])).toBe(false);
-    expect(matchesSearch(undefined, [])).toBe(true);
-  });
-});
-
-describe("sortFolderAccessEntries", () => {
-  test("orders by the lower-cased name and then by the tie-break", () => {
-    const sorted = sortFolderAccessEntries(
-      [
-        { name: "bob", id: "2" },
-        { name: "Alice", id: "9" },
-        { name: "alice", id: "1" }
-      ],
-      (entry) => [entry.name, entry.id]
-    );
-
-    expect(sorted.map((entry) => entry.id)).toEqual(["1", "9", "2"]);
-  });
-});
-
-describe("paginateFolderAccessEntries", () => {
-  test("slices the page and reports the full count", () => {
-    expect(paginateFolderAccessEntries([1, 2, 3, 4, 5], 1, 2)).toEqual({ items: [2, 3], totalCount: 5 });
-    expect(paginateFolderAccessEntries([1, 2, 3], 10, 2)).toEqual({ items: [], totalCount: 3 });
   });
 });

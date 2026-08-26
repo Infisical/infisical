@@ -509,13 +509,15 @@ describe("User folder access CRUD", () => {
       users: TFolderAccessUser[];
       usersWithoutAccess: TFolderAccessUser[];
       totalCount: number;
-      totalCountWithoutAccess: number;
     }> => {
       // the folder access list is cached behind a 20s marker; tests mutate memberships and list right away
-      await testRedis.del(
-        KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.USER),
-        KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.USER)
-      );
+      const cached = (
+        await Promise.all([
+          testRedis.keys(KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.USER, "*")),
+          testRedis.keys(KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.USER, "*"))
+        ])
+      ).flat();
+      if (cached.length) await testRedis.del(...cached);
       const res = await testServer.inject({
         method: "GET",
         url: folderAccessUsersUrl(query),
@@ -562,7 +564,7 @@ describe("User folder access CRUD", () => {
           isProjectAdmin: false,
           roles: [{ id: null, slug: ProjectMembershipRole.NoAccess, name: "No Access" }]
         });
-        expect(before.totalCountWithoutAccess).toBeGreaterThan(0);
+        expect(before.usersWithoutAccess.length).toBeGreaterThan(0);
 
         const createRes = await testServer.inject({
           method: "POST",
@@ -624,13 +626,29 @@ describe("User folder access CRUD", () => {
     test("keeps totalCount stable across pages and past the end", async () => {
       const { totalCount } = await listUsers();
 
+      // the page is one slice of the roster, then split into the two lists
       const firstPage = await listUsers("&limit=1&offset=0");
-      expect(firstPage.users).toHaveLength(Math.min(1, totalCount));
+      expect(firstPage.users.length + firstPage.usersWithoutAccess.length).toBe(Math.min(1, totalCount));
       expect(firstPage.totalCount).toBe(totalCount);
 
       const pastTheEnd = await listUsers(`&limit=1&offset=${totalCount + 10}`);
       expect(pastTheEnd.users).toEqual([]);
+      expect(pastTheEnd.usersWithoutAccess).toEqual([]);
       expect(pastTheEnd.totalCount).toBe(totalCount);
+    });
+
+    test("walks the whole list across pages without repeats or omissions", async () => {
+      const { totalCount } = await listUsers();
+      const seen: string[] = [];
+
+      for (let offset = 0; offset < totalCount; offset += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const page = await listUsers(`&limit=1&offset=${offset}`);
+        seen.push(...[...page.users, ...page.usersWithoutAccess].map((user) => user.userId));
+      }
+
+      expect(seen).toHaveLength(totalCount);
+      expect(new Set(seen).size).toBe(totalCount);
     });
 
     test("filters by search", async () => {
@@ -763,13 +781,14 @@ describe("User folder access CRUD", () => {
       });
 
       test("counts an actor once however many memberships reach them", async () => {
-        const { users, totalCount } = await listUsers("&limit=100");
+        const { users, usersWithoutAccess, totalCount } = await listUsers("&limit=100");
+        const all = [...users, ...usersWithoutAccess];
 
         // groupUserId is in two groups, memberUserId is direct + in a group
         expect(users.filter((user) => user.userId === groupUserId)).toHaveLength(1);
         expect(users.filter((user) => user.userId === memberUserId)).toHaveLength(1);
-        expect(totalCount).toBe(users.length);
-        expect(new Set(users.map((user) => user.userId)).size).toBe(users.length);
+        expect(totalCount).toBe(all.length);
+        expect(new Set(all.map((user) => user.userId)).size).toBe(all.length);
       });
 
       test("grants folder access to a group-derived user and shows it in the folder access list", async () => {

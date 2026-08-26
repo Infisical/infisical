@@ -137,6 +137,7 @@ export type TProjectMember<TActor extends TProjectMemberActor> = {
 export type TCachedFolderAccess<TActor extends TProjectMemberActor> = {
   actors: { actor: TActor; roles: TCachedProjectMemberRole[] }[];
   grantingRoleKeys: string[];
+  totalCount: number;
 };
 
 export type TFolderAccessEntry<TActor extends TProjectMemberActor> = {

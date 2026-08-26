@@ -926,8 +926,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           usersWithoutAccess: SanitizedFolderAccessUserSchema.array().describe(
             FOLDER_ACCESS.LIST_USERS.usersWithoutAccess
           ),
-          totalCount: z.number().describe(FOLDER_ACCESS.LIST_USERS.totalCount),
-          totalCountWithoutAccess: z.number().describe(FOLDER_ACCESS.LIST_USERS.totalCountWithoutAccess)
+          totalCount: z.number().describe(FOLDER_ACCESS.LIST_USERS.totalCount)
         })
       }
     },

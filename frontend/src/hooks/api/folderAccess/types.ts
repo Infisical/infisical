@@ -69,14 +69,12 @@ export type TListFolderAccessUsersResponse = {
   users: TFolderAccessUser[];
   usersWithoutAccess: TFolderAccessUser[];
   totalCount: number;
-  totalCountWithoutAccess: number;
 };
 
 export type TListFolderAccessIdentitiesResponse = {
   identities: TFolderAccessIdentity[];
   identitiesWithoutAccess: TFolderAccessIdentity[];
   totalCount: number;
-  totalCountWithoutAccess: number;
 };
 
 export type TUserFolderAccess = TFolderAccess & { userId: string };
