@@ -48,9 +48,7 @@ const SanitizedSuperAdminSchema = z.object({
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
   createdAt: z.date().optional(),
-  trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
-  trustOidcEmails: z.boolean().nullish(),
   onboardingCompleted: z.boolean().optional(),
   adminIdentityIds: z.string().array().nullable().optional(),
   fipsEnabled: z.boolean().optional(),
@@ -154,9 +152,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         allowSignUp: z.boolean().optional(),
         allowedSignUpDomain: AllowedEmailDomainsSchema.optional().nullable(),
-        trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
-        trustOidcEmails: z.boolean().optional(),
         onboardingCompleted: z.boolean().optional(),
         defaultAuthOrgId: z.string().optional().nullable(),
         enabledLoginMethods: z
