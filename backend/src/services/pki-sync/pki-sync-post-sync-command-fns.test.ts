@@ -476,3 +476,18 @@ describe("buildPostSyncCommandFailureMessage timeout wording", () => {
     ).toBe("Post-sync command did not finish within its 30s limit");
   });
 });
+
+describe("a rejected command's reason is surfaced without internal addressing", () => {
+  test("keeps the actionable reason and redacts the host and port", () => {
+    const message = buildPostSyncCommandFailureMessage({
+      status: PkiSyncStatus.Failed,
+      failure: HostCommandFailure.Rejected,
+      durationMs: 94,
+      error: "WinRM gateway operation failed: TLS connection error: connect ECONNREFUSED 192.168.0.50:8443"
+    });
+
+    expect(message).not.toContain("192.168.0.50");
+    expect(message).not.toContain("8443");
+    expect(message).toContain("TLS connection error");
+  });
+});

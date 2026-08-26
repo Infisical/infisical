@@ -45,7 +45,7 @@ export const PkiSyncCommandsSection = ({ pkiSync }: Props) => {
       <Separator className="mt-4" />
       <Accordion type="multiple" variant="ghost">
         <AccordionItem value="commands">
-          <AccordionTrigger>Commands</AccordionTrigger>
+          <AccordionTrigger className="py-4">Commands</AccordionTrigger>
           <AccordionContent>
             <DetailGroup>
               {canRunHealthCheck && (

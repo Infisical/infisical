@@ -308,6 +308,13 @@ export const runHostCommand = async (args: {
   }
 };
 
+const NETWORK_ADDRESS_PATTERN = new RE2(
+  "\\b(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d+)?\\b|\\b[a-zA-Z0-9.-]+:\\d{2,5}\\b",
+  "g"
+);
+
+const redactNetworkAddresses = (text: string): string => text.replace(NETWORK_ADDRESS_PATTERN, "[address]");
+
 const hostCommandMessageSubject = (kind: HostCommandKind): string => sentenceCase(kind);
 
 export const buildHostCommandFailureMessage = (
@@ -323,7 +330,7 @@ export const buildHostCommandFailureMessage = (
     }
 
     if (result.failure === HostCommandFailure.Rejected && result.error) {
-      return `${subject} could not run: ${truncate(result.error, MAX_FAILURE_DETAIL_CHARS)}`;
+      return `${subject} could not run: ${truncate(redactNetworkAddresses(result.error), MAX_FAILURE_DETAIL_CHARS)}`;
     }
 
     return `${subject} could not run: the destination host could not be reached`;

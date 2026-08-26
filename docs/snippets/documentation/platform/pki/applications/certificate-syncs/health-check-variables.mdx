@@ -12,7 +12,7 @@ Each value is inserted already quoted for the target's shell, so write `{{certif
 
 Only the names in this table are substituted. Anything else in double braces is left in the command exactly as you wrote it, so a command that calls a tool with its own braces (helm, jq, a Go template) keeps working, and a misspelled variable reaches the server as literal text rather than silently turning into nothing.
 
-A variable that names a certificate, and `{{pkcs12Password}}`, needs a saved sync to resolve against, so **Test check** rejects a check that uses one and tells you which. Run the check from the sync's actions menu once it is saved.
+A variable that names a certificate resolves against the certificates linked to the sync, so **Test check** works once at least one is selected and tells you if none is. `{{pkcs12Password}}` is different: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
 
 <Note>
   `{{certificatePath}}` and `{{commonName}}` name one specific certificate, so a check that uses either can only be saved on a sync with a single certificate linked, exactly as for the [post-sync command](#post-sync-commands). To act on every certificate the run would write, use `{{certificateFiles}}`:

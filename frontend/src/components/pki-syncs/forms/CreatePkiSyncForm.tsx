@@ -83,10 +83,10 @@ const STEP_META: Record<
   },
   hostCommands: {
     short: "Commands on the host",
-    subtitle: "Optionally check the host before the sync, and act on it afterward.",
+    subtitle: "Check the host before the sync, and run a command after it.",
     rightLabel: "COMMANDS",
     rightDescription:
-      "The health check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
+      "The health check runs first. If the host is not ready, the sync stops and no certificate is delivered.\n\nThe post-sync command runs after the certificates are written, so a service can reload and pick up the new one. It only runs when the sync delivers a file. If either command fails, the sync is marked failed."
   },
   details: {
     short: "Name and description",
@@ -136,6 +136,19 @@ const getFormTabs = (
     });
   }
 
+  baseTabs.push(
+    {
+      name: "Details",
+      key: "details",
+      fields: ["name", "description"] as FieldPath<TPkiSyncForm>[]
+    },
+    {
+      name: "Certificates",
+      key: "certificates",
+      fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
+    }
+  );
+
   if (canRunHostCommands) {
     baseTabs.push({
       name: "Commands",
@@ -147,19 +160,7 @@ const getFormTabs = (
     });
   }
 
-  baseTabs.push(
-    {
-      name: "Details",
-      key: "details",
-      fields: ["name", "description"] as FieldPath<TPkiSyncForm>[]
-    },
-    {
-      name: "Certificates",
-      key: "certificates",
-      fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
-    },
-    { name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] }
-  );
+  baseTabs.push({ name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] });
 
   return baseTabs;
 };
@@ -412,9 +413,11 @@ export const CreatePkiSyncForm = ({
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentDetail.rightDescription}
-              </p>
+              {currentDetail.rightDescription.split("\n\n").map((paragraph) => (
+                <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </aside>
         </div>

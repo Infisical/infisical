@@ -35,9 +35,7 @@ import {
 } from "./pki-sync-fns";
 import {
   applyHealthCheckCommandUpdate,
-  assertHealthCheckCommandIsTestable,
   getHealthCheckCommand,
-  HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS,
   normalizeNewHealthCheckCommand,
   toHealthCheckApiResult
 } from "./pki-sync-health-check-command-fns";
@@ -86,13 +84,7 @@ const getDestinationAppType = (destination: PkiSync): AppConnection => {
 type TPkiSyncServiceFactoryDep = {
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
-    | "clearReportedHealthCheckFailure"
-    | "findById"
-    | "findByProjectIdWithSubscribers"
-    | "findByNameAndProjectId"
-    | "create"
-    | "updateById"
-    | "deleteById"
+    "findById" | "findByProjectIdWithSubscribers" | "findByNameAndProjectId" | "create" | "updateById" | "deleteById"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   certificateSyncDAL: Pick<
@@ -669,10 +661,6 @@ export const pkiSyncServiceFactory = ({
         : {})
     });
 
-    if (isHealthCheckBeingCleared) {
-      await pkiSyncDAL.clearReportedHealthCheckFailure(id, HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS);
-    }
-
     return updatedPkiSync as TPkiSync;
   };
 
@@ -903,6 +891,7 @@ export const pkiSyncServiceFactory = ({
       connectionId: string;
       applicationId?: string;
       syncId?: string;
+      certificateIds?: string[];
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
       projectId: string;
@@ -918,7 +907,14 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    const command = assertHealthCheckCommandIsTestable(args.syncOptions);
+    const command = getHealthCheckCommand(args.syncOptions);
+    if (!command) {
+      throw new BadRequestError({ message: "Enter a health check command to test." });
+    }
+
+    if (args.certificateIds?.length) {
+      await validateCertificatesForSync(args.certificateIds, args.projectId, args.applicationId);
+    }
 
     const connection = await appConnectionService.connectAppConnectionById(
       getDestinationAppType(args.destination),
@@ -931,6 +927,9 @@ export const pkiSyncServiceFactory = ({
     const result = await pkiSyncHealthCheckQueue.testHealthCheckCommand({
       destination: args.destination,
       connectionId: args.connectionId,
+      syncId: args.syncId,
+      certificateIds: args.certificateIds,
+      projectId: args.projectId,
       destinationConfig: args.destinationConfig,
       syncOptions: args.syncOptions
     });

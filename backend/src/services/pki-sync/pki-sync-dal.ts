@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiSyncs } from "@app/db/schemas";
+import { ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TableName, TPkiSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import {
@@ -353,43 +353,62 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
-  const $whereMessageStartsWithAny = (builder: Knex.QueryBuilder, prefixes: string[]) => {
-    prefixes.forEach((prefix) => {
-      void builder.orWhereRaw(`left("lastSyncMessage", ?) = ?`, [prefix.length, prefix]);
-    });
-  };
-
-  const reportHealthCheckFailure = async (syncId: string, message: string, failurePrefixes: string[], tx?: Knex) => {
+  const recordHealthCheckSkipped = async (syncId: string, message: string, tx?: Knex) => {
     try {
       return await (tx || db)(TableName.PkiSync)
         .where({ id: syncId })
-        .where($whereHealthCheckStillConfigured)
-        .where((builder) => {
-          void builder.whereNull("lastSyncMessage");
-          $whereMessageStartsWithAny(builder, failurePrefixes);
-        })
-        .update({ syncStatus: PkiSyncStatus.Failed, lastSyncMessage: message });
+        .whereNotNull("lastHealthCheckRanAt")
+        .update({ lastHealthCheckMessage: message });
     } catch (error) {
-      throw new DatabaseError({ error, name: "Report health check failure - PKI Sync" });
+      throw new DatabaseError({ error, name: "Record health check skipped - PKI Sync" });
     }
   };
 
-  const clearReportedHealthCheckFailure = async (syncId: string, failurePrefixes: string[], tx?: Knex) => {
-    const knex = tx || db;
-
+  const findFailureNotificationRecipients = async (
+    pkiSync: { projectId: string; applicationId: string },
+    tx?: Knex
+  ): Promise<string[]> => {
     try {
-      return await knex(TableName.PkiSync)
-        .where({ id: syncId })
-        .where((builder) => $whereMessageStartsWithAny(builder, failurePrefixes))
-        .update({
-          syncStatus: knex.raw(`CASE WHEN "lastSyncedAt" IS NULL THEN ? ELSE ? END`, [
-            PkiSyncStatus.Pending,
-            PkiSyncStatus.Succeeded
-          ]) as unknown as string,
-          lastSyncMessage: null
-        });
+      const knex = tx || db.replicaNode();
+      const query = knex(TableName.Membership)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where((builder) => {
+          void builder
+            .whereNull(`${TableName.MembershipRole}.temporaryAccessEndTime`)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
+        .where(`${TableName.Membership}.scopeProjectId`, pkiSync.projectId);
+
+      void query
+        .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+        .where(`${TableName.Membership}.scopeResourceType`, ResourceType.CertificateApplication)
+        .where(`${TableName.Membership}.scopeResourceId`, pkiSync.applicationId);
+
+      const rows = await query.select(
+        `${TableName.Membership}.actorUserId`,
+        `${TableName.UserGroupMembership}.userId as groupUserId`
+      );
+
+      return [
+        ...new Set(
+          rows
+            .map(
+              (row) =>
+                (row as { actorUserId?: string; groupUserId?: string }).actorUserId ??
+                (row as { groupUserId?: string }).groupUserId
+            )
+            .filter(Boolean)
+        )
+      ] as string[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Clear reported health check failure - PKI Sync" });
+      throw new DatabaseError({ error, name: "Find PKI sync failure notification recipients" });
     }
   };
 
@@ -410,8 +429,8 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
   return {
     ...pkiSyncOrm,
     recordHealthCheckOutcome,
-    reportHealthCheckFailure,
-    clearReportedHealthCheckFailure,
+    recordHealthCheckSkipped,
+    findFailureNotificationRecipients,
     findPkiSyncsWithHealthCheckCommand,
     findByProjectId,
     findByProjectIdWithSubscribers,

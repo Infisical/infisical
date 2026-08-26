@@ -12,6 +12,8 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -28,24 +30,22 @@ import {
   PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
   PKI_SYNC_CONNECTION_LOCK_RETRY,
   PkiSync,
+  PkiSyncFailureKind,
   PkiSyncStatus
 } from "./pki-sync-enums";
+import { PkiSyncError } from "./pki-sync-errors";
+import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import { PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
 import {
   assertHealthCheckCommandIsTestable,
   buildHealthCheckFailureMessageFor,
   didHealthCheckFail,
   getHealthCheckCommand,
-  HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS,
   MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT,
   SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT,
   THealthCheckCommandResult
 } from "./pki-sync-health-check-command-fns";
-import {
-  commandNeedsCertificateData,
-  findCertificateDependentHostCommandVariables,
-  formatHostCommandVariables
-} from "./pki-sync-host-command-fns";
+import { commandNeedsCertificateData, HostCommandFailure } from "./pki-sync-host-command-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncRaw } from "./pki-sync-types";
 
 const ENQUEUE_CHUNK_SIZE = 200;
@@ -65,11 +65,11 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
+    | "findFailureNotificationRecipients"
     | "findPkiSyncsWithHealthCheckCommand"
     | "transaction"
     | "recordHealthCheckOutcome"
-    | "reportHealthCheckFailure"
-    | "clearReportedHealthCheckFailure"
+    | "recordHealthCheckSkipped"
     | "findById"
   >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
@@ -86,11 +86,25 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 class HealthCheckBusyError extends Error {}
+
+export enum HealthCheckSkipReason {
+  SyncGone = "sync-gone",
+  CommandCleared = "command-cleared",
+  SyncInProgress = "sync-in-progress",
+  NoCertificateData = "no-certificate-data",
+  NotSupported = "not-supported"
+}
+
+type THealthCheckOutcome =
+  | { result: THealthCheckCommandResult; skipped?: never }
+  | { result?: never; skipped: HealthCheckSkipReason };
 
 export type TPkiSyncHealthCheckQueueFactory = ReturnType<typeof pkiSyncHealthCheckQueueFactory>;
 
@@ -109,6 +123,8 @@ export const pkiSyncHealthCheckQueueFactory = ({
   certificateAuthorityCertDAL,
   certificateSyncDAL,
   auditLogService,
+  notificationService,
+  pkiApplicationDAL,
   gatewayV2Service,
   gatewayPoolService
 }: TPkiSyncHealthCheckQueueFactoryDep) => {
@@ -185,6 +201,40 @@ export const pkiSyncHealthCheckQueueFactory = ({
     return certificateMap;
   };
 
+  const $certificatesForTest = async (args: {
+    projectId: string;
+    syncId?: string;
+    certificateIds?: string[];
+    syncOptions: Record<string, unknown>;
+  }): Promise<TCertificateMap> => {
+    const command = getHealthCheckCommand(args.syncOptions);
+    if (!command || !commandNeedsCertificateData(command)) return {};
+
+    if (args.syncId) {
+      const pkiSync = await pkiSyncDAL.findById(args.syncId);
+      return pkiSync ? $certificatesForCheck(pkiSync, command) : {};
+    }
+
+    if (!args.certificateIds?.length) return {};
+
+    const { certificateMap } = await buildCertificateMap(
+      { id: "", projectId: args.projectId, subscriberId: null, syncOptions: args.syncOptions } as TPkiSyncRaw,
+      {
+        certificateDAL,
+        certificateBodyDAL,
+        certificateSecretDAL,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        certificateSyncDAL,
+        projectDAL,
+        kmsService
+      },
+      args.certificateIds
+    );
+
+    return certificateMap;
+  };
+
   const $recordCheckResult = async (
     pkiSync: TPkiSyncRaw,
     result: THealthCheckCommandResult,
@@ -192,24 +242,18 @@ export const pkiSyncHealthCheckQueueFactory = ({
     messageSubject: string
   ) => {
     if (!didHealthCheckFail(result)) {
-      const cleared = await pkiSyncDAL.transaction(async (tx) => {
-        await pkiSyncDAL.recordHealthCheckOutcome(
-          pkiSync.id,
-          { status: PkiSyncStatus.Succeeded, message: null, ranAt: new Date() },
-          tx
-        );
-
-        return pkiSyncDAL.clearReportedHealthCheckFailure(pkiSync.id, HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS, tx);
+      await pkiSyncDAL.recordHealthCheckOutcome(pkiSync.id, {
+        status: PkiSyncStatus.Succeeded,
+        message: null,
+        ranAt: new Date()
       });
-      if (cleared) {
-        logger.info(
-          `cron[${CronJobName.PkiSyncHealthCheck}]: host recovered, cleared the reported failure [syncId=${pkiSync.id}]`
-        );
-      }
       return;
     }
 
-    if (result.exitCode === undefined && !isFinalAttempt) {
+    const neverRan =
+      result.failure === HostCommandFailure.Rejected || result.failure === HostCommandFailure.Unreachable;
+
+    if (neverRan && !isFinalAttempt) {
       throw new Error(`Health check could not reach the host: ${result.error ?? "unknown error"}`);
     }
 
@@ -217,20 +261,18 @@ export const pkiSyncHealthCheckQueueFactory = ({
       `cron[${CronJobName.PkiSyncHealthCheck}]: health check failed [syncId=${pkiSync.id}] [destination=${pkiSync.destination}] [projectId=${pkiSync.projectId}]`
     );
 
-    const failureMessage = truncateSyncMessage(buildHealthCheckFailureMessageFor(messageSubject, result));
+    const message = truncateSyncMessage(buildHealthCheckFailureMessageFor(messageSubject, result));
 
-    const reported = await pkiSyncDAL.transaction(async (tx) => {
-      await pkiSyncDAL.recordHealthCheckOutcome(
-        pkiSync.id,
-        { status: PkiSyncStatus.Failed, message: failureMessage, ranAt: new Date() },
-        tx
-      );
-
-      return pkiSyncDAL.reportHealthCheckFailure(pkiSync.id, failureMessage, HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS, tx);
+    await pkiSyncDAL.recordHealthCheckOutcome(pkiSync.id, {
+      status: PkiSyncStatus.Failed,
+      message,
+      ranAt: new Date()
     });
-    if (!reported) {
-      logger.info(
-        `cron[${CronJobName.PkiSyncHealthCheck}]: sync already failed to deliver, kept its reason [syncId=${pkiSync.id}]`
+
+    if (messageSubject === SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT) {
+      await notifyPkiSyncFailure(
+        { pkiSync, kind: PkiSyncFailureKind.HealthCheck, message },
+        { pkiSyncDAL, projectDAL, pkiApplicationDAL, notificationService }
       );
     }
   };
@@ -240,11 +282,11 @@ export const pkiSyncHealthCheckQueueFactory = ({
     isFinalAttempt: boolean,
     messageSubject: string = SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT,
     auditLogInfo?: AuditLogInfo
-  ): Promise<THealthCheckCommandResult | undefined> => {
+  ): Promise<THealthCheckOutcome> => {
     const pkiSync = await pkiSyncDAL.findById(syncId);
     if (!pkiSync) {
       logger.info(`cron[${CronJobName.PkiSyncHealthCheck}]: sync is gone, skipping [syncId=${syncId}]`);
-      return;
+      return { skipped: HealthCheckSkipReason.SyncGone };
     }
 
     const command = getHealthCheckCommand(pkiSync.syncOptions);
@@ -252,14 +294,14 @@ export const pkiSyncHealthCheckQueueFactory = ({
       logger.info(
         `cron[${CronJobName.PkiSyncHealthCheck}]: health check command was cleared, skipping [syncId=${syncId}]`
       );
-      return;
+      return { skipped: HealthCheckSkipReason.CommandCleared };
     }
 
     if (pkiSync.syncStatus === PkiSyncStatus.Running) {
       logger.info(
         `cron[${CronJobName.PkiSyncHealthCheck}]: a sync is delivering to this host, skipping [syncId=${syncId}]`
       );
-      return undefined;
+      return { skipped: HealthCheckSkipReason.SyncInProgress };
     }
 
     const pkiSyncWithCredentials = await hydratePkiSyncCredentials({
@@ -277,7 +319,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
         .catch(() => null);
       if (!lock) {
         logger.info(`cron[${CronJobName.PkiSyncHealthCheck}]: a sync is already running, skipping [syncId=${syncId}]`);
-        return undefined;
+        return HealthCheckSkipReason.SyncInProgress;
       }
 
       try {
@@ -286,7 +328,11 @@ export const pkiSyncHealthCheckQueueFactory = ({
           gatewayV2Service,
           gatewayPoolService
         });
-        if (!checkResult) return undefined;
+        if (!checkResult) {
+          return commandNeedsCertificateData(command)
+            ? HealthCheckSkipReason.NoCertificateData
+            : HealthCheckSkipReason.NotSupported;
+        }
 
         await $recordCheckResult(pkiSync, checkResult, isFinalAttempt, messageSubject);
         return checkResult;
@@ -295,7 +341,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       }
     });
 
-    if (!result) return undefined;
+    if (typeof result === "string") return { skipped: result };
 
     await auditLogService.createAuditLog({
       ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
@@ -312,42 +358,44 @@ export const pkiSyncHealthCheckQueueFactory = ({
       }
     });
 
-    return result;
+    return { result };
+  };
+
+  const SKIP_MESSAGES: Record<HealthCheckSkipReason, string> = {
+    [HealthCheckSkipReason.SyncGone]: "This sync no longer exists.",
+    [HealthCheckSkipReason.CommandCleared]: "This sync no longer has a health check configured.",
+    [HealthCheckSkipReason.SyncInProgress]:
+      "The health check did not run because a sync is already delivering to this host. Try again in a moment.",
+    [HealthCheckSkipReason.NoCertificateData]:
+      "The health check did not run because it uses a variable that names a certificate and this sync has none linked. Link a certificate, or use {{certificateDirectory}}.",
+    [HealthCheckSkipReason.NotSupported]: "Health checks are not supported for this destination."
   };
 
   const runHealthCheckNow = async (syncId: string, auditLogInfo?: AuditLogInfo) => {
-    let result: THealthCheckCommandResult | undefined;
+    let outcome;
 
     try {
-      result = await $processHealthCheck(syncId, true, MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT, auditLogInfo);
+      outcome = await $processHealthCheck(syncId, true, MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT, auditLogInfo);
     } catch (error) {
-      $rethrowContentionAsBadRequest(error);
+      return $rethrowContentionAsBadRequest(error);
     }
 
-    if (result) return result;
+    if (outcome.result) return outcome.result;
 
-    const pkiSync = await pkiSyncDAL.findById(syncId);
-    const command = getHealthCheckCommand(pkiSync?.syncOptions);
-    if (command && commandNeedsCertificateData(command)) {
-      throw new BadRequestError({
-        message: `This health check uses ${formatHostCommandVariables(
-          findCertificateDependentHostCommandVariables(command)
-        )}, which cannot be resolved while no certificate is linked to the sync. Link a certificate, or use {{certificateDirectory}}.`
-      });
-    }
-
-    throw new BadRequestError({
-      message: "The health check did not run because a sync is already in progress. Try again in a moment."
-    });
+    throw new BadRequestError({ message: SKIP_MESSAGES[outcome.skipped] });
   };
 
   const testHealthCheckCommand = async (args: {
     destination: PkiSync;
     connectionId: string;
+    projectId: string;
+    syncId?: string;
+    certificateIds?: string[];
     destinationConfig: Record<string, unknown>;
     syncOptions: Record<string, unknown>;
   }) => {
-    assertHealthCheckCommandIsTestable(args.syncOptions);
+    const linkedCertificates = await $certificatesForTest(args);
+    assertHealthCheckCommandIsTestable(args.syncOptions, Object.keys(linkedCertificates).length > 0);
 
     const connection = await appConnectionDAL.findById(args.connectionId);
     if (!connection) {
@@ -379,15 +427,14 @@ export const pkiSyncHealthCheckQueueFactory = ({
     };
 
     return $withConnectionHostAccess(connection.id, async () => {
-      const result = await PkiSyncFns.runHealthCheck(
-        target,
-        {},
-        {
-          certificateSyncDAL,
-          gatewayV2Service,
-          gatewayPoolService
-        }
-      );
+      const result = await PkiSyncFns.runHealthCheck(target, linkedCertificates, {
+        certificateSyncDAL,
+        gatewayV2Service,
+        gatewayPoolService
+      }).catch((err) => {
+        if (err instanceof PkiSyncError) throw new BadRequestError({ message: err.message });
+        throw err;
+      });
       if (!result) {
         throw new BadRequestError({
           message: "Health checks are not supported for this destination."
@@ -404,13 +451,17 @@ export const pkiSyncHealthCheckQueueFactory = ({
       async (job) => {
         const isFinalAttempt = job.attemptsStarted >= (job.opts.attempts ?? JOB_ATTEMPTS);
 
-        await $processHealthCheck(job.data.syncId, isFinalAttempt).catch((err: unknown) => {
+        const outcome = await $processHealthCheck(job.data.syncId, isFinalAttempt).catch((err: unknown) => {
           logger.error(
             { err, syncId: job.data.syncId },
             `cron[${CronJobName.PkiSyncHealthCheck}]: check could not be run [syncId=${job.data.syncId}] [attempt=${job.attemptsStarted}]`
           );
           throw err;
         });
+
+        if (outcome.skipped && isFinalAttempt) {
+          await pkiSyncDAL.recordHealthCheckSkipped(job.data.syncId, SKIP_MESSAGES[outcome.skipped]);
+        }
       },
       { concurrency: WORKER_CONCURRENCY, limiter: { max: RATE_LIMIT_MAX, duration: RATE_LIMIT_DURATION_MS } }
     );

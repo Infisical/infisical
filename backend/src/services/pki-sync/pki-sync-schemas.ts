@@ -110,5 +110,5 @@ export const BaseHealthCheckTestSchema = z.object({
   connectionId: z.string().uuid(),
   applicationId: z.string().uuid().optional(),
   syncId: z.string().uuid().optional(),
-  name: z.string().trim().max(256).optional()
+  certificateIds: z.array(z.string().uuid()).max(100).optional()
 });

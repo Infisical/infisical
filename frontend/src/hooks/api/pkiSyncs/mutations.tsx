@@ -78,6 +78,7 @@ export const useTestPkiSyncHealthCheck = () => {
       connectionId,
       applicationId,
       syncId,
+      certificateIds,
       destinationConfig,
       syncOptions
     }: {
@@ -85,12 +86,13 @@ export const useTestPkiSyncHealthCheck = () => {
       connectionId: string;
       applicationId?: string;
       syncId?: string;
+      certificateIds?: string[];
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
     }) => {
       const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
         `/api/v1/cert-manager/syncs/${destination}/test-health-check`,
-        { connectionId, applicationId, syncId, destinationConfig, syncOptions }
+        { connectionId, applicationId, syncId, certificateIds, destinationConfig, syncOptions }
       );
 
       return data.healthCheck;

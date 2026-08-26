@@ -177,7 +177,7 @@ Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or late
     Use `throw "reason"`, the same as in a post-sync command. Avoid `exit`: PowerShell stops the script there before it can report its result, so the check is treated as failed with a message saying the outcome could not be read rather than with your reason.
   </Accordion>
   <Accordion title="Where do I see the result of the daily check?">
-    A failing daily check marks the sync failed and puts the reason in its last error, the same place a failed sync run reports one, so a broken host shows up wherever you already watch your syncs. A passing check clears a reason an earlier check reported, and changes nothing otherwise. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
   </Accordion>
   <Accordion title="Is there a time limit?">
     Yes, 15 seconds, and a check that runs out of time counts as a failure. The limit is deliberately much shorter than the post-sync command's, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer.

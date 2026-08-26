@@ -11,6 +11,7 @@ import {
   buildHealthCheckFailureMessageFor,
   buildHealthCheckFailureSyncResult,
   didHealthCheckFail,
+  MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT,
   normalizeNewHealthCheckCommand,
   runHealthCheckCommand,
   SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT
@@ -292,7 +293,7 @@ describe("buildHealthCheckCommandPlan with nothing linked to the sync", () => {
   });
 });
 
-describe("the scheduled check owns a prefix distinct from a sync run's", () => {
+describe("the subject says who ran the check", () => {
   const failure = {
     status: PkiSyncStatus.Failed as const,
     exitCode: 3,
@@ -300,34 +301,19 @@ describe("the scheduled check owns a prefix distinct from a sync run's", () => {
     failureDetail: "nginx is down"
   };
 
-  test("a run's blocked healthCheck does not match the scheduled prefix, so a later check cannot clear it", () => {
+  test("a sync run's gate check is labelled plainly, not as a scheduled run", () => {
     const fromRun = buildHealthCheckCommandFailureMessage(failure);
     expect(fromRun.startsWith(SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT)).toBe(false);
+    expect(fromRun).toContain("nginx is down");
   });
 
-  test("the scheduled check's own message matches, so it can take over and clear it", () => {
-    const fromSchedule = buildHealthCheckFailureMessageFor(SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT, failure);
-    expect(fromSchedule.startsWith(SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT)).toBe(true);
-    expect(fromSchedule).toContain("nginx is down");
-  });
-});
+  test("the scheduled and manual checks are told apart by their subject", () => {
+    const scheduled = buildHealthCheckFailureMessageFor(SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT, failure);
+    const manual = buildHealthCheckFailureMessageFor(MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT, failure);
 
-describe("healthCheck failure messages carry the prefix the DAL matches on", () => {
-  test("every failure shape starts with the prefix, so a check can take over and clear its own status", () => {
-    const prefix = "Health check";
-    const shapes = [
-      { status: PkiSyncStatus.Failed as const, exitCode: 3, durationMs: 12, failureDetail: "nginx is down" },
-      { status: PkiSyncStatus.Failed as const, exitCode: 1, durationMs: 5 },
-      {
-        status: PkiSyncStatus.Failed as const,
-        durationMs: 15004,
-        error: "command timed out after 15s",
-        timedOut: true
-      }
-    ];
-
-    shapes.forEach((shape) => expect(buildHealthCheckCommandFailureMessage(shape).startsWith(prefix)).toBe(true));
-    expect("2 certificate(s) failed to sync to the destination".startsWith(prefix)).toBe(false);
+    expect(scheduled.startsWith(SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT)).toBe(true);
+    expect(manual.startsWith(MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT)).toBe(true);
+    expect(scheduled).not.toBe(manual);
   });
 });
 

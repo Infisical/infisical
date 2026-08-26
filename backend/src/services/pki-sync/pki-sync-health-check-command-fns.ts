@@ -39,18 +39,21 @@ export const applyHealthCheckCommandUpdate = (
 ): Record<string, unknown> =>
   applyHostCommandOptionUpdate(resolvedSyncOptions, HEALTH_CHECK_COMMAND_OPTION_KEY, storedCommand);
 
-export const assertHealthCheckCommandIsTestable = (syncOptions: Record<string, unknown>): string => {
+export const assertHealthCheckCommandIsTestable = (
+  syncOptions: Record<string, unknown>,
+  canResolveCertificates = false
+): string => {
   const command = getHealthCheckCommand(syncOptions);
   if (!command) {
     throw new BadRequestError({ message: "Enter a health check command to test." });
   }
 
   const certificateVariables = findCertificateDependentHostCommandVariables(command);
-  if (certificateVariables.length > 0) {
+  if (certificateVariables.length > 0 && !canResolveCertificates) {
     throw new BadRequestError({
       message: `A test cannot resolve ${formatHostCommandVariables(
         certificateVariables
-      )} because no certificate is linked yet. Use {{certificateDirectory}} to test, or save the sync and run the health check from its actions menu.`
+      )} because this sync has no certificates to resolve them against. Link at least one certificate to the sync, or use {{certificateDirectory}} instead.`
     });
   }
 
@@ -58,7 +61,7 @@ export const assertHealthCheckCommandIsTestable = (syncOptions: Record<string, u
     throw new BadRequestError({
       message: `A test cannot resolve ${formatHostCommandVariables([
         HostCommandVariable.Pkcs12Password
-      ])} because the export password belongs to a saved sync. Save the sync and run the health check from its actions menu.`
+      ])} because the export password is only generated when a saved sync delivers a certificate. Run the health check on a saved sync instead.`
     });
   }
 
@@ -132,11 +135,6 @@ export const buildHealthCheckCommandFailureMessage = (result: THealthCheckComman
 export const SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT = "Scheduled health check";
 
 export const MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT = "Manual health check";
-
-export const HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS = [
-  SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT,
-  MANUAL_HEALTH_CHECK_MESSAGE_SUBJECT
-];
 
 export const didHealthCheckFail = (result: THealthCheckCommandResult | undefined): boolean =>
   result?.status === PkiSyncStatus.Failed;

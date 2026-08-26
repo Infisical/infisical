@@ -26,6 +26,12 @@ export enum PkiSyncAction {
   RemoveCertificates = "remove-certificates"
 }
 
+export enum PkiSyncFailureKind {
+  HealthCheck = "health-check",
+  Sync = "sync",
+  PostSyncCommand = "post-sync-command"
+}
+
 export const PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT = 3;
 
 export const PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S = 15 * 60;

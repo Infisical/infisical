@@ -50,7 +50,8 @@ export const buildCertificateMap = async (
     certificateSyncDAL,
     projectDAL,
     kmsService
-  }: TBuildCertificateMapDeps
+  }: TBuildCertificateMapDeps,
+  certificateIdOverride?: string[]
 ): Promise<{ certificateMap: TCertificateMap; certificateMetadata: Map<string, { id: string; name: string }> }> => {
   const { projectId, subscriberId, id: pkiSyncId } = pkiSync;
 
@@ -66,7 +67,7 @@ export const buildCertificateMap = async (
       certificates.push(...subscriberCertificates);
     }
 
-    const certificateIds = await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId);
+    const certificateIds = certificateIdOverride ?? (await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId));
     if (certificateIds.length > 0) {
       const directCertificates = await certificateDAL.findActiveCertificatesByIds(certificateIds);
       certificates.push(...directCertificates);

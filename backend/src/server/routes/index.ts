@@ -3187,6 +3187,8 @@ export const registerRoutes = async (
     keyStore,
     pkiSyncDAL,
     auditLogService,
+    notificationService,
+    pkiApplicationDAL,
     projectDAL,
     licenseService,
     certificateDAL,
@@ -3221,6 +3223,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateSyncDAL,
     auditLogService,
+    notificationService,
+    pkiApplicationDAL,
     gatewayV2Service,
     gatewayPoolService
   });

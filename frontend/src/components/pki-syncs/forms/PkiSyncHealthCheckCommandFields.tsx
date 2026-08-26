@@ -43,8 +43,9 @@ export const PkiSyncHealthCheckCommandFields = ({
         connectionId,
         applicationId: applicationId ?? undefined,
         syncId,
+        certificateIds: syncId ? undefined : watch("certificateIds"),
         destinationConfig: (destinationConfig ?? {}) as Record<string, unknown>,
-        syncOptions: { healthCheckCommand: command }
+        syncOptions: { ...(watch("syncOptions") ?? {}), healthCheckCommand: command }
       });
       const passed = result.status === PkiSyncStatus.Succeeded;
       createNotification({
@@ -74,7 +75,7 @@ export const PkiSyncHealthCheckCommandFields = ({
           one in quotes yourself.
         </>
       }
-      description="Runs before any certificate is written. A non-zero exit stops the sync, so nothing is delivered to a host that is not ready. Also runs once a day on its own, so you hear about a host that went bad before the next renewal does. Capped at 15 seconds."
+      description="Checks the host before Infisical writes any certificate. If the command fails, or does not finish within 15 seconds, the sync stops and nothing is delivered. Infisical also runs this check once a day, so a broken host surfaces before a renewal reaches it."
       noPermissionDescription="You do not have permission to set a health check on this sync. Ask an administrator to change it."
       action={
         canEditCommand !== false && (

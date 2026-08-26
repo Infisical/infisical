@@ -14,6 +14,8 @@ import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { hydratePkiSyncCredentials } from "@app/services/pki-sync/pki-sync-credentials-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -33,9 +35,11 @@ import {
   PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
   PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
   PKI_SYNC_CONNECTION_LOCK_RETRY,
+  PkiSyncFailureKind,
   PkiSyncStatus
 } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
+import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import {
   enterprisePkiSyncCheck,
   getPkiSyncProviderCapabilities,
@@ -75,8 +79,13 @@ type TPkiSyncQueueFactoryDep = {
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
-  pkiSyncDAL: Pick<TPkiSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
+  pkiSyncDAL: Pick<
+    TPkiSyncDALFactory,
+    "findById" | "find" | "updateById" | "deleteById" | "update" | "findFailureNotificationRecipients"
+  >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateDAL: TCertificateDALFactory;
@@ -113,6 +122,8 @@ export const pkiSyncQueueFactory = ({
   keyStore,
   pkiSyncDAL,
   auditLogService,
+  notificationService,
+  pkiApplicationDAL,
   projectDAL,
   licenseService,
   certificateDAL,
@@ -467,6 +478,17 @@ export const pkiSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
+        if (!fullySynced) {
+          let failureKind = PkiSyncFailureKind.Sync;
+          if (didHealthCheckFail(healthCheckResult)) failureKind = PkiSyncFailureKind.HealthCheck;
+          else if (postSyncCommandFailed) failureKind = PkiSyncFailureKind.PostSyncCommand;
+
+          await notifyPkiSyncFailure(
+            { pkiSync, kind: failureKind, message: syncMessage ?? "The sync did not complete." },
+            { pkiSyncDAL, projectDAL, pkiApplicationDAL, notificationService }
+          );
+        }
+
         await pkiSyncDAL.updateById(pkiSync.id, {
           syncStatus,
           lastSyncJobId: job.id,
@@ -703,6 +725,10 @@ export const pkiSyncQueueFactory = ({
         const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueuePkiSyncSyncCertificatesByIdDTO;
 
         if (failedToAcquireLockCount < REQUEUE_LIMIT) {
+          const current = await pkiSyncDAL.findById(syncId);
+          if (current?.syncStatus !== PkiSyncStatus.Running) {
+            await pkiSyncDAL.updateById(syncId, { syncStatus: PkiSyncStatus.Pending, lastSyncMessage: null });
+          }
           await queuePkiSyncSyncCertificatesById({ ...rest, failedToAcquireLockCount: failedToAcquireLockCount + 1 });
           return;
         }

@@ -34,7 +34,7 @@ export const PkiSyncPostSyncCommandFields = ({ destination, canEditCommand }: Pr
           quoted, so do not wrap one in quotes yourself. Do not paste secrets into the command.
         </>
       }
-      description="Runs after the sync delivers a certificate, for example to reload the service that uses it. Runs once per sync run that delivers a file, as the sync's account, so keep that account least-privilege. If it fails, the sync is marked failed."
+      description="Runs on the host after a certificate is delivered, usually to reload the service that uses it. Runs once per sync that writes a file, using the sync's own account. If it fails, or does not finish within 30 seconds, the sync is marked failed."
       noPermissionDescription="You do not have permission to set a post-sync command on this sync. Ask an administrator to change it."
     />
   );

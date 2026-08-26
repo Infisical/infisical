@@ -48,6 +48,7 @@ export const registerSyncPkiEndpoints = ({
     connectionId: string;
     applicationId?: string;
     syncId?: string;
+    certificateIds?: string[];
     destinationConfig: Record<string, unknown>;
     syncOptions: Record<string, unknown>;
   }>;
@@ -348,6 +349,7 @@ export const registerSyncPkiEndpoints = ({
             connectionId: req.body.connectionId,
             applicationId: req.body.applicationId,
             syncId: req.body.syncId,
+            certificateIds: req.body.certificateIds,
             destinationConfig: req.body.destinationConfig,
             syncOptions: req.body.syncOptions,
             projectId: req.internalCertManagerProjectId
