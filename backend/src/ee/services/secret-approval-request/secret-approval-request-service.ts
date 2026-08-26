@@ -1840,23 +1840,6 @@ export const secretApprovalRequestServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    const secretsToValidate: { key: string; value?: string }[] = [
-      ...(data[SecretOperations.Create] || []).map((s) => ({ key: s.secretKey, value: s.secretValue })),
-      ...(data[SecretOperations.Update] || [])
-        .filter((s) => s.secretValue)
-        .map((s) => ({ key: s.secretKey, value: s.secretValue }))
-    ];
-
-    if (secretsToValidate.length) {
-      await secretValidationRuleService.validateSecrets({
-        projectId,
-        environment,
-        envId: folder.envId,
-        secretPath,
-        secrets: secretsToValidate
-      });
-    }
-
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];
     if (createdSecrets && createdSecrets?.length) {
@@ -1869,6 +1852,14 @@ export const secretApprovalRequestServiceFactory = ({
       );
       if (secrets.length)
         throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+
+      await secretValidationRuleService.validateSecrets({
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: createdSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+      });
 
       commits.push(
         ...createdSecrets.map((createdSecret) => ({
@@ -1932,6 +1923,16 @@ export const secretApprovalRequestServiceFactory = ({
               missingSecrets.filter((s) => !createdKeys.has(s.secretKey)).map((s) => [s.secretKey, s] as const)
             ).values()
           ];
+
+          if (upsertSecrets.length) {
+            await secretValidationRuleService.validateSecrets({
+              projectId,
+              environment,
+              envId: folder.envId,
+              secretPath,
+              secrets: upsertSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+            });
+          }
 
           commits.push(
             ...upsertSecrets.map((secret) => ({
@@ -2000,6 +2001,25 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       const updatingSecretsGroupByKey = groupBy(secretsToUpdateStoredInDB, (el) => el.key);
+
+      const updateSecretsToValidate = actualSecretsToUpdate
+        .filter((s) => s.secretValue !== undefined || s.newSecretName)
+        .map((s) => ({
+          key: s.newSecretName || s.secretKey,
+          value: s.secretValue,
+          secretId: updatingSecretsGroupByKey[s.secretKey]?.[0]?.id
+        }));
+
+      if (updateSecretsToValidate.length) {
+        await secretValidationRuleService.validateSecrets({
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: updateSecretsToValidate
+        });
+      }
+
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
         folderId,
         secretsToUpdateStoredInDB.map(({ id }) => id)
