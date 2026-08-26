@@ -84,6 +84,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Pagination,
   Sheet,
   SheetContent,
@@ -253,6 +254,16 @@ import {
   SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
+import {
+  hasOverviewScopeChanged,
+  hasSensitiveOverviewSearchState,
+  normalizeOverviewEnvironments,
+  parseOverviewTags,
+  resolveOverviewEnvironmentSlugs,
+  serializeOverviewResourceFilter,
+  stripSensitiveOverviewSearchState,
+  updateOverviewSecretPath
+} from "./overviewSearchState";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -277,10 +288,6 @@ export enum RowType {
   HoneyToken = "honeyToken",
   ProxiedService = "proxiedService"
 }
-
-type Filter = {
-  [key in RowType]: boolean;
-};
 
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
@@ -338,7 +345,8 @@ const OverviewPageContent = () => {
     ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
-  const [searchFilter, setSearchFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState(routerSearch.search);
+  const [tagFilter, setTagFilter] = useState(() => parseOverviewTags(routerSearch.tags));
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -365,11 +373,21 @@ const OverviewPageContent = () => {
   //   }
   // };
 
-  const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
-  const [tagFilter, setTagFilter] = useState<Record<string, boolean>>({});
-  const [filterHistory, setFilterHistory] = useState<
-    Map<string, { filter: Filter; searchFilter: string }>
-  >(new Map());
+  const filter = useMemo(() => {
+    const nextFilter = { ...DEFAULT_FILTER_STATE };
+
+    routerSearch.filterBy
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
+      .forEach((rowType) => {
+        nextFilter[rowType] = true;
+      });
+
+    if (Object.keys(tagFilter).length > 0) nextFilter[RowType.Secret] = true;
+
+    return nextFilter;
+  }, [routerSearch.filterBy, tagFilter]);
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -413,8 +431,13 @@ const OverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    const onRouteChangeStart = () => {
-      resetSelectedEntries();
+    const onRouteChangeStart = (event: {
+      fromLocation: { pathname: string; search: unknown };
+      toLocation: { pathname: string; search: unknown };
+    }) => {
+      if (hasOverviewScopeChanged(event.fromLocation, event.toLocation)) {
+        resetSelectedEntries();
+      }
     };
 
     const unsubscribeRouterEvent = router.subscribe("onLoad", onRouteChangeStart);
@@ -433,85 +456,67 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
-  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
-  // navigate. These arrive from notifications, legacy dashboard bookmarks (`tags`, `filterBy`),
-  // or the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
-  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
-  // matters most for `environments`: re-selecting the same environment from the reference tree
-  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
-  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
-  // updates the params without remounting.
+  const selectedEnvironmentSlugs = useMemo(
+    () =>
+      resolveOverviewEnvironmentSlugs(routerSearch.environments, storedEnvIds, userAvailableEnvs),
+    [routerSearch.environments, storedEnvIds, userAvailableEnvs]
+  );
+
   useEffect(() => {
-    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
-    const hasEnvLink = Boolean(envSlugs?.length);
+    if (routerSearch.search) setSearchFilter(routerSearch.search);
+    if (routerSearch.tags !== undefined) setTagFilter(parseOverviewTags(routerSearch.tags));
+  }, [routerSearch.search, routerSearch.tags]);
 
-    if (!search && !tags && !filterBy && !hasEnvLink) return;
-    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
-    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+  useEffect(() => {
+    const requestedSlugs = normalizeOverviewEnvironments(
+      routerSearch.environments,
+      userAvailableEnvs.map((env) => env.slug)
+    );
+    const isCanonical =
+      requestedSlugs.length === routerSearch.environments.length &&
+      requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
+    const shouldNormalizeEnvironments = userAvailableEnvs.length > 0 && !isCanonical;
+    const shouldStripSensitiveState = hasSensitiveOverviewSearchState(routerSearch);
+    const normalizedEnvironments = selectedEnvironmentSlugs.length
+      ? selectedEnvironmentSlugs
+      : undefined;
 
-    if (envSlugs && envSlugs.length > 0) {
-      const envIds = userAvailableEnvs
-        .filter((env) => envSlugs.includes(env.slug))
-        .map((env) => env.id);
-      if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
-      }
-    }
+    if (!shouldNormalizeEnvironments && !shouldStripSensitiveState) return;
 
-    if (search || tags || filterBy) {
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        filterBy
-          .split(",")
-          .map((value) => value.trim())
-          .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
-          .forEach((rowType) => {
-            initialFilter[rowType] = true;
-          });
-      }
+    navigate({
+      search: (prev) => {
+        const nextSearch = shouldStripSensitiveState
+          ? stripSensitiveOverviewSearchState(prev)
+          : prev;
 
-      const initialTagFilter = (tags ?? "")
-        .split(",")
-        .reduce<Record<string, boolean>>((acc, tag) => {
-          const tagSlug = tag.trim();
-          if (tagSlug) acc[tagSlug] = true;
-          return acc;
-        }, {});
-      if (Object.keys(initialTagFilter).length > 0) {
-        initialFilter[RowType.Secret] = true;
-      }
+        return {
+          ...nextSearch,
+          environments: shouldNormalizeEnvironments
+            ? normalizedEnvironments
+            : nextSearch.environments
+        };
+      },
+      replace: true
+    });
+  }, [navigate, routerSearch, selectedEnvironmentSlugs, userAvailableEnvs]);
 
-      setFilter(initialFilter);
-      setTagFilter(initialTagFilter);
-
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
-
-    navigate({ search: query, replace: true });
-  }, [
-    routerSearch.search,
-    routerSearch.tags,
-    routerSearch.filterBy,
-    routerSearch.environments?.join(","),
-    userAvailableEnvs.length
-  ]);
-
-  const filteredEnvs = useMemo(() => {
-    if (!storedEnvIds.length) return [];
-    return userAvailableEnvs.filter((env) => storedEnvIds.includes(env.id));
-  }, [storedEnvIds, userAvailableEnvs]);
+  const filteredEnvs = useMemo(
+    () => userAvailableEnvs.filter((env) => selectedEnvironmentSlugs.includes(env.slug)),
+    [selectedEnvironmentSlugs, userAvailableEnvs]
+  );
 
   const setFilteredEnvs = useCallback(
     (value: SetStateAction<ProjectEnv[]>) => {
-      setStoredEnvIds((prev) => {
-        const prevEnvs = userAvailableEnvs.filter((env) => prev.includes(env.id));
-        const next = typeof value === "function" ? value(prevEnvs) : value;
-        return next.map((env) => env.id);
+      const next = typeof value === "function" ? value(filteredEnvs) : value;
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          environments: next.length > 0 ? next.map((env) => env.slug) : undefined
+        })
       });
+      setStoredEnvIds(next.map((env) => env.id));
     },
-    [setStoredEnvIds, userAvailableEnvs]
+    [filteredEnvs, navigate, setStoredEnvIds]
   );
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
@@ -920,6 +925,7 @@ const OverviewPageContent = () => {
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
+    shouldBlockNavigation: ({ current, next }) => hasOverviewScopeChanged(current, next),
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {
@@ -2292,62 +2298,66 @@ const OverviewPageContent = () => {
     handlePopUpClose("confirmDisableBatchMode");
   }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
-  const handleResetSearch = (path: string) => {
-    const restore = filterHistory.get(path);
-    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
-    const el = restore?.searchFilter ?? "";
-    setSearchFilter(el);
-  };
-
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
 
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
-
     navigate({
       search: (prev) => ({
-        ...prev,
-        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        ...updateOverviewSecretPath(
+          prev,
+          `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        )
       })
-    }).then(() => {
-      setFilter(DEFAULT_FILTER_STATE);
-      setSearchFilter("");
     });
   };
+
+  const handleSearchChange = useCallback((search: string) => setSearchFilter(search), []);
 
   const handleClearTags = useCallback(() => {
     setTagFilter({});
   }, []);
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
-      setFilter((state) => {
-        const newValue = !state[rowType];
-        if (rowType === RowType.Secret && !newValue) {
-          setTagFilter({});
-        }
-        return {
-          ...state,
-          [rowType]: newValue
-        };
-      }),
-    []
+    (rowType: RowType) => {
+      const nextFilter = { ...filter, [rowType]: !filter[rowType] };
+      if (rowType === RowType.Secret && filter[rowType]) setTagFilter({});
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType))
+        }),
+        replace: true
+      });
+    },
+    [filter, navigate]
   );
 
-  const handleToggleTag = useCallback((tagSlug: string) => {
-    setTagFilter((state) => {
-      const isActivating = !state[tagSlug];
-      if (isActivating) {
-        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+  const handleToggleTag = useCallback(
+    (tagSlug: string) => {
+      const isEnabling = !tagFilter[tagSlug];
+      setTagFilter((prev) => {
+        const next = { ...prev };
+        if (next[tagSlug]) delete next[tagSlug];
+        else next[tagSlug] = true;
+        return next;
+      });
+
+      if (isEnabling && !filter[RowType.Secret]) {
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            filterBy: [
+              ...Object.values(RowType).filter((type) => filter[type]),
+              RowType.Secret
+            ].join(",")
+          }),
+          replace: true
+        });
       }
-      return { ...state, [tagSlug]: isActivating };
-    });
-  }, []);
+    },
+    [filter, navigate, tagFilter]
+  );
 
   const allRowsSelectedOnPage = useMemo(() => {
     if (
@@ -2738,6 +2748,22 @@ const OverviewPageContent = () => {
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
                 <div className="flex shrink-0 items-center gap-2">
+                  {canManageCurrentFolderAccess && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="Manage Access"
+                          className="relative"
+                          size="md"
+                          variant="outline"
+                          onClick={handleCurrentFolderAccessOpen}
+                        >
+                          <UsersIcon />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Manage Access</TooltipContent>
+                    </Tooltip>
+                  )}
                   <EnvironmentSelect
                     selectedEnvs={filteredEnvs}
                     setSelectedEnvs={setFilteredEnvs}
@@ -2747,25 +2773,7 @@ const OverviewPageContent = () => {
                     }
                   />
                 </div>
-                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch}>
-                  {canManageCurrentFolderAccess && (
-                    <>
-                      <Divider orientation="vertical" className="mx-1 h-4 shrink-0" />
-                      <Button
-                        className="group h-fit shrink-0 p-1 text-muted transition-colors hover:text-foreground"
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Manage Access"
-                        onClick={handleCurrentFolderAccessOpen}
-                      >
-                        <div className="flex items-center gap-2 text-mineshaft-100/80 transition-all group-hover:text-mineshaft-50">
-                          <UsersIcon className="size-4" />
-                          Manage Access
-                        </div>
-                      </Button>
-                    </>
-                  )}
-                </FolderBreadcrumb>
+                <FolderBreadcrumb secretPath={secretPath} />
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -2787,10 +2795,20 @@ const OverviewPageContent = () => {
                   />
                 )}
                 <ResourceSearchInput
-                  key={secretPath}
                   value={searchFilter}
                   tags={tags}
-                  onChange={setSearchFilter}
+                  onChange={handleSearchChange}
+                  onSelectResult={({ search, tags: selectedTags }) => {
+                    setSearchFilter(search);
+                    if (selectedTags !== undefined) {
+                      setTagFilter(
+                        selectedTags.reduce<Record<string, boolean>>((acc, tag) => {
+                          acc[tag] = true;
+                          return acc;
+                        }, {})
+                      );
+                    }
+                  }}
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />
@@ -3594,7 +3612,6 @@ const OverviewPageContent = () => {
         </Card>
       </div>
       <Sheet
-        modal={false}
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >

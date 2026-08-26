@@ -168,3 +168,15 @@ export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number |
     }
   }
 };
+
+/*
+ * The org that invited a user who has not accepted yet: the org the signup token was issued for,
+ * and only when it is still one of the user's own pending invitations, since the token outlives the
+ * invitation it was minted for. Nothing else identifies the invite a signup came from, and a user
+ * can be invited by several orgs before accepting, so anything inferred from the memberships alone
+ * would group the signup under an org that did not recruit them. Attribute nothing instead.
+ */
+export const resolveInvitingOrgId = (pendingInviteMemberships: { scopeOrgId: string }[], invitedOrgId?: string) =>
+  invitedOrgId && pendingInviteMemberships.some((membership) => membership.scopeOrgId === invitedOrgId)
+    ? invitedOrgId
+    : undefined;

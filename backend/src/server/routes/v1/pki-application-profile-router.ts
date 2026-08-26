@@ -25,7 +25,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         200: z.object({ profiles: z.array(ApplicationProfileSchema) })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const profiles = await server.services.pkiApplication.listApplicationProfiles({
         actor: req.permission.type,
@@ -57,7 +57,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         200: z.object({ profiles: z.array(ApplicationProfileSchema) })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const profiles = await server.services.pkiApplication.attachProfiles({
         actor: req.permission.type,
@@ -116,7 +116,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplication.detachProfile({
         actor: req.permission.type,

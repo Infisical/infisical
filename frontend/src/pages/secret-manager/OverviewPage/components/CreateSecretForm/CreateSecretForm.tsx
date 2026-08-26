@@ -24,6 +24,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   IconButton,
   InfisicalSecretInput,
   Input,
@@ -42,7 +43,7 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3/generic/Field";
-import { CreatableSelect, FilterableSelect } from "@app/components/v3/generic/ReactSelect";
+import { CreatableSelect } from "@app/components/v3/generic/ReactSelect";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -60,32 +61,33 @@ import {
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
-const formSchema = z
-  .object({
-    key: z.string().trim().min(1, "Key is required"),
-    value: z.string().optional(),
-    comment: z.string().optional(),
-    skipMultilineEncoding: z.boolean().optional(),
-    environments: z
-      .object({ name: z.string(), slug: z.string() })
-      .array()
-      .min(1, { message: "Required" }),
-    tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional(),
-    metadata: z
-      .array(
-        z.object({
-          key: z.string().min(1, "Key is required"),
-          value: z.string(),
-          isEncrypted: z.boolean().default(false)
-        })
-      )
-      .optional()
-  })
-  .refine((data) => data.key !== undefined, {
-    message: "Please enter secret name"
-  });
+const formSchema = (enforceEncryptedMetadata: boolean) =>
+  z
+    .object({
+      key: z.string().trim().min(1, "Key is required"),
+      value: z.string().optional(),
+      comment: z.string().optional(),
+      skipMultilineEncoding: z.boolean().optional(),
+      environments: z
+        .object({ name: z.string(), slug: z.string() })
+        .array()
+        .min(1, { message: "Required" }),
+      tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional(),
+      metadata: z
+        .array(
+          z.object({
+            key: z.string().min(1, "Key is required"),
+            value: z.string(),
+            isEncrypted: enforceEncryptedMetadata ? z.literal(true) : z.boolean().default(false)
+          })
+        )
+        .optional()
+    })
+    .refine((data) => data.key !== undefined, {
+      message: "Please enter secret name"
+    });
 
-type TFormSchema = z.infer<typeof formSchema>;
+type TFormSchema = z.infer<ReturnType<typeof formSchema>>;
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
@@ -131,6 +133,7 @@ export const CreateSecretForm = ({
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const canCreateTags = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
   const environments = currentProject?.environments || [];
 
   const defaultEnvs = useMemo(() => {
@@ -158,7 +161,9 @@ export const CreateSecretForm = ({
     watch,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(
+      formSchema(Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata))
+    ),
     defaultValues: {
       environments: defaultEnvs,
       skipMultilineEncoding: false,
@@ -387,10 +392,12 @@ export const CreateSecretForm = ({
   const createWsTag = useCreateWsTag();
 
   const createNewTag = async (slug: string) => {
-    const parsedSlug = slugSchema().parse(slug);
+    if (!canCreateTags) return;
+    const parsedSlug = slugSchema().safeParse(slug);
+    if (!parsedSlug.success) return;
     const newTag = await createWsTag.mutateAsync({
       projectId,
-      tagSlug: parsedSlug,
+      tagSlug: parsedSlug.data,
       tagColor: ""
     });
     const currentTags = getValues("tags") ?? [];
@@ -425,11 +432,11 @@ export const CreateSecretForm = ({
           name="environments"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environments</FieldLabel>
+              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
               <FieldContent>
-                <FilterableSelect
-                  isMulti
-                  isError={Boolean(error)}
+                <Combobox
+                  id="create-secret-environments"
+                  multiple
                   options={environments.filter((environment) =>
                     permission.can(
                       ProjectPermissionSecretActions.Create,
@@ -442,8 +449,13 @@ export const CreateSecretForm = ({
                     )
                   )}
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
+                  isError={Boolean(error)}
+                  modal
                   placeholder="Select environments to create secret in..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
+                  emptyMessage="No environments found."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
                 />
@@ -458,11 +470,12 @@ export const CreateSecretForm = ({
           name="key"
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Key</FieldLabel>
+              <FieldLabel htmlFor="create-secret-key">Key</FieldLabel>
               <FieldContent>
                 <div className="relative">
                   <Input
                     ref={secretKeyInputRef}
+                    id="create-secret-key"
                     value={field.value ?? ""}
                     onChange={(e) => {
                       const val = currentProject?.autoCapitalization
@@ -505,7 +518,7 @@ export const CreateSecretForm = ({
           name="value"
           render={({ field }) => (
             <Field>
-              <FieldLabel>
+              <FieldLabel htmlFor="create-secret-value">
                 Value
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -522,6 +535,7 @@ export const CreateSecretForm = ({
               <FieldContent>
                 <div className="flex items-start gap-2">
                   <InfisicalSecretInput
+                    id="create-secret-value"
                     value={field.value ?? ""}
                     onChange={field.onChange}
                     onPaste={handleValuePaste}
@@ -551,10 +565,11 @@ export const CreateSecretForm = ({
                   name="comment"
                   render={({ field }) => (
                     <Field>
-                      <FieldLabel>Comment</FieldLabel>
+                      <FieldLabel htmlFor="create-secret-comment">Comment</FieldLabel>
                       <FieldContent>
                         <TextArea
                           {...field}
+                          id="create-secret-comment"
                           placeholder="Add a comment for this secret..."
                           className="max-h-32 min-h-[60px] resize-y"
                         />
@@ -568,7 +583,7 @@ export const CreateSecretForm = ({
                   name="tags"
                   render={({ field }) => (
                     <Field>
-                      <FieldLabel>Tags</FieldLabel>
+                      <FieldLabel htmlFor="create-secret-tags">Tags</FieldLabel>
                       <FieldContent>
                         {!canReadTags ? (
                           <FieldDescription>
@@ -581,15 +596,18 @@ export const CreateSecretForm = ({
                           <CreatableSelect
                             isMulti
                             className="w-full"
+                            inputId="create-secret-tags"
                             placeholder="Select tags to assign to secret..."
-                            isValidNewOption={(v) => slugSchema().safeParse(v).success}
+                            isValidNewOption={(v) =>
+                              canCreateTags && slugSchema().safeParse(v).success
+                            }
                             name="tagIds"
                             isDisabled={!canReadTags}
                             isLoading={isTagsLoading && canReadTags}
                             options={tagOptions}
                             value={field.value}
                             onChange={field.onChange}
-                            onCreateOption={createNewTag}
+                            onCreateOption={canCreateTags ? createNewTag : undefined}
                           />
                         )}
                       </FieldContent>
@@ -628,14 +646,24 @@ export const CreateSecretForm = ({
                     {metadataFields.map((metaField, index) => (
                       <div key={metaField.id} className="flex items-start gap-3">
                         <Field className="flex-1">
-                          {index === 0 && <FieldLabel className="text-xs">Key</FieldLabel>}
+                          <FieldLabel
+                            htmlFor={`create-secret-metadata-${index}-key`}
+                            className={index === 0 ? "text-xs" : "sr-only"}
+                          >
+                            Key
+                          </FieldLabel>
                           <FieldContent>
                             <Controller
                               control={control}
                               name={`metadata.${index}.key`}
                               render={({ field: inputField, fieldState: { error } }) => (
                                 <>
-                                  <Input {...inputField} placeholder="Enter key" className="h-8" />
+                                  <Input
+                                    {...inputField}
+                                    id={`create-secret-metadata-${index}-key`}
+                                    placeholder="Enter key"
+                                    className="h-8"
+                                  />
                                   <FieldError errors={[error]} />
                                 </>
                               )}
@@ -644,7 +672,12 @@ export const CreateSecretForm = ({
                         </Field>
 
                         <Field className="flex-1">
-                          {index === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
+                          <FieldLabel
+                            htmlFor={`create-secret-metadata-${index}-value`}
+                            className={index === 0 ? "text-xs" : "sr-only"}
+                          >
+                            Value
+                          </FieldLabel>
                           <FieldContent>
                             <Controller
                               control={control}
@@ -653,6 +686,7 @@ export const CreateSecretForm = ({
                                 <>
                                   <Input
                                     {...inputField}
+                                    id={`create-secret-metadata-${index}-value`}
                                     placeholder="Enter value"
                                     className="h-8"
                                   />
@@ -664,18 +698,30 @@ export const CreateSecretForm = ({
                         </Field>
 
                         <Field className="w-10">
-                          {index === 0 && <FieldLabel className="text-xs">Encrypt</FieldLabel>}
+                          <FieldLabel
+                            htmlFor={`create-secret-metadata-${index}-encrypted`}
+                            className={index === 0 ? "text-xs" : "sr-only"}
+                          >
+                            Encrypt
+                          </FieldLabel>
                           <Controller
                             control={control}
                             name={`metadata.${index}.isEncrypted`}
                             render={({ field: switchField }) => (
-                              <Switch
-                                className="mt-2"
-                                variant="project"
-                                size="default"
-                                checked={switchField.value}
-                                onCheckedChange={switchField.onChange}
-                              />
+                              <>
+                                <Switch
+                                  id={`create-secret-metadata-${index}-encrypted`}
+                                  className="mt-2"
+                                  variant="project"
+                                  size="default"
+                                  checked={switchField.value}
+                                  disabled={Boolean(
+                                    currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                                  )}
+                                  onCheckedChange={switchField.onChange}
+                                />
+                                <FieldError errors={[errors.metadata?.[index]?.isEncrypted]} />
+                              </>
                             )}
                           />
                         </Field>
@@ -684,6 +730,7 @@ export const CreateSecretForm = ({
                           variant="ghost"
                           size="xs"
                           type="button"
+                          aria-label={`Remove metadata entry ${index + 1}`}
                           className={twMerge(
                             index === 0 ? "mt-6.5" : "mt-0.5",
                             "transition-transform hover:text-danger"
@@ -778,7 +825,7 @@ export const CreateSecretForm = ({
           Cancel
         </Button>
         <Field orientation="horizontal" className="my-auto ml-auto w-fit">
-          <FieldLabel>Create More</FieldLabel>
+          <FieldLabel htmlFor="create-more">Create More</FieldLabel>
           <Switch
             id="create-more"
             variant="project"
