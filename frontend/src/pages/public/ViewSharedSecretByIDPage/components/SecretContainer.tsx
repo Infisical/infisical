@@ -55,9 +55,9 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
         }`}
         style={secretDisplayStyle}
       >
-        <p className="max-h-64 thin-scrollbar overflow-y-auto pr-9 font-mono text-sm leading-relaxed break-all whitespace-pre-wrap">
+        <pre className="max-h-80 min-h-20 thin-scrollbar overflow-x-auto overflow-y-auto pr-9 font-mono text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
           {isVisible ? secret.secretValue : HIDDEN_SECRET}
-        </p>
+        </pre>
         <IconButton
           variant="ghost"
           size="sm"

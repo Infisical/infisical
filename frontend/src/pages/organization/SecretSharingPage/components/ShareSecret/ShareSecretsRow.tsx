@@ -60,9 +60,13 @@ export const ShareSecretsRow = ({
         <Tooltip>
           <TooltipTrigger asChild>
             {lastViewedAt ? (
-              <MailOpen className="size-4 text-accent" />
+              <span className="flex size-7 items-center justify-center rounded-md border border-info/10 bg-info/10">
+                <MailOpen className="size-4 text-info" />
+              </span>
             ) : (
-              <Mail className="size-4 text-accent" />
+              <span className="flex size-7 items-center justify-center rounded-md border border-border bg-container">
+                <Mail className="size-4 text-muted opacity-70" />
+              </span>
             )}
           </TooltipTrigger>
           <TooltipContent>
