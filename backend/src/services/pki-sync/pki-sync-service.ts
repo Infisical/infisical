@@ -856,6 +856,7 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
+    await pkiSyncDAL.updateById(id, { syncStatus: PkiSyncStatus.Pending, lastSyncMessage: null });
     await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: id });
 
     return { message: "PKI sync job added to queue successfully" };

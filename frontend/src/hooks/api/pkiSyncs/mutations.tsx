@@ -15,6 +15,19 @@ import {
 } from "@app/hooks/api/pkiSyncs/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 
+const PICKUP_BRIDGE_MS = 2000;
+const PICKUP_BRIDGE_ATTEMPTS = 8;
+
+const bridgeUntilPickedUp = (invalidate: () => void) => {
+  let attempts = 0;
+  const tick = () => {
+    invalidate();
+    attempts += 1;
+    if (attempts < PICKUP_BRIDGE_ATTEMPTS) setTimeout(tick, PICKUP_BRIDGE_MS);
+  };
+  setTimeout(tick, PICKUP_BRIDGE_MS);
+};
+
 export const useCreatePkiSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -121,6 +134,10 @@ export const useRunPkiSyncHealthCheck = () => {
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      });
     }
   });
 };
@@ -159,10 +176,12 @@ export const useTriggerPkiSyncSyncCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
@@ -206,10 +225,12 @@ export const useTriggerPkiSyncImportCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
@@ -253,10 +274,12 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
