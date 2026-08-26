@@ -935,7 +935,8 @@ export const registerRoutes = async (
     secretFolderDAL: folderDAL,
     permissionService,
     folderPermissionDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const kmsService = kmsServiceFactory({

@@ -18,18 +18,31 @@ export const SanitizedFolderAccessSchema = z.object({
   updatedAt: z.date()
 });
 
+export const SanitizedFolderAccessRoleSchema = z.object({
+  id: z.string().uuid().nullable(),
+  slug: z.string(),
+  name: z.string()
+});
+
+export const SanitizedFolderAccessMembershipSchema = z.object({
+  id: z.string().uuid().nullable(),
+  isProjectAdmin: z.boolean(),
+  roles: SanitizedFolderAccessRoleSchema.array()
+});
+
 export const SanitizedFolderAccessUserSchema = z.object({
   userId: z.string().uuid(),
-  membershipId: z.string().uuid().nullable(),
   username: z.string(),
   email: z.string().nullable(),
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
+  membership: SanitizedFolderAccessMembershipSchema,
   folderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });
 
 export const SanitizedFolderAccessIdentitySchema = z.object({
   identityId: z.string().uuid(),
   name: z.string(),
+  membership: SanitizedFolderAccessMembershipSchema,
   folderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });

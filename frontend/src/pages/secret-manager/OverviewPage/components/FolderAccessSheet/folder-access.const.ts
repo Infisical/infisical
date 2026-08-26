@@ -25,8 +25,8 @@ export const FOLDER_ROLE_TIERS: TFolderRoleTier[] = [
   },
   {
     value: SecretFolderRole.Manage,
-    label: "Configure",
-    description: "Can configure rotations, dynamic secrets, and honey tokens."
+    label: "Manage",
+    description: "Can manage rotations, dynamic secrets, and honey tokens."
   },
   {
     value: SecretFolderRole.FullAccess,

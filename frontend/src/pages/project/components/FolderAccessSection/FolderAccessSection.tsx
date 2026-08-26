@@ -112,17 +112,18 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     if (actor.type === "user") {
       return toUserActor({
         userId: actor.id,
-        membershipId: actor.membershipId,
         username: actor.username,
         email: actor.email,
         firstName: actor.firstName,
         lastName: actor.lastName,
+        membership: { id: actor.membershipId, isProjectAdmin: false, roles: [] },
         folderRBACAccess: deleteTarget
       });
     }
     return toIdentityActor({
       identityId: actor.id,
       name: actor.name,
+      membership: { id: null, isProjectAdmin: false, roles: [] },
       folderRBACAccess: deleteTarget
     });
   })();

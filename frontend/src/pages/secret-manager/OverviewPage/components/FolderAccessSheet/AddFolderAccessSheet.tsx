@@ -24,7 +24,7 @@ import {
 } from "@app/hooks/api/folderAccess";
 
 import { DEFAULT_TEMPORARY_RANGE } from "./folder-access.const";
-import { TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
+import { byName, TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
 import {
   FolderAccessActorMultiValueLabel,
   FolderAccessActorOption
@@ -75,11 +75,9 @@ export const AddFolderAccessSheet = ({
   const candidates = useMemo(
     () =>
       [
-        ...(users?.users ?? []).map(toUserActor),
-        ...(identities?.identities ?? []).map(toIdentityActor)
-      ]
-        .filter((actor) => !actor.access)
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        ...(users?.usersWithoutAccess ?? []).map(toUserActor),
+        ...(identities?.identitiesWithoutAccess ?? []).map(toIdentityActor)
+      ].sort(byName),
     [users, identities]
   );
 
@@ -179,7 +177,11 @@ export const AddFolderAccessSheet = ({
               // client filter would drop matches found by email or identity metadata
               filterOption={null}
               placeholder="Search users & machine identities"
-              noOptionsMessage={() => "No matches found"}
+              noOptionsMessage={({ inputValue }) =>
+                inputValue
+                  ? "No matches found"
+                  : "Every project member already has access to this folder."
+              }
             />
           </div>
 

@@ -777,7 +777,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       hide: true,
       operationId: "listFolderAccessIdentities",
       tags: [ApiDocsTags.FolderAccess],
-      description: "List every machine identity in a project with the access it has on a folder.",
+      description:
+        "List the machine identities of a project split by whether they have access on a folder, with the project roles that grant it.",
       security: [
         {
           bearerAuth: []
@@ -794,8 +795,12 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       }),
       response: {
         200: z.object({
-          identities: SanitizedFolderAccessIdentitySchema.array(),
-          totalCount: z.number()
+          identities: SanitizedFolderAccessIdentitySchema.array().describe(FOLDER_ACCESS.LIST_IDENTITIES.identities),
+          identitiesWithoutAccess: SanitizedFolderAccessIdentitySchema.array().describe(
+            FOLDER_ACCESS.LIST_IDENTITIES.identitiesWithoutAccess
+          ),
+          totalCount: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCount),
+          totalCountWithoutAccess: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCountWithoutAccess)
         })
       }
     },

@@ -103,6 +103,11 @@ export const KeyStorePrefixes = {
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
+  ProjectFolderAccessRosterMarker: (projectId: string, folderId: string, actorType: string) =>
+    `project-folder-access-roster-marker:${projectId}:${folderId}:${actorType}` as const,
+  ProjectFolderAccessRosterData: (projectId: string, folderId: string, actorType: string) =>
+    `project-folder-access-roster-data:${projectId}:${folderId}:${actorType}` as const,
+
   KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
@@ -200,6 +205,8 @@ export const KeyStoreTtls = {
   // Folder-scoped privilege cache must outlive the project permission cache above
   ProjectFolderPermissionMarkerTtlSeconds: 15,
   ProjectFolderPermissionDataTtlSeconds: 900, // 15 minutes
+  ProjectFolderAccessRosterMarkerTtlSeconds: 20,
+  ProjectFolderAccessRosterDataTtlSeconds: 600, // 10 minutes
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes

@@ -25,7 +25,7 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -491,17 +491,31 @@ describe("User folder access CRUD", () => {
   });
 
   describe("roster", () => {
+    type TRosterUser = {
+      userId: string;
+      username: string;
+      membership: {
+        id: string | null;
+        isProjectAdmin: boolean;
+        roles: { id: string | null; slug: string; name: string }[];
+      };
+      folderRBACAccess: Record<string, unknown> | null;
+    };
+    const memberRole = { id: null, slug: ProjectMembershipRole.Member, name: "Member" };
+
     const listUsers = async (
       query = ""
     ): Promise<{
-      users: {
-        userId: string;
-        username: string;
-        membershipId: string | null;
-        folderRBACAccess: Record<string, unknown> | null;
-      }[];
+      users: TRosterUser[];
+      usersWithoutAccess: TRosterUser[];
       totalCount: number;
+      totalCountWithoutAccess: number;
     }> => {
+      // the roster is cached behind a 20s marker; tests mutate memberships and list right away
+      await testRedis.del(
+        KeyStorePrefixes.ProjectFolderAccessRosterMarker(projectId, folder.id, ActorType.USER),
+        KeyStorePrefixes.ProjectFolderAccessRosterData(projectId, folder.id, ActorType.USER)
+      );
       const res = await testServer.inject({
         method: "GET",
         url: folderAccessUsersUrl(query),
@@ -519,12 +533,54 @@ describe("User folder access CRUD", () => {
       expect(member).toBeDefined();
       expect(member!.folderRBACAccess).toBeNull();
       expect(member).not.toHaveProperty("roles");
-      expect(member!.membershipId).toBe(memberProjectMembershipId);
+      expect(member!.membership).toEqual({
+        id: memberProjectMembershipId,
+        isProjectAdmin: false,
+        roles: [memberRole]
+      });
     });
 
-    test("excludes project admins from the roster", async () => {
-      const { users } = await listUsers("&limit=100");
-      expect(users.map((user) => user.userId)).not.toContain(adminUserId);
+    test("lists project admins as flagged, non-grantable entries", async () => {
+      const { users, usersWithoutAccess } = await listUsers("&limit=100");
+      const admin = users.find((user) => user.userId === adminUserId);
+      expect(admin).toBeDefined();
+      expect(admin!.membership.isProjectAdmin).toBe(true);
+      // never a candidate: that list is what the grant picker offers, and granting to an admin 400s
+      expect(usersWithoutAccess.map((user) => user.userId)).not.toContain(adminUserId);
+    });
+
+    test("lists users without a granting role separately until they receive a grant", async () => {
+      const noAccess = await createProjectUser(ProjectMembershipRole.NoAccess);
+      try {
+        const before = await listUsers("&limit=100");
+        expect(before.users.map((user) => user.userId)).not.toContain(noAccess.userId);
+        const excluded = before.usersWithoutAccess.find((user) => user.userId === noAccess.userId);
+        expect(excluded).toBeDefined();
+        expect(excluded!.folderRBACAccess).toBeNull();
+        expect(excluded!.membership).toEqual({
+          id: noAccess.projectMembershipId,
+          isProjectAdmin: false,
+          roles: [{ id: null, slug: ProjectMembershipRole.NoAccess, name: "No Access" }]
+        });
+        expect(before.totalCountWithoutAccess).toBeGreaterThan(0);
+
+        const createRes = await testServer.inject({
+          method: "POST",
+          url: folderAccessUrl(noAccess.userId),
+          headers: authHeaders(),
+          body: { ...folderTarget, permission: SecretFolderRole.Read }
+        });
+        expect(createRes.statusCode).toBe(200);
+
+        const after = await listUsers("&limit=100");
+        const granted = after.users.find((user) => user.userId === noAccess.userId);
+        expect(granted).toBeDefined();
+        expect(granted!.membership.roles).toEqual([]);
+        expect(granted!.folderRBACAccess).toEqual(expect.objectContaining({ permission: SecretFolderRole.Read }));
+        expect(after.usersWithoutAccess.map((user) => user.userId)).not.toContain(noAccess.userId);
+      } finally {
+        await deleteProjectUser(noAccess.userId);
+      }
     });
 
     test("annotates the granted user and clears the annotation on revoke", async () => {
@@ -581,10 +637,8 @@ describe("User folder access CRUD", () => {
       const matching = await listUsers(`&search=${encodeURIComponent(memberEmail)}`);
       expect(matching.users.map((user) => user.userId)).toContain(memberUserId);
 
-      // the seed admin cannot be reached even by an exact search
       const adminSearch = await listUsers(`&search=${encodeURIComponent(seedData1.email)}`);
-      expect(adminSearch.users).toEqual([]);
-      expect(adminSearch.totalCount).toBe(0);
+      expect(adminSearch.users.map((user) => user.userId)).toContain(adminUserId);
 
       const nonMatching = await listUsers("&search=zzz-no-such-member");
       expect(nonMatching.users).toEqual([]);
@@ -704,7 +758,8 @@ describe("User folder access CRUD", () => {
 
         expect(groupUser).toBeDefined();
         expect(groupUser!.folderRBACAccess).toBeNull();
-        expect(groupUser!.membershipId).toBeNull();
+        // both groups carry the member role, so it is reported once
+        expect(groupUser!.membership).toEqual({ id: null, roles: [memberRole] });
       });
 
       test("counts an actor once however many memberships reach them", async () => {
@@ -768,9 +823,12 @@ describe("User folder access CRUD", () => {
           await deleteProjectUser(groupAdminUserId);
         });
 
-        test("excludes a user whose admin role comes from a group", async () => {
-          const { users } = await listUsers("&limit=100");
-          expect(users.map((user) => user.userId)).not.toContain(groupAdminUserId);
+        test("flags a user whose admin role comes from a group", async () => {
+          const { users, usersWithoutAccess } = await listUsers("&limit=100");
+          const groupAdmin = users.find((user) => user.userId === groupAdminUserId);
+          expect(groupAdmin).toBeDefined();
+          expect(groupAdmin!.membership.isProjectAdmin).toBe(true);
+          expect(usersWithoutAccess.map((user) => user.userId)).not.toContain(groupAdminUserId);
         });
 
         test("rejects granting to a user whose admin role comes from a group", async () => {

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import {
   TFolderAccess,
   TFolderAccessIdentity,
+  TFolderAccessRole,
   TFolderAccessUser
 } from "@app/hooks/api/folderAccess";
 import { ms } from "@app/lib/fn/time";
@@ -14,8 +15,14 @@ export type TFolderAccessActor = {
   name: string;
   subtitle: string;
   initials: string;
+  isProjectAdmin: boolean;
+  // with access: only the roles granting access on this folder; without access: every role
+  roles: TFolderAccessRole[];
   access: TFolderAccess | null;
 };
+
+const sortRoles = (roles: TFolderAccessRole[]) =>
+  [...roles].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
 const initialsOf = (value: string) =>
   value
@@ -31,10 +38,12 @@ export const toUserActor = (user: TFolderAccessUser): TFolderAccessActor => {
   return {
     type: "user",
     id: user.userId,
-    membershipId: user.membershipId,
+    membershipId: user.membership.id,
     name,
     subtitle: user.email ?? user.username,
     initials: initialsOf(name),
+    isProjectAdmin: user.membership.isProjectAdmin,
+    roles: sortRoles(user.membership.roles),
     access: user.folderRBACAccess
   };
 };
@@ -42,15 +51,20 @@ export const toUserActor = (user: TFolderAccessUser): TFolderAccessActor => {
 export const toIdentityActor = (identity: TFolderAccessIdentity): TFolderAccessActor => ({
   type: "identity",
   id: identity.identityId,
-  membershipId: null,
+  membershipId: identity.membership.id,
   name: identity.name,
   subtitle: "Machine identity",
   initials: initialsOf(identity.name),
+  isProjectAdmin: identity.membership.isProjectAdmin,
+  roles: sortRoles(identity.membership.roles),
   access: identity.folderRBACAccess
 });
 
 export const byName = (a: TFolderAccessActor, b: TFolderAccessActor) =>
   a.name.localeCompare(b.name);
+
+export const byAdminThenName = (a: TFolderAccessActor, b: TFolderAccessActor) =>
+  Number(b.isProjectAdmin) - Number(a.isProjectAdmin) || byName(a, b);
 
 export const isValidTemporaryRange = (value: string) => {
   if (!value.trim()) return false;

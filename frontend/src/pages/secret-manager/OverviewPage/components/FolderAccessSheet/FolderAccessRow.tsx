@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BotIcon, ChevronDownIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ClockIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Badge,
@@ -29,6 +29,26 @@ import {
 } from "./folder-access.utils";
 import { TierDropdown } from "./TierDropdown";
 
+const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
+  <>
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
+      {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
+    </div>
+    <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
+        {actor.isProjectAdmin && (
+          <Badge variant="neutral" className="shrink-0">
+            <ShieldIcon />
+            Admin
+          </Badge>
+        )}
+      </div>
+      <p className="truncate text-xs text-muted">{actor.subtitle}</p>
+    </div>
+  </>
+);
+
 type Props = {
   actor: TFolderAccessActor;
   isDisabled?: boolean;
@@ -52,6 +72,7 @@ export const FolderAccessRow = ({
   const { access } = actor;
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
+  const roleNames = actor.roles.map((role) => role.name).join(", ");
 
   const remainingTime =
     access?.isTemporary && access?.temporaryAccessEndTime
@@ -63,15 +84,20 @@ export const FolderAccessRow = ({
     setIsTemporaryOpen(true);
   };
 
+  // admins already have full access everywhere and cannot be granted folder access, so the row is
+  // shown for completeness with no controls at all
+  if (actor.isProjectAdmin) {
+    return (
+      <div className="flex items-center gap-3 border-b border-border py-3">
+        <ActorIdentity actor={actor} />
+        <p className="shrink-0 text-sm text-muted">Full access on all folders</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3 border-b border-border py-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
-        <p className="truncate text-xs text-muted">{actor.subtitle}</p>
-      </div>
+      <ActorIdentity actor={actor} />
 
       {Boolean(remainingTime && remainingTime?.expiresAt) && (
         <Tooltip>
@@ -88,7 +114,7 @@ export const FolderAccessRow = ({
         </Tooltip>
       )}
 
-      {access && (
+      {access && actor.roles.length > 0 && (
         <Tooltip>
           <TooltipTrigger>
             <Badge variant="warning" className="shrink-0">
@@ -106,8 +132,8 @@ export const FolderAccessRow = ({
         <PopoverAnchor asChild>
           <div className="shrink-0">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                {access ? (
+              {access ? (
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
@@ -117,14 +143,26 @@ export const FolderAccessRow = ({
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
                   </Button>
-                ) : (
-                  <Button variant="outline" size="sm" isDisabled={isDisabled}>
-                    <TriangleAlertIcon className="text-warning" />
-                    Access from project role
-                    <ChevronDownIcon />
-                  </Button>
-                )}
-              </DropdownMenuTrigger>
+                </DropdownMenuTrigger>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" isDisabled={isDisabled}>
+                        <TriangleAlertIcon className="text-warning" />
+                        Access from project role
+                        <ChevronDownIcon />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="flex max-w-64 flex-col gap-0.5">
+                    <span className="font-medium">Project roles</span>
+                    <span className="opacity-70">
+                      {roleNames || "No project role found for this folder."}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <TierDropdown
                 activeTier={access?.permission ?? null}
                 headerNote={
