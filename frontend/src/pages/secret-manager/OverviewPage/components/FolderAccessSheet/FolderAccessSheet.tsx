@@ -48,9 +48,7 @@ import {
 import { FolderAccessRow } from "./FolderAccessRow";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
-// users and identities come from two separately paginated endpoints, so the merged list is built
-// from one max-size page of each and paged client side
-const FETCH_LIMIT = 100;
+// users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
 
 type Props = {
@@ -80,7 +78,8 @@ export const FolderAccessSheet = ({
     projectId,
     environmentSlug,
     secretPath: folderPath,
-    limit: FETCH_LIMIT,
+    limit: PER_PAGE,
+    offset: (page - 1) * PER_PAGE,
     search: debouncedSearch.trim() || undefined
   };
   const { data: users, isPending: isUsersPending } = useListFolderAccessUsers(listArgs);
@@ -104,9 +103,7 @@ export const FolderAccessSheet = ({
   );
 
   const isLoading = isUsersPending || isIdentitiesPending;
-  const visibleActors = actors.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const isTruncated =
-    (users?.totalCount ?? 0) > FETCH_LIMIT || (identities?.totalCount ?? 0) > FETCH_LIMIT;
+  const totalCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
 
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
   // server's own message, so only the success side is announced here
@@ -220,7 +217,7 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {!isLoading && !actors.length && (
+            {!isLoading && totalCount === 0 && (
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -238,7 +235,7 @@ export const FolderAccessSheet = ({
 
             {!isLoading && Boolean(actors.length) && (
               <div className="flex flex-col">
-                {visibleActors.map((actor) => (
+                {actors.map((actor) => (
                   <FolderAccessRow
                     key={`${actor.type}-${actor.id}`}
                     actor={actor}
@@ -258,22 +255,15 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {actors.length > PER_PAGE && (
+            {!isLoading && totalCount > PER_PAGE && (
               <Pagination
-                count={actors.length}
+                count={totalCount}
                 page={page}
                 perPage={PER_PAGE}
                 onChangePage={setPage}
                 onChangePerPage={() => {}}
                 perPageList={[PER_PAGE]}
               />
-            )}
-
-            {isTruncated && (
-              <p className="text-xs text-muted">
-                Showing the first {FETCH_LIMIT} users and {FETCH_LIMIT} machine identities. Use
-                search to narrow the list.
-              </p>
             )}
           </div>
         </SheetContent>

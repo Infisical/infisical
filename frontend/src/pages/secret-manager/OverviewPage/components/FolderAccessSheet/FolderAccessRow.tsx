@@ -38,7 +38,7 @@ const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
       <div className="flex min-w-0 items-center gap-1.5">
         <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
         {actor.isProjectAdmin && (
-          <Badge variant="neutral" className="shrink-0">
+          <Badge variant="neutral" iconPosition="left" className="min-h-0 shrink-0 py-0">
             <ShieldIcon />
             Admin
           </Badge>

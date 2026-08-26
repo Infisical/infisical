@@ -111,6 +111,7 @@ export const formatExpirationTime = (expiresAt: string, now: number, suffix?: st
     };
   }
   return {
+    expiresAt: new Date(expiresAt),
     isExpired: false,
     value: `${minutes}m ${seconds}s${suffix ? ` ${suffix}` : ""}`
   };
