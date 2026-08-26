@@ -45,21 +45,13 @@ export const accountRecoveryServiceFactory = ({
     captchaToken?: string;
   }) => {
     await verifyPublicEmailCaptcha(captchaToken);
-    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.AccountRecovery, ip });
 
     const { mailboxHash } = await emailDispatchGuard.acquireMailboxCooldown({
       purpose: EmailDispatchPurpose.AccountRecovery,
       email: unsanitizedUsername
     });
 
-    if (
-      !(await emailDispatchGuard.consumeMailboxAllowance({
-        purpose: EmailDispatchPurpose.AccountRecovery,
-        mailboxHash
-      }))
-    ) {
-      return;
-    }
+    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.AccountRecovery, ip });
 
     const sendEmail = async () => {
       const username = sanitizeEmail(unsanitizedUsername);
@@ -67,6 +59,15 @@ export const accountRecoveryServiceFactory = ({
       if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
       if (user && user.isAccepted) {
+        if (
+          !(await emailDispatchGuard.consumeMailboxAllowance({
+            purpose: EmailDispatchPurpose.AccountRecovery,
+            mailboxHash
+          }))
+        ) {
+          return;
+        }
+
         const cfg = getConfig();
 
         const recipient = user.email ?? user.username;

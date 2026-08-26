@@ -12,6 +12,8 @@ export enum EmailDispatchPurpose {
 const MAX_UNCONFIRMED_SENDS_PER_MAILBOX = 5;
 const MAX_SENDS_PER_SOURCE = 20;
 
+const OVER_LIMIT = -1;
+
 const computeHash = (key: string, pepper: string): string =>
   crypto.nativeCrypto.createHmac("sha256", pepper).update(key).digest("hex");
 
@@ -24,7 +26,11 @@ export const emailDispatchGuardFactory = ({
 }: {
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiryNX" | "ttl" | "incrementByWithExpiry" | "deleteItemsByKeyIn" | "probeDistinctMember"
+    | "setItemWithExpiryNX"
+    | "ttl"
+    | "incrementByAndRefreshExpiryIfUnderLimit"
+    | "deleteItemsByKeyIn"
+    | "probeDistinctMember"
   >;
 }) => {
   // emailHash is the literal address (OTP verification); mailboxHash is normalized (all throttles below).
@@ -55,13 +61,13 @@ export const emailDispatchGuardFactory = ({
 
   const consumeSourceAllowance = async ({ purpose, ip }: { purpose: EmailDispatchPurpose; ip: string }) => {
     const appCfg = getConfig();
-    const sends = await keyStore.incrementByWithExpiry(
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
       KeyStorePrefixes.EmailDispatchSourceSends(purpose, computeHash(ip, appCfg.AUTH_SECRET)),
-      1,
+      MAX_SENDS_PER_SOURCE,
       KeyStoreTtls.EmailDispatchSourceWindowInSeconds
     );
 
-    if (sends > MAX_SENDS_PER_SOURCE) {
+    if (count === OVER_LIMIT) {
       throw new RateLimitError({
         message: "Too many requests from this network. Please try again later."
       });
@@ -75,13 +81,13 @@ export const emailDispatchGuardFactory = ({
     purpose: EmailDispatchPurpose;
     mailboxHash: string;
   }): Promise<boolean> => {
-    const sends = await keyStore.incrementByWithExpiry(
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
       KeyStorePrefixes.EmailDispatchMailboxSends(purpose, mailboxHash),
-      1,
+      MAX_UNCONFIRMED_SENDS_PER_MAILBOX,
       KeyStoreTtls.EmailDispatchMailboxWindowInSeconds
     );
 
-    return sends <= MAX_UNCONFIRMED_SENDS_PER_MAILBOX;
+    return count !== OVER_LIMIT;
   };
 
   const clearMailboxThrottle = async ({

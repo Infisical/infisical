@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-const getConfig = vi.fn();
-const postForm = vi.fn();
+const getConfig = vi.fn<() => { CAPTCHA_SECRET?: string }>();
+const postForm = vi.fn<(url: string, body: Record<string, unknown>) => Promise<{ data: { success: boolean } }>>();
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => getConfig() }));
-vi.mock("@app/lib/config/request", () => ({ request: { postForm: (...args: unknown[]) => postForm(...args) } }));
+vi.mock("@app/lib/config/request", () => ({
+  request: { postForm: (url: string, body: Record<string, unknown>) => postForm(url, body) }
+}));
 
 // eslint-disable-next-line import/first
 import { verifyPublicEmailCaptcha } from "./auth-fns";

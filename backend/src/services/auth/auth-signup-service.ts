@@ -97,12 +97,12 @@ export const authSignupServiceFactory = ({
       throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
     }
 
-    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.Signup, ip });
-
     const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.acquireMailboxCooldown({
       purpose: EmailDispatchPurpose.Signup,
       email: sanitizedEmail
     });
+
+    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.Signup, ip });
 
     const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
       purpose: EmailDispatchPurpose.Signup,
@@ -111,14 +111,6 @@ export const authSignupServiceFactory = ({
     });
     if (isNewSource) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.SOURCE });
     if (isNewMailbox) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.MAILBOX });
-
-    if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
-      signupOtpRequestCounter.add(1, {
-        ...trafficAttributes,
-        "signup.outcome": SignupOtpOutcome.MAILBOX_CAPPED
-      });
-      return { cooldownSeconds };
-    }
 
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
@@ -139,6 +131,15 @@ export const authSignupServiceFactory = ({
 
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+
+    if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
+      signupOtpRequestCounter.add(1, {
+        ...trafficAttributes,
+        "signup.outcome": SignupOtpOutcome.MAILBOX_CAPPED
+      });
+      return { cooldownSeconds };
+    }
+
     if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();

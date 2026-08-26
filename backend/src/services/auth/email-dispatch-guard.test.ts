@@ -23,7 +23,11 @@ const hmac = (value: string) => createHmac("sha256", AUTH_SECRET).update(value).
 
 type KeyStoreSlice = Pick<
   TKeyStoreFactory,
-  "setItemWithExpiryNX" | "ttl" | "incrementByWithExpiry" | "deleteItemsByKeyIn" | "probeDistinctMember"
+  | "setItemWithExpiryNX"
+  | "ttl"
+  | "incrementByAndRefreshExpiryIfUnderLimit"
+  | "deleteItemsByKeyIn"
+  | "probeDistinctMember"
 >;
 
 type MockedKeyStore = Mocked<KeyStoreSlice>;
@@ -32,7 +36,7 @@ const setup = () => {
   const keyStore = {
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     ttl: vi.fn().mockResolvedValue(-1),
-    incrementByWithExpiry: vi.fn().mockResolvedValue(1),
+    incrementByAndRefreshExpiryIfUnderLimit: vi.fn().mockResolvedValue(1),
     deleteItemsByKeyIn: vi.fn().mockResolvedValue(2),
     probeDistinctMember: vi.fn().mockResolvedValue(true)
   } as MockedKeyStore;
@@ -77,10 +81,10 @@ describe("emailDispatchGuard", () => {
     test("keys the code on the literal address and the throttles on the mailbox", () => {
       const { guard } = setup();
 
-      const { emailHash, mailboxHash } = guard.hashAddress("dave+work@northwind.example");
+      const { emailHash, mailboxHash } = guard.hashAddress("dave+work@infisical.example");
 
-      expect(emailHash).toBe(hmac("dave+work@northwind.example"));
-      expect(mailboxHash).toBe(hmac("dave@northwind.example"));
+      expect(emailHash).toBe(hmac("dave+work@infisical.example"));
+      expect(mailboxHash).toBe(hmac("dave@infisical.example"));
     });
 
     test("dots survive outside Google, where they distinguish real people", () => {
@@ -99,8 +103,8 @@ describe("emailDispatchGuard", () => {
       ["t.a.y.l.or.qu.i.n.n.5.1.2+8bc4e8@googlemail.com", "taylorquinn512@gmail.com"],
       ["taylor.qui.nn512+4fb26f@gmail.com", "taylorquinn512@gmail.com"],
       ["TAYLORQUINN512@gmail.com", "taylorquinn512@gmail.com"],
-      ["DAVE@northwind.example", "dave@northwind.example"],
-      ["Dave+reset@Northwind.Example", "dave@northwind.example"]
+      ["DAVE@infisical.example", "dave@infisical.example"],
+      ["Dave+reset@infisical.Example", "dave@infisical.example"]
     ])("%s shares the bucket of %s", async (variant, mailbox) => {
       const { keyStore, guard } = setup();
 
@@ -116,10 +120,10 @@ describe("emailDispatchGuard", () => {
     test("signup and recovery do not share a bucket", async () => {
       const { keyStore, guard } = setup();
 
-      await guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@northwind.example" });
+      await guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" });
       await guard.acquireMailboxCooldown({
         purpose: EmailDispatchPurpose.AccountRecovery,
-        email: "dave@northwind.example"
+        email: "dave@infisical.example"
       });
 
       const keys = keyStore.setItemWithExpiryNX.mock.calls.map(([key]) => key);
@@ -132,7 +136,7 @@ describe("emailDispatchGuard", () => {
       keyStore.ttl.mockResolvedValue(30);
 
       const err = await expectRejected(
-        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@northwind.example" }),
+        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
         BadRequestError
       );
 
@@ -145,7 +149,7 @@ describe("emailDispatchGuard", () => {
       keyStore.ttl.mockResolvedValue(-1);
 
       const err = await expectRejected(
-        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@northwind.example" }),
+        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
         BadRequestError
       );
 
@@ -154,59 +158,78 @@ describe("emailDispatchGuard", () => {
   });
 
   describe("consumeMailboxAllowance", () => {
-    test("allows up to the cap and refuses past it", async () => {
+    const mailboxHash = hmac("dave@infisical.example");
+    const args = { purpose: EmailDispatchPurpose.Signup, mailboxHash };
+
+    test("allows a send while under the cap", async () => {
       const { keyStore, guard } = setup();
-      const args = { purpose: EmailDispatchPurpose.Signup, mailboxHash: hmac("dave@northwind.example") };
+      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(5);
 
-      keyStore.incrementByWithExpiry.mockResolvedValueOnce(5);
       await expect(guard.consumeMailboxAllowance(args)).resolves.toBe(true);
+    });
 
-      keyStore.incrementByWithExpiry.mockResolvedValueOnce(6);
+    test("refuses once the cap is reached", async () => {
+      const { keyStore, guard } = setup();
+      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(-1);
+
       await expect(guard.consumeMailboxAllowance(args)).resolves.toBe(false);
     });
 
-    test("counts refused attempts, so an active campaign keeps the window rolling forward", async () => {
+    test("uses the primitive that does not extend the window on refusal", async () => {
       const { keyStore, guard } = setup();
-      const mailboxHash = hmac("dave@northwind.example");
-      keyStore.incrementByWithExpiry.mockResolvedValue(99);
 
-      await guard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash });
+      await guard.consumeMailboxAllowance(args);
 
-      expect(keyStore.incrementByWithExpiry).toHaveBeenCalledWith(
+      expect(keyStore.incrementByAndRefreshExpiryIfUnderLimit).toHaveBeenCalledWith(
         KeyStorePrefixes.EmailDispatchMailboxSends(EmailDispatchPurpose.Signup, mailboxHash),
-        1,
+        5,
         KeyStoreTtls.EmailDispatchMailboxWindowInSeconds
       );
     });
   });
 
   describe("consumeSourceAllowance", () => {
+    const args = { purpose: EmailDispatchPurpose.Signup, ip: "203.0.113.7" };
+
     test("hashes the source address before it reaches the store", async () => {
       const { keyStore, guard } = setup();
 
-      await guard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.Signup, ip: "203.0.113.7" });
+      await guard.consumeSourceAllowance(args);
 
-      const [key] = keyStore.incrementByWithExpiry.mock.calls[0];
+      const [key] = keyStore.incrementByAndRefreshExpiryIfUnderLimit.mock.calls[0];
       expect(key).toContain(hmac("203.0.113.7"));
       expect(key).not.toContain("203.0.113.7");
     });
 
-    test("allows a busy shared address up to the cap, then refuses loudly", async () => {
+    test("admits a busy shared address while under the cap", async () => {
       const { keyStore, guard } = setup();
-      const args = { purpose: EmailDispatchPurpose.Signup, ip: "203.0.113.7" };
+      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(20);
 
-      keyStore.incrementByWithExpiry.mockResolvedValueOnce(20);
       await expect(guard.consumeSourceAllowance(args)).resolves.toBeUndefined();
+    });
 
-      keyStore.incrementByWithExpiry.mockResolvedValueOnce(21);
+    test("refuses loudly once the cap is reached", async () => {
+      const { keyStore, guard } = setup();
+      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(-1);
+
       await expectRejected(guard.consumeSourceAllowance(args), RateLimitError);
+    });
+
+    test("uses the primitive that does not extend the window on refusal", async () => {
+      const { keyStore, guard } = setup();
+
+      await guard.consumeSourceAllowance(args);
+
+      const [, limit, ttl] = keyStore.incrementByAndRefreshExpiryIfUnderLimit.mock.calls[0];
+      expect(limit).toBe(20);
+      expect(ttl).toBe(KeyStoreTtls.EmailDispatchSourceWindowInSeconds);
     });
   });
 
   describe("clearMailboxThrottle", () => {
     test("drops both the cooldown and the send counter for that purpose", async () => {
       const { keyStore, guard } = setup();
-      const mailboxHash = hmac("dave@northwind.example");
+      const mailboxHash = hmac("dave@infisical.example");
 
       await guard.clearMailboxThrottle({ purpose: EmailDispatchPurpose.AccountRecovery, mailboxHash });
 
@@ -223,14 +246,14 @@ describe("emailDispatchGuard", () => {
 
       await guard.probeTraffic({
         purpose: EmailDispatchPurpose.Signup,
-        mailboxHash: hmac("dave@northwind.example"),
+        mailboxHash: hmac("dave@infisical.example"),
         ip: "203.0.113.7"
       });
 
       const members = keyStore.probeDistinctMember.mock.calls.map(([, member]) => member);
       expect(members).toContain(hmac("203.0.113.7"));
       expect(members).not.toContain("203.0.113.7");
-      expect(members).not.toContain("dave@northwind.example");
+      expect(members).not.toContain("dave@infisical.example");
     });
   });
 });

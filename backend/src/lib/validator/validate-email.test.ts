@@ -2,7 +2,7 @@ import { isAliasedEmail, normalizeEmail } from "./validate-email";
 
 describe("normalizeEmail", () => {
   test("strips sub-addressing on every provider", () => {
-    expect(normalizeEmail("dave+cu24vk@northwind.example")).toBe("dave@northwind.example");
+    expect(normalizeEmail("dave+cu24vk@infisical.example")).toBe("dave@infisical.example");
     expect(normalizeEmail("first.last+billing@company.co.uk")).toBe("first.last@company.co.uk");
   });
 
@@ -42,13 +42,13 @@ describe("normalizeEmail", () => {
     ],
     ["moragray1990@gmail.com", ["m.o.ra.gr.ay.19.90+889e3f@gmail.com", "m.ora.g.r.a.y.1.9.9.0+170026@gmail.com"]],
     [
-      "dave@northwind.example",
+      "dave@infisical.example",
       [
-        "dave+cu24vk@northwind.example",
-        "dave+sf7yq@northwind.example",
-        "dave+kwyr@northwind.example",
-        "dave+qe0u@northwind.example",
-        "dave+dt5pd@northwind.example"
+        "dave+cu24vk@infisical.example",
+        "dave+sf7yq@infisical.example",
+        "dave+kwyr@infisical.example",
+        "dave+qe0u@infisical.example",
+        "dave+dt5pd@infisical.example"
       ]
     ]
   ])("collapses every observed variant onto %s", (mailbox, variants) => {
@@ -69,9 +69,9 @@ describe("normalizeEmail", () => {
 
 describe("isAliasedEmail", () => {
   test("flags variants but not the canonical address", () => {
-    expect(isAliasedEmail("dave+kwyr@northwind.example")).toBe(true);
+    expect(isAliasedEmail("dave+kwyr@infisical.example")).toBe(true);
     expect(isAliasedEmail("first.last@gmail.com")).toBe(true);
-    expect(isAliasedEmail("dave@northwind.example")).toBe(false);
+    expect(isAliasedEmail("dave@infisical.example")).toBe(false);
     expect(isAliasedEmail("first.last@company.com")).toBe(false);
   });
 });
