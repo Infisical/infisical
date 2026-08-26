@@ -367,6 +367,7 @@ export const AssignAccessModal = ({
                 onValueChange={(opt) => setSelectedActor(opt)}
                 getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
                 getOptionLabel={(opt) => opt.label}
+                getOptionKeywords={(opt) => (opt.subtitle ? [opt.subtitle] : [])}
                 placeholder="Pick a user, group, or identity..."
                 searchPlaceholder="Pick a user, group, or identity..."
                 searchAriaLabel="Search users, groups, and identities"
