@@ -52,7 +52,7 @@ Not every option applies to every certificate. The renewal wizard greys out the 
 A self-signed certificate is signed by the private key that matches its own public key. A signing request carries only a public key, so there would be nothing to sign the renewal with. Reuse works because the existing key pair is available to sign with.
 
 <Note>
-  Certificates issued through Active Directory Certificate Services or Azure AD Certificate Services take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
+  Certificates issued through Active Directory Certificate Services or Azure AD CS take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
 </Note>
 
 Reuse is available for certificates issued with an Infisical-managed key pair. A certificate you issued from your own signing request can reuse its public key too: the renewal is made from that original request, so the key stays on your side.
@@ -97,7 +97,7 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
         Pick one of the three options above. If you chose **Use a CSR**, paste it on the next step and you are done.
       </Step>
       <Step title="Adjust the subject and names">
-        The subject attributes and alternative names are prefilled from the current certificate. Change only what should differ.
+        The subject attributes and alternative names are filled in from the current certificate. Change only what should differ.
       </Step>
       <Step title="Set validity and extensions">
         Adjust the validity, algorithms, key usages, and basic constraints, then select **Renew certificate**.
@@ -140,7 +140,9 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
 
 The renewal produces a new certificate with its own serial number, linked to the one it replaced.
 
+- The previous certificate reports a status of **Renewed** rather than **Active**, and links to its replacement under **Renewed by**. The replacement links back under **Renewed from**.
 - The previous certificate stays valid until its own expiry, so you can roll over on your own schedule. It cannot be renewed a second time.
+- Because it is no longer the current certificate, it drops out of the active count on the dashboard and out of expiry alerts. Filter the inventory by the **Renewed** status, or open the **Renewed** view, to list every certificate that has been superseded.
 - Metadata carries over to the renewed certificate.
 - Certificate syncs attached to the certificate move to the renewed one and push it to their destinations.
 - Automatic renewal carries over. A certificate set to renew 4 days before expiry keeps that window, measured against the renewed certificate's own expiry rather than the previous one.

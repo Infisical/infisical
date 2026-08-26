@@ -809,12 +809,19 @@ export const authLoginServiceFactory = ({
     // user's signup (used by the caller to fire signup telemetry exactly once per account).
     const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
 
-    // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
-    // membership was invited (the inviter created it), versus an organic signup that has none yet.
-    // Only meaningful when this login completes the signup, so skip the read for accepted users.
+    // Mirror complete-account's invite detection: a not-yet-accepted user who already holds a
+    // pending invitation was invited (the inviter created it), versus an organic signup that has
+    // none. Only meaningful when this login completes the signup, so skip the read for accepted
+    // users.
     const wasInvited =
       !wasUserAcceptedBeforeLogin && user
-        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
+        ? (
+            await orgDAL.findMembership({
+              actorUserId: user.id,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Invited
+            })
+          ).length > 0
         : false;
 
     const serverCfg = await getServerCfg();

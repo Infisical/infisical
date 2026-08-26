@@ -13,7 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -135,7 +135,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, authMethod, organizationId, isInvitedUser } =
+      const { user, accessToken, refreshToken, authMethod, organizationId, invitingOrgId, isInvitedUser } =
         await server.services.signup.completeAccount({
           ...req.body,
           ip: req.realIp,
@@ -155,14 +155,25 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
 
       const bodyAttributionSource = "attributionSource" in req.body ? req.body.attributionSource : undefined;
+      let attributionType: SignupAttributionType | undefined;
+      if (isInvitedUser) {
+        attributionType = SignupAttributionType.SystemDerived;
+      } else if (bodyAttributionSource) {
+        attributionType = SignupAttributionType.UserProvided;
+      }
+      // Invited signups create no org of their own, so fall back to the inviting org. The
+      // OrganizationCreated event below stays on `organizationId`, which is only set when one was created.
+      const signupOrganizationId = organizationId ?? invitingOrgId;
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
-        ...(organizationId ? { organizationId } : {}),
+        ...(signupOrganizationId ? { organizationId: signupOrganizationId } : {}),
         properties: {
           username: user.username,
           email: user.email ?? "",
           attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource,
+          ...(attributionType ? { attributionType } : {}),
+          signupSource: isInvitedUser ? SignupSource.TeamInvite : SignupSource.SelfServe,
           signupMethod: isInvitedUser ? "invite" : authMethod
         }
       });
@@ -307,7 +318,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           distinctId,
           ...(organizationId ? { organizationId } : {}),
           properties: {
-            attributionSource: req.body.attributionSource
+            attributionSource: req.body.attributionSource,
+            attributionType: SignupAttributionType.UserProvided
           }
         });
       }

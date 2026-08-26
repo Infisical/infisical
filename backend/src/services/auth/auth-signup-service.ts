@@ -15,7 +15,7 @@ import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-serv
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { extractBearerToken } from "./auth-fns";
+import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
@@ -183,6 +183,7 @@ export const authSignupServiceFactory = ({
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
     let organizationId: string | undefined;
+    let invitingOrgId: string | undefined;
     let isInvitedUser = false;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
@@ -210,12 +211,18 @@ export const authSignupServiceFactory = ({
           },
           { tx }
         );
-        isInvitedUser = existingMemberships.length > 0;
-        if (!isInvitedUser && dto.organizationName) {
+        // Org creation is skipped whenever the user already belongs to an org at all. Attribution is
+        // narrower: only a pending invitation means someone recruited them, since a signup can pick
+        // up an `Accepted` membership of its own accord (the self-hosted default auth org).
+        const pendingInviteMemberships = existingMemberships.filter(
+          (membership) => membership.status === OrgMembershipStatus.Invited
+        );
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
+        if (!existingMemberships.length && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
               userId: user.id,
-              userEmail: user.email ?? user.username,
               orgName: dto.organizationName
             },
             tx
@@ -255,6 +262,20 @@ export const authSignupServiceFactory = ({
 
       if (shouldReject) {
         throw new BadRequestError({ message: "Invalid token" });
+      }
+
+      // An invitee whose provider did not verify their email completes signup here instead of in
+      // the email branch, so derive the same invite state. Only `Invited` counts: a signup can pick
+      // up an `Accepted` membership of its own accord (the self-hosted default auth org), and the
+      // rest of the codebase already treats `Invited` as what a pending invitation is.
+      if (!user.isAccepted) {
+        const pendingInviteMemberships = await orgDAL.findMembership({
+          actorUserId: user.id,
+          scope: AccessScope.Organization,
+          status: OrgMembershipStatus.Invited
+        });
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
       }
 
       // Update user-level verification flags based on auth method
@@ -310,6 +331,7 @@ export const authSignupServiceFactory = ({
       refreshToken: tokens.refresh,
       authMethod,
       organizationId,
+      invitingOrgId,
       isInvitedUser
     };
   };

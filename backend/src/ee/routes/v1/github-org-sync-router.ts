@@ -144,7 +144,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       response: {
         200: z.object({

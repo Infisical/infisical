@@ -76,7 +76,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSyncs: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -122,7 +122,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -172,7 +172,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncName } = req.params;
       const { projectId } = req.query;
@@ -216,7 +216,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretSync = (await server.services.secretSync.createSecretSync(
         { ...req.body, destination },
@@ -276,7 +276,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -344,7 +344,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
       const { removeSecrets } = req.query;
@@ -406,7 +406,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -446,7 +446,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
       const { importBehavior } = req.query;
@@ -483,7 +483,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -523,7 +523,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { destinationConfig, connectionId, excludeSyncId, projectId } = req.body;
 

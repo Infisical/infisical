@@ -171,10 +171,10 @@ export const KeyStorePrefixes = {
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
-    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
-  IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
-    `lockout:identity:${identityId}:${authMethod}:*` as const,
-  IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
+    `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
+  // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
+  IdentityLockoutIndex: (identityId: string) => `lockout:identity:{${identityId}}` as const,
+  IdentityLockoutMember: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
 
   TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
     `telemetry-agg-stream:${event}:${bucketId}` as const,
@@ -316,6 +316,19 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
+  // sorted-set indexed items: item key gets native TTL; optional index member is scored by the same
+  // deadline and pruned on write.
+  setIndexedItemWithExpiry: (arg: {
+    indexKey: string;
+    member: string;
+    itemKey: string;
+    value: string;
+    expiryInSeconds: number;
+    indexed: boolean;
+  }) => Promise<void>;
+  deleteIndexedItems: (arg: { indexKey: string; members: string[]; itemKeys: string[] }) => Promise<void>;
+  sortedSetRangeByScore: (key: string, min: string | number, max: string | number) => Promise<string[]>;
+  sortedSetMembersPrimary: (key: string) => Promise<string[]>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -542,6 +555,79 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
+  // KEYS[1] indexKey (ZSET), KEYS[2] itemKey (payload string).
+  // ARGV[1] member, ARGV[2] value, ARGV[3] expiryInSeconds, ARGV[4] expiresAt score (ms),
+  // ARGV[5] indexed ('1' | '0'), ARGV[6] now (ms, stale-index prune cutoff).
+  const INDEXED_ITEM_UPSERT = `
+    redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
+
+    if ARGV[5] == '1' then
+      redis.call('ZADD', KEYS[1], ARGV[4], ARGV[1])
+    else
+      redis.call('ZREM', KEYS[1], ARGV[1])
+    end
+
+    redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[6])
+
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    else
+      local current = redis.call('TTL', KEYS[1])
+      local wanted = tonumber(ARGV[3])
+      if current < 0 or current < wanted then
+        redis.call('EXPIRE', KEYS[1], wanted)
+      end
+    end
+
+    return 1
+  `;
+
+  const setIndexedItemWithExpiry: TKeyStoreFactory["setIndexedItemWithExpiry"] = async ({
+    indexKey,
+    member,
+    itemKey,
+    value,
+    expiryInSeconds,
+    indexed
+  }) => {
+    const now = Date.now();
+    await primaryRedis.eval(
+      INDEXED_ITEM_UPSERT,
+      2,
+      indexKey,
+      itemKey,
+      member,
+      value,
+      String(expiryInSeconds),
+      String(now + expiryInSeconds * 1000),
+      indexed ? "1" : "0",
+      String(now)
+    );
+  };
+
+  const DELETE_INDEXED_ITEMS = `
+    for i = 1, #ARGV do
+      redis.call('ZREM', KEYS[1], ARGV[i])
+    end
+    for i = 2, #KEYS do
+      redis.call('DEL', KEYS[i])
+    end
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    end
+    return 1
+  `;
+
+  const deleteIndexedItems: TKeyStoreFactory["deleteIndexedItems"] = async ({ indexKey, members, itemKeys }) => {
+    if (!members.length && !itemKeys.length) return;
+    await primaryRedis.eval(DELETE_INDEXED_ITEMS, itemKeys.length + 1, indexKey, ...itemKeys, ...members);
+  };
+
+  const sortedSetRangeByScore = async (key: string, min: string | number, max: string | number) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).zrangebyscore(key, min, max);
+
+  const sortedSetMembersPrimary = async (key: string) => primaryRedis.zrange(key, 0, -1);
+
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -668,6 +754,10 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
+    setIndexedItemWithExpiry,
+    deleteIndexedItems,
+    sortedSetRangeByScore,
+    sortedSetMembersPrimary,
     listPush,
     listRange,
     listRemove,
