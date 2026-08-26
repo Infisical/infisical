@@ -6,7 +6,7 @@
 #   lint-docs.sh --all                      every .mdx file under docs/
 #   lint-docs.sh --changed [--base <ref>]   only .mdx files this branch touched
 #
-# Exits non-zero when Vale reports an error
+# Exits non-zero when Vale reports an error.
 
 set -euo pipefail
 
