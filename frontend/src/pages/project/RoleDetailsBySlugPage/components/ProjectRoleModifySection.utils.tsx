@@ -2049,13 +2049,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       { label: "Create", value: "create", description: "Create new folders to organize secrets" },
       { label: "Modify", value: "edit", description: "Rename or modify folder properties" },
-      { label: "Remove", value: "delete", description: "Delete folders and their contents" },
-      {
-        label: "Manage Access",
-        value: ProjectPermissionSecretFolderActions.ManageAccess,
-        description:
-          "Grant and revoke folder-level access for users and machine identities. Granted through folder-level access controls"
-      }
+      { label: "Remove", value: "delete", description: "Delete folders and their contents" }
     ]
   },
   [ProjectPermissionSub.SecretImports]: {

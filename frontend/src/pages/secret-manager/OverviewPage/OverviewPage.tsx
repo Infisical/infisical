@@ -52,6 +52,7 @@ import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
+  Divider,
   Modal,
   ModalContent,
   PageHeader
@@ -83,7 +84,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
   Pagination,
   Sheet,
   SheetContent,
@@ -2737,16 +2737,37 @@ const OverviewPageContent = () => {
           <CardHeader>
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
-                <EnvironmentSelect
-                  selectedEnvs={filteredEnvs}
-                  setSelectedEnvs={setFilteredEnvs}
-                  isDisabled={
-                    isBatchModeActive &&
-                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                  }
-                />
-                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <EnvironmentSelect
+                    selectedEnvs={filteredEnvs}
+                    setSelectedEnvs={setFilteredEnvs}
+                    isDisabled={
+                      isBatchModeActive &&
+                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                    }
+                  />
+                </div>
+                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch}>
+                  {canManageCurrentFolderAccess && (
+                    <>
+                      <Divider orientation="vertical" className="mx-1 h-4 shrink-0" />
+                      <Button
+                        className="group h-fit shrink-0 p-1 text-muted transition-colors hover:text-foreground"
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Manage Access"
+                        onClick={handleCurrentFolderAccessOpen}
+                      >
+                        <div className="flex items-center gap-2 text-mineshaft-100/80 transition-all group-hover:text-mineshaft-50">
+                          <UsersIcon className="size-4" />
+                          Manage Access
+                        </div>
+                      </Button>
+                    </>
+                  )}
+                </FolderBreadcrumb>
               </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (
                   <DownloadEnvButton
@@ -2764,21 +2785,6 @@ const OverviewPageContent = () => {
                     onToggleTag={handleToggleTag}
                     onClearTags={handleClearTags}
                   />
-                )}
-                {canManageCurrentFolderAccess && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <IconButton
-                        variant="outline"
-                        size="sm"
-                        aria-label="Manage Access"
-                        onClick={handleCurrentFolderAccessOpen}
-                      >
-                        <UsersIcon />
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>Manage Access</TooltipContent>
-                  </Tooltip>
                 )}
                 <ResourceSearchInput
                   key={secretPath}

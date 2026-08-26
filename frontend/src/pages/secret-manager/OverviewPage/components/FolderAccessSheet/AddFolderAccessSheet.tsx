@@ -15,6 +15,7 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import {
   SecretFolderRole,
   useCreateIdentityFolderAccess,
@@ -30,6 +31,10 @@ import {
   toIdentityActor,
   toUserActor
 } from "./folder-access.utils";
+import {
+  FolderAccessActorMultiValueLabel,
+  FolderAccessActorOption
+} from "./FolderAccessActorOption";
 import { FolderTierRadioGroup } from "./FolderTierRadioGroup";
 
 const CANDIDATE_LIMIT = 100;
@@ -112,7 +117,7 @@ export const AddFolderAccessSheet = ({
     // no bulk endpoint exists, so each actor is its own request; failures are reported globally
     const results = await Promise.allSettled(
       selected.map((actor) =>
-        actor.type === "user"
+        actor.type === ActorType.USER
           ? createUserAccess.mutateAsync({
               projectId,
               environmentSlug,
@@ -168,8 +173,15 @@ export const AddFolderAccessSheet = ({
                 if (action === "input-change") setSearch(value);
               }}
               onChange={(value) => setSelected((value ?? []) as TFolderAccessActor[])}
+              components={{
+                Option: FolderAccessActorOption,
+                MultiValueLabel: FolderAccessActorMultiValueLabel
+              }}
               getOptionValue={(option) => `${option.type}-${option.id}`}
               getOptionLabel={(option) => option.name}
+              // the candidate lists are already searched server side, so the label-only
+              // client filter would drop matches found by email or identity metadata
+              filterOption={null}
               placeholder="Search users & machine identities"
               noOptionsMessage={() => "No matches found"}
             />

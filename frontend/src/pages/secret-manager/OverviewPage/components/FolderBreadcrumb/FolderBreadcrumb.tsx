@@ -24,6 +24,8 @@ import { useTimedReset } from "@app/hooks";
 type Props = {
   secretPath?: string;
   onResetSearch: (secretPath: string) => void;
+  // Rendered inline after the copy button; measured so the path collapses before it collides.
+  children?: React.ReactNode;
 };
 
 type Measurements = {
@@ -32,18 +34,21 @@ type Measurements = {
   ellipsisWidth: number;
   folderIconWidth: number;
   separatorWidth: number;
+  trailingWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
+export function FolderBreadcrumb({ secretPath = "", onResetSearch, children }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
+  const trailingRef = useRef<HTMLDivElement>(null);
 
   const [measurements, setMeasurements] = useState<Measurements>({
     containerWidth: 0,
     segmentWidths: [],
     ellipsisWidth: 0,
     folderIconWidth: 0,
-    separatorWidth: 0
+    separatorWidth: 0,
+    trailingWidth: 0
   });
 
   const folderPaths = useMemo(() => (secretPath || "").split("/").filter(Boolean), [secretPath]);
@@ -83,6 +88,7 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
     const segments = measureContainer.querySelectorAll("[data-measure='segment']");
 
     const segmentWidths = Array.from(segments).map((el) => el.getBoundingClientRect().width);
+    const trailingWidth = trailingRef.current?.getBoundingClientRect().width ?? 0;
 
     setMeasurements((prev) => {
       // Only update if values changed to prevent unnecessary re-renders
@@ -91,7 +97,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
         segmentWidths,
         ellipsisWidth: ellipsis?.getBoundingClientRect().width ?? 0,
         folderIconWidth: folderIcon?.getBoundingClientRect().width ?? 0,
-        separatorWidth: separator?.getBoundingClientRect().width ?? 0
+        separatorWidth: separator?.getBoundingClientRect().width ?? 0,
+        trailingWidth
       };
 
       if (
@@ -99,6 +106,7 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
         prev.ellipsisWidth === newMeasurements.ellipsisWidth &&
         prev.folderIconWidth === newMeasurements.folderIconWidth &&
         prev.separatorWidth === newMeasurements.separatorWidth &&
+        prev.trailingWidth === newMeasurements.trailingWidth &&
         prev.segmentWidths.length === newMeasurements.segmentWidths.length &&
         prev.segmentWidths.every((w, i) => w === newMeasurements.segmentWidths[i])
       ) {
@@ -123,6 +131,9 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       measureElements();
     });
     observer.observe(element);
+    // The trailing actions are optional and permission-gated, so the reserved footprint
+    // changes after mount; without watching it the path collapses at the wrong point.
+    if (trailingRef.current) observer.observe(trailingRef.current);
     return () => {
       observer.disconnect();
     };
@@ -130,8 +141,14 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
 
   // Calculate visible segments based on actual measurements
   const { startCount, endCount, needsEllipsis } = useMemo(() => {
-    const { containerWidth, segmentWidths, ellipsisWidth, folderIconWidth, separatorWidth } =
-      measurements;
+    const {
+      containerWidth,
+      segmentWidths,
+      ellipsisWidth,
+      folderIconWidth,
+      separatorWidth,
+      trailingWidth
+    } = measurements;
 
     // Before measurements are ready, show minimal state to prevent overflow
     if (segmentWidths.length === 0 || containerWidth === 0) {
@@ -148,12 +165,11 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       (sum, w) => sum + w + separatorWidth + GAP * 2,
       0
     );
-    // The copy-path button is a fixed-width sibling after the breadcrumb; subtract its
-    // footprint so the path collapses before it would collide with the button.
-    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
-    const COPY_BUTTON_WIDTH = 28;
-    const copyButtonReserve = folderPaths.length > 0 ? COPY_BUTTON_WIDTH + GAP : 0;
-    const availableWidth = containerWidth - folderIconWidth - GAP - copyButtonReserve;
+    // The trailing group (copy button plus any caller-supplied actions) is a non-shrinking
+    // sibling after the breadcrumb, so the path has to collapse before it reaches that group.
+    // Its width is measured rather than assumed, because it depends on the caller's actions.
+    const trailingReserve = trailingWidth > 0 ? trailingWidth + GAP : 0;
+    const availableWidth = containerWidth - folderIconWidth - GAP - trailingReserve;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -382,30 +398,33 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Copy current folder path (pinned outside the clip flow so it's always visible) */}
-      {folderPaths.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              className="shrink-0"
-              aria-label="Copy folder path"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(fullPath);
-                  setIsCopied(true);
-                } catch {
-                  // clipboard unavailable (denied or insecure context); keep the un-copied state
-                }
-              }}
-            >
-              {isCopied ? <Check /> : <Copy />}
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>{isCopied ? "Copied" : "Copy path"}</TooltipContent>
-        </Tooltip>
-      )}
+      {/* Trailing actions (pinned outside the clip flow so they're always visible) */}
+      <div ref={trailingRef} className="flex shrink-0 items-center gap-1">
+        {folderPaths.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost-muted"
+                size="xs"
+                className="shrink-0"
+                aria-label="Copy folder path"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(fullPath);
+                    setIsCopied(true);
+                  } catch {
+                    // clipboard unavailable (denied or insecure context); keep the un-copied state
+                  }
+                }}
+              >
+                {isCopied ? <Check /> : <Copy />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{isCopied ? "Copied" : "Copy path"}</TooltipContent>
+          </Tooltip>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

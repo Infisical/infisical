@@ -134,15 +134,6 @@ const ActionsMultiSelect = ({
           return legacyActionsState.secretsRead;
         }
 
-        // manage-access is only obtainable through the folder access flow; show it only on
-        // roles that already hold it (the built-in admin role)
-        if (
-          subject === ProjectPermissionSub.SecretFolders &&
-          value === ProjectPermissionSecretFolderActions.ManageAccess
-        ) {
-          return legacyActionsState.folderManageAccess;
-        }
-
         // Hide legacy "grant-privileges" actions unless already selected
         if (
           subject === ProjectPermissionSub.Member &&

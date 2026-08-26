@@ -177,7 +177,7 @@ export const FolderAccessSheet = ({
               </Badge>
 
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
-              <span className="truncate font-mono text-accent">{folderPath}</span>
+              <span className="truncate font-mono text-mineshaft-100/80">{folderPath}</span>
             </div>
           </SheetHeader>
 
