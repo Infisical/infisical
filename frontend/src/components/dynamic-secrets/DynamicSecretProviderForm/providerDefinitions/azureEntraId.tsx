@@ -36,13 +36,18 @@ const credentialLabels = {
 
 const EMPTY_USERS: { id: string; name: string; email: string }[] = [];
 
-const AzureEntraIdFields = ({ mode, setSubmitState }: TDynamicSecretProviderRendererProps) => {
+const AzureEntraIdFields = ({
+  context,
+  mode,
+  setSubmitState
+}: TDynamicSecretProviderRendererProps) => {
   const { control, watch } = useFormContext<TAzureEntraIdCreateValues & TAzureEntraIdEditValues>();
   const tenantId = watch("inputs.tenantId");
   const applicationId = watch("inputs.applicationId");
   const clientSecret = watch("inputs.clientSecret");
   const isConfigured = Boolean(tenantId && applicationId && clientSecret);
   const usersQuery = useGetDynamicSecretProviderData({
+    projectSlug: context.projectSlug,
     tenantId,
     applicationId,
     clientSecret,
