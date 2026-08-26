@@ -446,6 +446,19 @@ export const membershipIdentityServiceFactory = ({
 
       // Durable deny atomic with the org-membership removal.
       if (scopeData.scope === AccessScope.Organization) {
+        const projectMemberships = await membershipIdentityDAL.find(
+          {
+            scope: AccessScope.Project,
+            scopeOrgId: scopeData.orgId,
+            actorIdentityId: dto.selector.identityId
+          },
+          { tx }
+        );
+        await permissionService.invalidateProjectFolderPermissionCache(
+          projectMemberships.map((el) => el.scopeProjectId).filter((id): id is string => Boolean(id)),
+          tx
+        );
+
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
           orgId: scopeData.orgId,

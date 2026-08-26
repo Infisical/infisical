@@ -497,11 +497,14 @@ export const permissionServiceFactory = ({
 
   const invalidateProjectFolderPermissionCache: TPermissionServiceFactory["invalidateProjectFolderPermissionCache"] =
     async (projectId, tx) => {
-      await keyStore.pgIncrementBy(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId), {
-        incr: 1,
-        tx,
-        expiry: FOLDER_PERMISSION_VERSION_TTL
-      });
+      const projectIds = [...new Set((Array.isArray(projectId) ? projectId : [projectId]).filter(Boolean))];
+      for await (const id of projectIds) {
+        await keyStore.pgIncrementBy(KeyStorePrefixes.ProjectFolderPermissionVersion(id), {
+          incr: 1,
+          tx,
+          expiry: FOLDER_PERMISSION_VERSION_TTL
+        });
+      }
     };
 
   const $getFolderScopedPrivileges = async (

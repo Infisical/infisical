@@ -121,7 +121,7 @@ export type TPermissionServiceFactory = {
     hasProjectEnforcement: (check: "enforceEncryptedSecretManagerSecretMetadata") => boolean;
     folderScopedPrivileges: TProjectFolderScopedPrivilege[];
   }>;
-  invalidateProjectFolderPermissionCache: (projectId: string, tx?: Knex) => Promise<void>;
+  invalidateProjectFolderPermissionCache: (projectId: string | string[], tx?: Knex) => Promise<void>;
   getProjectFolderPermissionFingerprint: (arg: {
     projectId: string;
     actor: ActorType.USER | ActorType.IDENTITY;

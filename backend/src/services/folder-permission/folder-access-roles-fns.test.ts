@@ -11,20 +11,25 @@ import {
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import {
-  buildFolderAccessRoster,
+  buildFolderAccess,
   BUILT_IN_PROJECT_ROLE_NAMES,
   collectDistinctRoles,
   FOLDER_ACCESS_PROBES,
   matchesSearch,
-  paginateRoster,
-  reviveFolderAccessRoster,
+  paginateFolderAccessEntries,
+  reviveFolderAccess,
   roleGrantsFolderAccess,
-  sortRosterEntries,
-  splitFolderAccessRoster,
+  sortFolderAccessEntries,
+  splitFolderAccess,
   TDistinctProjectRole,
-  toCachedRosterRole
+  toCachedProjectMemberRole
 } from "./folder-access-roles-fns";
-import { TCachedFolderAccessRoster, TCachedRosterRole, TRosterRoleRow, TRosterUser } from "./folder-permission-types";
+import {
+  TCachedFolderAccess,
+  TCachedProjectMemberRole,
+  TProjectMemberRoleRow,
+  TProjectMemberUser
+} from "./folder-permission-types";
 
 const folder = { environmentSlug: "dev", path: "/team/app" };
 const now = new Date("2026-08-25T12:00:00.000Z");
@@ -41,7 +46,7 @@ const custom = (permissions: unknown): TDistinctProjectRole => ({
   permissions
 });
 
-const roleRow = (overrides: Partial<TRosterRoleRow> = {}): TRosterRoleRow => ({
+const roleRow = (overrides: Partial<TProjectMemberRoleRow> = {}): TProjectMemberRoleRow => ({
   membershipRoleId: "membership-role-id",
   role: ProjectMembershipRole.Member,
   customRoleId: null,
@@ -53,7 +58,7 @@ const roleRow = (overrides: Partial<TRosterRoleRow> = {}): TRosterRoleRow => ({
   ...overrides
 });
 
-const customRoleRow = (overrides: Partial<TRosterRoleRow> = {}): TRosterRoleRow =>
+const customRoleRow = (overrides: Partial<TProjectMemberRoleRow> = {}): TProjectMemberRoleRow =>
   roleRow({
     membershipRoleId: "custom-membership-role-id",
     role: ProjectMembershipRole.Custom,
@@ -64,7 +69,7 @@ const customRoleRow = (overrides: Partial<TRosterRoleRow> = {}): TRosterRoleRow 
     ...overrides
   });
 
-const cachedRole = (overrides: Partial<TCachedRosterRole> = {}): TCachedRosterRole => ({
+const cachedRole = (overrides: Partial<TCachedProjectMemberRole> = {}): TCachedProjectMemberRole => ({
   id: null,
   slug: ProjectMembershipRole.Member,
   name: "Member",
@@ -73,7 +78,7 @@ const cachedRole = (overrides: Partial<TCachedRosterRole> = {}): TCachedRosterRo
   ...overrides
 });
 
-const user = (userId: string, membershipId: string | null = `${userId}-membership`): TRosterUser => ({
+const user = (userId: string, membershipId: string | null = `${userId}-membership`): TProjectMemberUser => ({
   userId,
   username: `${userId}@example.com`,
   email: `${userId}@example.com`,
@@ -187,9 +192,9 @@ describe("collectDistinctRoles", () => {
   });
 });
 
-describe("toCachedRosterRole", () => {
+describe("toCachedProjectMemberRole", () => {
   test("maps a built-in role to a null id and its display name", () => {
-    expect(toCachedRosterRole(roleRow({ role: ProjectMembershipRole.NoAccess }))).toEqual({
+    expect(toCachedProjectMemberRole(roleRow({ role: ProjectMembershipRole.NoAccess }))).toEqual({
       id: null,
       slug: ProjectMembershipRole.NoAccess,
       name: "No Access",
@@ -199,7 +204,7 @@ describe("toCachedRosterRole", () => {
   });
 
   test("maps a custom role to its row id, slug and name", () => {
-    expect(toCachedRosterRole(customRoleRow({ isTemporary: true, temporaryAccessEndTime: future }))).toEqual({
+    expect(toCachedProjectMemberRole(customRoleRow({ isTemporary: true, temporaryAccessEndTime: future }))).toEqual({
       id: "custom-role-id",
       slug: "custom-role",
       name: "Custom Role",
@@ -209,13 +214,13 @@ describe("toCachedRosterRole", () => {
   });
 
   test("drops a custom role whose row no longer exists", () => {
-    expect(toCachedRosterRole(customRoleRow({ customRoleName: null }))).toBeNull();
+    expect(toCachedProjectMemberRole(customRoleRow({ customRoleName: null }))).toBeNull();
   });
 });
 
-describe("buildFolderAccessRoster", () => {
+describe("buildFolderAccess", () => {
   test("records the granting role keys and the display roles without permissions", () => {
-    const roster = buildFolderAccessRoster(
+    const folderAccess = buildFolderAccess(
       [
         { actor: user("member"), roles: [roleRow()] },
         { actor: user("locked"), roles: [roleRow({ role: ProjectMembershipRole.NoAccess })] }
@@ -223,31 +228,34 @@ describe("buildFolderAccessRoster", () => {
       folder
     );
 
-    expect(roster.grantingRoleKeys).toEqual([ProjectMembershipRole.Member]);
-    expect(roster.actors).toEqual([
+    expect(folderAccess.grantingRoleKeys).toEqual([ProjectMembershipRole.Member]);
+    expect(folderAccess.actors).toEqual([
       { actor: user("member"), roles: [cachedRole()] },
       { actor: user("locked"), roles: [cachedRole({ slug: ProjectMembershipRole.NoAccess, name: "No Access" })] }
     ]);
-    expect(JSON.stringify(roster)).not.toContain("permissions");
+    expect(JSON.stringify(folderAccess)).not.toContain("permissions");
   });
 });
 
-describe("reviveFolderAccessRoster", () => {
+describe("reviveFolderAccess", () => {
   test("restores temporaryAccessEndTime dates after a JSON round trip", () => {
-    const roster: TCachedFolderAccessRoster<TRosterUser> = {
+    const folderAccess: TCachedFolderAccess<TProjectMemberUser> = {
       grantingRoleKeys: [],
       actors: [{ actor: user("u"), roles: [cachedRole({ isTemporary: true, temporaryAccessEndTime: future })] }]
     };
 
-    const revived = reviveFolderAccessRoster(JSON.parse(JSON.stringify(roster)) as typeof roster);
+    const revived = reviveFolderAccess(JSON.parse(JSON.stringify(folderAccess)) as typeof folderAccess);
     expect(revived.actors[0].roles[0].temporaryAccessEndTime).toEqual(future);
   });
 });
 
-describe("splitFolderAccessRoster", () => {
-  const split = (roster: TCachedFolderAccessRoster<TRosterUser>, grants: [string, TAdditionalPrivileges][] = []) =>
-    splitFolderAccessRoster({
-      roster,
+describe("splitFolderAccess", () => {
+  const split = (
+    folderAccess: TCachedFolderAccess<TProjectMemberUser>,
+    grants: [string, TAdditionalPrivileges][] = []
+  ) =>
+    splitFolderAccess({
+      folderAccess,
       grantByActorId: new Map(grants),
       actorIdOf: (actor) => actor.userId,
       now
@@ -405,9 +413,9 @@ describe("matchesSearch", () => {
   });
 });
 
-describe("sortRosterEntries", () => {
+describe("sortFolderAccessEntries", () => {
   test("orders by the lower-cased name and then by the tie-break", () => {
-    const sorted = sortRosterEntries(
+    const sorted = sortFolderAccessEntries(
       [
         { name: "bob", id: "2" },
         { name: "Alice", id: "9" },
@@ -420,9 +428,9 @@ describe("sortRosterEntries", () => {
   });
 });
 
-describe("paginateRoster", () => {
+describe("paginateFolderAccessEntries", () => {
   test("slices the page and reports the full count", () => {
-    expect(paginateRoster([1, 2, 3, 4, 5], 1, 2)).toEqual({ items: [2, 3], totalCount: 5 });
-    expect(paginateRoster([1, 2, 3], 10, 2)).toEqual({ items: [], totalCount: 3 });
+    expect(paginateFolderAccessEntries([1, 2, 3, 4, 5], 1, 2)).toEqual({ items: [2, 3], totalCount: 5 });
+    expect(paginateFolderAccessEntries([1, 2, 3], 10, 2)).toEqual({ items: [], totalCount: 3 });
   });
 });

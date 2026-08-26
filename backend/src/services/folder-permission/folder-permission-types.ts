@@ -98,7 +98,7 @@ export type TFolderAccessMembership = {
   roles: TFolderAccessRole[];
 };
 
-export type TRosterRoleRow = {
+export type TProjectMemberRoleRow = {
   membershipRoleId: string;
   role: string;
   customRoleId: string | null;
@@ -109,14 +109,14 @@ export type TRosterRoleRow = {
   temporaryAccessEndTime: Date | null;
 };
 
-export type TCachedRosterRole = TFolderAccessRole & {
+export type TCachedProjectMemberRole = TFolderAccessRole & {
   isTemporary: boolean;
   temporaryAccessEndTime: Date | null;
 };
 
-export type TRosterActor = { membershipId: string | null };
+export type TProjectMemberActor = { membershipId: string | null };
 
-export type TRosterUser = TRosterActor & {
+export type TProjectMemberUser = TProjectMemberActor & {
   userId: string;
   username: string;
   email: string | null;
@@ -124,22 +124,22 @@ export type TRosterUser = TRosterActor & {
   lastName: string | null;
 };
 
-export type TRosterIdentity = TRosterActor & {
+export type TProjectMemberIdentity = TProjectMemberActor & {
   identityId: string;
   name: string;
 };
 
-export type TRosterEntry<TActor extends TRosterActor> = {
+export type TProjectMember<TActor extends TProjectMemberActor> = {
   actor: TActor;
-  roles: TRosterRoleRow[];
+  roles: TProjectMemberRoleRow[];
 };
 
-export type TCachedFolderAccessRoster<TActor extends TRosterActor> = {
-  actors: { actor: TActor; roles: TCachedRosterRole[] }[];
+export type TCachedFolderAccess<TActor extends TProjectMemberActor> = {
+  actors: { actor: TActor; roles: TCachedProjectMemberRole[] }[];
   grantingRoleKeys: string[];
 };
 
-export type TFolderAccessRosterEntry<TActor extends TRosterActor> = {
+export type TFolderAccessEntry<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   grant: TAdditionalPrivileges | null;

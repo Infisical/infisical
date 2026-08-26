@@ -13,12 +13,12 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import {
-  buildFolderAccessRoster,
+  buildFolderAccess,
   matchesSearch,
-  paginateRoster,
-  reviveFolderAccessRoster,
-  sortRosterEntries,
-  splitFolderAccessRoster
+  paginateFolderAccessEntries,
+  reviveFolderAccess,
+  sortFolderAccessEntries,
+  splitFolderAccess
 } from "./folder-access-roles-fns";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
@@ -34,19 +34,19 @@ import {
   toFolderGrant
 } from "./folder-permission-fns";
 import {
-  TCachedFolderAccessRoster,
+  TCachedFolderAccess,
   TCreateFolderGrantDTO,
   TDeleteFolderGrantDTO,
+  TFolderAccessEntry,
   TFolderAccessMembership,
-  TFolderAccessRosterEntry,
   TFolderGrant,
   TListActorFolderGrantsDTO,
   TListFolderAccessActorsDTO,
+  TProjectMember,
+  TProjectMemberActor,
+  TProjectMemberIdentity,
+  TProjectMemberUser,
   TResolvedFolder,
-  TRosterActor,
-  TRosterEntry,
-  TRosterIdentity,
-  TRosterUser,
   TUpdateFolderGrantDTO
 } from "./folder-permission-types";
 
@@ -59,9 +59,9 @@ type TFolderPermissionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
-    | "findProjectUserRoster"
-    | "findProjectIdentityRoster"
-    | "getFolderAccessRosterFingerprint"
+    | "findProjectUsersWithRoles"
+    | "findProjectIdentitiesWithRoles"
+    | "getFolderAccessFingerprint"
     | "hasProjectAccess"
     | "isProjectAdmin"
   >;
@@ -73,7 +73,7 @@ type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
 
 type TProjectScope = { projectId: string; orgId: string };
 
-type TFolderAccessItem<TActor extends TRosterActor> = {
+type TFolderAccessItem<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderGrant | null;
@@ -214,37 +214,37 @@ export const folderPermissionServiceFactory = ({
     return { folderAccess: toFolderGrant(grant, projectId, folder) };
   };
 
-  const $getFolderAccessRoster = <TActor extends TRosterActor>(
+  const $getFolderAccess = <TActor extends TProjectMemberActor>(
     { projectId, orgId, folder, actorType }: TProjectScope & { folder: TResolvedFolder; actorType: TFolderActorType },
-    fetchRoster: () => Promise<TRosterEntry<TActor>[]>
+    fetchMembers: () => Promise<TProjectMember<TActor>[]>
   ) =>
-    withCacheFingerprint<TCachedFolderAccessRoster<TActor>>({
+    withCacheFingerprint<TCachedFolderAccess<TActor>>({
       keyStore,
-      dataKey: KeyStorePrefixes.ProjectFolderAccessRosterData(projectId, folder.id, actorType),
-      markerKey: KeyStorePrefixes.ProjectFolderAccessRosterMarker(projectId, folder.id, actorType),
-      markerTtlSeconds: KeyStoreTtls.ProjectFolderAccessRosterMarkerTtlSeconds,
-      dataTtlSeconds: KeyStoreTtls.ProjectFolderAccessRosterDataTtlSeconds,
+      dataKey: KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, actorType),
+      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, actorType),
+      markerTtlSeconds: KeyStoreTtls.ProjectFolderAccessMarkerTtlSeconds,
+      dataTtlSeconds: KeyStoreTtls.ProjectFolderAccessDataTtlSeconds,
       // the key is by folder id but the granting roles are evaluated against the folder's path, and a
       // rename or move changes neither the id nor anything the DB fingerprint tracks
       fingerprintFetcher: async () => {
-        const fingerprint = await folderPermissionDAL.getFolderAccessRosterFingerprint({ projectId, orgId, actorType });
+        const fingerprint = await folderPermissionDAL.getFolderAccessFingerprint({ projectId, orgId, actorType });
         return `${fingerprint}|${folder.environmentSlug}|${folder.path}`;
       },
-      dataFetcher: async () => buildFolderAccessRoster(await fetchRoster(), folder),
-      reviver: reviveFolderAccessRoster
+      dataFetcher: async () => buildFolderAccess(await fetchMembers(), folder),
+      reviver: reviveFolderAccess
     });
 
-  const $listFolderAccessActors = async <TActor extends TRosterActor>(
+  const $listFolderAccessActors = async <TActor extends TProjectMemberActor>(
     dto: TListFolderAccessActorsDTO,
     {
       actorType,
-      fetchRoster,
+      fetchMembers,
       actorIdOf,
       searchFields,
       sortKey
     }: {
       actorType: TFolderActorType;
-      fetchRoster: (scope: TProjectScope) => Promise<TRosterEntry<TActor>[]>;
+      fetchMembers: (scope: TProjectScope) => Promise<TProjectMember<TActor>[]>;
       actorIdOf: (actor: TActor) => string;
       searchFields: (actor: TActor) => (string | null)[];
       sortKey: (actor: TActor) => [name: string, tieBreak: string];
@@ -258,32 +258,32 @@ export const folderPermissionServiceFactory = ({
     assertManageFolderAccess(callerPermission, folder);
 
     const actorField = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
-    // grants stay out of the cached roster so a grant or revoke is visible on the very next request
-    const [roster, grants] = await Promise.all([
-      $getFolderAccessRoster<TActor>({ projectId, orgId, folder, actorType }, () => fetchRoster({ projectId, orgId })),
+    // grants stay out of the cached folder access so a grant or revoke is visible on the very next request
+    const [folderAccess, grants] = await Promise.all([
+      $getFolderAccess<TActor>({ projectId, orgId, folder, actorType }, () => fetchMembers({ projectId, orgId })),
       additionalPrivilegeDAL.find({ projectId, folderId: folder.id, $notNull: [actorField] })
     ]);
     const grantByActorId = new Map(
       grants.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant])
     );
 
-    const { withAccess, withoutAccess } = splitFolderAccessRoster({
-      roster,
+    const { withAccess, withoutAccess } = splitFolderAccess({
+      folderAccess,
       grantByActorId,
       actorIdOf,
       now: new Date()
     });
 
-    const page = (entries: TFolderAccessRosterEntry<TActor>[]) =>
-      paginateRoster(
-        sortRosterEntries(
+    const page = (entries: TFolderAccessEntry<TActor>[]) =>
+      paginateFolderAccessEntries(
+        sortFolderAccessEntries(
           entries.filter((entry) => matchesSearch(search, searchFields(entry.actor))),
           (entry) => sortKey(entry.actor)
         ),
         offset,
         limit
       );
-    const toItem = ({ actor, membership, grant }: TFolderAccessRosterEntry<TActor>): TFolderAccessItem<TActor> => ({
+    const toItem = ({ actor, membership, grant }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => ({
       actor,
       membership,
       folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null
@@ -300,7 +300,7 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
-    const toUser = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TRosterUser>) => ({
+    const toUser = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberUser>) => ({
       userId: actor.userId,
       username: actor.username,
       email: actor.email,
@@ -310,9 +310,9 @@ export const folderPermissionServiceFactory = ({
       folderRBACAccess
     });
 
-    const result = await $listFolderAccessActors<TRosterUser>(dto, {
+    const result = await $listFolderAccessActors<TProjectMemberUser>(dto, {
       actorType: ActorType.USER,
-      fetchRoster: (scope) => folderPermissionDAL.findProjectUserRoster(scope),
+      fetchMembers: (scope) => folderPermissionDAL.findProjectUsersWithRoles(scope),
       actorIdOf: (user) => user.userId,
       searchFields: (user) => [user.username, user.email, user.firstName, user.lastName],
       sortKey: (user) => [user.username, user.userId]
@@ -327,16 +327,16 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
-    const toIdentity = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TRosterIdentity>) => ({
+    const toIdentity = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberIdentity>) => ({
       identityId: actor.identityId,
       name: actor.name,
       membership,
       folderRBACAccess
     });
 
-    const result = await $listFolderAccessActors<TRosterIdentity>(dto, {
+    const result = await $listFolderAccessActors<TProjectMemberIdentity>(dto, {
       actorType: ActorType.IDENTITY,
-      fetchRoster: (scope) => folderPermissionDAL.findProjectIdentityRoster(scope),
+      fetchMembers: (scope) => folderPermissionDAL.findProjectIdentitiesWithRoles(scope),
       actorIdOf: (identity) => identity.identityId,
       searchFields: (identity) => [identity.name],
       sortKey: (identity) => [identity.name, identity.identityId]

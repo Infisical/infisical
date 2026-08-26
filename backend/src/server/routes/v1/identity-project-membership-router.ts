@@ -624,7 +624,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.createFolderGrant({
         permission: req.permission,
@@ -673,7 +673,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
         permission: req.permission,
@@ -715,7 +715,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
         permission: req.permission,
@@ -755,7 +755,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
         permission: req.permission,
@@ -804,7 +804,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) =>
       server.services.folderPermission.listFolderAccessIdentities({
         permission: req.permission,

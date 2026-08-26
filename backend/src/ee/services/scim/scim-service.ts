@@ -884,7 +884,8 @@ export const scimServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      permissionService
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.

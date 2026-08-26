@@ -539,9 +539,7 @@ export const removeUsersFromGroupByUserIds = async ({
         );
       }
 
-      for await (const projectId of projectsToInvalidateFolderPermissionsFor) {
-        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
-      }
+      await permissionService.invalidateProjectFolderPermissionCache([...projectsToInvalidateFolderPermissionsFor], tx);
     }
 
     if (membersToRemoveFromGroupPending.length) {

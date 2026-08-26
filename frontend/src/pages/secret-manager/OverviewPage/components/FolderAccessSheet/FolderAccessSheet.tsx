@@ -171,8 +171,9 @@ export const FolderAccessSheet = ({
                   <InfoIcon className="size-3.5 text-muted" />
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-72">
-                  Permissions granted here apply within this folder. The folder itself can still be
-                  moved, edited, or deleted by anyone with folder edit or delete permissions.
+                  Permissions granted here apply only to this folder, nested folders do not inherit
+                  these permissions. The folder can still be moved, edited, or deleted by anyone
+                  with folder edit or delete permissions.
                 </TooltipContent>
               </Tooltip>
             </SheetTitle>

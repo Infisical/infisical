@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { sqlNestRelationships } from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
-import { TRosterIdentity, TRosterRoleRow, TRosterUser } from "./folder-permission-types";
+import { TProjectMemberIdentity, TProjectMemberRoleRow, TProjectMemberUser } from "./folder-permission-types";
 
 export type TFolderPermissionDALFactory = ReturnType<typeof folderPermissionDALFactory>;
 
@@ -14,109 +14,54 @@ type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
 
 type TProjectScope = { projectId: string; orgId: string };
 
-// Nullable columns come back from knex as `T | null | undefined` because the generated table types
-// mark them optional, so every field here has to tolerate undefined and be normalized below.
-type TMaybe<T> = T | null | undefined;
+type TProjectActor = { actorId: string; actorType: TFolderActorType };
 
-type TRosterRoleQueryRow = {
-  membershipRoleId: TMaybe<string>;
-  role: TMaybe<string>;
-  customRoleId: TMaybe<string>;
-  customRoleSlug: TMaybe<string>;
-  customRoleName: TMaybe<string>;
+type TMemberRoleQueryRow = {
+  membershipRoleId: string | null;
+  role: string | null;
+  customRoleId: string | null;
+  customRoleSlug: string | null;
+  customRoleName: string | null;
   customRolePermissions: unknown;
-  isTemporary: TMaybe<boolean>;
-  temporaryAccessEndTime: TMaybe<Date>;
+  isTemporary: boolean | null;
+  temporaryAccessEndTime: Date | null;
 };
 
-type TUserRosterQueryRow = TRosterRoleQueryRow & {
+type TUserMemberQueryRow = TMemberRoleQueryRow & {
   userId: string;
   username: string;
-  email: TMaybe<string>;
-  firstName: TMaybe<string>;
-  lastName: TMaybe<string>;
-  membershipId: TMaybe<string>;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  directMembershipId: string | null;
 };
 
-type TIdentityRosterQueryRow = TRosterRoleQueryRow & {
+type TIdentityMemberQueryRow = TMemberRoleQueryRow & {
   identityId: string;
   name: string;
-  membershipId: TMaybe<string>;
+  directMembershipId: string | null;
 };
 
-const ROSTER_ROLE_COLUMNS = [
-  "membershipRoleId",
-  "role",
-  "customRoleId",
-  "isTemporary",
-  "temporaryAccessEndTime",
-  "customRoleSlug",
-  "customRoleName",
-  "customRolePermissions"
-] as const;
-
-const $actorColumns = (actorType: TFolderActorType) => {
-  const isIdentity = actorType === ActorType.IDENTITY;
-  return {
-    membershipActorColumn: isIdentity ? "actorIdentityId" : "actorUserId",
-    groupTable: isIdentity ? TableName.IdentityGroupMembership : TableName.UserGroupMembership,
-    groupActorColumn: isIdentity ? "identityId" : "userId"
-  };
-};
-
-const $projectScoped = (projectId: string, orgId: string) => (qb: Knex.QueryBuilder) => {
-  void qb
+const $projectMemberships = (conn: Knex, { projectId, orgId }: TProjectScope) =>
+  conn(TableName.Membership)
     .where(`${TableName.Membership}.scope`, AccessScope.Project)
     .where(`${TableName.Membership}.scopeProjectId`, projectId)
     .where(`${TableName.Membership}.scopeOrgId`, orgId);
-};
 
-// Built-in admin role only: a custom role slugged "admin" stores role='custom' and is a regular
-// grantee. Mirrors isActiveRole (permission-fns.ts) so an expired temporary admin does not count.
-const $activeAdminRole = (qb: Knex.QueryBuilder) => {
-  void qb
-    .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-    .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
-    .where((bd) => {
-      void bd
-        .where(`${TableName.MembershipRole}.isTemporary`, false)
-        .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
-    });
-};
+const $userColumns = (conn: Knex) => [
+  conn.ref("id").withSchema(TableName.Users).as("userId"),
+  conn.ref("username").withSchema(TableName.Users).as("username"),
+  conn.ref("email").withSchema(TableName.Users).as("email"),
+  conn.ref("firstName").withSchema(TableName.Users).as("firstName"),
+  conn.ref("lastName").withSchema(TableName.Users).as("lastName")
+];
 
-// Subquery of actor ids holding an active project admin role, directly or through a group. Folder
-// grants replace base permissions at the granted path, so for an admin they could only remove
-// privileges; admins are therefore neither listed as candidates nor accepted as grant targets.
-const $projectAdminActorIds = (
-  conn: Knex,
-  { projectId, orgId, actorType, actorId }: TProjectScope & { actorType: TFolderActorType; actorId?: string }
-) => {
-  const { membershipActorColumn, groupTable, groupActorColumn } = $actorColumns(actorType);
+const $identityColumns = (conn: Knex) => [
+  conn.ref("id").withSchema(TableName.Identity).as("identityId"),
+  conn.ref("name").withSchema(TableName.Identity).as("name")
+];
 
-  const direct = conn(TableName.Membership)
-    .modify($projectScoped(projectId, orgId))
-    .whereNotNull(`${TableName.Membership}.${membershipActorColumn}`)
-    .modify($activeAdminRole)
-    .modify((qb) => {
-      if (actorId) void qb.where(`${TableName.Membership}.${membershipActorColumn}`, actorId);
-    })
-    .select(`${TableName.Membership}.${membershipActorColumn} as actorId`);
-
-  const viaGroup = conn(groupTable)
-    .join(TableName.Membership, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
-    .modify($projectScoped(projectId, orgId))
-    .whereNotNull(`${TableName.Membership}.actorGroupId`)
-    .modify($activeAdminRole)
-    .modify((qb) => {
-      if (actorId) void qb.where(`${groupTable}.${groupActorColumn}`, actorId);
-    })
-    .select(`${groupTable}.${groupActorColumn} as actorId`);
-
-  return direct.union([viaGroup]);
-};
-
-const $rosterRoleSelect = (conn: Knex, actorIdColumn: string) => [
-  conn.ref(actorIdColumn).as("actorId"),
+const $roleColumns = (conn: Knex) => [
   conn.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
   conn.ref("role").withSchema(TableName.MembershipRole).as("role"),
   conn.ref("customRoleId").withSchema(TableName.MembershipRole).as("customRoleId"),
@@ -127,268 +72,246 @@ const $rosterRoleSelect = (conn: Knex, actorIdColumn: string) => [
   conn.ref("permissions").withSchema(TableName.Role).as("customRolePermissions")
 ];
 
-// Every membership_roles row an actor holds in the project, whether the membership is their own or
-// one of their groups', keyed by the actor id so it can be joined onto the actor roster.
-const $rosterRolesUnion = (conn: Knex, { projectId, orgId }: TProjectScope, actorType: TFolderActorType) => {
-  const { membershipActorColumn, groupTable, groupActorColumn } = $actorColumns(actorType);
-  const $withRoles = (qb: Knex.QueryBuilder) => {
-    void qb
-      .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-      .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`);
-  };
+const $directMembershipId = (conn: Knex) => conn.ref("id").withSchema(TableName.Membership).as("directMembershipId");
 
-  const direct = conn(TableName.Membership)
-    .modify($projectScoped(projectId, orgId))
-    .whereNotNull(`${TableName.Membership}.${membershipActorColumn}`)
-    .modify($withRoles)
-    .select($rosterRoleSelect(conn, `${TableName.Membership}.${membershipActorColumn}`));
+// null::uuid keeps the union column typed like memberships.id in the direct branch
+const $noDirectMembershipId = (conn: Knex) => conn.raw("null::uuid as ??", ["directMembershipId"]);
 
-  const viaGroup = conn(groupTable)
-    .join(TableName.Membership, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
-    .modify($projectScoped(projectId, orgId))
+// sqlNestRelationships maps an actor from the first row it meets, so the direct membership row
+// must sort ahead of the group rows for membershipId to be the actor's own membership.
+const $memberRows = (direct: Knex.QueryBuilder, viaGroup: Knex.QueryBuilder) =>
+  direct.unionAll([viaGroup], true).orderBy("directMembershipId", "asc", "last");
+
+const $toMemberRole = (el: TMemberRoleQueryRow): TProjectMemberRoleRow => ({
+  membershipRoleId: el.membershipRoleId as string,
+  role: el.role ?? "",
+  customRoleId: el.customRoleId,
+  customRoleSlug: el.customRoleSlug,
+  customRoleName: el.customRoleName,
+  customRolePermissions: el.customRolePermissions ?? null,
+  isTemporary: Boolean(el.isTemporary),
+  temporaryAccessEndTime: el.temporaryAccessEndTime
+});
+
+const $userMembershipIds = (conn: Knex, scope: TProjectScope, userId: string) => {
+  const direct: Knex.QueryBuilder = $projectMemberships(conn, scope)
+    .where(`${TableName.Membership}.actorUserId`, userId)
+    .select(`${TableName.Membership}.id`);
+
+  const viaGroup = $projectMemberships(conn, scope)
+    .join(
+      TableName.UserGroupMembership,
+      `${TableName.UserGroupMembership}.groupId`,
+      `${TableName.Membership}.actorGroupId`
+    )
     .whereNotNull(`${TableName.Membership}.actorGroupId`)
-    .modify($withRoles)
-    .select($rosterRoleSelect(conn, `${groupTable}.${groupActorColumn}`));
+    .where(`${TableName.UserGroupMembership}.userId`, userId)
+    .select(`${TableName.Membership}.id`);
 
   return direct.unionAll([viaGroup], true);
 };
 
-const $toRosterRole = (el: TRosterRoleQueryRow): TRosterRoleRow => ({
-  membershipRoleId: el.membershipRoleId as string,
-  role: el.role ?? "",
-  customRoleId: el.customRoleId ?? null,
-  customRoleSlug: el.customRoleSlug ?? null,
-  customRoleName: el.customRoleName ?? null,
-  customRolePermissions: el.customRolePermissions ?? null,
-  isTemporary: Boolean(el.isTemporary),
-  temporaryAccessEndTime: el.temporaryAccessEndTime ?? null
-});
+const $identityMembershipIds = (conn: Knex, scope: TProjectScope, identityId: string) => {
+  const direct: Knex.QueryBuilder = $projectMemberships(conn, scope)
+    .where(`${TableName.Membership}.actorIdentityId`, identityId)
+    .select(`${TableName.Membership}.id`);
+
+  const viaGroup = $projectMemberships(conn, scope)
+    .join(
+      TableName.IdentityGroupMembership,
+      `${TableName.IdentityGroupMembership}.groupId`,
+      `${TableName.Membership}.actorGroupId`
+    )
+    .whereNotNull(`${TableName.Membership}.actorGroupId`)
+    .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
+    .select(`${TableName.Membership}.id`);
+
+  return direct.unionAll([viaGroup], true);
+};
+
+const $actorMembershipIds = (conn: Knex, scope: TProjectScope, { actorId, actorType }: TProjectActor) =>
+  actorType === ActorType.USER
+    ? $userMembershipIds(conn, scope, actorId)
+    : $identityMembershipIds(conn, scope, actorId);
 
 export const folderPermissionDALFactory = (db: TDbClient) => {
-  // The direct-membership id is resolved with the same correlated subquery in both union branches
-  // so an actor reachable directly and through a group still dedupes; NULL for group-only actors,
-  // whose membership rows have actor*Id = NULL.
-  const $directMembershipId = (
-    { projectId, orgId }: TProjectScope,
-    actorType: TFolderActorType,
-    actorTable: TableName.Users | TableName.Identity
-  ) =>
-    db(TableName.Membership)
-      .modify($projectScoped(projectId, orgId))
-      .where(`${TableName.Membership}.${$actorColumns(actorType).membershipActorColumn}`, db.ref(`${actorTable}.id`))
-      .select(`${TableName.Membership}.id`)
-      .limit(1)
-      .as("membershipId");
-
-  const $userSelect = (scope: TProjectScope) => [
-    db.ref("id").withSchema(TableName.Users).as("userId"),
-    db.ref("username").withSchema(TableName.Users).as("username"),
-    db.ref("email").withSchema(TableName.Users).as("email"),
-    db.ref("firstName").withSchema(TableName.Users).as("firstName"),
-    db.ref("lastName").withSchema(TableName.Users).as("lastName"),
-    $directMembershipId(scope, ActorType.USER, TableName.Users)
-  ];
-
-  const $identitySelect = (scope: TProjectScope) => [
-    db.ref("id").withSchema(TableName.Identity).as("identityId"),
-    db.ref("name").withSchema(TableName.Identity).as("name"),
-    $directMembershipId(scope, ActorType.IDENTITY, TableName.Identity)
-  ];
-
-  // UNION (not UNION ALL): a single actor can be reached both directly and through several groups.
-  const $usersUnion = (conn: Knex, scope: TProjectScope) => {
-    const direct = conn(TableName.Membership)
-      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
-      .modify($projectScoped(scope.projectId, scope.orgId))
-      .whereNotNull(`${TableName.Membership}.actorUserId`)
-      .where(`${TableName.Users}.isGhost`, false)
-      .select($userSelect(scope));
-
-    // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
-    // membership alone and the flag is no longer cleared when a user is accepted, so filtering it
-    // would hide real access. membership_unique_group_project is partial on `actorGroupId IS NOT
-    // NULL`, so without that predicate the planner has no usable index and seq-scans memberships.
-    const viaGroup = conn(TableName.UserGroupMembership)
-      .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
-      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
-      .modify($projectScoped(scope.projectId, scope.orgId))
-      .whereNotNull(`${TableName.Membership}.actorGroupId`)
-      .where(`${TableName.Users}.isGhost`, false)
-      .select($userSelect(scope));
-
-    return direct.union([viaGroup], true);
-  };
-
-  const $identitiesUnion = (conn: Knex, scope: TProjectScope) => {
-    const direct = conn(TableName.Membership)
-      .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
-      .modify($projectScoped(scope.projectId, scope.orgId))
-      .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-      .select($identitySelect(scope));
-
-    const viaGroup = conn(TableName.IdentityGroupMembership)
-      .join(
-        TableName.Membership,
-        `${TableName.IdentityGroupMembership}.groupId`,
-        `${TableName.Membership}.actorGroupId`
-      )
-      .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityGroupMembership}.identityId`)
-      .modify($projectScoped(scope.projectId, scope.orgId))
-      .whereNotNull(`${TableName.Membership}.actorGroupId`)
-      .select($identitySelect(scope));
-
-    return direct.union([viaGroup], true);
-  };
-
-  const $selectRoster = (
-    conn: Knex,
-    actors: Knex.QueryBuilder,
-    actorIdColumn: string,
-    scope: TProjectScope,
-    actorType: TFolderActorType
-  ) =>
-    conn
-      .from(actors.as("roster"))
-      .leftJoin(
-        $rosterRolesUnion(conn, scope, actorType).as("roster_roles"),
-        "roster_roles.actorId",
-        `roster.${actorIdColumn}`
-      )
-      .select("roster.*", ...ROSTER_ROLE_COLUMNS.map((column) => `roster_roles.${column}`));
-
-  const findProjectUserRoster = async (scope: TProjectScope, tx?: Knex) => {
+  const findProjectUsersWithRoles = async (scope: TProjectScope, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
-      const docs = (await $selectRoster(
-        conn,
-        $usersUnion(conn, scope),
-        "userId",
-        scope,
-        ActorType.USER
-      )) as TUserRosterQueryRow[];
+
+      const direct = $projectMemberships(conn, scope)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .select([...$userColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
+
+      // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
+      // membership alone and the flag is no longer cleared when a user is accepted.
+      const viaGroup = $projectMemberships(conn, scope)
+        .join(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .select([...$userColumns(conn), $noDirectMembershipId(conn), ...$roleColumns(conn)]);
+
+      const rows = (await $memberRows(direct, viaGroup)) as TUserMemberQueryRow[];
 
       return sqlNestRelationships({
-        data: docs,
+        data: rows,
         key: "userId",
-        parentMapper: (el) => ({
+        parentMapper: (el): { actor: TProjectMemberUser } => ({
           actor: {
             userId: el.userId,
             username: el.username,
-            email: el.email ?? null,
-            firstName: el.firstName ?? null,
-            lastName: el.lastName ?? null,
-            membershipId: el.membershipId ?? null
-          } as TRosterUser
+            email: el.email,
+            firstName: el.firstName,
+            lastName: el.lastName,
+            membershipId: el.directMembershipId
+          }
         }),
-        childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toRosterRole }]
+        childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toMemberRole }]
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindProjectUserRoster" });
+      throw new DatabaseError({ error, name: "FindProjectUsersWithRoles" });
     }
   };
 
-  const findProjectIdentityRoster = async (scope: TProjectScope, tx?: Knex) => {
+  const findProjectIdentitiesWithRoles = async (scope: TProjectScope, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
-      const docs = (await $selectRoster(
-        conn,
-        $identitiesUnion(conn, scope),
-        "identityId",
-        scope,
-        ActorType.IDENTITY
-      )) as TIdentityRosterQueryRow[];
+
+      const direct = $projectMemberships(conn, scope)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .select([...$identityColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
+
+      const viaGroup = $projectMemberships(conn, scope)
+        .join(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityGroupMembership}.identityId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select([...$identityColumns(conn), $noDirectMembershipId(conn), ...$roleColumns(conn)]);
+
+      const rows = (await $memberRows(direct, viaGroup)) as TIdentityMemberQueryRow[];
 
       return sqlNestRelationships({
-        data: docs,
+        data: rows,
         key: "identityId",
-        parentMapper: (el) => ({
-          actor: { identityId: el.identityId, name: el.name, membershipId: el.membershipId ?? null } as TRosterIdentity
+        parentMapper: (el): { actor: TProjectMemberIdentity } => ({
+          actor: { identityId: el.identityId, name: el.name, membershipId: el.directMembershipId }
         }),
-        childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toRosterRole }]
+        childrenMapper: [{ key: "membershipRoleId", label: "roles" as const, mapper: $toMemberRole }]
       });
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindProjectIdentityRoster" });
+      throw new DatabaseError({ error, name: "FindProjectIdentitiesWithRoles" });
     }
   };
 
   // Memberships are tracked by createdAt, not updatedAt: every login bumps Membership.updatedAt
-  // (lastLoginTime), which would bust the roster on any member's sign-in.
-  const getFolderAccessRosterFingerprint = async (
+  // (lastLoginTime), which would bust the cached folder access on any member's sign-in.
+  const getFolderAccessFingerprint = async (
     { projectId, orgId, actorType }: TProjectScope & { actorType: TFolderActorType },
     tx?: Knex
   ) => {
     try {
       const conn = tx || db.replicaNode();
-      const { groupTable } = $actorColumns(actorType);
-      const countAndMax = (column: string) => conn.raw(`count(*) || ':' || coalesce(max(??)::text, '')`, [column]);
+      const scope = { projectId, orgId };
+      const countAndMax = (column: string) => conn.raw(`concat(count(*), ':', max(??))`, [column]);
+
+      const memberships = $projectMemberships(conn, scope).select(countAndMax(`${TableName.Membership}.createdAt`));
+
+      const membershipRoles = $projectMemberships(conn, scope)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .select(countAndMax(`${TableName.MembershipRole}.updatedAt`));
+
+      const roles = conn(TableName.Role)
+        .where(`${TableName.Role}.projectId`, projectId)
+        .select(conn.raw(`coalesce(max(??)::text, '')`, [`${TableName.Role}.updatedAt`]));
+
+      const userGroupMemberships = $projectMemberships(conn, scope)
+        .join(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(countAndMax(`${TableName.UserGroupMembership}.createdAt`));
+
+      const identityGroupMemberships = $projectMemberships(conn, scope)
+        .join(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(countAndMax(`${TableName.IdentityGroupMembership}.createdAt`));
+
+      const groupMemberships = actorType === ActorType.USER ? userGroupMemberships : identityGroupMemberships;
 
       const row = await conn
         .select(
-          conn(TableName.Membership)
-            .modify($projectScoped(projectId, orgId))
-            .select(countAndMax(`${TableName.Membership}.createdAt`))
-            .as("memberships"),
-          conn(TableName.MembershipRole)
-            .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-            .modify($projectScoped(projectId, orgId))
-            .select(countAndMax(`${TableName.MembershipRole}.updatedAt`))
-            .as("membershipRoles"),
-          conn(TableName.Role)
-            .where(`${TableName.Role}.projectId`, projectId)
-            .select(conn.raw(`coalesce(max(??)::text, '')`, [`${TableName.Role}.updatedAt`]))
-            .as("roles"),
-          conn(groupTable)
-            .join(TableName.Membership, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
-            .modify($projectScoped(projectId, orgId))
-            .whereNotNull(`${TableName.Membership}.actorGroupId`)
-            .select(countAndMax(`${groupTable}.createdAt`))
-            .as("groupMemberships")
+          memberships.as("memberships"),
+          membershipRoles.as("membershipRoles"),
+          roles.as("roles"),
+          groupMemberships.as("groupMemberships")
         )
         .first<{ memberships: string; membershipRoles: string; roles: string; groupMemberships: string }>();
 
       return [row?.memberships, row?.membershipRoles, row?.roles, row?.groupMemberships].join("|");
     } catch (error) {
-      throw new DatabaseError({ error, name: "FolderAccessRosterFingerprint" });
+      throw new DatabaseError({ error, name: "FolderAccessFingerprint" });
     }
   };
 
-  // Access can be inherited from a group, so this is two lookups rather than one membership read.
-  // The direct check runs first because it is the common case and short-circuits.
   const hasProjectAccess = async (
-    { projectId, orgId, actorId, actorType }: TProjectScope & { actorId: string; actorType: TFolderActorType },
-    tx?: Knex
-  ) => {
-    try {
-      const conn = tx || db.replicaNode();
-      const { membershipActorColumn, groupTable, groupActorColumn } = $actorColumns(actorType);
-
-      const direct = (await conn(TableName.Membership)
-        .modify($projectScoped(projectId, orgId))
-        .where(`${TableName.Membership}.${membershipActorColumn}`, actorId)
-        .first(`${TableName.Membership}.id`)) as unknown as { id: string } | undefined;
-      if (direct) return true;
-
-      const viaGroup = (await conn(groupTable)
-        .join(TableName.Membership, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
-        .modify($projectScoped(projectId, orgId))
-        .where(`${groupTable}.${groupActorColumn}`, actorId)
-        .first(`${TableName.Membership}.id`)) as unknown as { id: string } | undefined;
-
-      return Boolean(viaGroup);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FolderPermissionHasProjectAccess" });
-    }
-  };
-
-  const isProjectAdmin = async (
-    { projectId, orgId, actorId, actorType }: TProjectScope & { actorId: string; actorType: TFolderActorType },
+    { projectId, orgId, actorId, actorType }: TProjectScope & TProjectActor,
     tx?: Knex
   ) => {
     try {
       const conn = tx || db.replicaNode();
       const row = await conn
-        .from($projectAdminActorIds(conn, { projectId, orgId, actorType, actorId }).as("project_admin_actors"))
-        .first<{ actorId: string } | undefined>();
+        .from($actorMembershipIds(conn, { projectId, orgId }, { actorId, actorType }).as("actor_memberships"))
+        .first<{ id: string } | undefined>("id");
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FolderPermissionHasProjectAccess" });
+    }
+  };
+
+  // Built-in admin role only: a custom role slugged "admin" stores role='custom' and is a regular
+  // grantee. Mirrors isActiveRole (permission-fns.ts) so an expired temporary admin does not count.
+  // Folder grants replace base permissions at the granted path, so for an admin they could only
+  // remove privileges; admins are therefore never accepted as grant targets.
+  const isProjectAdmin = async ({ projectId, orgId, actorId, actorType }: TProjectScope & TProjectActor, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const row = await conn(TableName.MembershipRole)
+        .whereIn(
+          `${TableName.MembershipRole}.membershipId`,
+          $actorMembershipIds(conn, { projectId, orgId }, { actorId, actorType })
+        )
+        .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.MembershipRole}.isTemporary`, false)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
+        .first<{ id: string } | undefined>(`${TableName.MembershipRole}.id`);
       return Boolean(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "FolderPermissionIsProjectAdmin" });
@@ -396,9 +319,9 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
   };
 
   return {
-    findProjectUserRoster,
-    findProjectIdentityRoster,
-    getFolderAccessRosterFingerprint,
+    findProjectUsersWithRoles,
+    findProjectIdentitiesWithRoles,
+    getFolderAccessFingerprint,
     hasProjectAccess,
     isProjectAdmin
   };

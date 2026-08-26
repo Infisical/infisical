@@ -308,8 +308,8 @@ describe("Identity folder access CRUD", () => {
     }
   });
 
-  describe("roster", () => {
-    type TRosterIdentity = {
+  describe("folder access list", () => {
+    type TFolderAccessIdentity = {
       identityId: string;
       name: string;
       membership: {
@@ -324,15 +324,15 @@ describe("Identity folder access CRUD", () => {
     const listIdentities = async (
       query = ""
     ): Promise<{
-      identities: TRosterIdentity[];
-      identitiesWithoutAccess: TRosterIdentity[];
+      identities: TFolderAccessIdentity[];
+      identitiesWithoutAccess: TFolderAccessIdentity[];
       totalCount: number;
       totalCountWithoutAccess: number;
     }> => {
-      // the roster is cached behind a 20s marker; tests mutate memberships and list right away
+      // the folder access list is cached behind a 20s marker; tests mutate memberships and list right away
       await testRedis.del(
-        KeyStorePrefixes.ProjectFolderAccessRosterMarker(projectId, folder.id, ActorType.IDENTITY),
-        KeyStorePrefixes.ProjectFolderAccessRosterData(projectId, folder.id, ActorType.IDENTITY)
+        KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.IDENTITY),
+        KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.IDENTITY)
       );
       const res = await testServer.inject({
         method: "GET",
@@ -379,9 +379,7 @@ describe("Identity folder access CRUD", () => {
         expect(granted).toBeDefined();
         expect(granted!.membership.roles).toEqual([]);
         expect(granted!.folderRBACAccess).toEqual(expect.objectContaining({ permission: SecretFolderRole.Read }));
-        expect(after.identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(
-          noAccess.identityId
-        );
+        expect(after.identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(noAccess.identityId);
       } finally {
         await deleteProjectIdentity(noAccess.identityId);
       }
@@ -513,7 +511,7 @@ describe("Identity folder access CRUD", () => {
         expect(totalCount).toBe(identities.length);
       });
 
-      test("grants folder access to a group-derived identity and shows it on the roster", async () => {
+      test("grants folder access to a group-derived identity and shows it in the folder access list", async () => {
         const grantUrl = folderAccessUrl(groupIdentityId);
 
         const createRes = await testServer.inject({
@@ -571,9 +569,7 @@ describe("Identity folder access CRUD", () => {
           const groupAdmin = identities.find((identity) => identity.identityId === groupAdminIdentityId);
           expect(groupAdmin).toBeDefined();
           expect(groupAdmin!.membership.isProjectAdmin).toBe(true);
-          expect(identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(
-            groupAdminIdentityId
-          );
+          expect(identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(groupAdminIdentityId);
         });
 
         test("rejects granting to an identity whose admin role comes from a group", async () => {

@@ -51,6 +51,7 @@ const createService = ({
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
+    find: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
@@ -183,6 +184,24 @@ describe("deleteMembership alert cleanup", () => {
     );
     expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledTimes(1);
     expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledWith(PROJECT_ID, expect.anything());
+  });
+
+  test("removing an org membership invalidates folder permission cache for the identity's projects", async () => {
+    const { service, membershipIdentityDAL, invalidateProjectFolderPermissionCache } = createService();
+    membershipIdentityDAL.find.mockResolvedValue([{ scopeProjectId: "project-a" }, { scopeProjectId: "project-b" }]);
+
+    await service.deleteMembership(buildDto());
+
+    expect(membershipIdentityDAL.find).toHaveBeenCalledWith(
+      {
+        scope: AccessScope.Project,
+        scopeOrgId: SUB_ORG_ID,
+        actorIdentityId: IDENTITY_ID
+      },
+      { tx: expect.anything() as Knex }
+    );
+    expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledTimes(1);
+    expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledWith(["project-a", "project-b"], expect.anything());
   });
 });
 

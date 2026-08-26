@@ -490,8 +490,8 @@ describe("User folder access CRUD", () => {
     }
   });
 
-  describe("roster", () => {
-    type TRosterUser = {
+  describe("folder access list", () => {
+    type TFolderAccessUser = {
       userId: string;
       username: string;
       membership: {
@@ -506,15 +506,15 @@ describe("User folder access CRUD", () => {
     const listUsers = async (
       query = ""
     ): Promise<{
-      users: TRosterUser[];
-      usersWithoutAccess: TRosterUser[];
+      users: TFolderAccessUser[];
+      usersWithoutAccess: TFolderAccessUser[];
       totalCount: number;
       totalCountWithoutAccess: number;
     }> => {
-      // the roster is cached behind a 20s marker; tests mutate memberships and list right away
+      // the folder access list is cached behind a 20s marker; tests mutate memberships and list right away
       await testRedis.del(
-        KeyStorePrefixes.ProjectFolderAccessRosterMarker(projectId, folder.id, ActorType.USER),
-        KeyStorePrefixes.ProjectFolderAccessRosterData(projectId, folder.id, ActorType.USER)
+        KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, ActorType.USER),
+        KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, ActorType.USER)
       );
       const res = await testServer.inject({
         method: "GET",
@@ -772,7 +772,7 @@ describe("User folder access CRUD", () => {
         expect(new Set(users.map((user) => user.userId)).size).toBe(users.length);
       });
 
-      test("grants folder access to a group-derived user and shows it on the roster", async () => {
+      test("grants folder access to a group-derived user and shows it in the folder access list", async () => {
         const grantUrl = folderAccessUrl(groupUserId);
 
         const createRes = await testServer.inject({

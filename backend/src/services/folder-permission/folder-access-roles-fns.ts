@@ -7,14 +7,14 @@ import { ProjectPermissionSub } from "@app/ee/services/permission/project-permis
 import { conditionsMatcher } from "@app/lib/casl";
 
 import {
-  TCachedFolderAccessRoster,
-  TCachedRosterRole,
+  TCachedFolderAccess,
+  TCachedProjectMemberRole,
+  TFolderAccessEntry,
   TFolderAccessRole,
-  TFolderAccessRosterEntry,
-  TResolvedFolder,
-  TRosterActor,
-  TRosterEntry,
-  TRosterRoleRow
+  TProjectMember,
+  TProjectMemberActor,
+  TProjectMemberRoleRow,
+  TResolvedFolder
 } from "./folder-permission-types";
 
 type TFolderAccessProbe = { action: string; subject: ProjectPermissionSub };
@@ -47,7 +47,7 @@ export const BUILT_IN_PROJECT_ROLE_NAMES: Record<string, string> = {
 // The two never collide: a custom role slugged like a built-in still stores role = 'custom'.
 export const folderAccessRoleKey = (role: Pick<TFolderAccessRole, "id" | "slug">) => role.id ?? role.slug;
 
-export const collectDistinctRoles = (entries: { roles: TRosterRoleRow[] }[]): TDistinctProjectRole[] => {
+export const collectDistinctRoles = (entries: { roles: TProjectMemberRoleRow[] }[]): TDistinctProjectRole[] => {
   const byKey = new Map<string, TDistinctProjectRole>();
   entries.forEach(({ roles }) =>
     roles.forEach((row) => {
@@ -88,7 +88,7 @@ export const roleGrantsFolderAccess = (role: TDistinctProjectRole, folder: TFold
   );
 };
 
-export const toCachedRosterRole = (row: TRosterRoleRow): TCachedRosterRole | null => {
+export const toCachedProjectMemberRole = (row: TProjectMemberRoleRow): TCachedProjectMemberRole | null => {
   const temporal = { isTemporary: row.isTemporary, temporaryAccessEndTime: row.temporaryAccessEndTime };
   if (row.role === ProjectMembershipRole.Custom) {
     if (!row.customRoleId || !row.customRoleSlug || !row.customRoleName) return null;
@@ -97,22 +97,22 @@ export const toCachedRosterRole = (row: TRosterRoleRow): TCachedRosterRole | nul
   return { id: null, slug: row.role, name: BUILT_IN_PROJECT_ROLE_NAMES[row.role] ?? row.role, ...temporal };
 };
 
-export const buildFolderAccessRoster = <TActor extends TRosterActor>(
-  entries: TRosterEntry<TActor>[],
+export const buildFolderAccess = <TActor extends TProjectMemberActor>(
+  entries: TProjectMember<TActor>[],
   folder: TFolderLocation
-): TCachedFolderAccessRoster<TActor> => ({
+): TCachedFolderAccess<TActor> => ({
   grantingRoleKeys: collectDistinctRoles(entries)
     .filter((role) => roleGrantsFolderAccess(role, folder))
     .map((role) => role.key),
   actors: entries.map(({ actor, roles }) => ({
     actor,
-    roles: roles.map(toCachedRosterRole).filter((role): role is TCachedRosterRole => role !== null)
+    roles: roles.map(toCachedProjectMemberRole).filter((role): role is TCachedProjectMemberRole => role !== null)
   }))
 });
 
-export const reviveFolderAccessRoster = <TActor extends TRosterActor>(
-  parsed: TCachedFolderAccessRoster<TActor>
-): TCachedFolderAccessRoster<TActor> => ({
+export const reviveFolderAccess = <TActor extends TProjectMemberActor>(
+  parsed: TCachedFolderAccess<TActor>
+): TCachedFolderAccess<TActor> => ({
   ...parsed,
   actors: parsed.actors.map((entry) => ({
     ...entry,
@@ -123,12 +123,12 @@ export const reviveFolderAccessRoster = <TActor extends TRosterActor>(
   }))
 });
 
-const isRoleActiveAt = (role: Pick<TCachedRosterRole, "isTemporary" | "temporaryAccessEndTime">, now: Date) =>
+const isRoleActiveAt = (role: Pick<TCachedProjectMemberRole, "isTemporary" | "temporaryAccessEndTime">, now: Date) =>
   !role.isTemporary || Boolean(role.temporaryAccessEndTime && now < role.temporaryAccessEndTime);
 
 const isBuiltInAdmin = (role: TFolderAccessRole) => role.id === null && role.slug === ProjectMembershipRole.Admin;
 
-const uniqueByKey = (roles: TCachedRosterRole[]) => {
+const uniqueByKey = (roles: TCachedProjectMemberRole[]) => {
   const seen = new Set<string>();
   return roles.filter((role) => {
     const key = folderAccessRoleKey(role);
@@ -138,24 +138,24 @@ const uniqueByKey = (roles: TCachedRosterRole[]) => {
   });
 };
 
-const toPublicRole = ({ id, slug, name }: TCachedRosterRole): TFolderAccessRole => ({ id, slug, name });
+const toPublicRole = ({ id, slug, name }: TCachedProjectMemberRole): TFolderAccessRole => ({ id, slug, name });
 
-export const splitFolderAccessRoster = <TActor extends TRosterActor>({
-  roster,
+export const splitFolderAccess = <TActor extends TProjectMemberActor>({
+  folderAccess,
   grantByActorId,
   actorIdOf,
   now
 }: {
-  roster: TCachedFolderAccessRoster<TActor>;
+  folderAccess: TCachedFolderAccess<TActor>;
   grantByActorId: Map<string, TAdditionalPrivileges>;
   actorIdOf: (actor: TActor) => string;
   now: Date;
 }) => {
-  const granting = new Set(roster.grantingRoleKeys);
-  const withAccess: TFolderAccessRosterEntry<TActor>[] = [];
-  const withoutAccess: TFolderAccessRosterEntry<TActor>[] = [];
+  const granting = new Set(folderAccess.grantingRoleKeys);
+  const withAccess: TFolderAccessEntry<TActor>[] = [];
+  const withoutAccess: TFolderAccessEntry<TActor>[] = [];
 
-  roster.actors.forEach(({ actor, roles }) => {
+  folderAccess.actors.forEach(({ actor, roles }) => {
     const activeRoles = uniqueByKey(roles.filter((role) => isRoleActiveAt(role, now)));
     const isProjectAdmin = activeRoles.some(isBuiltInAdmin);
 
@@ -187,14 +187,14 @@ export const matchesSearch = (search: string | undefined, fields: (string | null
   return fields.some((field) => Boolean(field && field.toLowerCase().includes(term)));
 };
 
-export const sortRosterEntries = <T>(entries: T[], sortKey: (entry: T) => [name: string, tieBreak: string]) =>
+export const sortFolderAccessEntries = <T>(entries: T[], sortKey: (entry: T) => [name: string, tieBreak: string]) =>
   [...entries].sort((a, b) => {
     const [aName, aTieBreak] = sortKey(a);
     const [bName, bTieBreak] = sortKey(b);
     return aName.toLowerCase().localeCompare(bName.toLowerCase()) || aTieBreak.localeCompare(bTieBreak);
   });
 
-export const paginateRoster = <T>(entries: T[], offset: number, limit: number) => ({
+export const paginateFolderAccessEntries = <T>(entries: T[], offset: number, limit: number) => ({
   items: entries.slice(offset, offset + limit),
   totalCount: entries.length
 });
