@@ -226,11 +226,21 @@ function Sidebar({
           data-slot="sidebar"
           data-state={state}
           data-collapsible={state === "collapsed" ? "icon" : ""}
-          className="group"
+          className="group relative"
         >
+          {/* Reserves the row's width without transitioning it, so the animating panel below
+              never relayouts the page content beside it. */}
+          <div
+            aria-hidden
+            className={cn(
+              "h-full",
+              state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)"
+            )}
+          />
           <div
             className={cn(
-              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
+              "absolute inset-y-0 left-0 z-10 flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
+              scope === "admin" ? "bg-background" : "bg-page",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
               (scope === "project" || scope === "pam") && "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
