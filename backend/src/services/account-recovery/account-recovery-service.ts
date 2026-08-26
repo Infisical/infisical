@@ -11,13 +11,15 @@ import { TMembershipUserDALFactory } from "@app/services/membership-user/members
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { validatePasswordResetAuthorization } from "../auth/auth-fns";
+import { validatePasswordResetAuthorization, verifyPublicEmailCaptcha } from "../auth/auth-fns";
+import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "../auth/email-dispatch-guard";
 
 type TAccountRecoveryServiceFactoryDep = {
   userDAL: TUserDALFactory;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  emailDispatchGuard: TEmailDispatchGuardFactory;
 };
 
 export type TAccountRecoveryServiceFactory = ReturnType<typeof accountRecoveryServiceFactory>;
@@ -27,12 +29,38 @@ export const accountRecoveryServiceFactory = ({
   userDAL,
   membershipUserDAL,
   tokenService,
-  smtpService
+  smtpService,
+  emailDispatchGuard
 }: TAccountRecoveryServiceFactoryDep) => {
   /*
    * Account recovery flow via email. Step 1: send recovery email
    */
-  const sendRecoveryEmail = async (unsanitizedUsername: string) => {
+  const sendRecoveryEmail = async ({
+    email: unsanitizedUsername,
+    ip,
+    captchaToken
+  }: {
+    email: string;
+    ip: string;
+    captchaToken?: string;
+  }) => {
+    await verifyPublicEmailCaptcha(captchaToken);
+    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.AccountRecovery, ip });
+
+    const { mailboxHash } = await emailDispatchGuard.acquireMailboxCooldown({
+      purpose: EmailDispatchPurpose.AccountRecovery,
+      email: unsanitizedUsername
+    });
+
+    if (
+      !(await emailDispatchGuard.consumeMailboxAllowance({
+        purpose: EmailDispatchPurpose.AccountRecovery,
+        mailboxHash
+      }))
+    ) {
+      return;
+    }
+
     const sendEmail = async () => {
       const username = sanitizeEmail(unsanitizedUsername);
       const user = await userDAL.findOne({ username });
@@ -110,6 +138,11 @@ export const accountRecoveryServiceFactory = ({
     if (shouldReject) {
       throw new Error("Invalid or expired verification request");
     }
+
+    await emailDispatchGuard.clearMailboxThrottle({
+      purpose: EmailDispatchPurpose.AccountRecovery,
+      mailboxHash: emailDispatchGuard.hashAddress(username).mailboxHash
+    });
 
     const token = crypto.jwt().sign(
       {

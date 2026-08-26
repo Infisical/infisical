@@ -26,6 +26,10 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "scim.operation",
   "sso.provider",
   "sso.action",
+  "signup.mailbox_provider",
+  "signup.address_form",
+  "signup.outcome",
+  "signup.dimension",
   "db.pool.state",
   // Closed enums on infisical.legacy_root_key.usage; per-project attribution is in logs, not here.
   "legacy_key.operation",

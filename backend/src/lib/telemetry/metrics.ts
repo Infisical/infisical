@@ -422,6 +422,41 @@ export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.
   unit: "{error}"
 });
 
+// -- Signup abuse (InfisicalCore meter) -------------------------------------------------------------
+
+export enum SignupMailboxProvider {
+  GOOGLE = "google",
+  OTHER = "other"
+}
+
+export enum SignupAddressForm {
+  CANONICAL = "canonical",
+  ALIASED = "aliased"
+}
+
+export enum SignupOtpOutcome {
+  SENT = "sent",
+  EXISTING_ACCOUNT = "existing-account",
+  MAILBOX_CAPPED = "mailbox-capped",
+  CAPTCHA_REJECTED = "captcha-rejected"
+}
+
+export enum SignupDistinctDimension {
+  SOURCE = "source",
+  MAILBOX = "mailbox"
+}
+
+export const signupOtpRequestCounter = infisicalCoreMeter.createCounter("infisical.signup.otp.request.count", {
+  description: "Signup verification code requests by mailbox provider, address form, and outcome.",
+  unit: "{request}"
+});
+
+export const signupOtpDistinctCounter = infisicalCoreMeter.createCounter("infisical.signup.otp.distinct.count", {
+  description:
+    "First sighting of a source host or target mailbox within the current signup-abuse window. Compare against the request count to separate a broad campaign from a burst against a few targets.",
+  unit: "{entity}"
+});
+
 // Rate limit metric. Wired in error-handler.ts on RateLimitError.
 export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisical.rate_limit.exceeded.count", {
   description: "HTTP 429 responses (rate limit exceeded).",

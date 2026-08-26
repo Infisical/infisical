@@ -5,7 +5,15 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import {
+  SignupAddressForm,
+  SignupDistinctDimension,
+  SignupMailboxProvider,
+  signupOtpDistinctCounter,
+  SignupOtpOutcome,
+  signupOtpRequestCounter
+} from "@app/lib/telemetry/metrics";
+import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -15,11 +23,12 @@ import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-serv
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
+import { extractBearerToken, resolveInvitingOrgId, verifyPublicEmailCaptcha } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
@@ -32,9 +41,17 @@ type TAuthSignupDep = {
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
+  emailDispatchGuard: TEmailDispatchGuardFactory;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+const signupTrafficAttributes = (email: string) => ({
+  "signup.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
+    ? SignupMailboxProvider.GOOGLE
+    : SignupMailboxProvider.OTHER,
+  "signup.address_form": isAliasedEmail(email) ? SignupAddressForm.ALIASED : SignupAddressForm.CANONICAL
+});
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
@@ -47,20 +64,61 @@ export const authSignupServiceFactory = ({
   orgDAL,
   loginService,
   emailDomainDAL,
-  signupOnboardingResponseDAL
+  signupOnboardingResponseDAL,
+  emailDispatchGuard
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
-  const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
+  const beginEmailSignupProcess = async ({
+    email,
+    ip,
+    captchaToken
+  }: {
+    email: string;
+    ip: string;
+    captchaToken?: string;
+  }): Promise<{ cooldownSeconds: number }> => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
-    if (isEmailInvalid) {
-      throw new Error("Provided a disposable email");
+
+    const trafficAttributes = signupTrafficAttributes(sanitizedEmail);
+
+    try {
+      await verifyPublicEmailCaptcha(captchaToken);
+    } catch (err) {
+      signupOtpRequestCounter.add(1, {
+        ...trafficAttributes,
+        "signup.outcome": SignupOtpOutcome.CAPTCHA_REJECTED
+      });
+      throw err;
     }
 
-    // Acquire cooldown before any operation to avoid reliable enumeration oracle and to throttle the
-    // unauthenticated DB queries below (e.g. the SSO-enforced domain lookup).
-    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    if (isEmailInvalid) {
+      throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
+    }
+
+    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.Signup, ip });
+
+    const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.acquireMailboxCooldown({
+      purpose: EmailDispatchPurpose.Signup,
+      email: sanitizedEmail
+    });
+
+    const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash,
+      ip
+    });
+    if (isNewSource) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.SOURCE });
+    if (isNewMailbox) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.MAILBOX });
+
+    if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
+      signupOtpRequestCounter.add(1, {
+        ...trafficAttributes,
+        "signup.outcome": SignupOtpOutcome.MAILBOX_CAPPED
+      });
+      return { cooldownSeconds };
+    }
 
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
@@ -98,6 +156,10 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
+      signupOtpRequestCounter.add(1, {
+        ...trafficAttributes,
+        "signup.outcome": SignupOtpOutcome.EXISTING_ACCOUNT
+      });
       return { cooldownSeconds };
     }
 
@@ -114,6 +176,8 @@ export const authSignupServiceFactory = ({
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
 
+    signupOtpRequestCounter.add(1, { ...trafficAttributes, "signup.outcome": SignupOtpOutcome.SENT });
+
     return { cooldownSeconds };
   };
 
@@ -122,6 +186,10 @@ export const authSignupServiceFactory = ({
     validateEmail(sanitizedEmail);
 
     await tokenService.validateEmailSignupToken(sanitizedEmail, code);
+    await emailDispatchGuard.clearMailboxThrottle({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash: emailDispatchGuard.hashAddress(sanitizedEmail).mailboxHash
+    });
 
     // Only create (or recover) the user after the OTP has been verified.
     let user = await userDAL.findOne({ username: sanitizedEmail });
