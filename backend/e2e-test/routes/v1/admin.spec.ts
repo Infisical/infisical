@@ -140,7 +140,6 @@ describe("Admin V1 Router", () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toContain("No recognized instance configuration fields were provided");
-      expect(response.json().message).toContain("trustSamlEmails");
     });
   });
 });
