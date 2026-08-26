@@ -2,6 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import {
   Checkbox,
   Field,
@@ -17,6 +18,10 @@ import {
 } from "@app/components/v3";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
+import {
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "@app/hooks/api/secretValidationRules";
 
 import { PasswordRequirementsFields } from "./shared";
 
@@ -28,6 +33,8 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
   >();
 
   const id = watch("id");
+  const environmentSlug = watch("environment")?.slug;
+  const secretPath = watch("secretPath");
   const rotationMethod = watch(
     "parameters.rotationMethod",
     UnixLinuxLocalAccountRotationMethod.LoginAsTarget
@@ -192,6 +199,12 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
           />
         )}
       </div>
+      <ValidationRuleOverrideNotice
+        type={SecretValidationRuleType.SecretRotations}
+        provider={SecretRotationRuleProvider.UnixLinuxLocalAccount}
+        environmentSlug={environmentSlug}
+        secretPath={secretPath}
+      />
       <PasswordRequirementsFields />
     </>
   );
