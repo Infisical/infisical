@@ -424,38 +424,48 @@ export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.
 
 // -- Signup abuse (InfisicalCore meter) -------------------------------------------------------------
 
-export enum SignupMailboxProvider {
+export enum EmailDispatchPurpose {
+  SIGNUP = "signup",
+  ACCOUNT_RECOVERY = "account-recovery"
+}
+
+export enum EmailDispatchMailboxProvider {
   GOOGLE = "google",
   OTHER = "other"
 }
 
-export enum SignupAddressForm {
+export enum EmailDispatchAddressForm {
   CANONICAL = "canonical",
   ALIASED = "aliased"
 }
 
-export enum SignupOtpOutcome {
+export enum EmailDispatchOutcome {
   SENT = "sent",
   EXISTING_ACCOUNT = "existing-account",
+  NO_RECIPIENT = "no-recipient",
   MAILBOX_CAPPED = "mailbox-capped",
   CAPTCHA_REJECTED = "captcha-rejected"
 }
 
-export enum SignupDistinctDimension {
+export enum EmailDispatchDimension {
   SOURCE = "source",
   MAILBOX = "mailbox"
 }
 
-export const signupOtpRequestCounter = infisicalCoreMeter.createCounter("infisical.signup.otp.request.count", {
-  description: "Signup verification code requests by mailbox provider, address form, and outcome.",
+export const emailDispatchRequestCounter = infisicalCoreMeter.createCounter("infisical.email_dispatch.request.count", {
+  description:
+    "Requests to the unauthenticated endpoints that mail a caller-chosen address, by purpose, mailbox provider, address form, and outcome.",
   unit: "{request}"
 });
 
-export const signupOtpDistinctCounter = infisicalCoreMeter.createCounter("infisical.signup.otp.distinct.count", {
-  description:
-    "First sighting of a source host or target mailbox within the current signup-abuse window. Compare against the request count to separate a broad campaign from a burst against a few targets.",
-  unit: "{entity}"
-});
+export const emailDispatchDistinctCounter = infisicalCoreMeter.createCounter(
+  "infisical.email_dispatch.distinct.count",
+  {
+    description:
+      "First sighting of a source host or target mailbox within the current abuse window. Compare against the request count to separate a broad campaign from a burst against a few targets.",
+    unit: "{entity}"
+  }
+);
 
 // Rate limit metric. Wired in error-handler.ts on RateLimitError.
 export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisical.rate_limit.exceeded.count", {

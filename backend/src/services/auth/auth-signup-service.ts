@@ -6,12 +6,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
-  SignupAddressForm,
-  SignupDistinctDimension,
-  SignupMailboxProvider,
-  signupOtpDistinctCounter,
-  SignupOtpOutcome,
-  signupOtpRequestCounter
+  EmailDispatchAddressForm,
+  EmailDispatchDimension,
+  emailDispatchDistinctCounter,
+  EmailDispatchMailboxProvider,
+  EmailDispatchOutcome,
+  EmailDispatchPurpose as EmailDispatchMetricPurpose,
+  emailDispatchRequestCounter
 } from "@app/lib/telemetry/metrics";
 import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
@@ -23,11 +24,12 @@ import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-serv
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { extractBearerToken, resolveInvitingOrgId, verifyPublicEmailCaptcha } from "./auth-fns";
+import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { verifyPublicEmailCaptcha } from "./captcha-fns";
 import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 
 type TAuthSignupDep = {
@@ -47,10 +49,13 @@ type TAuthSignupDep = {
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 const signupTrafficAttributes = (email: string) => ({
-  "signup.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
-    ? SignupMailboxProvider.GOOGLE
-    : SignupMailboxProvider.OTHER,
-  "signup.address_form": isAliasedEmail(email) ? SignupAddressForm.ALIASED : SignupAddressForm.CANONICAL
+  "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+  "email_dispatch.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
+    ? EmailDispatchMailboxProvider.GOOGLE
+    : EmailDispatchMailboxProvider.OTHER,
+  "email_dispatch.address_form": isAliasedEmail(email)
+    ? EmailDispatchAddressForm.ALIASED
+    : EmailDispatchAddressForm.CANONICAL
 });
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -85,9 +90,9 @@ export const authSignupServiceFactory = ({
     try {
       await verifyPublicEmailCaptcha(captchaToken);
     } catch (err) {
-      signupOtpRequestCounter.add(1, {
+      emailDispatchRequestCounter.add(1, {
         ...trafficAttributes,
-        "signup.outcome": SignupOtpOutcome.CAPTCHA_REJECTED
+        "email_dispatch.outcome": EmailDispatchOutcome.CAPTCHA_REJECTED
       });
       throw err;
     }
@@ -109,8 +114,16 @@ export const authSignupServiceFactory = ({
       mailboxHash,
       ip
     });
-    if (isNewSource) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.SOURCE });
-    if (isNewMailbox) signupOtpDistinctCounter.add(1, { "signup.dimension": SignupDistinctDimension.MAILBOX });
+    if (isNewSource)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.SOURCE
+      });
+    if (isNewMailbox)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.MAILBOX
+      });
 
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
@@ -133,9 +146,9 @@ export const authSignupServiceFactory = ({
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
 
     if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
-      signupOtpRequestCounter.add(1, {
+      emailDispatchRequestCounter.add(1, {
         ...trafficAttributes,
-        "signup.outcome": SignupOtpOutcome.MAILBOX_CAPPED
+        "email_dispatch.outcome": EmailDispatchOutcome.MAILBOX_CAPPED
       });
       return { cooldownSeconds };
     }
@@ -157,9 +170,9 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
-      signupOtpRequestCounter.add(1, {
+      emailDispatchRequestCounter.add(1, {
         ...trafficAttributes,
-        "signup.outcome": SignupOtpOutcome.EXISTING_ACCOUNT
+        "email_dispatch.outcome": EmailDispatchOutcome.EXISTING_ACCOUNT
       });
       return { cooldownSeconds };
     }
@@ -177,7 +190,7 @@ export const authSignupServiceFactory = ({
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
 
-    signupOtpRequestCounter.add(1, { ...trafficAttributes, "signup.outcome": SignupOtpOutcome.SENT });
+    emailDispatchRequestCounter.add(1, { ...trafficAttributes, "email_dispatch.outcome": EmailDispatchOutcome.SENT });
 
     return { cooldownSeconds };
   };

@@ -11,7 +11,7 @@ vi.mock("@app/lib/config/request", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { verifyPublicEmailCaptcha } from "./auth-fns";
+import { verifyPublicEmailCaptcha } from "./captcha-fns";
 
 const SECRET = "test-captcha-secret";
 const TOKEN = "10000000-aaaa-bbbb-cccc-000000000001";

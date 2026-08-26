@@ -121,8 +121,14 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = String(next);
       return next;
     },
-    incrementByAndRefreshExpiryIfUnderLimit: async () => {
-      return 1;
+    // Enforces the limit rather than always admitting. The stub used to return 1 unconditionally,
+    // which silently disabled any cap built on it for whoever wired this store in next.
+    incrementByAndRefreshExpiryIfUnderLimit: async (key, limit) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current + 1;
+      if (next > limit) return -1;
+      store[key] = String(next);
+      return next;
     },
     decrementByOrDelete: async () => {
       return 0;
