@@ -1832,17 +1832,32 @@ export const FOLDER_ACCESS = {
     projectId: "The ID of the project the folder is in.",
     environmentSlug: "The slug of the environment the folder is in.",
     secretPath: "The path of the folder to list access for.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
-    limit: "The number of users to return.",
-    search: "The text string that user names and email addresses will be filtered by."
+    offset:
+      "The offset to start from, applied to the users with access and the users without access independently. If you enter 10, each list starts from its 10th user.",
+    limit: "The number of users to return in each of the two lists.",
+    search:
+      "The text string that user names and email addresses will be filtered by, applied to both lists.",
+    users:
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    usersWithoutAccess:
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount: "The number of users with access on the folder that match the search.",
+    totalCountWithoutAccess: "The number of users without access on the folder that match the search."
   },
   LIST_IDENTITIES: {
     projectId: "The ID of the project the folder is in.",
     environmentSlug: "The slug of the environment the folder is in.",
     secretPath: "The path of the folder to list access for.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th machine identity.",
-    limit: "The number of machine identities to return.",
-    search: "The text string that machine identity names will be filtered by."
+    offset:
+      "The offset to start from, applied to the machine identities with access and the ones without access independently. If you enter 10, each list starts from its 10th machine identity.",
+    limit: "The number of machine identities to return in each of the two lists.",
+    search: "The text string that machine identity names will be filtered by, applied to both lists.",
+    identities:
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    identitiesWithoutAccess:
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount: "The number of machine identities with access on the folder that match the search.",
+    totalCountWithoutAccess: "The number of machine identities without access on the folder that match the search."
   },
   LIST_USER_GRANTS: {
     projectId: "The ID of the project to list the user's folder access grants in.",

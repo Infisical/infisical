@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
-  TFolderAccessIdentity,
-  TFolderAccessUser,
   TIdentityFolderAccess,
   TListFolderAccessActorsDTO,
+  TListFolderAccessIdentitiesResponse,
+  TListFolderAccessUsersResponse,
   TListIdentityFolderAccessDTO,
   TListUserFolderAccessDTO,
   TUserFolderAccess
@@ -63,7 +63,7 @@ export const useListFolderAccessUsers = ({
       search
     }),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ users: TFolderAccessUser[]; totalCount: number }>(
+      const { data } = await apiRequest.get<TListFolderAccessUsersResponse>(
         `/api/v1/projects/${projectId}/secret-folder-access/users`,
         {
           params: { environmentSlug, secretPath, offset, limit, ...(search ? { search } : {}) }
@@ -119,12 +119,12 @@ export const useListFolderAccessIdentities = ({
       search
     }),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        identities: TFolderAccessIdentity[];
-        totalCount: number;
-      }>(`/api/v1/projects/${projectId}/memberships/secret-folder-access/identities`, {
-        params: { environmentSlug, secretPath, offset, limit, ...(search ? { search } : {}) }
-      });
+      const { data } = await apiRequest.get<TListFolderAccessIdentitiesResponse>(
+        `/api/v1/projects/${projectId}/memberships/secret-folder-access/identities`,
+        {
+          params: { environmentSlug, secretPath, offset, limit, ...(search ? { search } : {}) }
+        }
+      );
       return data;
     },
     enabled: Boolean(projectId) && Boolean(environmentSlug) && Boolean(secretPath)

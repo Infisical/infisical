@@ -904,7 +904,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       hide: true,
       operationId: "listFolderAccessUsers",
       tags: [ApiDocsTags.FolderAccess],
-      description: "List every user in a project with the access they have on a folder.",
+      description:
+        "List the users of a project split by whether they have access on a folder, with the project roles that grant it.",
       security: [
         {
           bearerAuth: []
@@ -921,8 +922,12 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          users: SanitizedFolderAccessUserSchema.array(),
-          totalCount: z.number()
+          users: SanitizedFolderAccessUserSchema.array().describe(FOLDER_ACCESS.LIST_USERS.users),
+          usersWithoutAccess: SanitizedFolderAccessUserSchema.array().describe(
+            FOLDER_ACCESS.LIST_USERS.usersWithoutAccess
+          ),
+          totalCount: z.number().describe(FOLDER_ACCESS.LIST_USERS.totalCount),
+          totalCountWithoutAccess: z.number().describe(FOLDER_ACCESS.LIST_USERS.totalCountWithoutAccess)
         })
       }
     },

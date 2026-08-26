@@ -39,7 +39,12 @@ import {
 
 import { AddFolderAccessSheet } from "./AddFolderAccessSheet";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
-import { byName, TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
+import {
+  byAdminThenName,
+  TFolderAccessActor,
+  toIdentityActor,
+  toUserActor
+} from "./folder-access.utils";
 import { FolderAccessRow } from "./FolderAccessRow";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
@@ -94,7 +99,7 @@ export const FolderAccessSheet = ({
       [
         ...(users?.users ?? []).map(toUserActor),
         ...(identities?.identities ?? []).map(toIdentityActor)
-      ].sort(byName),
+      ].sort(byAdminThenName),
     [users, identities]
   );
 
@@ -224,7 +229,7 @@ export const FolderAccessSheet = ({
                   <EmptyDescription>
                     {debouncedSearch.trim()
                       ? "No users or machine identities match your search."
-                      : "This project has no users or machine identities yet."}
+                      : "No users or machine identities have access to this folder."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

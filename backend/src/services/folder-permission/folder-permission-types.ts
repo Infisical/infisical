@@ -1,4 +1,4 @@
-import { SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
@@ -84,4 +84,63 @@ export type TFolderGrant = {
   temporaryAccessEndTime: Date | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TFolderAccessRole = {
+  id: string | null;
+  slug: string;
+  name: string;
+};
+
+export type TFolderAccessMembership = {
+  id: string | null;
+  isProjectAdmin: boolean;
+  roles: TFolderAccessRole[];
+};
+
+export type TRosterRoleRow = {
+  membershipRoleId: string;
+  role: string;
+  customRoleId: string | null;
+  customRoleSlug: string | null;
+  customRoleName: string | null;
+  customRolePermissions: unknown;
+  isTemporary: boolean;
+  temporaryAccessEndTime: Date | null;
+};
+
+export type TCachedRosterRole = TFolderAccessRole & {
+  isTemporary: boolean;
+  temporaryAccessEndTime: Date | null;
+};
+
+export type TRosterActor = { membershipId: string | null };
+
+export type TRosterUser = TRosterActor & {
+  userId: string;
+  username: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+export type TRosterIdentity = TRosterActor & {
+  identityId: string;
+  name: string;
+};
+
+export type TRosterEntry<TActor extends TRosterActor> = {
+  actor: TActor;
+  roles: TRosterRoleRow[];
+};
+
+export type TCachedFolderAccessRoster<TActor extends TRosterActor> = {
+  actors: { actor: TActor; roles: TCachedRosterRole[] }[];
+  grantingRoleKeys: string[];
+};
+
+export type TFolderAccessRosterEntry<TActor extends TRosterActor> = {
+  actor: TActor;
+  membership: TFolderAccessMembership;
+  grant: TAdditionalPrivileges | null;
 };

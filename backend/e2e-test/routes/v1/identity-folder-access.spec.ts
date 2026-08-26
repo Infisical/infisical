@@ -7,8 +7,10 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { ActorType } from "@app/services/auth/auth-type";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -307,12 +309,31 @@ describe("Identity folder access CRUD", () => {
   });
 
   describe("roster", () => {
+    type TRosterIdentity = {
+      identityId: string;
+      name: string;
+      membership: {
+        id: string | null;
+        isProjectAdmin: boolean;
+        roles: { id: string | null; slug: string; name: string }[];
+      };
+      folderRBACAccess: Record<string, unknown> | null;
+    };
+    const memberRole = { id: null, slug: ProjectMembershipRole.Member, name: "Member" };
+
     const listIdentities = async (
       query = ""
     ): Promise<{
-      identities: { identityId: string; name: string; folderRBACAccess: Record<string, unknown> | null }[];
+      identities: TRosterIdentity[];
+      identitiesWithoutAccess: TRosterIdentity[];
       totalCount: number;
+      totalCountWithoutAccess: number;
     }> => {
+      // the roster is cached behind a 20s marker; tests mutate memberships and list right away
+      await testRedis.del(
+        KeyStorePrefixes.ProjectFolderAccessRosterMarker(projectId, folder.id, ActorType.IDENTITY),
+        KeyStorePrefixes.ProjectFolderAccessRosterData(projectId, folder.id, ActorType.IDENTITY)
+      );
       const res = await testServer.inject({
         method: "GET",
         url: folderAccessIdentitiesUrl(query),
@@ -322,9 +343,48 @@ describe("Identity folder access CRUD", () => {
       return res.json();
     };
 
-    test("excludes project admin identities from the roster", async () => {
-      const { identities } = await listIdentities("&limit=100");
-      expect(identities.map((identity) => identity.identityId)).not.toContain(adminIdentityId);
+    test("lists project admin identities as flagged, non-grantable entries", async () => {
+      const { identities, identitiesWithoutAccess } = await listIdentities("&limit=100");
+      const admin = identities.find((identity) => identity.identityId === adminIdentityId);
+      expect(admin).toBeDefined();
+      expect(admin!.membership.isProjectAdmin).toBe(true);
+      // never a candidate: that list is what the grant picker offers, and granting to an admin 400s
+      expect(identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(adminIdentityId);
+    });
+
+    test("lists identities without a granting role separately until they receive a grant", async () => {
+      const noAccess = await createProjectIdentity(ProjectMembershipRole.NoAccess);
+      try {
+        const before = await listIdentities("&limit=100");
+        expect(before.identities.map((identity) => identity.identityId)).not.toContain(noAccess.identityId);
+        const excluded = before.identitiesWithoutAccess.find((identity) => identity.identityId === noAccess.identityId);
+        expect(excluded).toBeDefined();
+        expect(excluded!.folderRBACAccess).toBeNull();
+        expect(excluded!.membership.id).toEqual(expect.any(String));
+        expect(excluded!.membership.roles).toEqual([
+          { id: null, slug: ProjectMembershipRole.NoAccess, name: "No Access" }
+        ]);
+        expect(before.totalCountWithoutAccess).toBeGreaterThan(0);
+
+        const createRes = await testServer.inject({
+          method: "POST",
+          url: folderAccessUrl(noAccess.identityId),
+          headers: authHeaders(),
+          body: { ...folderTarget, permission: SecretFolderRole.Read }
+        });
+        expect(createRes.statusCode).toBe(200);
+
+        const after = await listIdentities("&limit=100");
+        const granted = after.identities.find((identity) => identity.identityId === noAccess.identityId);
+        expect(granted).toBeDefined();
+        expect(granted!.membership.roles).toEqual([]);
+        expect(granted!.folderRBACAccess).toEqual(expect.objectContaining({ permission: SecretFolderRole.Read }));
+        expect(after.identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(
+          noAccess.identityId
+        );
+      } finally {
+        await deleteProjectIdentity(noAccess.identityId);
+      }
     });
 
     test("lists project identities and annotates only the granted one", async () => {
@@ -334,6 +394,8 @@ describe("Identity folder access CRUD", () => {
       expect(memberBefore).toBeDefined();
       expect(memberBefore!.folderRBACAccess).toBeNull();
       expect(memberBefore).not.toHaveProperty("roles");
+      expect(memberBefore!.membership.id).toEqual(expect.any(String));
+      expect(memberBefore!.membership.roles).toEqual([memberRole]);
 
       const createRes = await testServer.inject({
         method: "POST",
@@ -504,9 +566,14 @@ describe("Identity folder access CRUD", () => {
           await testDb(TableName.Identity).where({ id: groupAdminIdentityId }).del();
         });
 
-        test("excludes an identity whose admin role comes from a group", async () => {
-          const { identities } = await listIdentities("&limit=100");
-          expect(identities.map((identity) => identity.identityId)).not.toContain(groupAdminIdentityId);
+        test("flags an identity whose admin role comes from a group", async () => {
+          const { identities, identitiesWithoutAccess } = await listIdentities("&limit=100");
+          const groupAdmin = identities.find((identity) => identity.identityId === groupAdminIdentityId);
+          expect(groupAdmin).toBeDefined();
+          expect(groupAdmin!.membership.isProjectAdmin).toBe(true);
+          expect(identitiesWithoutAccess.map((identity) => identity.identityId)).not.toContain(
+            groupAdminIdentityId
+          );
         });
 
         test("rejects granting to an identity whose admin role comes from a group", async () => {

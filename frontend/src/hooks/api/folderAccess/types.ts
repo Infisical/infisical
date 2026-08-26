@@ -31,20 +31,52 @@ export type TFolderAccess = {
   updatedAt: string;
 };
 
+export type TFolderAccessRole = {
+  id: string | null;
+  slug: string;
+  name: string;
+};
+
+// id is null when the actor reaches the project only through a group
+export type TFolderAccessMembership = {
+  id: string | null;
+  isProjectAdmin: boolean;
+  roles: TFolderAccessRole[];
+};
+
 export type TFolderAccessUser = {
   userId: string;
-  membershipId: string | null;
   username: string;
   email: string | null;
   firstName: string | null;
   lastName: string | null;
+  membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
 };
 
 export type TFolderAccessIdentity = {
   identityId: string;
   name: string;
+  membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
+};
+
+// `users` have access on the folder and membership.roles holds only the roles granting it (empty
+// when the access comes from the folder grant alone). `usersWithoutAccess` have none, their
+// membership.roles holds every role, and folderRBACAccess is always null. search/offset/limit
+// apply to each group independently.
+export type TListFolderAccessUsersResponse = {
+  users: TFolderAccessUser[];
+  usersWithoutAccess: TFolderAccessUser[];
+  totalCount: number;
+  totalCountWithoutAccess: number;
+};
+
+export type TListFolderAccessIdentitiesResponse = {
+  identities: TFolderAccessIdentity[];
+  identitiesWithoutAccess: TFolderAccessIdentity[];
+  totalCount: number;
+  totalCountWithoutAccess: number;
 };
 
 export type TUserFolderAccess = TFolderAccess & { userId: string };
