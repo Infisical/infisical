@@ -2,7 +2,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger } from "@app/lib/logger";
 import { resolveInstanceEncryptionKeyBuffer } from "@app/services/kms/kms-fns";
 
-import { generateRootEncryptionKey, resolveKekBuffer } from "./encryption-key-rotation-fns";
+import { generateRootEncryptionKey, getKeyRemovalEligibleAt, resolveKekBuffer } from "./encryption-key-rotation-fns";
 
 // The cryptography module logs during initialization, and the logger is a module-level singleton that
 // only exists once initLogger has run.
@@ -85,5 +85,33 @@ describe("resolveKekBuffer", () => {
       expect(message).toContain(command);
       expect(resolveKekBuffer(generateRootEncryptionKey(isFips), isFips)).toHaveLength(32);
     }
+  });
+});
+
+describe("getKeyRemovalEligibleAt", () => {
+  const RETENTION_DAYS = 7;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const supersededAt = new Date("2026-01-01T00:00:00.000Z");
+
+  it("counts from when the key was superseded if nothing has started on it", () => {
+    const at = getKeyRemovalEligibleAt({ supersededAt, lastResolvedAt: null }, RETENTION_DAYS);
+
+    expect(at.toISOString()).toBe("2026-01-08T00:00:00.000Z");
+  });
+
+  it("restarts the clock when an instance starts on the key", () => {
+    // The whole reason this is computed rather than shown as supersededAt plus the window: a straggler
+    // boot is evidence the key is still needed, and the collector declines while that evidence is fresh.
+    const lastResolvedAt = new Date(supersededAt.getTime() + 5 * DAY_MS);
+    const at = getKeyRemovalEligibleAt({ supersededAt, lastResolvedAt }, RETENTION_DAYS);
+
+    expect(at.toISOString()).toBe("2026-01-13T00:00:00.000Z");
+  });
+
+  it("ignores a stamp older than the supersede, which cannot be evidence about this key", () => {
+    const lastResolvedAt = new Date(supersededAt.getTime() - 3 * DAY_MS);
+    const at = getKeyRemovalEligibleAt({ supersededAt, lastResolvedAt }, RETENTION_DAYS);
+
+    expect(at.toISOString()).toBe("2026-01-08T00:00:00.000Z");
   });
 });

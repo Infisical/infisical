@@ -29,7 +29,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 const SuperAdminSchema = SanitizedUserSchema.extend({
   superAdmin: z.boolean().optional().nullable()
@@ -666,7 +666,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
               .object({
                 label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.label),
                 supersededAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.supersededAt),
-                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.lastResolvedAt)
+                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.lastResolvedAt),
+                expiresAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.expiresAt)
               })
               .nullable()
               .describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.description)
@@ -777,7 +778,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteAdminStagedEncryptionKey",
       description: ENCRYPTION_KEY_ROTATION.DELETE_STAGED.description,
-      querystring: z.object({
+      body: z.object({
         label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_STAGED.label)
       })
     },
@@ -787,7 +788,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.query.label });
+      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.body.label });
 
       void res.status(204);
     }
@@ -802,9 +803,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteAdminExpiringEncryptionKey",
       description: ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.description,
-      querystring: z.object({
+      body: z.object({
         label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.label),
-        force: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.force)
+        force: z.boolean().default(false).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.force)
       })
     },
     onRequest: (req, res, done) => {
@@ -814,8 +815,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       await server.services.encryptionKeyRotation.deleteExpiringKey({
-        label: req.query.label,
-        force: req.query.force
+        label: req.body.label,
+        force: req.body.force
       });
 
       void res.status(204);

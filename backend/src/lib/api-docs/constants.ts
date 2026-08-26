@@ -3970,6 +3970,8 @@ export const ENCRYPTION_KEY_ROTATION = {
         "The key this instance used before the current one. Null if none is still accepted. It still starts an instance so a fleet can finish rolling over, and is removed automatically once the retention window passes.",
       label: "Label of the previous key. Pass it when you remove that key.",
       supersededAt: "When the current key took effect.",
+      expiresAt:
+        "When this key becomes eligible for automatic removal. An instance starting on it restarts this clock, since that is evidence one still needs it. The weekly cleanup removes the key on its first run after this time, so the key may outlive it by a few days.",
       lastResolvedAt:
         "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists."
     }

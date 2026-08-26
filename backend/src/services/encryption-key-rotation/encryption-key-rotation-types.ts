@@ -2,7 +2,7 @@ export type TRootKeyStatus = {
   encryptionStrategy: string | null;
   active: { label: string | null; activatedAt: Date };
   staged: { label: string | null; createdAt: Date } | null;
-  expiring: { label: string | null; supersededAt: Date; lastResolvedAt: Date | null } | null;
+  expiring: { label: string | null; supersededAt: Date; lastResolvedAt: Date | null; expiresAt: Date } | null;
 };
 
 export type TCreateRotationDTO = {

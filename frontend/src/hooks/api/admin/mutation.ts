@@ -215,7 +215,7 @@ export const useDeleteStagedEncryptionKey = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ label }: TDeleteStagedEncryptionKeyDTO) => {
-      await apiRequest.delete("/api/v1/admin/encryption/root-key/staged", { params: { label } });
+      await apiRequest.delete("/api/v1/admin/encryption/root-key/staged", { data: { label } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionRootKey() });
@@ -228,7 +228,7 @@ export const useDeleteExpiringEncryptionKey = () => {
   return useMutation({
     mutationFn: async ({ label, force }: TDeleteExpiringEncryptionKeyDTO) => {
       await apiRequest.delete("/api/v1/admin/encryption/root-key/expiring", {
-        params: { label, ...(force ? { force: true } : {}) }
+        data: { label, force: Boolean(force) }
       });
     },
     // Removing the expiring key retires its history row, so the rotations table is stale too.

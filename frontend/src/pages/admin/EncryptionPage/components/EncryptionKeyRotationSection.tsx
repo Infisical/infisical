@@ -168,6 +168,11 @@ export const EncryptionKeyRotationSection = () => {
                       ).toLocaleString()}. Roll that instance onto the new key first.`
                     : "No instance has started on it since the rotation. Instances that have not restarted yet will not have reported."}
                 </p>
+                <p className="mt-2">
+                  It is removed automatically after{" "}
+                  {new Date(rootKey.expiring.expiresAt).toLocaleString()}. If an instance starts
+                  with this key before the expiry date, it will delay removal.
+                </p>
                 <div className="mt-3 flex flex-col gap-2">
                   {rootKey.expiring.lastResolvedAt && (
                     <div className="flex items-start gap-2">
@@ -246,7 +251,11 @@ export const EncryptionKeyRotationSection = () => {
                       <TableCell>
                         {!entry.supersededAt && <Badge variant="success">Active</Badge>}
                         {entry.supersededAt && !entry.retiredAt && (
-                          <Badge variant="neutral">Expiring</Badge>
+                          <Badge variant="neutral">
+                            {rootKey.expiring?.label === entry.label
+                              ? `Expires ${new Date(rootKey.expiring.expiresAt).toLocaleDateString()}`
+                              : "Expiring"}
+                          </Badge>
                         )}
                         {entry.retiredAt && <Badge variant="neutral">Removed</Badge>}
                       </TableCell>

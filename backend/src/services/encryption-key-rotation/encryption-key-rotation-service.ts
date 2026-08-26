@@ -13,7 +13,7 @@ import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal"
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 
-import { generateRootEncryptionKey, resolveKekBuffer } from "./encryption-key-rotation-fns";
+import { generateRootEncryptionKey, getKeyRemovalEligibleAt, resolveKekBuffer } from "./encryption-key-rotation-fns";
 import {
   TCreatedRotation,
   TCreateRotationDTO,
@@ -80,7 +80,11 @@ export const encryptionKeyRotationServiceFactory = ({
         ? {
             label: retained.kekLabel ?? null,
             supersededAt: retained.supersededAt as Date,
-            lastResolvedAt: retained.lastResolvedAt ?? null
+            lastResolvedAt: retained.lastResolvedAt ?? null,
+            expiresAt: getKeyRemovalEligibleAt(
+              { supersededAt: retained.supersededAt as Date, lastResolvedAt: retained.lastResolvedAt },
+              envConfig.KMS_ROOT_KEY_RETENTION_DAYS
+            )
           }
         : null
     };
@@ -282,7 +286,7 @@ export const encryptionKeyRotationServiceFactory = ({
     });
   };
 
-  const runGarbageCollection = async () => {
+  const removeInactiveKeys = async () => {
     const [retained, staged] = await Promise.all([kmsRootConfigDAL.findRetained(), kmsRootConfigDAL.findStaged()]);
 
     // replaceStaged caps staged keys at one, so this is for the admin who generated a key and walked away.
@@ -305,8 +309,6 @@ export const encryptionKeyRotationServiceFactory = ({
 
     if (!retained.length) return;
 
-    const retentionMs = envConfig.KMS_ROOT_KEY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-
     // Promotion leaves exactly one retained key, so there is only ever one row to consider here.
     //
     // lastResolvedAt is the only liveness signal there is, and it can only prove presence. A straggler
@@ -315,8 +317,10 @@ export const encryptionKeyRotationServiceFactory = ({
     // restart with an error naming the key it needs, not lost data.
     const eligible = retained.filter(
       (row) =>
-        !(row.lastResolvedAt && now - new Date(row.lastResolvedAt).getTime() < retentionMs) &&
-        now - new Date(row.supersededAt as Date).getTime() >= retentionMs
+        getKeyRemovalEligibleAt(
+          { supersededAt: row.supersededAt as Date, lastResolvedAt: row.lastResolvedAt },
+          envConfig.KMS_ROOT_KEY_RETENTION_DAYS
+        ).getTime() <= now
     );
 
     for (const row of eligible) {
@@ -325,7 +329,12 @@ export const encryptionKeyRotationServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
         const current = await kmsRootConfigDAL.findById(row.id, tx);
         if (!current || !current.supersededAt) return false;
-        if (current.lastResolvedAt && Date.now() - new Date(current.lastResolvedAt).getTime() < retentionMs)
+        if (
+          getKeyRemovalEligibleAt(
+            { supersededAt: current.supersededAt, lastResolvedAt: current.lastResolvedAt },
+            envConfig.KMS_ROOT_KEY_RETENTION_DAYS
+          ).getTime() > Date.now()
+        )
           return false;
         return $retireRetainedKey(tx, current);
       });
@@ -350,7 +359,7 @@ export const encryptionKeyRotationServiceFactory = ({
       name: CronJobName.KmsRootKeyCleanup,
       pattern: "0 3 * * 0",
       runHashTtlS: 60 * 60,
-      handler: runGarbageCollection
+      handler: removeInactiveKeys
     });
   };
 
@@ -361,6 +370,6 @@ export const encryptionKeyRotationServiceFactory = ({
     createRotation,
     deleteStagedKey,
     deleteExpiringKey,
-    runGarbageCollection
+    runGarbageCollection: removeInactiveKeys
   };
 };

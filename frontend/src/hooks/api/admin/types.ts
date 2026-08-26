@@ -245,7 +245,12 @@ export type TEncryptionRootKey = {
   encryptionStrategy: string | null;
   active: { label: string | null; activatedAt: string };
   staged: { label: string | null; createdAt: string } | null;
-  expiring: { label: string | null; supersededAt: string; lastResolvedAt: string | null } | null;
+  expiring: {
+    label: string | null;
+    supersededAt: string;
+    lastResolvedAt: string | null;
+    expiresAt: string;
+  } | null;
 };
 
 export type TEncryptionKeyRotation = {
