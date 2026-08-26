@@ -151,7 +151,8 @@ describe("adoptProvisionedShadowUser", () => {
 
     const adopted = await adopt(deps);
 
-    expect(adopted?.id).toBe("shadow-1");
+    expect(adopted?.user.id).toBe("shadow-1");
+    expect(adopted?.adoptedFromUsername).toBe(EXTERNAL_ID);
     expect(deps.userDAL.updateById).toHaveBeenCalledWith(
       "shadow-1",
       { username: ASSERTED_EMAIL, email: ASSERTED_EMAIL },
@@ -231,7 +232,7 @@ describe("adoptProvisionedShadowUser", () => {
       orgs: [{ id: OTHER_ORG_ID, rootOrgId: ORG_ID }]
     });
 
-    expect((await adopt(deps))?.username).toBe(ASSERTED_EMAIL);
+    expect((await adopt(deps))?.user.username).toBe(ASSERTED_EMAIL);
   });
 
   test("yields to the winner when a concurrent write takes the asserted email first", async () => {
@@ -242,7 +243,11 @@ describe("adoptProvisionedShadowUser", () => {
     );
     deps.userDAL.findOne.mockResolvedValueOnce(shadowUser()).mockResolvedValueOnce(winner);
 
-    expect(await adopt(deps)).toBe(winner);
+    const yielded = await adopt(deps);
+
+    expect(yielded?.user).toBe(winner);
+    // Nothing was rewritten, so the caller must not record this as an adoption.
+    expect(yielded?.adoptedFromUsername).toBeNull();
     // The write was scoped to the savepoint, and the recovery lookup runs outside it on the
     // caller's transaction. Reversed, the aborted transaction would fail the lookup with 25P02.
     expect(deps.tx.transaction).toHaveBeenCalledTimes(1);

@@ -299,6 +299,7 @@ export const oidcConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
+      let adoptedFromUsername: string | null = null;
       const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
@@ -314,23 +315,20 @@ export const oidcConfigServiceFactory = ({
         // identifier instead of their mailbox. Adopt it rather than creating a second account and
         // stranding whatever it was granted on one nobody can log into.
         if (!newUser) {
-          newUser =
-            (await adoptProvisionedShadowUser({
-              externalId,
-              assertedEmail: sanitizedEmail,
-              orgId,
-              rootOrgId: organization.rootOrgId,
-              userDAL,
-              userAliasDAL,
-              orgDAL,
-              tx
-            })) ?? undefined;
+          const adoption = await adoptProvisionedShadowUser({
+            externalId,
+            assertedEmail: sanitizedEmail,
+            orgId,
+            rootOrgId: organization.rootOrgId,
+            userDAL,
+            userAliasDAL,
+            orgDAL,
+            tx
+          });
 
-          if (newUser) {
-            logger.info(
-              { userId: newUser.id, orgId, externalId },
-              `Adopted provisioned placeholder account on first OIDC login [userId=${newUser.id}] [orgId=${orgId}] [externalId=${externalId}] [username=${sanitizedEmail}]`
-            );
+          if (adoption) {
+            newUser = adoption.user;
+            adoptedFromUsername = adoption.adoptedFromUsername;
           }
         }
 
@@ -408,6 +406,30 @@ export const oidcConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (adoptedFromUsername) {
+        logger.info(
+          { userId: user.id, orgId, externalId },
+          "Adopted provisioned placeholder account on first OIDC login"
+        );
+
+        await auditLogService.createAuditLog({
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          orgId,
+          event: {
+            type: EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED,
+            metadata: {
+              userId: user.id,
+              externalId,
+              previousUsername: adoptedFromUsername,
+              newUsername: sanitizedEmail
+            }
+          }
+        });
+      }
 
       if (isNewUser) {
         void telemetryService.sendPostHogEvents({

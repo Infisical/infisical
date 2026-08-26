@@ -395,6 +395,14 @@ transaction on a constraint violation, so an unscoped retry would fail with `25P
 caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
 branches and are deliberately not wired up.
 
+Because adoption rewrites an existing account's `username` and `email`, it emits an
+`OIDC_PROVISIONED_PLACEHOLDER_ADOPTED` audit event carrying the before and after, not just an
+application log: if one of the refusal checks above ever regresses, the audit trail is what makes it
+findable. That event must never fire on the unique-violation recovery path, where the returned user
+is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
+line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
+it.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:

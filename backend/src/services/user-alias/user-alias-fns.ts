@@ -205,6 +205,11 @@ type TAdoptProvisionedShadowUserDTO = {
   tx: Knex;
 };
 
+type TAdoptProvisionedShadowUserResult = {
+  user: TUsers;
+  adoptedFromUsername: string | null;
+};
+
 /**
  * Provisioning can name someone by their IdP identifier before they have ever logged in, which
  * leaves a placeholder account keyed on that identifier instead of their mailbox. On first login we
@@ -212,7 +217,8 @@ type TAdoptProvisionedShadowUserDTO = {
  * account and stranding whatever the placeholder was granted.
  *
  * Returns null if there is nothing safe to adopt. Only call this once a lookup on the asserted
- * email has missed.
+ * email has missed. A non-null result carries `adoptedFromUsername`, which is null on the yield
+ * path: the user is real either way, but only a non-null value means an account was rewritten.
  */
 export const adoptProvisionedShadowUser = async ({
   externalId,
@@ -223,7 +229,7 @@ export const adoptProvisionedShadowUser = async ({
   userAliasDAL,
   orgDAL,
   tx
-}: TAdoptProvisionedShadowUserDTO): Promise<TUsers | null> => {
+}: TAdoptProvisionedShadowUserDTO): Promise<TAdoptProvisionedShadowUserResult | null> => {
   // We fold case here even though resolveUsersBySsoExternalId doesn't, because this is a username
   // lookup and usernames are canonically lowercase (validateEmail rejects uppercase ones). The
   // placeholder's username came from lowercasing the provisioner's input, so match that form.
@@ -270,16 +276,17 @@ export const adoptProvisionedShadowUser = async ({
   // savepoint: without one, the recovery lookup below and every write the caller still owes after
   // this call would fail with 25P02 instead.
   try {
-    return await tx.transaction((savepoint) =>
+    const adopted = await tx.transaction((savepoint) =>
       userDAL.updateById(candidate.id, { username: assertedEmail, email: assertedEmail }, savepoint)
     );
+    return { user: adopted, adoptedFromUsername: shadowUsername };
   } catch (err) {
     // The caller's read showed nobody held the asserted email, but a read isn't a lock, so a
     // concurrent login or invite can grab it first (users.username is globally unique). Yield to
     // whoever won: same end state as the uncontended path, placeholder left alone.
     if (err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation) {
       const winner = await userDAL.findOne({ username: assertedEmail }, tx);
-      if (winner) return winner;
+      if (winner) return { user: winner, adoptedFromUsername: null };
     }
     throw err;
   }

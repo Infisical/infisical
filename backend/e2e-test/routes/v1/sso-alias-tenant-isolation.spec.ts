@@ -261,7 +261,9 @@ describe("SSO alias resolution is tenant scoped", () => {
 
       const adopted = await adoptAs(org.id, identifier, asserted);
 
-      expect(adopted?.id).toBe(placeholder.id);
+      expect(adopted?.user.id).toBe(placeholder.id);
+      // Non-null is what tells the caller a real rewrite happened and an audit record is owed.
+      expect(adopted?.adoptedFromUsername).toBe(identifier);
       await expect(testDb(TableName.Users).where({ id: placeholder.id }).first()).resolves.toMatchObject({
         username: asserted,
         email: asserted
