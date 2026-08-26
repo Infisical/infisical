@@ -74,7 +74,7 @@ export const FolderAccessRow = ({
       {expiresAt && (
         <Tooltip>
           <TooltipTrigger>
-            <Badge variant={isExpired ? "danger" : "outline"} className="shrink-0">
+            <Badge variant={isExpired ? "danger" : "neutral"} className="shrink-0">
               <ClockIcon />
               {isExpired ? "Expired" : "Expires"} {formatExpiryShort(expiresAt)}
             </Badge>
@@ -117,7 +117,7 @@ export const FolderAccessRow = ({
                 ) : (
                   <Button variant="outline" size="sm" isDisabled={isDisabled}>
                     <TriangleAlertIcon className="text-warning" />
-                    Inherits project role
+                    Access via project role
                     <ChevronDownIcon />
                   </Button>
                 )}
