@@ -81,7 +81,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotations: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -127,7 +127,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
 
@@ -193,7 +193,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationName } = req.params;
       const { projectId, secretPath, environment } = req.query;
@@ -239,7 +239,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretRotation = (await server.services.secretRotationV2.createSecretRotation(
         { ...req.body, type },
@@ -297,7 +297,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
 
@@ -369,7 +369,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
       const { deleteSecrets, revokeGeneratedCredentials } = req.query;
@@ -435,7 +435,7 @@ export const registerSecretRotationEndpoints = <
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
 
@@ -491,7 +491,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
       const { destinationEnvironment, destinationSecretPath, overwriteDestination } = req.body;
@@ -542,7 +542,7 @@ export const registerSecretRotationEndpoints = <
         200: z.object({ secretRotation: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
 
@@ -594,7 +594,7 @@ export const registerSecretRotationEndpoints = <
         204: z.string().length(0)
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, res) => {
       const { rotationId } = req.params;
 

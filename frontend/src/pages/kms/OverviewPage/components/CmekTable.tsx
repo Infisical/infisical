@@ -474,6 +474,7 @@ export const CmekTable = () => {
                       algorithm,
                       isDisabled,
                       isExportable,
+                      hasDeleteProtection,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
@@ -695,14 +696,27 @@ export const CmekTable = () => {
                                   )}
                                   {isDisabled ? "Enable" : "Disable"} Key
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
-                                  isDisabled={cannotDeleteKey}
-                                  variant="danger"
+                                <Tooltip
+                                  open={cannotDeleteKey || hasDeleteProtection ? undefined : false}
                                 >
-                                  <TrashIcon className="mr-2 size-4" />
-                                  Delete Key
-                                </DropdownMenuItem>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                        isDisabled={cannotDeleteKey || hasDeleteProtection}
+                                        variant="danger"
+                                      >
+                                        <TrashIcon className="mr-2 size-4" />
+                                        Delete Key
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    {cannotDeleteKey
+                                      ? "Access Restricted"
+                                      : "Disable delete protection on this key before deleting it"}
+                                  </TooltipContent>
+                                </Tooltip>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>

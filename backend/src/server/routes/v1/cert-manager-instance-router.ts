@@ -39,7 +39,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
       tags: [ApiDocsTags.CertManagerInstance],
       response: { 200: InstanceStateSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const state = await server.services.certManagerInstance.getInstanceState({
         actor: req.permission.type,
@@ -82,7 +82,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.certManagerInstance.listLegacyInstances({
         actor: req.permission.type,
@@ -112,7 +112,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.certManagerInstance.setActiveProject(
         {

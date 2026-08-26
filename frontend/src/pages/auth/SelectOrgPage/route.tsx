@@ -4,6 +4,7 @@ import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
@@ -17,6 +18,7 @@ import {
 } from "@app/hooks/api/organization/queries";
 import { onRequestError, setAuthToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
+import { userKeys } from "@app/hooks/api/users/query-keys";
 
 import { getSsoEnforcementError } from "./SelectOrg.utils";
 import { SelectOrgPage } from "./SelectOrgPage";
@@ -53,6 +55,20 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       if (isInfisicalCloud()) {
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({ event: "signup_completed" });
+      }
+
+      // posthog-js never initializes on the signup path, so the anonymous marketing-site visitor
+      // is never merged into the new account. Identify on user.username, the distinct id the
+      // backend captures signup events with.
+      try {
+        const user = await context.queryClient.ensureQueryData({
+          queryKey: userKeys.getUser,
+          queryFn: fetchUserDetails
+        });
+        const telemetry = new Telemetry().getInstance();
+        telemetry.identify(user.username, user.email ?? user.username);
+      } catch {
+        // best-effort attribution; it must never block the signup redirect
       }
 
       // Provider-verified signups arrive with no org; send them to org setup instead of the

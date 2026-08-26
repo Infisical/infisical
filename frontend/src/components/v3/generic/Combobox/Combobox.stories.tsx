@@ -379,6 +379,19 @@ export const States: Story = {
           isDisabled
         />
       </Field>
+      <Field data-disabled="true">
+        <FieldLabel htmlFor="combobox-disabled-projects">Projects</FieldLabel>
+        <StoryCombobox
+          id="combobox-disabled-projects"
+          multiple
+          options={PROJECTS}
+          value={PROJECTS.slice(0, 2)}
+          onValueChange={() => undefined}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          isDisabled
+        />
+      </Field>
       <Field>
         <FieldLabel htmlFor="combobox-loading">Environment</FieldLabel>
         <StoryCombobox

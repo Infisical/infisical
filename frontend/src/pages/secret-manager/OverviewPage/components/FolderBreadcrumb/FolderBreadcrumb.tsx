@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Copy, FolderIcon, SlashIcon } from "lucide-react";
 
@@ -23,10 +23,28 @@ import { useTimedReset } from "@app/hooks";
 
 type Props = {
   secretPath?: string;
-  onResetSearch: (secretPath: string) => void;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
+type Measurements = {
+  containerWidth: number;
+  segmentWidths: number[];
+  ellipsisWidth: number;
+  folderIconWidth: number;
+  separatorWidth: number;
+};
+
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureContainerRef = useRef<HTMLDivElement>(null);
+
+  const [measurements, setMeasurements] = useState<Measurements>({
+    containerWidth: 0,
+    segmentWidths: [],
+    ellipsisWidth: 0,
+    folderIconWidth: 0,
+    separatorWidth: 0
+  });
+
   const folderPaths = useMemo(() => (secretPath || "").split("/").filter(Boolean), [secretPath]);
 
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -36,38 +54,202 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
     [secretPath]
   );
 
-  // The crumb is a real link, so the browser owns the navigation; this only restores the
-  // filters previously used at that depth, and must not run when the click is a new-tab
-  // gesture that leaves this tab where it is.
-  const onFolderCrumbClick = useCallback(
-    (event: React.MouseEvent, index: number) => {
-      if (event.defaultPrevented) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
-        return;
-      const newSecPath = getCrumbPath(index);
-      if (secretPath === newSecPath) return;
-      onResetSearch(newSecPath);
-    },
-    [getCrumbPath, secretPath, onResetSearch]
-  );
+  // The crumb is a real link, so the browser owns the navigation and preserves the other search
+  // parameters through the route transition.
+  // Measure all elements and track container width
+  const measureElements = useCallback(() => {
+    const container = containerRef.current;
+    const measureContainer = measureContainerRef.current;
+    if (!container || !measureContainer) return;
 
-  const needsEllipsis = folderPaths.length > 2;
-  const startSegments = needsEllipsis ? folderPaths.slice(0, 1) : folderPaths;
-  const endSegments = needsEllipsis ? folderPaths.slice(-1) : [];
-  const hiddenSegments = needsEllipsis ? folderPaths.slice(1, -1) : [];
+    const containerWidth = container.getBoundingClientRect().width;
+    const folderIcon = measureContainer.querySelector("[data-measure='folder-icon']");
+    const separator = measureContainer.querySelector("[data-measure='separator']");
+    const ellipsis = measureContainer.querySelector("[data-measure='ellipsis']");
+    const segments = measureContainer.querySelectorAll("[data-measure='segment']");
+
+    const segmentWidths = Array.from(segments).map((el) => el.getBoundingClientRect().width);
+
+    setMeasurements((prev) => {
+      // Only update if values changed to prevent unnecessary re-renders
+      const newMeasurements = {
+        containerWidth,
+        segmentWidths,
+        ellipsisWidth: ellipsis?.getBoundingClientRect().width ?? 0,
+        folderIconWidth: folderIcon?.getBoundingClientRect().width ?? 0,
+        separatorWidth: separator?.getBoundingClientRect().width ?? 0
+      };
+
+      if (
+        prev.containerWidth === newMeasurements.containerWidth &&
+        prev.ellipsisWidth === newMeasurements.ellipsisWidth &&
+        prev.folderIconWidth === newMeasurements.folderIconWidth &&
+        prev.separatorWidth === newMeasurements.separatorWidth &&
+        prev.segmentWidths.length === newMeasurements.segmentWidths.length &&
+        prev.segmentWidths.every((w, i) => w === newMeasurements.segmentWidths[i])
+      ) {
+        return prev;
+      }
+
+      return newMeasurements;
+    });
+  }, []);
+
+  // Initial measurement and re-measure on path change
+  useEffect(() => {
+    measureElements();
+  }, [measureElements, folderPaths]);
+
+  // Track container width with ResizeObserver
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return () => {};
+
+    const observer = new ResizeObserver(() => {
+      measureElements();
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [measureElements]);
+
+  // Calculate visible segments based on actual measurements
+  const { startCount, endCount, needsEllipsis } = useMemo(() => {
+    const { containerWidth, segmentWidths, ellipsisWidth, folderIconWidth, separatorWidth } =
+      measurements;
+
+    // Before measurements are ready, show minimal state to prevent overflow
+    if (segmentWidths.length === 0 || containerWidth === 0) {
+      return { startCount: 1, endCount: 1, needsEllipsis: folderPaths.length > 2 };
+    }
+
+    // Gap between items: gap-1.5 (6px) on mobile, sm:gap-3 (12px) on larger screens
+    // We use 12px as a safe default since we can't easily detect breakpoint
+    const GAP = 12;
+
+    // Calculate total width of all segments (including separators and gaps)
+    // Each segment has: gap + separator + gap + segment text
+    const totalSegmentWidth = segmentWidths.reduce(
+      (sum, w) => sum + w + separatorWidth + GAP * 2,
+      0
+    );
+    // The copy-path button is a fixed-width sibling after the breadcrumb; subtract its
+    // footprint so the path collapses before it would collide with the button.
+    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
+    const COPY_BUTTON_WIDTH = 28;
+    const copyButtonReserve = folderPaths.length > 0 ? COPY_BUTTON_WIDTH + GAP : 0;
+    const availableWidth = containerWidth - folderIconWidth - GAP - copyButtonReserve;
+
+    // If everything fits, show all
+    if (totalSegmentWidth <= availableWidth) {
+      return { startCount: folderPaths.length, endCount: 0, needsEllipsis: false };
+    }
+
+    // Need to collapse - prioritize showing the last segment
+    const ellipsisFullWidth = ellipsisWidth + separatorWidth + GAP * 2;
+    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + separatorWidth + GAP * 2;
+    const firstSegmentFullWidth = segmentWidths[0] + separatorWidth + GAP * 2;
+
+    // Minimum: just ellipsis + last segment
+    const minWidth = ellipsisFullWidth + lastSegmentFullWidth;
+
+    // If we can't even fit ellipsis + last, just show what we can
+    if (minWidth > availableWidth) {
+      return { startCount: 0, endCount: 1, needsEllipsis: true };
+    }
+
+    // Check if we can fit first + ellipsis + last
+    const withFirstWidth = minWidth + firstSegmentFullWidth;
+    let start = withFirstWidth <= availableWidth ? 1 : 0;
+    let end = 1;
+    let usedWidth = start === 1 ? withFirstWidth : minWidth;
+
+    // Greedily add segments from end first (more relevant), then start
+    let addedFromEnd = true;
+    while (usedWidth < availableWidth && start + end < folderPaths.length) {
+      if (addedFromEnd && end < folderPaths.length - start) {
+        const nextEndIdx = folderPaths.length - end - 1;
+        const nextWidth = segmentWidths[nextEndIdx] + separatorWidth + GAP * 2;
+        if (usedWidth + nextWidth <= availableWidth) {
+          end += 1;
+          usedWidth += nextWidth;
+        } else {
+          break;
+        }
+      } else if (start < folderPaths.length - end) {
+        const nextWidth = segmentWidths[start] + separatorWidth + GAP * 2;
+        if (usedWidth + nextWidth <= availableWidth) {
+          start += 1;
+          usedWidth += nextWidth;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+      addedFromEnd = !addedFromEnd;
+    }
+
+    const needsCollapse = start + end < folderPaths.length;
+    return {
+      startCount: start,
+      endCount: needsCollapse ? end : 0,
+      needsEllipsis: needsCollapse
+    };
+  }, [measurements, folderPaths.length]);
+
+  // Derive visible segments
+  const startSegments = needsEllipsis ? folderPaths.slice(0, startCount) : folderPaths;
+  const endSegments = needsEllipsis && endCount > 0 ? folderPaths.slice(-endCount) : [];
+  const hiddenSegments = needsEllipsis
+    ? folderPaths.slice(startCount, endCount > 0 ? folderPaths.length - endCount : undefined)
+    : [];
+
+  // Canonical secret path (matches onFolderCrumbClick's "/"-prefixed format)
   const fullPath = `/${folderPaths.join("/")}`;
 
   return (
-    <div className="relative flex h-7 min-w-0 flex-1 items-center gap-1 overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+    >
+      {/* Hidden measurement container */}
+      <div
+        ref={measureContainerRef}
+        className="pointer-events-none invisible absolute flex items-center gap-1.5 whitespace-nowrap sm:gap-3"
+        aria-hidden="true"
+      >
+        <span data-measure="folder-icon" className="inline-flex items-center">
+          <FolderIcon className="size-4" />
+        </span>
+        <span data-measure="separator" className="inline-flex items-center">
+          <SlashIcon className="size-3 -rotate-12" />
+        </span>
+        {folderPaths.map((path, index) => (
+          <span
+            key={`measure-${path}-${index + 1}`}
+            data-measure="segment"
+            className="inline-flex items-center text-sm"
+          >
+            {path}
+          </span>
+        ))}
+        <span data-measure="ellipsis" className="inline-flex size-6 items-center justify-center">
+          <BreadcrumbEllipsis className="size-6" />
+        </span>
+      </div>
+
+      {/* Visible breadcrumb (shrinks/clips on its own so the copy button is never clipped) */}
       <Breadcrumb className="min-w-0 overflow-hidden">
-        <BreadcrumbList className="min-w-0 flex-nowrap">
+        <BreadcrumbList className="flex-nowrap">
+          {/* Root folder icon */}
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
-                onClick={(event) => onFolderCrumbClick(event, 0)}
                 aria-label="Root folder"
               >
                 <FolderIcon />
@@ -75,23 +257,23 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
             </BreadcrumbLink>
           </BreadcrumbItem>
 
+          {/* Start segments */}
           {startSegments.map((path, index) => (
             <React.Fragment key={`start-${path}-${index + 1}`}>
               <BreadcrumbSeparator>
                 <SlashIcon className="size-3 -rotate-12" />
               </BreadcrumbSeparator>
               {!needsEllipsis && index === startSegments.length - 1 ? (
-                <BreadcrumbPage title={path} className="min-w-0 truncate">
+                <BreadcrumbPage title={path} className="truncate">
                   {path}
                 </BreadcrumbPage>
               ) : (
-                <BreadcrumbItem className="min-w-0">
-                  <BreadcrumbLink asChild title={path} className="min-w-0 truncate">
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild title={path} className="truncate">
                     <Link
                       from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                       to="."
                       search={(prev) => ({ ...prev, secretPath: getCrumbPath(index + 1) })}
-                      onClick={(event) => onFolderCrumbClick(event, index + 1)}
                     >
                       {path}
                     </Link>
@@ -101,7 +283,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
             </React.Fragment>
           ))}
 
-          {hiddenSegments.length > 0 && (
+          {/* Ellipsis dropdown for hidden segments */}
+          {needsEllipsis && hiddenSegments.length > 0 && (
             <>
               <BreadcrumbSeparator>
                 <SlashIcon className="size-3 -rotate-12" />
@@ -116,7 +299,7 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                   <DropdownMenuContent className="relative max-w-[300px] pl-3" align="start">
                     <div className="absolute top-3 bottom-[23px] left-[8px] w-px bg-muted/50" />
                     {hiddenSegments.map((segment, idx) => {
-                      const originalIndex = 1 + idx;
+                      const originalIndex = startCount + idx;
                       return (
                         <DropdownMenuItem
                           asChild
@@ -131,7 +314,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                               ...prev,
                               secretPath: getCrumbPath(originalIndex + 1)
                             })}
-                            onClick={(event) => onFolderCrumbClick(event, originalIndex + 1)}
                           >
                             <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
 
@@ -147,19 +329,42 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
             </>
           )}
 
-          {endSegments[0] && (
-            <>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
-              <BreadcrumbPage title={endSegments[0]} className="min-w-0 truncate">
-                {endSegments[0]}
-              </BreadcrumbPage>
-            </>
-          )}
+          {/* End segments */}
+          {endSegments.map((path, index) => {
+            const originalIndex = folderPaths.length - endCount + index;
+            const isLast = index === endSegments.length - 1;
+            return (
+              <React.Fragment key={`end-${originalIndex}`}>
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+                {isLast ? (
+                  <BreadcrumbPage title={path} className="truncate">
+                    {path}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild title={path} className="truncate">
+                      <Link
+                        from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                        to="."
+                        search={(prev) => ({
+                          ...prev,
+                          secretPath: getCrumbPath(originalIndex + 1)
+                        })}
+                      >
+                        {path}
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                )}
+              </React.Fragment>
+            );
+          })}
         </BreadcrumbList>
       </Breadcrumb>
 
+      {/* Copy current folder path (pinned outside the clip flow so it's always visible) */}
       {folderPaths.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>

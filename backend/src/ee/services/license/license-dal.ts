@@ -181,15 +181,10 @@ export const licenseDALFactory = (db: TDbClient) => {
     return users;
   };
 
-  const countOfOrgIdentities = async (orgId: string | null, tx?: Knex) => {
-    const { identities } = await countBillableOrgActors(orgId, tx);
-    return identities;
-  };
-
   const countOrgUsersAndIdentities = async (orgId: string | null, tx?: Knex) => {
     const { users, identities } = await countBillableOrgActors(orgId, tx);
     return users + identities;
   };
 
-  return { countBillableOrgActors, countOfOrgMembers, countOrgUsersAndIdentities, countOfOrgIdentities };
+  return { countBillableOrgActors, countOfOrgMembers, countOrgUsersAndIdentities };
 };
