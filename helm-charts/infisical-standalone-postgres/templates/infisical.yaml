@@ -66,6 +66,12 @@ spec:
             port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 20
         ports: 
         - containerPort: 8080
         env:
