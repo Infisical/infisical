@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
-import { BotIcon, CheckIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import { BotIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -13,7 +13,6 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -23,7 +22,6 @@ import {
 import { useOrganization } from "@app/context";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
-  TPamResourceRole,
   useAddAccountGroupMember,
   useAddAccountIdentityMember,
   useAddAccountMember,
@@ -76,37 +74,6 @@ const ASSIGNEE_ICON: Record<PamMemberKind, typeof UserIcon> = {
   [PamMemberKind.Group]: UsersIcon,
   [PamMemberKind.Identity]: BotIcon
 };
-
-const AssigneeSelectOption = ({ children, ...props }: OptionProps<AssigneeOption>) => {
-  const Icon = ASSIGNEE_ICON[props.data.kind];
-  return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <div className="min-w-0">
-          <p className="truncate">{children}</p>
-          {props.data.subtitle && (
-            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-          )}
-        </div>
-      </div>
-    </components.Option>
-  );
-};
-
-const ResourceRoleOption = ({ isSelected, children, ...props }: OptionProps<TPamResourceRole>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex items-start justify-between gap-2 whitespace-normal">
-      <div className="min-w-0">
-        <p>{children}</p>
-        {props.data.description && (
-          <p className="text-xs leading-4 text-muted">{props.data.description}</p>
-        )}
-      </div>
-      {isSelected && <CheckIcon className="mt-0.5 size-4 shrink-0" />}
-    </div>
-  </components.Option>
-);
 
 type Props = {
   isOpen: boolean;
@@ -390,33 +357,66 @@ export const AssignAccessModal = ({
 
         <div className="flex flex-col gap-4">
           <Field>
-            <FieldLabel>Assignee</FieldLabel>
+            <FieldLabel htmlFor="pam-assign-access-assignee">Assignee</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                id="pam-assign-access-assignee"
                 value={isEdit ? lockedActor : selectedActor}
                 options={assigneeOptions}
                 isDisabled={isEdit}
-                onChange={(opt) => setSelectedActor((opt as AssigneeOption | null) ?? null)}
+                onValueChange={(opt) => setSelectedActor(opt)}
                 getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
                 getOptionLabel={(opt) => opt.label}
-                components={{ Option: AssigneeSelectOption }}
                 placeholder="Pick a user, group, or identity..."
-                noOptionsMessage={() => "No users, groups, or identities available to assign."}
+                searchPlaceholder="Pick a user, group, or identity..."
+                searchAriaLabel="Search users, groups, and identities"
+                emptyMessage="No users, groups, or identities available to assign."
+                modal
+                renderOption={(opt) => {
+                  const Icon = ASSIGNEE_ICON[opt.kind];
+                  return (
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <Icon className="size-4 shrink-0 text-muted" />
+                      <span className="min-w-0">
+                        <span className="block truncate">{opt.label}</span>
+                        {opt.subtitle && (
+                          <span className="block truncate text-xs leading-4 text-muted">
+                            {opt.subtitle}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  );
+                }}
               />
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>Role</FieldLabel>
+            <FieldLabel htmlFor="pam-assign-access-role">Role</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                id="pam-assign-access-role"
                 value={selectedRole}
                 options={resourceRoles ?? []}
-                onChange={(opt) => setRoleSlug((opt as TPamResourceRole | null)?.slug ?? "")}
+                onValueChange={(opt) => setRoleSlug(opt.slug)}
                 getOptionValue={(opt) => opt.slug}
                 getOptionLabel={(opt) => opt.name}
-                components={{ Option: ResourceRoleOption }}
                 placeholder="Select a role..."
+                searchPlaceholder="Select a role..."
+                searchAriaLabel="Search roles"
+                emptyMessage="No roles found."
+                modal
+                renderOption={(opt) => (
+                  <span className="block min-w-0">
+                    <span className="block">{opt.name}</span>
+                    {opt.description && (
+                      <span className="block text-xs leading-4 whitespace-normal text-muted">
+                        {opt.description}
+                      </span>
+                    )}
+                  </span>
+                )}
               />
             </FieldContent>
           </Field>
