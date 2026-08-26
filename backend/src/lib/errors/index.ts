@@ -137,6 +137,18 @@ export class NotFoundError extends Error {
   }
 }
 
+export class ConflictError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message ?? "The request conflicts with the current state of the resource");
+    this.name = name || "Conflict";
+    this.error = error;
+  }
+}
+
 export class DisableRotationErrors extends Error {
   name: string;
 
