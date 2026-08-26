@@ -1,7 +1,13 @@
 import { GroupBase } from "react-select";
 import ReactSelectCreatable, { CreatableProps } from "react-select/creatable";
 
-import { ClearIndicator, DropdownIndicator, MultiValueRemove, Option } from "./components";
+import {
+  ClearIndicator,
+  DropdownIndicator,
+  MenuList,
+  MultiValueRemove,
+  Option
+} from "./components";
 import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
 export const CreatableSelect = <T,>({
@@ -23,7 +29,14 @@ export const CreatableSelect = <T,>({
       menuPortalTarget={menuPortalTarget}
       menuPosition={menuPosition}
       styles={selectStyles as any}
-      components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option, ...components }}
+      components={{
+        DropdownIndicator,
+        ClearIndicator,
+        MenuList,
+        MultiValueRemove,
+        Option,
+        ...components
+      }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}
       {...props}
     />

@@ -22,7 +22,15 @@ export const Route = createFileRoute(
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
   search: {
-    middlewares: [stripSearchParams({ secretPath: "/", search: "", environments: [] })]
+    middlewares: [
+      stripSearchParams({
+        secretPath: "/",
+        search: "",
+        environments: [],
+        tags: undefined,
+        filterBy: undefined
+      })
+    ]
   },
   beforeLoad: ({ context, params }) => ({
     ...context,

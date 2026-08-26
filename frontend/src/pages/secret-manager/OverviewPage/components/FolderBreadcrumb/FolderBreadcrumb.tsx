@@ -23,7 +23,6 @@ import { useTimedReset } from "@app/hooks";
 
 type Props = {
   secretPath?: string;
-  onResetSearch: (secretPath: string) => void;
 };
 
 type Measurements = {
@@ -34,7 +33,7 @@ type Measurements = {
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,21 +54,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
     [secretPath]
   );
 
-  // The crumb is a real link, so the browser owns the navigation; this only restores the
-  // filters previously used at that depth, and must not run when the click is a new-tab
-  // gesture that leaves this tab where it is.
-  const onFolderCrumbClick = useCallback(
-    (event: React.MouseEvent, index: number) => {
-      if (event.defaultPrevented) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
-        return;
-      const newSecPath = getCrumbPath(index);
-      if (secretPath === newSecPath) return;
-      onResetSearch(newSecPath);
-    },
-    [getCrumbPath, secretPath, onResetSearch]
-  );
-
+  // The crumb is a real link, so the browser owns the navigation and preserves the other search
+  // parameters through the route transition.
   // Measure all elements and track container width
   const measureElements = useCallback(() => {
     const container = containerRef.current;
@@ -264,7 +250,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
-                onClick={(event) => onFolderCrumbClick(event, 0)}
                 aria-label="Root folder"
               >
                 <FolderIcon />
@@ -289,7 +274,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                       from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                       to="."
                       search={(prev) => ({ ...prev, secretPath: getCrumbPath(index + 1) })}
-                      onClick={(event) => onFolderCrumbClick(event, index + 1)}
                     >
                       {path}
                     </Link>
@@ -330,7 +314,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                               ...prev,
                               secretPath: getCrumbPath(originalIndex + 1)
                             })}
-                            onClick={(event) => onFolderCrumbClick(event, originalIndex + 1)}
                           >
                             <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
 
@@ -369,7 +352,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                           ...prev,
                           secretPath: getCrumbPath(originalIndex + 1)
                         })}
-                        onClick={(event) => onFolderCrumbClick(event, originalIndex + 1)}
                       >
                         {path}
                       </Link>

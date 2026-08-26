@@ -66,10 +66,26 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    optimizeDeps: {
+      // Deps that the initial esbuild scan can't reach: `react/jsx-runtime` is injected by the
+      // SWC transform (the scanner reads pre-transform source), and the rest are only imported
+      // from lazy route components. Discovering them mid-session re-runs optimizeDeps, which
+      // rotates the ?v= hash on every /node_modules/.vite/deps URL and force-reloads the page.
+      include: [
+        "react/jsx-runtime",
+        "crypto",
+        "react-icons/bs",
+        "react-icons/di",
+        "react-icons/si",
+        "react-icons/vsc",
+        "@fortawesome/free-brands-svg-icons",
+        "@fortawesome/free-regular-svg-icons"
+      ]
+    },
     experimental: {
       renderBuiltUrl(filename, { hostType }) {
         if (hostType === "js") {
-          const fallback = `function(f){ return "/" + f; }`;
+          const fallback = 'function(f){ return "/" + f; }';
           const fn = `(typeof window.__toCdnUrl === "function" ? window.__toCdnUrl : ${fallback})`;
           return { runtime: `${fn}(${JSON.stringify(filename)})` };
         }

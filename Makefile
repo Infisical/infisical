@@ -16,6 +16,16 @@ up-prod:
 down:
 	docker compose -f docker-compose.dev.yml down
 
+# Wipes the persisted Vite dep-prebundle cache. Reach for this when the dev server serves
+# stale or broken /node_modules/.vite/deps chunks; it re-optimizes on the next `make up-dev`.
+COMPOSE_PROJECT_NAME ?= $(notdir $(CURDIR))
+# docker compose normalizes the project name (lowercased, chars outside [a-z0-9_-] dropped)
+# before prefixing volume names, so normalize it the same way to match dirs like PLATFOR-532.
+COMPOSE_VOLUME_PREFIX = $(shell echo '$(COMPOSE_PROJECT_NAME)' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
+clear-frontend-cache:
+	docker compose -f docker-compose.dev.yml rm -sf frontend
+	docker volume rm -f $(COMPOSE_VOLUME_PREFIX)_frontend_vite_cache
+
 reviewable-ui:
 	cd frontend && \
 	npm run lint:fix && \
@@ -74,7 +84,7 @@ seed-dev-ldap:
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-ldap.ts $(ORG_ID)
 
 seed-dev-oidc:
-	# Sets up the Infisical side for OIDC SSO testing: an oidc@infisical.com admin, a verified
+	# Sets up the Infisical side for OIDC SSO testing: an admin@oidc.com admin, a verified
 	# domain, and an active OIDC config. With ORG_ID=<uuid> it configures that existing org;
 	# otherwise it bootstraps a dedicated `oidc` org. Needs the stack up (`make up-dev-oidc`).
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-oidc.ts $(ORG_ID)
