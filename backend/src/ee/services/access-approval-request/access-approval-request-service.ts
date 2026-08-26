@@ -107,11 +107,6 @@ export const accessApprovalRequestServiceFactory = ({
   notificationService,
   queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
-  // A transaction always runs against the primary, so this read cannot miss a write that has just
-  // committed the way a replica read can.
-  const $findAccessRequestOnPrimary = (requestId: string) =>
-    accessApprovalRequestDAL.transaction((tx) => accessApprovalRequestDAL.findById(requestId, tx));
-
   const $queueAccessRequestWebhook = async ({
     action,
     accessApprovalRequest,
@@ -214,8 +209,6 @@ export const accessApprovalRequestServiceFactory = ({
         }
       },
       {
-        // A stable job id would let BullMQ deduplicate every state change after the first on the
-        // same request and drop it without a trace, so each delivery gets its own.
         jobId: `access-request-webhook-${accessApprovalRequest.id}-${alphaNumericNanoId(6)}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
@@ -439,7 +432,9 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const created = await $findAccessRequestOnPrimary(approval.id);
+      const created = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(approval.id, tx)
+      );
       if (created) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Created,
@@ -647,7 +642,9 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const edited = await $findAccessRequestOnPrimary(requestId);
+      const edited = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(requestId, tx)
+      );
       if (edited) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Edited,
@@ -1049,7 +1046,9 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const reviewed = await $findAccessRequestOnPrimary(accessApprovalRequest.id);
+      const reviewed = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx)
+      );
       if (reviewed) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Reviewed,
@@ -1145,7 +1144,9 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     try {
-      const revoked = await $findAccessRequestOnPrimary(requestId);
+      const revoked = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(requestId, tx)
+      );
       if (revoked) {
         await $queueAccessRequestWebhook({
           action: AccessRequestWebhookAction.Revoked,

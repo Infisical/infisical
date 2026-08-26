@@ -477,14 +477,6 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
-  // A transaction always runs against the primary, so this read cannot miss a write that has just
-  // committed the way a replica read can. A caller-supplied transaction is used directly, since the
-  // row it needs is only visible inside it.
-  const $findChangeRequestOnPrimary = (requestId: string, tx?: Knex) =>
-    tx
-      ? secretApprovalRequestDAL.findById(requestId, tx)
-      : secretApprovalRequestDAL.transaction((trx) => secretApprovalRequestDAL.findById(requestId, trx));
-
   const $queueChangeRequestWebhook = async ({
     action,
     secretApprovalRequest,
@@ -559,8 +551,6 @@ export const secretApprovalRequestServiceFactory = ({
         }
       },
       {
-        // A stable job id would let BullMQ deduplicate every state change after the first on the
-        // same request and drop it without a trace, so each delivery gets its own.
         jobId: `change-request-webhook-${secretApprovalRequest.id}-${alphaNumericNanoId(6)}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
@@ -648,7 +638,9 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const reviewedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
+      const reviewedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
       const [reviewedFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
         secretApprovalRequest.folderId
       ]);
@@ -735,7 +727,9 @@ export const secretApprovalRequestServiceFactory = ({
     const statusAction =
       status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
     try {
-      const changedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
+      const changedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
       const [statusFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
         secretApprovalRequest.folderId
       ]);
@@ -1374,7 +1368,9 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const mergedRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
+      const mergedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
       if (mergedRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Merged,
@@ -1891,7 +1887,9 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const createdRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id);
+      const createdRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
       if (createdRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Created,
@@ -2412,7 +2410,11 @@ export const secretApprovalRequestServiceFactory = ({
     try {
       // A caller-supplied transaction has not committed yet, so the reads have to go through it
       // to see the request at all, and to avoid checking out a second connection while it is open.
-      const createdRequest = await $findChangeRequestOnPrimary(secretApprovalRequest.id, providedTx);
+      const createdRequest = providedTx
+        ? await secretApprovalRequestDAL.findById(secretApprovalRequest.id, providedTx)
+        : await secretApprovalRequestDAL.transaction((tx) =>
+            secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+          );
       if (createdRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Created,
