@@ -66,9 +66,15 @@ export const kubernetesTemplateFieldsCreateSchema = kubernetesTemplateFieldsBase
 // mirroring $redactTemplateSecrets. Derived from the request schemas so a new template
 // field cannot reach the API undocumented, and so the response serializer drops anything
 // the redaction step misses
-export const ldapTemplateFieldsResponseSchema = ldapTemplateFieldsSchema.omit({ bindPass: true }).extend({
-  hasBindPass: z.boolean().describe("Whether a bind password is stored for this template")
-});
+// Older releases stored raw partial LDAP patches, so existing rows may legitimately omit
+// fields that are required when creating a template. Keep reads tolerant so one such row
+// cannot fail an entire list response.
+export const ldapTemplateFieldsResponseSchema = ldapTemplateFieldsSchema
+  .omit({ bindPass: true })
+  .partial()
+  .extend({
+    hasBindPass: z.boolean().describe("Whether a bind password is stored for this template")
+  });
 
 export const kubernetesTemplateFieldsResponseSchema = kubernetesTemplateFieldsBaseSchema
   .omit({ tokenReviewerJwt: true })

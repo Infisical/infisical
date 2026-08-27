@@ -851,6 +851,7 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -858,6 +859,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let template: TIdentityAuthTemplates | undefined;
     if (templateId) {
+      if (!plan.machineIdentityAuthTemplates) {
+        throw new BadRequestError({
+          message:
+            "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+        });
+      }
+
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
         actor,
@@ -894,7 +902,6 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -1174,6 +1181,7 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -1184,6 +1192,13 @@ export const identityKubernetesAuthServiceFactory = ({
     // link CHANGE requires the attach-template permission; a re-assert must stay editable
     // for actors that hold identity EditAuth alone
     if (templateId && templateId !== identityKubernetesAuth.templateId) {
+      if (!plan.machineIdentityAuthTemplates) {
+        throw new BadRequestError({
+          message:
+            "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+        });
+      }
+
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
         actor,
@@ -1232,7 +1247,6 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

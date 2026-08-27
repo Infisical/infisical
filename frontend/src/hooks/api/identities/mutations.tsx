@@ -1430,7 +1430,8 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenTrustedIps,
       gatewayId,
       gatewayPoolId,
-      tokenReviewMode
+      tokenReviewMode,
+      verifyTlsCertificate
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -1450,7 +1451,8 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenTrustedIps,
           gatewayId,
           gatewayPoolId,
-          tokenReviewMode
+          tokenReviewMode,
+          verifyTlsCertificate
         }
       );
 
@@ -1576,7 +1578,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenTrustedIps,
       gatewayId,
       gatewayPoolId,
-      tokenReviewMode
+      tokenReviewMode,
+      verifyTlsCertificate
     }) => {
       const {
         data: { identityKubernetesAuth }
@@ -1597,7 +1600,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenTrustedIps,
           gatewayId,
           gatewayPoolId,
-          tokenReviewMode
+          tokenReviewMode,
+          verifyTlsCertificate
         }
       );
 

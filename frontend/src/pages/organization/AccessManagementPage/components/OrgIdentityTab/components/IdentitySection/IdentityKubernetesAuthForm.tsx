@@ -433,7 +433,9 @@ export const IdentityKubernetesAuthForm = ({
               ...customConfigPayload,
               // unlink an existing template so the custom values are accepted
               ...(data.templateId ? { templateId: null } : {}),
-              tokenReviewerJwt: tokenReviewerJwt || null,
+              // a blank field can only mean "clear" when the stored JWT was readable and
+              // prefilled; template-sourced JWTs read back as "" so blank must keep them
+              tokenReviewerJwt: tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined),
               caCert
             }
       );

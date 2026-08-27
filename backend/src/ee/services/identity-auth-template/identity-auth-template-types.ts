@@ -44,25 +44,6 @@ export type TKubernetesTemplateFields = {
   allowedAudience?: string;
 };
 
-// Union type for all template field types
-export type TTemplateFieldsByMethod = {
-  [IdentityAuthTemplateMethod.LDAP]: TLdapTemplateFields;
-  [IdentityAuthTemplateMethod.KUBERNETES]: TKubernetesTemplateFields;
-};
-
-// Generic base types that use conditional types for type safety
-export type TCreateIdentityAuthTemplateDTO = {
-  name: string;
-  authMethod: IdentityAuthTemplateMethod;
-  templateFields: TTemplateFieldsByMethod[IdentityAuthTemplateMethod];
-} & Omit<TProjectPermission, "projectId">;
-
-export type TUpdateIdentityAuthTemplateDTO = {
-  templateId: string;
-  name?: string;
-  templateFields?: Partial<TTemplateFieldsByMethod[IdentityAuthTemplateMethod]>;
-} & Omit<TProjectPermission, "projectId">;
-
 export type TDeleteIdentityAuthTemplateDTO = {
   templateId: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -89,7 +70,3 @@ export type TUnlinkTemplateUsageDTO = {
   templateId: string;
   identityIds: string[];
 } & Omit<TProjectPermission, "projectId">;
-
-// Specific LDAP types for convenience
-export type TCreateLdapTemplateDTO = TCreateIdentityAuthTemplateDTO;
-export type TUpdateLdapTemplateDTO = TUpdateIdentityAuthTemplateDTO;
