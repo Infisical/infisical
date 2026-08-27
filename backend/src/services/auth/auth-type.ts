@@ -107,6 +107,9 @@ export type AuthModeJwtTokenPayload = {
   // Granted OAuth delegation scopes (see OauthScope). The delegated ability is intersected with
   // these in permission-service; an empty/absent list denies all scope-guarded resource access.
   scopes?: string[];
+  // Set instead of `scopes` on RFC 8693 token exchange tokens, which carry the user's authorization
+  // unnarrowed. Never both. See OauthDelegationMode.
+  delegation?: string;
 };
 
 export type AuthModeMfaJwtTokenPayload = {

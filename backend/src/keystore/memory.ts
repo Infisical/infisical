@@ -10,6 +10,9 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
   const listStore: Record<string, string[]> = {};
   const hashStore: Record<string, Record<string, string>> = {};
+  const sortedSetStore: Record<string, Record<string, number>> = {};
+  // Exact membership rather than a HyperLogLog
+  const distinctStore: Record<string, Set<string>> = {};
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
 
@@ -20,7 +23,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     setExpiry: async () => 0,
     ttl: async () => -1,
-    setItemWithExpiry: async (key, value) => {
+    setItemWithExpiry: async (key, _expiryInSeconds, value) => {
       store[key] = value;
       return "OK";
     },
@@ -83,6 +86,32 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
+    setIndexedItemWithExpiry: async ({ indexKey, member, itemKey, value, expiryInSeconds, indexed }) => {
+      store[itemKey] = value;
+      if (!sortedSetStore[indexKey]) sortedSetStore[indexKey] = {};
+      if (indexed) {
+        sortedSetStore[indexKey][member] = Date.now() + expiryInSeconds * 1000;
+      } else {
+        delete sortedSetStore[indexKey][member];
+      }
+    },
+    deleteIndexedItems: async ({ indexKey, members, itemKeys }) => {
+      itemKeys.forEach((key) => delete store[key]);
+      members.forEach((member) => delete sortedSetStore[indexKey]?.[member]);
+    },
+    sortedSetRangeByScore: async (key, min, max) => {
+      const lower = min === "-inf" ? -Infinity : Number(min);
+      const upper = max === "+inf" ? Infinity : Number(max);
+      return Object.entries(sortedSetStore[key] ?? {})
+        .filter(([, score]) => score >= lower && score <= upper)
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
+    },
+    sortedSetMembersPrimary: async (key) => {
+      return Object.entries(sortedSetStore[key] ?? {})
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
+    },
     pgIncrementBy: async () => {
       return 1;
     },
@@ -92,17 +121,57 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = String(next);
       return next;
     },
-    incrementByAndRefreshExpiryIfUnderLimit: async () => {
-      return 1;
+    // Enforces the limit rather than always admitting. The stub used to return 1 unconditionally,
+    // which silently disabled any cap built on it for whoever wired this store in next.
+    incrementByAndRefreshExpiryIfUnderLimit: async (key, limit) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current + 1;
+      if (next > limit) return -1;
+      store[key] = String(next);
+      return next;
     },
-    decrementByOrDelete: async () => {
-      return 0;
+    claimLeastLoaded: async (keys, baseOccupancies) => {
+      if (keys.length === 0) return 0;
+      if (keys.length !== baseOccupancies.length) {
+        throw new Error("claimLeastLoaded: baseOccupancies must have one entry per key");
+      }
+      let bestIdx = 0;
+      let bestTotal: number | null = null;
+      keys.forEach((key, i) => {
+        const reserved = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+        const total = baseOccupancies[i] + reserved;
+        if (bestTotal === null || total < bestTotal) {
+          bestTotal = total;
+          bestIdx = i + 1;
+        }
+      });
+      const chosen = keys[bestIdx - 1];
+      const current = typeof store[chosen] === "string" ? parseInt(store[chosen] as string, 10) : 0;
+      store[chosen] = String(current + 1);
+      return bestIdx;
+    },
+    decrementByOrDelete: async (key) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current - 1;
+      if (next <= 0) {
+        delete store[key];
+        return 0;
+      }
+      store[key] = String(next);
+      return next;
     },
     incrementByWithExpiry: async (key, value) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
       const next = current + value;
       store[key] = String(next);
       return next;
+    },
+    probeDistinctMember: async (key, member) => {
+      if (!distinctStore[key]) distinctStore[key] = new Set<string>();
+      const members = distinctStore[key];
+      if (members.has(member)) return false;
+      members.add(member);
+      return true;
     },
     incrementSeededWithExpiry: async (key, seed) => {
       const existing = store[key];
@@ -131,6 +200,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
         delete store[key];
       }
       return keys.length;
+    },
+    getItemsPrimary: async (keys) => {
+      return keys.map((key) => {
+        const value = store[key];
+        return typeof value === "string" ? value : null;
+      });
     },
     getItems: async (keys) => {
       const values = keys.map((key) => {

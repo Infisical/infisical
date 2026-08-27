@@ -21,8 +21,11 @@ import { PamIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
 import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
 import { getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
@@ -65,6 +68,8 @@ type TPamMembershipServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -108,6 +113,8 @@ export const pamMembershipServiceFactory = ({
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
+  userAliasDAL,
+  orgDAL,
   groupDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
@@ -441,6 +448,34 @@ export const pamMembershipServiceFactory = ({
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map(usersByEmail.map((u) => [u.username, u]));
+
+    // The invite this request accompanies resolves IdP identifiers through SSO aliases, so this
+    // half has to as well, or it rejects a user the other half just added. Keyed by the caller's
+    // identifier so the unresolved list still echoes back what they sent.
+    const unmatched = emails.filter((e) => !userByEmail.has(e));
+    if (unmatched.length) {
+      const org = await orgDAL.findById(ctx.actorOrgId);
+      const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+        identifiers: unmatched,
+        orgId: ctx.actorOrgId,
+        rootOrgId: org?.rootOrgId,
+        userAliasDAL,
+        userDAL
+      });
+
+      if (ambiguousIdentifiers.length) {
+        throw new BadRequestError({
+          message: `Identifier(s) ${ambiguousIdentifiers
+            .map((el) => `'${el}'`)
+            .join(
+              ", "
+            )} match more than one SSO account in this organization. Use the user's email address instead, or contact support to resolve the duplicate.`
+        });
+      }
+
+      resolved.forEach((user, identifier) => userByEmail.set(identifier, user));
+    }
+
     const unresolved = emails.filter((e) => !userByEmail.has(e));
 
     const candidates: { userId: string; label: string }[] = [];

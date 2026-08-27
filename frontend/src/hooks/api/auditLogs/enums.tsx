@@ -203,6 +203,7 @@ export enum EventType {
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -304,6 +305,9 @@ export enum EventType {
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",

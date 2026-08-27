@@ -1,3 +1,5 @@
+import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+
 export enum SecretValidationRuleType {
   StaticSecrets = "static-secrets",
   DynamicSecrets = "dynamic-secrets",
@@ -29,8 +31,26 @@ export enum DynamicSecretRuleProvider {
 // Provider identifiers selectable in secret-rotation rules.
 // Mirror of backend `SecretRotationRuleProvider`.
 export enum SecretRotationRuleProvider {
-  PostgresCredentials = "postgres-credentials"
+  PostgresCredentials = "postgres-credentials",
+  MySqlCredentials = "mysql-credentials",
+  MsSqlCredentials = "mssql-credentials",
+  OracleDBCredentials = "oracledb-credentials",
+  UnixLinuxLocalAccount = "unix-linux-local-account",
+  LdapPassword = "ldap-password"
 }
+
+// Maps SecretRotation types to their corresponding validation rule provider.
+// Used by rotation forms to look up the correct provider for ValidationRuleOverrideNotice.
+export const SECRET_ROTATION_TO_RULE_PROVIDER: Partial<
+  Record<SecretRotation, SecretRotationRuleProvider>
+> = {
+  [SecretRotation.PostgresCredentials]: SecretRotationRuleProvider.PostgresCredentials,
+  [SecretRotation.MySqlCredentials]: SecretRotationRuleProvider.MySqlCredentials,
+  [SecretRotation.MsSqlCredentials]: SecretRotationRuleProvider.MsSqlCredentials,
+  [SecretRotation.OracleDBCredentials]: SecretRotationRuleProvider.OracleDBCredentials,
+  [SecretRotation.UnixLinuxLocalAccount]: SecretRotationRuleProvider.UnixLinuxLocalAccount,
+  [SecretRotation.LdapPassword]: SecretRotationRuleProvider.LdapPassword
+};
 
 export type StringConstraintType = Exclude<ConstraintType, ConstraintType.UniqueSecretValue>;
 

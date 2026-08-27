@@ -22,7 +22,6 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
-    route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
@@ -360,7 +359,10 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
 const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/access", [index("redirects/pam-org-access-redirect.tsx")]),
-    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/accounts", [
+      index("pam/PamAccountsPage/route.tsx"),
+      route("/$folderId", "pam/PamAccountsPage/PamFolderPage/route.tsx")
+    ]),
     route("/templates", "pam/PamTemplatesPage/route.tsx"),
     route("/discovery", "pam/PamDiscoveryPage/route.tsx"),
     route("/sessions", "pam/PamSessionsPage/route.tsx"),

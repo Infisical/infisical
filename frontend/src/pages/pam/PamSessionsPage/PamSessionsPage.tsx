@@ -73,11 +73,16 @@ const TerminateCell = ({
   session: TPamSession;
   onTerminate: (session: TPamSession, e?: React.MouseEvent) => void;
 }) => {
-  const { data: perm } = usePamAccountPermission(session.accountId ?? "");
-  const canTerminate = perm?.permission.can(
-    PamResourcePermissionActions.TerminateSessions,
-    PamResourcePermissionSub.PamResource
+  const { data: perm } = usePamAccountPermission(
+    session.accountId ?? "",
+    Boolean(session.accountId)
   );
+  const canTerminate =
+    !session.accountId ||
+    perm?.permission.can(
+      PamResourcePermissionActions.TerminateSessions,
+      PamResourcePermissionSub.PamResource
+    );
 
   if (session.status !== PamSessionStatus.Active || !canTerminate) return null;
 

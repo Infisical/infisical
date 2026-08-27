@@ -26,7 +26,7 @@ export const registerDeprecatedSecretTagRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspaceTags = await server.services.secretTag.getProjectTags({
         actor: req.permission.type,
@@ -59,7 +59,7 @@ export const registerDeprecatedSecretTagRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.getTagById({
         actor: req.permission.type,
@@ -92,7 +92,7 @@ export const registerDeprecatedSecretTagRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.getTagBySlug({
         actor: req.permission.type,

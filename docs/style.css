@@ -3,7 +3,7 @@
 }
 
 .chat-assistant-floating-input {
-  display: none !important;
+  visibility: hidden !important;
 }
 
 #sidebar li > a.text-primary {

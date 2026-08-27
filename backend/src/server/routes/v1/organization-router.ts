@@ -45,6 +45,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
@@ -69,6 +71,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
@@ -125,7 +129,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listOrgIntegrationAuth({
         actorId: req.permission.id,
@@ -243,7 +247,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
@@ -317,7 +321,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.auditLog.getAuditLogPostgresStorageStatus({
         actor: req.permission.type,
@@ -358,7 +362,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers({
         actor: req.permission.type,
@@ -498,7 +502,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
         req.permission.id,
@@ -593,7 +597,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const groups = await server.services.org.getOrgGroups({
         actor: req.permission.type,
@@ -626,7 +630,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { users } = await server.services.membershipUser.listAvailableUsers({
         permission: req.permission,
@@ -658,7 +662,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
         permission: req.permission,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -29,6 +29,7 @@ import {
   useUpdatePkiApplication
 } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 
@@ -52,13 +53,12 @@ type Props = {
 
 export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { projectId, orgId } = useParams({ strict: false });
+  const navigate = useNavigate();
   const editing = (popUp?.application?.data as TPkiApplication | undefined) ?? null;
   const create = useCreatePkiApplication();
   const update = useUpdatePkiApplication();
 
-  const { data: profilesData, isPending: profilesLoading } = useListCertificateProfiles({
-    limit: 100
-  });
+  const { data: profilesData } = useListCertificateProfiles({ limit: 100 });
 
   const profileOptions = useMemo(
     () =>
@@ -102,12 +102,25 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
         createNotification({ type: "success", text: "Application updated" });
       } else {
         const selectedIds = (data.profileIds ?? []).map((p) => p.value);
-        await create.mutateAsync({
+        const created = await create.mutateAsync({
           name: data.name,
           description: data.description,
           profileIds: selectedIds
         });
         createNotification({ type: "success", text: "Application created" });
+        handlePopUpToggle("application", false);
+        // Land on Settings rather than the empty inventory: attaching a profile is the next step
+        // before the application can issue anything.
+        navigate({
+          to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+          params: {
+            orgId: orgId ?? "",
+            projectId: projectId ?? "",
+            applicationName: created.name
+          },
+          search: { selectedTab: ApplicationTab.Settings }
+        });
+        return;
       }
       handlePopUpToggle("application", false);
     } catch (err) {
@@ -161,7 +174,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Field>
             )}
           />
-          {!editing ? (
+          {!editing && profileOptions.length > 0 ? (
             <Controller
               control={control}
               name="profileIds"
@@ -180,16 +193,8 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                     />
                   </FieldContent>
                   <FieldDescription>
-                    Select the profiles this application can issue certificates from.{" "}
-                    {!profilesLoading && !profileOptions.length && (
-                      <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-                        params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                        className="underline hover:text-yellow-400"
-                      >
-                        Create one in Certificate Profiles
-                      </Link>
-                    )}
+                    Select the profiles this application can issue certificates from. You can also
+                    attach them later from the application&apos;s settings.
                   </FieldDescription>
                   {error ? <FieldError>{error.message}</FieldError> : null}
                 </Field>

@@ -1,5 +1,7 @@
 export enum CertStatus {
   ACTIVE = "active",
+  RENEWED = "renewed",
+  EXPIRED = "expired",
   REVOKED = "revoked"
 }
 

@@ -213,6 +213,9 @@ export enum EventType {
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
 
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
   DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
@@ -584,6 +587,7 @@ export enum EventType {
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -846,6 +850,7 @@ export enum EventType {
   DELETE_OAUTH_CLIENT = "delete-oauth-client",
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+  OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -930,6 +935,7 @@ interface UserActorMetadata {
   username: string;
   permission?: Record<string, unknown>;
   authMethod?: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -2102,6 +2108,25 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
+  };
+}
+
+interface UpdateUserOrgMembershipEvent {
+  type: EventType.UPDATE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+    metadataKeys?: string[];
+  };
+}
+
+interface DeleteUserOrgMembershipEvent {
+  type: EventType.DELETE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
   };
 }
 
@@ -4060,6 +4085,7 @@ interface CreateCmekEvent {
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4074,8 +4100,10 @@ interface UpdateCmekEvent {
   type: EventType.UPDATE_CMEK;
   metadata: {
     keyId: string;
+    keyName: string;
     name?: string;
     description?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4873,6 +4901,16 @@ interface OidcGroupMembershipMappingRemoveUserEvent {
     userId: string;
     userEmail: string;
     userGroupsClaim: string[];
+  };
+}
+
+interface OidcProvisionedPlaceholderAdoptedEvent {
+  type: EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED;
+  metadata: {
+    userId: string;
+    externalId: string;
+    previousUsername: string;
+    newUsername: string;
   };
 }
 
@@ -6747,6 +6785,10 @@ interface CreateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6756,6 +6798,10 @@ interface UpdateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6782,6 +6828,18 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+  };
+}
+
+interface OauthClientTokenExchangeEvent {
+  type: EventType.OAUTH_CLIENT_TOKEN_EXCHANGE;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    clientName: string;
+    subjectUserId: string;
+    subjectExternalId: string;
+    tokenVersionId: string;
   };
 }
 
@@ -7240,6 +7298,8 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | UpdateUserOrgMembershipEvent
+  | DeleteUserOrgMembershipEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent
@@ -7498,6 +7558,7 @@ export type Event =
   | RemovePkiSignerMemberEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
+  | OidcProvisionedPlaceholderAdoptedEvent
   | CreateKmipClientEvent
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent
@@ -7706,6 +7767,7 @@ export type Event =
   | DeleteOauthClientEvent
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
+  | OauthClientTokenExchangeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

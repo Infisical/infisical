@@ -78,7 +78,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.listGatewayPools(req.permission);
     }
@@ -100,7 +100,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.getGatewayPoolById({
         poolId: req.params.poolId,
@@ -331,7 +331,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.getConnectedResources({
         poolId: req.params.poolId,

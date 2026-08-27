@@ -33,7 +33,12 @@ export enum DynamicSecretRuleProvider {
 // Provider identifiers selectable in secret-rotation rules.
 // Keep aligned with `SecretRotation` in secret-rotation-v2-enums.ts.
 export enum SecretRotationRuleProvider {
-  PostgresCredentials = "postgres-credentials"
+  PostgresCredentials = "postgres-credentials",
+  MySqlCredentials = "mysql-credentials",
+  MsSqlCredentials = "mssql-credentials",
+  OracleDBCredentials = "oracledb-credentials",
+  UnixLinuxLocalAccount = "unix-linux-local-account",
+  LdapPassword = "ldap-password"
 }
 
 export type StringConstraintType = Exclude<ConstraintType, ConstraintType.UniqueSecretValue>;

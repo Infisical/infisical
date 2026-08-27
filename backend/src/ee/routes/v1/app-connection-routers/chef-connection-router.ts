@@ -38,7 +38,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const dataBags = await server.services.appConnection.chef.listDataBags(connectionId, req.permission);
@@ -68,7 +68,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { dataBagName } = req.query;
