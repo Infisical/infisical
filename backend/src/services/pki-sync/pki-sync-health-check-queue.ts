@@ -69,7 +69,6 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
     | "findPkiSyncsWithHealthCheckCommand"
     | "transaction"
     | "recordHealthCheckOutcome"
-    | "recordHealthCheckSkipped"
     | "findById"
   >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
@@ -451,17 +450,13 @@ export const pkiSyncHealthCheckQueueFactory = ({
       async (job) => {
         const isFinalAttempt = job.attemptsStarted >= (job.opts.attempts ?? JOB_ATTEMPTS);
 
-        const outcome = await $processHealthCheck(job.data.syncId, isFinalAttempt).catch((err: unknown) => {
+        await $processHealthCheck(job.data.syncId, isFinalAttempt).catch((err: unknown) => {
           logger.error(
             { err, syncId: job.data.syncId },
             `cron[${CronJobName.PkiSyncHealthCheck}]: check could not be run [syncId=${job.data.syncId}] [attempt=${job.attemptsStarted}]`
           );
           throw err;
         });
-
-        if (outcome.skipped && isFinalAttempt) {
-          await pkiSyncDAL.recordHealthCheckSkipped(job.data.syncId, SKIP_MESSAGES[outcome.skipped]);
-        }
       },
       { concurrency: WORKER_CONCURRENCY, limiter: { max: RATE_LIMIT_MAX, duration: RATE_LIMIT_DURATION_MS } }
     );

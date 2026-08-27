@@ -353,17 +353,6 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
-  const recordHealthCheckSkipped = async (syncId: string, message: string, tx?: Knex) => {
-    try {
-      return await (tx || db)(TableName.PkiSync)
-        .where({ id: syncId })
-        .whereNotNull("lastHealthCheckRanAt")
-        .update({ lastHealthCheckMessage: message });
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Record health check skipped - PKI Sync" });
-    }
-  };
-
   const findFailureNotificationRecipients = async (
     pkiSync: { projectId: string; applicationId: string },
     tx?: Knex
@@ -429,7 +418,6 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
   return {
     ...pkiSyncOrm,
     recordHealthCheckOutcome,
-    recordHealthCheckSkipped,
     findFailureNotificationRecipients,
     findPkiSyncsWithHealthCheckCommand,
     findByProjectId,
