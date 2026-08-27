@@ -100,18 +100,19 @@ export default function CodeInputStep({
     try {
       const { cooldownSeconds } = await resendEmail({ email, captchaToken });
       onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
+      setIsCaptchaVisible(false);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const remaining = err.response?.data?.details?.cooldownSeconds;
-        if (typeof remaining === "number") {
-          onResendCooldownChange(Date.now() + remaining * 1000);
-        }
-      }
-    } finally {
-      if (requiresCaptcha) {
-        captchaRef.current?.resetCaptcha();
+      const remaining = axios.isAxiosError(err)
+        ? err.response?.data?.details?.cooldownSeconds
+        : undefined;
+
+      if (typeof remaining === "number") {
+        onResendCooldownChange(Date.now() + remaining * 1000);
         setIsCaptchaVisible(false);
+        return;
       }
+
+      captchaRef.current?.resetCaptcha();
     }
   };
 
@@ -123,6 +124,7 @@ export default function CodeInputStep({
     // The send only fires once hCaptcha hands back a token, so the widget is revealed here
     // rather than occupying the code screen for everyone who never resends.
     if (requiresCaptcha) {
+      captchaRef.current?.resetCaptcha();
       setIsCaptchaVisible(true);
       return;
     }
@@ -164,13 +166,15 @@ export default function CodeInputStep({
                     theme="dark"
                     sitekey={envConfig.CAPTCHA_SITE_KEY}
                     onVerify={(token) => sendCode(token)}
+                    onError={() => setIsCaptchaVisible(false)}
+                    onChalExpired={() => setIsCaptchaVisible(false)}
+                    onExpire={() => captchaRef.current?.resetCaptcha()}
                     ref={captchaRef}
                   />
                 </div>
               </div>
             )}
             <VerificationCodeResend
-              isDisabled={isCaptchaVisible}
               isResending={isResending}
               remainingSeconds={remainingCooldown}
               onResend={handleResend}

@@ -11,7 +11,8 @@ const assertValidCaptchaToken = async (captchaToken: string) => {
 
   if (!response.data.success) {
     throw new BadRequestError({
-      name: "Invalid Captcha"
+      name: "Invalid Captcha",
+      message: "Captcha verification failed. Please try again."
     });
   }
 };
