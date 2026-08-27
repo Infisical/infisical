@@ -152,17 +152,20 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     );
   });
 
-  it("still permits unrelated edits when a private host sits behind a deleted gateway", async () => {
-    // rotating the reviewer JWT cannot repoint the dial target, so it must not be blocked by a
-    // host that is only private because it was always reached through the now-deleted gateway
+  it("blocks even an unrelated edit while a private host sits behind a deleted gateway", async () => {
+    // ON DELETE SET NULL can strip the gateway out-of-band, leaving a direct-dial private host.
+    // login dials that host with no address block of its own, so any patch that would propagate
+    // it must re-vet the host, not just the ones that touch a dial field. the template is not
+    // stranded: re-adding a gateway or repointing to a public host in the same patch clears it
     const { service, identityKubernetesAuthDAL } = createService({
       blobFields: { ...baseBlobFields, kubernetesHost: PRIVATE_HOST },
       gatewayColumns: NO_GATEWAY
     });
 
-    await patchTemplate(service, { tokenReviewerJwt: "rotated-jwt" });
-
-    expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalled();
+    await expect(patchTemplate(service, { tokenReviewerJwt: "rotated-jwt" })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
+    expect(identityKubernetesAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
   });
 });
 

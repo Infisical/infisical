@@ -1265,23 +1265,33 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    // a template-sourced reviewer JWT stays write-only to the caller, so it must only ever be
-    // sent to the host the template chose. unlinking deliberately leaves the credential in
-    // place to keep login working, which would otherwise let an actor with EditAuth alone
-    // repoint the host and have the unauthenticated login endpoint deliver the JWT to a server
-    // they control. keyed on the provenance flag rather than on the unlink itself, so a repoint
-    // in a later request is caught too
-    if (
-      !template &&
-      identityKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
-      tokenReviewerJwt === undefined &&
-      kubernetesHost !== undefined &&
-      kubernetesHost !== identityKubernetesAuth.kubernetesHost
-    ) {
-      throw new BadRequestError({
-        message:
-          "This identity still uses the token reviewer JWT copied from its auth template, so its Kubernetes host cannot be changed. Supply your own tokenReviewerJwt with this change, or set tokenReviewerJwt to null to remove the stored one."
-      });
+    // a template-sourced reviewer JWT stays write-only to the caller, so it must only ever
+    // travel to the destination, and over the trust, that the template chose. unlinking
+    // deliberately leaves the credential in place to keep login working, which would otherwise
+    // let an actor with identity EditAuth (plus AttachGateways, for the gateway fields) repoint
+    // the connection and have the unauthenticated login endpoint deliver the JWT to a server or
+    // gateway they control, or downgrade TLS trust to intercept it in transit. keyed on the
+    // provenance flag rather than on the unlink itself, so a repoint in a later request is caught
+    // too. every field below decides where or how the JWT is sent; the host alone is not enough
+    // (a gateway tunnels it in API mode, and CA/verify settings guard it on the wire)
+    if (!template && identityKubernetesAuth.isTokenReviewerJwtTemplateSourced && tokenReviewerJwt === undefined) {
+      const storedGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId ?? null;
+      const repointsConnection =
+        (kubernetesHost !== undefined && kubernetesHost !== identityKubernetesAuth.kubernetesHost) ||
+        (gatewayId !== undefined && (gatewayId ?? null) !== storedGatewayId) ||
+        (gatewayPoolId !== undefined && (gatewayPoolId ?? null) !== (identityKubernetesAuth.gatewayPoolId ?? null)) ||
+        (verifyTlsCertificate !== undefined && verifyTlsCertificate !== identityKubernetesAuth.verifyTlsCertificate) ||
+        (caCert !== undefined &&
+          caCert !==
+            (identityKubernetesAuth.encryptedKubernetesCaCertificate
+              ? decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString()
+              : ""));
+      if (repointsConnection) {
+        throw new BadRequestError({
+          message:
+            "This identity still uses the token reviewer JWT copied from its auth template, so its Kubernetes connection settings (host, gateway, gateway pool, CA certificate, or TLS verification) cannot be changed. Supply your own tokenReviewerJwt with this change, or set tokenReviewerJwt to null to remove the stored one."
+        });
+      }
     }
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {

@@ -448,14 +448,15 @@ export const identityAuthTemplateServiceFactory = ({
           gatewayPoolId: resolvedGatewayPoolId
         };
       }
-      // the merged host propagates to every linked identity and is dialed by the backend at
-      // login, so it gets the same local/private-address block as the identity attach flow.
-      // only patches that can change where we dial are checked, so losing a gateway to a
-      // deletion does not strand the template: its host is legitimately private, and an edit
-      // that cannot repoint the dial target has no new address to vet
-      const patchAffectsDialing = patchTouchesGateway || "kubernetesHost" in patch || "tokenReviewMode" in patch;
+      // the merged host propagates to every linked identity on this patch and is dialed
+      // directly by the backend at login (which runs no address block of its own), so a
+      // private host reachable only through a gateway becomes an SSRF vector the moment the
+      // gateway is gone. the gateway FK is ON DELETE SET NULL, so a gateway can be deleted
+      // out-of-band and leave a private-host/no-gateway config behind without this code ever
+      // running; checking only patches that touch dial fields would then let an unrelated edit
+      // propagate that config unvalidated. so vet any direct-dial (API-mode, host, no gateway)
+      // merge on every propagation, not just the ones that repoint it here
       if (
-        patchAffectsDialing &&
         merged.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
         merged.kubernetesHost &&
         !merged.gatewayId &&
