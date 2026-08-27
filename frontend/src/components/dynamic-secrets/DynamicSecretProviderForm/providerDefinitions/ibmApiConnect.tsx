@@ -1,13 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Field,
-  FieldDescription,
-  FieldFeedback,
-  FieldLabel,
-  FilterableSelect
-} from "@app/components/v3";
+import { Combobox, Field, FieldDescription, FieldFeedback, FieldLabel } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import {
   OrgGatewayPermissionActions,
@@ -51,9 +45,6 @@ const credentialFields = [
     layout: "half"
   }
 ] satisfies readonly TDynamicSecretProviderField<TIbmApiConnectFormValues>[];
-
-const getSingleOption = <T,>(selection: T | readonly T[] | null): T | null =>
-  Array.isArray(selection) ? null : (selection as T | null);
 
 const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
   const { control, setValue, watch } = useFormContext<TIbmApiConnectFormValues>();
@@ -163,27 +154,38 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-disabled={!credentialsComplete || orgsQuery.isError}
               >
                 <FieldLabel htmlFor="ibm-api-connect-organization">Organization</FieldLabel>
-                <FilterableSelect
-                  inputId="ibm-api-connect-organization"
+                <Combobox
+                  id="ibm-api-connect-organization"
                   isDisabled={!credentialsComplete || orgsQuery.isFetching || orgsQuery.isError}
                   isLoading={orgsQuery.isFetching}
                   options={orgsQuery.data ?? []}
                   value={orgsQuery.data?.find((option) => option.id === field.value) ?? null}
                   onBlur={field.onBlur}
-                  onChange={(selection) => {
-                    const option = getSingleOption(selection);
+                  onValueChange={(option) => {
                     field.onChange(option?.id ?? "");
                     setValue("inputs.catalogId", "");
                     setValue("inputs.consumerOrgId", "");
                     setValue("inputs.appId", "");
                   }}
                   placeholder="Select an organization..."
+                  searchPlaceholder="Search organizations..."
+                  searchAriaLabel="Search IBM API Connect organizations"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
                   isError={Boolean(error)}
+                  modal
+                  aria-describedby={
+                    description || error?.message
+                      ? "ibm-api-connect-organization-feedback"
+                      : undefined
+                  }
                 />
                 {(description || error?.message) && (
-                  <FieldFeedback description={description} error={error?.message} />
+                  <FieldFeedback
+                    id="ibm-api-connect-organization-feedback"
+                    description={description}
+                    error={error?.message}
+                  />
                 )}
               </Field>
             );
@@ -203,26 +205,35 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-disabled={!orgSelected || catalogsQuery.isError}
               >
                 <FieldLabel htmlFor="ibm-api-connect-catalog">Catalog</FieldLabel>
-                <FilterableSelect
-                  inputId="ibm-api-connect-catalog"
+                <Combobox
+                  id="ibm-api-connect-catalog"
                   isDisabled={!orgSelected || catalogsQuery.isFetching || catalogsQuery.isError}
                   isLoading={catalogsQuery.isFetching}
                   options={catalogsQuery.data ?? []}
                   value={catalogsQuery.data?.find((option) => option.id === field.value) ?? null}
                   onBlur={field.onBlur}
-                  onChange={(selection) => {
-                    const option = getSingleOption(selection);
+                  onValueChange={(option) => {
                     field.onChange(option?.id ?? "");
                     setValue("inputs.consumerOrgId", "");
                     setValue("inputs.appId", "");
                   }}
                   placeholder="Select a catalog..."
+                  searchPlaceholder="Search catalogs..."
+                  searchAriaLabel="Search IBM API Connect catalogs"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
                   isError={Boolean(error)}
+                  modal
+                  aria-describedby={
+                    description || error?.message ? "ibm-api-connect-catalog-feedback" : undefined
+                  }
                 />
                 {(description || error?.message) && (
-                  <FieldFeedback description={description} error={error?.message} />
+                  <FieldFeedback
+                    id="ibm-api-connect-catalog-feedback"
+                    description={description}
+                    error={error?.message}
+                  />
                 )}
               </Field>
             );
@@ -242,25 +253,36 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-disabled={!catalogSelected || appsQuery.isError}
               >
                 <FieldLabel htmlFor="ibm-api-connect-application">Application</FieldLabel>
-                <FilterableSelect
-                  inputId="ibm-api-connect-application"
+                <Combobox
+                  id="ibm-api-connect-application"
                   isDisabled={!catalogSelected || appsQuery.isFetching || appsQuery.isError}
                   isLoading={appsQuery.isFetching}
                   options={appsQuery.data ?? []}
                   value={appsQuery.data?.find((option) => option.id === field.value) ?? null}
                   onBlur={field.onBlur}
-                  onChange={(selection) => {
-                    const option = getSingleOption(selection);
+                  onValueChange={(option) => {
                     field.onChange(option?.id ?? "");
                     setValue("inputs.consumerOrgId", option?.consumerOrgId ?? "");
                   }}
                   placeholder="Select an application..."
+                  searchPlaceholder="Search applications..."
+                  searchAriaLabel="Search IBM API Connect applications"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
                   isError={Boolean(error)}
+                  modal
+                  aria-describedby={
+                    description || error?.message
+                      ? "ibm-api-connect-application-feedback"
+                      : undefined
+                  }
                 />
                 {(description || error?.message) && (
-                  <FieldFeedback description={description} error={error?.message} />
+                  <FieldFeedback
+                    id="ibm-api-connect-application-feedback"
+                    description={description}
+                    error={error?.message}
+                  />
                 )}
               </Field>
             );

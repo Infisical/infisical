@@ -32,6 +32,23 @@ describe("dynamic-secret production route cutover", () => {
       assert.match(source, /DynamicSecretProviderForm/);
     });
     assert.match(createSource, /SshDynamicSecretCreateForm/);
+    assert.match(createSource, /DynamicSecretProviderSelect/);
+    assert.match(createSource, /sm:max-w-\[1500px\]/);
+    assert.match(createSource, /onBack={requestBack}/);
+    assert.match(createSource, /onCancel={requestClose}/);
     assert.match(editSource, /not available in the shared provider registry/);
+  });
+
+  it("uses Combobox for every searchable selector in the shared provider forms", async () => {
+    const sources = await Promise.all([
+      readSource("./DynamicSecretProviderForm.tsx"),
+      readSource("./providerDefinitions/azureEntraId.tsx"),
+      readSource("./providerDefinitions/ibmApiConnect.tsx")
+    ]);
+
+    sources.forEach((source) => {
+      assert.match(source, /Combobox/);
+      assert.doesNotMatch(source, /FilterableSelect/);
+    });
   });
 });

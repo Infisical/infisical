@@ -1,14 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
-import {
-  Field,
-  FieldError,
-  FieldFeedback,
-  FieldLabel,
-  FilterableSelect,
-  Input
-} from "@app/components/v3";
+import { Combobox, Field, FieldError, FieldFeedback, FieldLabel, Input } from "@app/components/v3";
 import { SecretInput } from "@app/components/v3/platform";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -128,19 +121,22 @@ const AzureEntraIdFields = ({
           render={({ field, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
               <FieldLabel htmlFor="azure-entra-users">Users</FieldLabel>
-              <FilterableSelect
-                inputId="azure-entra-users"
-                isMulti
+              <Combobox
+                id="azure-entra-users"
+                multiple
                 isDisabled={!isConfigured || isLoading || isError}
                 isLoading={isLoading}
                 options={usersQuery.data ?? EMPTY_USERS}
                 value={field.value ?? EMPTY_USERS}
                 onBlur={field.onBlur}
-                onChange={(next) => field.onChange(next ?? EMPTY_USERS)}
+                onValueChange={field.onChange}
                 getOptionLabel={(user) => `${user.name} (${user.email})`}
                 getOptionValue={(user) => user.id}
                 placeholder="Select users..."
+                searchPlaceholder="Search users..."
+                searchAriaLabel="Search Azure Entra ID users"
                 isError={Boolean(error)}
+                modal
                 aria-describedby="azure-entra-users-feedback"
               />
               <FieldFeedback

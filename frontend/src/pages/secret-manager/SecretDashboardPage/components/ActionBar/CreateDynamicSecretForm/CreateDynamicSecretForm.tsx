@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   DynamicSecretProviderForm,
@@ -6,7 +6,6 @@ import {
   SshDynamicSecretCreateForm
 } from "@app/components/dynamic-secrets";
 import {
-  Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Sheet,
@@ -18,6 +17,8 @@ import {
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+
+import { DynamicSecretProviderSelect } from "./DynamicSecretProviderSelect";
 
 type Props = {
   isOpen?: boolean;
@@ -38,17 +39,34 @@ export const CreateDynamicSecretForm = ({
 }: Props) => {
   const [selectedProvider, setSelectedProvider] = useState<DynamicSecretProviders>();
   const [isDirty, setIsDirty] = useState(false);
+  const discardActionRef = useRef<"back" | "close">("close");
   const definition = selectedProvider
     ? dynamicSecretProviderRegistry.requireDefinition(selectedProvider)
     : undefined;
 
-  const close = () => {
+  const close = useCallback(() => {
     setIsDirty(false);
     setSelectedProvider(undefined);
     onToggle(false);
-  };
+  }, [onToggle]);
+  const handleDiscard = useCallback(() => {
+    setIsDirty(false);
+    if (discardActionRef.current === "back") {
+      setSelectedProvider(undefined);
+      return;
+    }
+    close();
+  }, [close]);
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: close });
+    useDiscardChangesGuard({ isDirty, onDiscard: handleDiscard });
+  const requestClose = () => {
+    discardActionRef.current = "close";
+    requestDiscard();
+  };
+  const requestBack = () => {
+    discardActionRef.current = "back";
+    requestDiscard();
+  };
 
   const header = definition ? (
     <SheetHeader className="-mx-4 -mt-5">
@@ -66,24 +84,13 @@ export const CreateDynamicSecretForm = ({
     <>
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2">
-          Add Dynamic Secret
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/dynamic-secrets/overview" />
+          Choose a Dynamic Secret Provider
         </SheetTitle>
-        <SheetDescription>Select a service to connect to.</SheetDescription>
+        <SheetDescription>
+          Select the provider whose credentials Infisical should generate.
+        </SheetDescription>
       </SheetHeader>
-      <div className="grid grid-cols-1 gap-2 overflow-y-auto p-4 @md:grid-cols-2">
-        {dynamicSecretProviderRegistry.definitions.map((providerDefinition) => (
-          <Button
-            key={providerDefinition.provider}
-            type="button"
-            variant="outline"
-            className="h-auto justify-start px-4 py-3 text-left"
-            onClick={() => setSelectedProvider(providerDefinition.provider)}
-          >
-            {providerDefinition.label}
-          </Button>
-        ))}
-      </div>
+      <DynamicSecretProviderSelect onSelect={setSelectedProvider} />
     </>
   );
 
@@ -93,8 +100,8 @@ export const CreateDynamicSecretForm = ({
         <SshDynamicSecretCreateForm
           header={header}
           onCompleted={close}
-          onCancel={requestDiscard}
-          onBack={requestDiscard}
+          onCancel={requestClose}
+          onBack={requestBack}
           onDirtyChange={setIsDirty}
           projectSlug={projectSlug}
           secretPath={secretPath}
@@ -107,8 +114,8 @@ export const CreateDynamicSecretForm = ({
           definition={definition}
           header={header}
           onCompleted={close}
-          onCancel={requestDiscard}
-          onBack={requestDiscard}
+          onCancel={requestClose}
+          onBack={requestBack}
           onDirtyChange={setIsDirty}
           projectSlug={projectSlug}
           secretPath={secretPath}
@@ -120,8 +127,10 @@ export const CreateDynamicSecretForm = ({
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !open && requestDiscard()}>
-        <SheetContent className="w-full sm:max-w-3xl">{content}</SheetContent>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && requestClose()}>
+        <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
+          {content}
+        </SheetContent>
       </Sheet>
       <DiscardChangesAlertDialog
         open={isDiscardDialogOpen}
