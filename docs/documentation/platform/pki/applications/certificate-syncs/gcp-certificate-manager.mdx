@@ -40,7 +40,7 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
   If you manage several GCP projects, make sure the APIs and roles are applied to the project that will hold your certificates, not to whichever project you happen to have open.
 </Note>
 
-## Create a GCP Certificate Manager Sync
+## Create a GCP Certificate Manager sync
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -146,11 +146,11 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
   </Tab>
 </Tabs>
 
-## Certificate Naming
+## Certificate naming
 
 GCP Certificate Manager resource IDs must start with a letter, contain only lowercase letters, digits and hyphens, and be 1 to 63 characters. The default certificate name schema is `infisical-{{certificateId}}`, which always satisfies that. A schema has to begin with a letter rather than a placeholder, because a certificate ID can begin with a digit, and Infisical rejects one that does not when you save the sync.
 
-If you use `{{commonName}}` or `{{applicationName}}` in the schema, their values are lowercased and any other character becomes a hyphen, so `API.Example.com` becomes `api-example-com`.
+If you use `{{commonName}}` or `{{applicationName}}` in the schema, their values are converted to lowercase and any other character becomes a hyphen, so `API.Example.com` becomes `api-example-com`.
 
 A compiled name longer than 63 characters is shortened: it keeps its first 54 characters and ends with a hyphen and 8 characters of a hash of the whole name. **The start of the name is what survives, and the end is replaced.** The hash is what keeps two certificates from ever collapsing onto one GCP certificate, so nothing depends on any particular placeholder surviving.
 
@@ -191,14 +191,14 @@ The scope is set when Infisical creates each certificate and is immutable in GCP
   Certificate map binding requires the **Default** scope. A certificate map entry can only reference a Default-scope certificate, so Infisical rejects the combination when you save the sync.
 </Note>
 
-## Attaching Certificates to Traffic
+## Attaching certificates to traffic
 
 Uploading a certificate does not by itself serve any traffic. Something has to reference it.
 
 For a **global** certificate, a certificate map entry maps a hostname to the certificate, and a target HTTPS proxy attaches the map. You have two options:
 
 - **Wire it yourself once.** Create the certificate map entry pointing at the certificate Infisical created. Because renewals update that same certificate in place, you never have to touch it again.
-- **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and repoints it if the certificate is replaced. This requires the Default scope.
+- **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and moves it to the replacement when the certificate changes. This requires the Default scope.
 
 <Warning>
   Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP does not consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names do not include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
@@ -206,13 +206,13 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
   For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname. Leave the hostname empty to serve the certificate as the map's primary entry, which has no coverage requirement.
 </Warning>
 
-## Certificate Renewal Behavior
+## Certificate renewal behavior
 
 **Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
 
 When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove Expired/Revoked Certificates**:
 
-- **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical repoints its own entry first. Anything else pointing at the old certificate has to be repointed manually, and GCP refuses to delete a certificate that is still referenced.
+- **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical moves its own entry to the new certificate first. Anything else pointing at the old certificate has to be updated by hand, and GCP refuses to delete a certificate that is still referenced.
 - **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it is no longer tracked by the sync.
 
 <Note>
@@ -223,7 +223,7 @@ When disabled, a renewal or a name change creates a new GCP certificate under a 
   Turning off preserve-on-renewal while leaving removal disabled means every renewal adds a certificate to your GCP project and none are ever removed. GCP allows 1,000 self-managed certificates per project for global certificates and 100 per region. Either leave preserve-on-renewal on, or enable removal so the replaced certificates are cleaned up.
 </Warning>
 
-## Partial Failures
+## Partial failures
 
 A sync run never takes a working certificate out of the serving path to reflect a failure elsewhere in the run.
 
@@ -231,11 +231,11 @@ A sync run never takes a working certificate out of the serving path to reflect 
 - If the certificate map entry itself cannot be updated, the run reports the failure and leaves both the entry and the existing certificates alone. Nothing is deleted until the entry is current again, so a transient error does not become an outage.
 - Changing the bound certificate map creates the entry in the new map before the entry in the old map is removed.
 
-## Supported Key Algorithms
+## Supported key algorithms
 
 GCP Certificate Manager accepts RSA 2048, RSA 3072, RSA 4096, ECDSA P-256 and ECDSA P-384. Certificates using any other key algorithm are skipped.
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization, which is useful for:
 
@@ -269,7 +269,7 @@ Use the [Sync Certificates](/api-reference/endpoints/pki/syncs/gcp-certificate-m
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
