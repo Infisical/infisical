@@ -151,7 +151,14 @@ export const KeyStorePrefixes = {
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
-  EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
+  EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>
+    `email-dispatch:${purpose}:${mailboxHash}:cd` as const,
+  EmailDispatchMailboxSends: (purpose: string, mailboxHash: string) =>
+    `email-dispatch:${purpose}:${mailboxHash}:sends` as const,
+  EmailDispatchSourceProbe: (purpose: string, window: number) =>
+    `email-dispatch-abuse:${purpose}:src:${window}` as const,
+  EmailDispatchMailboxProbe: (purpose: string, window: number) =>
+    `email-dispatch-abuse:${purpose}:mailbox:${window}` as const,
   // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
@@ -209,7 +216,9 @@ export const KeyStoreTtls = {
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
   EmailSignupOtpInSeconds: 300, // 5 minutes
-  EmailSignupResendCooldownInSeconds: 60, // 1 minute
+  EmailDispatchCooldownInSeconds: 60, // 1 minute
+  EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
+  EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
@@ -289,6 +298,7 @@ export type TKeyStoreFactory = {
   decrementByOrDelete: (key: string) => Promise<number>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
+  probeDistinctMember: (key: string, member: string, expiryInSeconds: number) => Promise<boolean>;
   incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
@@ -562,6 +572,20 @@ export const keyStoreFactory = (
     return Number(result);
   };
 
+  const PROBE_DISTINCT_MEMBER = `
+    local isNew = redis.call('PFADD', KEYS[1], ARGV[1])
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return isNew
+  `;
+
+  // Records `member` in a HyperLogLog and reports whether it had not been seen in this key before.
+  // The HLL stores a fixed ~12KB register array rather than the members themselves, so a caller can
+  // count distinct values without the store ever holding one.
+  const probeDistinctMember = async (key: string, member: string, expiryInSeconds: number): Promise<boolean> => {
+    const result = await primaryRedis.eval(PROBE_DISTINCT_MEMBER, 1, key, member, String(expiryInSeconds));
+    return Number(result) === 1;
+  };
+
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
   const ttl = async (key: string) => primaryRedis.ttl(key);
@@ -790,6 +814,7 @@ export const keyStoreFactory = (
     decrementByOrDelete,
     claimLeastLoaded,
     incrementByWithExpiry,
+    probeDistinctMember,
     incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);

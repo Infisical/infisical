@@ -250,6 +250,7 @@ import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { signupOnboardingResponseDALFactory } from "@app/services/auth/auth-signup-onboarding-dal";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
+import { emailDispatchGuardFactory } from "@app/services/auth/email-dispatch-guard";
 import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -856,6 +857,7 @@ export const registerRoutes = async (
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
+  const emailDispatchGuard = emailDispatchGuardFactory({ keyStore });
 
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
@@ -1401,7 +1403,8 @@ export const registerRoutes = async (
     tokenService,
     smtpService,
     userDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    emailDispatchGuard
   });
 
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
@@ -1475,7 +1478,8 @@ export const registerRoutes = async (
     orgService,
     loginService,
     emailDomainDAL,
-    signupOnboardingResponseDAL
+    signupOnboardingResponseDAL,
+    emailDispatchGuard
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({

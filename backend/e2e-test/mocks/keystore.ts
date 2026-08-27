@@ -9,6 +9,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
   const hashStore: Record<string, Record<string, string>> = {};
   const sortedSetStore: Record<string, Record<string, number>> = {};
+  const distinctStore: Record<string, Set<string>> = {};
 
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
@@ -113,6 +114,13 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       const next = current + value;
       store[key] = String(next);
       return next;
+    },
+    probeDistinctMember: async (key, member) => {
+      if (!distinctStore[key]) distinctStore[key] = new Set<string>();
+      const members = distinctStore[key];
+      if (members.has(member)) return false;
+      members.add(member);
+      return true;
     },
     incrementSeededWithExpiry: async (key, seed) => {
       const existing = store[key];

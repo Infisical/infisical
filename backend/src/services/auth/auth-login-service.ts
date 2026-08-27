@@ -58,8 +58,7 @@ import {
   enforceUserLockStatus,
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
-  OAuthAuthMethod,
-  verifyCaptcha
+  OAuthAuthMethod
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -77,6 +76,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {

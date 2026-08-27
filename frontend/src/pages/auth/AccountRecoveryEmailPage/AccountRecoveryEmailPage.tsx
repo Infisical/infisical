@@ -1,5 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "@tanstack/react-router";
 import { MailCheck } from "lucide-react";
 
@@ -7,6 +8,7 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
 import { Button, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
+import { envConfig } from "@app/config/env";
 import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -19,14 +21,23 @@ export const AccountRecoveryEmailPage = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const { mutateAsync } = useSendAccountRecoveryEmail();
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<HCaptcha>(null);
+
+  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
 
   const sendRecoveryEmail = async () => {
     if (email) {
       try {
-        await mutateAsync({ email });
+        await mutateAsync({ email, captchaToken: requiresCaptcha ? captchaToken : undefined });
         setStep(2);
       } catch {
         setLoading(false);
+      } finally {
+        if (requiresCaptcha) {
+          captchaRef.current?.resetCaptcha();
+          setCaptchaToken("");
+        }
       }
     }
   };
@@ -78,7 +89,25 @@ export const AccountRecoveryEmailPage = () => {
                   autoComplete="username"
                   className="h-10"
                 />
-                <Button type="submit" variant="project" size="lg" isFullWidth isPending={loading}>
+                {envConfig.CAPTCHA_SITE_KEY && (
+                  <div className="flex justify-center [&>div]:!w-full">
+                    <HCaptcha
+                      theme="dark"
+                      sitekey={envConfig.CAPTCHA_SITE_KEY}
+                      onVerify={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken("")}
+                      ref={captchaRef}
+                    />
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  variant="project"
+                  size="lg"
+                  isFullWidth
+                  isPending={loading}
+                  isDisabled={requiresCaptcha && !captchaToken}
+                >
                   Continue
                 </Button>
                 <Link
