@@ -361,9 +361,6 @@ const OverviewPageContent = () => {
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
   const [tagFilter, setTagFilter] = useState<Record<string, boolean>>({});
-  const [filterHistory, setFilterHistory] = useState<
-    Map<string, { filter: Filter; searchFilter: string }>
-  >(new Map());
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -2217,22 +2214,8 @@ const OverviewPageContent = () => {
     handlePopUpClose("confirmDisableBatchMode");
   }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
-  const handleResetSearch = (path: string) => {
-    const restore = filterHistory.get(path);
-    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
-    const el = restore?.searchFilter ?? "";
-    setSearchFilter(el);
-  };
-
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
-
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
 
     setSearchFilter("");
     navigate({
@@ -2754,7 +2737,7 @@ const OverviewPageContent = () => {
         <CardHeader>
           <div className="flex flex-col gap-2">
             <div className="flex min-w-56 items-center overflow-hidden px-2 whitespace-nowrap">
-              <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
+              <FolderBreadcrumb secretPath={secretPath} />
             </div>
             <div className="flex items-center justify-between gap-2 max-sm:flex-wrap">
               <ResourceSearchInput
@@ -2762,6 +2745,7 @@ const OverviewPageContent = () => {
                 value={searchFilter}
                 tags={tags}
                 onChange={setSearchFilter}
+                onSelectResult={({ search }) => setSearchFilter(search)}
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />

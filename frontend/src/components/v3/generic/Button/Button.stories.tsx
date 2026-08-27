@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Link } from "@tanstack/react-router";
+import { Link as RouterLink } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   BoxesIcon as SubOrgIcon,
@@ -337,10 +337,10 @@ export const AsRouterLink: Story = {
     variant: "project",
     asChild: true,
     children: (
-      <Link to=".">
+      <RouterLink to=".">
         <ProjectIcon />
         View Project
-      </Link>
+      </RouterLink>
     )
   },
   parameters: {
