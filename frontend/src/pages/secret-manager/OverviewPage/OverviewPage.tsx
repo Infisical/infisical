@@ -2205,6 +2205,7 @@ const OverviewPageContent = () => {
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
 
+    setSearchFilter("");
     navigate({
       search: (prev) => ({
         ...updateOverviewSecretPath(

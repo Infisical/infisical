@@ -80,9 +80,7 @@ export const buildGatewayKubernetesExecutor = ({
       },
       {
         protocol: isGatewayReviewer ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-        relayHost: connectionDetails.relayHost,
-        gateway: connectionDetails.gateway,
-        relay: connectionDetails.relay,
+        ...connectionDetails,
         httpsAgent
       }
     );

@@ -28,7 +28,8 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
     updateSchema: UpdateAwsElasticLoadBalancerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });
