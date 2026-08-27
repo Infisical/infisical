@@ -36,6 +36,8 @@ User identity count is straightforward—it equals the number of human users who
   User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
 </Tip>
 
+Agents that are operated one-to-one by a person, such as a local coding assistant, run under that person's user identity and do not add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
+
 ### Machine identities
 
 If you're familiar with cloud provider IAM concepts, Infisical machine identities work the same way:
@@ -114,6 +116,55 @@ Consider these factors when determining your machine identity count:
   Group services by their secret access requirements, not by the number of service instances or replicas.
 </Accordion>
 
+#### AI agent identities
+
+AI agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What determines whether an agent consumes a machine identity is not that it is an agent, but whether it acts on behalf of a specific person or runs on its own.
+
+| Agent type | Authenticates as | Consumes a machine identity? |
+|------------|------------------|------------------------------|
+| **Local / developer agents** — coding assistants, IDE agents, and desktop AI clients, where the agent-to-user ratio is 1:1 | The operator's own user identity | **No** |
+| **Standalone / remote agents** — agents that run perpetually in their own environment, are shared by more than one person, or are triggered by events rather than by a person | A machine identity | **Yes** — one per unique permission set |
+
+<Note>
+  **Local agents do not consume machine identities.** If you run a coding assistant or another local agent where each agent instance is driven by a single person, the agent assumes that person's permissions and is already covered by their user identity. Machine identities are only required for agents that run standalone, in their own environment, outside of any one user's session.
+</Note>
+
+##### How to scope agent identities
+
+For standalone agents, scope identities the same way you scope them for applications and services: by **purpose and permission set**, not by agent instance, run, container, or VM.
+
+| Grouping | Identities needed |
+|----------|-------------------|
+| Multiple instances or runs of the same agent, with the same access | 1 |
+| Two agents serving different functions (e.g., recruitment vs. engineering) | 2 |
+| One agent that needs access to two different security tiers | Consider 2, scoped per tier |
+
+<Accordion title="Example 6: Local coding agents">
+  **Scenario**: 40 engineers each run an AI coding assistant on their laptop that reads secrets through Infisical during development.
+
+  **Machine identities needed**: **0**
+
+  Each agent is driven by one engineer and inherits that engineer's permissions, so the access is already accounted for by their 40 user identities. Issuing a machine identity here would grant the agent access beyond what its operator has.
+</Accordion>
+
+<Accordion title="Example 7: Standalone agents with different purposes">
+  **Scenario**: You run two always-on Slack agents in your own infrastructure:
+  - A recruitment agent that reads ATS and calendar credentials
+  - An engineering agent that reads CI and observability credentials
+
+  **Machine identities needed**: **2**
+
+  Each agent has a distinct purpose and a distinct permission set. If you later add three more recruitment agents that need the same access, they can all share the recruitment identity—the count stays at 2.
+</Accordion>
+
+<Accordion title="Example 8: Horizontally scaled agent workers">
+  **Scenario**: An agent that triages tickets runs as 25 concurrent workers, each spawning short-lived runs in its own container.
+
+  **Machine identities needed**: **1**
+
+  Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity—the same way 10 VMs with identical access do.
+</Accordion>
+
 ## Best practices
 
 While consolidating machine identities reduces management overhead, **more granular identities provide stronger security** through least-privilege access and reduced blast radius. The right balance depends on your security requirements.
@@ -185,6 +236,8 @@ When planning your machine identity strategy, consider:
 3. **What are your compliance requirements?** Regulated workloads may require documented isolation from non-regulated systems.
 
 4. **What's your authentication topology?** A single identity can authenticate from multiple sources (Kubernetes + AWS IAM + GCP), so multi-cloud doesn't necessarily mean multiple identities—but multi-tenant does.
+
+5. **Is this agent acting as a person or as a service?** An agent driven one-to-one by a user inherits that user's permissions, while an agent that runs standalone needs its own identity scoped to its purpose.
 
 <Note>
   **Bottom line**: When in doubt, err on the side of more identities. The operational overhead of additional identities is minimal compared to the security benefits of proper isolation.
