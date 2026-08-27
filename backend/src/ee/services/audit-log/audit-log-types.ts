@@ -587,6 +587,7 @@ export enum EventType {
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -4903,6 +4904,16 @@ interface OidcGroupMembershipMappingRemoveUserEvent {
   };
 }
 
+interface OidcProvisionedPlaceholderAdoptedEvent {
+  type: EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED;
+  metadata: {
+    userId: string;
+    externalId: string;
+    previousUsername: string;
+    newUsername: string;
+  };
+}
+
 interface CreateKmipClientEvent {
   type: EventType.CREATE_KMIP_CLIENT;
   metadata: {
@@ -7547,6 +7558,7 @@ export type Event =
   | RemovePkiSignerMemberEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
+  | OidcProvisionedPlaceholderAdoptedEvent
   | CreateKmipClientEvent
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent

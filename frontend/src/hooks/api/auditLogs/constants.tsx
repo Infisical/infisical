@@ -195,6 +195,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
     "OIDC group membership mapping removed user from groups",
+  [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
+    "OIDC login adopted provisioned placeholder account",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",

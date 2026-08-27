@@ -335,6 +335,93 @@ never becomes a synchronous dependency of the middleware's own request path. The
 (rejections evicted, in-flight promise shared, expiry rebuilding the SSRF-pinned agent) are documented in
 `oauth-token-exchange-fns.ts`.
 
+### Resolving Users From Provisioning Identifiers
+
+Every invite / removal path resolves a person by `users.username` (which always equals their email),
+never by `users.email` and never by a join. An external provisioning system, though, often knows
+people only by the identifier its IdP asserts, a UPN like `m249913@one.example.com` rather than the
+mailbox `robert@example.com`. SSO login already records that identifier as
+`user_aliases.externalId`, so the two are reconcilable without making `username` diverge from
+`email`.
+
+`resolveUsersBySsoExternalId` in `src/services/user-alias/user-alias-fns.ts` is the one place that
+does it, backed by `userAliasDAL.findBySsoExternalIds`. Callers run it **only after an exact
+`username` lookup has missed**, so an alias can never shadow a real account. It is wired into
+`$getUsers` (`membership-user-service.ts`, the single funnel for org, project, and cert-manager
+invites), `project-membership-service.ts` (removal and membership read-back), and PAM's
+`addProductUserMembers`.
+
+Four invariants, each load-bearing:
+
+- **Scope by `orgId` *and* `aliasType`.** `user_aliases.orgId` is NULL for the global
+  google/github/gitlab aliases, so `whereIn("orgId", ...)` excludes them outright and the
+  `ORG_SCOPED_USER_ALIAS_TYPES` filter is the second lock. Without both, an org admin could name a
+  user in another tenant.
+- **Match `externalId` exactly, never folded.** It is a case-sensitive identifier (OIDC Core defines
+  `sub` that way, as does SAML for nameID) and is stored verbatim, so folding case could collapse two
+  distinct IdP subjects onto one identifier. The known consequence: because both invite routes
+  lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
+  mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
+  input validation so the exact identifier survives to the query, not loosening the comparison.
+  `adoptProvisionedShadowUser` does not fold either. It derives its lookup key with `sanitizeEmail`
+  because it searches the `users.username` namespace, where lowercase is canonical, but it then
+  **refuses any identifier that is not already canonical** rather than adopting on the folded match.
+  It once did adopt, and that was a real hole: a subject differing only by case is a different
+  subject, so it could take over the placeholder provisioned for another one and inherit its grants.
+  Folding bought nothing anyway, since the alias written afterwards is verbatim and this exact-match
+  lookup could never find it again, stranding the grant where provisioning cannot manage it.
+- **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
+  org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
+  users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
+  granting access to the wrong person. Several aliases on the *same* user are not a conflict.
+- **Dedupe resolved users by `id`.** An identifier now reaches a user by either their username or
+  their alias, so one request can name the same person twice. Undeduped, that violates
+  `membership_unique_user_org` and surfaces as a 500.
+
+A related case sits on the login side: provisioning can name someone before they have ever logged
+in, leaving a placeholder account keyed on the identifier instead of the mailbox.
+`adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
+and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
+human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
+(any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
+anything without a membership in the org doing the login.
+
+One case is a refusal to *log in* rather than a refusal to adopt: a placeholder whose membership in
+the login org is **inactive**. Declining is not neutral there, because the caller reads a `null` as
+"no placeholder" and creates a second account with a fresh active membership, handing a deactivated
+person their org back (`selectOrganization` then accepts it). So the inactive check is resolved
+before every remaining decline — the alias check and the cross-tenant check both sit after it — and
+it throws the same `ForbiddenRequestError` an already-aliased deactivated member gets.
+
+It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
+family, and that one is the security-critical check rather than a tidiness one. The username lookup
+that finds the placeholder is global, so a second tenant that invited the same identifier shares the
+row; adopting it would hand the login org's IdP subject that tenant's memberships, and
+`selectOrganization` accepts a membership in any status (promoting `Invited` to `Accepted` on
+arrival), so nothing downstream stops the inherited access from being used. A project membership
+always implies an org membership in the same org, so the org-scope check covers project access too.
+
+Adoption also recovers from a unique violation on `users.username`, because the caller's preceding
+read is not a lock. That recovery has to run inside a savepoint (`tx.transaction()`, which knex
+compiles to `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` on the same connection): Postgres aborts the whole
+transaction on a constraint violation, so an unscoped retry would fail with `25P02`, taking the
+caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
+branches and are deliberately not wired up.
+
+Because adoption rewrites an existing account's `username` and `email`, it emits an
+`OIDC_PROVISIONED_PLACEHOLDER_ADOPTED` audit event carrying the before and after, not just an
+application log: if one of the refusal checks above ever regresses, the audit trail is what makes it
+findable. That event must never fire on the unique-violation recovery path, where the returned user
+is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
+line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
+it.
+
+That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
+`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+Do not special-case this event past the retention gate; treat the application log as the floor and
+the audit event as the addition for licensed instances.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:
