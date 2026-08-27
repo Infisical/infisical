@@ -25,7 +25,7 @@ import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
 import {
   defineDynamicSecretProvider,
   TDynamicSecretProviderField,
-  TDynamicSecretProviderFormMode
+  TDynamicSecretProviderRendererProps
 } from "../types";
 import {
   getIbmApiConnectCreateDefaultValues,
@@ -55,7 +55,7 @@ const credentialFields = [
 const getSingleOption = <T,>(selection: T | readonly T[] | null): T | null =>
   Array.isArray(selection) ? null : (selection as T | null);
 
-const IbmApiConnectFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) => {
+const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
   const { control, setValue, watch } = useFormContext<TIbmApiConnectFormValues>();
   const instanceUrl = watch("inputs.instanceUrl");
   const apiKey = watch("inputs.apiKey");
@@ -74,6 +74,7 @@ const IbmApiConnectFields = ({ mode }: { mode: TDynamicSecretProviderFormMode })
     apiKey: apiKey || "",
     clientId: clientId || "",
     clientSecret: clientSecret || "",
+    projectSlug: context.projectSlug,
     enabled: credentialsComplete
   });
   const selectedOrg = orgsQuery.data?.find((organization) => organization.id === orgId);
@@ -83,6 +84,7 @@ const IbmApiConnectFields = ({ mode }: { mode: TDynamicSecretProviderFormMode })
     clientId: clientId || "",
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
+    projectSlug: context.projectSlug,
     enabled: orgSelected
   });
   const selectedCatalog = catalogsQuery.data?.find((catalog) => catalog.id === catalogId);
@@ -93,6 +95,7 @@ const IbmApiConnectFields = ({ mode }: { mode: TDynamicSecretProviderFormMode })
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
     catalogId: selectedCatalog?.id || "",
+    projectSlug: context.projectSlug,
     enabled: catalogSelected
   });
 
