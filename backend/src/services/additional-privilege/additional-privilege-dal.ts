@@ -83,7 +83,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     }: { projectId: string; actorId: string; actorType: ActorType.USER | ActorType.IDENTITY },
     tx?: Knex
   ) => {
-    const docs = await (tx || db.replicaNode())(TableName.AdditionalPrivilege)
+    const docs = await (tx || db)(TableName.AdditionalPrivilege)
       .where({ projectId })
       .whereNotNull("folderId")
       .where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId })

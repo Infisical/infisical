@@ -13,6 +13,8 @@ import {
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -1159,6 +1161,181 @@ describe("User folder access CRUD", () => {
       await removeUsersFromGroupByUserIds({ ...removalDeps, group: secondGroup, userIds: [reapUserId] });
 
       expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+    });
+  });
+  describe("group deletion reaps folder grants", () => {
+    let groupOnlyUserId: string;
+    let directMemberUserId: string;
+    let soleGroupId: string;
+    let firstOfTwoGroupsId: string;
+    let secondOfTwoGroupsId: string;
+    let reapDeps: Parameters<typeof reapDeletedGroupFolderGrants>[0];
+
+    const createProjectGroup = async () => {
+      const slug = `folder-del-grp-${alphaNumericNanoId(8)}`.toLowerCase();
+      const [group] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
+
+      for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        const [membership] = await testDb(TableName.Membership)
+          .insert({
+            scope,
+            scopeOrgId: orgId,
+            scopeProjectId: scope === AccessScope.Project ? projectId : null,
+            actorGroupId: group.id
+          })
+          .returning("*");
+        // eslint-disable-next-line no-await-in-loop
+        await testDb(TableName.MembershipRole).insert({
+          membershipId: membership.id,
+          role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+        });
+      }
+
+      return group.id;
+    };
+
+    const createOrgOnlyUser = async () => {
+      const username = `folder-del-${alphaNumericNanoId(8)}@example.com`;
+      const [user] = await testDb(TableName.Users)
+        .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+        .returning("*");
+
+      const [orgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorUserId: user.id,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: orgMembership.id,
+        role: OrgMembershipRole.Member
+      });
+
+      return user.id;
+    };
+
+    const grantFolderAccess = async (targetUserId: string) => {
+      const res = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(targetUserId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(res.statusCode).toBe(200);
+      return res.json().folderAccess.id as string;
+    };
+
+    // the group row is what production deletes; its memberships go by ON DELETE CASCADE
+    const deleteGroupRow = async (groupId: string) => {
+      await testDb(TableName.Groups).where({ id: groupId }).del();
+    };
+
+    beforeAll(async () => {
+      reapDeps = {
+        userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        membershipGroupDAL: membershipGroupDALFactory(testDb),
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb)
+      };
+
+      groupOnlyUserId = await createOrgOnlyUser();
+      ({ userId: directMemberUserId } = await createProjectUser(ProjectMembershipRole.Member));
+
+      soleGroupId = await createProjectGroup();
+      firstOfTwoGroupsId = await createProjectGroup();
+      secondOfTwoGroupsId = await createProjectGroup();
+
+      await testDb(TableName.UserGroupMembership).insert([
+        { userId: groupOnlyUserId, groupId: soleGroupId },
+        { userId: directMemberUserId, groupId: soleGroupId }
+      ]);
+    });
+
+    afterAll(async () => {
+      const groupIds = [soleGroupId, firstOfTwoGroupsId, secondOfTwoGroupsId];
+      await testDb(TableName.AdditionalPrivilege).whereIn("actorUserId", [groupOnlyUserId, directMemberUserId]).del();
+      await testDb(TableName.UserGroupMembership).whereIn("groupId", groupIds).del();
+      await testDb(TableName.Membership).whereIn("actorGroupId", groupIds).del();
+      await testDb(TableName.Groups).whereIn("id", groupIds).del();
+      await deleteProjectUser(groupOnlyUserId);
+      await deleteProjectUser(directMemberUserId);
+    });
+
+    test("reaps the group-only member's grant and keeps the direct project member's", async () => {
+      const groupOnlyGrantId = await grantFolderAccess(groupOnlyUserId);
+      const directMemberGrantId = await grantFolderAccess(directMemberUserId);
+      const versionBefore = await getFolderPermissionVersion();
+
+      await reapDeletedGroupFolderGrants(reapDeps, soleGroupId, testDb);
+      await deleteGroupRow(soleGroupId);
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: groupOnlyGrantId })).toEqual([]);
+      // the direct project membership is still a route into the project, so this grant is untouched
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: directMemberGrantId })).toHaveLength(1);
+      // the deleted memberships are already part of the permission fingerprint; no bump is owed
+      expect(await getFolderPermissionVersion()).toBe(versionBefore);
+    });
+
+    test("keeps the grant until the last group reaching the project is deleted", async () => {
+      const secondGroupOnlyUserId = await createOrgOnlyUser();
+      await testDb(TableName.UserGroupMembership).insert([
+        { userId: secondGroupOnlyUserId, groupId: firstOfTwoGroupsId },
+        { userId: secondGroupOnlyUserId, groupId: secondOfTwoGroupsId }
+      ]);
+
+      const grantId = await grantFolderAccess(secondGroupOnlyUserId);
+
+      await reapDeletedGroupFolderGrants(reapDeps, firstOfTwoGroupsId, testDb);
+      await deleteGroupRow(firstOfTwoGroupsId);
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
+
+      await reapDeletedGroupFolderGrants(reapDeps, secondOfTwoGroupsId, testDb);
+      await deleteGroupRow(secondOfTwoGroupsId);
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+
+      await deleteProjectUser(secondGroupOnlyUserId);
+    });
+
+    test("reaps only folder grants, leaving the actor's other privileges alone", async () => {
+      const otherUserId = await createOrgOnlyUser();
+      const otherGroupId = await createProjectGroup();
+      await testDb(TableName.UserGroupMembership).insert({ userId: otherUserId, groupId: otherGroupId });
+
+      const folderGrantId = await grantFolderAccess(otherUserId);
+      const [projectPrivilege] = await testDb(TableName.AdditionalPrivilege)
+        .insert({
+          name: `proj-priv-${alphaNumericNanoId(8)}`,
+          actorUserId: otherUserId,
+          projectId,
+          permissions: JSON.stringify([])
+        })
+        .returning("*");
+      const [orgPrivilege] = await testDb(TableName.AdditionalPrivilege)
+        .insert({
+          name: `org-priv-${alphaNumericNanoId(8)}`,
+          actorUserId: otherUserId,
+          orgId,
+          permissions: JSON.stringify([])
+        })
+        .returning("*");
+
+      await reapDeletedGroupFolderGrants(reapDeps, otherGroupId, testDb);
+      await deleteGroupRow(otherGroupId);
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: folderGrantId })).toEqual([]);
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: projectPrivilege.id })).toHaveLength(1);
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: orgPrivilege.id })).toHaveLength(1);
+
+      await testDb(TableName.AdditionalPrivilege).where({ actorUserId: otherUserId }).del();
+      await testDb(TableName.UserGroupMembership).where({ groupId: otherGroupId }).del();
+      await testDb(TableName.Membership).where({ actorGroupId: otherGroupId }).del();
+      await deleteProjectUser(otherUserId);
     });
   });
 });

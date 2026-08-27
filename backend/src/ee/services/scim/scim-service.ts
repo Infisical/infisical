@@ -15,6 +15,8 @@ import {
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -114,6 +116,7 @@ type TScimServiceFactoryDep = {
     | "update"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -155,6 +158,7 @@ export const scimServiceFactory = ({
   smtpService,
   externalGroupOrgRoleMappingDAL,
   membershipGroupDAL,
+  identityGroupMembershipDAL,
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
@@ -1544,6 +1548,12 @@ export const scimServiceFactory = ({
     const [group] = await groupDAL.transaction(async (tx) => {
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
+
+      await reapDeletedGroupFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
         tx
       );

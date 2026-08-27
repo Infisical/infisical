@@ -27,38 +27,27 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     try {
       const knex = tx || db.replicaNode();
 
-      const rows = (await knex.queryBuilder().union([
-        (qb) => {
-          void qb
-            .from(TableName.Membership)
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .whereIn(`${TableName.Membership}.actorUserId`, userIds)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-            .select(
-              db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
-              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
-            );
-        },
-        (qb) => {
-          void qb
-            .from(TableName.UserGroupMembership)
-            .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
-            .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
-            .join(
-              TableName.Membership,
-              `${TableName.UserGroupMembership}.groupId`,
-              `${TableName.Membership}.actorGroupId`
-            )
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-            .select(
-              db.ref("userId").withSchema(TableName.UserGroupMembership),
-              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
-            );
-        }
-      ])) as { userId: string; projectId: string }[];
+      const directRows = (await knex(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereIn(`${TableName.Membership}.actorUserId`, userIds)
+        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+        .select(
+          db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
+          db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+        )) as { userId: string; projectId: string }[];
 
-      for (const { userId, projectId } of rows) {
+      const viaOtherGroupRows = (await knex(TableName.UserGroupMembership)
+        .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
+        .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+        .select(
+          db.ref("userId").withSchema(TableName.UserGroupMembership),
+          db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+        )) as { userId: string; projectId: string }[];
+
+      for (const { userId, projectId } of [...directRows, ...viaOtherGroupRows]) {
         let projects = stillReach.get(userId);
         if (!projects) {
           projects = new Set();

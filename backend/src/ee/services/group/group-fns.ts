@@ -492,14 +492,17 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      for await (const userId of membersToRemoveFromGroupNonPending.map((member) => member.id)) {
-        const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
-          userId,
-          group.id,
-          projectIds,
-          tx
-        );
-        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !projectsUserStillMemberOf.has(projectId));
+      const userIdsToRemove = membersToRemoveFromGroupNonPending.map((member) => member.id);
+      const stillReach = await userGroupMembershipDAL.filterProjectsByUserMembership(
+        userIdsToRemove,
+        group.id,
+        projectIds,
+        tx
+      );
+
+      for await (const userId of userIdsToRemove) {
+        const reachable = stillReach.get(userId);
+        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !reachable?.has(projectId));
 
         if (projectsToDeleteKeyFor.length) {
           await projectKeyDAL.delete(
@@ -636,16 +639,16 @@ export const removeIdentitiesFromGroup = async ({
       )
     );
 
+    const stillReach = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+      identityIdsArray,
+      group.id,
+      projectIds,
+      tx
+    );
+
     for await (const identityId of identityIdsArray) {
-      const projectsIdentityStillMemberOf = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
-        identityId,
-        group.id,
-        projectIds,
-        tx
-      );
-      const projectsToReapPrivilegesFor = projectIds.filter(
-        (projectId) => !projectsIdentityStillMemberOf.has(projectId)
-      );
+      const reachable = stillReach.get(identityId);
+      const projectsToReapPrivilegesFor = projectIds.filter((projectId) => !reachable?.has(projectId));
 
       if (projectsToReapPrivilegesFor.length) {
         // additional privileges are keyed on actor + project, not membership, so leaving the

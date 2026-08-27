@@ -51,6 +51,11 @@ import {
   removeUsersFromGroupByUserIds
 } from "./group-fns";
 import {
+  collectProjectIdsByActor,
+  reapDeletedGroupFolderGrants,
+  reapOrphanedFolderGrants
+} from "./group-folder-grant-fns";
+import {
   TAddMachineIdentityToGroupDTO,
   TAddUserToGroupDTO,
   TCreateGroupDTO,
@@ -359,7 +364,9 @@ export const groupServiceFactory = ({
 
   /**
    * After removing users/identities from a group, clean up their direct project memberships
-   * in any sub-orgs where the group is linked and the actor no longer has effective access.
+   * in any sub-orgs where the group is linked and the actor no longer has effective access,
+   * and reap folder grants on the projects the group carried there — including for actors
+   * who only reached those projects through the group and have no direct membership row.
    */
   const cleanUpSubOrgProjectMemberships = async ({
     groupId,
@@ -376,7 +383,7 @@ export const groupServiceFactory = ({
     if (referencingSubOrgs.length === 0) return;
 
     await groupDAL.transaction(async (tx) => {
-      const collectIdsForSubOrg = async (subOrgId: string): Promise<string[]> => {
+      const collectMembershipsForSubOrg = async (subOrgId: string) => {
         // Find remaining linked groups in this sub-org (excluding the one the user was removed from)
         const remainingOrgGroupMemberships = await membershipGroupDAL.find(
           { scopeOrgId: subOrgId, scope: AccessScope.Organization },
@@ -439,11 +446,43 @@ export const groupServiceFactory = ({
             : []
         ]);
 
-        return [...userProjectMemberships.map((pm) => pm.id), ...identityProjectMemberships.map((pm) => pm.id)];
+        return [...userProjectMemberships, ...identityProjectMemberships];
       };
 
-      const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
-      await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+      const [membershipsToDelete, groupProjectMemberships] = await Promise.all([
+        Promise.all(referencingSubOrgs.map((subOrg) => collectMembershipsForSubOrg(subOrg.orgId))).then((rows) =>
+          rows.flat()
+        ),
+        membershipGroupDAL.find(
+          {
+            actorGroupId: groupId,
+            scope: AccessScope.Project,
+            $in: { scopeOrgId: referencingSubOrgs.map((subOrg) => subOrg.orgId) }
+          },
+          { tx }
+        )
+      ]);
+
+      // every removed actor loses the projects the linked group carried; actors whose last
+      // org access is gone additionally lose the ones their own direct membership covered
+      const groupProjectIds = Array.from(
+        new Set(groupProjectMemberships.map((pm) => pm.scopeProjectId).filter(Boolean) as string[])
+      );
+      const { projectIdsByUserId, projectIdsByIdentityId } = collectProjectIdsByActor(membershipsToDelete, {
+        projectIdsByUserId: new Map(userIds.map((userId) => [userId, [...groupProjectIds]])),
+        projectIdsByIdentityId: new Map(identityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+      });
+
+      await deleteMembershipsInBatch(
+        membershipsToDelete.map((pm) => pm.id),
+        tx
+      );
+
+      await reapOrphanedFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+        { groupId, projectIdsByUserId, projectIdsByIdentityId },
+        tx
+      );
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds }, tx);
     });
@@ -532,40 +571,60 @@ export const groupServiceFactory = ({
       const usersToCleanUp = groupUserIds.filter((id) => !userIdsWithOtherMemberships.has(id));
       const identitiesToCleanUp = groupIdentityIds.filter((id) => !identityIdsWithOtherMemberships.has(id));
 
-      const [userProjectIdsToDelete, identityProjectIdsToDelete] = await Promise.all([
+      const [userProjectMembershipsToDelete, identityProjectMembershipsToDelete] = await Promise.all([
         usersToCleanUp.length > 0
-          ? membershipGroupDAL
-              .find(
-                {
-                  ...(usersToCleanUp.length === 1
-                    ? { actorUserId: usersToCleanUp[0] }
-                    : { $in: { actorUserId: usersToCleanUp } }),
-                  scopeOrgId: actorOrgId,
-                  scope: AccessScope.Project
-                },
-                { tx }
-              )
-              .then((rows) => rows.map((r) => r.id))
+          ? membershipGroupDAL.find(
+              {
+                ...(usersToCleanUp.length === 1
+                  ? { actorUserId: usersToCleanUp[0] }
+                  : { $in: { actorUserId: usersToCleanUp } }),
+                scopeOrgId: actorOrgId,
+                scope: AccessScope.Project
+              },
+              { tx }
+            )
           : [],
         identitiesToCleanUp.length > 0
-          ? membershipGroupDAL
-              .find(
-                {
-                  ...(identitiesToCleanUp.length === 1
-                    ? { actorIdentityId: identitiesToCleanUp[0] }
-                    : { $in: { actorIdentityId: identitiesToCleanUp } }),
-                  scopeOrgId: actorOrgId,
-                  scope: AccessScope.Project
-                },
-                { tx }
-              )
-              .then((rows) => rows.map((r) => r.id))
+          ? membershipGroupDAL.find(
+              {
+                ...(identitiesToCleanUp.length === 1
+                  ? { actorIdentityId: identitiesToCleanUp[0] }
+                  : { $in: { actorIdentityId: identitiesToCleanUp } }),
+                scopeOrgId: actorOrgId,
+                scope: AccessScope.Project
+              },
+              { tx }
+            )
           : []
       ]);
 
-      membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
+      membershipIdsToDelete.push(
+        ...userProjectMembershipsToDelete.map((pm) => pm.id),
+        ...identityProjectMembershipsToDelete.map((pm) => pm.id)
+      );
+
+      // every member loses the projects the group carried; the cleaned-up actors additionally lose
+      // the ones their own direct membership covered
+      const groupProjectIds = Array.from(
+        new Set(groupProjectMemberships.map((pm) => pm.scopeProjectId).filter(Boolean) as string[])
+      );
+      const { projectIdsByUserId, projectIdsByIdentityId } = collectProjectIdsByActor(
+        [...userProjectMembershipsToDelete, ...identityProjectMembershipsToDelete],
+        {
+          projectIdsByUserId: new Map(groupUserIds.map((userId) => [userId, [...groupProjectIds]])),
+          projectIdsByIdentityId: new Map(groupIdentityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+        }
+      );
 
       await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+
+      // must follow the delete: the actors' own direct memberships are among the rows removed, and
+      // one still present reads as "still reaches"
+      await reapOrphanedFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+        { groupId, projectIdsByUserId, projectIdsByIdentityId },
+        tx
+      );
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
     });
@@ -589,6 +648,13 @@ export const groupServiceFactory = ({
     return groupDAL.transaction(async (tx) => {
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
+
+      // must precede the delete: it cascades away the memberships the reap reads
+      await reapDeletedGroupFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
         tx
       );
