@@ -1065,6 +1065,7 @@ describe("User folder access CRUD", () => {
 
   describe("group removal reaps folder grants", () => {
     let reapUserId: string;
+    let pendingReapUserId: string;
     let firstGroup: { id: string; name: string; slug: string; orgId: string };
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
@@ -1132,15 +1133,47 @@ describe("User folder access CRUD", () => {
         { userId: reapUserId, groupId: firstGroup.id },
         { userId: reapUserId, groupId: secondGroup.id }
       ]);
+
+      const pendingUsername = `folder-reap-pending-${alphaNumericNanoId(8)}@example.com`;
+      const [pendingUser] = await testDb(TableName.Users)
+        .insert({
+          username: pendingUsername,
+          email: pendingUsername,
+          isGhost: false,
+          isAccepted: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      pendingReapUserId = pendingUser.id;
+
+      const [pendingOrgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorUserId: pendingReapUserId,
+          status: OrgMembershipStatus.Invited,
+          isActive: true
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: pendingOrgMembership.id,
+        role: OrgMembershipRole.Member
+      });
+
+      await testDb(TableName.UserGroupMembership).insert([
+        { userId: pendingReapUserId, groupId: firstGroup.id, isPending: true },
+        { userId: pendingReapUserId, groupId: secondGroup.id, isPending: true }
+      ]);
     });
 
     afterAll(async () => {
       const groupIds = [firstGroup.id, secondGroup.id];
-      await testDb(TableName.AdditionalPrivilege).where({ actorUserId: reapUserId }).del();
+      await testDb(TableName.AdditionalPrivilege).whereIn("actorUserId", [reapUserId, pendingReapUserId]).del();
       await testDb(TableName.UserGroupMembership).whereIn("groupId", groupIds).del();
       await testDb(TableName.Membership).whereIn("actorGroupId", groupIds).del();
       await testDb(TableName.Groups).whereIn("id", groupIds).del();
       await deleteProjectUser(reapUserId);
+      await deleteProjectUser(pendingReapUserId);
     });
 
     test("deletes the grant only when the last group-derived project access is removed", async () => {
@@ -1159,6 +1192,25 @@ describe("User folder access CRUD", () => {
       expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
 
       await removeUsersFromGroupByUserIds({ ...removalDeps, group: secondGroup, userIds: [reapUserId] });
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+    });
+
+    test("deletes a pending user's grant only when the last group-derived project access is removed", async () => {
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(pendingReapUserId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(createRes.statusCode).toBe(200);
+      const grantId = createRes.json().folderAccess.id;
+
+      await removeUsersFromGroupByUserIds({ ...removalDeps, group: firstGroup, userIds: [pendingReapUserId] });
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
+
+      await removeUsersFromGroupByUserIds({ ...removalDeps, group: secondGroup, userIds: [pendingReapUserId] });
 
       expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
     });

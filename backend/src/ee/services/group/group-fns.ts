@@ -475,23 +475,22 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
-    if (membersToRemoveFromGroupNonPending.length) {
-      // check which projects the group is part of
-      const projectIds = Array.from(
-        new Set(
-          (
-            await membershipGroupDAL.find(
-              {
-                scope: AccessScope.Project,
-                actorGroupId: group.id,
-                scopeOrgId: group.orgId
-              },
-              { tx }
-            )
-          ).map((gp) => gp.scopeProjectId as string)
-        )
-      );
+    const projectIds = Array.from(
+      new Set(
+        (
+          await membershipGroupDAL.find(
+            {
+              scope: AccessScope.Project,
+              actorGroupId: group.id,
+              scopeOrgId: group.orgId
+            },
+            { tx }
+          )
+        ).map((gp) => gp.scopeProjectId as string)
+      )
+    );
 
+    if (membersToRemoveFromGroupNonPending.length) {
       const userIdsToRemove = membersToRemoveFromGroupNonPending.map((member) => member.id);
       const stillReach = await userGroupMembershipDAL.filterProjectsByUserMembership(
         userIdsToRemove,
@@ -540,11 +539,37 @@ export const removeUsersFromGroupByUserIds = async ({
     }
 
     if (membersToRemoveFromGroupPending.length) {
+      const pendingUserIds = membersToRemoveFromGroupPending.map((member) => member.id);
+      const stillReach = await userGroupMembershipDAL.filterProjectsByUserMembership(
+        pendingUserIds,
+        group.id,
+        projectIds,
+        tx
+      );
+
+      for await (const userId of pendingUserIds) {
+        const reachable = stillReach.get(userId);
+        const projectsToReapGrantsFor = projectIds.filter((projectId) => !reachable?.has(projectId));
+
+        if (projectsToReapGrantsFor.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: userId,
+              $in: {
+                projectId: projectsToReapGrantsFor
+              },
+              $notNull: ["folderId"]
+            },
+            tx
+          );
+        }
+      }
+
       await userGroupMembershipDAL.delete(
         {
           groupId: group.id,
           $in: {
-            userId: membersToRemoveFromGroupPending.map((member) => member.id)
+            userId: pendingUserIds
           }
         },
         tx
