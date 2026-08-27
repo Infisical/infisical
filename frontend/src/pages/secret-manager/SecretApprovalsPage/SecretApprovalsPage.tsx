@@ -92,13 +92,13 @@ export const SecretApprovalsPage = () => {
             <TabsTrigger value={TabSection.SecretApprovalRequests}>
               Change Requests
               {Boolean(secretApprovalReqCount?.open) && (
-                <Badge variant="warning">{secretApprovalReqCount?.open}</Badge>
+                <Badge variant="project">{secretApprovalReqCount?.open}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value={TabSection.ResourceApprovalRequests}>
               Access Requests
               {Boolean(accessApprovalRequestCount?.pendingCount) && (
-                <Badge variant="warning">{accessApprovalRequestCount?.pendingCount}</Badge>
+                <Badge variant="project">{accessApprovalRequestCount?.pendingCount}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value={TabSection.Policies}>Policies</TabsTrigger>

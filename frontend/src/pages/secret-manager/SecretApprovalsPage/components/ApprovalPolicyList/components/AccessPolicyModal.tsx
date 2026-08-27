@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import {
   CircleAlertIcon,
   GripVerticalIcon,
@@ -19,6 +20,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Combobox,
   DiscardChangesAlertDialog,
   Field,
   FieldContent,
@@ -26,7 +28,6 @@ import {
   FieldError,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
   IconButton,
   Input,
   Item,
@@ -36,11 +37,6 @@ import {
   ItemMedia,
   ItemSeparator,
   SecretPathInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -68,11 +64,13 @@ import {
 } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
+import { onRequestError } from "@app/hooks/api/reactQuery";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { approvalPolicyFormSchema, TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
-import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
+import { ApproverOption, ApproverOptionData } from "./ApproverOption";
 
 type Props = {
   isOpen?: boolean;
@@ -150,6 +148,7 @@ const Form = ({
     handleSubmit,
     watch,
     resetField,
+    setError,
     setValue,
     formState: { isDirty, isSubmitting, errors }
   } = useForm<TApprovalPolicyFormSchema>({
@@ -289,10 +288,26 @@ const Form = ({
   };
 
   const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
-    if (isEditMode) {
-      await handleUpdatePolicy(data);
-    } else {
-      await handleCreatePolicy(data);
+    try {
+      if (isEditMode) {
+        await handleUpdatePolicy(data);
+      } else {
+        await handleCreatePolicy(data);
+      }
+    } catch (error) {
+      const serverResponse = axios.isAxiosError(error) ? error.response?.data : undefined;
+      const message = serverResponse?.message;
+
+      if (
+        typeof message === "string" &&
+        message.startsWith("A policy for secret path") &&
+        message.includes("already exists in environment")
+      ) {
+        setError("secretPath", { type: "server", message }, { shouldFocus: true });
+        return;
+      }
+
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
     }
   };
 
@@ -432,25 +447,26 @@ const Form = ({
   };
 
   const renderApproverSelect = (index: number) => (
-    <FilterableSelect
-      menuPosition="fixed"
-      isMulti
+    <Combobox
+      multiple
+      modal
+      aria-label={`Approvers for step ${index + 1}`}
       placeholder="Select members or groups..."
+      searchPlaceholder="Search members or groups..."
+      searchAriaLabel="Search approvers"
       options={approverOptions}
-      components={{
-        Option: ApproverOption,
-        MultiValueLabel: ApproverMultiValueLabel
-      }}
       getOptionValue={(option) => `${option.type}-${option.id}`}
       getOptionLabel={getApproverLabel}
+      renderOption={(option) => <ApproverOption option={option} label={getApproverLabel(option)} />}
+      isOptionDisabled={(option) =>
+        option.type === ApproverType.User && option.isOrgMembershipActive === false
+      }
       value={[
         ...(watch(`sequenceApprovers.${index}.user`) ?? []),
         ...(watch(`sequenceApprovers.${index}.group`) ?? [])
       ]}
-      onChange={(newValue) => {
-        const { users, groups: selectedGroups } = splitSelectedApprovers(
-          newValue as ApproverOptionData[]
-        );
+      onValueChange={(newValue) => {
+        const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
         setValue(`sequenceApprovers.${index}.user`, users, {
           shouldDirty: true,
           shouldValidate: true
@@ -472,13 +488,17 @@ const Form = ({
       name={`sequenceApprovers.${index}.approvals` as const}
       defaultValue={1}
       render={({ field }) => (
-        <Input
-          {...field}
-          type="number"
-          min={1}
-          className={inputClassName}
-          onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
-        />
+        <>
+          <Input
+            {...field}
+            type="number"
+            min={1}
+            className={inputClassName}
+            isError={Boolean(errors.sequenceApprovers?.[index]?.approvals)}
+            onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
+          />
+          <FieldError errors={[errors.sequenceApprovers?.[index]?.approvals]} />
+        </>
       )}
     />
   );
@@ -529,25 +549,23 @@ const Form = ({
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <Select
-                  value={value}
-                  onValueChange={(val) => {
-                    onChange(val as PolicyType);
+                <Combobox
+                  modal
+                  aria-label="Policy type"
+                  options={Object.values(PolicyType)}
+                  value={value ?? null}
+                  onValueChange={(policyType) => {
+                    onChange(policyType);
                     resetField("secretPath");
                   }}
-                  disabled={isEditMode}
-                >
-                  <SelectTrigger className="w-full" isError={Boolean(error)}>
-                    <SelectValue placeholder="Select policy type" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {Object.values(PolicyType).map((policyType) => (
-                      <SelectItem value={policyType} key={`policy-type-${policyType}`}>
-                        {policyDetails[policyType].name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  getOptionValue={(policyType) => policyType}
+                  getOptionLabel={(policyType) => policyDetails[policyType].name}
+                  placeholder="Select policy type"
+                  searchPlaceholder="Search policy types..."
+                  searchAriaLabel="Search policy types"
+                  isDisabled={isEditMode}
+                  isError={Boolean(error)}
+                />
                 <FieldError errors={[error]} />
               </FieldContent>
             </Field>
@@ -611,11 +629,15 @@ const Form = ({
             <Field>
               <FieldLabel>Environments</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  multiple
+                  modal
+                  aria-label="Environments"
                   value={value}
-                  isMulti
-                  onChange={onChange}
+                  onValueChange={onChange}
                   placeholder="Select environments..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
                   options={availableEnvironments}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
@@ -827,21 +849,25 @@ const Form = ({
           <Field>
             <FieldLabel>Approvers</FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                isMulti
+              <Combobox
+                multiple
+                modal
+                aria-label="Approvers"
                 placeholder="Select members or groups..."
+                searchPlaceholder="Search members or groups..."
+                searchAriaLabel="Search approvers"
                 options={approverOptions}
-                components={{
-                  Option: ApproverOption,
-                  MultiValueLabel: ApproverMultiValueLabel
-                }}
                 getOptionValue={(option) => `${option.type}-${option.id}`}
                 getOptionLabel={getApproverLabel}
+                renderOption={(option) => (
+                  <ApproverOption option={option} label={getApproverLabel(option)} />
+                )}
+                isOptionDisabled={(option) =>
+                  option.type === ApproverType.User && option.isOrgMembershipActive === false
+                }
                 value={[...(formUserApprovers ?? []), ...(formGroupApprovers ?? [])]}
-                onChange={(newValue) => {
-                  const { users, groups: selectedGroups } = splitSelectedApprovers(
-                    newValue as ApproverOptionData[]
-                  );
+                onValueChange={(newValue) => {
+                  const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
                   setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
                   setValue("groupApprovers", selectedGroups, {
                     shouldDirty: true,
@@ -924,21 +950,25 @@ const Form = ({
             <Field>
               <FieldLabel>Bypassers</FieldLabel>
               <FieldContent>
-                <FilterableSelect
-                  isMulti
+                <Combobox
+                  multiple
+                  modal
+                  aria-label="Bypassers"
                   placeholder="Select members or groups..."
+                  searchPlaceholder="Search members or groups..."
+                  searchAriaLabel="Search bypassers"
                   options={bypasserOptions}
-                  components={{
-                    Option: ApproverOption,
-                    MultiValueLabel: ApproverMultiValueLabel
-                  }}
                   getOptionValue={(option) => `${option.type}-${option.id}`}
                   getOptionLabel={getBypasserLabel}
+                  renderOption={(option) => (
+                    <ApproverOption option={option} label={getBypasserLabel(option)} />
+                  )}
+                  isOptionDisabled={(option) =>
+                    option.type === BypasserType.User && option.isOrgMembershipActive === false
+                  }
                   value={[...(formUserBypassers ?? []), ...(formGroupBypassers ?? [])]}
-                  onChange={(newValue) => {
-                    const { users, groups: selectedGroups } = splitSelectedBypassers(
-                      newValue as ApproverOptionData[]
-                    );
+                  onValueChange={(newValue) => {
+                    const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
                     setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
                     setValue("groupBypassers", selectedGroups, {
                       shouldDirty: true,

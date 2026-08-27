@@ -8,6 +8,7 @@ import { getEmptyApprovalStepIndexes } from "./approvalPolicyFormUtils";
 
 const MIN_EXPIRATION_MS = 60 * 1000;
 const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000;
+const MAX_POLICY_SUBJECTS = 100;
 
 const durationSchema = z
   .string()
@@ -100,7 +101,28 @@ export const approvalPolicyFormSchema = z
     requestExpirationTime: durationSchema
   })
   .superRefine((data, ctx) => {
+    const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
+    if (bypasserCount > MAX_POLICY_SUBJECTS) {
+      ctx.addIssue({
+        path: ["userBypassers"],
+        code: z.ZodIssueCode.custom,
+        message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
+      });
+    }
+
+    data.userBypassers.forEach((bypasser, index) => {
+      if (bypasser.isOrgMembershipActive === false) {
+        ctx.addIssue({
+          path: ["userBypassers", index],
+          code: z.ZodIssueCode.custom,
+          message: "Inactive users cannot bypass approval policies"
+        });
+      }
+    });
+
     if (data.policyType === PolicyType.ChangePolicy) {
+      const approverCount = data.userApprovers.length + data.groupApprovers.length;
+
       if (!(data.groupApprovers.length || data.userApprovers.length)) {
         ctx.addIssue({
           path: ["userApprovers"],
@@ -113,10 +135,48 @@ export const approvalPolicyFormSchema = z
           message: "At least one approver should be provided"
         });
       }
+
+      if (approverCount > MAX_POLICY_SUBJECTS) {
+        ctx.addIssue({
+          path: ["userApprovers"],
+          code: z.ZodIssueCode.custom,
+          message: `Cannot have more than ${MAX_POLICY_SUBJECTS} approvers`
+        });
+      }
+
+      if (!data.groupApprovers.length && data.approvals > data.userApprovers.length) {
+        ctx.addIssue({
+          path: ["approvals"],
+          code: z.ZodIssueCode.custom,
+          message: "Minimum approvals cannot be greater than the number of approvers"
+        });
+      }
+
+      data.userApprovers.forEach((approver, index) => {
+        if (approver.isOrgMembershipActive === false) {
+          ctx.addIssue({
+            path: ["userApprovers", index],
+            code: z.ZodIssueCode.custom,
+            message: "Inactive users cannot approve policies"
+          });
+        }
+      });
       return;
     }
 
     const approvalSteps = data.sequenceApprovers ?? [];
+    const approverCount = approvalSteps.reduce(
+      (count, step) => count + step.user.length + step.group.length,
+      0
+    );
+
+    if (approverCount > MAX_POLICY_SUBJECTS) {
+      ctx.addIssue({
+        path: ["sequenceApprovers"],
+        code: z.ZodIssueCode.custom,
+        message: `Cannot have more than ${MAX_POLICY_SUBJECTS} approvers`
+      });
+    }
 
     if (!approvalSteps.length) {
       ctx.addIssue({
@@ -131,6 +191,26 @@ export const approvalPolicyFormSchema = z
         path: ["sequenceApprovers", index, "user"],
         code: z.ZodIssueCode.custom,
         message: "Select at least one approver for this step"
+      });
+    });
+
+    approvalSteps.forEach((step, stepIndex) => {
+      if (!step.group.length && step.approvals > step.user.length) {
+        ctx.addIssue({
+          path: ["sequenceApprovers", stepIndex, "approvals"],
+          code: z.ZodIssueCode.custom,
+          message: "Minimum approvals cannot be greater than the number of approvers"
+        });
+      }
+
+      step.user.forEach((approver, approverIndex) => {
+        if (approver.isOrgMembershipActive === false) {
+          ctx.addIssue({
+            path: ["sequenceApprovers", stepIndex, "user", approverIndex],
+            code: z.ZodIssueCode.custom,
+            message: "Inactive users cannot approve policies"
+          });
+        }
       });
     });
   });

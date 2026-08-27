@@ -1,9 +1,8 @@
-import { Fragment, ReactNode, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
-  ClipboardCheckIcon,
   FilterIcon,
   HourglassIcon,
   InfoIcon,
@@ -12,8 +11,7 @@ import {
   TimerIcon,
   TriangleAlertIcon,
   UserIcon,
-  UsersIcon,
-  UserXIcon
+  UsersIcon
 } from "lucide-react";
 import ms from "ms";
 import picomatch from "picomatch";
@@ -103,37 +101,6 @@ import {
 import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 import { getAccessDurationLabel } from "../AccessApprovalRequest.utils";
-
-const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
-  if (status === ApprovalStatus.APPROVED)
-    return (
-      <Badge variant="success">
-        <CheckIcon />
-      </Badge>
-    );
-  if (status === ApprovalStatus.REJECTED)
-    return (
-      <Badge variant="danger">
-        <BanIcon />
-      </Badge>
-    );
-
-  if (!isOrgMembershipActive) {
-    return (
-      // Can't do a tooltip here because nested tooltips doesn't work properly as of yet.
-      // TODO(daniel): Fix nested tooltips in the future.
-
-      <Badge variant="neutral">
-        <UserXIcon />
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="warning">
-      <HourglassIcon />
-    </Badge>
-  );
-};
 
 // The four basic CRUD actions render with clean labels rather than the role editor's
 // granular secret labels (e.g. "read" maps to "Read (legacy)" there), so existing
@@ -597,138 +564,129 @@ export const ReviewAccessRequestModal = ({
     ProjectPermissionSub.Member
   );
 
-  const renderApproverMembers = (approver: ApproverChain) => (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-      {approver.user.map((el) => {
-        const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+  const renderApproverMembers = (approver: ApproverChain) => {
+    const users = [...approver.user].sort(
+      (first, second) => Number(second.id === user.id) - Number(first.id === user.id)
+    );
 
-        if (!member) {
-          const policyApprover = request.policy.approvers.find((a) => a.userId === el.id);
-          const approverName = policyApprover?.email || policyApprover?.username || el.id;
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {users.map((el) => {
+          if (el.id === user.id) {
+            return (
+              <span className="flex items-center gap-1.5 font-medium text-warning" key={el.id}>
+                <UserIcon className="size-3.5 shrink-0" />
+                You
+              </span>
+            );
+          }
 
-          // We can only assert an approver was removed when we can read project members.
-          // A viewer without member:read (e.g. a NoAccess requester viewing their own
-          // request) gets an empty members list, so absence here means "not visible to me",
-          // not "removed". Fall back to the identity carried on the request and surface only
-          // org-level status, which the request payload does include.
-          if (!canReadMembers) {
-            if (policyApprover && !policyApprover.isOrgMembershipActive) {
+          const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+
+          if (!member) {
+            const policyApprover = request.policy.approvers.find((a) => a.userId === el.id);
+            const approverName = policyApprover?.email || policyApprover?.username || el.id;
+
+            // We can only assert an approver was removed when we can read project members.
+            // A viewer without member:read (e.g. a NoAccess requester viewing their own
+            // request) gets an empty members list, so absence here means "not visible to me",
+            // not "removed". Fall back to the identity carried on the request and surface only
+            // org-level status, which the request payload does include.
+            if (!canReadMembers) {
+              if (policyApprover && !policyApprover.isOrgMembershipActive) {
+                return (
+                  <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
+                    <UserIcon className="size-3.5 shrink-0 text-muted" />
+                    {approverName}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="neutral">
+                          <BanIcon />
+                          Inactive
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        This user has been deactivated and no longer has an active organization
+                        membership.
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
+                );
+              }
+
               return (
-                <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
+                <span className="flex items-center gap-1.5" key={el.id}>
                   <UserIcon className="size-3.5 shrink-0 text-muted" />
                   {approverName}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="neutral">
-                        <BanIcon />
-                        Inactive
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      This user has been deactivated and no longer has an active organization
-                      membership.
-                    </TooltipContent>
-                  </Tooltip>
                 </span>
               );
             }
 
             return (
-              <span className="flex items-center gap-1.5" key={el.id}>
+              <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
                 <UserIcon className="size-3.5 shrink-0 text-muted" />
                 {approverName}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="neutral">
+                      <BanIcon />
+                      Removed
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>This user has been removed from the project.</TooltipContent>
+                </Tooltip>
               </span>
             );
           }
 
-          return (
-            <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
+          return member.user.isOrgMembershipActive ? (
+            <span className="flex items-center gap-1.5" key={member.user.id}>
               <UserIcon className="size-3.5 shrink-0 text-muted" />
-              {approverName}
+              {member.user.username}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 opacity-40" key={member.user.id}>
+              <UserIcon className="size-3.5 shrink-0 text-muted" />
+              {member.user.username}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge variant="neutral">
                     <BanIcon />
-                    Removed
+                    Inactive
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>This user has been removed from the project.</TooltipContent>
+                <TooltipContent>
+                  This user has been deactivated and no longer has an active organization
+                  membership.
+                </TooltipContent>
               </Tooltip>
             </span>
           );
-        }
-
-        return member.user.isOrgMembershipActive ? (
-          <span className="flex items-center gap-1.5" key={member.user.id}>
-            <UserIcon className="size-3.5 shrink-0 text-muted" />
-            {member.user.username}
+        })}
+        {approver.group.map((el) => (
+          <span className="flex items-center gap-1.5" key={el.id}>
+            <UsersIcon className="size-3.5 shrink-0 text-muted" />
+            {approverSequence?.projectGroupsGroupById?.[el.id]?.[0]?.group?.name ?? el.id}
           </span>
-        ) : (
-          <span className="flex items-center gap-1.5 opacity-40" key={member.user.id}>
-            <UserIcon className="size-3.5 shrink-0 text-muted" />
-            {member.user.username}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge variant="neutral">
-                  <BanIcon />
-                  Inactive
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                This user has been deactivated and no longer has an active organization membership.
-              </TooltipContent>
-            </Tooltip>
-          </span>
-        );
-      })}
-      {approver.group.map((el) => (
-        <span className="flex items-center gap-1.5" key={el.id}>
-          <UsersIcon className="size-3.5 shrink-0 text-muted" />
-          {approverSequence?.projectGroupsGroupById?.[el.id]?.[0]?.group?.name ?? el.id}
-        </span>
-      ))}
-    </div>
-  );
-
-  const renderReviewersTooltip = (approver: ApproverChain, badge: ReactNode) => {
-    if (!badge) return null;
-
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex">{badge}</div>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-lg">
-          <div className="mb-1 text-sm text-foreground">Reviewers</div>
-          <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-border overflow-y-auto rounded-sm">
-            {approver.reviewers.map((el, idx) => (
-              <div
-                key={`reviewer-${idx + 1}`}
-                className="flex items-center gap-2 px-2 py-2 text-sm"
-              >
-                <div className={twMerge("flex-1", !el.isOrgMembershipActive && "opacity-40")}>
-                  {el.username}
-                </div>
-                {getReviewedStatusSymbol(el?.status as ApprovalStatus, el.isOrgMembershipActive)}
-              </div>
-            ))}
-          </div>
-        </TooltipContent>
-      </Tooltip>
+        ))}
+      </div>
     );
   };
 
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
-        <SheetContent className="flex h-full flex-col gap-y-0 overflow-hidden sm:max-w-2xl">
+        <SheetContent
+          className="flex h-full flex-col gap-y-0 overflow-hidden sm:max-w-2xl"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <SheetHeader className="border-b">
             <SheetTitle>Review Request</SheetTitle>
             <SheetDescription>Review the request and approve or deny access.</SheetDescription>
           </SheetHeader>
-          <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+          <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
             {shouldBlockRequestActions && (
-              <Alert variant={completedMessageVariant} className="mb-4">
+              <Alert variant={completedMessageVariant}>
                 {renderBannerIcon()}
                 <AlertTitle>{renderCompletedMessages()}</AlertTitle>
                 {completedDescription && (
@@ -741,99 +699,95 @@ export const ReviewAccessRequestModal = ({
                 )}
               </Alert>
             )}
-            <div className="flex items-start gap-2 text-sm text-accent">
-              <ProjectIcon className="mt-0.5 size-4 shrink-0 text-project" />
-              <p>
-                {requesterDisplay ? (
-                  <span className="font-medium text-foreground">{requesterDisplay}</span>
-                ) : (
-                  "A user"
-                )}{" "}
-                requested access to the following resource:
-              </p>
-            </div>
-            <div className="">
-              <div className="mt-4 mb-2 text-foreground">
-                <div
-                  className={twMerge(
-                    "grid gap-x-8 gap-y-4",
-                    shouldCollapseDetails ? "grid-cols-1" : "grid-cols-2"
-                  )}
-                >
-                  <Detail>
-                    <DetailLabel>Environment</DetailLabel>
-                    <DetailValue>{accessDetails.env}</DetailValue>
+            <div className="flex flex-col gap-3 rounded-lg bg-container p-3 text-foreground">
+              <div className="flex items-start gap-2 text-sm text-accent">
+                <ProjectIcon className="mt-0.5 size-4 shrink-0 text-project" />
+                <p>
+                  {requesterDisplay ? (
+                    <span className="font-medium text-foreground">{requesterDisplay}</span>
+                  ) : (
+                    "A user"
+                  )}{" "}
+                  requested access to the following resource:
+                </p>
+              </div>
+              <div
+                className={twMerge(
+                  "flex gap-x-8 gap-y-4",
+                  shouldCollapseDetails ? "flex-col" : "flex-wrap"
+                )}
+              >
+                <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
+                  <DetailLabel>Environment</DetailLabel>
+                  <DetailValue className="break-words">{accessDetails.env}</DetailValue>
+                </Detail>
+                <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
+                  <DetailLabel>Secret Path</DetailLabel>
+                  <DetailValue className="break-words">{accessDetails.secretPath}</DetailValue>
+                </Detail>
+                <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
+                  <DetailLabel>Access Duration</DetailLabel>
+                  <DetailValue>
+                    <div className="flex min-w-0 items-center gap-1">
+                      {getAccessDurationLabel(
+                        accessDetails.temporaryAccess.isTemporary,
+                        accessDetails.temporaryAccess.temporaryRange
+                      )}
+                      {request.isApprover && request.status === ApprovalStatus.PENDING && (
+                        <>
+                          <EditAccessRequestModal
+                            isOpen={popUp.editRequest.isOpen}
+                            onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
+                            accessRequest={request}
+                            onComplete={onUpdate}
+                            projectSlug={projectSlug}
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                onClick={() => handlePopUpOpen("editRequest")}
+                                variant="ghost"
+                                size="xs"
+                                tabIndex={-1}
+                                aria-label="Edit access duration"
+                                className="-my-1"
+                              >
+                                <SquarePenIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Access Duration</TooltipContent>
+                          </Tooltip>
+                        </>
+                      )}
+                    </div>
+                  </DetailValue>
+                </Detail>
+                {request.note && (
+                  <Detail className="w-full flex-none">
+                    <DetailLabel>Note</DetailLabel>
+                    <DetailValue>{request.note}</DetailValue>
                   </Detail>
-                  <Detail>
-                    <DetailLabel>Secret Path</DetailLabel>
-                    <DetailValue className={shouldCollapseDetails ? undefined : "truncate"}>
-                      {accessDetails.secretPath}
-                    </DetailValue>
-                  </Detail>
-                  <Detail>
-                    <DetailLabel>Access Duration</DetailLabel>
-                    <DetailValue>
-                      <div className="flex items-center gap-1">
-                        {getAccessDurationLabel(
-                          accessDetails.temporaryAccess.isTemporary,
-                          accessDetails.temporaryAccess.temporaryRange
-                        )}
-                        {request.isApprover && request.status === ApprovalStatus.PENDING && (
-                          <>
-                            <EditAccessRequestModal
-                              isOpen={popUp.editRequest.isOpen}
-                              onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
-                              accessRequest={request}
-                              onComplete={onUpdate}
-                              projectSlug={projectSlug}
-                            />
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <IconButton
-                                  onClick={() => handlePopUpOpen("editRequest")}
-                                  variant="ghost"
-                                  size="xs"
-                                  tabIndex={-1}
-                                  aria-label="Edit access duration"
-                                  className="-my-1"
-                                >
-                                  <SquarePenIcon />
-                                </IconButton>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit Access Duration</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
-                      </div>
-                    </DetailValue>
-                  </Detail>
-                  {request.note && (
-                    <Detail className="col-span-full">
-                      <DetailLabel>Note</DetailLabel>
-                      <DetailValue>{request.note}</DetailValue>
+                )}
+                {request.expiresAt &&
+                  request.status === ApprovalStatus.PENDING &&
+                  new Date(request.expiresAt) > new Date() && (
+                    <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
+                      <DetailLabel>Request Expires</DetailLabel>
+                      <DetailValue>
+                        <span>
+                          In{" "}
+                          {ms(new Date(request.expiresAt).getTime() - Date.now(), {
+                            long: true
+                          })}
+                        </span>
+                      </DetailValue>
                     </Detail>
                   )}
-                  {request.expiresAt &&
-                    request.status === ApprovalStatus.PENDING &&
-                    new Date(request.expiresAt) > new Date() && (
-                      <Detail>
-                        <DetailLabel>Request Expires</DetailLabel>
-                        <DetailValue>
-                          <span>
-                            In{" "}
-                            {ms(new Date(request.expiresAt).getTime() - Date.now(), {
-                              long: true
-                            })}
-                          </span>
-                        </DetailValue>
-                      </Detail>
-                    )}
-                </div>
               </div>
+            </div>
 
-              <div className="mt-4 mb-3">
-                <span className="text-sm font-medium text-foreground">Requested Permissions</span>
-              </div>
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-medium text-foreground">Requested Permissions</h3>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -914,28 +868,21 @@ export const ReviewAccessRequestModal = ({
                   )}
                 </TableBody>
               </Table>
+            </section>
 
-              <div className="mt-4 mb-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Approvers</span>
-                {approverSequence.isMyReviewInThisSequence &&
-                  request.status === ApprovalStatus.PENDING &&
-                  !hasExpired && (
-                    <Badge variant="warning">
-                      <ClipboardCheckIcon />
-                      Awaiting Your Review
-                    </Badge>
-                  )}
-              </div>
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-medium text-foreground">Approvers</h3>
               {approvers.length === 1 ? (
                 <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
                   <Item className="flex-nowrap items-start rounded-none border-0">
                     <ItemContent className="min-w-0 gap-1.5">
                       {renderApproverMembers(approvers[0])}
                     </ItemContent>
-                    <ItemActions>
-                      {renderReviewersTooltip(approvers[0], getStatusBadge(approvers[0]))}
-                      <span className="text-xs text-muted">
-                        Min <span className="text-foreground">{approvers[0].approvals}</span>
+                    <ItemActions className="shrink-0">
+                      {getStatusBadge(approvers[0])}
+                      <span className="text-xs whitespace-nowrap text-muted">
+                        {approvers[0].approvals ?? 1} approval
+                        {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
                       </span>
                     </ItemActions>
                   </Item>
@@ -962,10 +909,11 @@ export const ReviewAccessRequestModal = ({
                           <ItemContent className="min-w-0 gap-1.5">
                             {renderApproverMembers(approver)}
                           </ItemContent>
-                          <ItemActions>
-                            {renderReviewersTooltip(approver, badge)}
-                            <span className="text-xs text-muted">
-                              Min <span className="text-foreground">{approver.approvals}</span>
+                          <ItemActions className="shrink-0">
+                            {badge}
+                            <span className="text-xs whitespace-nowrap text-muted">
+                              {approver.approvals ?? 1} approval
+                              {(approver.approvals ?? 1) === 1 ? "" : "s"} required
                             </span>
                           </ItemActions>
                         </Item>
@@ -974,7 +922,7 @@ export const ReviewAccessRequestModal = ({
                   })}
                 </ItemGroup>
               )}
-            </div>
+            </section>
           </div>
           <SheetFooter className={twMerge("flex-col border-t", !showFooter && "hidden")}>
             {!shouldBlockRequestActions && (

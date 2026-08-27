@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
+  ChevronDownIcon,
   ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
@@ -44,6 +45,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -51,6 +53,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
@@ -78,6 +81,13 @@ import {
   SecretApprovalRequestChanges
 } from "./components/SecretApprovalRequestChanges";
 
+enum ChangeRequestOrderBy {
+  Environment = "environment",
+  SecretPath = "secret-path",
+  Author = "author",
+  OpenedAt = "opened-at"
+}
+
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
   const queryClient = useQueryClient();
@@ -90,6 +100,10 @@ export const SecretApprovalRequest = () => {
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
+  const [sort, setSort] = useState<{
+    column: ChangeRequestOrderBy;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>(null);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -150,9 +164,14 @@ export const SecretApprovalRequest = () => {
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
   const isFiltered = Boolean(searchFilter || envFilter || committerFilter);
 
-  const environmentNamesBySlug = (currentProject?.environments ?? []).reduce<
-    Record<string, string>
-  >((prev, curr) => ({ ...prev, [curr.slug]: curr.name }), {});
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
+  );
   const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
     value: environment.slug,
     label: environment.name
@@ -161,6 +180,62 @@ export const SecretApprovalRequest = () => {
     value: user.id,
     label: user.username
   }));
+
+  const sortedSecretApprovalRequests = useMemo(() => {
+    if (!sort) return secretApprovalRequests;
+
+    const getCommitterName = (request: (typeof secretApprovalRequests)[number]) =>
+      request.committerUser
+        ? [request.committerUser.firstName, request.committerUser.lastName]
+            .filter(Boolean)
+            .join(" ") || request.committerUser.email
+        : (request.committerIdentity?.name ?? "");
+
+    return [...secretApprovalRequests].sort((requestOne, requestTwo) => {
+      let comparison = 0;
+
+      switch (sort.column) {
+        case ChangeRequestOrderBy.Environment:
+          comparison = (
+            environmentNamesBySlug[requestOne.environment] ?? requestOne.environment
+          ).localeCompare(environmentNamesBySlug[requestTwo.environment] ?? requestTwo.environment);
+          break;
+        case ChangeRequestOrderBy.SecretPath:
+          comparison = (requestOne.policy.secretPath ?? "").localeCompare(
+            requestTwo.policy.secretPath ?? ""
+          );
+          break;
+        case ChangeRequestOrderBy.Author:
+          comparison = getCommitterName(requestOne).localeCompare(getCommitterName(requestTwo));
+          break;
+        case ChangeRequestOrderBy.OpenedAt:
+          comparison =
+            new Date(requestOne.createdAt).getTime() - new Date(requestTwo.createdAt).getTime();
+          break;
+        default:
+          break;
+      }
+
+      return sort.direction === "ascending" ? comparison : -comparison;
+    });
+  }, [environmentNamesBySlug, secretApprovalRequests, sort]);
+
+  const getSortDirection = (column: ChangeRequestOrderBy): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSort = (column: ChangeRequestOrderBy, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+  };
+
+  const getSortIconClassName = (column: ChangeRequestOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
 
   useEffect(() => {
     if (
@@ -194,7 +269,17 @@ export const SecretApprovalRequest = () => {
           <CardDescription>Review pending and closed change requests</CardDescription>
         </CardHeader>
         <CardContent className="@container flex flex-col">
-          <div className="mb-4 flex flex-wrap items-center gap-2 @6xl:flex-nowrap">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+            <InputGroup className="min-w-48 flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search by author, environment, path or secret..."
+              />
+            </InputGroup>
             <Tabs
               value={statusFilter}
               onValueChange={(value) => {
@@ -215,56 +300,48 @@ export const SecretApprovalRequest = () => {
             >
               <TabsList variant="filled">
                 <TabsTrigger value="open">
-                  <GitPullRequestIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.open ?? 0} Open
+                  <GitPullRequestIcon className="size-3.5" />
+                  Open {secretApprovalRequestCount?.open ?? 0}
                 </TabsTrigger>
                 <TabsTrigger value="close">
-                  <CheckIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.closed ?? 0} Closed
+                  <CheckIcon className="size-3.5" />
+                  Closed {secretApprovalRequestCount?.closed ?? 0}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="flex flex-wrap items-center gap-2 @6xl:mr-auto @6xl:flex-nowrap">
-              <InputGroup className="@6xl:w-[26rem]">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder="Search by author, environment, path or secret..."
-                />
-              </InputGroup>
-            </div>
-            <Combobox
-              aria-label="Filter environments"
-              className="w-[200px]"
-              options={environmentOptions}
-              value={environmentOptions.find((option) => option.value === envFilter) ?? null}
-              onValueChange={(option) => setEnvFilter(option.value)}
-              onClear={() => setEnvFilter(undefined)}
-              getOptionValue={(option) => option.value}
-              getOptionLabel={(option) => option.label}
-              clearAriaLabel="Clear environment filter"
-              searchPlaceholder="Filter environments"
-              searchAriaLabel="Filter environments"
-              placeholder="All Environments"
-            />
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+            <div className="w-42 shrink-0">
               <Combobox
-                aria-label="Filter authors"
-                className="w-[220px]"
-                options={authorOptions}
-                value={authorOptions.find((option) => option.value === committerFilter) ?? null}
-                onValueChange={(option) => setCommitterFilter(option.value)}
-                onClear={() => setCommitterFilter(undefined)}
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
                 getOptionValue={(option) => option.value}
                 getOptionLabel={(option) => option.label}
-                clearAriaLabel="Clear author filter"
-                searchPlaceholder="Filter authors"
-                searchAriaLabel="Filter authors"
-                placeholder="All Authors"
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
+                placeholder="All Environments"
               />
+            </div>
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <div className="w-42 shrink-0">
+                <Combobox
+                  aria-label="Filter authors"
+                  className="w-full"
+                  options={authorOptions}
+                  value={authorOptions.find((option) => option.value === committerFilter) ?? null}
+                  onValueChange={(option) => setCommitterFilter(option.value)}
+                  onClear={() => setCommitterFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear author filter"
+                  searchPlaceholder="Filter authors"
+                  searchAriaLabel="Filter authors"
+                  placeholder="All Authors"
+                />
+              </div>
             )}
           </div>
           {isRequestListEmpty && !isFiltered && (
@@ -296,12 +373,50 @@ export const SecretApprovalRequest = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Change</TableHead>
-                  <TableHead>Environment</TableHead>
-                  <TableHead>Secret Path</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Opened</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Environment)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.Environment, direction)
+                    }
+                  >
+                    Environment
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Environment)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.SecretPath)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.SecretPath, direction)
+                    }
+                  >
+                    Secret Path
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.SecretPath)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Author)}
+                    onSortChange={(direction) => handleSort(ChangeRequestOrderBy.Author, direction)}
+                  >
+                    Author
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Author)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.OpenedAt)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.OpenedAt, direction)
+                    }
+                  >
+                    Opened
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.OpenedAt)}
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -327,12 +442,12 @@ export const SecretApprovalRequest = () => {
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
                   ))}
-                {secretApprovalRequests.map((secretApproval) => {
+                {sortedSecretApprovalRequests.map((secretApproval) => {
                   const {
                     id: reqId,
                     commits,
@@ -346,7 +461,6 @@ export const SecretApprovalRequest = () => {
                     updatedAt,
                     policy,
                     environment,
-                    slug,
                     isReplicated
                   } = secretApproval;
 
@@ -419,21 +533,9 @@ export const SecretApprovalRequest = () => {
                           navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
                       }}
                     >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <GitPullRequestIcon className="size-3.5 shrink-0 text-muted" />
-                          <span className="text-foreground">
-                            {generateCommitText(commits, isReplicated)}
-                          </span>
-                          <span className="text-xs text-muted">#{slug}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        {environmentDisplayName}
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        <p className="truncate text-foreground">{policy.secretPath}</p>
-                      </TableCell>
+                      <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
+                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
                       <TableCell>
                         {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">
@@ -476,6 +578,7 @@ export const SecretApprovalRequest = () => {
                         )}
                       </TableCell>
                       <TableCell
+                        variant="action"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >

@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
+  ChevronDownIcon,
   CircleAlertIcon,
   FilterIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
@@ -46,10 +44,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -239,8 +239,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     orderDirection,
     orderBy,
     setOrderBy,
-    setOrderDirection,
-    toggleOrderDirection
+    setOrderDirection
   } = usePagination<PolicyOrderBy>(PolicyOrderBy.Name, {
     initPerPage: getUserTablePreference("approvalPoliciesTable", PreferenceKey.PerPage, 20)
   });
@@ -309,24 +308,26 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     setPage
   });
 
-  const handleSort = (column: PolicyOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
+  const handleSort = (column: PolicyOrderBy, direction: TableSortDirection) => {
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
   };
 
-  const getClassName = (col: PolicyOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (column: PolicyOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
 
-  const getColSortIcon = (col: PolicyOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? (
-      <ArrowUpIcon />
-    ) : (
-      <ArrowDownIcon />
+    return orderDirection === OrderByDirection.DESC ? "descending" : "ascending";
+  };
+
+  const getSortIconClassName = (column: PolicyOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
     );
+  };
 
   return (
     <>
@@ -363,18 +364,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
             </Tooltip>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="@container flex flex-col gap-4">
           {!canReadPolicies ? (
             <AccessRestrictedNotice title="Access Restricted" />
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <EnvironmentFilterSelect
-                  environments={currentProject.environments}
-                  selectedEnvironmentIds={filters.environmentIds}
-                  onChange={(environmentIds) => setFilters((prev) => ({ ...prev, environmentIds }))}
-                />
-                <InputGroup className="flex-1">
+              <div className="flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+                <InputGroup className="min-w-48 flex-[3]">
                   <InputGroupAddon>
                     <SearchIcon />
                   </InputGroupAddon>
@@ -385,6 +381,11 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                     aria-label="Search approval policies"
                   />
                 </InputGroup>
+                <EnvironmentFilterSelect
+                  environments={currentProject.environments}
+                  selectedEnvironmentIds={filters.environmentIds}
+                  onChange={(environmentIds) => setFilters((prev) => ({ ...prev, environmentIds }))}
+                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <IconButton
@@ -467,63 +468,43 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>
-                        <div className="flex items-center">
-                          Name
-                          <IconButton
-                            variant="ghost-muted"
-                            size="xs"
-                            className={getClassName(PolicyOrderBy.Name)}
-                            aria-label="Sort by name"
-                            onClick={() => handleSort(PolicyOrderBy.Name)}
-                          >
-                            {getColSortIcon(PolicyOrderBy.Name)}
-                          </IconButton>
-                        </div>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Name)}
+                        onSortChange={(direction) => handleSort(PolicyOrderBy.Name, direction)}
+                      >
+                        Name
+                        <ChevronDownIcon className={getSortIconClassName(PolicyOrderBy.Name)} />
                       </TableHead>
-                      <TableHead>
-                        <div className="flex items-center">
-                          Environment
-                          <IconButton
-                            variant="ghost-muted"
-                            size="xs"
-                            className={getClassName(PolicyOrderBy.Environment)}
-                            aria-label="Sort by environment"
-                            onClick={() => handleSort(PolicyOrderBy.Environment)}
-                          >
-                            {getColSortIcon(PolicyOrderBy.Environment)}
-                          </IconButton>
-                        </div>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Environment)}
+                        onSortChange={(direction) =>
+                          handleSort(PolicyOrderBy.Environment, direction)
+                        }
+                      >
+                        Environment
+                        <ChevronDownIcon
+                          className={getSortIconClassName(PolicyOrderBy.Environment)}
+                        />
                       </TableHead>
-                      <TableHead>
-                        <div className="flex items-center">
-                          Secret Path
-                          <IconButton
-                            variant="ghost-muted"
-                            size="xs"
-                            className={getClassName(PolicyOrderBy.SecretPath)}
-                            aria-label="Sort by secret path"
-                            onClick={() => handleSort(PolicyOrderBy.SecretPath)}
-                          >
-                            {getColSortIcon(PolicyOrderBy.SecretPath)}
-                          </IconButton>
-                        </div>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.SecretPath)}
+                        onSortChange={(direction) =>
+                          handleSort(PolicyOrderBy.SecretPath, direction)
+                        }
+                      >
+                        Secret Path
+                        <ChevronDownIcon
+                          className={getSortIconClassName(PolicyOrderBy.SecretPath)}
+                        />
                       </TableHead>
-                      <TableHead>
-                        <div className="flex items-center">
-                          Type
-                          <IconButton
-                            variant="ghost-muted"
-                            size="xs"
-                            className={getClassName(PolicyOrderBy.Type)}
-                            aria-label="Sort by type"
-                            onClick={() => handleSort(PolicyOrderBy.Type)}
-                          >
-                            {getColSortIcon(PolicyOrderBy.Type)}
-                          </IconButton>
-                        </div>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Type)}
+                        onSortChange={(direction) => handleSort(PolicyOrderBy.Type, direction)}
+                      >
+                        Type
+                        <ChevronDownIcon className={getSortIconClassName(PolicyOrderBy.Type)} />
                       </TableHead>
-                      <TableHead className="w-5" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
