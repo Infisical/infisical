@@ -1054,7 +1054,7 @@ export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Pro
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
-        title="Discard Policy Changes?"
+        title="Discard Changes?"
         description="Your unsaved policy changes will be lost."
       />
     </>
