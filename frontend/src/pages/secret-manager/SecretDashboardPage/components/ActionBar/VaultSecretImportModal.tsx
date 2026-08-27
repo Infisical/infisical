@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { TriangleAlertIcon } from "lucide-react";
+import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   defaultVaultConnectionId,
@@ -175,23 +173,14 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
-        <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
-          <div>
-            <div className="mb-2">
-              <strong>Import Secrets from HashiCorp Vault</strong>
-            </div>
-            <div className="space-y-1.5 text-xs leading-relaxed">
-              <p>
-                Select a Vault namespace and one or more secret paths to import secrets into the
-                current Infisical environment (<code className="text-xs">{environment}</code>) at
-                path <code className="text-xs">{secretPath}</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Alert variant="info" className="mb-4">
+        <InfoIcon />
+        <AlertTitle>Import Secrets from HashiCorp Vault</AlertTitle>
+        <AlertDescription>
+          Select a Vault namespace and one or more secret paths to import secrets into the current
+          Infisical environment (<code>{environment}</code>) at path <code>{secretPath}</code>.
+        </AlertDescription>
+      </Alert>
 
       <VaultConnectionAndNamespaceFields
         appConnections={appConnections}

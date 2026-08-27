@@ -6,6 +6,9 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Field,
   FieldContent,
@@ -109,16 +112,18 @@ const SqlVaultImport = ({ onImport }: { onImport: (role: VaultDatabaseRole) => v
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-md border border-info/20 bg-info/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-foreground">
-          <InfoIcon className="size-4 text-info" />
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertDescription>
           <span>Load values from HashiCorp Vault.</span>
-        </div>
-        <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
-          <img src="/images/integrations/Vault.png" alt="" className="size-4" />
-          Load from Vault
-        </Button>
-      </div>
+          <AlertAction>
+            <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
+              <img src="/images/integrations/Vault.png" alt="" className="size-4" />
+              Load from Vault
+            </Button>
+          </AlertAction>
+        </AlertDescription>
+      </Alert>
       <VaultSqlDatabaseImportModal
         isOpen={isOpen}
         onOpenChange={setIsOpen}

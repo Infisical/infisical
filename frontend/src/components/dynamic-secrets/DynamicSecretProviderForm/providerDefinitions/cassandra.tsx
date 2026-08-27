@@ -3,7 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
@@ -72,16 +72,18 @@ const CassandraVaultImport = ({ onImport }: { onImport: (role: VaultDatabaseRole
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-md border border-info/20 bg-info/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-foreground">
-          <InfoIcon className="size-4 text-info" />
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertDescription>
           <span>Load values from HashiCorp Vault.</span>
-        </div>
-        <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
-          <img src="/images/integrations/Vault.png" alt="" className="size-4" />
-          Load from Vault
-        </Button>
-      </div>
+          <AlertAction>
+            <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
+              <img src="/images/integrations/Vault.png" alt="" className="size-4" />
+              Load from Vault
+            </Button>
+          </AlertAction>
+        </AlertDescription>
+      </Alert>
       <VaultCassandraImportModal
         isOpen={isOpen}
         onOpenChange={setIsOpen}

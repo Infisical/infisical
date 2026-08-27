@@ -4,6 +4,9 @@ import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Field,
   FieldContent,
@@ -97,15 +100,17 @@ const LdapFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   return (
     <>
       {mode === "create" && canImport && connections.length > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-info/20 bg-info/10 p-3">
-          <div className="flex items-center gap-2 text-sm">
-            <InfoIcon className="size-4 text-info" />
-            Load values from HashiCorp Vault.
-          </div>
-          <Button type="button" size="sm" variant="info" onClick={() => setIsImportOpen(true)}>
-            Load from Vault
-          </Button>
-        </div>
+        <Alert variant="info">
+          <InfoIcon />
+          <AlertDescription>
+            <span>Load values from HashiCorp Vault.</span>
+            <AlertAction>
+              <Button type="button" size="sm" variant="info" onClick={() => setIsImportOpen(true)}>
+                Load from Vault
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
       )}
       <DynamicSecretProviderGroup id="ldap-connection" presentation="panel">
         <DynamicSecretProviderFields fields={common} />

@@ -51,4 +51,20 @@ describe("dynamic-secret production route cutover", () => {
       assert.doesNotMatch(source, /FilterableSelect/);
     });
   });
+
+  it("keeps shared provider dependencies on v3 components and semantic colors", async () => {
+    const [permissionSource, gatewaySource, secretInputSource] = await Promise.all([
+      readSource("../../permissions/OrgPermissionCan.tsx"),
+      readSource("../../v3/platform/GatewayPicker/GatewayPicker.tsx"),
+      readSource("../../v3/platform/SecretInput/SecretInput.tsx")
+    ]);
+
+    assert.doesNotMatch(permissionSource, /components\/v2|from "\.\.\/v2"/);
+    [gatewaySource, secretInputSource].forEach((source) => {
+      assert.doesNotMatch(
+        source,
+        /(?:bg|border|decoration|fill|ring|stroke|text)-(?:bunker|mineshaft|primary|yellow)/
+      );
+    });
+  });
 });
