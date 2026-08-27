@@ -36,7 +36,7 @@ User identity count is straightforward—it equals the number of human users who
   User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
 </Tip>
 
-Agents that are operated one-to-one by a person, such as a local coding assistant, run under that person's user identity and do not add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
+An agent operated one-to-one by a person, such as a local coding assistant, authenticates as that person and does not add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
 
 ### Machine identities
 
@@ -118,33 +118,42 @@ Consider these factors when determining your machine identity count:
 
 #### AI agent identities
 
-AI agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What determines whether an agent consumes a machine identity is not that it is an agent, but whether it acts on behalf of a specific person or runs on its own.
+Agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What decides whether an agent consumes a machine identity is how it authenticates, not that it is an agent or where it runs.
 
-| Agent type | Authenticates as | Consumes a machine identity? |
-|------------|------------------|------------------------------|
-| **Local / developer agents** — coding assistants, IDE agents, and desktop AI clients, where the agent-to-user ratio is 1:1 | The operator's own user identity | **No** |
-| **Standalone / remote agents** — agents that run perpetually in their own environment, are shared by more than one person, or are triggered by events rather than by a person | A machine identity | **Yes** — one per unique permission set |
+| How the agent authenticates | Counts as |
+|-----------------------------|-----------|
+| **As a person.** An agent started with the [local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) authenticates as the user who ran `infisical login`, so the agent-to-user ratio is 1:1. | The operator's existing user identity. No machine identity. |
+| **As itself.** An agent that runs perpetually in its own environment, on a schedule, or unattended, plus any agent you deliberately scope to its own identity, authenticates with its own [machine identity](/documentation/platform/identities/machine-identities). | One machine identity per unique permission set. |
 
 <Note>
-  **Local agents do not consume machine identities.** If you run a coding assistant or another local agent where each agent instance is driven by a single person, the agent assumes that person's permissions and is already covered by their user identity. Machine identities are only required for agents that run standalone, in their own environment, outside of any one user's session.
+  Running a coding agent on your own computer does not consume a machine identity. With the [local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
 </Note>
+
+<Tip>
+  A scoped machine identity can be narrower than the person operating the agent, which is why PAM recommends [running a sensitive or untrusted agent as its own identity](/documentation/platform/pam/ai-agents/overview#running-unattended) even when someone is watching it. That isolation is a deliberate least-privilege choice, and every identity you create for it counts.
+</Tip>
 
 ##### How to scope agent identities
 
-For standalone agents, scope identities the same way you scope them for applications and services: by **purpose and permission set**, not by agent instance, run, container, or VM.
+For agents that authenticate as themselves, scope identities by purpose and permission set, not by agent instance, run, container, or VM.
 
 | Grouping | Identities needed |
 |----------|-------------------|
 | Multiple instances or runs of the same agent, with the same access | 1 |
-| Two agents serving different functions (e.g., recruitment vs. engineering) | 2 |
+| Two agents serving different functions, such as recruitment and engineering | 2 |
 | One agent that needs access to two different security tiers | Consider 2, scoped per tier |
+| A [standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) in front of those agents | Add 1 for the proxy itself |
+
+<Info>
+  In a standalone Agent Proxy deployment, the proxy authenticates as its own machine identity, separate from the agents behind it. The proxy needs read access to the secrets its [proxied services](/documentation/platform/agent-proxy/proxied-services) reference, while each agent holds only the **Proxy** permission on the services it uses. Count the proxy's identity in addition to the agents'.
+</Info>
 
 <Accordion title="Example 6: Local coding agents">
-  **Scenario**: 40 engineers each run an AI coding assistant on their laptop that reads secrets through Infisical during development.
+  **Scenario**: 40 engineers each run a coding agent on their laptop with `infisical secrets agent-proxy run`.
 
   **Machine identities needed**: **0**
 
-  Each agent is driven by one engineer and inherits that engineer's permissions, so the access is already accounted for by their 40 user identities. Issuing a machine identity here would grant the agent access beyond what its operator has.
+  Each run authenticates as the engineer who started it, so the access is already accounted for by their 40 user identities. A machine identity is not required here. If you later decide a particular agent should run under its own scoped identity, that identity counts, even though the agent still runs locally.
 </Accordion>
 
 <Accordion title="Example 7: Standalone agents with different purposes">
@@ -154,7 +163,7 @@ For standalone agents, scope identities the same way you scope them for applicat
 
   **Machine identities needed**: **2**
 
-  Each agent has a distinct purpose and a distinct permission set. If you later add three more recruitment agents that need the same access, they can all share the recruitment identity—the count stays at 2.
+  Each agent has a distinct purpose and a distinct permission set. If you later add three more recruitment agents that need the same access, they can all share the recruitment identity, so the count stays at 2.
 </Accordion>
 
 <Accordion title="Example 8: Horizontally scaled agent workers">
@@ -162,7 +171,15 @@ For standalone agents, scope identities the same way you scope them for applicat
 
   **Machine identities needed**: **1**
 
-  Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity—the same way 10 VMs with identical access do.
+  Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity, the same way 10 VMs with identical access do.
+</Accordion>
+
+<Accordion title="Example 9: Remote agents behind a standalone Agent Proxy">
+  **Scenario**: Two remote agents with different permission sets run behind one [standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+
+  **Machine identities needed**: **3**
+
+  One identity per agent permission set, plus the proxy's own identity. The proxy and each agent authenticate separately, and the proxy's identity is always separate from the agents'.
 </Accordion>
 
 ## Best practices
@@ -237,7 +254,7 @@ When planning your machine identity strategy, consider:
 
 4. **What's your authentication topology?** A single identity can authenticate from multiple sources (Kubernetes + AWS IAM + GCP), so multi-cloud doesn't necessarily mean multiple identities—but multi-tenant does.
 
-5. **Is this agent acting as a person or as a service?** An agent driven one-to-one by a user inherits that user's permissions, while an agent that runs standalone needs its own identity scoped to its purpose.
+5. **How does this agent authenticate?** An agent that authenticates as a person inherits that person's permissions, while an agent that authenticates as itself needs its own identity scoped to its purpose.
 
 <Note>
   **Bottom line**: When in doubt, err on the side of more identities. The operational overhead of additional identities is minimal compared to the security benefits of proper isolation.
