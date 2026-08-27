@@ -50,27 +50,73 @@ Once started, the gateway component will:
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    The enrollment method to use. Currently only `token` is supported. Additional authentication methods will be available in the future.
+    How the gateway authenticates with Infisical. Must match the auth method configured on the gateway in the Infisical UI. One of `token`, `aws`, or `kubernetes`.
 
-      <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="enroll-method" type="string" required>
-            Must be `token` when using an enrollment token.
-          </ParamField>
-          <ParamField query="token" type="string" required>
-            The one-time enrollment token from the Infisical UI.
-          </ParamField>
-          <ParamField query="domain" type="string" required>
-            The URL of your Infisical instance.
-          </ParamField>
-      </Expandable>
-    </ParamField>
+    <Tabs>
+      <Tab title="token">
+        A one-time enrollment token from the Infisical UI bootstraps the gateway.
 
-    ```bash
-      infisical gateway start my-gateway --enroll-method=token --token=<enrollment-token> --domain=https://app.infisical.com
-    ```
+        <ParamField query="Flags">
+        <Expandable title="properties">
+            <ParamField query="token" type="string" required>
+              The one-time enrollment token from the Infisical UI.
+            </ParamField>
+            <ParamField query="domain" type="string" required>
+              The URL of your Infisical instance.
+            </ParamField>
+        </Expandable>
+        </ParamField>
 
-    After enrollment, the gateway saves its credentials locally. You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
+        ```bash
+        infisical gateway start my-gateway --enroll-method=token --token=<enrollment-token> --domain=https://app.infisical.com
+        ```
+
+        After enrollment, the gateway saves its credentials locally. You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
+      </Tab>
+      <Tab title="aws">
+        The gateway signs an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, environment variables, shared profile), and re-authenticates on every start. No token is stored on disk.
+
+        <ParamField query="Flags">
+        <Expandable title="properties">
+            <ParamField query="gateway-id" type="string" required>
+              The gateway ID from the Infisical UI.
+            </ParamField>
+            <ParamField query="domain" type="string" required>
+              The URL of your Infisical instance.
+            </ParamField>
+        </Expandable>
+        </ParamField>
+
+        ```bash
+        infisical gateway start my-gateway --enroll-method=aws --gateway-id=<gateway-id> --domain=https://app.infisical.com
+        ```
+      </Tab>
+      <Tab title="kubernetes">
+        The gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Infisical verifies the token against your cluster's TokenReview API and re-authenticates on every start. No token is stored on disk.
+
+        This method requires the gateway to run inside a Kubernetes pod. Deploying with the [Helm chart](/self-hosting/helm-charts/gateway) is the recommended path.
+
+        <ParamField query="Flags">
+        <Expandable title="properties">
+            <ParamField query="gateway-id" type="string" required>
+              The gateway ID from the Infisical UI.
+            </ParamField>
+            <ParamField query="domain" type="string" required>
+              The URL of your Infisical instance.
+            </ParamField>
+            <ParamField query="service-account-token-path" type="string">
+              Path to the projected service account token. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+            </ParamField>
+        </Expandable>
+        </ParamField>
+
+        ```bash
+        infisical gateway start my-gateway --enroll-method=kubernetes --gateway-id=<gateway-id> --domain=https://app.infisical.com
+        ```
+
+        See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for the cluster host and allowlist configuration this method needs.
+      </Tab>
+    </Tabs>
 
   </Accordion>
 
@@ -128,12 +174,17 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    The enrollment method to use. Currently only `token` is supported.
+    How the gateway authenticates with Infisical. One of `token` or `aws`.
 
     ```bash
-    # Example
+    # Enrollment token
     sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
+
+    # AWS auth, re-authenticated on every service start
+    sudo infisical gateway systemd install my-gateway --enroll-method=aws --gateway-id=<gateway-id> --domain=<domain>
     ```
+
+    `kubernetes` is not available here. In-cluster gateways are not managed by systemd, so run `infisical gateway start --enroll-method=kubernetes` as the container command instead.
 
   </Accordion>
 
@@ -183,7 +234,7 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
   </Accordion>
   </AccordionGroup>
 
-### Service Details
+### Service details
 
 The systemd service is installed with secure defaults:
 
@@ -221,7 +272,7 @@ The gateway name is provided as a positional argument.
 </Accordion>
 </AccordionGroup>
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 <AccordionGroup>
   <Accordion title="Can I re-run the same enrollment command after a restart?">

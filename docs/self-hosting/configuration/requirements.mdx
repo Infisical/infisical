@@ -8,21 +8,21 @@ The actual resource requirements will vary in direct proportion to the operation
 
 
 
-## Deployment Sizes
+## Deployment sizes
 
 **Small** suitable for most initial production setups, as well as development and testing scenarios.
 
 **Large** suitable for high-demand production environments, characterized by either a high volume of transactions, large number of secrets, or both.
 
 
-## Hardware Requirements
+## Hardware requirements
 
 ### Storage
 
 Infisical doesn’t require file storage as all persisted data is saved in the database. 
 However, its logs and metrics are saved to disk for later viewing. As a result, we recommend provisioning 1-2 GB of storage.
 
-### CPU and Memory (Per Container/Instance)
+### CPU and memory (per container/instance)
 
 Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically does **not** need more than **2–4 CPU cores** and **4–8 GB** of memory. 
 If you need additional capacity, simply increase the **number** of containers/instances running in parallel.
@@ -39,10 +39,10 @@ If you need additional capacity, simply increase the **number** of containers/in
 
 ## Database & caching layer
 
-### Postgres
+### PostgreSQL
 
-PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with Postgres version 16. We recommend using versions 14 and up for optimal compatibility.
-The compute required for Postgres is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
+PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with PostgreSQL version 16. We recommend using versions 14 and up for optimal compatibility.
+The compute required for PostgreSQL is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
 You'll notice that storage requirements are high and this is because audit logs are by default stored in the database.
 
 
@@ -79,7 +79,7 @@ Redis requirements:
   instances themselves. A single unreplicated Redis is a single point of failure for the whole
   deployment.
 
-## Supported Web Browsers
+## Supported web browsers
 
 Infisical supports a range of web browsers. However, features such as browser-based CLI login only work on Google Chrome and Firefox at the moment.
 

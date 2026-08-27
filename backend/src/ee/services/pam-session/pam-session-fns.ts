@@ -75,12 +75,13 @@ export const reportPamSessionEnded = async ({
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent
 // best-effort (fire-and-forget) so callers don't block on the gateway round-trip, and shared by every
-// termination path (manual terminate, grant revocation) so they can't drift.
+// termination path (manual terminate, grant revocation, expiry) so they can't drift.
 export const sendPamSessionCancellationSignal = ({
   sessionId,
   gatewayId,
   accountType,
   actorId,
+  actorType = ActorType.USER,
   actorEmail,
   gatewayV2Service
 }: {
@@ -88,6 +89,7 @@ export const sendPamSessionCancellationSignal = ({
   gatewayId: string;
   accountType: string;
   actorId: string;
+  actorType?: ActorType.USER | ActorType.IDENTITY;
   actorEmail: string;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
@@ -100,7 +102,7 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: ActorType.USER, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
       });
       if (!certs) {
         logger.error(

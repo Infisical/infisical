@@ -1,5 +1,5 @@
 ---
-title: "Spacelift Sync"
+title: "Spacelift sync"
 description: "Learn how to configure a Spacelift Sync for Infisical."
 ---
 
@@ -40,7 +40,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
         - **Context**: Select the Spacelift context that will receive the synced secrets.
         - **Config Type**: Choose how secrets are stored in the Spacelift context.
 
-        Secret keys are sanitized to conform to UNIX environment variable naming rules: any characters outside `a-zA-Z0-9_` are stripped, and keys that start with a digit are prefixed with an underscore. Keys that become empty after sanitization are skipped.
+        Secret keys are sanitized to conform to Unix environment variable naming rules: any characters outside `a-zA-Z0-9_` are stripped, and keys that start with a digit are prefixed with an underscore. Keys that become empty after sanitization are skipped.
 
         <Tabs>
           <Tab title="Environment Variables">
@@ -102,7 +102,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
   <Tab title="API">
     To create a **Spacelift Sync**, make an API request to the [Create Spacelift Sync](/api-reference/endpoints/secret-syncs/spacelift/create) API endpoint.
 
-    ### Sample request (Environment Variables)
+    ### Sample request (environment variables)
 
     ```bash Request
     curl --request POST \
@@ -129,7 +129,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
       }'
     ```
 
-    ### Sample request (File Mount - .env)
+    ### Sample request (file mount - .env)
 
     ```bash Request
     curl --request POST \
@@ -158,7 +158,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
       }'
     ```
 
-    ### Sample request (File Mount - One Secret Per File)
+    ### Sample request (file mount - one secret per file)
 
     ```bash Request
     curl --request POST \

@@ -100,7 +100,11 @@ export type TSecretApprovalRequest = {
     firstName: string;
     lastName: string;
     username: string;
-  };
+  } | null;
+  committerIdentity: {
+    identityId: string;
+    name: string;
+  } | null;
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: ({
     // if there is no secret means it was creation

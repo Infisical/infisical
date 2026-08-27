@@ -111,6 +111,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERT_BODY]: "Get certificate body",
   [EventType.GET_CERT_PRIVATE_KEY]: "Get certificate private key",
   [EventType.GET_CERT_BUNDLE]: "Get certificate bundle",
+  [EventType.EXPORT_CERT_PKCS12]: "Export certificate as PKCS#12",
   [EventType.CREATE_PKI_ALERT]: "Create PKI alert",
   [EventType.GET_PKI_ALERT]: "Get PKI alert",
   [EventType.UPDATE_PKI_ALERT]: "Update PKI alert",
@@ -194,6 +195,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
     "OIDC group membership mapping removed user from groups",
+  [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
+    "OIDC login adopted provisioned placeholder account",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
@@ -314,6 +317,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.CREATE_SUB_ORGANIZATION]: "Create Sub Organization",
   [EventType.UPDATE_SUB_ORGANIZATION]: "Update Sub Organization",
+
+  [EventType.UPDATE_USER_ORG_MEMBERSHIP]: "Update User Org Membership",
+  [EventType.DELETE_USER_ORG_MEMBERSHIP]: "Delete User Org Membership",
 
   [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
   [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",

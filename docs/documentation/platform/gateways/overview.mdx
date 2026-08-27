@@ -1,5 +1,5 @@
 ---
-title: "Gateway Overview"
+title: "Gateway overview"
 sidebarTitle: "Overview"
 description: "How to access private network resources from Infisical"
 ---
@@ -17,7 +17,7 @@ This method keeps your resources fully protected from external access while enab
   license.
 </Info>
 
-## Core Components
+## Core components
 
 The Gateway system consists of two primary components working together to enable secure network access:
 
@@ -50,7 +50,7 @@ The Gateway system consists of two primary components working together to enable
   </Tab>
 </Tabs>
 
-## How It Works
+## How it works
 
 The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connectivity:
 
@@ -59,18 +59,18 @@ The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connec
 3. **Request Routing**: When Infisical needs to access your resources, requests are routed through the relay server to the already-established gateway connection
 4. **Resource Access**: The gateway receives the routed requests and connects to your private resources on behalf of Infisical
 
-## Health Check
+## Health check
 
 To monitor their operational status, gateways transmit heartbeats every 3 minutes. Each heartbeat includes a TTL (time-to-live) indicating how long the gateway should be considered healthy. If no successful heartbeat is received before the TTL expires, the gateway is marked as unhealthy. Relays continue to transmit hourly heartbeats and are considered unhealthy if a heartbeat is not received within one hour.
 
 Infisical automatically notifies all organization admins of unhealthy gateway or relay statuses through email and in-app notifications.
 
-## High Availability
+## High availability
 
 1. **Relay failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable, providing built-in resilience without additional configuration.
 2. **Gateway Pools**: For production workloads, you can group multiple gateways into a Gateway Pool to provide automatic failover at the gateway level. When a gateway in a pool goes down, the platform routes through a healthy member automatically. See [Gateway Pools](/documentation/platform/gateways/gateway-pools) for details.
 
-## Getting Started
+## Getting started
 
 Ready to set up your gateway? Follow the guides below.
 

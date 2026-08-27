@@ -200,6 +200,9 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
+    // A convergence window, not a rollback window: it lets instances that have not restarted onto the
+    // new key keep booting, and covers a new key that turns out to be lost. Then the old key is gone.
+    KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
@@ -395,16 +398,11 @@ const envSchema = z
         "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined."
       ),
     // LICENSE
+    // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
-    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("on"),
-    LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
-    // When true, new checkouts (adding a payment method) and trials on License Server v1 cloud are
-    // disallowed, pushing orgs onto License Server v2.
-    DISABLE_LICENSE_V1_CLOUD: zodStrBool.default("false"),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -637,9 +635,8 @@ const envSchema = z
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
-    // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY || data.LICENSE_SERVER_V2_SERVICE_KEY),
-    isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
+    // Only cloud holds the License Server service key; self-hosted authenticates with a license key.
+    isCloud: Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),

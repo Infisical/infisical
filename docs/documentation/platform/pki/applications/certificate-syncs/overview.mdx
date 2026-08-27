@@ -1,5 +1,5 @@
 ---
-title: "Certificate Syncs"
+title: "Certificate syncs"
 sidebarTitle: "Overview"
 description: "Push certificates to AWS, Azure, Cloudflare, and other destinations."
 ---
@@ -10,7 +10,7 @@ Push certificates from your Application to external services automatically. When
   Certificate Syncs are configured per Application. Select which certificates to sync, then configure the destination.
 </Info>
 
-## How It Works
+## How it works
 
 ```mermaid
 flowchart LR
@@ -56,7 +56,7 @@ flowchart LR
   Only certificates managed by Infisical are affected during sync operations. Certificates created directly in the destination service remain untouched.
 </Note>
 
-## Supported Destinations
+## Supported destinations
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
@@ -104,7 +104,7 @@ flowchart LR
   Need a destination that isn't listed? Contact support@infisical.com to request it.
 </Note>
 
-## Creating a Certificate Sync
+## Creating a certificate sync
 
 <Steps>
   <Step title="Create an App Connection">
@@ -123,7 +123,7 @@ flowchart LR
   </Step>
 </Steps>
 
-## Sync Options
+## Sync options
 
 | Option | Description |
 |--------|-------------|
@@ -135,7 +135,7 @@ flowchart LR
   Some destinations don't support automatic removal of expired certificates. Certificates managed by Infisical may be overwritten if modified directly in the destination.
 </Note>
 
-## Certificate Name Schema
+## Certificate name schema
 
 The **Certificate Name Schema** controls the name each certificate is given in the destination. It is a template that supports the following placeholders, which are resolved per certificate at sync time:
 
@@ -157,7 +157,7 @@ Each destination enforces its own character and length rules for resource names:
 
 Keep `{{certificateId}}` or `{{shortCertificateId}}` in the schema to guarantee a unique, stable name per certificate.
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">

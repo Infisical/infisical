@@ -38,7 +38,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({ id: z.string(), name: z.string() }).array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -66,7 +66,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({ displayName: z.string(), locationId: z.string() }).array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId },

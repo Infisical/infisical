@@ -51,7 +51,7 @@ Currently, the Infisical CSI provider only supports static secrets.
 
 In order to use the Infisical CSI provider, you will first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster.
 
-#### Standard Installation
+#### Standard installation
 
 For most Kubernetes clusters, use the following installation:
 
@@ -84,7 +84,7 @@ The flags configure the following:
   for the CSI driver.
 </Info>
 
-#### Installation for Environments Without Custom Audience Support
+#### Installation for environments without custom audience support
 
 Some Kubernetes environments (such as AWS EKS) don't support custom audiences and will reject tokens with non-default audiences. For these environments, use this installation instead:
 
@@ -142,12 +142,12 @@ You can refer to the documentation for setting it up [here](https://infisical.co
   field empty.
 </Warning>
 
-### Creating Secret Provider Class
+### Creating secret provider class
 
 With the Secrets Store CSI driver and the Infisical CSI provider installed, create a Kubernetes [SecretProviderClass](https://secrets-store-csi-driver.sigs.k8s.io/concepts.html#secretproviderclass) resource to establish
 the connection between the CSI driver and the Infisical CSI provider for secret retrieval. You can create as many Secret Provider Classes as needed for your cluster.
 
-#### Standard Configuration
+#### Standard configuration
 
 ```yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
@@ -171,7 +171,7 @@ spec:
         secretKey: "APP_SECRET"
 ```
 
-#### Configuration for Environments Without Custom Audience Support
+#### Configuration for environments without custom audience support
 
 For environments that don't support custom audiences (such as AWS EKS), use this configuration instead:
 
@@ -211,7 +211,7 @@ spec:
   you intend to mount secrets to.
 </Note>
 
-#### Supported Parameters
+#### Supported parameters
 
 <Accordion title="infisicalUrl">
   The base URL of your Infisical instance. If you're using Infisical Cloud US,
@@ -269,7 +269,7 @@ spec:
   </Note>
 </Accordion>
 
-### Using Secret Provider Class
+### Using secret provider class
 
 A pod can use the Secret Provider Class by mounting it as a CSI volume:
 
@@ -299,7 +299,7 @@ spec:
 
 When the pod is created, the secrets are mounted as individual files in the /mnt/secrets-store directory.
 
-### Verifying Secret Mounts
+### Verifying secret mounts
 
 To verify your secrets are mounted correctly:
 
@@ -337,11 +337,11 @@ kubectl logs csi-secrets-store-csi-driver-7h4jp -n=kube-system
 - **Token authentication failed with custom audience**: If you're seeing authentication errors in environments that don't support custom audiences (such as AWS EKS), ensure you're using the installation without custom audience and have set `useDefaultAudience: "true"` in your SecretProviderClass
 - **Audience not allowed errors**: Make sure the "Allowed Audience" field is left empty in your machine identity's Kubernetes authentication configuration when using environments that don't support custom audiences
 
-## Best Practices
+## Best practices
 
 For additional guidance on setting this up for your production cluster, you can refer to the Secrets Store CSI driver documentation [here](https://secrets-store-csi-driver.sigs.k8s.io/topics/best-practices).
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 <AccordionGroup>
   <Accordion title="Is it possible to sync Infisical secrets as environment variables?">

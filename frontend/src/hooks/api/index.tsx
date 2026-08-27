@@ -71,7 +71,6 @@ export * from "./ssoConfig";
 export * from "./subOrganizations";
 export * from "./subscriptions";
 export * from "./tags";
-export * from "./trustedIps";
 export * from "./userActivation";
 export * from "./users";
 export * from "./webhooks";

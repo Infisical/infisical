@@ -27,6 +27,7 @@ import {
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
@@ -103,7 +104,7 @@ export const CertificateManagePkiSyncsModal = ({
           projectId: currentProject.id,
           applicationName
         },
-        search: { selectedTab: "syncs" }
+        search: { selectedTab: ApplicationTab.Syncs }
       });
     } else {
       navigate({

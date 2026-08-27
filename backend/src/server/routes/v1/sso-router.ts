@@ -34,7 +34,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -520,7 +520,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           properties: {
             username: user.username,
             email: user.email ?? "",
-            ...(passportResult.wasInvited ? { attributionSource: "Team Invite" } : {}),
+            ...(passportResult.wasInvited
+              ? { attributionSource: "Team Invite", attributionType: SignupAttributionType.SystemDerived }
+              : {}),
+            signupSource: passportResult.wasInvited ? SignupSource.TeamInvite : SignupSource.SelfServe,
             signupMethod
           }
         });

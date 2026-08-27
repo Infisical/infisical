@@ -12,7 +12,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -24,10 +23,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Field,
   FilterableSelect,
   IconButton,
-  Input,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -76,7 +73,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   const removeGateway = useRemoveGatewayFromPool();
   const triggerHealthCheck = useTriggerGatewayV2Heartbeat();
   const [selectedGateways, setSelectedGateways] = useState<GatewayOption[]>([]);
-  const [removeConfirmation, setRemoveConfirmation] = useState("");
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["removeGateway"] as const);
 
@@ -211,16 +207,16 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </OrgPermissionCan>
             </div>
 
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-36">
+                  <TableHead>
                     <TableHeadLabel>Status</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,7 +252,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                           {isOnline ? "Healthy" : "Unreachable"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -297,33 +293,18 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
         <AlertDialog
           open={popUp.removeGateway.isOpen}
-          onOpenChange={(open) => {
-            if (!open) setRemoveConfirmation("");
-            handlePopUpToggle("removeGateway", open);
-          }}
+          confirmationValue={(popUp.removeGateway.data as { name: string } | undefined)?.name}
+          onOpenChange={(open) => handlePopUpToggle("removeGateway", open)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Remove Gateway from Gateway Pool?</AlertDialogTitle>
             </AlertDialogHeader>
-            <AlertDialogConfirmationField>
-              <Field>
-                <AlertDialogConfirmationLabel
-                  htmlFor="remove-gateway-confirmation"
-                  confirmationValue={
-                    (popUp.removeGateway.data as { name: string } | undefined)?.name
-                  }
-                />
-                <Input
-                  id="remove-gateway-confirmation"
-                  value={removeConfirmation}
-                  onChange={(event) => setRemoveConfirmation(event.target.value)}
-                  placeholder={(popUp.removeGateway.data as { name: string } | undefined)?.name}
-                  autoComplete="off"
-                  autoFocus
-                />
-              </Field>
-            </AlertDialogConfirmationField>
+            <AlertDialogConfirmationField
+              inputProps={{
+                placeholder: (popUp.removeGateway.data as { name: string } | undefined)?.name
+              }}
+            />
             <AlertDialogDescription asChild>
               <Alert variant="warning" appearance="borderless">
                 <AlertDescription>
@@ -337,10 +318,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               <AlertDialogAction
                 variant="danger"
                 isPending={removeGateway.isPending}
-                isDisabled={
-                  removeConfirmation !==
-                  (popUp.removeGateway.data as { name: string } | undefined)?.name
-                }
                 onClick={(event) => {
                   event.preventDefault();
                   handleRemove();

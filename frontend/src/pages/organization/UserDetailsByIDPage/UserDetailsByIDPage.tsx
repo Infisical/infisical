@@ -269,7 +269,8 @@ const Page = withPermission(
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Member
+    subject: OrgPermissionSubjects.Member,
+    accessRestrictedMode: "dialog"
   }
 );
 

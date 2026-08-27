@@ -5,19 +5,18 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
+import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
-  AccessRestrictedBanner,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader
-} from "@app/components/v2";
-import {
+  AccessRestrictedDialog,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageLoader
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -45,6 +44,7 @@ import {
 } from "@app/hooks/api/pkiApplications/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import {
@@ -55,7 +55,11 @@ import { CertificateManagePkiSyncsModal } from "../CertificatesPage/components/C
 import { CertificateManageRenewalModal } from "../CertificatesPage/components/CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
-import { isExpiringWithinOneDay } from "../CertificatesPage/components/CertificatesTable.utils";
+import {
+  isExpiringWithinOneDay,
+  isManagedCertificate,
+  RENEWAL_UNAVAILABLE_NO_PROFILE
+} from "../CertificatesPage/components/CertificatesTable.utils";
 import {
   CertificateDetailsSection,
   CertificateInstallationsSection,
@@ -76,7 +80,8 @@ const Page = () => {
   };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
-  const isInventoryView = !fromApplication;
+  const parentApplication = certificate?.applicationName ?? fromApplication;
+  const isInventoryView = !parentApplication;
 
   const projectId = currentProject?.id || "";
 
@@ -125,7 +130,7 @@ const Page = () => {
           projectId,
           applicationName: fromApplication
         },
-        search: { selectedTab: "certificates" }
+        search: { selectedTab: ApplicationTab.Certificates }
       });
     } else {
       navigate({
@@ -261,29 +266,32 @@ const Page = () => {
     pageBody = <EmptyState title="Error: Unable to find the certificate." className="py-12" />;
   } else if (!canReadCertificate) {
     pageBody = (
-      <div className="container mx-auto flex h-full items-center justify-center">
-        <AccessRestrictedBanner />
-      </div>
+      <AccessRestrictedDialog
+        requirement={{
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates
+        }}
+      />
     );
   } else {
     pageBody = (
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        {fromApplication && (
+        {parentApplication && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
             params={{
               orgId: currentOrg.id,
               projectId,
-              applicationName: fromApplication
+              applicationName: parentApplication
             }}
-            search={{ selectedTab: "certificates" }}
+            search={{ selectedTab: ApplicationTab.Certificates }}
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
             Go back to Application
           </Link>
         )}
-        {!fromApplication && fromHsmConnector && (
+        {!parentApplication && fromHsmConnector && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
             params={{
@@ -297,7 +305,7 @@ const Page = () => {
             HSM Connector
           </Link>
         )}
-        {!fromApplication && !fromHsmConnector && (
+        {!parentApplication && !fromHsmConnector && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
             params={{
@@ -386,14 +394,21 @@ const Page = () => {
                     Disable Auto-Renewal
                   </DropdownMenuItem>
                 )}
-              {!isInventoryView &&
-                (certificate.profileId || certificate.caId) &&
-                certificate.hasPrivateKey !== false &&
-                !certificate.renewedByCertificateId &&
-                !isRevoked &&
-                !isExpired && (
+              {(() => {
+                const isRenewable =
+                  !isInventoryView &&
+                  !certificate.renewedByCertificateId &&
+                  !isRevoked &&
+                  !isExpired;
+
+                if (!isRenewable) return null;
+
+                const profileMissing = !certificate.profileId;
+                if (profileMissing && !isManagedCertificate(certificate)) return null;
+
+                const item = (
                   <DropdownMenuItem
-                    isDisabled={!canEditCertificate}
+                    isDisabled={!canEditCertificate || profileMissing}
                     onClick={() =>
                       handlePopUpOpen("renewCertificate", {
                         certificateId: certificate.id,
@@ -403,7 +418,21 @@ const Page = () => {
                   >
                     Renew Now
                   </DropdownMenuItem>
-                )}
+                );
+
+                if (!profileMissing) return item;
+
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>{item}</div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                      {RENEWAL_UNAVAILABLE_NO_PROFILE}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })()}
               {!isInventoryView &&
                 certificate.status === CertStatus.ACTIVE &&
                 !certificate.renewedByCertificateId &&
@@ -473,7 +502,11 @@ const Page = () => {
       />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateRenewalModal
+        popUp={popUp}
+        applicationName={parentApplication}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <CertificateManagePkiSyncsModal
         popUp={popUp.managePkiSyncs}
         handlePopUpToggle={handlePopUpToggle}

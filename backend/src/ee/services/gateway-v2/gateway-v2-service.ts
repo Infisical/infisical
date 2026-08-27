@@ -10,6 +10,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -19,6 +20,8 @@ import { constructPemChainFromCerts } from "@app/services/certificate/certificat
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
@@ -37,7 +40,7 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -67,7 +70,13 @@ type TGatewayV2ServiceFactoryDep = {
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
-    "initAtCreate" | "loadView" | "mintToken" | "loginWithToken"
+    | "initAtCreate"
+    | "loadView"
+    | "mintToken"
+    | "loginWithToken"
+    | "encryptKubernetesSecrets"
+    | "preflightKubernetesConfig"
+    | "findKubernetesProxyDependents"
   >;
 };
 
@@ -129,8 +138,8 @@ export const gatewayV2ServiceFactory = ({
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
         name: `O=${orgId},CN=Infisical Gateway Root CA`,
         serialNumber: rootCaSerialNumber,
-        notBefore: rootCaIssuedAt,
-        notAfter: rootCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -150,8 +159,8 @@ export const gatewayV2ServiceFactory = ({
         serialNumber: serverCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Gateway Server CA`,
         issuer: rootCaCert.subject,
-        notBefore: serverCaIssuedAt,
-        notAfter: serverCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(serverCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(serverCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: serverCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -180,8 +189,8 @@ export const gatewayV2ServiceFactory = ({
         serialNumber: clientCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Gateway Client CA`,
         issuer: rootCaCert.subject,
-        notBefore: clientCaIssuedAt,
-        notAfter: clientCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(clientCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(clientCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: clientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -424,8 +433,8 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
+      notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
@@ -458,6 +467,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -585,8 +595,8 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${actorMetadata.type}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
+      notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
@@ -621,6 +631,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -692,8 +703,8 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: gatewayServerSerialNumber,
       subject: `O=${orgId},CN=Gateway`,
       issuer: gatewayServerCaCert.subject,
-      notBefore: gatewayServerCertIssuedAt,
-      notAfter: gatewayServerCertExpireAt,
+      notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
+      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
       signingKey: gatewayServerCaPrivateKey,
       publicKey: gatewayServerKeys.publicKey,
       signingAlgorithm: alg,
@@ -885,9 +896,7 @@ export const gatewayV2ServiceFactory = ({
         },
         {
           protocol: GatewayProxyProtocol.Health,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay
+          ...gatewayV2ConnectionDetails
         }
       );
     } catch (err) {
@@ -980,6 +989,35 @@ export const gatewayV2ServiceFactory = ({
     await $checkGatewayHealth(gateway.id);
   };
 
+  const reportMetrics = async ({
+    orgPermission,
+    activeChannels
+  }: {
+    orgPermission: OrgServiceActor;
+    activeChannels: number;
+  }) => {
+    let gateway;
+    if (orgPermission.type === ActorType.GATEWAY) {
+      gateway = await gatewayV2DAL.findById(orgPermission.id);
+    } else {
+      // Same check heartbeat makes: an identity whose gateway permission was revoked must not keep
+      // submitting occupancy values and steering pool routing.
+      await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+    }
+
+    if (!gateway || gateway.orgId !== orgPermission.orgId) {
+      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
+    }
+
+    // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
+    // heartbeat proves we can reach it back through the relay. Updating liveness from this would
+    // keep a gateway whose relay path is broken looking healthy.
+    await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
+
+    return { gatewayId: gateway.id, activeChannels };
+  };
+
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
     const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
     if (!gateway) {
@@ -999,6 +1037,13 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionGatewayActions.DeleteGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    const proxyDependents = await resourceAuthMethodService.findKubernetesProxyDependents(gateway.id);
+    if (proxyDependents.length) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' reviews Kubernetes tokens for ${proxyDependents.map((name) => `'${name}'`).join(", ")}. Point those gateways at a different reviewer before deleting this one.`
+      });
+    }
 
     try {
       return await gatewayV2DAL.deleteById(gateway.id);
@@ -1186,7 +1231,10 @@ export const gatewayV2ServiceFactory = ({
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
-    authMethod: { method: "aws"; config: TAwsAuthMethodConfig } | { method: "token" };
+    authMethod:
+      | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
+      | { method: "token" };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1201,6 +1249,25 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionGatewayActions.CreateGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    // The host check (DNS) and the secret encryption (possibly an external KMS) both reach
+    // the network, so they run before the transaction is opened rather than inside it.
+    let authMethodArg = authMethod;
+    if (authMethod.method === "kubernetes") {
+      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId, undefined, {
+        type: actorType,
+        id: actorId,
+        orgId,
+        authMethod: actorAuthMethod
+      });
+      authMethodArg = {
+        method: authMethod.method,
+        config: {
+          ...authMethod.config,
+          ...(await resourceAuthMethodService.encryptKubernetesSecrets(orgId, authMethod.config))
+        }
+      };
+    }
 
     const gateway = await gatewayV2DAL.transaction(async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -1227,7 +1294,10 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      await resourceAuthMethodService.initAtCreate({ resource: { type: "gateway", id: created.id }, authMethod }, tx);
+      await resourceAuthMethodService.initAtCreate(
+        { resource: { type: "gateway", id: created.id }, authMethod: authMethodArg },
+        tx
+      );
 
       return created;
     });
@@ -1283,6 +1353,7 @@ export const gatewayV2ServiceFactory = ({
   return {
     listGateways,
     registerGateway,
+    reportMetrics,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
     deleteGatewayById,

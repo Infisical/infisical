@@ -10,9 +10,10 @@ import {
 
 export const useSendAccountRecoveryEmail = () => {
   return useMutation({
-    mutationFn: async ({ email }: TSendAccountRecoveryEmailDTO) => {
+    mutationFn: async ({ email, captchaToken }: TSendAccountRecoveryEmailDTO) => {
       const { data } = await apiRequest.post("/api/v1/account-recovery/send-email", {
-        email
+        email,
+        captchaToken
       });
 
       return data;

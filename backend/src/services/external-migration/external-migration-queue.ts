@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -118,6 +119,7 @@ export const externalMigrationQueueFactory = ({
         template: SmtpTemplates.ExternalImportStarted
       });
 
+      recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "external_migration" });
       const decrypted = crypto.encryption().symmetric().decryptWithRootEncryptionKey({
         ciphertext: data.ciphertext,
         iv: data.iv,

@@ -1093,7 +1093,8 @@ export const PROJECTS = {
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
-    status: "Filter by certificate status.",
+    status:
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -1518,6 +1519,10 @@ export const DASHBOARD = {
     includeSecretRotations: "Whether to include secret rotations in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 
@@ -2140,7 +2145,17 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2436,13 +2451,15 @@ export const KMS = {
     encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
-      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
+    hasDeleteProtection: "Prevents deletion of the key when enabled."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
-    isDisabled: "The flag to enable or disable this key."
+    isDisabled: "The flag to enable or disable this key.",
+    hasDeleteProtection: "Enable or disable delete protection for this key."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -3857,27 +3874,53 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  METRICS_REPORT: {
+    activeChannels:
+      "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
+    gatewayId: "ID of the gateway the report was recorded against."
+  },
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
-      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    kubernetesHost:
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayId:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayId.",
+    caCertificate:
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
+    tokenReviewerJwt:
+      "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
+    allowedNamespaces:
+      "The comma-separated list of Kubernetes namespaces whose service accounts are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedNames:
+      "The comma-separated list of Kubernetes service account names that are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedAudience:
+      "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
@@ -3948,3 +3991,68 @@ export const SECRET_VALIDATION_RULES = {
     ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;
+
+export const ENCRYPTION_KEY_ROTATION = {
+  ROOT_KEY: {
+    description:
+      "Report the state of the instance encryption key: which key is active, whether a replacement is staged, and whether the key it replaced is still accepted.",
+    encryptionStrategy: "How the root key is wrapped. A key wrapped by an HSM has no environment variable to rotate.",
+    active: {
+      label:
+        "Non-reversible label of the key this instance is running with. Record it next to the archived key so a backup can be matched later.",
+      activatedAt: "When this key took effect, which is the first time an instance started with it."
+    },
+    staged: {
+      description:
+        "A generated key that has not been applied yet. Null until you generate one. Nothing changes until an instance starts with it.",
+      label: "Label of the staged key, so you can confirm the value you are about to deploy is the one you copied.",
+      createdAt: "When this key was generated."
+    },
+    expiring: {
+      description:
+        "The key this instance used before the current one. Null if none is still accepted. It still starts an instance so a fleet can finish rolling over, and is removed automatically once the retention window passes.",
+      label: "Label of the previous key. Pass it when you remove that key.",
+      supersededAt: "When the current key took effect.",
+      expiresAt:
+        "When this key becomes eligible for automatic removal. An instance starting on it restarts this clock, since that is evidence one still needs it. The weekly cleanup removes the key on its first run after this time, so the key may outlive it by a few days.",
+      lastResolvedAt:
+        "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists."
+    }
+  },
+  ROTATIONS: {
+    description:
+      "List the rotations that have taken effect, newest first. A staged key appears here only once an instance has started with it. Kept after a key is removed, so a restored backup can be matched to an archived key.",
+    offset: "How many rotations to skip before the first returned.",
+    limit: "How many rotations to return.",
+    label: "A non-reversible label derived from the key. Match it to the label you stored with an archived key.",
+    activatedAt: "When this key took effect.",
+    supersededAt: "When the next key took effect. Null on the key currently in use.",
+    retiredAt: "When this key stopped being accepted and was removed. Null while it still starts an instance.",
+    totalCount: "How many rotations this instance has recorded in total."
+  },
+  CREATE: {
+    description:
+      "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
+    replaceStaged:
+      "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
+    label:
+      "A non-reversible label derived from the new key. Record it alongside the key so a backup can be matched to it later.",
+    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
+    removesExpiringKey:
+      "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
+  },
+  DELETE_STAGED: {
+    description:
+      "Discard a generated key that has not been applied. Use this immediately if the key may have been exposed.",
+    label:
+      "Label of the staged key, which must match the key currently staged. It is a precondition, not an identifier: it fails the request rather than discarding a key another administrator staged after you loaded this page."
+  },
+  DELETE_EXPIRING: {
+    description:
+      "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
+    label:
+      "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
+    force:
+      "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};

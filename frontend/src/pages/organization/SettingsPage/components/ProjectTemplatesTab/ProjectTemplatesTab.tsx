@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 
@@ -13,7 +13,10 @@ export const ProjectTemplatesTab = withPermission(
 
     return (
       <div className="flex flex-col gap-4">
-        <Alert variant="info">
+        <DismissableAlert
+          variant="info"
+          actionKey="secret_management_templates_moved_banner_dismissed"
+        >
           <InfoIcon />
           <AlertTitle>Secret Management Templates Have Moved</AlertTitle>
           <AlertDescription className="inline">
@@ -27,13 +30,14 @@ export const ProjectTemplatesTab = withPermission(
             </Link>
             .
           </AlertDescription>
-        </Alert>
+        </DismissableAlert>
         <ProjectTemplatesSection />
       </div>
     );
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.ProjectTemplates
+    subject: OrgPermissionSubjects.ProjectTemplates,
+    accessRestrictedMode: "dialog"
   }
 );

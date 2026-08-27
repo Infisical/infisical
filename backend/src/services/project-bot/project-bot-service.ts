@@ -5,6 +5,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "./project-bot-dal";
@@ -57,6 +59,8 @@ export const projectBotServiceFactory = ({
       const keys =
         privateKey && publicKey ? { privateKey, publicKey } : await crypto.encryption().asymmetric().generateKeyPair();
 
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_bot" });
+      logger.info(`Legacy root key used to create a project bot [projectId=${projectId}]`);
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
         .symmetric()

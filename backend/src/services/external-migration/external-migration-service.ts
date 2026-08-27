@@ -15,6 +15,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
@@ -78,7 +79,7 @@ type TExternalMigrationServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickHealthyGateway"
   >;
 };
 
@@ -187,6 +188,7 @@ export const externalMigrationServiceFactory = ({
       actorAuthMethod
     });
 
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "external_migration" });
     const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({
@@ -250,7 +252,7 @@ export const externalMigrationServiceFactory = ({
         orgId: actorOrgId,
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      const picked = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       effectiveGatewayId = picked.id;
     }
 
@@ -277,6 +279,7 @@ export const externalMigrationServiceFactory = ({
       actorAuthMethod
     });
 
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "external_migration" });
     const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({

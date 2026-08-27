@@ -1,5 +1,5 @@
 ---
-title: "SCEP Enrollment"
+title: "SCEP enrollment"
 sidebarTitle: "SCEP"
 description: "Issue certificates using the Simple Certificate Enrollment Protocol (SCEP) for network devices, mobile devices, and MDM systems."
 ---
@@ -14,7 +14,7 @@ Use the SCEP enrollment method to provision certificates to network devices, mob
   SCEP enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
-## When to Use SCEP Enrollment
+## When to use SCEP enrollment
 
 <CardGroup cols={2}>
   <Card title="MDM Systems" icon="mobile">
@@ -50,7 +50,7 @@ For self-hosted Infisical instances, replace `app.infisical.com` with your insta
 - A SCEP-compatible client (e.g., [sscep](https://github.com/certnanny/sscep)) or a network device with built-in SCEP support.
 - A certificate profile with a **CA-issued** issuer type.
 
-## Challenge Types
+## Challenge types
 
 Infisical supports three challenge authentication modes for SCEP enrollment:
 
@@ -99,7 +99,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
   </Tab>
 </Tabs>
 
-## Configure SCEP Enrollment
+## Configure SCEP enrollment
 
 <Steps>
   <Step title="Navigate to your Application">
@@ -270,7 +270,7 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
   </Step>
 </Steps>
 
-## Supported Algorithms
+## Supported algorithms
 
 Infisical's SCEP server supports the following algorithms for the CMS message exchange:
 
@@ -297,7 +297,7 @@ Infisical's SCEP server supports the following algorithms for the CMS message ex
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Jamf Pro Guide" icon="mobile" href="/documentation/platform/pki/guides/applications/jamf-pro-scep">

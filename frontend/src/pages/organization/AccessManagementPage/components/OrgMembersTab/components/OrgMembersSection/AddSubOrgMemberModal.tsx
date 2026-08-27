@@ -1,26 +1,9 @@
 import { useEffect } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { RoleOption } from "@app/components/roles";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Field,
-  FieldError,
-  FieldLabel,
-  FilterableSelect,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
@@ -32,6 +15,8 @@ import {
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { MemberFormSheet, MemberFormSheetForm } from "./MemberFormSheet";
+import { OrganizationRoleField } from "./OrganizationRoleField";
 import {
   ProjectAssignmentFields,
   projectAssignmentSchema,
@@ -68,7 +53,9 @@ type Props = {
 export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
+  const { data: organizationRoles, isPending: isOrganizationRolesPending } = useGetOrgRoles(
+    currentOrg?.id ?? ""
+  );
   const { data: members = [], isPending: isMembersPending } = useGetAvailableOrgUsers();
 
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
@@ -151,99 +138,68 @@ export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Dialog
+    <MemberFormSheet
       open={popUp.addMemberToSubOrg.isOpen}
       onOpenChange={(isOpen) =>
         isOpen ? handlePopUpToggle("addMemberToSubOrg", true) : handleClose()
       }
+      title="Add member from your organization"
+      description="Add existing users from your root organization to this sub-organization."
     >
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Add member from your organization</DialogTitle>
-          <DialogDescription>
-            Add existing users from your root organization to this sub-organization.
-          </DialogDescription>
-        </DialogHeader>
-        <FormProvider {...methods}>
-          <form onSubmit={handleSubmit(onAddMembers)} className="flex flex-col gap-4">
-            <Controller
-              control={control}
-              name="users"
-              render={({ field, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="add-sub-org-member-users">Emails</FieldLabel>
-                  <FilterableSelect
-                    inputId="add-sub-org-member-users"
-                    placeholder="Add one or more users..."
-                    isMulti
-                    isLoading={isMembersPending}
-                    options={members}
-                    value={field.value}
-                    onChange={field.onChange}
-                    getOptionValue={(option) => option.username}
-                    getOptionLabel={(option) => option.username}
-                    isError={Boolean(error)}
-                    noOptionsMessage={() =>
-                      "All root organization users are already in this sub-organization"
-                    }
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+      <FormProvider {...methods}>
+        <MemberFormSheetForm
+          onSubmit={handleSubmit(onAddMembers)}
+          onCancel={handleClose}
+          submitVariant="sub-org"
+          isSubmitting={isSubmitting}
+        >
+          <Controller
+            control={control}
+            name="users"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="add-sub-org-member-users">Emails</FieldLabel>
+                <Combobox
+                  id="add-sub-org-member-users"
+                  multiple
+                  placeholder="Add one or more users..."
+                  searchPlaceholder="Search users..."
+                  searchAriaLabel="Search organization users"
+                  clearAriaLabel="Clear all users"
+                  isLoading={isMembersPending}
+                  options={members}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  getOptionValue={(option) => option.username}
+                  getOptionLabel={(option) => option.username}
+                  isError={Boolean(error)}
+                  emptyMessage="All root organization users are already in this sub-organization"
+                  modal
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
 
-            <Controller
-              control={control}
-              name="organizationRole"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <Field>
-                  <FieldLabel htmlFor="add-sub-org-member-org-role">
-                    Assign organization role
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Info className="size-3 text-muted" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        Select which organization role you want to assign to the user.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <FilterableSelect
-                    inputId="add-sub-org-member-org-role"
-                    placeholder="Select role..."
-                    options={organizationRoles}
-                    getOptionValue={(option) => option.slug}
-                    getOptionLabel={(option) => option.name}
-                    value={value}
-                    onChange={onChange}
-                    isError={Boolean(error)}
-                    components={{ Option: RoleOption }}
-                  />
-                  <FieldError>{error?.message}</FieldError>
-                </Field>
-              )}
-            />
+          <Controller
+            control={control}
+            name="organizationRole"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <OrganizationRoleField
+                id="add-sub-org-member-org-role"
+                options={organizationRoles ?? []}
+                value={value}
+                onValueChange={onChange}
+                isError={Boolean(error)}
+                errorMessage={error?.message}
+                isLoading={isOrganizationRolesPending}
+              />
+            )}
+          />
 
-            <ProjectAssignmentFields />
-
-            <DialogFooter>
-              <Button variant="ghost" type="button" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                variant="sub-org"
-                type="submit"
-                isPending={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Add Member
-              </Button>
-            </DialogFooter>
-          </form>
-        </FormProvider>
-      </DialogContent>
-    </Dialog>
+          <ProjectAssignmentFields />
+        </MemberFormSheetForm>
+      </FormProvider>
+    </MemberFormSheet>
   );
 };

@@ -187,9 +187,7 @@ export const ClickhouseProvider = ({
           await gatewayCallback("localhost", port);
         },
         {
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay,
+          ...gatewayV2ConnectionDetails,
           protocol: GatewayProxyProtocol.Tcp
         }
       );
