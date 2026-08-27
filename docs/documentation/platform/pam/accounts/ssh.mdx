@@ -69,21 +69,30 @@ SSH accounts support three authentication methods: password, public key, and cer
     You get a full shell. To disconnect, type `exit` or close the tab.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your SSH client.
+    The CLI connects you straight to a shell on the server.
 
     ```bash
     infisical pam access prod-servers/web-01
     ```
 
-    The command outputs the local port to connect to. Then use your SSH client:
+    To disconnect, type `exit` or press `Ctrl+D`.
+
+    To run a single command and exit, put it after `--`:
+
     ```bash
-    ssh deploy@localhost -p <port>
+    infisical pam access prod-servers/web-01 -- systemctl status nginx
     ```
 
-    No password or key needed since the proxy handles authentication.
+    For file transfer, port forwarding, or your own SSH client and `~/.ssh/config`, use `--proxy` to
+    get a local port instead:
+
+    ```bash
+    infisical pam access prod-servers/web-01 --proxy
+    ```
 
     **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+    - `--proxy` — start a local proxy instead of connecting you, for SCP, SFTP, rsync and port forwarding
+    - `--port <port>` — use a specific local port (requires `--proxy`)
     - `--reason <reason>` — provide an access reason (if required by template)
   </Tab>
 </Tabs>
