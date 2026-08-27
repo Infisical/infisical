@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-const getConfig = vi.fn<() => { CAPTCHA_SECRET?: string }>();
+const getConfig = vi.fn<() => { CAPTCHA_SECRET?: string; CAPTCHA_SITE_KEY?: string }>();
 const postForm = vi.fn<(url: string, body: Record<string, unknown>) => Promise<{ data: { success: boolean } }>>();
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => getConfig() }));
@@ -14,6 +14,7 @@ vi.mock("@app/lib/config/request", () => ({
 import { verifyPublicEmailCaptcha } from "./captcha-fns";
 
 const SECRET = "test-captcha-secret";
+const SITE_KEY = "test-captcha-site-key";
 const TOKEN = "10000000-aaaa-bbbb-cccc-000000000001";
 
 describe("verifyPublicEmailCaptcha", () => {
@@ -22,17 +23,24 @@ describe("verifyPublicEmailCaptcha", () => {
     postForm.mockReset();
   });
 
-  // Self-hosted instances mostly never set a captcha secret. The gate has to disappear entirely
+  // Self-hosted instances mostly never configure captcha. The gate has to disappear entirely
   // there rather than locking everyone out of signup and password reset.
   test.each([undefined, ""])("is inert when no secret is configured (%s)", async (secret) => {
-    getConfig.mockReturnValue({ CAPTCHA_SECRET: secret });
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: secret, CAPTCHA_SITE_KEY: SITE_KEY });
 
     await expect(verifyPublicEmailCaptcha(undefined)).resolves.toBeUndefined();
     expect(postForm).not.toHaveBeenCalled();
   });
 
-  test("demands a token on every attempt once a secret is configured", async () => {
-    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET });
+  test.each([undefined, ""])("is inert when no site key is configured (%s)", async (siteKey) => {
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET, CAPTCHA_SITE_KEY: siteKey });
+
+    await expect(verifyPublicEmailCaptcha(undefined)).resolves.toBeUndefined();
+    expect(postForm).not.toHaveBeenCalled();
+  });
+
+  test("demands a token on every attempt once captcha is configured", async () => {
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET, CAPTCHA_SITE_KEY: SITE_KEY });
 
     await expect(verifyPublicEmailCaptcha(undefined)).rejects.toBeInstanceOf(BadRequestError);
     // No token means no work and, critically, no email: the check must short-circuit.
@@ -40,14 +48,14 @@ describe("verifyPublicEmailCaptcha", () => {
   });
 
   test("rejects a token the provider does not accept", async () => {
-    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET });
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET, CAPTCHA_SITE_KEY: SITE_KEY });
     postForm.mockResolvedValue({ data: { success: false } });
 
     await expect(verifyPublicEmailCaptcha("forged-token")).rejects.toBeInstanceOf(BadRequestError);
   });
 
   test("accepts a token the provider verifies, and sends the secret with it", async () => {
-    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET });
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET, CAPTCHA_SITE_KEY: SITE_KEY });
     postForm.mockResolvedValue({ data: { success: true } });
 
     await expect(verifyPublicEmailCaptcha(TOKEN)).resolves.toBeUndefined();
@@ -59,7 +67,7 @@ describe("verifyPublicEmailCaptcha", () => {
 
   // A provider outage must not silently admit the request; failing closed is the whole point.
   test("does not admit the request when the provider call throws", async () => {
-    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET });
+    getConfig.mockReturnValue({ CAPTCHA_SECRET: SECRET, CAPTCHA_SITE_KEY: SITE_KEY });
     postForm.mockRejectedValue(new Error("hcaptcha unreachable"));
 
     await expect(verifyPublicEmailCaptcha(TOKEN)).rejects.toThrow();

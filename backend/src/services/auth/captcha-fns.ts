@@ -32,7 +32,7 @@ export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number |
 
 export const verifyPublicEmailCaptcha = async (captchaToken?: string) => {
   const appCfg = getConfig();
-  if (!appCfg.CAPTCHA_SECRET) return;
+  if (!appCfg.CAPTCHA_SECRET || !appCfg.CAPTCHA_SITE_KEY) return;
 
   if (!captchaToken) {
     throw new BadRequestError({
