@@ -128,7 +128,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 role="combobox"
                 aria-expanded={isOpen}
                 disabled={isDisabled}
-                className="w-[180px] justify-between"
+                className="w-[180px] max-w-full min-w-0 justify-between"
               >
                 <span className="truncate">{label}</span>
                 <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />

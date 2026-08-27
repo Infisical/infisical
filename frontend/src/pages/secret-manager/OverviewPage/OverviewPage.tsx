@@ -2733,15 +2733,16 @@ const OverviewPageContent = () => {
           </Link>
         }
       />
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-2">
-            <div className="flex min-w-56 items-center overflow-hidden px-2 whitespace-nowrap">
+      <Card className="min-w-0">
+        <CardHeader className="min-w-0">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex min-w-0 items-center overflow-hidden px-2 whitespace-nowrap">
               <FolderBreadcrumb secretPath={secretPath} />
             </div>
-            <div className="flex items-center justify-between gap-2 max-sm:flex-wrap">
+            <div className="flex min-w-0 flex-col items-stretch gap-2 @4xl/card-header:flex-row @4xl/card-header:items-center">
               <ResourceSearchInput
                 key={secretPath}
+                className="min-w-0 @4xl/card-header:flex-1"
                 value={searchFilter}
                 tags={tags}
                 onChange={setSearchFilter}
@@ -2749,8 +2750,8 @@ const OverviewPageContent = () => {
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />
-              <div className="flex max-w-full flex-1 items-center justify-between gap-2">
-                <div className="flex max-w-full items-center gap-2">
+              <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 @4xl/card-header:flex-1 @4xl/card-header:justify-between">
+                <div className="flex max-w-full min-w-0 basis-full items-center gap-2 @xl/card-header:basis-auto">
                   <EnvironmentSelect
                     selectedEnvs={filteredEnvs}
                     setSelectedEnvs={setFilteredEnvs}
@@ -2778,13 +2779,15 @@ const OverviewPageContent = () => {
                   )}
                 </div>
                 {userAvailableEnvs.length > 0 && (
-                  <AddResourceButtons {...addResourceButtonsProps} />
+                  <div className="ml-auto shrink-0">
+                    <AddResourceButtons {...addResourceButtonsProps} />
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           {relevantPendingApprovalsCount > 0 && (
             <Alert variant="info" className="-mt-2 mb-3 py-1.5">
               <AlertTitle className="flex items-center gap-3">

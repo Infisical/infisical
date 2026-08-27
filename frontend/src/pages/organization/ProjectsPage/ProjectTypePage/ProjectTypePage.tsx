@@ -1156,7 +1156,7 @@ const Toolbar = ({
                 }}
               >
                 <PlusIcon />
-                Add New
+                New Project
               </Button>
             )}
           </OrgPermissionCan>
