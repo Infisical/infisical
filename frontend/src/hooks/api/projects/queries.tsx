@@ -377,7 +377,8 @@ export const useRestoreEnvironment = () => {
 export const useGetWorkspaceUsers = (
   projectId: string,
   includeGroupMembers?: boolean,
-  roles?: string[]
+  roles?: string[],
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: projectKeys.getProjectUsers(projectId, includeGroupMembers, roles),
@@ -395,7 +396,7 @@ export const useGetWorkspaceUsers = (
       });
       return users;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -523,7 +524,11 @@ export const useGetWorkspaceGroupMembershipDetails = (
   });
 };
 
-export const useListWorkspaceGroups = (projectId: string, projectType?: string) => {
+export const useListWorkspaceGroups = (
+  projectId: string,
+  projectType?: string,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
@@ -534,7 +539,7 @@ export const useListWorkspaceGroups = (projectId: string, projectType?: string) 
       );
       return groupMemberships;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 

@@ -634,7 +634,7 @@ const Form = ({
               render={({ field, fieldState: { error } }) => (
                 <Field className="flex-1">
                   <FieldLabel>
-                    Max. time period
+                    Max. Time Period
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon />
@@ -662,7 +662,7 @@ const Form = ({
               render={({ field, fieldState: { error } }) => (
                 <Field className="flex-1">
                   <FieldLabel>
-                    Request expiration
+                    Request Expiration
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon />
@@ -820,6 +820,7 @@ const Form = ({
                 <PlusIcon />
                 Add Step
               </Button>
+              <FieldError errors={[errors.sequenceApprovers]} />
             </div>
           </>
         ) : (
