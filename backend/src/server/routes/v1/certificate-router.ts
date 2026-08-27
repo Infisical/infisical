@@ -1349,7 +1349,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.extend({
+          certificate: CertificatesSchema.omit({ orderId: true }).extend({
             subject: z
               .object({
                 commonName: z.string().optional(),
@@ -1378,6 +1378,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
+            latestRenewalCertificateId: z
+              .string()
+              .uuid()
+              .nullable()
+              .optional()
+              .describe(CERTIFICATES.GET.latestRenewalCertificateId),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
@@ -1761,7 +1767,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.omit({ orderId: true })
         })
       }
     },
@@ -1822,7 +1828,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.omit({ orderId: true })
         })
       }
     },
