@@ -18,11 +18,17 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-// Only the hostname check is stubbed, because the real one needs DNS. resolveEventTimestamp
-// stays real so the timestamp assertions exercise actual behaviour.
-vi.mock("../audit-log-stream-fns", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../audit-log-stream-fns")>()),
-  blockAuditLogStreamInternalIps: vi.fn(async () => undefined)
+// Only safeRequest's URL validation is stubbed, because the real one resolves DNS. The stub still
+// dispatches through the axios instance below, so the on-wire assertions stay on real behaviour.
+vi.mock("@app/lib/validator", () => ({
+  safeRequest: {
+    post: async (url: string, data: unknown, options: Record<string, unknown> = {}) => {
+      const { allowPrivateIps, ...axiosOpts } = options;
+      const { request } = await import("@app/lib/config/request");
+
+      return request.request({ ...axiosOpts, method: "POST", url, data });
+    }
+  }
 }));
 
 // A real axios instance with a capturing adapter, because the adapter receives `config.data`
