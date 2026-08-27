@@ -1131,68 +1131,83 @@
             "icon": "server",
             "pages": [
               "self-hosting/overview",
+              "self-hosting/configuration/requirements",
+              "self-hosting/ee",
               {
-                "group": "Deploy and operate",
+                "group": "Get started",
                 "pages": [
-                  "documentation/platform/admin-panel/server-admin",
                   {
-                    "group": "Installation methods",
+                    "group": "Docker",
                     "pages": [
                       "self-hosting/deployment-options/standalone-infisical",
-                      "self-hosting/deployment-options/docker-compose",
-                      "self-hosting/deployment-options/aws-native",
-                      "self-hosting/deployment-options/gcp-native"
+                      "self-hosting/deployment-options/docker-compose"
                     ]
                   },
                   {
-                    "group": "Linux package",
+                    "group": "Kubernetes",
+                    "pages": [
+                      "self-hosting/deployment-options/kubernetes-helm",
+                      {
+                        "group": "Helm charts",
+                        "root": "self-hosting/helm-charts/overview",
+                        "pages": [
+                          "self-hosting/helm-charts/secrets-operator",
+                          "self-hosting/helm-charts/gateway",
+                          "self-hosting/helm-charts/pki-issuer",
+                          "self-hosting/helm-charts/csi-provider",
+                          "self-hosting/helm-charts/agent-injector"
+                        ]
+                      },
+                      "self-hosting/reference-architectures/on-prem-k8s-ha"
+                    ]
+                  },
+                  {
+                    "group": "Linux",
                     "pages": [
                       "self-hosting/deployment-options/native/linux-package/installation",
                       "self-hosting/deployment-options/native/linux-package/commands-configuration",
-                      "self-hosting/deployment-options/linux-upgrade"
+                      "self-hosting/deployment-options/linux-upgrade",
+                      "self-hosting/reference-architectures/linux-deployment-ha"
                     ]
                   },
                   {
-                    "group": "Helm charts",
+                    "group": "AWS",
                     "pages": [
-                      "self-hosting/helm-charts/overview",
-                      "self-hosting/deployment-options/kubernetes-helm",
-                      "self-hosting/helm-charts/secrets-operator",
-                      "self-hosting/helm-charts/gateway",
-                      "self-hosting/helm-charts/pki-issuer",
-                      "self-hosting/helm-charts/csi-provider",
-                      "self-hosting/helm-charts/agent-injector"
-                    ]
-                  },
-                  "self-hosting/guides/replication",
-                  "self-hosting/guides/hsm-integration",
-                  "self-hosting/guides/upgrading-infisical",
-                  "self-hosting/configuration/envars",
-                  "self-hosting/guides/releases",
-                  "self-hosting/configuration/requirements",
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "self-hosting/guides/mongo-to-postgres",
-                      "self-hosting/guides/custom-certificates",
-                      "self-hosting/guides/automated-bootstrapping",
-                      "self-hosting/guides/production-hardening",
-                      "self-hosting/guides/monitoring-telemetry"
+                      "self-hosting/deployment-options/aws-native",
+                      "self-hosting/reference-architectures/aws-ecs"
                     ]
                   },
                   {
-                    "group": "Reference architectures",
+                    "group": "GCP",
                     "pages": [
-                      "self-hosting/reference-architectures/aws-ecs",
-                      "self-hosting/reference-architectures/linux-deployment-ha",
-                      "self-hosting/reference-architectures/on-prem-k8s-ha",
+                      "self-hosting/deployment-options/gcp-native",
                       "self-hosting/reference-architectures/google-cloud-run"
                     ]
-                  },
-                  "self-hosting/ee",
-                  "self-hosting/faq"
+                  }
                 ]
-              }
+              },
+              {
+                "group": "Configure",
+                "pages": [
+                  "self-hosting/configuration/envars",
+                  "self-hosting/guides/custom-certificates",
+                  "self-hosting/guides/hsm-integration",
+                  "self-hosting/guides/automated-bootstrapping",
+                  "self-hosting/guides/cdn-caching"
+                ]
+              },
+              {
+                "group": "Operate",
+                "pages": [
+                  "documentation/platform/admin-panel/server-admin",
+                  "self-hosting/guides/upgrading-infisical",
+                  "self-hosting/guides/replication",
+                  "self-hosting/guides/production-hardening",
+                  "self-hosting/guides/monitoring-telemetry",
+                  "self-hosting/guides/mongo-to-postgres"
+                ]
+              },
+              "self-hosting/faq"
             ]
           },
           {
