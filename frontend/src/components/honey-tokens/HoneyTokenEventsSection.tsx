@@ -64,7 +64,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
 
-  const { data, isError, isFetching, refetch } = useGetHoneyTokenEvents({
+  const { data, isError, isPending, refetch } = useGetHoneyTokenEvents({
     honeyTokenId,
     projectId,
     offset: (page - 1) * perPage,
@@ -86,14 +86,14 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         )}
       </div>
 
-      {isFetching && (
+      {isPending && (
         <div className="flex min-h-24 items-center justify-center" role="status">
           <PageLoader />
           <span className="sr-only">Loading honey token events</span>
         </div>
       )}
 
-      {!isFetching && isError && (
+      {!isPending && isError && (
         <Alert variant="danger">
           <AlertCircleIcon />
           <AlertTitle>Honey token events could not be loaded</AlertTitle>
@@ -106,7 +106,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Alert>
       )}
 
-      {!isFetching && !isError && (!events || events.length === 0) && (
+      {!isPending && !isError && (!events || events.length === 0) && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No events recorded yet</EmptyTitle>
@@ -114,7 +114,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Empty>
       )}
 
-      {!isFetching && !isError && events && events.length > 0 && (
+      {!isPending && !isError && events && events.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -157,7 +157,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Table>
       )}
 
-      {!isFetching && !isError && totalCount > 0 && (
+      {!isPending && !isError && totalCount > 0 && (
         <Pagination
           count={totalCount}
           page={page}

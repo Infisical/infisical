@@ -9,10 +9,10 @@ import {
   faFileImport,
   faKey,
   faRotate,
-  faShieldHalved,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { HexagonIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
@@ -267,7 +267,7 @@ export const SecretOverviewTableRow = ({
                               )}
                               {secret?.isHoneyTokenSecret && (
                                 <Tooltip content="Honey Token Secret">
-                                  <FontAwesomeIcon icon={faShieldHalved} className="text-yellow" />
+                                  <HexagonIcon className="size-4 text-warning" />
                                 </Tooltip>
                               )}
                               {secret?.idOverride && (

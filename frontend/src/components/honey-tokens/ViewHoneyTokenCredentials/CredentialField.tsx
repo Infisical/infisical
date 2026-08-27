@@ -1,6 +1,5 @@
 import { useReducer } from "react";
-import { faCopy, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 import { Field, FieldContent, FieldLabel, IconButton, Input } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
@@ -33,7 +32,7 @@ export const CredentialField = ({ label, value }: Props) => {
             size="md"
             onClick={toggleShowCredential}
           >
-            <FontAwesomeIcon icon={showCredential ? faEyeSlash : faEye} />
+            {showCredential ? <EyeOffIcon /> : <EyeIcon />}
           </IconButton>
           <IconButton
             aria-label={`Copy ${label}`}
@@ -44,7 +43,7 @@ export const CredentialField = ({ label, value }: Props) => {
               setCopied(true);
             }}
           >
-            <FontAwesomeIcon icon={faCopy} className={isCopied ? "text-success" : ""} />
+            <CopyIcon className={isCopied ? "text-success" : ""} />
           </IconButton>
         </div>
       </FieldContent>
