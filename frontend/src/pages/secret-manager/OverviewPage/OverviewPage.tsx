@@ -2234,6 +2234,7 @@ const OverviewPageContent = () => {
       return curr;
     });
 
+    setSearchFilter("");
     navigate({
       search: (prev) => ({
         ...prev,

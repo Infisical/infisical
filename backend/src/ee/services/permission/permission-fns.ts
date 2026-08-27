@@ -438,6 +438,20 @@ const handlebarsClient = (() => {
   return hbs;
 })();
 
+// Compiling a template is the most expensive step of building an ability, and almost no rule set needs
+// it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template
+// with no mustaches renders byte-identical to its input, so serializing once to look for one and
+// returning the rules untouched skips the compile, the render and the reparse.
+export const interpolatePermissionRules = <T>(rules: T[], identityContext: Record<string, unknown>): T[] => {
+  const serializedRules = JSON.stringify(rules);
+
+  if (!serializedRules.includes("{{")) return rules;
+
+  const templatedRules = handlebarsClient.compile(serializedRules, { data: false });
+
+  return JSON.parse(templatedRules(identityContext, { data: false })) as T[];
+};
+
 export {
   assertPermissionBoundary,
   constructPermissionErrorMessage,

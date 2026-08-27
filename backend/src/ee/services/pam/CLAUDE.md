@@ -157,8 +157,14 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 ## Sessions
 
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
-account deletion; orphaned sessions are hidden from all queries). Duration is capped at the template max;
-expiration is enforced by a delayed BullMQ job scheduled at session creation.
+account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
+scheduled at session creation.
+
+**An orphaned session (null `accountId`) is scoped to product admin.** Every
+resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the
+read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
+playback), as it does for scope-less audit-log rows. `getSessionCredentials` still refuses — no account
+means no credentials to mint.
 
 ## Conventions
 

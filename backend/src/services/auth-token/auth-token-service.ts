@@ -30,13 +30,7 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
-    | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "acquireLock"
-    | "deleteItemsByKeyIn"
-    | "ttl"
+    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "ttl"
   >;
 };
 
@@ -443,30 +437,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
 
-  const acquireEmailSignupCooldown = async (email: string): Promise<{ emailHash: string; cooldownSeconds: number }> => {
-    const appCfg = getConfig();
-    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-    const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-    const cooldownSeconds = KeyStoreTtls.EmailSignupResendCooldownInSeconds;
-
-    // SET NX is atomic: only one concurrent request can acquire the cooldown slot.
-    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, cooldownSeconds, "1");
-    if (!acquired) {
-      const remaining = await keyStore.ttl(cooldownKey);
-      throw new BadRequestError({
-        message: "Please wait before requesting another code",
-        details: {
-          cooldownSeconds: Math.max(1, remaining)
-        }
-      });
-    }
-
-    return {
-      emailHash,
-      cooldownSeconds
-    };
-  };
-
   const createEmailSignupToken = async (emailHash: string): Promise<string> => {
     const appCfg = getConfig();
     const token = generateSixDigitToken();
@@ -539,8 +509,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         });
       }
 
-      const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-      await keyStore.deleteItemsByKeyIn([key, cooldownKey]);
+      await keyStore.deleteItem(key);
     } finally {
       await lock.release();
     }
@@ -560,7 +529,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     rotateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
-    acquireEmailSignupCooldown,
     createEmailSignupToken,
     validateEmailSignupToken
   };

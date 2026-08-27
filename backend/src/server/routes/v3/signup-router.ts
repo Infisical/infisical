@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { matchesAllowedEmailDomain } from "@app/lib/validator";
+import { matchesAllowedEmailDomain, normalizeEmail } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -23,13 +23,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "beginEmailSignupV3",
       body: z.object({
-        email: z.string().email().trim()
+        email: z.string().trim().email().max(255),
+        captchaToken: z.string().trim().max(5000).optional()
       }),
       response: {
         200: z.object({
@@ -56,7 +60,11 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           });
         }
       }
-      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess(email);
+      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess({
+        email,
+        ip: req.realIp,
+        captchaToken: req.body.captchaToken
+      });
       return { message: `Sent an email verification code to ${email}`, cooldownSeconds };
     }
   });
@@ -66,15 +74,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) =>
-          (req.body as { email?: string })?.email?.trim()?.toLowerCase().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "verifyEmailSignupV3",
       body: z.object({
-        email: z.string().email().trim(),
-        code: z.string().trim()
+        email: z.string().trim().email().max(255),
+        code: z.string().trim().length(6)
       }),
       response: {
         200: z.object({

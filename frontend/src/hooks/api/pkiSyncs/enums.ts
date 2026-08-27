@@ -23,7 +23,7 @@ export enum PemCertificateExtension {
   Crt = "crt"
 }
 
-export enum PostSyncCommandVariable {
+export enum HostCommandVariable {
   CertificatePath = "certificatePath",
   CertificateDirectory = "certificateDirectory",
   CertificateFiles = "certificateFiles",

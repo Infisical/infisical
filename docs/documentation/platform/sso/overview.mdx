@@ -75,10 +75,7 @@ This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/log
         through an external identity provider and requires an additional email
         verification step upon their first login.
 
-        If you're running a self-hosted instance of Infisical and would like it to trust emails from external identity providers,
-        you can configure this behavior in the Server Admin Console.
-
-        This additional verification step is also skipped when your organization [enforces SSO](#sso-enforcement) for a [verified email domain](/documentation/platform/email-domain), since the verified domain and IdP are already authoritative for that email.
+        To skip this step, [enforce SSO](#sso-enforcement) for your organization. Enforcement requires a [verified email domain](/documentation/platform/email-domain), so the domain and your identity provider are already authoritative for that email.
     </Accordion>
     <Accordion title="Why do I get redirected to SSO when trying to use the Admin Login Portal?">
         You are likely being redirected because you do not have email authentication mode enabled, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (email and password). **Server Admin** status alone is insufficient.

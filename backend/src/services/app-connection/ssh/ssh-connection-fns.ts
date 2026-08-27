@@ -203,9 +203,7 @@ export const executeWithPotentialGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
@@ -313,9 +311,7 @@ export const executeSshCommandViaGateway = async (
       }),
     {
       protocol: GatewayProxyProtocol.Discovery,
-      relayHost: connectionDetails.relayHost,
-      gateway: connectionDetails.gateway,
-      relay: connectionDetails.relay
+      ...connectionDetails
     }
   );
 

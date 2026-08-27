@@ -38,6 +38,21 @@ export const writeLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
+// landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
+// rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT
+// address would exhaust a 200/min quota on load reports alone, start getting 429s, and their
+// entries would go stale.
+export const gatewayMetricsReportLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 10,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `gateway-metrics:${actorId}` : req.realIp;
+  }
+};
+
 // special endpoints
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports

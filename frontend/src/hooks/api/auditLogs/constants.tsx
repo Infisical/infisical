@@ -191,10 +191,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
+  [EventType.PKI_SYNC_HEALTH_CHECK]: "PKI Sync health check ran",
+  [EventType.PKI_SYNC_TEST_HEALTH_CHECK]: "PKI Sync health check tested",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
     "OIDC group membership mapping removed user from groups",
+  [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
+    "OIDC login adopted provisioned placeholder account",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
