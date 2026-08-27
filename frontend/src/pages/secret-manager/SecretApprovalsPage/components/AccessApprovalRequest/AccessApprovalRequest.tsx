@@ -582,7 +582,7 @@ export const AccessApprovalRequest = ({
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                     {CLOSED_REQUEST_FILTERS.map((filter) => (
                       <DropdownMenuCheckboxItem
                         key={filter.value}

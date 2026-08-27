@@ -48,6 +48,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateSecretApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
@@ -61,10 +62,11 @@ import {
   BypasserType,
   TAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval/types";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { onRequestError } from "@app/hooks/api/reactQuery";
-import { TApprovalPolicyApproverOptions } from "@app/hooks/api/secretApproval/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
+import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { approvalPolicyFormSchema, TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
@@ -73,7 +75,8 @@ import { ApproverOption, ApproverOptionData } from "./ApproverOption";
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
-  approverOptions?: TApprovalPolicyApproverOptions;
+  members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectId: string;
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
@@ -84,7 +87,8 @@ type Props = {
 
 const Form = ({
   onToggle,
-  approverOptions: availableApproverOptions = { users: [], groups: [] },
+  members = [],
+  groups = [],
   projectId,
   projectSlug,
   editValues,
@@ -309,23 +313,22 @@ const Form = ({
 
   const memberOptions: Omit<Approver, "sequence" | "approvalsRequired">[] = useMemo(
     () =>
-      availableApproverOptions.users.map((user) => ({
-        id: user.id,
+      members.map((member) => ({
+        id: member.user.id,
         type: ApproverType.User,
-        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-        isOrgMembershipActive: user.isOrgMembershipActive
+        name: member.user.username,
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
-    [availableApproverOptions.users]
+    [members]
   );
 
   const groupOptions = useMemo(
     () =>
-      availableApproverOptions.groups.map((group) => ({
+      groups?.map(({ group }) => ({
         id: group.id,
-        type: ApproverType.Group,
-        name: group.name
+        type: ApproverType.Group
       })),
-    [availableApproverOptions.groups]
+    [groups]
   );
 
   const approverOptions = useMemo<ApproverOptionData[]>(
@@ -333,7 +336,14 @@ const Form = ({
     [memberOptions, groupOptions]
   );
 
-  const getApproverLabel = (option: ApproverOptionData) => option.name || option.id;
+  const getApproverLabel = (option: ApproverOptionData) => {
+    if (option.type === ApproverType.Group) {
+      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
+    }
+    const member = members?.find((m) => m.user.id === option.id);
+    if (!member) return option.name || option.id;
+    return getMemberLabel(member);
+  };
 
   const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
@@ -351,23 +361,21 @@ const Form = ({
 
   const bypasserMemberOptions = useMemo(
     () =>
-      availableApproverOptions.users.map((user) => ({
-        id: user.id,
+      members.map((member) => ({
+        id: member.user.id,
         type: BypasserType.User,
-        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-        isOrgMembershipActive: user.isOrgMembershipActive
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
-    [availableApproverOptions.users]
+    [members]
   );
 
   const bypasserGroupOptions = useMemo(
     () =>
-      availableApproverOptions.groups.map((group) => ({
+      groups?.map(({ group }) => ({
         id: group.id,
-        type: BypasserType.Group,
-        name: group.name
+        type: BypasserType.Group
       })),
-    [availableApproverOptions.groups]
+    [groups]
   );
 
   const bypasserOptions = useMemo<ApproverOptionData[]>(
@@ -375,7 +383,14 @@ const Form = ({
     [bypasserMemberOptions, bypasserGroupOptions]
   );
 
-  const getBypasserLabel = (option: ApproverOptionData) => option.name || option.id;
+  const getBypasserLabel = (option: ApproverOptionData) => {
+    if (option.type === BypasserType.Group) {
+      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
+    }
+    const member = members?.find((m) => m.user.id === option.id);
+    if (!member) return option.name || option.id;
+    return getMemberLabel(member);
+  };
 
   const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
     users: selected

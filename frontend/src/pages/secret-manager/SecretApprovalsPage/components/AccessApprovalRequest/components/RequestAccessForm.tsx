@@ -437,7 +437,7 @@ const DurationField = ({
           htmlFor="expire-access"
           className={cn(!duration.isTemporary && "text-muted opacity-70")}
         >
-          Expire access
+          Expire Access
         </Label>
         <Checkbox
           id="expire-access"

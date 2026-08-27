@@ -1,50 +1,5 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
-type TApprovalPolicyMember = {
-  user: {
-    id: string;
-    username: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    isOrgMembershipActive: boolean;
-  };
-};
-
-type TApprovalPolicyGroup = {
-  group: {
-    id: string;
-    name: string;
-  };
-};
-
-export const buildApprovalPolicyApproverOptions = ({
-  directMembers,
-  groupMembers,
-  groups
-}: {
-  directMembers: TApprovalPolicyMember[];
-  groupMembers: TApprovalPolicyMember[];
-  groups: TApprovalPolicyGroup[];
-}) => {
-  const usersById = new Map(
-    [...directMembers, ...groupMembers].map(({ user }) => [
-      user.id,
-      {
-        id: user.id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isOrgMembershipActive: user.isOrgMembershipActive
-      }
-    ])
-  );
-
-  return {
-    users: [...usersById.values()].sort((a, b) => a.username.localeCompare(b.username)),
-    groups: groups.map(({ group }) => ({ id: group.id, name: group.name })).sort((a, b) => a.name.localeCompare(b.name))
-  };
-};
-
 /**
  * Returns the committer ID fields for a secret approval request,
  * setting the appropriate field based on the actor type.

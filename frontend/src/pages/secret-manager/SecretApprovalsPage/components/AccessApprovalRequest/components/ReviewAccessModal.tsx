@@ -49,6 +49,9 @@ import {
   ItemMedia,
   ItemSeparator,
   Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ProjectIcon,
   Sheet,
   SheetContent,
@@ -559,6 +562,75 @@ export const ReviewAccessRequestModal = ({
     return null;
   };
 
+  const getReviewerStatusBadge = (status?: ApprovalStatus) => {
+    if (status === ApprovalStatus.APPROVED)
+      return (
+        <Badge variant="success">
+          <CheckIcon />
+          Approved
+        </Badge>
+      );
+    if (status === ApprovalStatus.REJECTED)
+      return (
+        <Badge variant="danger">
+          <BanIcon />
+          Rejected
+        </Badge>
+      );
+    return (
+      <Badge variant="warning">
+        <HourglassIcon />
+        Pending
+      </Badge>
+    );
+  };
+
+  const renderReviewerProgress = (approver: ApproverChain, badge: React.ReactNode) => {
+    if (!badge) return null;
+
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`View reviewer progress for approval step ${approver.sequence ?? 1}`}
+          >
+            {badge}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="z-[70] max-h-64 thin-scrollbar w-72 overflow-y-auto px-3 py-2.5"
+          aria-label={`Reviewer progress for approval step ${approver.sequence ?? 1}`}
+        >
+          <div className="mb-2 text-sm font-medium text-foreground">Reviewer Progress</div>
+          <ul className="flex flex-col divide-y divide-border">
+            {approver.reviewers.map((reviewer, index) => {
+              const reviewerName =
+                reviewer.userId === user.id
+                  ? "You"
+                  : reviewer.username || reviewer.email || reviewer.userId || "Unknown reviewer";
+
+              return (
+                <li
+                  key={reviewer.userId ?? `reviewer-${index + 1}`}
+                  className={twMerge(
+                    "flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0",
+                    !reviewer.isOrgMembershipActive && "opacity-50"
+                  )}
+                >
+                  <span className="min-w-0 truncate text-foreground">{reviewerName}</span>
+                  {getReviewerStatusBadge(reviewer.status as ApprovalStatus | undefined)}
+                </li>
+              );
+            })}
+          </ul>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   const canReadMembers = permission.can(
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
@@ -879,7 +951,7 @@ export const ReviewAccessRequestModal = ({
                       {renderApproverMembers(approvers[0])}
                     </ItemContent>
                     <ItemActions className="shrink-0">
-                      {getStatusBadge(approvers[0])}
+                      {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
                       <span className="text-xs whitespace-nowrap text-muted">
                         {approvers[0].approvals ?? 1} approval
                         {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
@@ -910,7 +982,7 @@ export const ReviewAccessRequestModal = ({
                             {renderApproverMembers(approver)}
                           </ItemContent>
                           <ItemActions className="shrink-0">
-                            {badge}
+                            {renderReviewerProgress(approver, badge)}
                             <span className="text-xs whitespace-nowrap text-muted">
                               {approver.approvals ?? 1} approval
                               {(approver.approvals ?? 1) === 1 ? "" : "s"} required

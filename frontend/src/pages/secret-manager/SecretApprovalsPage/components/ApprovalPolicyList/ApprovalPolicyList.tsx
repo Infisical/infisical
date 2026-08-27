@@ -66,7 +66,6 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
-  useGetApprovalPolicyApproverOptions,
   useGetSecretApprovalPolicies,
   useGetWorkspaceUsers,
   useListWorkspaceGroups
@@ -179,24 +178,23 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   );
   const canReadGroups = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true, undefined, {
+  const {
+    data: members,
+    isError: isMembersError,
+    isFetching: isMembersFetching,
+    isPending: isMembersPending,
+    refetch: refetchMembers
+  } = useGetWorkspaceUsers(projectId, true, undefined, {
     enabled: canReadMembers && Boolean(projectId)
   });
-  const { data: groups } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
-    enabled: canReadGroups && Boolean(currentProject?.id)
-  });
-  const shouldLoadApproverOptions = canCreatePolicies || canEditPolicies;
   const {
-    data: approverOptions,
-    isError: isApproverOptionsQueryError,
-    isFetching: isApproverOptionsFetching,
-    isPending: isApproverOptionsPending,
-    refetch: refetchApproverOptions
-  } = useGetApprovalPolicyApproverOptions({
-    projectId,
-    options: {
-      enabled: shouldLoadApproverOptions && Boolean(projectId)
-    }
+    data: groups,
+    isError: isGroupsError,
+    isFetching: isGroupsFetching,
+    isPending: isGroupsPending,
+    refetch: refetchGroups
+  } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
+    enabled: canReadGroups && Boolean(currentProject?.id)
   });
 
   const {
@@ -208,12 +206,18 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     refetchSecretPolicies
   } = useApprovalPolicies(permission, currentProject);
 
-  const isApproverOptionsError = shouldLoadApproverOptions && isApproverOptionsQueryError;
-  const isApproverOptionsLoading = shouldLoadApproverOptions && isApproverOptionsPending;
-  const isApproverOptionsRetrying = shouldLoadApproverOptions && isApproverOptionsFetching;
+  const hasApproverSourcePermission = canReadMembers || canReadGroups;
+  const isApproverOptionsError =
+    (canReadMembers && isMembersError) || (canReadGroups && isGroupsError);
+  const isApproverOptionsLoading =
+    (canReadMembers && isMembersPending) || (canReadGroups && isGroupsPending);
+  const isApproverOptionsRetrying =
+    (canReadMembers && isMembersFetching) || (canReadGroups && isGroupsFetching);
   let approverOptionsDisabledReason: string | undefined;
 
-  if (isApproverOptionsLoading) {
+  if (!hasApproverSourcePermission) {
+    approverOptionsDisabledReason = "Member Read or Group Read permission is required";
+  } else if (isApproverOptionsLoading) {
     approverOptionsDisabledReason = "Approver options are loading";
   } else if (isApproverOptionsError) {
     approverOptionsDisabledReason = "Approver options are unavailable";
@@ -453,7 +457,10 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       variant="danger"
                       isPending={isApproverOptionsRetrying}
                       isDisabled={isApproverOptionsRetrying}
-                      onClick={() => refetchApproverOptions().catch(() => undefined)}
+                      onClick={() => {
+                        if (canReadMembers) refetchMembers().catch(() => undefined);
+                        if (canReadGroups) refetchGroups().catch(() => undefined);
+                      }}
                     >
                       <RefreshCwIcon />
                       Retry
@@ -538,6 +545,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                             groups={groups}
                             canEdit={
                               canEditPolicies &&
+                              hasApproverSourcePermission &&
                               !isApproverOptionsLoading &&
                               !isApproverOptionsError
                             }
@@ -591,10 +599,14 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
-        approverOptions={approverOptions}
+        members={members}
+        groups={groups}
         hasApproverOptionsError={isApproverOptionsError}
         isRetryingApproverOptions={isApproverOptionsRetrying}
-        onRetryApproverOptions={() => refetchApproverOptions().catch(() => undefined)}
+        onRetryApproverOptions={() => {
+          if (canReadMembers) refetchMembers().catch(() => undefined);
+          if (canReadGroups) refetchGroups().catch(() => undefined);
+        }}
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
       {popUp.deletePolicy.data && (

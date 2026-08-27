@@ -514,7 +514,7 @@ export const SecretApprovalRequestChanges = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="@container flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-5xl">
+      <SheetContent className="@container flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2 pr-8">
             Change Request

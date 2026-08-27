@@ -7,10 +7,8 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
@@ -24,7 +22,6 @@ import {
 } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import { TSecretApprovalPolicyEnvironmentDALFactory } from "./secret-approval-policy-environment-dal";
-import { buildApprovalPolicyApproverOptions } from "./secret-approval-policy-fns";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -55,8 +52,6 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers" | "findByProjectId">;
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
@@ -75,8 +70,6 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyEnvironmentDAL,
   projectEnvDAL,
   projectDAL,
-  projectMembershipDAL,
-  groupProjectDAL,
   userDAL,
   licenseService,
   secretApprovalRequestDAL
@@ -631,41 +624,6 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getApprovalPolicyApproverOptions = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TListSapDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    const canCreatePolicy = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval);
-    const canEditPolicy = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
-
-    if (!canCreatePolicy && !canEditPolicy) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        ProjectPermissionSub.SecretApproval
-      );
-    }
-
-    const [directMembers, groupMembers, groups] = await Promise.all([
-      projectMembershipDAL.findAllProjectMembers(projectId),
-      groupProjectDAL.findAllProjectGroupMembers(projectId),
-      groupProjectDAL.findByProjectId(projectId)
-    ]);
-
-    return buildApprovalPolicyApproverOptions({ directMembers, groupMembers, groups });
-  };
-
   const findEnvPolicies = async (projectId: string, environment: string) => {
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) {
@@ -753,7 +711,6 @@ export const secretApprovalPolicyServiceFactory = ({
     getSecretApprovalPolicy,
     getSecretApprovalPolicyByPaths,
     getSecretApprovalPolicyByProjectId,
-    getApprovalPolicyApproverOptions,
     getSecretApprovalPolicyOfFolder,
     getSecretApprovalPolicyById
   };

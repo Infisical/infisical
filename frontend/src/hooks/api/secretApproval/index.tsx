@@ -3,8 +3,4 @@ export {
   useDeleteSecretApprovalPolicy,
   useUpdateSecretApprovalPolicy
 } from "./mutation";
-export {
-  useGetApprovalPolicyApproverOptions,
-  useGetSecretApprovalPolicies,
-  useGetSecretApprovalPolicyOfABoard
-} from "./queries";
+export { useGetSecretApprovalPolicies, useGetSecretApprovalPolicyOfABoard } from "./queries";
