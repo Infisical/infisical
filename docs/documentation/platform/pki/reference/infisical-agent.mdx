@@ -155,7 +155,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | --------- | -------- | ----------- |
 | `application-name` | Yes | The name of the [Application](/documentation/platform/pki/applications/overview) to request a certificate from |
 | `profile-name` | Yes | The slug of the [certificate profile](/documentation/platform/pki/settings/profiles) to request a certificate against. The profile must be attached to the Application |
-| `certificate-id` | Conditional | The ID of an existing certificate to fetch and track instead of issuing a new one. Cannot be combined with the parameters above, `csr`/`csr-path`, or `attributes`. See [Tracking an existing certificate](#tracking-an-existing-certificate) |
+| `certificate-id` | Conditional | The ID of an existing certificate to fetch and track instead of issuing a new one. Cannot be combined with the parameters above, `csr`/`csr-path`, or `attributes`. See [Tracking an existing certificate](#tracking-an-existing-certificate) and [Following renewals](#following-renewals) |
 | `attributes.common-name` | Optional | The common name for the certificate (e.g. `www.example.com`) |
 | `attributes.alt-names` | Optional | The list of DNS subject alternative names for the certificate (e.g. `["www.example.com", "api.example.com"]`) |
 | `attributes.ttl` | Optional (uses profile default if not specified) | The time-to-live duration for the certificate (e.g. `72h`, `90d`). Cannot be combined with `not-before`/`not-after` |
@@ -174,6 +174,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | `file-output.chain.permission` | Optional (defaults to `0600`) | The octal file permissions for the chain file (e.g. `0644`) |
 | `file-output.chain.omit-root` | Optional (defaults to `true`) | Whether to exclude the root CA certificate from the written chain |
 | `lifecycle.renew-before-expiry` | Optional (auto-renewal is disabled if not set) | How long before expiration the agent should renew the certificate (e.g. `14d`). Must be shorter than the certificate's TTL |
+| `lifecycle.replace-on-renewals` | Optional (defaults to `false`) | Only valid with `certificate-id`. Whether the agent should deliver the most recent renewal of that certificate instead of the certificate itself |
 | `lifecycle.status-check-interval` | Optional (defaults to `10s`) | How frequently the agent checks certificate status and renewal needs |
 | `lifecycle.failure-retry-interval` | Optional (defaults to the status check interval) | How long the agent waits before retrying after a failed operation |
 | `lifecycle.max-failure-retries` | Optional (defaults to `10`) | How many consecutive failures the agent tolerates before it stops retrying an operation |
@@ -357,6 +358,14 @@ Instead of issuing a new certificate, the agent can fetch an existing one by set
 
 Use this when the certificate's lifecycle is managed in Infisical (for example, through [server-driven auto-renewal](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal)) and the agent's job is only to deliver it to the machine.
 
+This is also how several machines share one certificate. Ten web servers terminating TLS for `*.example.com` can point at the same `certificate-id` and serve the same wildcard certificate, instead of each issuing its own. Nothing reaches the certificate authority, and your inventory does not grow with the fleet.
+
+`certificate-id` replaces the fields that describe a new certificate. Combining it with `application-name`, `profile-name`, `attributes`, `csr` or `csr-path` is rejected when the agent starts, rather than silently ignored.
+
+<Note>
+  The machine identity the agent authenticates as needs permission to read the certificate you point it at. Without it, the agent reports the authorization failure and leaves any files it has already written untouched.
+</Note>
+
 ```yaml
 version: v2
 
@@ -388,3 +397,44 @@ certificates:
         command: "logger 'Tracked certificate was revoked or expired'"
         timeout: 30
 ```
+
+### Following renewals
+
+[Renewing a certificate](/documentation/platform/pki/applications/certificate-renewal) produces a new certificate with its own ID, and the one it replaced stays valid until its own expiry. An agent pinned to the original ID therefore keeps serving the original.
+
+Set `lifecycle.replace-on-renewals` to `true` and the agent delivers the most recent renewal instead:
+
+```yaml
+certificates:
+  - certificate-id: "d2f4c1a0-0000-0000-0000-000000000000"
+    lifecycle:
+      status-check-interval: "6h"
+      replace-on-renewals: true
+    post-hooks:
+      on-renewal:
+        command: "systemctl reload nginx"
+        timeout: 30
+    file-output:
+      certificate:
+        path: "/etc/ssl/certs/wildcard.crt"
+        permission: "0644"
+      private-key:
+        path: "/etc/ssl/private/wildcard.key"
+        permission: "0600"
+```
+
+Renewing the certificate once in Infisical then reaches every machine running the agent, with no configuration change and no manual step on the machines. Leave `certificate-id` pointing at the certificate you started from: Infisical resolves the most recent renewal for you, however many times it has been renewed.
+
+The agent rewrites the files only when the certificate it resolves to changes, and runs the `on-renewal` hook when that happens. When nothing has changed it writes nothing and runs no hooks, including across a restart, because it compares what it resolves against the certificate already on disk.
+
+<Warning>
+  `lifecycle.renew-before-expiry` has no effect alongside `certificate-id`. The agent delivers a certificate, it does not renew one. The agent logs a warning and carries on. Use `lifecycle.replace-on-renewals` instead.
+</Warning>
+
+**What to expect in less common cases:**
+
+- A revoked or expired certificate is reported and runs the `on-failure` hook, but the agent does not overwrite what is already on disk. The machine keeps serving the last certificate known to be good.
+- A certificate that Infisical does not hold a private key for, such as one issued from a certificate signing request or through ACME, is written along with its chain. The agent logs a warning and skips the private key file. If such a certificate would *replace* one already delivered, the agent refuses the write instead, because that would leave a non-matching certificate and key on disk.
+- `status-check-interval` sets how often the agent checks, and so how quickly a renewal reaches the machine.
+- Keep the certificate named in `certificate-id`, even after it has been renewed. The agent starts from it. Certificates that replaced it can be deleted safely.
+- `replace-on-renewals` requires an Infisical server that supports it. Against an older self-hosted instance the agent cannot tell that a renewal exists, so it logs a warning and stays on the certificate it already delivered.

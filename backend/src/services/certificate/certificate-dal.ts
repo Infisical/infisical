@@ -45,8 +45,6 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   }
 };
 
-const MAX_RENEWAL_CHAIN_DEPTH = 1000;
-
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
 
@@ -746,38 +744,22 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const findLatestRenewalOf = async (anchor: { id: string; orderId: string }, tx?: Knex): Promise<string | null> => {
     try {
-      // Walks the anchor's own descendants rather than the whole order. A certificate renewed twice
-      // leaves two branches sharing one orderId, and the sibling branch never replaced this anchor,
-      // so picking the newest row in the order can hand back a certificate for a different name.
-      const result = await (tx || db.replicaNode()).raw<{ rows: { id: string }[] }>(
-        `
-        WITH RECURSIVE descendants AS (
-          SELECT id, "createdAt", status, "notAfter", 1 AS depth
-          FROM ??
-          WHERE "renewedFromCertificateId" = ? AND "orderId" = ?
-          UNION ALL
-          SELECT c.id, c."createdAt", c.status, c."notAfter", d.depth + 1
-          FROM ?? c
-          INNER JOIN descendants d ON c."renewedFromCertificateId" = d.id
-          WHERE c."orderId" = ? AND d.depth < ?
-        )
-        SELECT id FROM descendants
-        WHERE status <> ? AND "notAfter" > NOW()
-        ORDER BY "createdAt" DESC, id DESC
-        LIMIT 1
-      `,
-        [
+      const newer = await (tx || db.replicaNode())(TableName.Certificate)
+        .where("orderId", anchor.orderId)
+        .whereNot("status", CertStatus.REVOKED)
+        .where("notAfter", ">", db.raw("NOW()"))
+        .whereRaw(`("createdAt", "id") > (SELECT "createdAt", "id" FROM ?? WHERE "id" = ?)`, [
           TableName.Certificate,
-          anchor.id,
-          anchor.orderId,
-          TableName.Certificate,
-          anchor.orderId,
-          MAX_RENEWAL_CHAIN_DEPTH,
-          CertStatus.REVOKED
-        ]
-      );
+          anchor.id
+        ])
+        .orderBy([
+          { column: "createdAt", order: "desc" },
+          { column: "id", order: "desc" }
+        ])
+        .select("id")
+        .first();
 
-      return result.rows[0]?.id ?? null;
+      return newer?.id ?? null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest renewal of certificate" });
     }
