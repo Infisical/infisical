@@ -2,23 +2,11 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-  Input,
-  SecretInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@app/components/v3";
+import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
 import {
   LogProvider,
   REDACTED_CREDENTIAL_VALUE,
-  SPLUNK_CLOUD_HEC_PORT,
-  SPLUNK_ENTERPRISE_HEC_PORT
+  SPLUNK_DEFAULT_HEC_PORT
 } from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
@@ -59,7 +47,11 @@ const formSchema = z.object({
           ctx.addIssue({ code: "custom", message: "Invalid hostname" });
         }
       }),
-    port: z.union([z.literal(SPLUNK_ENTERPRISE_HEC_PORT), z.literal(SPLUNK_CLOUD_HEC_PORT)]),
+    port: z.coerce
+      .number({ invalid_type_error: "Port must be a number" })
+      .int("Port must be a whole number")
+      .min(1, "Port must be between 1 and 65535")
+      .max(65535, "Port must be between 1 and 65535"),
     token: z.string().uuid().trim().min(1)
   }),
   ...auditLogStreamFiltersSchema.shape
@@ -77,12 +69,12 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           ...auditLogStream,
           credentials: {
             ...auditLogStream.credentials,
-            port: auditLogStream.credentials.port ?? SPLUNK_ENTERPRISE_HEC_PORT
+            port: auditLogStream.credentials.port ?? SPLUNK_DEFAULT_HEC_PORT
           }
         }
       : {
           provider: LogProvider.Splunk,
-          credentials: { port: SPLUNK_ENTERPRISE_HEC_PORT }
+          credentials: { port: SPLUNK_DEFAULT_HEC_PORT }
         }
   });
 
@@ -113,25 +105,10 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
             name="credentials.port"
             control={control}
             shouldUnregister
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4">
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4 w-28">
                 <FieldLabel htmlFor="port">Port</FieldLabel>
-                <Select
-                  value={String(value ?? SPLUNK_ENTERPRISE_HEC_PORT)}
-                  onValueChange={(val) => onChange(Number(val))}
-                >
-                  <SelectTrigger id="port" className="!w-24" isError={Boolean(error?.message)}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value={String(SPLUNK_ENTERPRISE_HEC_PORT)}>
-                      {SPLUNK_ENTERPRISE_HEC_PORT}
-                    </SelectItem>
-                    <SelectItem value={String(SPLUNK_CLOUD_HEC_PORT)}>
-                      {SPLUNK_CLOUD_HEC_PORT}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input id="port" type="number" {...field} isError={Boolean(error?.message)} />
                 <FieldError errors={[error]} />
               </Field>
             )}

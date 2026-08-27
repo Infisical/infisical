@@ -11,7 +11,7 @@ import {
   TLogStreamFactoryGetProviderBatchLimit,
   TLogStreamFactoryValidateCredentials
 } from "../audit-log-stream-types";
-import { SPLUNK_ENTERPRISE_HEC_PORT } from "./splunk-provider-schemas";
+import { SPLUNK_DEFAULT_HEC_PORT } from "./splunk-provider-schemas";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
 function createPayload(event: Record<string, unknown> & { createdAt?: Date | string }) {
@@ -36,7 +36,7 @@ async function createSplunkUrl(hostname: string, port?: number) {
 
   await blockAuditLogStreamInternalIps(`https://${parsedHostname}`);
 
-  return `https://${parsedHostname}:${port ?? SPLUNK_ENTERPRISE_HEC_PORT}/services/collector/event`;
+  return `https://${parsedHostname}:${port ?? SPLUNK_DEFAULT_HEC_PORT}/services/collector/event`;
 }
 
 export const SplunkProviderFactory = () => {

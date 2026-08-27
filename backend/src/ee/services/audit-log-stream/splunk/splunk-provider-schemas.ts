@@ -3,8 +3,7 @@ import { z } from "zod";
 import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
-export const SPLUNK_ENTERPRISE_HEC_PORT = 8088;
-export const SPLUNK_CLOUD_HEC_PORT = 443;
+export const SPLUNK_DEFAULT_HEC_PORT = 8088;
 
 export const SplunkProviderCredentialsSchema = z.object({
   hostname: z
@@ -33,13 +32,7 @@ export const SplunkProviderCredentialsSchema = z.object({
         ctx.addIssue({ code: "custom", message: "Invalid hostname" });
       }
     }),
-  port: z
-    .union([z.literal(SPLUNK_ENTERPRISE_HEC_PORT), z.literal(SPLUNK_CLOUD_HEC_PORT)], {
-      errorMap: () => ({
-        message: `Port must be ${SPLUNK_ENTERPRISE_HEC_PORT} or ${SPLUNK_CLOUD_HEC_PORT}`
-      })
-    })
-    .optional(),
+  port: z.number().int().min(1).max(65535).optional(),
   token: z.string().uuid().trim().min(1)
 });
 

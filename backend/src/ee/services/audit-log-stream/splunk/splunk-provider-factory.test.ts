@@ -100,12 +100,9 @@ describe("SplunkProviderFactory HEC port", () => {
   // keep resolving to 8088 or every pre-existing self-managed stream breaks.
   test.each([
     ["no port", undefined, "https://hec.example.com:8088/services/collector/event"],
-    ["port 8088", 8088 as const, "https://hec.example.com:8088/services/collector/event"],
-    [
-      "port 443, as paid Splunk Cloud stacks require",
-      443 as const,
-      "https://hec.example.com:443/services/collector/event"
-    ]
+    ["port 8088", 8088, "https://hec.example.com:8088/services/collector/event"],
+    ["port 443, as paid Splunk Cloud stacks require", 443, "https://hec.example.com:443/services/collector/event"],
+    ["a custom port", 19088, "https://hec.example.com:19088/services/collector/event"]
   ])("posts logs to %s", async (_label, port, expected) => {
     await SplunkProviderFactory().batchStreamLog({
       credentials: { ...CREDENTIALS, port },
