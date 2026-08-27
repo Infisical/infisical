@@ -12,7 +12,7 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse"
+  UniqueSecretValue = "unique-secret-value"
 }
 
 export enum ConstraintTarget {
@@ -52,11 +52,31 @@ export const SECRET_ROTATION_TO_RULE_PROVIDER: Partial<
   [SecretRotation.LdapPassword]: SecretRotationRuleProvider.LdapPassword
 };
 
-export type TConstraint = {
-  type: ConstraintType;
+export type StringConstraintType = Exclude<ConstraintType, ConstraintType.UniqueSecretValue>;
+
+export type TUniqueSecretValueBody = {
+  secretVersions: {
+    enabled: boolean;
+    versions: number;
+  };
+  otherSecrets: {
+    enabled: boolean;
+  };
+};
+
+export type TStringConstraint = {
+  type: StringConstraintType;
   appliesTo: ConstraintTarget;
   value: string;
 };
+
+export type TUniqueSecretValueConstraint = {
+  type: ConstraintType.UniqueSecretValue;
+  appliesTo: ConstraintTarget;
+  value: TUniqueSecretValueBody;
+};
+
+export type TConstraint = TStringConstraint | TUniqueSecretValueConstraint;
 
 export type TStaticSecretsInputs = {
   constraints: TConstraint[];

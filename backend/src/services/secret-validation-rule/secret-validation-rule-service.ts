@@ -1,16 +1,19 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 import picomatch from "picomatch";
 
 import { ActionProjectType, TSecretValidationRules } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { PgSqlLock } from "@app/keystore/keystore";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
+import { containsSecretReference, expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
@@ -18,7 +21,6 @@ import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret
 import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
 import { MAX_PREVENT_VALUE_REUSE_VERSIONS, parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
 import {
-  ConstraintTarget,
   ConstraintType,
   DynamicSecretRuleProvider,
   SecretRotationRuleProvider,
@@ -33,6 +35,9 @@ import {
   TSecretValidationRuleRecord,
   TUpdateSecretValidationRuleDTO
 } from "./secret-validation-rule-types";
+
+const $requiresBlindIndex = (inputs: TSecretValidationRuleInputs): boolean =>
+  Boolean(inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled));
 
 // Builds the API-facing rule record: the selected row fields plus the rule's
 // type-specific fields flattened alongside `type`. Selecting explicitly keeps
@@ -56,9 +61,10 @@ const $toRuleRecord = (rule: TSecretValidationRules, inputs: TSecretValidationRu
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: TKmsServiceFactory;
 };
@@ -71,6 +77,7 @@ export const secretValidationRuleServiceFactory = ({
   folderDAL,
   secretDAL,
   secretVersionV2BridgeDAL,
+  projectDAL,
   permissionService,
   kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
@@ -143,6 +150,16 @@ export const secretValidationRuleServiceFactory = ({
     }
 
     const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
+
+    if ($requiresBlindIndex(parsedInputs)) {
+      const project = await projectDAL.findById(projectId);
+      if (!project.secretBlindIndexEnabled) {
+        throw new BadRequestError({
+          message:
+            "Blind indexing must be enabled for this project before enabling the 'other secrets in scope' uniqueness check. Enable it under Project Settings or the Insights page."
+        });
+      }
+    }
 
     // For generated-credential rules, do a dry run before storing the rule so
     // infeasible constraints (impossible length window, bad regex, etc.) fail
@@ -250,6 +267,16 @@ export const secretValidationRuleServiceFactory = ({
       rule ?? (JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown)
     );
 
+    if ($requiresBlindIndex(parsedInputs)) {
+      const project = await projectDAL.findById(projectId);
+      if (!project.secretBlindIndexEnabled) {
+        throw new BadRequestError({
+          message:
+            "Blind indexing must be enabled for this project before enabling the 'other secrets in scope' uniqueness check. Enable it under Project Settings or the Insights page."
+        });
+      }
+    }
+
     if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
       assertConstraintsProduceSafePasswords(
         (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
@@ -334,7 +361,10 @@ export const secretValidationRuleServiceFactory = ({
 
   /**
    * Fetch all rules for a project and enforce them against the given secrets.
-   * Called by secret write paths before the DB transaction starts.
+   *
+   * When a `tx` is provided the duplicate-value lookup runs inside that
+   * transaction, which lets the caller acquire a serializing lock beforehand
+   * so the check and the subsequent write are atomic.
    *
    * When `expandSecretReferences` is provided, secret values containing
    * interpolation references (e.g. `${env.key}`) will be expanded to their
@@ -346,17 +376,21 @@ export const secretValidationRuleServiceFactory = ({
     environment,
     envId,
     secretPath,
-    secrets
+    secrets,
+    tx,
+    canAccessLocation
   }: {
     projectId: string;
     environment: string;
     envId: string;
     secretPath: string;
     secrets: { key: string; value?: string; secretId?: string }[];
+    tx?: Knex;
+    canAccessLocation?: (dupEnvironment: string, dupPath: string) => boolean;
   }) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, { tx });
     if (!rules.length) return;
 
     // Secret values and rule inputs share the SecretManager data key, so one
@@ -382,27 +416,30 @@ export const secretValidationRuleServiceFactory = ({
       )
     }));
 
-    // filter to rules that actually match this environment + path so we don't trigger expensive version-history lookups for unrelated PreventValueReuse rules.
+    // Filter to rules that actually match this environment + path so we don't
+    // trigger expensive version-history lookups for unrelated rules.
     const matchingRules = parsedRules.filter((r) => {
       if (r.envId && r.envId !== envId) return false;
       return picomatch.isMatch(secretPath, r.secretPath, { strictSlashes: false });
     });
 
-    const hasPreventValueReuseConstraint = matchingRules.some((r) =>
-      r.inputs.constraints?.some(
-        (c) => c.type === ConstraintType.PreventValueReuse && c.appliesTo === ConstraintTarget.SecretValue
-      )
+    const hasVersionHistoryConstraint = matchingRules.some((r) =>
+      r.inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.secretVersions.enabled)
+    );
+
+    const duplicateValuesRule = matchingRules.find((r) =>
+      r.inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled)
     );
 
     const previousValuesMap: Record<string, string[]> = {};
-    if (hasPreventValueReuseConstraint) {
+    if (hasVersionHistoryConstraint) {
       const secretIdsToCheck = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
       if (secretIdsToCheck.length) {
         const allVersions = await Promise.all(
           secretIdsToCheck.map((sId) =>
             secretVersionV2BridgeDAL.find(
               { secretId: sId },
-              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS }
+              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS, tx }
             )
           )
         );
@@ -423,6 +460,112 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
+    // We build the map of all duplicate secrets (ignoring scope) and afterwards check
+    // if any of those are part of the scope of the rule.
+    const duplicateOfMap: Record<string, { key: string; environment: string; path: string; restricted?: boolean }> = {};
+    if (duplicateValuesRule) {
+      if (tx) {
+        // If two concurrent requests try to add two secrets with the same value, both will not find
+        // a duplicate secret, so we need to ensure this is an atomic operation so the second request
+        // can detect the first secret already has the same value and block the creation of the duplicated
+        // secret.
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueUniqueCheck(projectId)]);
+      }
+
+      const project = await projectDAL.findById(projectId, tx);
+      if (project.secretBlindIndexEnabled) {
+        const { generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+        const secretsWithValues = secrets.filter((s) => s.value !== undefined && !containsSecretReference(s.value));
+        const blindIndexes = await Promise.all(
+          secretsWithValues.map((s) => generateSecretBlindIndex(Buffer.from(s.value!)))
+        );
+
+        // Detect intra-batch duplicates (two secrets in the same request with the same value)
+        // Those were not added yet, so we can't rely on the database check.
+        const seenInBatch = new Map<string, { key: string; environment: string; path: string }>();
+        for (let i = 0; i < secretsWithValues.length; i += 1) {
+          const blindIndexValue = blindIndexes[i];
+          if (seenInBatch.has(blindIndexValue)) {
+            duplicateOfMap[secretsWithValues[i].key] = seenInBatch.get(blindIndexValue)!;
+          } else {
+            seenInBatch.set(blindIndexValue, { key: secretsWithValues[i].key, environment, path: secretPath });
+          }
+        }
+
+        const uniqueBlindIndexes = [...new Set(blindIndexes.filter(Boolean))];
+        if (uniqueBlindIndexes.length) {
+          const excludeSecretIds = secretsWithValues.filter((s) => s.secretId).map((s) => s.secretId!);
+          const ruleEnvId = duplicateValuesRule.envId ?? undefined;
+          const existingDuplicates = await secretDAL.findExistingSecretsByBlindIndexes(
+            projectId,
+            uniqueBlindIndexes,
+            excludeSecretIds.length ? excludeSecretIds : undefined,
+            ruleEnvId,
+            tx
+          );
+
+          if (existingDuplicates.length) {
+            const folderIds = [...new Set(existingDuplicates.map((d) => d.folderId))];
+            const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, tx);
+            const folderIdToPath = new Map(folderIds.map((id, i) => [id, folderPaths[i]?.path ?? "/"]));
+
+            const ruleSecretPath = duplicateValuesRule.secretPath;
+
+            const accessCache = new Map<string, boolean>();
+            const isLocationRestricted = (dupEnv: string, dupPath: string): boolean => {
+              if (!canAccessLocation) return false;
+
+              const cacheKey = `${dupEnv}:${dupPath}`;
+              let restricted = accessCache.get(cacheKey);
+              if (restricted === undefined) {
+                restricted = !canAccessLocation(dupEnv, dupPath);
+                accessCache.set(cacheKey, restricted);
+              }
+              return restricted;
+            };
+
+            const blindIndexToExisting = new Map(
+              existingDuplicates
+                .filter((dup) => {
+                  if (!dup.secretValueBlindIndex) return false;
+                  const dupPath = folderIdToPath.get(dup.folderId) ?? "/";
+                  return picomatch.isMatch(dupPath, ruleSecretPath, { strictSlashes: false });
+                })
+                .map((dup) => {
+                  const dupEnv = dup.environment;
+                  const dupPath = folderIdToPath.get(dup.folderId) ?? "/";
+
+                  return [
+                    dup.secretValueBlindIndex!,
+                    {
+                      key: dup.key,
+                      environment: dupEnv,
+                      path: dupPath,
+                      restricted: isLocationRestricted(dupEnv, dupPath)
+                    }
+                  ] as const;
+                })
+            );
+
+            for (let i = 0; i < secretsWithValues.length; i += 1) {
+              if (duplicateOfMap[secretsWithValues[i].key]) {
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+              const existing = blindIndexToExisting.get(blindIndexes[i]);
+              if (existing) {
+                duplicateOfMap[secretsWithValues[i].key] = existing;
+              }
+            }
+          }
+        }
+      }
+    }
+
     const resolvedSecrets = await Promise.all(
       secrets.map(async (s) => ({
         key: s.key,
@@ -432,7 +575,8 @@ export const secretValidationRuleServiceFactory = ({
           environment,
           secretKey: s.key
         }),
-        ...(s.secretId && previousValuesMap[s.secretId] ? { previousValues: previousValuesMap[s.secretId] } : {})
+        ...(s.secretId && previousValuesMap[s.secretId] ? { previousValues: previousValuesMap[s.secretId] } : {}),
+        ...(duplicateOfMap[s.key] ? { duplicateOf: duplicateOfMap[s.key] } : {})
       }))
     );
 

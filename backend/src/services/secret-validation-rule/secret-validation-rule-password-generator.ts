@@ -4,7 +4,7 @@ import RE2 from "re2";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
-import { ConstraintTarget, ConstraintType, TConstraint } from "./secret-validation-rule-types";
+import { ConstraintTarget, ConstraintType, TConstraint, TStringConstraint } from "./secret-validation-rule-types";
 
 const DEFAULT_MIN_LENGTH = 16;
 const DEFAULT_MAX_LENGTH = 64;
@@ -44,11 +44,11 @@ const buildSecureRandExp = (pattern: RegExp): RandExp => {
  * warning shown in the frontend UI.
  */
 export const generatePasswordWithConstraints = (constraints: TConstraint[]): string => {
-  let prefixConstraint: TConstraint | undefined;
-  let suffixConstraint: TConstraint | undefined;
-  let regexConstraint: TConstraint | undefined;
-  let minLengthConstraint: TConstraint | undefined;
-  let maxLengthConstraint: TConstraint | undefined;
+  let prefixConstraint: TStringConstraint | undefined;
+  let suffixConstraint: TStringConstraint | undefined;
+  let regexConstraint: TStringConstraint | undefined;
+  let minLengthConstraint: TStringConstraint | undefined;
+  let maxLengthConstraint: TStringConstraint | undefined;
 
   for (const c of constraints) {
     // eslint-disable-next-line no-continue

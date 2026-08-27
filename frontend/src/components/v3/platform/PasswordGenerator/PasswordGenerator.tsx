@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import picomatch from "picomatch";
 import RandExp from "randexp";
-import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
 import {
@@ -18,6 +17,7 @@ import {
   ConstraintType,
   TConstraint,
   TSecretValidationRule,
+  TStringConstraint,
   useListSecretValidationRules
 } from "@app/hooks/api/secretValidationRules";
 
@@ -78,12 +78,16 @@ const doesRuleMatchScope = (
   return true;
 };
 
+const isStringConstraint = (c: TConstraint): c is TStringConstraint =>
+  c.type !== ConstraintType.UniqueSecretValue;
+
 const generateFromConstraints = (constraints: TConstraint[]): string => {
-  const prefix = constraints.find((c) => c.type === ConstraintType.RequiredPrefix)?.value || "";
-  const suffix = constraints.find((c) => c.type === ConstraintType.RequiredSuffix)?.value || "";
-  const regexValue = constraints.find((c) => c.type === ConstraintType.RegexPattern)?.value;
-  const minLengthStr = constraints.find((c) => c.type === ConstraintType.MinLength)?.value;
-  const maxLengthStr = constraints.find((c) => c.type === ConstraintType.MaxLength)?.value;
+  const strConstraints = constraints.filter(isStringConstraint);
+  const prefix = strConstraints.find((c) => c.type === ConstraintType.RequiredPrefix)?.value || "";
+  const suffix = strConstraints.find((c) => c.type === ConstraintType.RequiredSuffix)?.value || "";
+  const regexValue = strConstraints.find((c) => c.type === ConstraintType.RegexPattern)?.value;
+  const minLengthStr = strConstraints.find((c) => c.type === ConstraintType.MinLength)?.value;
+  const maxLengthStr = strConstraints.find((c) => c.type === ConstraintType.MaxLength)?.value;
 
   const minLength = minLengthStr ? parseInt(minLengthStr, 10) : 16;
   const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : 64;
@@ -128,7 +132,7 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.MinLength]: "Min length",
   [ConstraintType.MaxLength]: "Max length",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
+  [ConstraintType.UniqueSecretValue]: "Unique secret value"
 };
 
 const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
@@ -376,15 +380,10 @@ export const PasswordGenerator = ({
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {valueConstraints.map((constraint) => (
                   <span key={constraint.type} className="text-xs">
-                    <span
-                      className={twMerge(
-                        "font-medium text-muted",
-                        constraint.type === ConstraintType.PreventValueReuse && "text-label"
-                      )}
-                    >
+                    <span className="font-medium text-muted">
                       {CONSTRAINT_LABELS[constraint.type]}
                     </span>
-                    {constraint.type !== ConstraintType.PreventValueReuse && (
+                    {isStringConstraint(constraint) && (
                       <>
                         : <span className="font-mono text-label">{constraint.value}</span>
                       </>

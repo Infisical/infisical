@@ -3957,7 +3957,7 @@ export const SECRET_VALIDATION_RULES = {
     appliesToStatic: "What the constraint checks: the secret key or the secret value.",
     appliesToGenerated: "What the constraint checks: the generated credential.",
     constraintTypeStatic:
-      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `unique-secret-value`.",
     constraintTypeGenerated:
       "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
     constraintValue:

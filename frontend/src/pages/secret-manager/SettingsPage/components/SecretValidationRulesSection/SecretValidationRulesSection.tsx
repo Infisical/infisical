@@ -96,6 +96,7 @@ import {
   SECRET_ROTATION_PROVIDER_OPTIONS,
   SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS,
   SecretRotationRuleProvider,
+  TConstraint,
   TProviderOption,
   TRuleForm
 } from "./SecretValidationRulesSection.utils";
@@ -149,6 +150,8 @@ const RuleFormContent = ({
   isEditing,
   initialIsActive = true,
   environments,
+  projectId,
+  isBlindIndexEnabled,
   onClose,
   onSubmit
 }: {
@@ -156,6 +159,8 @@ const RuleFormContent = ({
   isEditing: boolean;
   initialIsActive?: boolean;
   environments: { slug: string; name: string }[];
+  projectId: string;
+  isBlindIndexEnabled: boolean;
   onClose: () => void;
   onSubmit: (data: TRuleForm, isActive?: boolean) => void;
 }) => {
@@ -457,16 +462,24 @@ const RuleFormContent = ({
                       return (
                         <DropdownMenuItem
                           key={opt.type}
-                          onClick={() =>
-                            append({
-                              type: opt.type,
-                              appliesTo: defaultTarget,
-                              value:
-                                opt.type === ConstraintType.PreventValueReuse
-                                  ? String(opt.placeholder || 10)
-                                  : ""
-                            })
-                          }
+                          onClick={() => {
+                            if (opt.type === ConstraintType.UniqueSecretValue) {
+                              append({
+                                type: opt.type,
+                                appliesTo: defaultTarget,
+                                value: {
+                                  secretVersions: { enabled: true, versions: 10 },
+                                  otherSecrets: { enabled: false }
+                                }
+                              } as TConstraint);
+                            } else {
+                              append({
+                                type: opt.type,
+                                appliesTo: defaultTarget,
+                                value: ""
+                              });
+                            }
+                          }}
                         >
                           <opt.icon className="mr-2 size-4" />
                           <div>
@@ -496,7 +509,13 @@ const RuleFormContent = ({
 
             <div className="space-y-3">
               {fields.map((field, idx) => (
-                <ConstraintCard key={field.id} index={idx} onRemove={() => remove(idx)} />
+                <ConstraintCard
+                  key={field.id}
+                  index={idx}
+                  projectId={projectId}
+                  isBlindIndexEnabled={isBlindIndexEnabled}
+                  onRemove={() => remove(idx)}
+                />
               ))}
             </div>
 
@@ -860,6 +879,8 @@ export const SecretValidationRulesSection = () => {
               isEditing={isEditing}
               initialIsActive={editingRule?.isActive ?? true}
               environments={currentProject.environments}
+              projectId={currentProject.id}
+              isBlindIndexEnabled={currentProject.secretBlindIndexEnabled}
               onClose={handleClose}
               onSubmit={handleSubmit}
             />

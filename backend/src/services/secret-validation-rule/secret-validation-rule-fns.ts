@@ -5,7 +5,6 @@ import { DynamicSecretProviders } from "@app/ee/services/dynamic-secret/provider
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { BadRequestError } from "@app/lib/errors";
 
-import { MAX_PREVENT_VALUE_REUSE_VERSIONS } from "./secret-validation-rule-schemas";
 import {
   ConstraintTarget,
   ConstraintType,
@@ -183,6 +182,7 @@ type TSecretToValidate = {
   key: string;
   value?: string;
   previousValues?: string[];
+  duplicateOf?: { key: string; environment: string; path: string; restricted?: boolean };
 };
 
 type TValidationRule = {
@@ -206,7 +206,7 @@ export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex pattern",
   [ConstraintType.RequiredPrefix]: "Required prefix",
   [ConstraintType.RequiredSuffix]: "Required suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values"
+  [ConstraintType.UniqueSecretValue]: "Rejects an update when the new value matches a value already in use."
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -273,15 +273,23 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       }
       return null;
     }
-    case ConstraintType.PreventValueReuse: {
-      if (secret.value === undefined || !secret.previousValues?.length) {
-        return null;
+    case ConstraintType.UniqueSecretValue: {
+      const { secretVersions, otherSecrets } = constraint.value;
+
+      if (secretVersions.enabled && secret.value !== undefined && secret.previousValues?.length) {
+        const valuesToCheck = secret.previousValues.slice(0, secretVersions.versions);
+        if (valuesToCheck.includes(secret.value)) {
+          return `${targetLabel} cannot reuse any of the last ${secretVersions.versions} values`;
+        }
       }
-      const versionCount = Number(constraint.value) || MAX_PREVENT_VALUE_REUSE_VERSIONS;
-      const valuesToCheck = secret.previousValues.slice(0, versionCount);
-      if (valuesToCheck.includes(secret.value)) {
-        return `${targetLabel} cannot reuse any of the last ${versionCount} values`;
+
+      if (otherSecrets.enabled && secret.value !== undefined && secret.duplicateOf) {
+        if (secret.duplicateOf.restricted) {
+          return `${targetLabel} is already used by another secret within the project`;
+        }
+        return `${targetLabel} is already used by secret "${secret.duplicateOf.key}" in environment "${secret.duplicateOf.environment}" at path "${secret.duplicateOf.path}"`;
       }
+
       return null;
     }
     default:

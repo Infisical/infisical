@@ -18,7 +18,7 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse"
+  UniqueSecretValue = "unique-secret-value"
 }
 
 export enum ConstraintTarget {
@@ -72,12 +72,11 @@ export const CONSTRAINT_OPTIONS: {
     icon: TextIcon
   },
   {
-    type: ConstraintType.PreventValueReuse,
-    label: "Prevent Value Reuse",
-    description: "Prevent reusing previous secret values",
-    cardDescription:
-      "When a secret is updated, its new value is validated against the specified number of prior versions.",
-    placeholder: 10,
+    type: ConstraintType.UniqueSecretValue,
+    label: "Value Uniqueness",
+    description: "Rejects an update when the new value matches a value already in use",
+    cardDescription: "Rejects an update when the new value matches a value already in use.",
+    placeholder: "",
     icon: HistoryIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
   }
@@ -89,7 +88,7 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
-  [ConstraintType.PreventValueReuse]: "Previous versions"
+  [ConstraintType.UniqueSecretValue]: "Versions to check"
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -98,7 +97,7 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse"
+  [ConstraintType.UniqueSecretValue]: "Value Uniqueness"
 };
 
 export enum RuleType {
@@ -175,45 +174,40 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
   }
 ];
 
-// PreventValueReuse is intentionally static-secret-only. For dynamic secrets
+// UniqueSecretValue is intentionally static-secret-only. For dynamic secrets
 // each lease is independent so reuse has no meaning; for rotations we drive
 // uniqueness through password generation (length/regex) rather than failing a
 // rotation at issue time because the generator happened to land on a prior
 // value.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.UniqueSecretValue
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.UniqueSecretValue
 ];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
 
-export const constraintSchema = z
+const STRING_CONSTRAINT_TYPES = [
+  ConstraintType.MinLength,
+  ConstraintType.MaxLength,
+  ConstraintType.RegexPattern,
+  ConstraintType.RequiredPrefix,
+  ConstraintType.RequiredSuffix
+] as const;
+
+const stringConstraintSchema = z
   .object({
-    type: z.nativeEnum(ConstraintType),
+    type: z.enum(STRING_CONSTRAINT_TYPES),
     appliesTo: z.nativeEnum(ConstraintTarget),
     value: z.string()
   })
-  .refine((c) => c.type === ConstraintType.PreventValueReuse || c.value.length > 0, {
+  .refine((c) => c.value.length > 0, {
     message: "Value is required",
     path: ["value"]
   })
   .superRefine((c, ctx) => {
-    if (c.type === ConstraintType.PreventValueReuse) {
-      const num = Number(c.value);
-
-      const isAboveMaxVersions =
-        Number.isInteger(num) && (num < 1 || num > MAX_PREVENT_VALUE_REUSE_VERSIONS);
-
-      if (isAboveMaxVersions) {
-        ctx.addIssue({
-          path: ["value"],
-          code: z.ZodIssueCode.custom,
-          message: `Must be a number between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`
-        });
-      }
-    } else if (c.type === ConstraintType.MinLength) {
+    if (c.type === ConstraintType.MinLength) {
       const num = Number(c.value);
 
       if (num <= 0) {
@@ -235,6 +229,29 @@ export const constraintSchema = z
       }
     }
   });
+
+const uniqueSecretValueConstraintSchema = z.object({
+  type: z.literal(ConstraintType.UniqueSecretValue),
+  appliesTo: z.nativeEnum(ConstraintTarget),
+  value: z
+    .object({
+      secretVersions: z.object({
+        enabled: z.boolean(),
+        versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+      }),
+      otherSecrets: z.object({
+        enabled: z.boolean()
+      })
+    })
+    .refine((v) => v.secretVersions.enabled || v.otherSecrets.enabled, {
+      message: "At least one uniqueness check must be enabled"
+    })
+});
+
+export const constraintSchema = z.union([
+  stringConstraintSchema,
+  uniqueSecretValueConstraintSchema
+]);
 
 const duplicateConstraintRefinement = (
   constraints: { type: ConstraintType; appliesTo: ConstraintTarget }[]

@@ -1471,6 +1471,45 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findExistingSecretsByBlindIndexes = async (
+    projectId: string,
+    blindIndexes: string[],
+    excludeSecretIds?: string[],
+    envId?: string,
+    tx?: Knex
+  ) => {
+    try {
+      if (!blindIndexes.length) return [];
+
+      let query = (tx || db)(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .whereIn(`${TableName.SecretV2}.secretValueBlindIndex`, blindIndexes)
+        .select(
+          db.ref("id").withSchema(TableName.SecretV2),
+          db.ref("key").withSchema(TableName.SecretV2),
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("secretValueBlindIndex").withSchema(TableName.SecretV2),
+          db.ref("slug").withSchema(TableName.Environment).as("environment")
+        );
+
+      if (envId) {
+        query = query.where(`${TableName.Environment}.id`, envId);
+      }
+
+      if (excludeSecretIds?.length) {
+        query = query.whereNotIn(`${TableName.SecretV2}.id`, excludeSecretIds);
+      }
+
+      return await query;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findExistingSecretsByBlindIndexes" });
+    }
+  };
+
   const countStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretV2)
@@ -1531,6 +1570,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByProject,
     findValueValidationCandidatesByProject,
     findDuplicatedSecretValues,
+    findExistingSecretsByBlindIndexes,
     findOne,
     find,
     invalidateSecretCacheByProjectId,
