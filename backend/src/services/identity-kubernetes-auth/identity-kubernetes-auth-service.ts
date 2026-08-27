@@ -1136,6 +1136,10 @@ export const identityKubernetesAuthServiceFactory = ({
     let { kubernetesHost, caCert, verifyTlsCertificate, tokenReviewerJwt, allowedAudience, gatewayId, gatewayPoolId } =
       dto;
     let { tokenReviewMode } = dto;
+    // "" (the schema trims) matches neither persistence branch below, so the stored JWT
+    // survives it; it must read as "no change" everywhere else too, or it would slip past
+    // the template-JWT host-change guard while the stored credential stays live
+    if (tokenReviewerJwt === "") tokenReviewerJwt = undefined;
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
