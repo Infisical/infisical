@@ -4,6 +4,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
+import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
@@ -235,7 +236,13 @@ export const winrmRpcWithGateway = async <T>({
   );
 
   if (!response.ok) {
-    throw new BadRequestError({ message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}` });
+    // Carries the gateway's classification so a caller can tell a rejected credential from an unreachable
+    // host without re-parsing the message.
+    const err = new BadRequestError({
+      message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}`
+    }) as BadRequestError & { gatewayFailureKind?: GatewayFailureKind | null };
+    err.gatewayFailureKind = response.kind ?? null;
+    throw err;
   }
   return response.result;
 };

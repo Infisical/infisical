@@ -19,7 +19,8 @@ describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
       PamAccountType.MsSQL,
       connectionDetails,
       { authMethod: "ntlm", username: "svc_app", password: "pw", domain: "CORP" },
-      ORG_ID
+      ORG_ID,
+      { allowWindowsAuthSql: true }
     );
 
     expect(result?.request.mode).toBe(TestConnectionMode.SQL);
@@ -38,7 +39,8 @@ describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
         kdcAddress: "dc1.corp.example.com",
         spn: "MSSQLSvc/sql.corp.example.com:1433"
       },
-      ORG_ID
+      ORG_ID,
+      { allowWindowsAuthSql: true }
     );
 
     expect(result?.request.mode).toBe(TestConnectionMode.SQL);
@@ -60,6 +62,19 @@ describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
 
     expect(result?.request).toMatchObject({ mode: TestConnectionMode.SQL, authMethod: "sql-login" });
     expect(result?.request).toMatchObject({ domain: undefined, realm: undefined });
+  });
+
+  // Account create and update call this without the opt so they keep working against a gateway that predates
+  // the proxy handshake, where sending a Windows login as a SQL login would fail the save outright.
+  test("callers that omit the opt keep the old reachability check", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.MsSQL,
+      connectionDetails,
+      { authMethod: "ntlm", username: "svc_app", password: "pw", domain: "CORP" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.Tcp);
   });
 
   test("an account with no credential still falls back to a reachability check", async () => {

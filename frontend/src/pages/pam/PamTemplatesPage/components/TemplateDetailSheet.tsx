@@ -291,7 +291,7 @@ const SettingsTab = ({
       settings: {
         sessionLogMaskingPatterns: "",
         rotationEnabled: false,
-        heartbeatEnabled: true,
+        heartbeatEnabled: false,
         heartbeatIntervalSeconds: 86400,
         rotationIntervalSeconds: 86400,
         pwLength: 32,
@@ -346,7 +346,9 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
-              heartbeatEnabled: heartbeat.enabled ?? true,
+              // Absent means a template that predates credential health. Defaulting it on here would turn
+              // scheduled logins on for its accounts the next time anything else on this form is saved.
+              heartbeatEnabled: heartbeat.enabled ?? false,
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,

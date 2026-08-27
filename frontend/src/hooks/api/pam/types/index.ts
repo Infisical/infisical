@@ -223,6 +223,7 @@ export type TPamAccount = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  heartbeatStatus?: PamHeartbeatStatus | null;
   createdAt: string;
   updatedAt: string;
 };

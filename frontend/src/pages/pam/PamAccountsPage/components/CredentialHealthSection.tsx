@@ -1,34 +1,45 @@
 import { formatDistanceToNow } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { Alert, AlertDescription, AlertTitle, Button } from "@app/components/v3";
+import { Button } from "@app/components/v3";
 import { PamHeartbeatStatus } from "@app/hooks/api/pam/enums";
 import { useCheckPamAccountHeartbeat } from "@app/hooks/api/pam/mutations";
 import { useGetPamAccountHeartbeat } from "@app/hooks/api/pam/queries";
 
-const STATUS: Record<PamHeartbeatStatus, { label: string; indicator: string; className: string }> =
-  {
-    [PamHeartbeatStatus.Healthy]: {
-      label: "Healthy",
-      indicator: "●",
-      className: "text-success"
-    },
-    [PamHeartbeatStatus.InvalidCredentials]: {
-      label: "Rejected",
-      indicator: "●",
-      className: "text-danger"
-    },
-    [PamHeartbeatStatus.CannotCheck]: {
-      label: "Unreachable",
-      indicator: "●",
-      className: "text-warning"
-    },
-    [PamHeartbeatStatus.Unknown]: {
-      label: "Not checked",
-      indicator: "○",
-      className: "text-muted"
-    }
-  };
+type StatusPresentation = {
+  label: string;
+  indicator: string;
+  className: string;
+  // Tint for the reason box, matching how a failed dependency sync is shown.
+  reasonClassName: string;
+};
+
+const STATUS: Record<PamHeartbeatStatus, StatusPresentation> = {
+  [PamHeartbeatStatus.Healthy]: {
+    label: "Healthy",
+    indicator: "●",
+    className: "text-success",
+    reasonClassName: ""
+  },
+  [PamHeartbeatStatus.InvalidCredentials]: {
+    label: "Out of Sync",
+    indicator: "●",
+    className: "text-danger",
+    reasonClassName: "border-danger/40 bg-danger/10 text-danger"
+  },
+  [PamHeartbeatStatus.CannotCheck]: {
+    label: "Unreachable",
+    indicator: "●",
+    className: "text-warning",
+    reasonClassName: "border-warning/40 bg-warning/10 text-warning"
+  },
+  [PamHeartbeatStatus.Unknown]: {
+    label: "Unchecked",
+    indicator: "○",
+    className: "text-muted",
+    reasonClassName: "border-border bg-container text-muted"
+  }
+};
 
 const DetailRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-b-0">
@@ -51,10 +62,9 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
   if (!accountId || isPending || !heartbeat) return null;
 
   const status = heartbeat.status ?? PamHeartbeatStatus.Unknown;
-  const { label, indicator, className } = STATUS[status];
+  const { label, indicator, className, reasonClassName } = STATUS[status];
   const isHealthy = status === PamHeartbeatStatus.Healthy;
-  const hasFailure =
-    status === PamHeartbeatStatus.InvalidCredentials && Boolean(heartbeat.lastMessage);
+  const reason = !isHealthy && heartbeat.lastMessage ? heartbeat.lastMessage : null;
 
   const handleCheckNow = async () => {
     try {
@@ -85,6 +95,13 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
           <span className="text-sm text-muted">{relative(heartbeat.lastHealthyAt)}</span>
         </DetailRow>
       )}
+      {reason && (
+        <div
+          className={`mt-3 rounded-md border px-3 py-2 text-xs break-words whitespace-pre-line ${reasonClassName}`}
+        >
+          {reason}
+        </div>
+      )}
 
       <Button
         type="button"
@@ -95,15 +112,6 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
       >
         Check now
       </Button>
-
-      {hasFailure && (
-        <Alert variant="danger" className="mt-4">
-          <AlertTitle>The target rejected this credential</AlertTitle>
-          <AlertDescription className="whitespace-pre-line">
-            {heartbeat.lastMessage}
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 };

@@ -10,7 +10,7 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
-const gatewayTestConnection = vi.fn();
+const gatewayTestConnection = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 vi.mock("@app/ee/services/gateway-v2/gateway-v2-fns", () => ({
   testConnectionWithGateway: (...args: unknown[]) => gatewayTestConnection(...args)
 }));
@@ -58,7 +58,9 @@ const buildService = (
 
   const deps = {
     pamAccountDAL: {
-      findByIdWithDetails: vi.fn(async (id: string) => (opts.rotator && id === opts.rotator.id ? opts.rotator : account)),
+      findByIdWithDetails: vi.fn(async (id: string) =>
+        opts.rotator && id === opts.rotator.id ? opts.rotator : account
+      ),
       updateById
     },
     gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
@@ -163,16 +165,11 @@ describe("heartbeat: Windows", () => {
 
     await service.checkScheduledAccount("acc-ad");
 
-    expect(testCredential).toHaveBeenCalledWith(
-      expect.objectContaining({ verifyVia: undefined }),
-      expect.anything()
-    );
+    expect(testCredential).toHaveBeenCalledWith(expect.objectContaining({ verifyVia: undefined }), expect.anything());
   });
 
   test("an account with no stored password is unknown, not failing", async () => {
-    const { service } = buildService(
-      buildWindowsAccount({ encryptedCredentials: blobOf({ username: "svc_app" }) })
-    );
+    const { service } = buildService(buildWindowsAccount({ encryptedCredentials: blobOf({ username: "svc_app" }) }));
 
     const result = await service.checkScheduledAccount("acc-win");
 
@@ -218,7 +215,7 @@ describe("heartbeat: SSH certificate", () => {
     const result = await service.checkScheduledAccount("acc-ssh");
 
     expect(result?.status).toBe(PamHeartbeatStatus.Healthy);
-    const [, , , , request] = gatewayTestConnection.mock.calls[0] as unknown[];
+    const [, , , , request] = gatewayTestConnection.mock.calls[0];
     expect(request).toMatchObject({ mode: "ssh", authMethod: PamSshAuthMethod.Certificate, username: "ubuntu" });
     expect((request as { certificate?: string }).certificate).toBeTruthy();
   });

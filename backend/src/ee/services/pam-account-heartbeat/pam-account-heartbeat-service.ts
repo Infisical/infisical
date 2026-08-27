@@ -5,6 +5,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { NotFoundError } from "@app/lib/errors";
+import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -24,7 +25,7 @@ import {
   validateConnectionDetails,
   validateCredentials
 } from "../pam-account/pam-account-schemas";
-import { isWindowsRotatableType, TRotatableType } from "../pam-account-rotation/pam-rotation-fns";
+import { isWindowsRotatableType, redactRotationError, TRotatableType } from "../pam-account-rotation/pam-rotation-fns";
 import { PAM_ROTATION_FACTORY_MAP, winrmConnectUsername } from "../pam-account-rotation/pam-rotation-handlers";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TCheckAccountHeartbeatDTO, TPamHeartbeatResult } from "./pam-account-heartbeat-types";
@@ -34,6 +35,7 @@ import {
   HEARTBEAT_SSH_CERT_TTL_SECONDS,
   HEARTBEAT_TIMEOUT_MS,
   isHeartbeatScheduled,
+  statusForFailureKind,
   stopsSchedule
 } from "./pam-heartbeat-fns";
 
@@ -94,7 +96,7 @@ export const pamAccountHeartbeatServiceFactory = ({
     const { signedPublicKey } = await createSshCert({
       caPrivateKey: internalMetadata.caPrivateKey,
       clientPublicKey,
-      keyId: `pam-heartbeat-${account.id}`,
+      keyId: `pam-hb-${account.id}`,
       principals: [credentials.username as string],
       requestedTtl: `${HEARTBEAT_SSH_CERT_TTL_SECONDS}s`,
       certType: SshCertType.USER
@@ -126,7 +128,11 @@ export const pamAccountHeartbeatServiceFactory = ({
 
   // Runs the account's own auth probe and classifies the outcome. Never throws for a target-side problem: a thrown
   // error from here means we could not run the check at all, which is not a statement about the credential.
-  const probe = async (account: TPamAccountDetail): Promise<{ status: PamHeartbeatStatus; message?: string }> => {
+  // Collected as the probe decrypts them, so any message we persist can be scrubbed of the credential itself.
+  const probe = async (
+    account: TPamAccountDetail,
+    usedSecrets: string[]
+  ): Promise<{ status: PamHeartbeatStatus; message?: string }> => {
     const projectId = account.projectId as string;
     const accountType = account.accountType as PamAccountType;
     const project = await projectDAL.findById(projectId);
@@ -145,6 +151,10 @@ export const pamAccountHeartbeatServiceFactory = ({
       accountType,
       await decrypt(projectId, account.encryptedCredentials)
     ) as Record<string, unknown>;
+    for (const field of ["password", "privateKey", "serviceAccountKeyJson", "clientSecret", "serviceAccountToken"]) {
+      const value = credentials[field];
+      if (typeof value === "string" && value) usedSecrets.push(value);
+    }
 
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
@@ -167,20 +177,36 @@ export const pamAccountHeartbeatServiceFactory = ({
       }
 
       const verifyVia = await resolveWindowsVerifier(account, accountType);
-      const authenticated = await handler.testCredential(
-        {
-          accountType: accountType as TRotatableType,
-          connectionDetails,
-          auth: {
-            username: winrmConnectUsername(accountType as TRotatableType, connectionDetails, username),
-            password
+      if (verifyVia?.password) usedSecrets.push(verifyVia.password);
+
+      // A self-checked Windows account surfaces a rejected password as a thrown 401 rather than `false`, so
+      // without this branch it would read as unreachable and keep retrying into a lockout.
+      let authenticated: boolean;
+      try {
+        authenticated = await handler.testCredential(
+          {
+            accountType: accountType as TRotatableType,
+            connectionDetails,
+            auth: {
+              username: winrmConnectUsername(accountType as TRotatableType, connectionDetails, username),
+              password
+            },
+            verifyVia,
+            gatewayId: account.gatewayId ?? account.templateGatewayId,
+            gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
           },
-          verifyVia,
-          gatewayId: account.gatewayId ?? account.templateGatewayId,
-          gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
-        },
-        { gatewayService, gatewayV2Service, gatewayPoolService }
-      );
+          { gatewayService, gatewayV2Service, gatewayPoolService }
+        );
+      } catch (err) {
+        const kind = (err as { gatewayFailureKind?: GatewayFailureKind | null }).gatewayFailureKind ?? null;
+        if (kind === "auth") {
+          return {
+            status: PamHeartbeatStatus.InvalidCredentials,
+            message: "The target rejected this credential"
+          };
+        }
+        throw err;
+      }
 
       return authenticated
         ? { status: PamHeartbeatStatus.Healthy }
@@ -190,7 +216,9 @@ export const pamAccountHeartbeatServiceFactory = ({
     const probeCredentials =
       accountType === PamAccountType.SSH ? await mintEphemeralSshCertificate(account, credentials) : credentials;
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, probeCredentials, orgId);
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, probeCredentials, orgId, {
+      allowWindowsAuthSql: true
+    });
     if (!test) {
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };
     }
@@ -230,7 +258,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };
     }
     if (!result.ok) {
-      return { status: PamHeartbeatStatus.InvalidCredentials, message: result.errorMessage };
+      return { status: statusForFailureKind(result.kind), message: result.errorMessage };
     }
     return { status: PamHeartbeatStatus.Healthy };
   };
@@ -259,15 +287,21 @@ export const pamAccountHeartbeatServiceFactory = ({
 
   const runCheck = async (account: TPamAccountDetail): Promise<TPamHeartbeatResult> => {
     const now = new Date();
+    // A target can echo the credential back in its error (the WinRM path interpolates it into a script), and
+    // this message is persisted and audited, so everything the probe used gets scrubbed out of it.
+    const usedSecrets: string[] = [];
     let outcome: { status: PamHeartbeatStatus; message?: string };
     try {
-      outcome = await probe(account);
+      outcome = await probe(account, usedSecrets);
     } catch (err) {
       logger.warn(err, `PAM heartbeat could not complete [accountId=${account.id}]`);
       outcome = {
         status: PamHeartbeatStatus.CannotCheck,
-        message: err instanceof Error ? err.message : "The check could not be completed"
+        message: redactRotationError(err, usedSecrets)
       };
+    }
+    if (outcome.message) {
+      outcome = { ...outcome, message: redactRotationError(new Error(outcome.message), usedSecrets) };
     }
 
     await recordResult(account, outcome, now);

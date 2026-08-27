@@ -102,6 +102,7 @@ export type TPamAccountListItem = Pick<
   | "gatewayPoolId"
   | "recordingConnectionId"
   | "settingsOverrides"
+  | "heartbeatStatus"
   | "createdAt"
   | "updatedAt"
 > &
@@ -202,6 +203,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
         `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`,
+        `${TableName.PamAccount}.heartbeatStatus`,
         db.raw(`${staleAccountExistsSql(TableName.PamAccount)} as "isStale"`)
       )
       .orderBy(`${TableName.PamFolder}.name`, "asc")
@@ -354,6 +356,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
     let nextHeartbeatAt: Date | null = current;
     if (!heartbeat?.enabled || heartbeat.intervalSeconds == null) {
+      nextHeartbeatAt = null;
+    } else if (!current && account.heartbeatStatus === PamHeartbeatStatus.InvalidCredentials) {
+      // Stopped for a rejected credential. Only a credential change clears that, not a gateway or template edit.
       nextHeartbeatAt = null;
     } else if (!current) {
       nextHeartbeatAt = computeNextHeartbeatAt({

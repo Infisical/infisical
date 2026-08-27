@@ -278,6 +278,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         isStale: a.isStale,
+        heartbeatStatus: a.heartbeatStatus ?? null,
         requiresApproval,
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
@@ -732,6 +733,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       updateData.rotationAccountId = null;
     }
 
+    let credentialVerified = false;
     // re-test whenever the connection could have changed
     if (
       connectionDetails !== undefined ||
@@ -749,7 +751,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       if (!testCredentials && CLOUD_CONNECTION_VALIDATORS[accountType]) {
         testCredentials = validateCredentials(accountType, await decrypt(projectId, existing.encryptedCredentials));
       }
-      await assertConnectionOk(
+      credentialVerified = await assertConnectionOk(
         accountType,
         testConnectionDetails,
         testCredentials,
@@ -761,6 +763,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         },
         ctx.actorOrgId
       );
+    }
+
+    // The health shown on the account describes the credential that was just replaced, so a corrected password
+    // would otherwise keep its "out of sync" badge until the next scheduled check.
+    if (credentials && credentialVerified) {
+      const verifiedAt = new Date();
+      updateData.heartbeatStatus = PamHeartbeatStatus.Healthy;
+      updateData.lastHeartbeatAt = verifiedAt;
+      updateData.lastHeartbeatHealthyAt = verifiedAt;
+      updateData.encryptedLastHeartbeatMessage = null;
     }
 
     try {

@@ -56,6 +56,11 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
   isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
+  heartbeatStatus: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Result of the most recent credential health check, if one has run."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),

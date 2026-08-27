@@ -14,6 +14,7 @@ import {
   PamAccessStatus,
   PamAccountType,
   PamApproverType,
+  PamHeartbeatStatus,
   PamResourcePermissionActions,
   PamResourcePermissionSub
 } from "./enums";
@@ -211,6 +212,7 @@ export type TPamAccountListItem = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  heartbeatStatus?: PamHeartbeatStatus | null;
   requiresApproval: boolean;
   requireReason: boolean;
   accessStatus: PamAccessStatus;

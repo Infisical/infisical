@@ -95,7 +95,11 @@ export const buildGatewayConnectionTest = async (
   accountType: PamAccountType,
   connectionDetails: Record<string, unknown>,
   credentials: Record<string, unknown> | null,
-  orgId: string
+  orgId: string,
+  // Windows-auth MSSQL needs a gateway that routes it through the WinRM-capable proxy handshake. Callers that
+  // must not fail against an older gateway (account create and update) leave this off and get a reachability
+  // check for those logins, exactly as before.
+  opts?: { allowWindowsAuthSql?: boolean }
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
@@ -131,6 +135,9 @@ export const buildGatewayConnectionTest = async (
         spn?: string;
       } | null;
       if (!c) return tcp(host, port);
+      if (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login" && !opts?.allowWindowsAuthSql) {
+        return tcp(host, port);
+      }
       // An IAM login's password is a token Infisical mints per connection, so the test mints its own
       const password =
         c.authMethod === PamPostgresAuthMethod.AwsIam

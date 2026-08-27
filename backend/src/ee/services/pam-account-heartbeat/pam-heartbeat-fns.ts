@@ -1,3 +1,5 @@
+import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
+
 import { PamHeartbeatStatus } from "../pam/pam-enums";
 import { TPamHeartbeatConfig } from "../pam-account-template/pam-account-template-schemas";
 
@@ -47,11 +49,23 @@ const TRANSPORT_ERROR_PATTERNS = [
   "enotfound",
   "eai_again",
   "socket hang up",
+  "throttl",
+  "slowdown",
+  "rate exceeded",
+  "too many requests",
   "timeout",
   "timed out",
   "gateway",
   "tunnel"
 ];
+
+// The gateway classifies the failure where the driver error still exists. An unclassified failure (an older
+// gateway, or one the gateway could not place) resolves to a rejected credential, matching the rule that an
+// ambiguous result costs a false alarm rather than a retry loop into a lockout.
+export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartbeatStatus => {
+  if (kind === "transport") return PamHeartbeatStatus.CannotCheck;
+  return PamHeartbeatStatus.InvalidCredentials;
+};
 
 // Cloud accounts (AWS IAM, GCP, Azure) are brokered by us rather than logged into, so there is no lockout to trigger
 // and a rejection here means access was revoked. Transport failures still have to stay out of that bucket.
