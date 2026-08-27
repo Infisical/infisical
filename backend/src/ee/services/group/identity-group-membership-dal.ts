@@ -11,37 +11,63 @@ export const identityGroupMembershipDALFactory = (db: TDbClient) => {
   const identityGroupMembershipOrm = ormify(db, TableName.IdentityGroupMembership);
 
   /**
-   * Returns a sub-set of projectIds fed into this function corresponding to projects where either:
-   * - The identity is a direct member of the project.
-   * - The identity is a member of a group that is a member of the project, excluding projects that they are part of
-   * through the group with id [groupId].
+   * For the given identities, returns the subset of [projectIds] each still reaches via either:
+   * - a direct project membership, or
+   * - membership in a group other than [groupId] that is itself a member of the project.
    */
   const filterProjectsByIdentityMembership = async (
-    identityId: string,
+    identityIds: string[],
     groupId: string,
     projectIds: string[],
     tx?: Knex
   ) => {
+    const stillReach = new Map<string, Set<string>>();
+    if (!identityIds.length || !projectIds.length) return stillReach;
+
     try {
-      const identityProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.actorIdentityId`, identityId)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-        .pluck(`${TableName.Membership}.scopeProjectId`);
+      const knex = tx || db.replicaNode();
 
-      const identityGroupMemberships: string[] = await (tx || db.replicaNode())(TableName.IdentityGroupMembership)
-        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
-        .whereNot(`${TableName.IdentityGroupMembership}.groupId`, groupId)
-        .join(
-          TableName.Membership,
-          `${TableName.IdentityGroupMembership}.groupId`,
-          `${TableName.Membership}.actorGroupId`
-        )
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-        .pluck(`${TableName.Membership}.scopeProjectId`);
+      const rows = (await knex.queryBuilder().union([
+        (qb) => {
+          void qb
+            .from(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereIn(`${TableName.Membership}.actorIdentityId`, identityIds)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+            .select(
+              db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
+              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+            );
+        },
+        (qb) => {
+          void qb
+            .from(TableName.IdentityGroupMembership)
+            .whereIn(`${TableName.IdentityGroupMembership}.identityId`, identityIds)
+            .whereNot(`${TableName.IdentityGroupMembership}.groupId`, groupId)
+            .join(
+              TableName.Membership,
+              `${TableName.IdentityGroupMembership}.groupId`,
+              `${TableName.Membership}.actorGroupId`
+            )
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+            .select(
+              db.ref("identityId").withSchema(TableName.IdentityGroupMembership),
+              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+            );
+        }
+      ])) as { identityId: string; projectId: string }[];
 
-      return new Set(identityProjectMemberships.concat(identityGroupMemberships));
+      for (const { identityId, projectId } of rows) {
+        let projects = stillReach.get(identityId);
+        if (!projects) {
+          projects = new Set();
+          stillReach.set(identityId, projects);
+        }
+        projects.add(projectId);
+      }
+
+      return stillReach;
     } catch (error) {
       throw new DatabaseError({ error, name: "Filter projects by identity membership" });
     }

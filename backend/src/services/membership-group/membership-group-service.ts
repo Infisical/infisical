@@ -431,32 +431,37 @@ export const membershipGroupServiceFactory = ({
         );
 
         const projectId = existingMembership.scopeProjectId;
-        const projectIds = [projectId];
         const { groupId } = dto.selector;
 
         const identityMembers = await identityGroupMembershipDAL.find({ groupId }, { tx });
-        for await (const { identityId } of identityMembers) {
-          const projectsIdentityStillMemberOf = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
-            identityId,
+        if (identityMembers.length) {
+          const identityIds = identityMembers.map(({ identityId }) => identityId);
+          const identitiesStillInProject = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+            identityIds,
             groupId,
-            projectIds,
+            [projectId],
             tx
           );
-          if (!projectsIdentityStillMemberOf.has(projectId)) {
-            await additionalPrivilegeDAL.delete({ actorIdentityId: identityId, projectId }, tx);
+          const identityIdsToDelete = identityIds.filter(
+            (identityId) => !identitiesStillInProject.get(identityId)?.has(projectId)
+          );
+          if (identityIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
           }
         }
 
         const userMembers = await userGroupMembershipDAL.find({ groupId }, { tx });
-        for await (const { userId } of userMembers) {
-          const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
-            userId,
+        if (userMembers.length) {
+          const userIds = userMembers.map(({ userId }) => userId);
+          const usersStillInProject = await userGroupMembershipDAL.filterProjectsByUserMembership(
+            userIds,
             groupId,
-            projectIds,
+            [projectId],
             tx
           );
-          if (!projectsUserStillMemberOf.has(projectId)) {
-            await additionalPrivilegeDAL.delete({ actorUserId: userId, projectId }, tx);
+          const userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+          if (userIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorUserId: userIdsToDelete } }, tx);
           }
         }
       }

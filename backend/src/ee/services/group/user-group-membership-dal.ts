@@ -11,28 +11,63 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   const userGroupMembershipOrm = ormify(db, TableName.UserGroupMembership);
 
   /**
-   * Returns a sub-set of projectIds fed into this function corresponding to projects where either:
-   * - The user is a direct member of the project.
-   * - The user is a member of a group that is a member of the project, excluding projects that they are part of
-   * through the group with id [groupId].
+   * For the given users, returns the subset of [projectIds] each still reaches via either:
+   * - a direct project membership, or
+   * - membership in a group other than [groupId] that is itself a member of the project.
    */
-  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
+  const filterProjectsByUserMembership = async (
+    userIds: string[],
+    groupId: string,
+    projectIds: string[],
+    tx?: Knex
+  ) => {
+    const stillReach = new Map<string, Set<string>>();
+    if (!userIds.length || !projectIds.length) return stillReach;
+
     try {
-      const userProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.actorUserId`, userId)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-        .pluck(`${TableName.Membership}.scopeProjectId`);
+      const knex = tx || db.replicaNode();
 
-      const userGroupMemberships: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
-        .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
-        .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
-        .pluck(`${TableName.Membership}.scopeProjectId`);
+      const rows = (await knex.queryBuilder().union([
+        (qb) => {
+          void qb
+            .from(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereIn(`${TableName.Membership}.actorUserId`, userIds)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+            .select(
+              db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
+              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+            );
+        },
+        (qb) => {
+          void qb
+            .from(TableName.UserGroupMembership)
+            .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
+            .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
+            .join(
+              TableName.Membership,
+              `${TableName.UserGroupMembership}.groupId`,
+              `${TableName.Membership}.actorGroupId`
+            )
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+            .select(
+              db.ref("userId").withSchema(TableName.UserGroupMembership),
+              db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId")
+            );
+        }
+      ])) as { userId: string; projectId: string }[];
 
-      return new Set(userProjectMemberships.concat(userGroupMemberships));
+      for (const { userId, projectId } of rows) {
+        let projects = stillReach.get(userId);
+        if (!projects) {
+          projects = new Set();
+          stillReach.set(userId, projects);
+        }
+        projects.add(projectId);
+      }
+
+      return stillReach;
     } catch (error) {
       throw new DatabaseError({ error, name: "Filter projects by user membership" });
     }
