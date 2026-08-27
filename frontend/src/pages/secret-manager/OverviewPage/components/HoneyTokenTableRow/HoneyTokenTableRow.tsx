@@ -53,7 +53,7 @@ type Props = {
   onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
   isSelected: boolean;
-  onToggleHoneyTokenSelect: (honeyTokenName: string) => void;
+  onToggleHoneyTokenSelect: (honeyTokenName: string, isShiftKey: boolean) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -246,11 +246,9 @@ export const HoneyTokenTableRow = ({
             variant="project"
             id={`checkbox-${honeyTokenName}`}
             isChecked={isSelected}
-            onCheckedChange={() => {
-              onToggleHoneyTokenSelect(honeyTokenName);
-            }}
             onClick={(e) => {
               e.stopPropagation();
+              onToggleHoneyTokenSelect(honeyTokenName, e.shiftKey);
             }}
             className={twMerge("hidden group-hover:flex", isSelected && "flex")}
           />
@@ -263,9 +261,9 @@ export const HoneyTokenTableRow = ({
               className={twMerge(
                 "group-hover:!hidden",
                 isSelected && "!hidden",
-                isTriggered && "text-red",
-                !isTriggered && !isAllRevoked && "text-yellow",
-                isAllRevoked && "text-mineshaft-400"
+                isTriggered && "text-danger",
+                !isTriggered && !isAllRevoked && "text-honey-token",
+                isAllRevoked && "text-neutral"
               )}
             />
           )}
@@ -324,7 +322,7 @@ export const HoneyTokenTableRow = ({
           <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
             >
               <Table containerClassName="border-none rounded-none bg-transparent">
                 <TableHeader>

@@ -33,7 +33,7 @@ export const AdminLayout = () => {
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex min-h-0 flex-1">
           <AdminSidebar />
-          <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-6 pb-4 text-foreground md:px-8 md:pt-8 xl:px-12 xl:pt-10 dark:scheme-dark">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-6 pb-4 text-foreground md:px-8 md:pt-8 xl:px-12 xl:pt-10">
             <SignupDisabledBanner />
             <Outlet />
           </div>

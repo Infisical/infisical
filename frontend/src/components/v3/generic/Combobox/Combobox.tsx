@@ -484,7 +484,7 @@ const MultipleCombobox = <TOption,>({
                   return (
                     <ComboboxPrimitive.Chip
                       key={getOptionValue(option)}
-                      className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+                      className="flex h-6.5 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
                     >
                       <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
                       {!isDisabled && (

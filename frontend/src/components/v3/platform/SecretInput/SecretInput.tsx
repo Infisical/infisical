@@ -1,8 +1,8 @@
 /* eslint-disable react/no-danger */
 import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
 
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { cn } from "../../utils";
 

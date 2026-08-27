@@ -34,6 +34,7 @@ const meta = {
       options: [
         "outline",
         "ghost",
+        "link",
         "neutral",
         "success",
         "info",
@@ -149,6 +150,22 @@ export const Ghost: Story = {
     docs: {
       description: {
         story: "Use this variant for optional / non-primary actions."
+      }
+    }
+  }
+};
+
+export const Link: Story = {
+  name: "Variant: Link",
+  args: {
+    variant: "link",
+    children: <>Link</>
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use this zero-padding text variant for compact secondary actions embedded in labels or prose."
       }
     }
   }

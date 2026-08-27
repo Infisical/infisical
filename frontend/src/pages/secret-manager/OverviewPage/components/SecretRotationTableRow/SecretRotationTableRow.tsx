@@ -55,7 +55,7 @@ type Props = {
   getSecretRotationStatusesByName: (name: string) => (SecretRotationStatus | null)[] | undefined;
   tableWidth: number;
   isSelected: boolean;
-  onToggleRotationSelect: (name: string) => void;
+  onToggleRotationSelect: (name: string, isShiftKey: boolean) => void;
   onEdit: (secretRotation: TSecretRotationV2) => void;
   onRotate: (secretRotation: TSecretRotationV2) => void;
   onReconcile: (secretRotation: TSecretRotationV2) => void;
@@ -323,11 +323,9 @@ export const SecretRotationTableRow = ({
             variant="project"
             id={`checkbox-${secretRotationName}`}
             isChecked={isSelected}
-            onCheckedChange={() => {
-              onToggleRotationSelect(secretRotationName);
-            }}
             onClick={(e) => {
               e.stopPropagation();
+              onToggleRotationSelect(secretRotationName, e.shiftKey);
             }}
             className={twMerge("hidden group-hover:flex", isSelected && "flex")}
           />
@@ -427,7 +425,7 @@ export const SecretRotationTableRow = ({
           <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
             >
               <Table containerClassName="border-none rounded-none bg-transparent">
                 <TableHeader>

@@ -27,6 +27,7 @@ export * from "./IconButton";
 export * from "./Input";
 export * from "./InputGroup";
 export * from "./Item";
+export * from "./Kbd";
 export * from "./Label";
 export * from "./Pagination";
 export * from "./Popover";

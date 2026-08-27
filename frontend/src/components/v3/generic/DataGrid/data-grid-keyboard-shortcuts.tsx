@@ -13,7 +13,7 @@ import {
 import { Input } from "@app/components/v3/generic/Input";
 import { Separator } from "@app/components/v3/generic/Separator";
 
-import { Kbd, KbdGroup } from "./ui/kbd";
+import { Kbd, KbdGroup } from "../Kbd";
 
 const SHORTCUT_KEY = "/";
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { CopyIcon, GitBranchIcon, SaveIcon, TrashIcon, Undo2Icon } from "lucide-react";
+import { CopyIcon, GitBranchIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,16 +15,18 @@ import {
   AlertDialogTitle,
   IconButton,
   InfisicalSecretInput,
+  SecretInputActions,
   Tooltip,
   TooltipContent,
-  TooltipTrigger
+  TooltipTrigger,
+  useSecretInputActionShortcuts
 } from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
   secretName: string;
@@ -165,6 +167,15 @@ export const SecretOverrideRow = ({
     reset({ value });
   };
 
+  const submitForm = handleSubmit(handleFormSubmit);
+  const handleActionShortcut = useSecretInputActionShortcuts({
+    isActive: isDirty,
+    isDisabled: isSubmitting,
+    isSaveDisabled: !canSaveOverride,
+    onSave: submitForm,
+    onUndo: handleFormReset
+  });
+
   const handleDeleteOverride = useCallback(async () => {
     if (idOverride) {
       await onSecretDelete(environment, secretName, idOverride, SecretType.Personal);
@@ -204,51 +215,28 @@ export const SecretOverrideRow = ({
               isVisible={isVisible}
               secretPath={secretPath}
               environment={environment}
+              containerClassName="[&_[aria-hidden]]:!text-override"
               placeholder="Enter personal override..."
               onFocus={() => {
                 if (canFetchOverrideValue && !overrideValueData) refetchOverrideValue();
               }}
               onBlur={field.onBlur}
+              onKeyDown={handleActionShortcut}
             />
           )}
         />
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {isDirty ? (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label={isCreatingOverride ? "Create Override" : "Save Override"}
-                  size="xs"
-                  variant="success"
-                  isDisabled={isSubmitting || !canSaveOverride}
-                  onClick={handleSubmit(handleFormSubmit)}
-                >
-                  <SaveIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isCreatingOverride ? "Create Override" : "Save Override"}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label={isCreatingOverride ? "Remove Override" : "Undo Changes"}
-                  variant="danger"
-                  size="xs"
-                  onClick={handleFormReset}
-                  isDisabled={isSubmitting}
-                >
-                  <Undo2Icon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isCreatingOverride ? "Remove Override" : "Undo Changes"}
-              </TooltipContent>
-            </Tooltip>
-          </>
+          <SecretInputActions
+            className={isSingleEnvView ? "mr-1" : "-mr-1.5"}
+            isSaveDisabled={isSubmitting || !canSaveOverride}
+            isUndoDisabled={isSubmitting}
+            saveLabel={isCreatingOverride ? "Create override" : "Save override"}
+            undoLabel={isCreatingOverride ? "Cancel override" : "Undo changes"}
+            onSave={submitForm}
+            onUndo={handleFormReset}
+          />
         ) : (
           <>
             {!isCreatingOverride && (

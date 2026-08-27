@@ -9,10 +9,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
   secretKey: string;

@@ -830,7 +830,7 @@ export const SecretImportTableRow = ({
             <TableCell colSpan={totalCols} className="bg-card p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+                className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-muted">Imported in:</span>

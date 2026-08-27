@@ -1,9 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
-  CircleAlertIcon,
   ClipboardCheckIcon,
   EyeIcon,
   FolderIcon,
@@ -19,6 +17,7 @@ import {
   Badge,
   Button,
   Input,
+  SelectedActionBar,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -26,10 +25,10 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
-import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import {
   PendingChange,
@@ -530,7 +529,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isBusy = isCommitting || isSubmitting;
 
-  if (!isBatchMode || totalChangesCount === 0) {
+  if (!isBatchMode) {
     return null;
   }
 
@@ -557,59 +556,28 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
   return (
     <>
-      {/* Floating Bottom Banner */}
-      {!isModalOpen && (
-        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="commit-panel"
-              transition={{ duration: 0.3 }}
-              initial={{ opacity: 0, translateY: 30 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              exit={{ opacity: 0, translateY: -30 }}
-            >
-              <div className="rounded-md border border-project/30 bg-card shadow-2xl backdrop-blur-md">
-                <div className="flex items-center justify-between bg-project/5 px-4 py-3">
-                  <div className="flex items-center gap-3 text-sm text-foreground">
-                    <CircleAlertIcon className="size-4 shrink-0 text-project/85" />
-                    <span>
-                      <span className="font-semibold">
-                        {totalChangesCount} pending change
-                        {totalChangesCount !== 1 ? "s" : ""}
-                      </span>
-                      {" — "}
-                      Review your changes before applying them to the environment.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
-                    >
-                      Discard
-                    </Button>
-                    <Button variant="outline" size="xs" onClick={handleSaveChanges}>
-                      <EyeIcon />
-                      Review
-                    </Button>
-                    <Button
-                      variant="project"
-                      size="xs"
-                      onClick={handleCommit}
-                      isDisabled={isBusy}
-                      isPending={isBusy}
-                    >
-                      <SaveIcon />
-                      Save Changes
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
+      <SelectedActionBar
+        selectedCount={isModalOpen ? 0 : totalChangesCount}
+        onClearSelection={() => clearAllPendingChanges({ projectId, environment, secretPath })}
+        selectionLabel={`${totalChangesCount} pending change${totalChangesCount !== 1 ? "s" : ""}`}
+        clearLabel="Discard"
+        aria-label="Pending change actions"
+      >
+        <Button variant="outline" size="xs" onClick={handleSaveChanges}>
+          <EyeIcon />
+          Review
+        </Button>
+        <Button
+          variant="project"
+          size="xs"
+          onClick={handleCommit}
+          isDisabled={isBusy}
+          isPending={isBusy}
+        >
+          <SaveIcon />
+          Save and Commit
+        </Button>
+      </SelectedActionBar>
 
       {/* Review Sheet */}
       <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -623,7 +591,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Badge>
             </SheetTitle>
             <SheetDescription>
-              Write a commit message and review the changes you&apos;re about to save.
+              Write a commit message and review the changes you&apos;re about to commit.
             </SheetDescription>
           </SheetHeader>
 
@@ -701,7 +669,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   isDisabled={isBusy}
                 >
                   <SaveIcon />
-                  {isBusy ? "Saving..." : "Save Changes"}
+                  {isBusy ? "Committing..." : "Save and Commit"}
                 </Button>
               </div>
             </div>

@@ -122,6 +122,7 @@
   --color-secret-rotation: #4c6081;
   --color-override: #694c81;
   --color-proxied-service: #7d4ca9;
+  --color-honey-token: #f1c40f;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

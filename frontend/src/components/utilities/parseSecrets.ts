@@ -66,6 +66,10 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   return object;
 }
 
+// PEM padding can resemble KEY=VALUE lines, but the entire block is one secret value.
+export const parsePastedEnv = (content: string) =>
+  content.includes("-----BEGIN") ? {} : parseDotEnv(content);
+
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
   const formatedData = JSON.parse(file);

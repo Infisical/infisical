@@ -46,6 +46,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  DeleteConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -70,6 +71,7 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
+  SecretInputActions,
   Separator,
   Sheet,
   SheetContent,
@@ -79,8 +81,10 @@ import {
   TableCell,
   Tooltip,
   TooltipContent,
-  TooltipTrigger
+  TooltipTrigger,
+  useSecretInputActionShortcuts
 } from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -98,7 +102,6 @@ import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import { DuplicateSecretModal } from "./DuplicateSecretModal";
@@ -331,7 +334,6 @@ export const SecretEditTableRow = ({
   const [isDeleting, setIsDeleting] = useToggle();
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [editConfirmation, setEditConfirmation] = useState("");
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
@@ -348,10 +350,6 @@ export const SecretEditTableRow = ({
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
-
-  useEffect(() => {
-    if (!isModalOpen) setDeleteConfirmation("");
-  }, [isModalOpen]);
 
   useEffect(() => {
     if (!popUp.editSecret.isOpen) setEditConfirmation("");
@@ -816,6 +814,11 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const submitForm = handleSubmit(handleFormSubmit);
+  const isDirtyState = Boolean(
+    isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
+  );
+
   const handleEditSecret = async ({
     secretValue,
     newKey
@@ -885,6 +888,13 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
+  const handleEditShortcut = useSecretInputActionShortcuts({
+    isActive: isDirtyState,
+    isDisabled: isSubmitting,
+    isSaveDisabled: isCreatable ? !canCreate : !canEditSecretValue,
+    onSave: submitForm,
+    onUndo: handleFormReset
+  });
   // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
   const canCreatePersonalOverride = hasSecretReadValueOrDescribePermission(
     permission,
@@ -944,6 +954,7 @@ export const SecretEditTableRow = ({
               : event.currentTarget.value;
             field.onChange(value);
           }}
+          onKeyDown={handleEditShortcut}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);
@@ -953,60 +964,20 @@ export const SecretEditTableRow = ({
     />
   ) : null;
 
-  const isDirtyState =
-    isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode;
-
   const secretHasReference = hasSecretReference(watchedValue as string);
 
   const valueContent = (
     <>
-      <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <TrashIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Are you sure you want to delete {secretName}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the secret from this environment. This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (deleteConfirmation === secretName) handleDeleteSecret();
-            }}
-          >
-            <Field>
-              <FieldLabel>
-                Type <span className="font-bold">{secretName}</span> to confirm
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  value={deleteConfirmation}
-                  onChange={(e) => setDeleteConfirmation(e.target.value)}
-                  placeholder={`Type ${secretName} here`}
-                  autoComplete="off"
-                />
-              </FieldContent>
-            </Field>
-          </form>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              onClick={(e) => {
-                e.preventDefault();
-                handleDeleteSecret();
-              }}
-              disabled={deleteConfirmation !== secretName || isDeleting}
-            >
-              Delete Secret
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title={`Are you sure you want to delete ${secretName}?`}
+        description="This will permanently remove the secret from this environment. This action cannot be undone."
+        confirmKey={secretName}
+        confirmLabel="Delete Secret"
+        isPending={isDeleting}
+        onConfirm={handleDeleteSecret}
+      />
 
       <div className="flex w-full cursor-text items-center space-x-2">
         {secretValueHidden && (
@@ -1022,7 +993,7 @@ export const SecretEditTableRow = ({
         )}
         <div
           className={twMerge(
-            "relative grow pr-2 pl-1",
+            "relative grow pr-2",
             isFieldActive && !isBatchMode && "pr-16",
             isFieldActive && isBatchMode && "pr-6"
           )}
@@ -1067,6 +1038,7 @@ export const SecretEditTableRow = ({
                   field.onBlur();
                   setIsFieldFocused.off();
                 }}
+                onKeyDown={handleEditShortcut}
               />
             )}
           />
@@ -1145,55 +1117,28 @@ export const SecretEditTableRow = ({
         )}
       </div>
       {isDirtyState && (
-        <div
-          className={twMerge(
-            "absolute z-20 flex items-center gap-1.5 px-0.5 py-0.5",
-            isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
-          )}
+        <ProjectPermissionCan
+          I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+          a={subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName,
+            secretTags: ["*"]
+          })}
         >
-          <ProjectPermissionCan
-            I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName,
-              secretTags: ["*"]
-            })}
-          >
-            {(isAllowed) => (
-              <div>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <IconButton
-                      size="xs"
-                      variant="success"
-                      isDisabled={isSubmitting || !isAllowed}
-                      onClick={handleSubmit(handleFormSubmit)}
-                    >
-                      <SaveIcon />
-                    </IconButton>
-                  </TooltipTrigger>
-                  <TooltipContent>Save changes</TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          </ProjectPermissionCan>
-          <div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  variant="danger"
-                  size="xs"
-                  onClick={handleFormReset}
-                  isDisabled={isSubmitting}
-                >
-                  <Undo2Icon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Undo changes</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+          {(isAllowed) => (
+            <SecretInputActions
+              className={twMerge(
+                "absolute z-20 px-0.5 py-0.5",
+                isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
+              )}
+              isSaveDisabled={isSubmitting || !isAllowed}
+              isUndoDisabled={isSubmitting}
+              onSave={submitForm}
+              onUndo={handleFormReset}
+            />
+          )}
+        </ProjectPermissionCan>
       )}
       {isFieldActive &&
         !(
@@ -2011,7 +1956,12 @@ export const SecretEditTableRow = ({
   if (isSingleEnvView) {
     return (
       <>
-        <TableCell className={twMerge("border-r", isOverride && "border-b-border/50")}>
+        <TableCell
+          className={twMerge(
+            "border-r",
+            isOverride && "border-l border-b-border/50 border-l-override"
+          )}
+        >
           {nameInput}
         </TableCell>
         <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>

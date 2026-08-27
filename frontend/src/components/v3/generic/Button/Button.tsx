@@ -21,6 +21,7 @@ const buttonVariants = cva(
           "text-foreground hover:bg-foreground/10 border-border hover:border-foreground/20 data-[state=open]:bg-foreground/10 data-[state=open]:border-foreground/20 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:var(--color-border)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-foreground)_20%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-foreground)_20%,transparent)]",
         ghost:
           "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
+        link: "h-auto! rounded-none border-transparent bg-transparent p-0! text-foreground hover:bg-transparent hover:underline data-[state=open]:bg-transparent active:scale-100 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
         neutral:
           "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30 [--control-variant-color:var(--color-neutral)] [--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_25%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)]",
         project:

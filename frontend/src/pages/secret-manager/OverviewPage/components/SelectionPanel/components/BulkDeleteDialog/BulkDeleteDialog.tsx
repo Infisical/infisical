@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
-import { FolderIcon, KeyIcon, TrashIcon } from "lucide-react";
+import { FolderIcon, KeyIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -105,7 +107,14 @@ const BulkDeleteDialogContent = ({
     <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
-        {subTitle && <AlertDialogDescription>{subTitle}</AlertDialogDescription>}
+        {subTitle && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <AlertDialogDescription className="text-inherit">{subTitle}</AlertDialogDescription>
+            </AlertDescription>
+          </Alert>
+        )}
       </AlertDialogHeader>
 
       {selectedResources.length > 0 && (
@@ -173,12 +182,7 @@ const BulkDeleteDialogContent = ({
         />
       )}
 
-      <AlertDialogConfirmationField
-        inputProps={{ placeholder: "Type delete here" }}
-        onConfirm={() => {
-          if (!isDeleting) onConfirmDelete();
-        }}
-      />
+      <AlertDialogConfirmationField inputProps={{ placeholder: "Type delete here" }} />
 
       <AlertDialogFooter>
         <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>

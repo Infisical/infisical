@@ -205,6 +205,25 @@ export const Minimal: Story = {
   )
 };
 
+export const Unstyled: Story = {
+  name: "Variant: Unstyled",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Pass `variant="unstyled"` when the parent surface already provides the spacing and visual container. It preserves the empty-state layout without adding padding, background, rounding, border styling, or shadow.'
+      }
+    }
+  },
+  render: (args) => (
+    <Empty {...args} variant="unstyled">
+      <EmptyHeader>
+        <EmptyTitle>Nothing here yet</EmptyTitle>
+      </EmptyHeader>
+    </Empty>
+  )
+};
+
 export const InsideCard: Story = {
   name: "Example: Inside Card / Sheet / Dialog",
   parameters: {

@@ -1,29 +1,15 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  TextArea
-} from "@app/components/v3";
+import { TextArea } from "@app/components/v3";
 import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  onParsedSecrets: (env: TParsedEnv) => void;
-};
 
 const formSchema = z.object({
   value: z.string().trim()
@@ -33,10 +19,12 @@ type TForm = z.infer<typeof formSchema>;
 
 type ContentProps = {
   onParsedSecrets: (env: TParsedEnv) => void;
-  onClose: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
-const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
+export const PASTE_SECRETS_FORM_ID = "paste-secrets-form";
+
+export const PasteSecretsContent = ({ onParsedSecrets, onDirtyChange }: ContentProps) => {
   const {
     handleSubmit,
     register,
@@ -45,6 +33,10 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
     setFocus,
     reset
   } = useForm<TForm>({ defaultValues: { value: "" }, resolver: zodResolver(formSchema) });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const onSubmit = ({ value }: TForm) => {
     let env: TParsedEnv;
@@ -63,92 +55,69 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
     }
 
     reset();
-    onClose();
     onParsedSecrets(env);
   };
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Paste Secret Values</DialogTitle>
-        <DialogDescription>Paste values in .env, .json or .yml format</DialogDescription>
-      </DialogHeader>
-      <form className="flex min-w-0 flex-col" onSubmit={handleSubmit(onSubmit)}>
-        <Field>
-          <FieldLabel>
-            Secret Values
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3 text-muted" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-lg py-3 whitespace-pre-line">
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <p>Example Formats:</p>
-                    <p className="text-xs text-muted">
-                      Each entry&apos;s key becomes the secret name and its value becomes the secret
-                      value.
-                    </p>
-                  </div>
-                  <pre className="rounded-md bg-container p-3 text-xs">
-                    {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
-                    <p className="text-mineshaft-400">
-                      // .json — {"{ <secret-name>: <secret-value> }"}
-                    </p>
-                    {JSON.stringify(
-                      {
-                        DATABASE_URL: "postgres://user:pass@host:5432/db",
-                        API_KEY: "sk_live_abc123",
-                        NODE_ENV: "production"
-                      },
-                      null,
-                      2
-                    )}
-                  </pre>
-                  <pre className="rounded-md bg-container p-3 text-xs">
-                    <p className="text-mineshaft-400"># .env</p>
-                    <p>APP_NAME=&quot;example-service&quot;</p>
-                    <p>APP_VERSION=&quot;1.2.3&quot;</p>
-                    <p>NODE_ENV=&quot;production&quot;</p>
-                  </pre>
-                  <pre className="rounded-md bg-container p-3 text-xs">
-                    <p className="text-mineshaft-400"># .yml</p>
-                    <p>APP_NAME: example-service</p>
-                    <p>APP_VERSION: 1.2.3</p>
-                    <p>NODE_ENV: production</p>
-                  </pre>
+    <form
+      id={PASTE_SECRETS_FORM_ID}
+      className="flex min-h-0 flex-1 flex-col"
+      onSubmit={handleSubmit(onSubmit)}
+    >
+      <Field>
+        <FieldLabel>
+          Secret Values
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <InfoIcon className="size-3 text-muted" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-lg py-3 whitespace-pre-line">
+              <div className="flex flex-col gap-2">
+                <div>
+                  <p>Example Formats:</p>
+                  <p className="text-xs text-muted">
+                    Each entry&apos;s key becomes the secret name and its value becomes the secret
+                    value.
+                  </p>
                 </div>
-              </TooltipContent>
-            </Tooltip>
-          </FieldLabel>
-          <FieldContent>
-            <TextArea
-              {...register("value")}
-              placeholder="Paste secrets in .json, .yml or .env format..."
-              className="h-[60vh] resize-none!"
-            />
-            <FieldError errors={[errors.value]} />
-          </FieldContent>
-        </Field>
-        <DialogFooter className="mt-4">
-          <Button variant="project" isDisabled={!isDirty} type="submit">
-            Parse Secrets
-          </Button>
-        </DialogFooter>
-      </form>
-    </>
-  );
-};
-
-export const PasteSecretsDialog = ({ isOpen, onOpenChange, onParsedSecrets }: Props) => {
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <PasteSecretsContent
-          onParsedSecrets={onParsedSecrets}
-          onClose={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+                <pre className="rounded-md bg-container p-3 text-xs">
+                  {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
+                  <p className="text-muted">// .json — {"{ <secret-name>: <secret-value> }"}</p>
+                  {JSON.stringify(
+                    {
+                      DATABASE_URL: "postgres://user:pass@host:5432/db",
+                      API_KEY: "sk_live_abc123",
+                      NODE_ENV: "production"
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+                <pre className="rounded-md bg-container p-3 text-xs">
+                  <p className="text-muted"># .env</p>
+                  <p>APP_NAME=&quot;example-service&quot;</p>
+                  <p>APP_VERSION=&quot;1.2.3&quot;</p>
+                  <p>NODE_ENV=&quot;production&quot;</p>
+                </pre>
+                <pre className="rounded-md bg-container p-3 text-xs">
+                  <p className="text-muted"># .yml</p>
+                  <p>APP_NAME: example-service</p>
+                  <p>APP_VERSION: 1.2.3</p>
+                  <p>NODE_ENV: production</p>
+                </pre>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </FieldLabel>
+        <FieldContent>
+          <TextArea
+            {...register("value")}
+            placeholder="Paste secrets in .json, .yml or .env format..."
+            className="h-[60vh] resize-none!"
+          />
+          <FieldError errors={[errors.value]} />
+        </FieldContent>
+      </Field>
+    </form>
   );
 };

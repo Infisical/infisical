@@ -30,7 +30,7 @@ type Props = {
   isFolderPresentInEnv: (name: string, env: string) => boolean;
   onClick: (path: string) => void;
   isSelected: boolean;
-  onToggleFolderSelect: (folderName: string) => void;
+  onToggleFolderSelect: (folderName: string, isShiftKey: boolean) => void;
   onToggleFolderEdit: (name: string) => void;
   onToggleFolderMove: (name: string) => void;
   onToggleFolderDelete: (name: string) => void;
@@ -82,11 +82,9 @@ export const FolderTableRow = ({
           variant="project"
           id={`checkbox-${folderName}`}
           isChecked={isSelected}
-          onCheckedChange={() => {
-            onToggleFolderSelect(folderName);
-          }}
           onClick={(e) => {
             e.stopPropagation();
+            onToggleFolderSelect(folderName, e.shiftKey);
           }}
           className={twMerge(
             "hidden",

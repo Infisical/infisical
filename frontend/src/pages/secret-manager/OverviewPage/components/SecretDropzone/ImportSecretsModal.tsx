@@ -1,7 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
-  ClipboardPasteIcon,
   CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
@@ -15,18 +14,19 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Combobox,
   Field,
   FieldContent,
   FieldLabel,
   FileDropzone,
   IconButton,
   Input,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Switch,
   Table,
   TableBody,
@@ -34,11 +34,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -47,9 +50,9 @@ import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secret
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
 
-import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
+import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
-import { PasteSecretsDialog } from "./PasteSecretsDialog";
+import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
 
 type Props = {
@@ -59,6 +62,9 @@ type Props = {
   projectId: string;
   secretPath: string;
   initialParsedSecrets?: TParsedEnv | null;
+  initialFile?: File | null;
+  initialStep?: "upload" | "paste";
+  initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
 };
 
@@ -67,6 +73,9 @@ type ContentProps = {
   projectId: string;
   secretPath: string;
   initialParsedSecrets?: TParsedEnv | null;
+  initialFile?: File | null;
+  initialStep?: "upload" | "paste";
+  initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
   onClose: () => void;
 };
@@ -76,14 +85,17 @@ const ImportSecretsContent = ({
   projectId,
   secretPath,
   initialParsedSecrets,
+  initialFile,
+  initialStep = "upload",
+  initialSelectedEnvironments = [],
   onComplete,
   onClose
 }: ContentProps) => {
   const { permission } = useProjectPermission();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
-  const [selectedEnvs, setSelectedEnvs] = useState<{ name: string; slug: string }[]>([]);
   const [isImporting, setIsImporting] = useToggle();
-  const [isPasteOpen, setIsPasteOpen] = useState(false);
+  const [importMethod, setImportMethod] = useState<"upload" | "paste">(initialStep);
+  const [isPasteDirty, setIsPasteDirty] = useState(false);
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
@@ -111,6 +123,10 @@ const ImportSecretsContent = ({
       })
     )
   );
+  const [selectedEnvs, setSelectedEnvs] = useState<{ name: string; slug: string }[]>(() => {
+    const initialSlugs = new Set(initialSelectedEnvironments.map((env) => env.slug));
+    return allowedEnvironments.filter((env) => initialSlugs.has(env.slug));
+  });
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
   const secretCount = activeSecrets ? Object.keys(activeSecrets).length : 0;
@@ -149,6 +165,10 @@ const ImportSecretsContent = ({
     },
     [handleParsedSecrets]
   );
+
+  useEffect(() => {
+    if (initialFile) parseFile(initialFile);
+  }, [initialFile, parseFile]);
 
   const handleImport = async () => {
     if (!activeSecrets || !selectedEnvs.length) return;
@@ -394,55 +414,107 @@ const ImportSecretsContent = ({
 
   const showUploadStep = !activeSecrets;
 
+  if (csvData) {
+    return (
+      <CsvColumnMapContent
+        headers={csvData.headers}
+        matrix={csvData.matrix}
+        delimiter={csvData.delimiter}
+        onClose={() => setCsvData(null)}
+        onParsedSecrets={(env) => {
+          setCsvData(null);
+          handleParsedSecrets(env);
+        }}
+      />
+    );
+  }
+
+  if (showUploadStep) {
+    return (
+      <>
+        <Tabs
+          value={importMethod}
+          onValueChange={(value) => setImportMethod(value as "upload" | "paste")}
+          className="min-h-0 flex-1 gap-0"
+        >
+          <SheetHeader className="border-0 p-0">
+            <SheetTitle className="sr-only">Upload Secrets</SheetTitle>
+            <SheetDescription className="sr-only">
+              Upload a file or paste secret values, then review them before uploading.
+            </SheetDescription>
+            <TabsList
+              variant="project"
+              aria-label="Secret import method"
+              className="h-auto min-h-12 px-4 data-[style=underline]:items-end"
+            >
+              <TabsTrigger value="upload" className="h-9">
+                Upload File
+              </TabsTrigger>
+              <TabsTrigger value="paste" className="h-9">
+                Paste Secrets
+              </TabsTrigger>
+            </TabsList>
+          </SheetHeader>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+            <TabsContent value="upload" forceMount className="data-[state=inactive]:hidden">
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={subject(ProjectPermissionSub.Secrets, {
+                  environment: environments[0]?.slug || "",
+                  secretPath,
+                  secretName: "*",
+                  secretTags: ["*"]
+                })}
+              >
+                {(isAllowed) => (
+                  <FileDropzone
+                    isDisabled={!isAllowed}
+                    accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
+                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt"
+                    onFilesSelect={(files) => parseFile(files[0])}
+                  />
+                )}
+              </ProjectPermissionCan>
+            </TabsContent>
+            <TabsContent value="paste" forceMount className="data-[state=inactive]:hidden">
+              <PasteSecretsContent
+                onParsedSecrets={handleParsedSecrets}
+                onDirtyChange={setIsPasteDirty}
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
+        <SheetFooter className="border-t">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          {importMethod === "paste" && (
+            <Button
+              variant="project"
+              type="submit"
+              form={PASTE_SECRETS_FORM_ID}
+              className="ml-auto"
+              isDisabled={!isPasteDirty}
+            >
+              Parse Secrets
+            </Button>
+          )}
+        </SheetFooter>
+      </>
+    );
+  }
+
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{showUploadStep ? "Upload Secrets" : "Review & Upload Secrets"}</DialogTitle>
-        <DialogDescription>
-          {showUploadStep
-            ? "Upload a file or paste secrets to upload them across environments"
-            : `${secretCount} secret${secretCount !== 1 ? "s" : ""} found. Select environments to upload to.`}
-        </DialogDescription>
-      </DialogHeader>
+      <SheetHeader>
+        <SheetTitle>Review & Upload Secrets</SheetTitle>
+        <SheetDescription>
+          {secretCount} secret{secretCount !== 1 ? "s" : ""} found. Select environments to upload
+          to.
+        </SheetDescription>
+      </SheetHeader>
 
-      {showUploadStep ? (
-        <div className="flex flex-col gap-4">
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment: environments[0]?.slug || "",
-              secretPath,
-              secretName: "*",
-              secretTags: ["*"]
-            })}
-          >
-            {(isAllowed) => (
-              <FileDropzone
-                isDisabled={!isAllowed}
-                accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
-                description=".env, .json, .yml, .csv, .pfx, .pem, or .crt"
-                onFilesSelect={(files) => parseFile(files[0])}
-              />
-            )}
-          </ProjectPermissionCan>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-muted/50" />
-            <span className="text-xs text-muted/50">OR</span>
-            <div className="flex-1 border-t border-muted/50" />
-          </div>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full"
-            onClick={() => setIsPasteOpen(true)}
-          >
-            <ClipboardPasteIcon className="mr-2 size-4" />
-            Paste Secrets
-          </Button>
-        </div>
-      ) : (
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         <div className="flex flex-col gap-4">
           <div className="relative flex flex-col gap-2">
             <Table
@@ -573,7 +645,7 @@ const ImportSecretsContent = ({
             </Table>
           </div>
           <Field>
-            <FieldLabel>
+            <FieldLabel htmlFor="target-environments">
               Target Environments
               <Tooltip>
                 <TooltipTrigger>
@@ -583,13 +655,18 @@ const ImportSecretsContent = ({
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                isMulti
-                menuPlacement="top"
+              <Combobox
+                id="target-environments"
+                multiple
+                singleLine
                 options={allowedEnvironments}
                 value={selectedEnvs}
-                onChange={(val) => setSelectedEnvs(val as { name: string; slug: string }[])}
+                onValueChange={setSelectedEnvs}
+                onClear={() => setSelectedEnvs([])}
                 placeholder="Select environments to upload to..."
+                searchPlaceholder="Search environments..."
+                searchAriaLabel="Search target environments"
+                clearAriaLabel="Clear target environments"
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.slug}
               />
@@ -616,10 +693,10 @@ const ImportSecretsContent = ({
             />
           </Field>
         </div>
-      )}
+      </div>
 
-      <DialogFooter>
-        {!showUploadStep && !initialParsedSecrets && (
+      <SheetFooter className="border-t">
+        {!initialParsedSecrets && (
           <Button variant="outline" onClick={handleBack} className="mr-auto">
             Back
           </Button>
@@ -627,70 +704,46 @@ const ImportSecretsContent = ({
         <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>
-        {!showUploadStep && (
-          <Button
-            variant="project"
-            onClick={handleImport}
-            isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
-            isPending={isImporting || isWaitingForTags}
-          >
-            Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
-          </Button>
-        )}
-      </DialogFooter>
-
-      <PasteSecretsDialog
-        isOpen={isPasteOpen}
-        onOpenChange={setIsPasteOpen}
-        onParsedSecrets={handleParsedSecrets}
-      />
-
-      {csvData && (
-        <CsvColumnMapDialog
-          isOpen={Boolean(csvData)}
-          onOpenChange={(open) => {
-            if (!open) setCsvData(null);
-          }}
-          headers={csvData.headers}
-          matrix={csvData.matrix}
-          delimiter={csvData.delimiter}
-          onParsedSecrets={(env) => {
-            setCsvData(null);
-            handleParsedSecrets(env);
-          }}
-        />
-      )}
+        <Button
+          variant="project"
+          onClick={handleImport}
+          isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
+          isPending={isImporting || isWaitingForTags}
+        >
+          Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
+        </Button>
+      </SheetFooter>
     </>
   );
 };
 
-export const ImportSecretsModal = ({
+export const ImportSecretsSheet = ({
   isOpen,
   onOpenChange,
   environments,
   projectId,
   secretPath,
   initialParsedSecrets,
+  initialFile,
+  initialStep,
+  initialSelectedEnvironments,
   onComplete
 }: Props) => {
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onOpenChange(false);
-        else onOpenChange(open);
-      }}
-    >
-      <DialogContent>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-3xl">
         <ImportSecretsContent
           environments={environments}
           projectId={projectId}
           secretPath={secretPath}
           initialParsedSecrets={initialParsedSecrets}
+          initialFile={initialFile}
+          initialStep={initialStep}
+          initialSelectedEnvironments={initialSelectedEnvironments}
           onComplete={onComplete}
           onClose={() => onOpenChange(false)}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

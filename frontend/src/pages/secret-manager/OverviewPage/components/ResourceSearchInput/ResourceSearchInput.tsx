@@ -2,22 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { GlobeIcon, SearchIcon, XIcon } from "lucide-react";
 
 import {
-  ButtonGroup,
-  IconButton,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   Popover,
   PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  PopoverTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useDebounce } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
-import { getResourceSearchStateTransition } from "./resourceSearchState";
 
 type Props = Omit<QuickSearchModalProps, "isOpen" | "onClose" | "onOpenChange" | "initialValue"> & {
   value: string;
@@ -41,29 +37,21 @@ export const ResourceSearchInput = ({
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
   const [debouncedInputValue] = useDebounce(inputValue);
-  const previousExternalValue = useRef(externalValue);
   const lastEmittedValue = useRef(externalValue);
 
   useEffect(() => {
-    const transition = getResourceSearchStateTransition({
-      externalValue,
-      previousExternalValue: previousExternalValue.current,
-      debouncedInputValue,
-      lastEmittedValue: lastEmittedValue.current
-    });
-
-    if (!transition) return;
-
-    if (transition.type === "sync") {
-      previousExternalValue.current = transition.value;
-      lastEmittedValue.current = transition.value;
-      setInputValue(transition.value);
-      return;
+    if (externalValue !== lastEmittedValue.current) {
+      setInputValue(externalValue);
+      lastEmittedValue.current = externalValue;
     }
+  }, [externalValue]);
 
-    lastEmittedValue.current = transition.value;
-    onChange(transition.value);
-  }, [debouncedInputValue, externalValue, onChange]);
+  useEffect(() => {
+    if (debouncedInputValue !== lastEmittedValue.current) {
+      lastEmittedValue.current = debouncedInputValue;
+      onChange(debouncedInputValue);
+    }
+  }, [debouncedInputValue, onChange]);
 
   const handleClear = () => {
     setInputValue("");
@@ -75,106 +63,92 @@ export const ResourceSearchInput = ({
 
   return (
     <>
-      <ButtonGroup>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              aria-label="Search all folders"
-              variant="outline"
-              onClick={() => setIsOpen(true)}
-            >
-              <SearchIcon />
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Search All Folders</TooltipContent>
-        </Tooltip>
-        <Popover open={hasSearch && isFocused}>
-          <PopoverTrigger asChild>
-            <div>
-              <InputGroup className="w-[270px] rounded-l-none">
-                <InputGroupInput
-                  ref={inputRef}
-                  autoComplete="off"
-                  placeholder={
-                    isSingleEnv
-                      ? "Search by secret, folder, tag or metadata..."
-                      : "Search by secret or folder name..."
-                  }
-                  value={inputValue}
-                  onChange={(e) => {
-                    setInputValue(e.target.value);
-                    setIsOptionHighlighted(false);
-                  }}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => {
+      <Popover open={isFocused}>
+        <PopoverTrigger asChild>
+          <div className={cn("w-full", className)}>
+            <InputGroup>
+              <InputGroupAddon align="inline-start">
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                ref={inputRef}
+                autoComplete="off"
+                placeholder={
+                  isSingleEnv
+                    ? "Search by secret, folder, tag or metadata..."
+                    : "Search by secret or folder name..."
+                }
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setIsOptionHighlighted(false);
+                }}
+                onFocus={() => {
+                  setIsFocused(true);
+                }}
+                onBlur={() => {
+                  setIsFocused(false);
+                  setIsOptionHighlighted(false);
+                }}
+                onKeyDown={(e) => {
+                  if (!isFocused) return;
+
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setIsOptionHighlighted(true);
+                  } else if (e.key === "Enter" && isOptionHighlighted) {
+                    e.preventDefault();
+                    setIsOpen(true);
                     setIsFocused(false);
                     setIsOptionHighlighted(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (!hasSearch || !isFocused) return;
-
-                    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setIsOptionHighlighted(true);
-                    } else if (e.key === "Enter" && isOptionHighlighted) {
-                      e.preventDefault();
-                      setIsOpen(true);
-                      setIsFocused(false);
-                      setIsOptionHighlighted(false);
-                    } else if (e.key === "Escape") {
-                      setIsFocused(false);
-                      setIsOptionHighlighted(false);
-                      inputRef.current?.blur();
-                    }
-                  }}
-                />
-                {hasSearch && (
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
-                      aria-label="Clear search"
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleClear}
-                    >
-                      <XIcon />
-                    </IconButton>
-                  </InputGroupAddon>
-                )}
-              </InputGroup>
-            </div>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            className="w-[270px] p-1"
-            onOpenAutoFocus={(e) => e.preventDefault()}
+                  } else if (e.key === "Escape") {
+                    setIsFocused(false);
+                    setIsOptionHighlighted(false);
+                    inputRef.current?.blur();
+                  }
+                }}
+              />
+              {hasSearch && (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton aria-label="Clear search" onClick={handleClear}>
+                    <XIcon />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] p-1"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <button
+            ref={deepSearchBtnRef}
+            type="button"
+            className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 ${isOptionHighlighted ? "bg-foreground/5" : ""}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsOpen(true);
+              setIsFocused(false);
+              setIsOptionHighlighted(false);
+            }}
           >
-            <button
-              ref={deepSearchBtnRef}
-              type="button"
-              className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 ${isOptionHighlighted ? "bg-foreground/5" : ""}`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setIsOpen(true);
-                setIsFocused(false);
-                setIsOptionHighlighted(false);
-              }}
-            >
-              <GlobeIcon className="size-4 shrink-0 text-muted" />
-              <span className="truncate">
-                Search all folders for &quot;{inputValue.trim()}&quot;
-              </span>
-            </button>
-          </PopoverContent>
-        </Popover>
-      </ButtonGroup>
+            <GlobeIcon className="size-4 shrink-0 text-muted" />
+            <span className="truncate">
+              {hasSearch ? `Search all folders for "${inputValue.trim()}"` : "Search all folders"}
+            </span>
+          </button>
+        </PopoverContent>
+      </Popover>
       <QuickSearchModal
         isSingleEnv={isSingleEnv}
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         initialValue={inputValue}
-        onClose={(clearSearch = true) => {
+        onClose={() => {
           setIsOpen(false);
-          if (clearSearch) handleClear();
+          handleClear();
         }}
         {...props}
       />

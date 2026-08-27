@@ -11,13 +11,13 @@ const Table = React.forwardRef<
       ref={ref}
       data-slot="table-container"
       className={cn(
-        "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
         containerClassName
       )}
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-max min-w-full caption-bottom text-start text-sm", className)}
         {...props}
       />
     </div>

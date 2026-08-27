@@ -6,6 +6,7 @@ import {
   FolderIcon,
   HexagonIcon,
   ImportIcon,
+  KeyIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -29,7 +30,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
-type Props = {
+export type AddResourceButtonsProps = {
   onAddSecret: () => void;
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
@@ -49,6 +50,8 @@ type Props = {
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
+  isDisabled?: boolean;
+  variant?: "toolbar" | "object-type";
 };
 
 export function AddResourceButtons({
@@ -70,35 +73,51 @@ export function AddResourceButtons({
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
-  hasDopplerConnection
-}: Props) {
+  hasDopplerConnection,
+  isDisabled,
+  variant = "toolbar"
+}: AddResourceButtonsProps) {
   return (
     <ButtonGroup>
-      <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
-        {(isAllowed) => (
-          <Tooltip open={!isAllowed ? undefined : false}>
-            <TooltipTrigger>
-              <Button
-                className="rounded-r-none"
-                isDisabled={!isAllowed}
-                variant="project"
-                onClick={onAddSecret}
-              >
-                <PlusIcon />
-                Add Secret
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Access Denied</TooltipContent>
-          </Tooltip>
-        )}
-      </ProjectPermissionCan>
+      {variant === "toolbar" && (
+        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
+          {(isAllowed) => (
+            <Tooltip open={!isAllowed ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  className="rounded-r-none"
+                  isDisabled={!isAllowed}
+                  variant="project"
+                  onClick={onAddSecret}
+                >
+                  <PlusIcon />
+                  Add Secret
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Access Denied</TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton variant="project">
-            <ChevronDown />
-          </IconButton>
+          {variant === "object-type" ? (
+            <IconButton
+              aria-label={isDisabled ? "Secret draft in progress" : "Add another resource type"}
+              className="mx-auto border-0 [&>svg]:!size-4"
+              isDisabled={isDisabled}
+              size="2xs"
+              variant="ghost-muted"
+            >
+              {isDisabled ? <KeyIcon className="text-secret" /> : <PlusIcon />}
+            </IconButton>
+          ) : (
+            <IconButton aria-label="Open add resource menu" variant="project">
+              <ChevronDown />
+            </IconButton>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align={variant === "object-type" ? "start" : "end"}>
           <DropdownMenuLabel>New</DropdownMenuLabel>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
@@ -151,7 +170,7 @@ export function AddResourceButtons({
                     onClick={onAddHoneyToken}
                     isDisabled={!isHoneyTokenAvailable || !isAllowed}
                   >
-                    <HexagonIcon className="text-yellow" />
+                    <HexagonIcon className="text-honey-token" />
                     Add Honey Token
                   </DropdownMenuItem>
                 </TooltipTrigger>

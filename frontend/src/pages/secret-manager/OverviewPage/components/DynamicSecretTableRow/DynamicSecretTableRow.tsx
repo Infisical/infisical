@@ -119,9 +119,7 @@ export const DynamicSecretTableRow = ({
           <AlertTriangleIcon
             className={twMerge(
               "ml-2 size-4",
-              dynamicSecret.status === DynamicSecretStatus.Deleting
-                ? "text-yellow-600"
-                : "text-red-600"
+              dynamicSecret.status === DynamicSecretStatus.Deleting ? "text-warning" : "text-danger"
             )}
           />
         </TooltipTrigger>
@@ -374,7 +372,7 @@ export const DynamicSecretTableRow = ({
           <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
             >
               <Table containerClassName="border-none rounded-none bg-transparent">
                 <TableHeader>

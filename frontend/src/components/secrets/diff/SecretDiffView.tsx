@@ -12,10 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  HIDDEN_SECRET_VALUE,
-  HIDDEN_SECRET_VALUE_API_MASK
-} from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { HIDDEN_SECRET_VALUE, HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 
 import { DiffContainer } from "./DiffContainer";
 import { DiffPaneField, DiffPanes } from "./DiffPanes";

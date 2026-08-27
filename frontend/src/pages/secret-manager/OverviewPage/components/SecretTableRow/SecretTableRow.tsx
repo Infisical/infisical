@@ -38,6 +38,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
@@ -48,7 +49,6 @@ import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -61,7 +61,7 @@ type Props = {
   secretPath: string;
   environments: { name: string; slug: string }[];
   isSelected: boolean;
-  onToggleSecretSelect: (key: string) => void;
+  onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (params: {
@@ -280,11 +280,9 @@ export const SecretTableRow = ({
             variant="project"
             id={`checkbox-${secretKey}`}
             isChecked={isSelected}
-            onCheckedChange={() => {
-              onToggleSecretSelect(secretKey);
-            }}
             onClick={(e) => {
               e.stopPropagation();
+              onToggleSecretSelect(secretKey, e.shiftKey);
             }}
             className={twMerge(
               "hidden",
@@ -321,7 +319,7 @@ export const SecretTableRow = ({
               {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
                 <HexagonIcon
                   className={twMerge(
-                    "absolute right-2 bottom-2 !size-2.5 text-yellow",
+                    "absolute right-2 bottom-2 !size-2.5 text-honey-token",
                     !isSelectionDisabled && "group-hover:!hidden",
                     isSelected && "!hidden"
                   )}
@@ -485,7 +483,14 @@ export const SecretTableRow = ({
           <TableCell>
             <GitBranchIcon className="text-override" />
           </TableCell>
-          <TableCell className="border-r text-override">{secretKey}</TableCell>
+          <TableCell
+            className={twMerge(
+              "border-r text-override",
+              singleEnvHasOverride && "border-l border-l-override"
+            )}
+          >
+            {secretKey}
+          </TableCell>
           <TableCell>
             <SecretOverrideRow
               isSingleEnvView
@@ -535,7 +540,7 @@ export const SecretTableRow = ({
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-l border-border border-l-project"
+              className="sticky left-0 border-y border-border"
             >
               <Table containerClassName="rounded-none border-0">
                 <TableHeader className="bg-container-hover">
@@ -597,7 +602,11 @@ export const SecretTableRow = ({
                           />
                           <TableCell
                             isTruncatable
-                            className={hasOverride ? "border-b-border/50" : undefined}
+                            className={
+                              hasOverride
+                                ? "border-l border-b-border/50 border-l-override"
+                                : undefined
+                            }
                           >
                             <div className="flex h-8 items-center space-x-2">
                               <Tooltip disableHoverableContent>
@@ -630,7 +639,7 @@ export const SecretTableRow = ({
                               {secret?.isHoneyTokenSecret && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <HexagonIcon className="size-4 text-yellow" />
+                                    <HexagonIcon className="size-4 text-honey-token" />
                                   </TooltipTrigger>
                                   <TooltipContent>Honey Token secret</TooltipContent>
                                 </Tooltip>
@@ -680,7 +689,9 @@ export const SecretTableRow = ({
                             key={`secret-override-${slug}-${secretKey}`}
                           >
                             <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10" />
-                            <TableCell />
+                            <TableCell
+                              className={hasOverride ? "border-l border-l-override" : undefined}
+                            />
                             <TableCell colSpan={2}>
                               <SecretOverrideRow
                                 secretName={secretKey}

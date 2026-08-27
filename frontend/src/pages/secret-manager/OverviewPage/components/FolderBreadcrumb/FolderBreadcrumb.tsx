@@ -212,7 +212,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
   return (
     <div
       ref={containerRef}
-      className="relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+      className="relative flex h-7 min-w-0 flex-1 items-center gap-1 overflow-hidden"
     >
       {/* Hidden measurement container */}
       <div

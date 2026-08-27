@@ -187,28 +187,31 @@ const Page = () => {
     isSubOrganization &&
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
+  const identitiesBackLink = (
+    <Link
+      to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+      params={{
+        projectId: currentProject.id,
+        orgId: currentOrg.id
+      }}
+      search={{
+        selectedTab: ProjectAccessControlTabs.Identities
+      }}
+    >
+      <ChevronLeftIcon aria-hidden className="size-4" />
+      {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
+    </Link>
+  );
+
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
       {identityMembershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Identities
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-foreground"
-          >
-            <ChevronLeftIcon size={16} />
-            {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             description={pageDescription}
             title={identityMembershipDetails.identity.name}
+            backLink={identitiesBackLink}
           >
             <div className="flex items-center gap-2">
               {isProjectIdentity ? (
@@ -410,14 +413,21 @@ const Page = () => {
           )}
         </>
       ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>Machine identity not found</EmptyTitle>
-            <EmptyDescription>
-              The machine identity may have been removed or you may not have access to it.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <>
+          <PageHeader
+            scope={currentProject.type}
+            title="Machine Identity Not Found"
+            backLink={identitiesBackLink}
+          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Machine Identity Not Found</EmptyTitle>
+              <EmptyDescription>
+                The machine identity may have been removed or you may not have access to it.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </>
       )}
     </div>
   );

@@ -22,7 +22,6 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import { PageHeader } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -42,6 +41,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageHeader,
   Pagination,
   Skeleton,
   Table,
@@ -313,20 +313,22 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <Link
-        to="/organizations/$orgId/projects"
-        params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-      >
-        <ChevronLeftIcon size={16} />
-        Organization
-      </Link>
-      <PageHeader title={typeTitle} scope={projectType} icon={getProjectLucideIcon(projectType)} />
+      <PageHeader
+        title={typeTitle}
+        scope={projectType}
+        icon={getProjectLucideIcon(projectType)}
+        backLink={
+          <Link to="/organizations/$orgId/projects" params={{ orgId }}>
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            Organization
+          </Link>
+        }
+      />
       {projectListView === ProjectListView.MyProjects || !canRequestAccess ? (
         <MyProjectsForType
           projectType={projectType}
@@ -646,7 +648,7 @@ const MyProjectsForType = ({
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
               return (
                 <TableRow key={workspace.id} className="group relative cursor-pointer">
-                  <TableCell className="w-0 pr-0">
+                  <TableCell className="w-0">
                     <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                       <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                     </div>
@@ -666,7 +668,7 @@ const MyProjectsForType = ({
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="relative z-10 w-0 pr-3 text-right">
+                  <TableCell className="relative z-10 w-0 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
@@ -874,7 +876,7 @@ const AllProjectsForType = ({
                 key={workspace.id}
                 className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
               >
-                <TableCell className="w-0 pr-0">
+                <TableCell className="w-0">
                   <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                     <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                   </div>

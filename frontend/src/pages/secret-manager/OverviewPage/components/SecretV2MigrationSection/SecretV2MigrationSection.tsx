@@ -76,10 +76,10 @@ export const SecretV2MigrationSection = () => {
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
-    <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
+    <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-project/50 bg-project/10 px-6 py-5">
       {isUpgrading && (
-        <div className="bg-opacity-80 absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500">
-          <Spinner size="lg" className="text-primary" />
+        <div className="absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-background/80">
+          <Spinner size="lg" className="text-project" />
           <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
             <span className="inline-block">Upgrading secrets engine...</span>
@@ -87,18 +87,18 @@ export const SecretV2MigrationSection = () => {
         </div>
       )}
       <div className="mb-4 flex items-start gap-2">
-        <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
+        <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-project" />
         <p className="text-xl font-medium">Upgrade secrets engine version</p>
       </div>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-4 leading-7 text-foreground">
         Your existing workflows to fetch secrets will continue to work. However, viewing secrets on
         the UI requires you to upgrade your project&apos;s secrets engine version.
       </p>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-4 leading-7 text-foreground">
         Upgrading is free and enables the use of Infisical&apos;s new secrets engine, which is 10x
         faster and allows you to encrypt secrets with your own KMS provider.
       </p>
-      <p className="mx-1 mb-6 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-6 leading-7 text-foreground">
         The upgrade takes only 1-2 minutes and will not cause any downtime.
       </p>
       <Button
@@ -110,7 +110,7 @@ export const SecretV2MigrationSection = () => {
         {isAdmin ? "Upgrade Secrets Engine" : "Upgrade requires admin privilege"}
       </Button>
       {didProjectUpgradeFailed && (
-        <p className="mt-2 text-sm leading-7 text-red-400">
+        <p className="mt-2 text-sm leading-7 text-danger">
           <FontAwesomeIcon icon={faTriangleExclamation} className="mr-2" />
           Secrets engine upgrade unsuccessful. For assistance, please contact the Infisical support
           team.
