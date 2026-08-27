@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import {
+  TApprovalPolicyApproverOptions,
   TGetSecretApprovalPoliciesDTO,
   TGetSecretApprovalPolicyOfBoardDTO,
   TSecretApprovalPolicy
@@ -11,11 +12,30 @@ import {
 
 export const secretApprovalKeys = {
   getApprovalPolicies: (projectId: string) => [{ projectId }, "secret-approval-policies"] as const,
+  getApproverOptions: (projectId: string) =>
+    [{ projectId }, "approval-policy-approver-options"] as const,
   getApprovalPolicyOfABoard: (projectId: string, environment: string, secretPath: string) => [
     { projectId, environment, secretPath },
     "Secret-approval-policy"
   ]
 };
+
+export const useGetApprovalPolicyApproverOptions = ({
+  projectId,
+  options = {}
+}: TGetSecretApprovalPoliciesDTO & TReactQueryOptions) =>
+  useQuery({
+    queryKey: secretApprovalKeys.getApproverOptions(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TApprovalPolicyApproverOptions>(
+        "/api/v2/secret-approvals/approver-options",
+        { params: { projectId } }
+      );
+      return data;
+    },
+    ...options,
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
+  });
 
 const fetchApprovalPolicies = async (projectId: string) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalPolicy[] }>(

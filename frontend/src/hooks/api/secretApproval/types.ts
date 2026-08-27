@@ -40,6 +40,20 @@ export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
 
+export type TApprovalPolicyApproverOptions = {
+  users: {
+    id: string;
+    username: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    isOrgMembershipActive: boolean;
+  }[];
+  groups: {
+    id: string;
+    name: string;
+  }[];
+};
+
 export type TGetSecretApprovalPolicyOfBoardDTO = {
   projectId: string;
   environment: string;

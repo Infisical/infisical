@@ -13,6 +13,48 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
+    url: "/approver-options",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listSecretApprovalPolicyApproverOptions",
+      querystring: z.object({
+        projectId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          users: z.array(
+            z.object({
+              id: z.string(),
+              username: z.string(),
+              firstName: z.string().nullable().optional(),
+              lastName: z.string().nullable().optional(),
+              isOrgMembershipActive: z.boolean()
+            })
+          ),
+          groups: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.secretApprovalPolicy.getApprovalPolicyApproverOptions({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.query.projectId
+      })
+  });
+
+  server.route({
     url: "/",
     method: "POST",
     config: {

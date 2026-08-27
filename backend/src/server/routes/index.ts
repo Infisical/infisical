@@ -1135,6 +1135,8 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     licenseService,
     projectDAL,
+    projectMembershipDAL,
+    groupProjectDAL,
     userDAL,
     secretApprovalRequestDAL
   });

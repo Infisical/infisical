@@ -66,6 +66,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
+  useGetApprovalPolicyApproverOptions,
   useGetSecretApprovalPolicies,
   useGetWorkspaceUsers,
   useListWorkspaceGroups
@@ -155,40 +156,6 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
 
-  const canReadMembers = permission.can(
-    ProjectPermissionMemberActions.Read,
-    ProjectPermissionSub.Member
-  );
-  const canReadGroups = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
-
-  const {
-    data: members,
-    isError: isMembersError,
-    isFetching: isMembersFetching,
-    isPending: isMembersPending,
-    refetch: refetchMembers
-  } = useGetWorkspaceUsers(projectId, true, undefined, {
-    enabled: canReadMembers && Boolean(projectId)
-  });
-  const {
-    data: groups,
-    isError: isGroupsError,
-    isFetching: isGroupsFetching,
-    isPending: isGroupsPending,
-    refetch: refetchGroups
-  } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
-    enabled: canReadGroups && Boolean(currentProject?.id)
-  });
-
-  const {
-    policies,
-    isLoading: isPoliciesLoading,
-    isError: isPoliciesError,
-    isRetrying: isPoliciesRetrying,
-    refetchAccessPolicies,
-    refetchSecretPolicies
-  } = useApprovalPolicies(permission, currentProject);
-
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretApproval
@@ -205,12 +172,45 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.SecretApproval
   );
-  const isApproverOptionsError =
-    (canReadMembers && isMembersError) || (canReadGroups && isGroupsError);
-  const isApproverOptionsLoading =
-    (canReadMembers && isMembersPending) || (canReadGroups && isGroupsPending);
-  const isApproverOptionsRetrying =
-    (canReadMembers && isMembersFetching) || (canReadGroups && isGroupsFetching);
+
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
+  const canReadGroups = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+
+  const { data: members } = useGetWorkspaceUsers(projectId, true, undefined, {
+    enabled: canReadMembers && Boolean(projectId)
+  });
+  const { data: groups } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
+    enabled: canReadGroups && Boolean(currentProject?.id)
+  });
+  const shouldLoadApproverOptions = canCreatePolicies || canEditPolicies;
+  const {
+    data: approverOptions,
+    isError: isApproverOptionsQueryError,
+    isFetching: isApproverOptionsFetching,
+    isPending: isApproverOptionsPending,
+    refetch: refetchApproverOptions
+  } = useGetApprovalPolicyApproverOptions({
+    projectId,
+    options: {
+      enabled: shouldLoadApproverOptions && Boolean(projectId)
+    }
+  });
+
+  const {
+    policies,
+    isLoading: isPoliciesLoading,
+    isError: isPoliciesError,
+    isRetrying: isPoliciesRetrying,
+    refetchAccessPolicies,
+    refetchSecretPolicies
+  } = useApprovalPolicies(permission, currentProject);
+
+  const isApproverOptionsError = shouldLoadApproverOptions && isApproverOptionsQueryError;
+  const isApproverOptionsLoading = shouldLoadApproverOptions && isApproverOptionsPending;
+  const isApproverOptionsRetrying = shouldLoadApproverOptions && isApproverOptionsFetching;
   let approverOptionsDisabledReason: string | undefined;
 
   if (isApproverOptionsLoading) {
@@ -453,10 +453,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       variant="danger"
                       isPending={isApproverOptionsRetrying}
                       isDisabled={isApproverOptionsRetrying}
-                      onClick={() => {
-                        if (canReadMembers) refetchMembers().catch(() => undefined);
-                        if (canReadGroups) refetchGroups().catch(() => undefined);
-                      }}
+                      onClick={() => refetchApproverOptions().catch(() => undefined)}
                     >
                       <RefreshCwIcon />
                       Retry
@@ -594,14 +591,10 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
-        members={members}
-        groups={groups}
+        approverOptions={approverOptions}
         hasApproverOptionsError={isApproverOptionsError}
         isRetryingApproverOptions={isApproverOptionsRetrying}
-        onRetryApproverOptions={() => {
-          if (canReadMembers) refetchMembers().catch(() => undefined);
-          if (canReadGroups) refetchGroups().catch(() => undefined);
-        }}
+        onRetryApproverOptions={() => refetchApproverOptions().catch(() => undefined)}
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
       {popUp.deletePolicy.data && (

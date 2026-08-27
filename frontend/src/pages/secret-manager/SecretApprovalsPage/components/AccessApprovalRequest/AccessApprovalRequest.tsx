@@ -346,8 +346,7 @@ export const AccessApprovalRequest = ({
       requestedByFilter &&
       (!canReadMembers ||
         (!areMembersPending &&
-          members &&
-          !members.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter)))
+          !members?.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter)))
     ) {
       setRequestedByFilter(undefined);
     }
