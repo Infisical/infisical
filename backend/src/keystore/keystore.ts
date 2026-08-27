@@ -82,6 +82,13 @@ export const KeyStorePrefixes = {
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+  // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
+  // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
+  // cluster refuses a multi-key command whose keys span slots. They are small counters, so
+  // concentrating them costs nothing.
+  GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:{gw-pool}:${gatewayId}` as const,
+  GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:{gw-pool}:${gatewayId}` as const,
+  GatewaySuspect: (gatewayId: string) => `gateway-suspect:{gw-pool}:${gatewayId}` as const,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
@@ -259,6 +266,7 @@ export type TKeyStoreFactory = {
   getItem: (key: string, prefix?: string) => Promise<string | null>;
   getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
+  getItemsPrimary: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
   ttl: (key: string) => Promise<number>;
   setItemWithExpiry: (
@@ -279,6 +287,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
@@ -372,6 +381,9 @@ export const keyStoreFactory = (
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
 
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
+
+  const getItemsPrimary = async (keys: string[], prefix?: string) =>
+    primaryRedis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
 
   const getItems = async (keys: string[], prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
@@ -472,6 +484,51 @@ export const keyStoreFactory = (
 
   const decrementByOrDelete = async (key: string): Promise<number> => {
     const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
+    return Number(result);
+  };
+
+  // Choosing and claiming has to be one round trip. Done as separate read and write calls, every
+  // concurrent selection reads the same minimum before any of them claims it and they all pile onto
+  // the same gateway, which is the stampede the reservation exists to prevent.
+  const CLAIM_LEAST_LOADED_SCRIPT = `
+    local ttl = tonumber(ARGV[#ARGV])
+    local bestIdx = 0
+    local bestTotal = nil
+    for i = 1, #KEYS do
+      local reserved = tonumber(redis.call("GET", KEYS[i]) or "0")
+      local total = tonumber(ARGV[i]) + reserved
+      -- strict less-than, so ties fall to the caller's order (pre-shuffled for a random tie-break)
+      if bestTotal == nil or total < bestTotal then
+        bestTotal = total
+        bestIdx = i
+      end
+    end
+    if bestIdx == 0 then return 0 end
+    -- Set the expiry only on the first increment. Refreshing it on every claim means a busy key
+    -- never elapses, so a crashed pod's leaked reservations would stay counted indefinitely.
+    if redis.call("INCR", KEYS[bestIdx]) == 1 then
+      redis.call("EXPIRE", KEYS[bestIdx], ttl)
+    end
+    return bestIdx
+  `;
+
+  /** Returns the 1-based index of the claimed key, or 0 when no keys were given. */
+  const claimLeastLoaded = async (
+    keys: string[],
+    baseOccupancies: number[],
+    expiryInSeconds: number
+  ): Promise<number> => {
+    if (keys.length === 0) return 0;
+    if (keys.length !== baseOccupancies.length) {
+      throw new Error("claimLeastLoaded: baseOccupancies must have one entry per key");
+    }
+    const result = await primaryRedis.eval(
+      CLAIM_LEAST_LOADED_SCRIPT,
+      keys.length,
+      ...keys,
+      ...baseOccupancies.map((n) => String(n)),
+      String(expiryInSeconds)
+    );
     return Number(result);
   };
 
@@ -731,6 +788,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    claimLeastLoaded,
     incrementByWithExpiry,
     incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
@@ -740,6 +798,7 @@ export const keyStoreFactory = (
     getKeysByPattern,
     deleteItemsByKeyIn,
     getItems,
+    getItemsPrimary,
     pgGetIntItem,
     pgIncrementBy,
     hashSet,
