@@ -5,6 +5,7 @@ import {
   ClearIndicator,
   DropdownIndicator,
   Group,
+  MenuList,
   MultiValueRemove,
   Option
 } from "../Select/components";
@@ -21,11 +22,13 @@ export const FilterableSelect = <T,>({
   getGroupHeaderLabel = null,
   options = [],
   menuListClassName,
+  isSelectAll = false,
   ...props
 }: Props<T> & {
   groupBy?: string | null;
   getGroupHeaderLabel?: ((groupValue: any) => string) | null;
   menuListClassName?: string;
+  isSelectAll?: boolean;
 }) => {
   let processedOptions = options;
 
@@ -83,6 +86,7 @@ export const FilterableSelect = <T,>({
         MultiValueRemove,
         Option,
         Group,
+        ...(isSelectAll ? { MenuList } : {}),
         ...props.components
       }}
       classNames={{

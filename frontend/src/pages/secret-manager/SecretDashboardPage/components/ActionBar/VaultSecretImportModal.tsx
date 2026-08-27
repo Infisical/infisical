@@ -253,6 +253,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
                 : "Select Vault path(s) to import..."
             }
             isClearable
+            isSelectAll
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
