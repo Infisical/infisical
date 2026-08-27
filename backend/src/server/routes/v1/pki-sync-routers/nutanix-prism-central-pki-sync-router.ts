@@ -20,7 +20,8 @@ export const registerNutanixPrismCentralPkiSyncRouter = async (
     updateSchema: UpdateNutanixPrismCentralPkiSyncSchema,
     syncOptions: {
       canImportCertificates: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

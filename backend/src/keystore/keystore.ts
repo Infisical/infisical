@@ -59,6 +59,7 @@ export const KeyStorePrefixes = {
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
+  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
@@ -273,6 +274,7 @@ type TWaitTillReady = {
 export type TKeyStoreFactory = {
   setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
   getItem: (key: string, prefix?: string) => Promise<string | null>;
+  getItemBuffer: (key: string, prefix?: string) => Promise<Buffer | null>;
   getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   getItemsPrimary: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
@@ -389,6 +391,11 @@ export const keyStoreFactory = (
 
   const getItem = async (key: string, prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
+
+  // Reads a value written as raw bytes. Callers holding binary blobs (ciphertext) use this instead of
+  // getItem so the payload never round-trips through a base64 string on either side.
+  const getItemBuffer = async (key: string, prefix?: string) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).getBuffer(prefix ? `${prefix}:${key}` : key);
 
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
 
@@ -802,6 +809,7 @@ export const keyStoreFactory = (
   return {
     setItem,
     getItem,
+    getItemBuffer,
     getItemPrimary,
     setExpiry,
     ttl,

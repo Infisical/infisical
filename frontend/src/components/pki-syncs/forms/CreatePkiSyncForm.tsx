@@ -31,6 +31,7 @@ import {
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   useCreatePkiSync,
   usePkiSyncOption
@@ -42,6 +43,7 @@ import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
@@ -79,12 +81,12 @@ const STEP_META: Record<
     rightDescription:
       "Map each certificate component (certificate, private key, and chain) to the field names used at the destination."
   },
-  postSyncCommand: {
-    short: "Command after sync",
-    subtitle: "Optionally run a command on the host after certificates are written.",
-    rightLabel: "POST-SYNC COMMAND",
+  hostCommands: {
+    short: "Commands on the host",
+    subtitle: "Check the host before the sync, and run a command after it.",
+    rightLabel: "COMMANDS",
     rightDescription:
-      "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+      "The health check runs first. If the host is not ready, the sync stops and no certificate is delivered.\n\nThe post-sync command runs after the certificates are written, so a service can reload and pick up the new one. It only runs when the sync delivers a file. If either command fails, the sync is marked failed."
   },
   details: {
     short: "Name and description",
@@ -111,7 +113,7 @@ const STEP_META: Record<
 
 const getFormTabs = (
   destination: PkiSync,
-  canRunPostSyncCommand: boolean
+  canRunHostCommands: boolean
 ): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
@@ -134,14 +136,6 @@ const getFormTabs = (
     });
   }
 
-  if (canRunPostSyncCommand) {
-    baseTabs.push({
-      name: "Post-Sync Command",
-      key: "postSyncCommand",
-      fields: ["syncOptions.postSyncCommand"] as FieldPath<TPkiSyncForm>[]
-    });
-  }
-
   baseTabs.push(
     {
       name: "Details",
@@ -152,9 +146,21 @@ const getFormTabs = (
       name: "Certificates",
       key: "certificates",
       fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
-    },
-    { name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] }
+    }
   );
+
+  if (canRunHostCommands) {
+    baseTabs.push({
+      name: "Commands",
+      key: "hostCommands",
+      fields: [
+        "syncOptions.healthCheckCommand",
+        "syncOptions.postSyncCommand"
+      ] as FieldPath<TPkiSyncForm>[]
+    });
+  }
+
+  baseTabs.push({ name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] });
 
   return baseTabs;
 };
@@ -175,9 +181,11 @@ export const CreatePkiSyncForm = ({
 
   const { syncOption } = usePkiSyncOption(destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(applicationId);
   const FORM_TABS = getFormTabs(
     destination,
-    Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand
+    (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
+      (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand)
   );
 
   const formMethods = useForm<TPkiSyncForm>({
@@ -374,11 +382,18 @@ export const CreatePkiSyncForm = ({
               </>
             )}
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
-            {currentKey === "postSyncCommand" && (
-              <PkiSyncPostSyncCommandFields
-                destination={destination}
-                canEditCommand={canSetPostSyncCommand}
-              />
+            {currentKey === "hostCommands" && (
+              <div className="flex flex-col gap-8">
+                <PkiSyncHealthCheckCommandFields
+                  destination={destination}
+                  applicationId={applicationId}
+                  canEditCommand={canSetHealthCheckCommand}
+                />
+                <PkiSyncPostSyncCommandFields
+                  destination={destination}
+                  canEditCommand={canSetPostSyncCommand}
+                />
+              </div>
             )}
             {currentKey === "details" && <PkiSyncDetailsFields />}
             {currentKey === "certificates" && (
@@ -398,9 +413,11 @@ export const CreatePkiSyncForm = ({
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentDetail.rightDescription}
-              </p>
+              {currentDetail.rightDescription.split("\n\n").map((paragraph) => (
+                <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </aside>
         </div>
