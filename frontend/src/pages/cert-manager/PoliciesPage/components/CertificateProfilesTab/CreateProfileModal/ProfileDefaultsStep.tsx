@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Control, Controller, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { FileBadge, Plus, Trash2 } from "lucide-react";
 
@@ -20,10 +20,14 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
@@ -234,6 +238,7 @@ type Props = {
   policyConstraints: PolicyConstraints;
   isAwsAcmPublicCa: boolean;
   isExternalAdcsCa: boolean;
+  caKeyAlgorithm?: string | null;
 };
 
 const EXTERNAL_ADCS_HINT =
@@ -245,7 +250,8 @@ export const ProfileDefaultsStep = ({
   setValue,
   policyConstraints,
   isAwsAcmPublicCa,
-  isExternalAdcsCa
+  isExternalAdcsCa,
+  caKeyAlgorithm
 }: Props) => {
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
@@ -254,6 +260,15 @@ export const ProfileDefaultsStep = ({
   const watchedDefaultSigAlg = watch("defaults.signatureAlgorithm") ?? null;
   const watchedDefaultKeyAlg = watch("defaults.keyAlgorithm") ?? null;
   const watchedDefaultKeyUsages = watch("defaults.keyUsages") || {};
+
+  // A default the issuing CA cannot sign would fail every request that relies on it, so drop it
+  // rather than persist a value that is guaranteed to break issuance.
+  useEffect(() => {
+    if (!watchedDefaultSigAlg) return;
+    if (getCaSignatureIncompatibilityReason(watchedDefaultSigAlg, caKeyAlgorithm)) {
+      setValue("defaults.signatureAlgorithm", null);
+    }
+  }, [watchedDefaultSigAlg, caKeyAlgorithm, setValue]);
   const watchedDefaultExtKeyUsages = watch("defaults.extendedKeyUsages") || {};
 
   const filteredKeyUsages = useMemo(
@@ -407,11 +422,39 @@ export const ProfileDefaultsStep = ({
                     </SelectTrigger>
                     <SelectContent position="popper">
                       <SelectItem value={NO_DEFAULT}>No default</SelectItem>
-                      {policyConstraints.allowedSignatureAlgorithms.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
+                      {policyConstraints.allowedSignatureAlgorithms.map((option) => {
+                        const incompatibilityReason = getCaSignatureIncompatibilityReason(
+                          option.value,
+                          caKeyAlgorithm
+                        );
+
+                        const item = (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            disabled={Boolean(incompatibilityReason)}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        );
+
+                        if (!incompatibilityReason) return item;
+
+                        return (
+                          <Tooltip key={option.value}>
+                            <TooltipTrigger asChild>
+                              {/* The disabled item drops pointer events, so the wrapper carries the hover. */}
+                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                              <span tabIndex={0} className="block">
+                                {item}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-64">
+                              {incompatibilityReason}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </FieldContent>
