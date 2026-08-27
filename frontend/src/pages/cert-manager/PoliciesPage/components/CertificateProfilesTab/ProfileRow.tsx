@@ -91,7 +91,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
               projectId: currentProject.id,
               profileId: profile.id
             }}
-            className="hover:underline"
+            className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {profile.slug}

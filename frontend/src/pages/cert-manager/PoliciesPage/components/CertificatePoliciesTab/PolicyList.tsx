@@ -136,7 +136,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     projectId: currentProject.id,
                     policyId: policy.id
                   }}
-                  className="hover:underline"
+                  className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {policy.name}
