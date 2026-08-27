@@ -278,7 +278,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         isStale: a.isStale,
-        heartbeatStatus: a.heartbeatStatus ?? null,
+        heartbeatStatus: (a.heartbeatStatus as PamHeartbeatStatus | null) ?? null,
+        heartbeatEnabled: Boolean(a.heartbeatEnabled),
         requiresApproval,
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
@@ -765,14 +766,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       );
     }
 
-    // The health shown on the account describes the credential that was just replaced, so a corrected password
-    // would otherwise keep its "out of sync" badge until the next scheduled check.
-    if (credentials && credentialVerified) {
-      const verifiedAt = new Date();
-      updateData.heartbeatStatus = PamHeartbeatStatus.Healthy;
-      updateData.lastHeartbeatAt = verifiedAt;
-      updateData.lastHeartbeatHealthyAt = verifiedAt;
+    // A stored verdict describes the credential that was just replaced, so it cannot stand once the credential
+    // changes. Clearing it is what lets checking resume: several account types (Windows, SSH certificates,
+    // MSSQL Windows auth) cannot be verified on this path, and leaving them rejected would strand them stopped
+    // with a badge telling the user to do the very thing they just did.
+    if (credentials) {
+      updateData.heartbeatStatus = credentialVerified ? PamHeartbeatStatus.Healthy : null;
       updateData.encryptedLastHeartbeatMessage = null;
+      if (credentialVerified) {
+        const verifiedAt = new Date();
+        updateData.lastHeartbeatAt = verifiedAt;
+        updateData.lastHeartbeatHealthyAt = verifiedAt;
+      }
     }
 
     try {

@@ -200,6 +200,14 @@ export const pamAccountHeartbeatServiceFactory = ({
       } catch (err) {
         const kind = (err as { gatewayFailureKind?: GatewayFailureKind | null }).gatewayFailureKind ?? null;
         if (kind === "auth") {
+          // A delegated check signs in as the rotation account, so a refused login there says nothing about
+          // this account's credential. Blaming the target would mark every account the rotator verifies.
+          if (verifyVia) {
+            return {
+              status: PamHeartbeatStatus.CannotCheck,
+              message: "The rotation account could not sign in to the host, so this credential was not checked"
+            };
+          }
           return {
             status: PamHeartbeatStatus.InvalidCredentials,
             message: "The target rejected this credential"

@@ -111,6 +111,7 @@ export type TPamAccountListItem = Pick<
     templateName: string;
     folderName: string | null;
     isStale: boolean;
+    heartbeatEnabled: boolean;
   };
 
 export type TPamAccountDetail = TPamAccounts &
@@ -204,6 +205,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`,
         `${TableName.PamAccount}.heartbeatStatus`,
+        db.raw(
+          `("${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true') as "heartbeatEnabled"`
+        ),
         db.raw(`${staleAccountExistsSql(TableName.PamAccount)} as "isStale"`)
       )
       .orderBy(`${TableName.PamFolder}.name`, "asc")

@@ -59,6 +59,9 @@ export const withGatewayRetry = async (
           err instanceof Error ? err.message : String(err)
         }]`
       );
+      // A target that rejected the credential will reject it again, and each retry is another failed logon
+      // counting toward the account's lockout threshold. Only transport failures are worth retrying.
+      if ((err as { gatewayFailureKind?: string }).gatewayFailureKind === "auth") throw err;
       // eslint-disable-next-line no-await-in-loop
       if (attempt < maxAttempts) await sleep(baseDelayMs * attempt);
     }

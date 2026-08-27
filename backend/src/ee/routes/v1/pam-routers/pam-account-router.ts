@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessStatus, PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -57,10 +57,13 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .describe("Reasons the account cannot launch a session, if any"),
   isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
   heartbeatStatus: z
-    .string()
+    .nativeEnum(PamHeartbeatStatus)
     .nullable()
     .optional()
     .describe("Result of the most recent credential health check, if one has run."),
+  heartbeatEnabled: z
+    .boolean()
+    .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
@@ -640,7 +643,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           heartbeat: z.object({
             enabled: z.boolean(),
             intervalSeconds: z.number().nullable(),
-            status: z.string().nullable(),
+            status: z.nativeEnum(PamHeartbeatStatus).nullable().describe("Most recent check result"),
             lastCheckedAt: z.date().nullable(),
             lastHealthyAt: z.date().nullable(),
             nextCheckAt: z.date().nullable(),

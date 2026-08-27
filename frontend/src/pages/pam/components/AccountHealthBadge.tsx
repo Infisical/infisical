@@ -32,8 +32,15 @@ const BADGE: Partial<
 
 // The row only calls out what needs attention, like the stale badge. Healthy is silent, and so is an account
 // nobody has checked yet: the schedule will get to it, and one with no credential already has its own badge.
-export const AccountHealthBadge = ({ status }: { status?: string | null }) => {
-  const presentation = status ? BADGE[status as PamHeartbeatStatus] : undefined;
+// A stored result also stops being a claim about the present once checking is off, so the badge goes with it.
+export const AccountHealthBadge = ({
+  status,
+  enabled = true
+}: {
+  status?: string | null;
+  enabled?: boolean;
+}) => {
+  const presentation = enabled && status ? BADGE[status as PamHeartbeatStatus] : undefined;
   if (!presentation) return null;
 
   const { label, variant, icon: Icon, tooltip } = presentation;

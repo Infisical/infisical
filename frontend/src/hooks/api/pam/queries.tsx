@@ -213,6 +213,7 @@ export type TPamAccountListItem = {
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
   heartbeatStatus?: PamHeartbeatStatus | null;
+  heartbeatEnabled?: boolean;
   requiresApproval: boolean;
   requireReason: boolean;
   accessStatus: PamAccessStatus;

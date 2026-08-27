@@ -85,7 +85,7 @@ export const FolderAccountRow = ({
             issues={account.accessibilityIssues}
           />
           <AccountStaleBadge isStale={account.isStale} />
-          <AccountHealthBadge status={account.heartbeatStatus} />
+          <AccountHealthBadge status={account.heartbeatStatus} enabled={account.heartbeatEnabled} />
         </>
       }
       actions={

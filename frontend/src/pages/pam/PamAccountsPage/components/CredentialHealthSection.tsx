@@ -2,7 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
-import { PamHeartbeatStatus } from "@app/hooks/api/pam/enums";
+import { formatRotationInterval, PamHeartbeatStatus } from "@app/hooks/api/pam/enums";
 import { useCheckPamAccountHeartbeat } from "@app/hooks/api/pam/mutations";
 import { useGetPamAccountHeartbeat } from "@app/hooks/api/pam/queries";
 
@@ -62,7 +62,9 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
   if (!accountId || isPending || !heartbeat) return null;
 
   const status = heartbeat.status ?? PamHeartbeatStatus.Unknown;
-  const { label, indicator, className, reasonClassName } = STATUS[status];
+  // An unrecognised status must not take the tab down with it.
+  const { label, indicator, className, reasonClassName } =
+    STATUS[status] ?? STATUS[PamHeartbeatStatus.Unknown];
   const isHealthy = status === PamHeartbeatStatus.Healthy;
   const reason = !isHealthy && heartbeat.lastMessage ? heartbeat.lastMessage : null;
 
@@ -80,13 +82,24 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
       <div className="mb-2 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Credential health</h3>
-          <p className="text-xs text-muted">Whether this credential still signs in.</p>
+          <p className="text-xs text-muted">
+            {heartbeat.enabled
+              ? `Checked every ${formatRotationInterval(heartbeat.intervalSeconds)}, from ${heartbeat.templateName}.`
+              : `Scheduled checks are off for ${heartbeat.templateName}.`}
+          </p>
         </div>
         <span className={`text-xs font-medium ${className}`}>
           {indicator} {label}
         </span>
       </div>
 
+      {!heartbeat.enabled && status !== PamHeartbeatStatus.Unknown && (
+        <DetailRow label="Result">
+          <span className="text-sm text-muted">
+            From the last check, before checking was turned off
+          </span>
+        </DetailRow>
+      )}
       <DetailRow label="Last checked">
         <span className="text-sm text-muted">{relative(heartbeat.lastCheckedAt)}</span>
       </DetailRow>
