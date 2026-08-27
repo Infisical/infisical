@@ -10,9 +10,8 @@ import {
   getGcpSecretManagerProjects
 } from "./gcp-connection-fns";
 import {
+  TGcpCertificateManagerProjectScopedDTO,
   TGcpConnection,
-  TGetGcpCertificateManagerLocationsDTO,
-  TGetGcpCertificateMapsDTO,
   TGetGCPProjectLocationsDTO
 } from "./gcp-connection-types";
 
@@ -63,7 +62,7 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   };
 
   const listCertificateManagerLocations = async (
-    { connectionId, gcpProjectId }: TGetGcpCertificateManagerLocationsDTO,
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
@@ -77,7 +76,7 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
   };
 
   const listCertificateMaps = async (
-    { connectionId, gcpProjectId }: TGetGcpCertificateMapsDTO,
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);

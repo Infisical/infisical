@@ -64,7 +64,11 @@ const LoadingRow = ({ label }: { label: string }) => (
   </div>
 );
 
-export const GcpCertificateManagerPkiSyncFields = () => {
+type Props = {
+  isUpdate?: boolean;
+};
+
+export const GcpCertificateManagerPkiSyncFields = ({ isUpdate }: Props) => {
   const { control, setValue } = useFormContext<TGcpCertificateManagerForm>();
 
   const connectionId = useWatch({ name: "connection.id", control });
@@ -77,6 +81,9 @@ export const GcpCertificateManagerPkiSyncFields = () => {
   });
 
   const isGlobal = location === GCP_CERTIFICATE_MANAGER_GLOBAL_LOCATION;
+  const immutableFieldHelpText = isUpdate
+    ? "A GCP certificate's project, location and scope are immutable, so this cannot be changed after the sync is created."
+    : undefined;
   const isDefaultScope =
     (scope ?? GcpCertificateManagerScope.Default) === GcpCertificateManagerScope.Default;
   const canBindCertificateMap = isGlobal && isDefaultScope;
@@ -162,7 +169,7 @@ export const GcpCertificateManagerPkiSyncFields = () => {
                     setValue("destinationConfig.location", "");
                     setValue("destinationConfig.certificateMapBinding", undefined);
                   }}
-                  disabled={!connectionId || isLoadingProjects}
+                  disabled={isUpdate || !connectionId || isLoadingProjects}
                 >
                   <SelectTrigger className="w-full" isError={Boolean(combinedError)}>
                     <SelectValue
@@ -177,6 +184,9 @@ export const GcpCertificateManagerPkiSyncFields = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {immutableFieldHelpText && (
+                <FieldDescription>{immutableFieldHelpText}</FieldDescription>
               )}
               <FieldError errors={[combinedError]} />
             </Field>
@@ -223,7 +233,7 @@ export const GcpCertificateManagerPkiSyncFields = () => {
                       }
                     }
                   }}
-                  disabled={!gcpProjectId || isLoadingLocations}
+                  disabled={isUpdate || !gcpProjectId || isLoadingLocations}
                 >
                   <SelectTrigger className="w-full" isError={Boolean(combinedError)}>
                     <SelectValue
@@ -262,7 +272,7 @@ export const GcpCertificateManagerPkiSyncFields = () => {
                   setValue("destinationConfig.certificateMapBinding", undefined);
                 }
               }}
-              disabled={!location}
+              disabled={isUpdate || !location}
             >
               <SelectTrigger className="w-full" isError={Boolean(error)}>
                 <SelectValue placeholder="Select a scope" />
@@ -283,6 +293,7 @@ export const GcpCertificateManagerPkiSyncFields = () => {
                   (value as GcpCertificateManagerScope) ?? GcpCertificateManagerScope.Default
                 ].description
               }
+              {immutableFieldHelpText ? ` ${immutableFieldHelpText}` : ""}
             </FieldDescription>
             <FieldError errors={[error]} />
           </Field>

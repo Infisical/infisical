@@ -45,7 +45,7 @@ const GcpCertificateMapBindingSchema = z.object({
     })
 });
 
-const BaseGcpCertificateManagerPkiSyncConfigSchema = z.object({
+const GcpCertificateManagerPkiSyncConfigFieldsSchema = z.object({
   gcpProjectId: z
     .string()
     .trim()
@@ -62,15 +62,22 @@ const BaseGcpCertificateManagerPkiSyncConfigSchema = z.object({
     .refine((value) => GCP_LOCATION_PATTERN.test(value), {
       message: 'Location must be "global" or a GCP region ID such as "us-central1"'
     }),
-  scope: z.nativeEnum(GcpCertificateManagerScope).default(GcpCertificateManagerScope.Default),
   certificateMapBinding: GcpCertificateMapBindingSchema.optional()
 });
 
+const BaseGcpCertificateManagerPkiSyncConfigSchema = GcpCertificateManagerPkiSyncConfigFieldsSchema.extend({
+  scope: z.nativeEnum(GcpCertificateManagerScope).default(GcpCertificateManagerScope.Default)
+});
+
+const UpdateGcpCertificateManagerPkiSyncConfigSchema = GcpCertificateManagerPkiSyncConfigFieldsSchema.extend({
+  scope: z.nativeEnum(GcpCertificateManagerScope).optional()
+});
+
 const assertScopeCompatibility = (
-  config: z.infer<typeof BaseGcpCertificateManagerPkiSyncConfigSchema>,
+  config: z.infer<typeof UpdateGcpCertificateManagerPkiSyncConfigSchema>,
   ctx: z.RefinementCtx
 ) => {
-  if (config.certificateMapBinding && config.scope !== GcpCertificateManagerScope.Default) {
+  if (config.certificateMapBinding && config.scope && config.scope !== GcpCertificateManagerScope.Default) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["certificateMapBinding"],
@@ -99,6 +106,9 @@ const assertScopeCompatibility = (
 
 export const GcpCertificateManagerPkiSyncConfigSchema =
   BaseGcpCertificateManagerPkiSyncConfigSchema.superRefine(assertScopeCompatibility);
+
+export const GcpCertificateManagerPkiSyncConfigUpdateSchema =
+  UpdateGcpCertificateManagerPkiSyncConfigSchema.superRefine(assertScopeCompatibility);
 
 const GcpLabelSchema = z.object({
   key: z
@@ -191,7 +201,7 @@ export const UpdateGcpCertificateManagerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
   description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
-  destinationConfig: GcpCertificateManagerPkiSyncConfigSchema.optional(),
+  destinationConfig: GcpCertificateManagerPkiSyncConfigUpdateSchema.optional(),
   syncOptions: GcpCertificateManagerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
   connectionId: z.string().uuid().optional()

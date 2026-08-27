@@ -15,9 +15,14 @@ import {
   GCP_OPERATION_POLL_TIMEOUT_MS,
   GCP_PRIMARY_MATCHER,
   GCP_RATE_LIMIT_CONFIG,
-  GCP_SCOPE_API_VALUES
+  GCP_SCOPE_API_VALUES,
+  gcpCertificatePermission
 } from "./gcp-certificate-manager-pki-sync-constants";
-import { GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-enums";
+import {
+  GcpCertificateManagerAction,
+  GcpCertificateManagerScope,
+  GcpErrorStatus
+} from "./gcp-certificate-manager-pki-sync-enums";
 import {
   TGcpCertificate,
   TGcpCertificateMapEntry,
@@ -33,11 +38,6 @@ export const { withRateLimitRetry, executeWithConcurrencyLimit } = gcpConnection
 const { sleep } = gcpConnectionQueue;
 
 const PAGE_SIZE = 100;
-
-const MAX_MESSAGE_LENGTH = 255;
-
-const cap = (message: string) =>
-  message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH - 3)}...` : message;
 
 type TGoogleErrorBody = {
   error?: {
@@ -61,6 +61,11 @@ export const getGcpErrorStatus = (error: unknown) => getGoogleError(error)?.stat
 
 export const getGcpHttpStatus = (error: unknown) => getGoogleError(error)?.httpStatus;
 
+const roleGranting = (permission: string) =>
+  permission.endsWith(`.${GcpCertificateManagerAction.Delete}`)
+    ? "roles/certificatemanager.owner"
+    : "roles/certificatemanager.editor";
+
 export const mapGcpError = (
   error: unknown,
   context: { operation: string; gcpProjectId: string; resource?: string; permission?: string }
@@ -69,9 +74,7 @@ export const mapGcpError = (
 
   if (!details) {
     return new PkiSyncError({
-      message: cap(
-        `GCP Certificate Manager ${context.operation} failed: ${error instanceof Error ? error.message : String(error)}`
-      ),
+      message: `GCP Certificate Manager ${context.operation} failed: ${error instanceof Error ? error.message : String(error)}`,
       cause: error instanceof Error ? error : undefined,
       context
     });
@@ -80,53 +83,54 @@ export const mapGcpError = (
   const { httpStatus, status, message } = details;
   const resourceSuffix = context.resource ? ` for ${context.resource}` : "";
 
-  if (status === "PERMISSION_DENIED" || httpStatus === 403) {
+  if (status === GcpErrorStatus.PermissionDenied || httpStatus === 403) {
     if (message.includes("has not been used in project") || message.includes("is disabled")) {
       return new PkiSyncError({
         shouldRetry: false,
-        message: cap(
-          `The Certificate Manager API is not enabled on GCP project "${context.gcpProjectId}". Enable certificatemanager.googleapis.com and try again.`
-        ),
+        message: `The Certificate Manager API is not enabled on GCP project "${context.gcpProjectId}". Enable certificatemanager.googleapis.com and try again.`,
         context
       });
     }
 
+    const permission = context.permission ?? gcpCertificatePermission(GcpCertificateManagerAction.Get);
+
     return new PkiSyncError({
       shouldRetry: false,
-      message: cap(
-        `The app connection's service account is missing the "${context.permission ?? "certificatemanager.certificates.get"}" permission on GCP project "${context.gcpProjectId}". Grant roles/certificatemanager.editor and try again.`
-      ),
+      message: `The app connection's service account is missing the "${permission}" permission on GCP project "${context.gcpProjectId}". Grant ${roleGranting(permission)} and try again.`,
       context
     });
   }
 
-  if (status === "NOT_FOUND" || httpStatus === 404) {
+  if (status === GcpErrorStatus.NotFound || httpStatus === 404) {
     return new PkiSyncError({
       shouldRetry: false,
-      message: cap(
-        `GCP Certificate Manager could not find the requested resource${resourceSuffix} in project "${context.gcpProjectId}". Verify the project, location and certificate map are correct.`
-      ),
+      message: `GCP Certificate Manager could not find the requested resource${resourceSuffix} in project "${context.gcpProjectId}". Verify the project, location and certificate map are correct.`,
       context
     });
   }
 
-  if (status === "RESOURCE_EXHAUSTED" || httpStatus === 429 || httpStatus === 503) {
+  if (status === GcpErrorStatus.ResourceExhausted || httpStatus === 429 || httpStatus === 503) {
     return new PkiSyncError({
-      message: cap(`GCP Certificate Manager rate limited the ${context.operation} request. Infisical will retry.`),
+      message: `GCP Certificate Manager rate limited the ${context.operation} request. Infisical will retry.`,
       context
     });
   }
 
-  if (status === "FAILED_PRECONDITION" || status === "INVALID_ARGUMENT" || httpStatus === 400 || httpStatus === 409) {
+  if (
+    status === GcpErrorStatus.FailedPrecondition ||
+    status === GcpErrorStatus.InvalidArgument ||
+    httpStatus === 400 ||
+    httpStatus === 409
+  ) {
     return new PkiSyncError({
       shouldRetry: false,
-      message: cap(`GCP rejected the ${context.operation}: ${message}${resourceSuffix}`),
+      message: `GCP rejected the ${context.operation}: ${message}${resourceSuffix}`,
       context: { ...context, googleMessage: message }
     });
   }
 
   return new PkiSyncError({
-    message: cap(`GCP Certificate Manager ${context.operation} failed${resourceSuffix}: ${message}`),
+    message: `GCP Certificate Manager ${context.operation} failed${resourceSuffix}: ${message}`,
     context
   });
 };
@@ -134,7 +138,11 @@ export const mapGcpError = (
 export const isCertificateInUseError = (error: unknown) => {
   const details = getGoogleError(error);
   if (!details) return false;
-  if (details.status !== "FAILED_PRECONDITION" && details.httpStatus !== 400 && details.httpStatus !== 409) {
+  if (
+    details.status !== GcpErrorStatus.FailedPrecondition &&
+    details.httpStatus !== 400 &&
+    details.httpStatus !== 409
+  ) {
     return false;
   }
 
@@ -309,7 +317,7 @@ export const createGcpCertificateManagerClient = ({
       );
       await awaitOperation(data, `certificate creation (${certificateId})`);
     } catch (error) {
-      if (getGcpErrorStatus(error) !== "ALREADY_EXISTS" && getGcpHttpStatus(error) !== 409) throw error;
+      if (getGcpErrorStatus(error) !== GcpErrorStatus.AlreadyExists && getGcpHttpStatus(error) !== 409) throw error;
       await patchCertificate();
     }
   };
@@ -331,6 +339,23 @@ export const createGcpCertificateManagerClient = ({
       truncationMessage: `Stopped listing GCP certificate map entries after ${GCP_MAX_LIST_PAGES} pages; some entries were not returned`,
       logContext: { certificateMap }
     });
+
+  const getCertificateMapEntry = async (certificateMap: string, entryId: string) => {
+    try {
+      const { data } = await withRateLimitRetry(
+        () =>
+          request.get<TGcpCertificateMapEntry>(
+            `${globalPath}/certificateMaps/${certificateMap}/certificateMapEntries/${entryId}`,
+            { headers }
+          ),
+        { operation: "get-certificate-map-entry", syncId, identifier: entryId }
+      );
+      return data;
+    } catch (error) {
+      if (getGcpErrorStatus(error) === GcpErrorStatus.NotFound || getGcpHttpStatus(error) === 404) return undefined;
+      throw error;
+    }
+  };
 
   const createCertificateMapEntry = async ({
     certificateMap,
@@ -424,6 +449,7 @@ export const createGcpCertificateManagerClient = ({
     upsertCertificate,
     deleteCertificate,
     listCertificateMapEntries,
+    getCertificateMapEntry,
     createCertificateMapEntry,
     updateCertificateMapEntryCertificates,
     deleteCertificateMapEntry,

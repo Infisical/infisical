@@ -27,10 +27,14 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
 
   | Role | Needed for |
   | --- | --- |
-  | Certificate Manager Editor (`roles/certificatemanager.editor`) | Uploading and rotating certificates, and maintaining certificate map entries |
+  | Certificate Manager Editor (`roles/certificatemanager.editor`) | Uploading and rotating certificates, and creating certificate map entries |
   | Service Usage Viewer (`roles/serviceusage.serviceUsageViewer`) | Listing the projects that have Certificate Manager enabled |
   | Browser (`roles/browser`) | Showing the project in the sync form |
-  | Certificate Manager Owner (`roles/certificatemanager.owner`) | Removing certificates, only if you enable removal on the sync |
+  | Certificate Manager Owner (`roles/certificatemanager.owner`) | Anything that deletes: removing certificates, and replacing or removing certificate map entries |
+
+<Warning>
+  `roles/certificatemanager.editor` grants no delete permissions at all. Grant Owner if you enable certificate map binding, even with removal turned off: changing the hostname on a bound sync replaces the map entry, and switching or unbinding the map removes the old one. Both are deletes.
+</Warning>
 
 <Note>
   If you manage several GCP projects, make sure the APIs and roles are applied to the project that will hold your certificates, not to whichever project you happen to have open.
@@ -148,7 +152,20 @@ GCP Certificate Manager resource IDs must start with a letter, contain only lowe
 
 If you use `{{commonName}}` or `{{applicationName}}` in the schema, their values are lowercased and any other character becomes a hyphen, so `API.Example.com` becomes `api-example-com`.
 
-A compiled name longer than 63 characters is trimmed from the front, so the per-certificate identifier at the end always survives and two certificates can never collapse onto one GCP certificate. Use `{{shortCertificateId}}` if you want short names that stay fully readable.
+A compiled name longer than 63 characters is shortened: it keeps its first 54 characters and ends with a hyphen and 8 characters of a hash of the whole name. **The start of the name is what survives, and the end is replaced.** The hash is what keeps two certificates from ever collapsing onto one GCP certificate, so nothing depends on any particular placeholder surviving.
+
+Only `{{commonName}}` and `{{applicationName}}` can push a name over the limit, because every other placeholder has a fixed length that Infisical already checks when you save the sync.
+
+For example, with the schema `{{commonName}}-{{certificateId}}` and the common name `checkout-service-eu-west-1.payments.internal.example.com`:
+
+```
+compiled  checkout-service-eu-west-1-payments-internal-example-com-550e8400e29b41d4a716446655440000
+in GCP    checkout-service-eu-west-1-payments-internal-example-c-3e574b24
+```
+
+The certificate ID is gone entirely. A second certificate for the same common name keeps the same first 54 characters and differs only in the hash, so the two never collide.
+
+Put the identifier first if you want it visible in GCP, or use `{{shortCertificateId}}` to keep names short enough that they are never shortened at all.
 
 ## Labels
 
@@ -193,7 +210,18 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 
 **Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
 
-When disabled, a renewal or a name change creates a new GCP certificate and deletes the old one. If a certificate map entry references the old certificate, Infisical repoints its own entry before deleting. Anything else pointing at the old certificate has to be repointed manually, and GCP refuses to delete a certificate that is still referenced.
+When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove Expired/Revoked Certificates**:
+
+- **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical repoints its own entry first. Anything else pointing at the old certificate has to be repointed manually, and GCP refuses to delete a certificate that is still referenced.
+- **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it is no longer tracked by the sync.
+
+<Note>
+  The sync form leaves removal off when you create a sync in the UI. The API leaves it **on** when the field is omitted, so a sync created with Terraform or a script deletes replaced certificates unless you set `canRemoveCertificates` to `false` explicitly.
+</Note>
+
+<Warning>
+  Turning off preserve-on-renewal while leaving removal disabled means every renewal adds a certificate to your GCP project and none are ever removed. GCP allows 1,000 self-managed certificates per project for global certificates and 100 per region. Either leave preserve-on-renewal on, or enable removal so the replaced certificates are cleaned up.
+</Warning>
 
 ## Partial Failures
 

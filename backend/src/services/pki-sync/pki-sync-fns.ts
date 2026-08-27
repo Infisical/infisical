@@ -26,10 +26,13 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-constants";
 import { gcpCertificateManagerPkiSyncFactory } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-fns";
-import { TGcpCertificateManagerPkiSyncConfig } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-types";
+import {
+  TGcpCertificateManagerPkiSyncConfig,
+  TGcpCertificateManagerPkiSyncConfigUpdate
+} from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-types";
 import {
   assertGcpCertificateManagerCertificateCount,
-  assertGcpCertificateManagerConfigUpdate
+  resolveGcpCertificateManagerConfigUpdate
 } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-update-fns";
 import { KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-constants";
 import { kempLoadMasterPkiSyncFactory } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-fns";
@@ -108,17 +111,19 @@ export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefi
   return undefined;
 };
 
-export const assertPkiSyncDestinationConfigUpdate = (
+export const resolvePkiSyncDestinationConfigUpdate = (
   destination: PkiSync,
   previousConfig: Record<string, unknown>,
   nextConfig: Record<string, unknown>
-) => {
+): Record<string, unknown> => {
   if (destination === PkiSync.GcpCertificateManager) {
-    assertGcpCertificateManagerConfigUpdate(
+    return resolveGcpCertificateManagerConfigUpdate(
       previousConfig as TGcpCertificateManagerPkiSyncConfig,
-      nextConfig as TGcpCertificateManagerPkiSyncConfig
-    );
+      nextConfig as TGcpCertificateManagerPkiSyncConfigUpdate
+    ) as Record<string, unknown>;
   }
+
+  return nextConfig;
 };
 
 export const assertPkiSyncDestinationConfigAllowsCertificateCount = (
@@ -138,7 +143,7 @@ export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): da
   return schema.safeParse(data).success;
 };
 
-const MAX_SYNC_MESSAGE_LENGTH = 255;
+const MAX_SYNC_MESSAGE_LENGTH = 1024;
 
 export const truncateSyncMessage = (message: string): string =>
   message.length > MAX_SYNC_MESSAGE_LENGTH ? `${message.slice(0, MAX_SYNC_MESSAGE_LENGTH - 3)}...` : message;

@@ -23,12 +23,18 @@ import {
   GCP_MANAGED_BY_LABEL_KEY,
   GCP_MANAGED_BY_LABEL_VALUE,
   GCP_MAX_CERTIFICATES_PER_MAP_ENTRY,
-  GCP_PRIMARY_MATCHER
+  GCP_PRIMARY_MATCHER,
+  gcpCertificateMapEntryPermission,
+  gcpCertificateMapPermission,
+  gcpCertificatePermission
 } from "./gcp-certificate-manager-pki-sync-constants";
-import { GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-enums";
+import {
+  GcpCertificateManagerAction,
+  GcpCertificateManagerScope,
+  GcpErrorStatus
+} from "./gcp-certificate-manager-pki-sync-enums";
 import { assertKeyAlgorithmSupported } from "./gcp-certificate-manager-pki-sync-key-fns";
 import {
-  buildGcpCertificateMapEntryResourceName,
   buildGcpCertificateResourceName,
   toGcpCertificateId,
   toGcpCertificateMapEntryId
@@ -102,6 +108,14 @@ const buildPemChain = (cert: string, certificateChain?: string) => {
   return chain ? `${leaf}\n${chain}` : leaf;
 };
 
+const GCP_MAP_ENTRY_OPERATION: Record<GcpCertificateManagerAction, string> = {
+  [GcpCertificateManagerAction.Get]: "certificate map entry lookup",
+  [GcpCertificateManagerAction.List]: "certificate map entry list",
+  [GcpCertificateManagerAction.Create]: "certificate map entry creation",
+  [GcpCertificateManagerAction.Update]: "certificate map entry update",
+  [GcpCertificateManagerAction.Delete]: "certificate map entry deletion"
+};
+
 export const gcpCertificateManagerPkiSyncFactory = ({
   certificateSyncDAL,
   certificateDAL
@@ -131,21 +145,18 @@ export const gcpCertificateManagerPkiSyncFactory = ({
   }) => {
     const { certificateMap, hostname } = certificateMapBinding;
     const entryId = toGcpCertificateMapEntryId(pkiSync.id);
-    const entryResourceName = buildGcpCertificateMapEntryResourceName({ gcpProjectId, certificateMap, entryId });
 
-    let entries: Map<string, TGcpCertificateMapEntry>;
+    let existingEntry: TGcpCertificateMapEntry | undefined;
     try {
-      entries = await client.listCertificateMapEntries(certificateMap);
+      existingEntry = await client.getCertificateMapEntry(certificateMap, entryId);
     } catch (error) {
       throw mapGcpError(error, {
-        operation: "certificate map entry list",
+        operation: "certificate map entry lookup",
         gcpProjectId,
-        resource: `certificate map "${certificateMap}"`,
-        permission: "certificatemanager.certificatemapentries.list"
+        resource: `certificate map entry "${entryId}" in map "${certificateMap}"`,
+        permission: gcpCertificateMapEntryPermission(GcpCertificateManagerAction.Get)
       });
     }
-
-    const existingEntry = entries.get(entryResourceName);
 
     const desiredResourceNames = Array.from(
       new Set([
@@ -161,7 +172,21 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       });
     }
 
-    if (!existingEntry && !hostname) {
+    const willBecomePrimary = !hostname && existingEntry?.matcher !== GCP_PRIMARY_MATCHER;
+
+    if (willBecomePrimary) {
+      let entries: Map<string, TGcpCertificateMapEntry>;
+      try {
+        entries = await client.listCertificateMapEntries(certificateMap);
+      } catch (error) {
+        throw mapGcpError(error, {
+          operation: "certificate map entry list",
+          gcpProjectId,
+          resource: `certificate map "${certificateMap}"`,
+          permission: gcpCertificateMapEntryPermission(GcpCertificateManagerAction.List)
+        });
+      }
+
       const conflictingPrimary = Array.from(entries.values()).find((entry) => entry.matcher === GCP_PRIMARY_MATCHER);
       if (conflictingPrimary) {
         throw new PkiSyncError({
@@ -172,6 +197,8 @@ export const gcpCertificateManagerPkiSyncFactory = ({
         });
       }
     }
+
+    let attempted = existingEntry ? GcpCertificateManagerAction.Update : GcpCertificateManagerAction.Create;
 
     try {
       if (!existingEntry) {
@@ -189,7 +216,9 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       // means deleting and recreating rather than patching
       const desiredMatcher = hostname ? undefined : GCP_PRIMARY_MATCHER;
       if (existingEntry.hostname !== hostname || existingEntry.matcher !== desiredMatcher) {
+        attempted = GcpCertificateManagerAction.Delete;
         await client.deleteCertificateMapEntry({ certificateMap, entryId });
+        attempted = GcpCertificateManagerAction.Create;
         await client.createCertificateMapEntry({
           certificateMap,
           entryId,
@@ -211,12 +240,10 @@ export const gcpCertificateManagerPkiSyncFactory = ({
     } catch (error) {
       if (error instanceof PkiSyncError) throw error;
       throw mapGcpError(error, {
-        operation: existingEntry ? "certificate map entry update" : "certificate map entry creation",
+        operation: GCP_MAP_ENTRY_OPERATION[attempted],
         gcpProjectId,
         resource: `certificate map entry "${entryId}"`,
-        permission: existingEntry
-          ? "certificatemanager.certificatemapentries.update"
-          : "certificatemanager.certificatemapentries.create"
+        permission: gcpCertificateMapEntryPermission(attempted)
       });
     }
   };
@@ -240,20 +267,16 @@ export const gcpCertificateManagerPkiSyncFactory = ({
   }) => {
     if (certificateMapBinding) {
       const entryId = toGcpCertificateMapEntryId(pkiSync.id);
-      const entryResourceName = buildGcpCertificateMapEntryResourceName({
-        gcpProjectId,
-        certificateMap: certificateMapBinding.certificateMap,
-        entryId
-      });
+      let attempted = GcpCertificateManagerAction.Get;
 
       try {
-        const entries = await client.listCertificateMapEntries(certificateMapBinding.certificateMap);
-        const entry = entries.get(entryResourceName);
+        const entry = await client.getCertificateMapEntry(certificateMapBinding.certificateMap, entryId);
 
         if (entry && isInfisicalManaged(entry.labels) && entry.certificates?.includes(resourceName)) {
           const remaining = entry.certificates.filter((name) => name !== resourceName);
 
           if (remaining.length) {
+            attempted = GcpCertificateManagerAction.Update;
             await client.updateCertificateMapEntryCertificates({
               certificateMap: certificateMapBinding.certificateMap,
               entryId,
@@ -261,6 +284,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
               labels: entry.labels ?? {}
             });
           } else {
+            attempted = GcpCertificateManagerAction.Delete;
             await client.deleteCertificateMapEntry({
               certificateMap: certificateMapBinding.certificateMap,
               entryId
@@ -270,10 +294,10 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       } catch (error) {
         if (error instanceof PkiSyncError) throw error;
         throw mapGcpError(error, {
-          operation: "certificate map entry detach",
+          operation: GCP_MAP_ENTRY_OPERATION[attempted],
           gcpProjectId,
           resource: `certificate map entry "${entryId}" in map "${certificateMapBinding.certificateMap}"`,
-          permission: "certificatemanager.certificatemapentries.update"
+          permission: gcpCertificateMapEntryPermission(attempted)
         });
       }
     }
@@ -283,7 +307,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
     } catch (error) {
       if (error instanceof PkiSyncError) throw error;
 
-      if (getGcpErrorStatus(error) === "NOT_FOUND" || getGcpHttpStatus(error) === 404) return;
+      if (getGcpErrorStatus(error) === GcpErrorStatus.NotFound || getGcpHttpStatus(error) === 404) return;
 
       if (isCertificateInUseError(error)) {
         throw new PkiSyncError({
@@ -296,7 +320,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
         operation: "certificate deletion",
         gcpProjectId,
         resource: `certificate "${certificateId}"`,
-        permission: "certificatemanager.certificates.delete"
+        permission: gcpCertificatePermission(GcpCertificateManagerAction.Delete)
       });
     }
   };
@@ -327,14 +351,19 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       });
     });
 
+    const failedReaps: string[] = [];
+
     for (const [name, certificateMap] of orphans) {
       try {
         await client.deleteCertificateMapEntry({ certificateMap, entryId });
         logger.info({ syncId: pkiSync.id, entry: name }, "Removed orphaned GCP certificate map entry");
       } catch (error) {
+        failedReaps.push(`"${entryId}" in map "${certificateMap}"`);
         logger.warn({ syncId: pkiSync.id, entry: name, error }, "Failed to remove orphaned GCP certificate map entry");
       }
     }
+
+    return failedReaps;
   };
 
   const $planCertificate = async ({
@@ -498,8 +527,8 @@ export const gcpCertificateManagerPkiSyncFactory = ({
         gcpProjectId,
         resource: `certificate "${target.certificateId}"`,
         permission: target.shouldPatch
-          ? "certificatemanager.certificates.update"
-          : "certificatemanager.certificates.create"
+          ? gcpCertificatePermission(GcpCertificateManagerAction.Update)
+          : gcpCertificatePermission(GcpCertificateManagerAction.Create)
       });
     }
 
@@ -622,7 +651,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
           operation: "certificate map lookup",
           gcpProjectId,
           resource: `certificate map "${certificateMapBinding.certificateMap}"`,
-          permission: "certificatemanager.certificatemaps.get"
+          permission: gcpCertificateMapPermission(GcpCertificateManagerAction.Get)
         });
       }
     }
@@ -634,7 +663,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       throw mapGcpError(error, {
         operation: "certificate list",
         gcpProjectId,
-        permission: "certificatemanager.certificates.list"
+        permission: gcpCertificatePermission(GcpCertificateManagerAction.List)
       });
     }
 
@@ -671,17 +700,17 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       (result): result is PromiseFulfilledResult<TUploadTarget> => result.status === "fulfilled"
     );
 
-    const failedUploads = uploadResults
+    const failedUploadTargets = uploadResults
       .map((result, index) => ({ result, target: uploadTargets[index] }))
-      .filter(({ result }) => result.status === "rejected")
-      .map(({ result, target }) => ({
-        target,
-        name: target?.key ?? "unknown",
-        error:
-          (result as PromiseRejectedResult).reason instanceof Error
-            ? ((result as PromiseRejectedResult).reason as Error).message
-            : "Unknown error"
-      }));
+      .filter(({ result }) => result.status === "rejected");
+
+    const failedUploads = failedUploadTargets.map(({ result, target }) => ({
+      name: target?.key ?? "unknown",
+      error:
+        (result as PromiseRejectedResult).reason instanceof Error
+          ? ((result as PromiseRejectedResult).reason as Error).message
+          : "Unknown error"
+    }));
 
     let failedMapEntry: string | undefined;
     if (certificateMapBinding && successfulUploads.length) {
@@ -694,7 +723,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
           certificateResourceNames: successfulUploads.map(({ value }) => value.resourceName),
           retainResourceNames: [
             ...retainResourceNames,
-            ...failedUploads.flatMap(({ target }) => $servingResourceName(target) ?? [])
+            ...failedUploadTargets.flatMap(({ target }) => $servingResourceName(target) ?? [])
           ],
           userLabels
         });
@@ -707,6 +736,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       }
     }
 
+    let failedReaps: string[] = [];
     const mapEntryOutOfSync =
       Boolean(certificateMapBinding) &&
       (Boolean(failedMapEntry) || (uploadTargets.length > 0 && !successfulUploads.length));
@@ -717,7 +747,7 @@ export const gcpCertificateManagerPkiSyncFactory = ({
         "Skipping GCP certificate map entry cleanup because the entry could not be brought up to date"
       );
     } else {
-      await $reapOrphanedMapEntries({
+      failedReaps = await $reapOrphanedMapEntries({
         client,
         pkiSync,
         certificates: existingCertificates,
@@ -753,11 +783,23 @@ export const gcpCertificateManagerPkiSyncFactory = ({
 
     const details: TPkiSyncSyncResult["details"] = {};
     if (skippedCertificates.length) details.skippedCertificates = skippedCertificates;
-    if (failedUploads.length) details.failedUploads = failedUploads.map(({ name, error }) => ({ name, error }));
+    if (failedUploads.length) details.failedUploads = failedUploads;
     if (failedRemovals.length) details.failedRemovals = failedRemovals;
-    const partialFailureMessage = failedMapEntry
-      ? `${successfulUploads.length} certificate(s) reached GCP Certificate Manager, but the certificate map entry could not be updated: ${failedMapEntry}`
-      : undefined;
+    const buildPartialFailureMessage = () => {
+      if (failedMapEntry) {
+        return `${successfulUploads.length} certificate(s) reached GCP Certificate Manager, but the certificate map entry could not be updated: ${failedMapEntry}`;
+      }
+
+      if (failedReaps.length) {
+        return `${successfulUploads.length} certificate(s) reached GCP Certificate Manager, but ${failedReaps.length} certificate map entry from a previous binding could not be removed (${failedReaps.join(
+          ", "
+        )}). Those entries keep serving the certificate they already point at.`;
+      }
+
+      return undefined;
+    };
+
+    const partialFailureMessage = buildPartialFailureMessage();
 
     return {
       uploaded: successfulUploads.length,

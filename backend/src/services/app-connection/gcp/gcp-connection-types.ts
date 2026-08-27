@@ -70,12 +70,7 @@ export type GCPGetCertificateMapsRes = {
   nextPageToken?: string;
 };
 
-export type TGetGcpCertificateManagerLocationsDTO = {
-  connectionId: string;
-  gcpProjectId: string;
-};
-
-export type TGetGcpCertificateMapsDTO = {
+export type TGcpCertificateManagerProjectScopedDTO = {
   connectionId: string;
   gcpProjectId: string;
 };

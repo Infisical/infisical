@@ -1,11 +1,15 @@
 import { BadRequestError } from "@app/lib/errors";
 
 import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "./gcp-certificate-manager-pki-sync-constants";
-import { TGcpCertificateManagerPkiSyncConfig } from "./gcp-certificate-manager-pki-sync-types";
+import { GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-enums";
+import {
+  TGcpCertificateManagerPkiSyncConfig,
+  TGcpCertificateManagerPkiSyncConfigUpdate
+} from "./gcp-certificate-manager-pki-sync-types";
 
-export const assertGcpCertificateManagerConfigUpdate = (
+export const resolveGcpCertificateManagerConfigUpdate = (
   previous: TGcpCertificateManagerPkiSyncConfig,
-  next: TGcpCertificateManagerPkiSyncConfig
+  next: TGcpCertificateManagerPkiSyncConfigUpdate
 ) => {
   if (previous.gcpProjectId && next.gcpProjectId && next.gcpProjectId !== previous.gcpProjectId) {
     throw new BadRequestError({
@@ -24,6 +28,15 @@ export const assertGcpCertificateManagerConfigUpdate = (
       message: `The scope cannot be changed after a GCP Certificate Manager sync is created, because a GCP certificate's scope is immutable. Create a new sync with the "${next.scope}" scope instead.`
     });
   }
+
+  const effectiveScope = next.scope ?? previous.scope;
+  if (next.certificateMapBinding && effectiveScope && effectiveScope !== GcpCertificateManagerScope.Default) {
+    throw new BadRequestError({
+      message: `Certificate map binding requires the Default scope, but this sync uses "${effectiveScope}". A certificate map entry can only reference a Default-scope certificate.`
+    });
+  }
+
+  return { ...next, ...(effectiveScope ? { scope: effectiveScope } : {}) };
 };
 
 export const buildGcpTooManyCertificatesMessage = (certificateMap: string, certificateCount: number) =>

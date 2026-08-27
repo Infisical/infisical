@@ -27,11 +27,11 @@ import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
   assertPkiSyncDestinationConfigAllowsCertificateCount,
-  assertPkiSyncDestinationConfigUpdate,
   enterprisePkiSyncCheck,
   getPkiSyncMaxCertificates,
   getPkiSyncProviderCapabilities,
-  listPkiSyncOptions
+  listPkiSyncOptions,
+  resolvePkiSyncDestinationConfigUpdate
 } from "./pki-sync-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import {
@@ -477,9 +477,13 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
-    if (destinationConfig) {
-      assertPkiSyncDestinationConfigUpdate(pkiSync.destination, pkiSync.destinationConfig ?? {}, destinationConfig);
-    }
+    const resolvedDestinationConfig = destinationConfig
+      ? resolvePkiSyncDestinationConfigUpdate(
+          pkiSync.destination as PkiSync,
+          pkiSync.destinationConfig ?? {},
+          destinationConfig
+        )
+      : undefined;
 
     let effectiveConnection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined;
     if (connectionId && connectionId !== pkiSync.connectionId) {
@@ -510,7 +514,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
-    const effectiveDestinationConfig = (destinationConfig ?? pkiSync.destinationConfig) as
+    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
       | Record<string, unknown>
       | undefined;
 
@@ -561,7 +565,7 @@ export const pkiSyncServiceFactory = ({
       name,
       description,
       isAutoSyncEnabled,
-      destinationConfig,
+      destinationConfig: resolvedDestinationConfig,
       syncOptions: resolvedSyncOptions,
       subscriberId,
       connectionId,

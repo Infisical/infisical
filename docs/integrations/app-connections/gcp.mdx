@@ -101,7 +101,7 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
                     --project=PROJECT_ID
                 ```
 
-                Certificate Manager Owner is only needed if you enable certificate removal on a sync.
+                Certificate Manager Owner is needed if you enable certificate removal on a sync, or if you attach a sync to a certificate map. `roles/certificatemanager.editor` grants no delete permissions, and maintaining a map entry replaces or removes it.
             </Tab>
         </Tabs>
         After configuring the appropriate roles, press "DONE".

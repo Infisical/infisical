@@ -2,9 +2,10 @@ import { GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-e
 import {
   CreateGcpCertificateManagerPkiSyncSchema,
   GcpCertificateManagerPkiSyncConfigSchema,
-  GcpCertificateManagerPkiSyncOptionsSchema
+  GcpCertificateManagerPkiSyncOptionsSchema,
+  UpdateGcpCertificateManagerPkiSyncSchema
 } from "./gcp-certificate-manager-pki-sync-schemas";
-import { assertGcpCertificateManagerConfigUpdate } from "./gcp-certificate-manager-pki-sync-update-fns";
+import { resolveGcpCertificateManagerConfigUpdate } from "./gcp-certificate-manager-pki-sync-update-fns";
 
 const parseConfig = (overrides: Record<string, unknown> = {}) =>
   GcpCertificateManagerPkiSyncConfigSchema.safeParse({
@@ -209,12 +210,58 @@ describe("GCP Certificate Manager create schema", () => {
   });
 });
 
-describe("assertGcpCertificateManagerConfigUpdate", () => {
+describe("updating a sync whose scope is not the default", () => {
+  const stored = { gcpProjectId: "my-prod-project", location: "global", scope: GcpCertificateManagerScope.EdgeCache };
+
+  const parseUpdate = (destinationConfig: Record<string, unknown>) =>
+    UpdateGcpCertificateManagerPkiSyncSchema.safeParse({ destinationConfig });
+
+  test("an update that leaves scope out means unchanged, not 'set it to default'", () => {
+    const parsed = parseUpdate({ gcpProjectId: "my-prod-project", location: "global" });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.destinationConfig?.scope).toBeUndefined();
+
+    const resolved = resolveGcpCertificateManagerConfigUpdate(
+      stored,
+      parsed.success ? parsed.data.destinationConfig! : stored
+    );
+
+    expect(resolved.scope).toBe(GcpCertificateManagerScope.EdgeCache);
+  });
+
+  test("still rejects an explicit scope change", () => {
+    const parsed = parseUpdate({
+      gcpProjectId: "my-prod-project",
+      location: "global",
+      scope: GcpCertificateManagerScope.Default
+    });
+
+    expect(() =>
+      resolveGcpCertificateManagerConfigUpdate(stored, parsed.success ? parsed.data.destinationConfig! : stored)
+    ).toThrow(/scope cannot be changed/);
+  });
+
+  test("still rejects adding a certificate map binding, judged against the stored scope", () => {
+    const parsed = parseUpdate({
+      gcpProjectId: "my-prod-project",
+      location: "global",
+      certificateMapBinding: { certificateMap: "prod-map" }
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(() =>
+      resolveGcpCertificateManagerConfigUpdate(stored, parsed.success ? parsed.data.destinationConfig! : stored)
+    ).toThrow(/requires the Default scope/);
+  });
+});
+
+describe("resolveGcpCertificateManagerConfigUpdate", () => {
   const previous = { gcpProjectId: "my-prod-project", location: "global", scope: GcpCertificateManagerScope.Default };
 
   test("allows updates that leave the immutable fields alone", () => {
     expect(() =>
-      assertGcpCertificateManagerConfigUpdate(previous, {
+      resolveGcpCertificateManagerConfigUpdate(previous, {
         ...previous,
         certificateMapBinding: { certificateMap: "prod-map" }
       })
@@ -222,20 +269,20 @@ describe("assertGcpCertificateManagerConfigUpdate", () => {
   });
 
   test("rejects a location change", () => {
-    expect(() => assertGcpCertificateManagerConfigUpdate(previous, { ...previous, location: "us-central1" })).toThrow(
+    expect(() => resolveGcpCertificateManagerConfigUpdate(previous, { ...previous, location: "us-central1" })).toThrow(
       /location is immutable/
     );
   });
 
   test("rejects a scope change", () => {
     expect(() =>
-      assertGcpCertificateManagerConfigUpdate(previous, { ...previous, scope: GcpCertificateManagerScope.EdgeCache })
+      resolveGcpCertificateManagerConfigUpdate(previous, { ...previous, scope: GcpCertificateManagerScope.EdgeCache })
     ).toThrow(/scope is immutable/);
   });
 
   test("rejects a project change", () => {
     expect(() =>
-      assertGcpCertificateManagerConfigUpdate(previous, { ...previous, gcpProjectId: "other-project" })
+      resolveGcpCertificateManagerConfigUpdate(previous, { ...previous, gcpProjectId: "other-project" })
     ).toThrow(/GCP project cannot be changed/);
   });
 });

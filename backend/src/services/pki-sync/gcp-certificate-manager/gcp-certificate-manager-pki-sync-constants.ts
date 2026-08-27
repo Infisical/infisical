@@ -4,7 +4,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { RateLimitConfig } from "@app/services/connection-queue";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
-import { GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-enums";
+import { GcpCertificateManagerAction, GcpCertificateManagerScope } from "./gcp-certificate-manager-pki-sync-enums";
 
 const GCP_CERTIFICATE_MANAGER_NAME_REGEX_SOURCE = "^[a-z][a-z0-9-]{0,62}$";
 
@@ -85,3 +85,9 @@ export const GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION = {
   maxCertificateNameLength: GCP_CERTIFICATE_MANAGER_NAMING.MAX_NAME_LENGTH,
   minCertificateNameLength: GCP_CERTIFICATE_MANAGER_NAMING.MIN_NAME_LENGTH
 } as const;
+
+export const gcpCertificatePermission = (action: GcpCertificateManagerAction) => `certificatemanager.certs.${action}`;
+export const gcpCertificateMapPermission = (action: GcpCertificateManagerAction) =>
+  `certificatemanager.certmaps.${action}`;
+export const gcpCertificateMapEntryPermission = (action: GcpCertificateManagerAction) =>
+  `certificatemanager.certmapentries.${action}`;

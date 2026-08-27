@@ -1,5 +1,4 @@
 import {
-  buildGcpCertificateMapEntryResourceName,
   buildGcpCertificateResourceName,
   toGcpCertificateId,
   toGcpCertificateMapEntryId
@@ -25,8 +24,17 @@ describe("toGcpCertificateId", () => {
     expect(toGcpCertificateId(".infisical.")).toBe("infisical");
   });
 
-  test("truncates to 63 characters", () => {
+  test("shortens to 63 characters", () => {
     expect(toGcpCertificateId("a".repeat(80))).toHaveLength(63);
+  });
+
+  test("keeps the start of the name and replaces the end, not the other way round", () => {
+    const tail = "550e8400e29b41d4a716446655440000";
+    const shortened = toGcpCertificateId(`checkout-service-eu-west-1-payments-internal-example-com-${tail}`);
+
+    expect(shortened).toBe("checkout-service-eu-west-1-payments-internal-example-c-3e574b24");
+    expect(shortened).not.toContain(tail);
+    expect(shortened.startsWith("checkout-service")).toBe(true);
   });
 
   test("keeps the leading letter and stays unique when the compiled name is too long", () => {
@@ -84,15 +92,5 @@ describe("resource name builders", () => {
         certificateId: "infisical-abc"
       })
     ).toBe("projects/my-prod-project/locations/global/certificates/infisical-abc");
-  });
-
-  test("always builds certificate map entry names under the global location", () => {
-    expect(
-      buildGcpCertificateMapEntryResourceName({
-        gcpProjectId: "my-prod-project",
-        certificateMap: "prod-map",
-        entryId: "infisical-entry"
-      })
-    ).toBe("projects/my-prod-project/locations/global/certificateMaps/prod-map/certificateMapEntries/infisical-entry");
   });
 });

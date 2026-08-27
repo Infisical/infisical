@@ -89,7 +89,7 @@ export const GcpCertificateManagerSyncOptions = () => {
     <>
       <PreserveItemOnRenewalField
         label="Preserve certificate on renewal"
-        description="When enabled, an existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the name against later edits to the certificate name schema. When disabled, a renewal or a name change creates a new GCP certificate and deletes the old one, which requires repointing anything that referenced it."
+        description="When enabled, an existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the name against later edits to the certificate name schema. When disabled, a renewal or a name change creates a new GCP certificate under a new name, and the old one is only deleted if you also enable removal below. With removal off, replaced certificates stay in your GCP project and count against its limit."
       />
       <Field className="mb-4">
         <Field orientation="horizontal">

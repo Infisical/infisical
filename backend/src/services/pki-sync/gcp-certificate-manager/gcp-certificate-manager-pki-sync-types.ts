@@ -5,12 +5,15 @@ import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-
 import {
   CreateGcpCertificateManagerPkiSyncSchema,
   GcpCertificateManagerPkiSyncConfigSchema,
+  GcpCertificateManagerPkiSyncConfigUpdateSchema,
   GcpCertificateManagerPkiSyncOptionsSchema,
   GcpCertificateManagerPkiSyncSchema,
   UpdateGcpCertificateManagerPkiSyncSchema
 } from "./gcp-certificate-manager-pki-sync-schemas";
 
 export type TGcpCertificateManagerPkiSyncConfig = z.infer<typeof GcpCertificateManagerPkiSyncConfigSchema>;
+
+export type TGcpCertificateManagerPkiSyncConfigUpdate = z.infer<typeof GcpCertificateManagerPkiSyncConfigUpdateSchema>;
 
 export type TGcpCertificateManagerPkiSyncOptions = z.infer<typeof GcpCertificateManagerPkiSyncOptionsSchema>;
 
@@ -45,12 +48,6 @@ export type TGcpCertificateMapEntry = {
   hostname?: string;
   matcher?: string;
   state?: string;
-};
-
-export type TGcpCertificateMap = {
-  name: string;
-  description?: string;
-  labels?: Record<string, string>;
 };
 
 export type TGcpOperationStatus = {
