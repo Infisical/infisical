@@ -151,6 +151,20 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  // A request attributes its requester to exactly one column: a user or a machine identity.
+  // Actor ids are unique across orgs but an actor can hold tokens for several, and a requester
+  // match skips the permission check, so the token's org has to match too.
+  const $isRequester = (
+    request: { organizationId: string; requesterId?: string | null; machineIdentityId?: string | null },
+    actor: OrgServiceActor
+  ) => {
+    if (request.organizationId !== actor.orgId) return false;
+
+    return actor.type === ActorType.IDENTITY
+      ? request.machineIdentityId === actor.id
+      : request.requesterId === actor.id;
+  };
+
   const $decorateRequest = async <
     R extends {
       id: string;
@@ -1022,7 +1036,7 @@ export const approvalPolicyServiceFactory = ({
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
-    const isRequester = request.requesterId === actor.id;
+    const isRequester = $isRequester(request, actor);
 
     // Check if user is an eligible approver for any step
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
@@ -1403,7 +1417,7 @@ export const approvalPolicyServiceFactory = ({
       const userGroupIds = await ctx.getUserGroupIds();
 
       return requests.filter((request) => {
-        if (request.requesterId === actor.id) return true;
+        if ($isRequester(request, actor)) return true;
         return request.steps.some((step) =>
           step.approvers.some(
             (approver) =>
@@ -1457,7 +1471,7 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Request is not pending" });
     }
 
-    if (request.requesterId !== actor.id) {
+    if (!$isRequester(request, actor)) {
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
     }
 

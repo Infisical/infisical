@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 
 import {
@@ -118,6 +120,8 @@ const addAcceptedUsersToGroup = async ({
         });
       }
 
+      recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "project_bot" });
+      logger.info(`Legacy root key used to read a project bot key for group sync [projectId=${project.id}]`);
       const botPrivateKey = crypto
         .encryption()
         .symmetric()

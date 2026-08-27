@@ -19,6 +19,7 @@ import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-po
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
@@ -105,10 +106,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  gatewayPoolService: Pick<
-    TGatewayPoolServiceFactory,
-    "getPlatformConnectionDetailsByPoolId" | "pickRandomHealthyGateway"
-  >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -152,47 +150,59 @@ export const identityKubernetesAuthServiceFactory = ({
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = inputs.gatewayPoolId
-      ? await gatewayPoolService.getPlatformConnectionDetailsByPoolId({
-          poolId: inputs.gatewayPoolId,
-          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
-          targetPort: inputs.targetPort ?? 443
-        })
-      : await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-          gatewayId: inputs.gatewayId!,
-          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
-          targetPort: inputs.targetPort ?? 443
-        });
+    let gatewayHttpsAgent: https.Agent | undefined;
+    if (!inputs.reviewTokenThroughGateway) {
+      gatewayHttpsAgent = new https.Agent({
+        ca: inputs.caCert || undefined,
+        rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+        servername: inputs.targetHost
+      });
+    }
 
-    if (gatewayV2ConnectionDetails) {
-      let httpsAgent: https.Agent | undefined;
-      if (!inputs.reviewTokenThroughGateway) {
-        httpsAgent = new https.Agent({
-          ca: inputs.caCert || undefined,
-          rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
-          servername: inputs.targetHost
-        });
-      }
-
-      const callbackResult = await withGatewayV2Proxy(
+    const $proxyThroughGatewayV2 = async (details: TGatewayV2ConnectionDetails) =>
+      withGatewayV2Proxy(
         async (port) => {
           const res = await gatewayCallback(
             inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
             port,
-            httpsAgent
+            gatewayHttpsAgent
           );
           return res;
         },
         {
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay,
-          httpsAgent
+          ...details,
+          httpsAgent: gatewayHttpsAgent
         }
       );
 
-      return callbackResult;
+    // Pools are gateway-v2 only, so there is no v1 fallback to preserve on this branch.
+    if (inputs.gatewayPoolId) {
+      const { result } = await gatewayPoolService.runWithPoolFailover(
+        { poolId: inputs.gatewayPoolId },
+        async (gatewayId) => {
+          const details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+            gatewayId,
+            targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+            targetPort: inputs.targetPort ?? 443
+          });
+          if (!details) {
+            throw new NotFoundError({ message: `Connection details for gateway with ID '${gatewayId}' not found` });
+          }
+          return $proxyThroughGatewayV2(details);
+        }
+      );
+      return result;
+    }
+
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId!,
+      targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+      targetPort: inputs.targetPort ?? 443
+    });
+
+    if (gatewayV2ConnectionDetails) {
+      return $proxyThroughGatewayV2(gatewayV2ConnectionDetails);
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId!);
@@ -1017,7 +1027,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
 
       // Validate connectivity through a random healthy pool member
-      const validationGateway = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      const validationGateway = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id);
         await validateKubernetesHostConnectivity({ gatewayExecutor });
@@ -1414,7 +1424,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let validationGatewayId: string | null = effectiveGatewayId ?? null;
     if (!validationGatewayId && effectiveGatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
+      const picked = await gatewayPoolService.pickHealthyGateway(effectiveGatewayPoolId);
       validationGatewayId = picked.id;
     }
 
