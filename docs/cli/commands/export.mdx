@@ -76,6 +76,20 @@ infisical export --template=<path to template>
 
   </Accordion>
 
+  <Accordion title="INFISICAL_DISABLE_SECRETS_BACKUP">
+    Used to disable the encrypted offline secrets cache. When you are logged in as a user, the CLI saves an encrypted copy of fetched secrets to disk so they can be served if you are offline. Set this variable to skip writing that cache and to never serve secrets from it.
+
+    To use, simply export this variable in the terminal before running this command.
+
+    ```bash
+    # Example
+    export INFISICAL_DISABLE_SECRETS_BACKUP=true
+    ```
+
+    Previously cached secrets are not removed by this variable; run `infisical reset` to clear them.
+
+  </Accordion>
+
 ### flags
 
   <Accordion title="--output-file">
