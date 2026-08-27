@@ -435,6 +435,7 @@ import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/p
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { pkiSyncCleanupQueueServiceFactory } from "@app/services/pki-sync/pki-sync-cleanup-queue";
 import { pkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { pkiSyncHealthCheckQueueFactory } from "@app/services/pki-sync/pki-sync-health-check-queue";
 import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
@@ -3220,6 +3221,8 @@ export const registerRoutes = async (
     keyStore,
     pkiSyncDAL,
     auditLogService,
+    notificationService,
+    pkiApplicationDAL,
     projectDAL,
     licenseService,
     certificateDAL,
@@ -3237,6 +3240,27 @@ export const registerRoutes = async (
     cronJob,
     pkiSyncDAL,
     pkiSyncQueue
+  });
+
+  const pkiSyncHealthCheckQueue = pkiSyncHealthCheckQueueFactory({
+    cronJob,
+    queueService,
+    pkiSyncDAL,
+    keyStore,
+    appConnectionDAL,
+    projectDAL,
+    kmsService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateSyncDAL,
+    auditLogService,
+    notificationService,
+    pkiApplicationDAL,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -3690,6 +3714,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     pkiSyncQueue,
+    pkiSyncHealthCheckQueue,
+    auditLogService,
     kmsService
   });
 
@@ -3922,6 +3948,7 @@ export const registerRoutes = async (
   alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
+  pkiSyncHealthCheckQueue.init();
   pamDiscoveryService.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();

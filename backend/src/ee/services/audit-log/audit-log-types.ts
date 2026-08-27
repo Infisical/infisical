@@ -44,6 +44,7 @@ import {
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
 import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -583,6 +584,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
+  PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
   PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
@@ -4543,6 +4546,7 @@ interface CreatePkiSyncEvent {
     connectionId?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
+    hasHealthCheckCommand?: boolean;
   };
 }
 
@@ -4553,6 +4557,7 @@ interface UpdatePkiSyncEvent {
     name: string;
     applicationId?: string;
     hasPostSyncCommand?: boolean;
+    hasHealthCheckCommand?: boolean;
   };
 }
 
@@ -4573,6 +4578,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    healthCheck?: { command: string; result?: THealthCheckCommandResult };
     postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
@@ -4584,6 +4590,28 @@ interface PkiSyncImportCertificatesEvent {
     importMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+  };
+}
+
+interface PkiSyncTestHealthCheckEvent {
+  type: EventType.PKI_SYNC_TEST_HEALTH_CHECK;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    destination: string;
+    command: string;
+    result?: THealthCheckCommandResult;
+  };
+}
+
+interface PkiSyncHealthCheckEvent {
+  type: EventType.PKI_SYNC_HEALTH_CHECK;
+  metadata: {
+    syncId: string;
+    syncName: string;
+    destination: string;
+    command: string;
+    result?: THealthCheckCommandResult;
   };
 }
 
@@ -7523,6 +7551,8 @@ export type Event =
   | DeletePkiSyncEvent
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
+  | PkiSyncHealthCheckEvent
+  | PkiSyncTestHealthCheckEvent
   | PkiSyncRemoveCertificatesEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
