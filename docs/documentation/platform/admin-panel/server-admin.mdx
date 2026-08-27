@@ -36,9 +36,11 @@ Signup can be restricted to users matching one or more email domains, such as yo
 
 If you're using SAML/LDAP/OIDC for only one organization on your instance, you can specify a default organization to use at login to skip requiring users to manually enter the organization slug.
 
-### Trust emails
+### Trust LDAP emails
 
-By default, users signing up through SAML/LDAP/OIDC will still need to verify their email address to prevent email spoofing. This requirement can be skipped by enabling the switch to trust logins through the respective method.
+By default, users provisioned through LDAP must verify their email address on their first login, which prevents email spoofing. Enable **Trust LDAP emails** to skip that step for LDAP users across every organization on this instance.
+
+For SAML and OIDC, email verification is skipped automatically when an organization [enforces SSO](/documentation/platform/sso/overview#sso-enforcement).
 
 ### Broadcast messages
 

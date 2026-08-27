@@ -29,7 +29,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.object({ plan: z.any() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const plan = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
@@ -57,7 +57,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgPlan({
         actorId: req.permission.id,

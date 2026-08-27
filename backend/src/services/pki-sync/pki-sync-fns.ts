@@ -39,7 +39,8 @@ import {
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
+import { THostCommandResult } from "./pki-sync-host-command-fns";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
 
@@ -88,7 +89,8 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   return {
     canImportCertificates: providerOption.canImportCertificates,
     canRemoveCertificates: providerOption.canRemoveCertificates,
-    canRunPostSyncCommand: providerOption.canRunPostSyncCommand
+    canRunPostSyncCommand: providerOption.canRunPostSyncCommand,
+    canRunHealthCheckCommand: providerOption.canRunHealthCheckCommand
   };
 };
 
@@ -340,6 +342,43 @@ export const PkiSyncFns = {
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
+    }
+  },
+
+  runHealthCheck: async (
+    pkiSync: THealthCheckTarget,
+    certificateMap: TCertificateMap,
+    dependencies: {
+      certificateSyncDAL: TCertificateSyncDALFactory;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+    }
+  ): Promise<THostCommandResult | undefined> => {
+    switch (pkiSync.destination) {
+      case PkiSync.LinuxServer: {
+        const linuxServerPkiSync = linuxServerPkiSyncFactory({
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return linuxServerPkiSync.runHealthCheck(pkiSync, certificateMap);
+      }
+      case PkiSync.WindowsServer: {
+        if (!dependencies.gatewayV2Service) {
+          throw new PkiSyncError({
+            shouldRetry: false,
+            message: "Windows Server sync requires a gateway to reach the host."
+          });
+        }
+        const windowsServerPkiSync = windowsServerPkiSyncFactory({
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return windowsServerPkiSync.runHealthCheck(pkiSync, certificateMap);
+      }
+      default:
+        return undefined;
     }
   },
 

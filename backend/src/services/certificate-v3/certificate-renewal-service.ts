@@ -237,9 +237,12 @@ export const certificateRenewalServiceFactory = ({
       renewedFromCertificateId?: string;
       renewBeforeDays?: number;
       applicationId?: string | null;
+      orderId?: string;
     } = isRenewalLinkPreset
       ? {}
       : { profileId: originalCert.profileId || null, renewedFromCertificateId: originalCert.id };
+
+    if (originalCert.orderId) renewalUpdate.orderId = originalCert.orderId;
 
     if (finalRenewBeforeDays !== undefined) renewalUpdate.renewBeforeDays = finalRenewBeforeDays;
     if (originalCert.applicationId) renewalUpdate.applicationId = originalCert.applicationId;

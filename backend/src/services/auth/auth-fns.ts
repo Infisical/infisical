@@ -1,5 +1,4 @@
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
@@ -140,30 +139,6 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
       throw new ForbiddenRequestError({
         name: "UserLocked",
         message: `User is temporary locked due to multiple failed login attempts. Try again after ${timeDisplay}. You can also reset your password now to proceed.`
-      });
-    }
-  }
-};
-
-export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number | null, captchaToken?: string) => {
-  const appCfg = getConfig();
-  if (consecutiveFailedPasswordAttempts && consecutiveFailedPasswordAttempts >= 10 && Boolean(appCfg.CAPTCHA_SECRET)) {
-    if (!captchaToken) {
-      throw new BadRequestError({
-        name: "Captcha Required",
-        message: "Accomplish the required captcha by logging in via Web"
-      });
-    }
-
-    // validate captcha token
-    const response = await request.postForm<{ success: boolean }>("https://api.hcaptcha.com/siteverify", {
-      response: captchaToken,
-      secret: appCfg.CAPTCHA_SECRET
-    });
-
-    if (!response.data.success) {
-      throw new BadRequestError({
-        name: "Invalid Captcha"
       });
     }
   }

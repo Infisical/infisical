@@ -424,8 +424,10 @@ Use the structure that best serves the reader for that type of content.
 
 ## 12. What Vale enforces
 
-Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs` from the
-repository root before opening a documentation pull request.
+Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs-branch` from
+the repository root before opening a documentation pull request, or `make lint-docs` to check
+every page. The `Check docs style` CI check runs the same rules over the files the pull request
+touched.
 
 Vale cannot see prose indented inside components, which is a large share of this repo. A clean
 run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.

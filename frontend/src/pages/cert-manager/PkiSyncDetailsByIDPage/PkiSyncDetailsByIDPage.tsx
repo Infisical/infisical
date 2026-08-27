@@ -24,17 +24,18 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
 import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
   PkiSyncActionTriggers,
   PkiSyncAuditLogsSection,
   PkiSyncCertificatesSection,
+  PkiSyncCommandsSection,
   PkiSyncDestinationSection,
   PkiSyncDetailsSection,
   PkiSyncFieldMappingsSection,
-  PkiSyncOptionsSection,
-  PkiSyncPostSyncCommandSection
+  PkiSyncOptionsSection
 } from "./components";
 
 const PageContent = () => {
@@ -81,7 +82,7 @@ const PageContent = () => {
       navigate({
         to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
         params: { orgId, projectId, applicationName },
-        search: { selectedTab: "syncs" }
+        search: { selectedTab: ApplicationTab.Syncs }
       });
       return;
     }
@@ -137,8 +138,8 @@ const PageContent = () => {
                     <PkiSyncDetailsSection pkiSync={pkiSync} />
                     <PkiSyncDestinationSection pkiSync={pkiSync} />
                     <PkiSyncFieldMappingsSection pkiSync={pkiSync} />
-                    <PkiSyncPostSyncCommandSection pkiSync={pkiSync} />
                   </DetailGroup>
+                  <PkiSyncCommandsSection pkiSync={pkiSync} />
                   <PkiSyncOptionsSection pkiSync={pkiSync} />
                 </CardContent>
               </Card>

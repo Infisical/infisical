@@ -2,16 +2,19 @@ import { describe, expect, test, vi } from "vitest";
 
 import { PkiSyncStatus } from "./pki-sync-enums";
 import {
+  findSingleCertificateHostCommandVariables,
+  HostCommandFailure,
+  HostCommandVariable,
+  renderHostCommandContext,
+  toPosixShellLiteral,
+  toPowerShellLiteral
+} from "./pki-sync-host-command-fns";
+import {
   applyPostSyncCommandUpdate,
   buildPostSyncCommandFailureMessage,
   buildPostSyncCommandPlan,
-  findSingleCertificatePostSyncCommandVariables,
   normalizeNewPostSyncCommand,
-  PostSyncCommandVariable,
-  renderPostSyncCommand,
   runPostSyncCommand,
-  toPosixShellLiteral,
-  toPowerShellLiteral,
   TPostSyncCommandContext
 } from "./pki-sync-post-sync-command-fns";
 
@@ -31,13 +34,30 @@ describe("buildPostSyncCommandPlan", () => {
     command: "systemctl reload nginx",
     destinationDirectory: "/etc/ssl/certs",
     deliveredPaths: new Set(["/etc/ssl/certs/app.pem"]),
-    deliveredCertificates: [{ path: "/etc/ssl/certs/app.pem", commonName: "app.example.com" }]
+    deliveredCertificates: [{ paths: ["/etc/ssl/certs/app.pem"], commonName: "app.example.com" }]
   };
 
   const twoCertificates = [
-    { path: "/etc/ssl/certs/a.pem", commonName: "a.example.com" },
-    { path: "/etc/ssl/certs/b.pem", commonName: "b.example.com" }
+    { paths: ["/etc/ssl/certs/a.pem"], commonName: "a.example.com" },
+    { paths: ["/etc/ssl/certs/b.pem"], commonName: "b.example.com" }
   ];
+
+  test("lists every file actually written, including one whose certificate later failed", () => {
+    const plan = buildPostSyncCommandPlan({
+      ...baseArgs,
+      deliveredPaths: new Set([
+        "/etc/ssl/certs/app.pem",
+        "/etc/ssl/certs/half-written.pem",
+        "/etc/ssl/certs/half-written.chain.pem"
+      ])
+    });
+
+    expect(plan?.context.certificateFiles).toEqual([
+      "/etc/ssl/certs/app.pem",
+      "/etc/ssl/certs/half-written.pem",
+      "/etc/ssl/certs/half-written.chain.pem"
+    ]);
+  });
 
   test("returns a plan when a command is configured and files were delivered", () => {
     const plan = buildPostSyncCommandPlan(baseArgs);
@@ -88,36 +108,34 @@ describe("buildPostSyncCommandPlan", () => {
   });
 });
 
-describe("findSingleCertificatePostSyncCommandVariables", () => {
+describe("findSingleCertificateHostCommandVariables", () => {
   test("finds the placeholders that name one certificate", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("cp {{certificatePath}} /tmp/{{commonName}}")).toEqual([
-      PostSyncCommandVariable.CertificatePath,
-      PostSyncCommandVariable.CommonName
+    expect(findSingleCertificateHostCommandVariables("cp {{certificatePath}} /tmp/{{commonName}}")).toEqual([
+      HostCommandVariable.CertificatePath,
+      HostCommandVariable.CommonName
     ]);
   });
 
   test("ignores placeholders that describe the whole run", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{certificateFiles}} {{certificateDirectory}}")).toEqual(
-      []
-    );
+    expect(findSingleCertificateHostCommandVariables("echo {{certificateFiles}} {{certificateDirectory}}")).toEqual([]);
   });
 
   test("matches a placeholder regardless of its internal spacing", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{  commonName  }}")).toEqual([
-      PostSyncCommandVariable.CommonName
+    expect(findSingleCertificateHostCommandVariables("echo {{  commonName  }}")).toEqual([
+      HostCommandVariable.CommonName
     ]);
   });
 
   test("returns none for an empty command, or text that is not a placeholder", () => {
-    expect(findSingleCertificatePostSyncCommandVariables()).toEqual([]);
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{#if")).toEqual([]);
-    expect(findSingleCertificatePostSyncCommandVariables("jq {{.commonName}}")).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables()).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables("echo {{#if")).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables("jq {{.commonName}}")).toEqual([]);
   });
 });
 
-describe("renderPostSyncCommand", () => {
+describe("renderHostCommandContext", () => {
   test("substitutes each placeholder with the run's value", () => {
-    const rendered = renderPostSyncCommand(
+    const rendered = renderHostCommandContext(
       "cp {{certificatePath}} {{certificateDirectory}}/live.pem",
       context,
       toPosixShellLiteral
@@ -127,14 +145,16 @@ describe("renderPostSyncCommand", () => {
   });
 
   test("renders the common name and the newline-joined file list", () => {
-    expect(renderPostSyncCommand("echo {{commonName}}", context, toPosixShellLiteral)).toBe("echo 'app.example.com'");
-    expect(renderPostSyncCommand("echo {{certificateFiles}}", context, toPosixShellLiteral)).toBe(
+    expect(renderHostCommandContext("echo {{commonName}}", context, toPosixShellLiteral)).toBe(
+      "echo 'app.example.com'"
+    );
+    expect(renderHostCommandContext("echo {{certificateFiles}}", context, toPosixShellLiteral)).toBe(
       `echo '${context.certificateFiles.join("\n")}'`
     );
   });
 
   test("renders an absent optional variable as an empty literal rather than the placeholder", () => {
-    expect(renderPostSyncCommand("echo {{pkcs12Password}}", context, toPosixShellLiteral)).toBe("echo ''");
+    expect(renderHostCommandContext("echo {{pkcs12Password}}", context, toPosixShellLiteral)).toBe("echo ''");
   });
 
   test("quotes a value that would otherwise break out of the command", () => {
@@ -143,7 +163,7 @@ describe("renderPostSyncCommand", () => {
       commonName: "app.example.com'; rm -rf / #"
     };
 
-    const rendered = renderPostSyncCommand("echo {{commonName}}", malicious, toPosixShellLiteral);
+    const rendered = renderHostCommandContext("echo {{commonName}}", malicious, toPosixShellLiteral);
 
     // The injected quote is escaped, so the whole value stays a single argument to echo.
     expect(rendered).toBe(`echo 'app.example.com'\\''; rm -rf / #'`);
@@ -166,7 +186,7 @@ describe("renderPostSyncCommand", () => {
     // eslint-disable-next-line no-template-curly-in-string
     ["variable expansion", "app${HOME}.example.com"]
   ])("a hostile common name (%s) stays inside one quoted literal", (_name, commonName) => {
-    const rendered = renderPostSyncCommand("echo {{commonName}}", { ...context, commonName }, toPosixShellLiteral);
+    const rendered = renderHostCommandContext("echo {{commonName}}", { ...context, commonName }, toPosixShellLiteral);
 
     // Rebuilding the literal from the value is the whole contract: any quote in it is escaped, and
     // nothing else can terminate the literal, so the shell sees exactly one argument.
@@ -176,14 +196,14 @@ describe("renderPostSyncCommand", () => {
   test("doubles quotes for PowerShell instead of backslash-escaping", () => {
     const malicious: TPostSyncCommandContext = { ...context, commonName: "a'; Remove-Item C:\\ #" };
 
-    expect(renderPostSyncCommand("Write-Output {{commonName}}", malicious, toPowerShellLiteral)).toBe(
+    expect(renderHostCommandContext("Write-Output {{commonName}}", malicious, toPowerShellLiteral)).toBe(
       "Write-Output 'a''; Remove-Item C:\\ #'"
     );
   });
 });
 
-describe("renderPostSyncCommand: text that is not a documented variable", () => {
-  const render = (command: string) => renderPostSyncCommand(command, context, toPosixShellLiteral);
+describe("renderHostCommandContext: text that is not a documented variable", () => {
+  const render = (command: string) => renderHostCommandContext(command, context, toPosixShellLiteral);
 
   test("an unknown placeholder is left exactly as the operator wrote it", () => {
     // Not blanked and not rejected: a typo shows up in the command the host runs, where the operator
@@ -320,7 +340,7 @@ describe("buildPostSyncCommandFailureMessage", () => {
     expect(message).toBe("Post-sync command failed (exit 2): Unit nginx.service not found");
   });
 
-  test("still reports the exit code when the command produced no output at all", () => {
+  test("reports the exit code alone when the command produced no output at all", () => {
     const message = buildPostSyncCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       exitCode: 42,
@@ -328,18 +348,31 @@ describe("buildPostSyncCommandFailureMessage", () => {
       error: "Command exited with code 42"
     });
 
-    expect(message).toBe("Post-sync command failed (exit 42): Command exited with code 42");
+    expect(message).toBe("Post-sync command failed (exit 42)");
   });
 
-  test("falls back to the error when the command never ran, so there is no exit code", () => {
+  test("does not blame the command, or leak the transport error, when it never ran", () => {
     const message = buildPostSyncCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       durationMs: 10,
+      failure: HostCommandFailure.Unreachable,
+      error: "failed to dial target SSH server: dial tcp 10.0.0.1:22: connect: connection refused"
+    });
+
+    expect(message).toBe("Post-sync command could not run: the destination host could not be reached");
+    expect(message).not.toContain("dial tcp");
+  });
+
+  test("passes on the reason we rejected the command ourselves, because it names what to change", () => {
+    const message = buildPostSyncCommandFailureMessage({
+      status: PkiSyncStatus.Failed,
+      durationMs: 10,
+      failure: HostCommandFailure.Rejected,
       error: "Running a command on the host requires the SSH connection to use a gateway."
     });
 
     expect(message).toBe(
-      "Post-sync command failed: Running a command on the host requires the SSH connection to use a gateway."
+      "Post-sync command could not run: Running a command on the host requires the SSH connection to use a gateway."
     );
   });
 
@@ -428,5 +461,33 @@ describe("applyPostSyncCommandUpdate", () => {
     applyPostSyncCommandUpdate(input, stored);
 
     expect(input.postSyncCommand).toBeNull();
+  });
+});
+
+describe("buildPostSyncCommandFailureMessage timeout wording", () => {
+  test("names the 30s limit rather than blaming connectivity", () => {
+    expect(
+      buildPostSyncCommandFailureMessage({
+        status: PkiSyncStatus.Failed,
+        durationMs: 35_002,
+        error: "command timed out after 30s",
+        timedOut: true
+      })
+    ).toBe("Post-sync command did not finish within its 30s limit");
+  });
+});
+
+describe("a rejected command's reason is surfaced without internal addressing", () => {
+  test("keeps the actionable reason and redacts the host and port", () => {
+    const message = buildPostSyncCommandFailureMessage({
+      status: PkiSyncStatus.Failed,
+      failure: HostCommandFailure.Rejected,
+      durationMs: 94,
+      error: "WinRM gateway operation failed: TLS connection error: connect ECONNREFUSED 192.168.0.50:8443"
+    });
+
+    expect(message).not.toContain("192.168.0.50");
+    expect(message).not.toContain("8443");
+    expect(message).toContain("TLS connection error");
   });
 });

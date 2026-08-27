@@ -8,6 +8,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ConflictError,
   CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
@@ -30,6 +31,7 @@ import {
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
+import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -40,6 +42,7 @@ enum JWTErrors {
 enum HttpStatusCodes {
   BadRequest = 400,
   NotFound = 404,
+  Conflict = 409,
   Unauthorized = 401,
   Forbidden = 403,
   UnprocessableContent = 422,
@@ -70,11 +73,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     const isExpectedClientError =
       error instanceof BadRequestError ||
       error instanceof NotFoundError ||
+      error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
       error instanceof ForbiddenError ||
       error instanceof ForbiddenRequestError ||
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
+      (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
@@ -187,7 +192,23 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       coreHttpErrorCounter.add(1, coreAttrs);
     }
 
-    if (error instanceof BadRequestError) {
+    // The OAuth token endpoint's error contract is RFC 6749 section 5.2, not the house envelope. See
+    // OauthTokenError; only that endpoint raises this, and it maps everything it can throw itself.
+    if (error instanceof OauthTokenError) {
+      // RFC 6749 section 5.2: a client that authenticated with the Authorization header must get a 401
+      // carrying a challenge for the scheme it used.
+      if (
+        error.oauthErrorCode === OauthTokenErrorCode.InvalidClient &&
+        req.headers.authorization?.toLowerCase().startsWith("basic ")
+      ) {
+        void res.header("WWW-Authenticate", 'Basic realm="Infisical", charset="UTF-8"');
+      }
+
+      void res.status(error.statusCode).send({
+        error: error.oauthErrorCode,
+        error_description: toErrorDescription(error.message)
+      });
+    } else if (error instanceof BadRequestError) {
       void res.status(HttpStatusCodes.BadRequest).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.BadRequest,
@@ -195,6 +216,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name,
         details: error.details
       });
+    } else if (error instanceof ConflictError) {
+      void res
+        .status(HttpStatusCodes.Conflict)
+        .send({ reqId: req.id, statusCode: HttpStatusCodes.Conflict, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)

@@ -3,7 +3,11 @@ import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
 
-import { expandLegacyForbidActions, throwIfMissingSecretReadValueOrDescribePermission } from "./permission-fns";
+import {
+  expandLegacyForbidActions,
+  interpolatePermissionRules,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -249,5 +253,39 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
         secretPath: "/"
       })
     ).toThrow();
+  });
+});
+
+describe("interpolatePermissionRules", () => {
+  const templatedRule = (value: string): Rule =>
+    ({
+      action: [ProjectPermissionSecretActions.DescribeSecret],
+      subject: ProjectPermissionSub.Secrets,
+      conditions: { environment: value }
+    }) as Rule;
+
+  test("interpolates identity context when the rules carry a template", () => {
+    const [rule] = interpolatePermissionRules([templatedRule("{{ identity.metadata.env }}")], {
+      identity: { metadata: { env: "prod" } }
+    });
+
+    expect(rule.conditions).toEqual({ environment: "prod" });
+  });
+
+  // Untemplated rules are returned as-is rather than copied, so callers share the module-level built-in
+  // rule sets. This is what makes mutating a rule in place unsafe.
+  test("returns untemplated rules as-is, without copying", () => {
+    const rules = [templatedRule("prod"), templatedRule("staging")];
+
+    expect(interpolatePermissionRules(rules, { identity: { metadata: {} } })).toBe(rules);
+  });
+
+  test("still templates block helpers and comments, which are not bare expressions", () => {
+    const [rule] = interpolatePermissionRules(
+      [templatedRule("{{#if identity.metadata.env}}{{ identity.metadata.env }}{{else}}dev{{/if}}")],
+      { identity: { metadata: {} } }
+    );
+
+    expect(rule.conditions).toEqual({ environment: "dev" });
   });
 });

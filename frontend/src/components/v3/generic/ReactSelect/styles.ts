@@ -20,7 +20,7 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
   multiValueRemove: () =>
     "shrink-0 [&>svg]:size-3 [&>svg]:shrink-0 hover:text-danger text-muted cursor-pointer ml-0.5",
   menu: () => "my-2 w-full rounded-[6px] border border-border bg-popover p-1 shadow-md",
-  menuList: () => "max-h-48 text-sm overflow-y-auto thin-scrollbar",
+  menuList: () => "max-h-48 text-sm overflow-y-auto overscroll-contain thin-scrollbar",
   option: ({ isFocused }) =>
     cn(
       "cursor-pointer rounded-sm truncate px-2 py-1.5 text-sm text-foreground",

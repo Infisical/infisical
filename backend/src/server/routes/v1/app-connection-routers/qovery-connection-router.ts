@@ -39,7 +39,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
         200: qoveryResourceListSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -63,7 +63,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
         200: qoveryResourceListSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
 
@@ -87,7 +87,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
         200: qoveryResourceListSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, projectId } = req.params;
 

@@ -173,6 +173,8 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
+- **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
+  `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).
 
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.
@@ -181,6 +183,244 @@ Auth extraction happens in `src/server/plugins/auth/`:
 If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate them in new routes or services. All new machine authentication should use `IDENTITY_ACCESS_TOKEN`.
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
+
+#### Delegated OAuth tokens
+
+Two grants issue them: the authorization code flow (consented `scopes`) and the RFC 8693 token exchange
+(`delegation: "full"`, no scopes).
+
+**Opting a route in.** `verify-auth.ts` rejects `AuthMode.OAUTH` on any route that doesn't list it; most
+product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
+administration route (below). And the handler must actually **check** a CASL ability, because that check
+is where the granted scopes get intersected in: building an ability and throwing it away
+(`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
+nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
+passing `requireOrg: false` accepts `AuthMode.OAUTH`.
+
+**Administration is read-only for a delegated token.** A delegated token can look at anything the
+authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at
+either level. The frontend nav is the boundary, and it is worth opening (`OrgNav.tsx`,
+`OrgSubmenuView.tsx`, `SecretManagerNav.tsx`, `submenus.tsx`) when a new route's side is unclear. The
+surfaces it covers:
+
+- **org access control** — members, groups, identities (including memberships, templates, and all
+  thirteen `identity-*-auth-router.ts`), org roles, invites, external group-to-role mapping
+- **usage & billing** — `ee/v1/license-router.ts`, `ee/v1/license-v2-router.ts`
+- **audit logs** — the org and project log reads plus audit log streams
+- **org settings** — org update and incident contacts, SSO and provisioning (SAML, OIDC, LDAP, SCIM,
+  GitHub org sync, email domains), networking (gateways, gateway pools, relays), encryption (external
+  KMS, KMIP, KMIP servers, HSM connectors), project templates, sub-orgs, workflow integrations
+  (Slack, Microsoft Teams), and the org-wide EnvKey/Vault migrations on the settings tab
+- **project access control** — memberships for users, groups and identities, project roles, additional
+  privileges, folder grants, project keys, service tokens, and the per-resource equivalents under PAM,
+  cert manager, code signing and PKI applications
+- **project settings** — project update and delete, environments, tags, approval policies, webhooks,
+  trusted IPs, secret validation rules, project KMS, blind index, audit log retention, E2EE upgrade,
+  and the secret scanning `configs` routes
+
+In practice that means `GET` keeps `AuthMode.OAUTH` and `POST` / `PATCH` / `PUT` / `DELETE` lose it. The
+method is the test because `CODE_QUALITY.md` already requires `GET` to be safe, so it needs no per-route
+judgment. Two adjustments to that rule, both small enough to enumerate:
+
+- **A `POST` that only reads keeps it.** Five endpoints are `POST` solely because a lookup needs a request
+  body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
+  and the two `memberships/details` routes. All five check a CASL read ability.
+- **A read that hands back credential material loses it**, because the point of closing administration is
+  that a third-party application should not end up holding the org's secrets. Six routes:
+  `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
+  `GET /v1/auth/ldap-auth/identities/:identityId` (`bindPass`),
+  `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
+  `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
+  an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a
+  prefix, `sanitizedExternalSchemaForGetById` drops provider credentials, `ScimTokensSchema` carries no
+  token. Check the response schema, not the route name, before opening a new administration read.
+
+Three things are first-party outright, because they sit outside an org and the nav boundary doesn't
+reach them:
+- account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
+- super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), where `verifySuperAdmin` reads
+  `user.superAdmin` rather than an ability
+- `POST /v2/organizations`, and the org reads that return more than the token's org: `GET /v1/organization`,
+  `GET /v1/organization/accessible-with-sub-orgs`, `GET /v1/organization/:organizationId`. All pass
+  `requireOrg: false`, so nothing narrows them
+
+Everything else that used to be listed here individually — OAuth client CRUD, assume-privilege, deleting
+an org or sub-org, minting SCIM tokens, KMIP client certificates or gateway / relay / KMIP-server
+enrollment tokens, registering identity auth methods — is an administration write, and closed by the rule
+above rather than by its own exception. Two of those reasons still generalize, so keep them in mind when a
+**product** route does the same thing:
+
+- **A route that leaves behind something able to authenticate later can't accept a delegated token.**
+  Revocation reaches only the sessions tagged with `getOauthClientSessionUserAgent`, so a credential or an
+  auth method bound to a key the caller holds survives deleting the application and rotating its secret,
+  and authenticates as a principal no OAuth scope intersects. Whether the route hands secret material back
+  is beside the point, so start any new route that writes a trust anchor (bound issuer, signing key, CA,
+  cloud principal) first-party.
+- **Nor can a route that reissues the caller's session.** `DELETE /v2/organizations/:organizationId`
+  returns a fresh pair from `loginService.generateUserTokens`, which takes no delegation parameter, so a
+  delegated caller would exit with a first-party session.
+
+**Delegation markers.** A token carries `scopes` or `delegation: "full"`, never both
+(`oauth-client-types.ts`). `permission-service` intersects the user's CASL rules with `scopes`
+(`applyOauthScopeToOrgRules` / `applyOauthScopeToProjectRules`). `inject-identity.ts` sets
+`RequestContextKey.OauthScopes` for every scope-narrowed token (even `[]`, which denies everything) and
+leaves it unset only for full delegation. Matching full delegation **positively** is what makes a dropped
+claim fail closed instead of promoting the token.
+
+**The token endpoint's error contract is RFC 6749 §5.2, not the house envelope**, because generic OAuth
+libraries branch on the `error` code. `OauthTokenError` (`oauth-token-error.ts`) carries the code and
+derives the status from it (400; 401 for `invalid_client`, 500 for `server_error`), and the shared error
+handler renders `{ error, error_description }`. When extending it:
+- The handler's `try`/`catch` is the endpoint's only exit, and every `return` inside it is **awaited**: a
+  bare `return promise` would resolve outside the `catch` and escape in the house envelope.
+- `toOauthTokenError` defaults by **error class**, never message text: `UnauthorizedError` and
+  `ForbiddenRequestError` take the rejected-grant code for that grant (`invalid_grant` on the redirect and
+  refresh grants, `invalid_request` on token exchange, per RFC 8693 §2.2.2), `BadRequestError` takes
+  `invalid_request`, and anything else becomes `server_error`, whose response carries no detail and whose
+  original is logged. Both refusal classes are listed because the exchange rejects an unusable subject in
+  two vocabularies: `exchangeSubjectToken`'s own membership checks raise `UnauthorizedError`, while
+  `getOrgPermission` raises `ForbiddenRequestError` for the same kind of refusal. A new way to refuse a
+  subject belongs in one of those two classes, or it lands in `server_error` as an unexplained 500.
+- Throw `OauthTokenError` directly where that default is wrong: client authentication
+  (`invalid_client`), a grant the client doesn't hold (`unauthorized_client`), a redirect-URI or PKCE
+  mismatch (`invalid_grant`), the unsupported `scope` (`invalid_scope`) and `audience`/`resource`
+  (`invalid_target`) parameters, and org misconfiguration or IdP outages (`server_error`).
+- The route sets `attachValidation` so a schema failure reaches the handler; an unrecognized `grant_type`
+  earns `unsupported_grant_type`.
+- `toErrorDescription` sanitizes and bounds `error_description` at the render boundary, so no throw site
+  has to remember RFC 6749's printable-ASCII restriction.
+- Messages shared with a management route (the OIDC-config checks) take an error factory rather than
+  throwing, since the two callers owe the same explanation in different envelopes.
+
+**Token exchange trusts the org's OIDC SSO config, not per-client configuration**
+(`oauth-token-exchange-fns.ts`), so the issuers that can vouch for a user are the ones that can already
+log them in. The one per-application field is `tokenExchangeAudience`, and it does the security work:
+without it, any token that issuer signed for anything in the estate is exchangeable. Enabling the grant,
+changing the audience, and rotating the secret each need `OrgPermissionSsoActions.Edit` on top of the usual
+`OauthClients` check (`checkSsoConfigPermission`), rotation included, since its response is a working
+credential for acting as any of the org's users.
+
+`getOrgPermission` is **not** a membership check: the org-scope query in `permission-dal.ts` never reads
+`Membership.isActive` or `Membership.status`. Every other user token came from a browser login, where
+`selectOrganization` rejects an inactive membership; the exchange has no login in front of it, so
+`exchangeSubjectToken` checks membership state itself. Any future non-interactive way of minting a user
+token needs the same check.
+
+**Withdrawing an exchange application's authority revokes the tokens it already issued.** Deleting the
+client, rotating its secret, and any update that narrows the exchange's trust (dropping the grant,
+changing `tokenExchangeAudience`, switching `tokenExchangeIdpSatisfiesMfa` off) all call
+`revokeSessionsByUserAgent`. `hasWithdrawnTokenExchangeTrust` and `hasClientAuthorityChanged` guard the
+same fields, so a new field belongs in both. The test is whether it carries federation trust, not merely
+whether it can be narrowed. `accessTokenTTL` is in neither: it only decides how long a new token lasts, so
+revoking on a routine edit would surprise, and guarding it would fail in-flight exchanges. Widening
+(turning the MFA declaration on) revokes nothing. Rotation revokes for exchange clients only, where the
+secret alone mints tokens; in the redirect flow it has to be paired with a code or refresh token, so
+blanket revocation would just sign everyone out. The session tag is per client, which is unambiguous
+because `assertValidOauthClientGrantConfig` rejects the exchange grant alongside `authorization_code`, so
+a service needing both registers twice.
+
+That sweep only reaps sessions that already exist, so **the exchange rechecks the client after creating
+its own session** (`findByIdForUpdate` + `hasClientAuthorityChanged`, re-running the sweep). The other
+grants read an existing session rather than creating one, so they don't need it. The recheck has to be a
+**locking** read on the primary, and both halves of that are load-bearing: each withdrawal path writes the
+client and sweeps sessions inside one transaction, so a plain read still sees the pre-withdrawal row until
+that transaction commits, and would clear a token whose session the sweep has already scanned past. A
+replica read has the same hole for the length of the replication lag. Keeping the write and the sweep
+atomic is what makes the lock the fix here; splitting them so the write commits first would reopen a
+window where the sweep can fail on its own and leave the tokens live.
+
+**Everything the exchange fetches from the IdP is cached for 10 minutes; nothing read from our own
+database is**, so an admin editing the SSO config takes effect on the next request while the provider
+never becomes a synchronous dependency of the middleware's own request path. The cache invariants
+(rejections evicted, in-flight promise shared, expiry rebuilding the SSRF-pinned agent) are documented in
+`oauth-token-exchange-fns.ts`.
+
+### Resolving Users From Provisioning Identifiers
+
+Every invite / removal path resolves a person by `users.username` (which always equals their email),
+never by `users.email` and never by a join. An external provisioning system, though, often knows
+people only by the identifier its IdP asserts, a UPN like `m249913@one.example.com` rather than the
+mailbox `robert@example.com`. SSO login already records that identifier as
+`user_aliases.externalId`, so the two are reconcilable without making `username` diverge from
+`email`.
+
+`resolveUsersBySsoExternalId` in `src/services/user-alias/user-alias-fns.ts` is the one place that
+does it, backed by `userAliasDAL.findBySsoExternalIds`. Callers run it **only after an exact
+`username` lookup has missed**, so an alias can never shadow a real account. It is wired into
+`$getUsers` (`membership-user-service.ts`, the single funnel for org, project, and cert-manager
+invites), `project-membership-service.ts` (removal and membership read-back), and PAM's
+`addProductUserMembers`.
+
+Four invariants, each load-bearing:
+
+- **Scope by `orgId` *and* `aliasType`.** `user_aliases.orgId` is NULL for the global
+  google/github/gitlab aliases, so `whereIn("orgId", ...)` excludes them outright and the
+  `ORG_SCOPED_USER_ALIAS_TYPES` filter is the second lock. Without both, an org admin could name a
+  user in another tenant.
+- **Match `externalId` exactly, never folded.** It is a case-sensitive identifier (OIDC Core defines
+  `sub` that way, as does SAML for nameID) and is stored verbatim, so folding case could collapse two
+  distinct IdP subjects onto one identifier. The known consequence: because both invite routes
+  lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
+  mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
+  input validation so the exact identifier survives to the query, not loosening the comparison.
+  `adoptProvisionedShadowUser` does not fold either. It derives its lookup key with `sanitizeEmail`
+  because it searches the `users.username` namespace, where lowercase is canonical, but it then
+  **refuses any identifier that is not already canonical** rather than adopting on the folded match.
+  It once did adopt, and that was a real hole: a subject differing only by case is a different
+  subject, so it could take over the placeholder provisioned for another one and inherit its grants.
+  Folding bought nothing anyway, since the alias written afterwards is verbatim and this exact-match
+  lookup could never find it again, stranding the grant where provisioning cannot manage it.
+- **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
+  org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
+  users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
+  granting access to the wrong person. Several aliases on the *same* user are not a conflict.
+- **Dedupe resolved users by `id`.** An identifier now reaches a user by either their username or
+  their alias, so one request can name the same person twice. Undeduped, that violates
+  `membership_unique_user_org` and surfaces as a 500.
+
+A related case sits on the login side: provisioning can name someone before they have ever logged
+in, leaving a placeholder account keyed on the identifier instead of the mailbox.
+`adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
+and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
+human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
+(any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
+anything without a membership in the org doing the login.
+
+One case is a refusal to *log in* rather than a refusal to adopt: a placeholder whose membership in
+the login org is **inactive**. Declining is not neutral there, because the caller reads a `null` as
+"no placeholder" and creates a second account with a fresh active membership, handing a deactivated
+person their org back (`selectOrganization` then accepts it). So the inactive check is resolved
+before every remaining decline — the alias check and the cross-tenant check both sit after it — and
+it throws the same `ForbiddenRequestError` an already-aliased deactivated member gets.
+
+It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
+family, and that one is the security-critical check rather than a tidiness one. The username lookup
+that finds the placeholder is global, so a second tenant that invited the same identifier shares the
+row; adopting it would hand the login org's IdP subject that tenant's memberships, and
+`selectOrganization` accepts a membership in any status (promoting `Invited` to `Accepted` on
+arrival), so nothing downstream stops the inherited access from being used. A project membership
+always implies an org membership in the same org, so the org-scope check covers project access too.
+
+Adoption also recovers from a unique violation on `users.username`, because the caller's preceding
+read is not a lock. That recovery has to run inside a savepoint (`tx.transaction()`, which knex
+compiles to `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` on the same connection): Postgres aborts the whole
+transaction on a constraint violation, so an unscoped retry would fail with `25P02`, taking the
+caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
+branches and are deliberately not wired up.
+
+Because adoption rewrites an existing account's `username` and `email`, it emits an
+`OIDC_PROVISIONED_PLACEHOLDER_ADOPTED` audit event carrying the before and after, not just an
+application log: if one of the refusal checks above ever regresses, the audit trail is what makes it
+findable. That event must never fire on the unique-violation recovery path, where the returned user
+is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
+line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
+it.
+
+That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
+`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+Do not special-case this event past the retention gate; treat the application log as the floor and
+the audit event as the addition for licensed instances.
 
 ### Permission System (CASL)
 
@@ -452,6 +692,57 @@ Two properties make the TTL safe to rely on:
 **Every bound above is silent when it bites, so all four limits are instrumented** (`recordProductAnalytics*Metric` in `lib/telemetry/metrics.ts`, labelled by event type only — the bucket id would multiply the series by 30). The retention trim reports how many entries it aged out, the parse step reports what it could not read back, and each drained shard reports the backlog it left behind, measured with `XLEN` after the drain trim (skipped entirely when OTel collection is off, since that round trip buys nothing else). Backlog is the leading signal: it rises before retention drops start, and a shard sitting near the `MAXLEN` cap is also shedding entries on write, which nothing can count. **Do not change one of these limits without reading those metrics first** — that is what they exist for, and the operator-facing version is in `docs/self-hosting/guides/monitoring-telemetry.mdx`.
 
 Nothing reads the pre-stream `telemetry-event-*` keys, so a deploy that changes this layout drops whatever is still buffered. That is acceptable for product analytics, and it is the reason there is no migration path to maintain.
+
+### Instance Root Encryption Key (rotation)
+
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config`, which wraps everything else. It is
+rotatable, and three invariants hold that up.
+
+**The sentinel row always holds the active key.** `kms_root_config` can hold up to three rows, but
+`KMS_ROOT_CONFIG_UUID` is always the current one. That id is no longer "the config row", it is a
+compatibility handle: an app version predating rotation looks the row up by id and knows nothing about
+staged keys or retained copies, so keeping the active key there is what lets such a version boot. New
+code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, staged, retained), so
+`kekLabel` is never a lookup key. It exists on both tables purely as a human label, derived from the key so
+an operator can recompute it and match an archived key to a backup; nothing resolves a row by it.
+
+**A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/root-key/rotations` writes
+a *staged* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
+delete. `$resolveRootKey` promotes it on the first boot that decrypts it: the sentinel takes the new
+ciphertext, the old one moves to a retained copy, and **every** staged row is dropped (an abandoned staged
+row is a live working key, so a replaced staged key left in someone's clipboard must not be able to promote
+itself later). There is no rollback after promotion, only the retention window during which the old key still
+boots.
+
+**The legacy tier is pinned, not rotated.** `project_bots`, `user_encryption_keys.serverEncryptedPrivateKey`,
+`secret_blind_indexes` and `org_bots` encrypt straight from the env var. `kms_legacy_encryption_keys` snapshots
+those env values under the root key at boot, and `crypto.ts` / `encryption.ts` read the snapshot instead of
+`process.env`, which is what decouples that tier from the environment. The snapshot holds **both** the
+post-FIPS-relabel values (used for writes, so ciphertext is unchanged) and the pre-relabel ones (tried on
+decrypt, because the relabel at `env.ts:746-748` overwrites its target unconditionally). That tier
+is never rotated; `infisical.legacy_root_key.usage` is the evidence for when it can be deleted.
+
+Consequences worth knowing:
+
+- **A migration must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`.** Migrations run
+  before `kmsService.startService`, so they cannot reach the snapshot and fall back to `process.env`, which on
+  a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
+  ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
+  explaining why they are safe.
+- **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
+  rotation before the first was completed would otherwise leave an older wrapper of the root key that
+  `getRootKey` never reports (it returns only the newest), so an operator removing "the previous key" is
+  told the rotation is finished while a leaked older `ENCRYPTION_KEY` still opens the database. The cost is that an
+  instance two rotations behind cannot restart; staging a key warns about that and deliberately does not
+  block, since an operator responding to a leak has to be able to rotate again immediately.
+- **`updateEncryptionStrategy` refuses while a rotation is in flight.** A switch to HSM would not otherwise be
+  enforced, since a pod with the old env key would still trial-decrypt a retained software copy and boot
+  without touching the device.
+- **`lastResolvedAt` can prove presence, never absence.** An instance stamps it at boot only when it resolves a
+  *superseded* row, which is positive evidence a straggler still holds that key and makes both the
+  expiring-key delete and the GC decline. An instance that never restarts never stamps, so the retention window is what covers it.
+  That is the deliberate limit: getting it wrong costs an instance that fails its next restart with an error
+  naming the key it needs, not lost data.
 
 ### Database Configuration
 
