@@ -69,6 +69,8 @@ export const PkiSyncReviewFields = () => {
   const selectedCertificates = getSelectedCertificates(certificateIds);
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
+  const healthCheckCommand =
+    syncOptions && "healthCheckCommand" in syncOptions ? syncOptions.healthCheckCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
@@ -179,6 +181,14 @@ export const PkiSyncReviewFields = () => {
           })}
         </div>
       </div>
+      {healthCheckCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Health Check</span>
+          </div>
+          <CodeBlock value={healthCheckCommand} className="max-h-48 whitespace-pre-wrap" />
+        </div>
+      )}
       {postSyncCommand && (
         <div className="flex flex-col gap-3">
           <div className="w-full border-b border-border">

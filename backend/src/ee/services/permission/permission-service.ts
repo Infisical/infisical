@@ -734,7 +734,6 @@ export const permissionServiceFactory = ({
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
         (i) => i.key,
@@ -749,24 +748,18 @@ export const permissionServiceFactory = ({
           ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
           : {};
 
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: actorId,
-            username,
-            metadata: metadataKeyValuePair,
-            auth: identityAuthInfo
-          }
-        },
-        { data: false }
-      );
-
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: actorId,
+          username,
+          metadata: metadataKeyValuePair,
+          auth: identityAuthInfo
         }
-      );
+      });
+
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       const result = {
         permission,
@@ -940,7 +933,6 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -949,22 +941,16 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: userProjectPermission.userId,
-            username: userProjectPermission.username,
-            metadata: metadataKeyValuePair
-          }
-        },
-        { data: false }
-      );
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
         }
-      );
+      });
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       return {
         permission,
@@ -986,7 +972,6 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,
@@ -995,22 +980,16 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: identityProjectPermission.identityId,
-            username: identityProjectPermission.username,
-            metadata: metadataKeyValuePair
-          }
-        },
-        { data: false }
-      );
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair
         }
-      );
+      });
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       return {
         permission,

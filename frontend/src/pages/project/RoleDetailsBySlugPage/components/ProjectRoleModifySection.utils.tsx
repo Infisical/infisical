@@ -169,7 +169,8 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.SyncCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
-  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional()
+  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({
@@ -1112,6 +1113,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canRemoveCertificates = action.includes(
             ProjectPermissionPkiSyncActions.RemoveCertificates
           );
+          const canSetPostSyncCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetPostSyncCommand
+          );
+          const canSetHealthCheckCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetHealthCheckCommand
+          );
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
@@ -1124,6 +1131,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.SyncCertificates]: canSyncCertificates,
             [ProjectPermissionPkiSyncActions.ImportCertificates]: canImportCertificates,
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
+            [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
+            [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2921,6 +2930,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove Certificates from Destination",
         value: ProjectPermissionPkiSyncActions.RemoveCertificates,
         description: "Remove synced certificates from the destination"
+      },
+      {
+        label: "Set Health Check",
+        value: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+        description: "Set the command a sync runs on the destination host before delivering"
+      },
+      {
+        label: "Set Post-Sync Command",
+        value: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+        description: "Set the command a sync runs on the destination host after delivering"
       }
     ]
   },

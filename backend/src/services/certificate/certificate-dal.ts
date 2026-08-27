@@ -750,6 +750,29 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
 
+  const findLatestRenewalOf = async (anchor: { id: string; orderId: string }, tx?: Knex): Promise<string | null> => {
+    try {
+      const newer = await (tx || db.replicaNode())(TableName.Certificate)
+        .where("orderId", anchor.orderId)
+        .whereNot("status", CertStatus.REVOKED)
+        .where("notAfter", ">", db.raw("NOW()"))
+        .whereRaw(`("createdAt", "id") > (SELECT "createdAt", "id" FROM ?? WHERE "id" = ?)`, [
+          TableName.Certificate,
+          anchor.id
+        ])
+        .orderBy([
+          { column: "createdAt", order: "desc" },
+          { column: "id", order: "desc" }
+        ])
+        .select("id")
+        .first();
+
+      return newer?.id ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find latest renewal of certificate" });
+    }
+  };
+
   const findWithFullDetails = async (
     filter: TCertificateLookupFilter,
     tx?: Knex
@@ -1234,6 +1257,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     getOriginatingRequestByCertId,
     findWithPrivateKeyInfo,
     findWithFullDetails,
+    findLatestRenewalOf,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend

@@ -5,7 +5,16 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import {
+  EmailDispatchAddressForm,
+  EmailDispatchDimension,
+  emailDispatchDistinctCounter,
+  EmailDispatchMailboxProvider,
+  EmailDispatchOutcome,
+  EmailDispatchPurpose as EmailDispatchMetricPurpose,
+  emailDispatchRequestCounter
+} from "@app/lib/telemetry/metrics";
+import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -20,6 +29,8 @@ import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { verifyPublicEmailCaptcha } from "./captcha-fns";
+import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
@@ -32,9 +43,20 @@ type TAuthSignupDep = {
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
+  emailDispatchGuard: TEmailDispatchGuardFactory;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+const signupTrafficAttributes = (email: string) => ({
+  "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+  "email_dispatch.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
+    ? EmailDispatchMailboxProvider.GOOGLE
+    : EmailDispatchMailboxProvider.OTHER,
+  "email_dispatch.address_form": isAliasedEmail(email)
+    ? EmailDispatchAddressForm.ALIASED
+    : EmailDispatchAddressForm.CANONICAL
+});
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
@@ -47,20 +69,59 @@ export const authSignupServiceFactory = ({
   orgDAL,
   loginService,
   emailDomainDAL,
-  signupOnboardingResponseDAL
+  signupOnboardingResponseDAL,
+  emailDispatchGuard
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
-  const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
+  const beginEmailSignupProcess = async ({
+    email,
+    ip,
+    captchaToken
+  }: {
+    email: string;
+    ip: string;
+    captchaToken?: string;
+  }): Promise<{ cooldownSeconds: number }> => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
-    if (isEmailInvalid) {
-      throw new Error("Provided a disposable email");
+
+    const trafficAttributes = signupTrafficAttributes(sanitizedEmail);
+
+    try {
+      await verifyPublicEmailCaptcha(captchaToken);
+    } catch (err) {
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.CAPTCHA_REJECTED
+      });
+      throw err;
     }
 
-    // Acquire cooldown before any operation to avoid reliable enumeration oracle and to throttle the
-    // unauthenticated DB queries below (e.g. the SSO-enforced domain lookup).
-    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    if (isEmailInvalid) {
+      throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
+    }
+
+    const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.checkMailboxCooldown({
+      purpose: EmailDispatchPurpose.Signup,
+      email: sanitizedEmail
+    });
+
+    const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash,
+      ip
+    });
+    if (isNewSource)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.SOURCE
+      });
+    if (isNewMailbox)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.MAILBOX
+      });
 
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
@@ -79,8 +140,19 @@ export const authSignupServiceFactory = ({
       }
     }
 
+    await emailDispatchGuard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash });
+
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+
+    if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.MAILBOX_CAPPED
+      });
+      return { cooldownSeconds };
+    }
+
     if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
@@ -98,6 +170,10 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.EXISTING_ACCOUNT
+      });
       return { cooldownSeconds };
     }
 
@@ -114,6 +190,8 @@ export const authSignupServiceFactory = ({
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
 
+    emailDispatchRequestCounter.add(1, { ...trafficAttributes, "email_dispatch.outcome": EmailDispatchOutcome.SENT });
+
     return { cooldownSeconds };
   };
 
@@ -122,6 +200,10 @@ export const authSignupServiceFactory = ({
     validateEmail(sanitizedEmail);
 
     await tokenService.validateEmailSignupToken(sanitizedEmail, code);
+    await emailDispatchGuard.clearMailboxThrottle({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash: emailDispatchGuard.hashAddress(sanitizedEmail).mailboxHash
+    });
 
     // Only create (or recover) the user after the OTP has been verified.
     let user = await userDAL.findOne({ username: sanitizedEmail });

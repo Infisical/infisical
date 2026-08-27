@@ -885,35 +885,35 @@
                   }
                 ]
               }
-        ]
-      },
-      {
-        "item": "Secrets Scanning",
-        "groups": [
+            ]
+          },
           {
-            "group": "Secrets scanning",
-            "pages": [
-              "documentation/platform/secret-scanning/overview",
+            "item": "Secrets Scanning",
+            "groups": [
               {
-                "group": "Concepts",
+                "group": "Secrets scanning",
                 "pages": [
-                  "documentation/platform/secret-scanning/concepts/secret-scanning"
+                  "documentation/platform/secret-scanning/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/secret-scanning/usage",
+                  "documentation/platform/secret-scanning/bitbucket",
+                  "documentation/platform/secret-scanning/github",
+                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
           },
           {
-            "group": "Product reference",
-            "pages": [
-              "documentation/platform/secret-scanning/usage",
-              "documentation/platform/secret-scanning/bitbucket",
-              "documentation/platform/secret-scanning/github",
-              "documentation/platform/secret-scanning/gitlab"
-            ]
-          }
-        ]
-      },
-      {
             "item": "Certificate Management",
             "groups": [
               {
@@ -1092,6 +1092,7 @@
                 "group": "Reference",
                 "pages": [
                   "documentation/platform/pki/reference/pqc-algorithms",
+                  "documentation/platform/pki/reference/infisical-agent",
                   "documentation/platform/pki/migration"
                 ]
               }
@@ -1187,7 +1188,8 @@
                     "pages": [
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix"
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres"
                     ]
                   },
                   {
@@ -1213,8 +1215,8 @@
         ]
       },
       {
-            "tab": "CLI reference",
-            "groups": [
+        "tab": "CLI reference",
+        "groups": [
           {
             "group": "Command line",
             "pages": [
@@ -4550,6 +4552,10 @@
     {
       "source": "/documentation/platform/oauth-applications",
       "destination": "/documentation/platform/oauth-applications/overview"
+    },
+    {
+      "source": "/integrations/platforms/certificate-agent",
+      "destination": "/documentation/platform/pki/reference/infisical-agent"
     },
     {
       "source": "/integrations/platforms/docker-intro",
