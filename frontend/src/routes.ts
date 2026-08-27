@@ -327,7 +327,10 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
 
 const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
-    route("/overview", "kms/OverviewPage/route.tsx"),
+    route("/overview", [
+      index("kms/OverviewPage/route.tsx"),
+      route("/keys/$keyId/versions", "kms/KeyVersionsPage/route.tsx")
+    ]),
     route("/kmip", "kms/KmipPage/route.tsx"),
     route("/settings", "kms/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-kms.tsx"),

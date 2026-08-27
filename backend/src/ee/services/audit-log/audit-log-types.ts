@@ -26,6 +26,7 @@ import {
   TUpdateSecretScanningFindingDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { KeyWrapAlgorithm } from "@app/lib/crypto/cryptography/types";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
@@ -508,10 +509,13 @@ export enum EventType {
   UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
+  CMEK_IMPORT_KEY_MATERIAL_TOKEN_CREATED = "cmek-import-key-material-token-created",
+  CMEK_KEY_MATERIAL_IMPORTED = "cmek-key-material-imported",
   UPDATE_CMEK = "update-cmek",
   ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
+  CMEK_LIST_KEY_VERSIONS = "cmek-list-key-versions",
   GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
@@ -4081,8 +4085,28 @@ interface CreateCmekEvent {
     name: string;
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
+    isImportable?: boolean;
+    importOnly?: boolean;
     isExportable?: boolean;
     hasDeleteProtection?: boolean;
+  };
+}
+
+interface CmekImportKeyMaterialTokenCreatedEvent {
+  type: EventType.CMEK_IMPORT_KEY_MATERIAL_TOKEN_CREATED;
+  metadata: {
+    keyId: string;
+    wrapKeyEncryptionAlgorithm: AsymmetricKeyAlgorithm.RSA_4096;
+    wrapSigningAlgorithm: KeyWrapAlgorithm;
+  };
+}
+
+interface CmekKeyMaterialImportedEvent {
+  type: EventType.CMEK_KEY_MATERIAL_IMPORTED;
+  metadata: {
+    keyId: string;
+    wrappingAlgorithm: KeyWrapAlgorithm;
+    origin: "external";
   };
 }
 
@@ -4116,6 +4140,14 @@ interface GetCmeksEvent {
   type: EventType.GET_CMEKS;
   metadata: {
     keyIds: string[];
+  };
+}
+
+interface CmekListKeyVersionsEvent {
+  type: EventType.CMEK_LIST_KEY_VERSIONS;
+  metadata: {
+    keyId: string;
+    keyVersionIds: string[];
   };
 }
 
@@ -7433,11 +7465,14 @@ export type Event =
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
+  | CmekImportKeyMaterialTokenCreatedEvent
+  | CmekKeyMaterialImportedEvent
   | UpdateCmekEvent
   | RotateCmekEvent
   | DeleteCmekEvent
   | GetCmekEvent
   | GetCmeksEvent
+  | CmekListKeyVersionsEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
   | CmekSignEvent

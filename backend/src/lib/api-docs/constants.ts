@@ -2451,6 +2451,8 @@ export const KMS = {
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
+    isImportable: "Whether the key is created for importing external key material.",
+    importOnly: "Whether imported key material must be provided for every new key version.",
     hasDeleteProtection: "Prevents deletion of the key when enabled."
   },
   UPDATE_KEY: {
@@ -2463,6 +2465,16 @@ export const KMS = {
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
   },
+  GET_PARAMS_FOR_IMPORT: {
+    keyId: "The ID of the importable key.",
+    wrapKeyEncryptionAlgorithm: "The algorithm of the public key used to wrap the imported key material.",
+    wrapSigningAlgorithm: "The key-wrapping algorithm used to encrypt the imported key material."
+  },
+  IMPORT_KEY_MATERIAL: {
+    keyId: "The ID of the importable key.",
+    token: "The one-time token returned when generating import parameters.",
+    wrappedKeyMaterial: "The base64-encoded key material encrypted with the generated wrapping public key."
+  },
   DELETE_KEY: {
     keyId: "The ID of the key to be deleted."
   },
@@ -2473,6 +2485,13 @@ export const KMS = {
     orderBy: "The column to order keys by.",
     orderDirection: "The direction to order keys in.",
     search: "The text string to filter key names by."
+  },
+  LIST_KEY_VERSIONS: {
+    keyId: "The ID of the KMS key to list versions for.",
+    offset: "The offset to start from.",
+    limit: "The number of key versions to return.",
+    orderBy: "The column to order key versions by.",
+    orderDirection: "The direction to order key versions in."
   },
   GET_KEY_BY_ID: {
     keyId: "The ID of the KMS key to retrieve."

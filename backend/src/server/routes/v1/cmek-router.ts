@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { KeyWrapAlgorithm } from "@app/lib/crypto/cryptography/types";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
@@ -13,7 +14,7 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
+import { CmekKeyVersionsOrderBy, CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -31,6 +32,10 @@ const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, e
     isReserved: true
   })
   .extend({ algorithm: z.string(), encryptionAlgorithm: z.string().describe(openApiHidden()) });
+
+const CmekListSchema = CmekSchema.extend({
+  totalVersions: z.number().int().nonnegative()
+});
 
 const withAlgorithmAlias = <T extends { encryptionAlgorithm: string }>(key: T) => ({
   ...key,
@@ -94,6 +99,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           algorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.algorithm),
           // Deprecated alias for `algorithm`, retained for backwards compatibility.
           encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
+          isImportable: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.isImportable),
+          importOnly: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.importOnly),
           isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable),
           hasDeleteProtection: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.hasDeleteProtection)
         })
@@ -142,7 +149,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, keyUsage, isExportable, hasDeleteProtection },
+        body: { projectId, name, description, keyUsage, isImportable, importOnly, isExportable, hasDeleteProtection },
         permission
       } = req;
 
@@ -158,6 +165,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           description,
           encryptionAlgorithm: algorithm,
           keyUsage,
+          isImportable,
+          importOnly,
           isExportable,
           hasDeleteProtection
         },
@@ -174,6 +183,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             name,
             description,
             encryptionAlgorithm: algorithm,
+            isImportable,
+            importOnly,
             isExportable,
             hasDeleteProtection
           }
@@ -189,12 +200,158 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId: cmek.id,
             projectId,
             encryptionAlgorithm: algorithm,
-            keyUsage
+            keyUsage,
+            isImportable,
+            importOnly
           }
         })
         .catch(() => {});
 
       return { key: withAlgorithmAlias(cmek) };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/params-for-import",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getKmsKeyImportParams",
+      tags: [ApiDocsTags.KmsKeys],
+      description: "Generate a wrapping public key and token for importing KMS key material.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_PARAMS_FOR_IMPORT.keyId)
+      }),
+      body: z.object({
+        wrapKeyEncryptionAlgorithm: z
+          .literal(AsymmetricKeyAlgorithm.RSA_4096)
+          .describe(KMS.GET_PARAMS_FOR_IMPORT.wrapKeyEncryptionAlgorithm),
+        wrapSigningAlgorithm: z.nativeEnum(KeyWrapAlgorithm).describe(KMS.GET_PARAMS_FOR_IMPORT.wrapSigningAlgorithm)
+      }),
+      response: {
+        200: z.object({
+          kmsId: z.string().uuid(),
+          publicKey: z.string(),
+          token: z.string().uuid()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body,
+        permission
+      } = req;
+
+      const { projectId, ...importParams } = await server.services.cmek.getParamsForImport(
+        { keyId, ...body },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_IMPORT_KEY_MATERIAL_TOKEN_CREATED,
+          metadata: {
+            keyId,
+            wrapKeyEncryptionAlgorithm: body.wrapKeyEncryptionAlgorithm,
+            wrapSigningAlgorithm: body.wrapSigningAlgorithm
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekImportKeyMaterialTokenCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId,
+            projectId,
+            wrapKeyEncryptionAlgorithm: body.wrapKeyEncryptionAlgorithm,
+            wrapSigningAlgorithm: body.wrapSigningAlgorithm
+          }
+        })
+        .catch(() => {});
+
+      return importParams;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/import-material",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "importKmsKeyMaterial",
+      tags: [ApiDocsTags.KmsKeys],
+      description: "Import wrapped key material into an importable KMS key.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.IMPORT_KEY_MATERIAL.keyId)
+      }),
+      body: z.object({
+        token: z.string().uuid().describe(KMS.IMPORT_KEY_MATERIAL.token),
+        wrappedKeyMaterial: createBase64Schema("wrappedKeyMaterial", MAX_KMS_PAYLOAD_BYTES).describe(
+          KMS.IMPORT_KEY_MATERIAL.wrappedKeyMaterial
+        )
+      }),
+      response: {
+        200: z.object({
+          kmsKeyVersionId: z.string().uuid(),
+          keyId: z.string().uuid(),
+          keyVersion: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body,
+        permission
+      } = req;
+
+      const { projectId, wrappingAlgorithm, ...importedKeyMaterial } = await server.services.cmek.importKeyMaterial(
+        { keyId, ...body },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_KEY_MATERIAL_IMPORTED,
+          metadata: {
+            keyId,
+            wrappingAlgorithm,
+            origin: "external"
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekKeyMaterialImported,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId,
+            projectId,
+            wrappingAlgorithm,
+            origin: "external"
+          }
+        })
+        .catch(() => {});
+
+      return importedKeyMaterial;
     }
   });
 
@@ -263,7 +420,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       operationId: "rotateKmsKey",
       tags: [ApiDocsTags.KmsKeys],
       description:
-        "Rotate KMS key. Generates new key material for the key and increments its version. Previous key material is retained so existing ciphertexts remain decryptable; new encrypt operations use the new material. Only supported for encrypt-decrypt keys.",
+        "Rotate KMS key. Generates new key material for the key and increments its version, for importable keys with pre imported key material this advances the version. Previous key material is retained so existing ciphertexts remain decryptable; new encrypt operations use the new material. Only supported for encrypt-decrypt keys.",
       params: z.object({
         keyId: z.string().uuid().describe(KMS.ROTATE_KEY.keyId)
       }),
@@ -356,20 +513,20 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsKeys],
       description: "List KMS keys",
       querystring: z.object({
-        projectId: z.string().describe(KMS.LIST_KEYS.projectId),
-        offset: z.coerce.number().min(0).optional().default(0).describe(KMS.LIST_KEYS.offset),
-        limit: z.coerce.number().min(1).max(100).optional().default(100).describe(KMS.LIST_KEYS.limit),
+        projectId: z.string().uuid().describe(KMS.LIST_KEYS.projectId),
+        offset: z.coerce.number().int().min(0).optional().default(0).describe(KMS.LIST_KEYS.offset),
+        limit: z.coerce.number().int().min(1).max(100).optional().default(100).describe(KMS.LIST_KEYS.limit),
         orderBy: z.nativeEnum(CmekOrderBy).optional().default(CmekOrderBy.Name).describe(KMS.LIST_KEYS.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
           .optional()
           .default(OrderByDirection.ASC)
           .describe(KMS.LIST_KEYS.orderDirection),
-        search: z.string().trim().optional().describe(KMS.LIST_KEYS.search)
+        search: z.string().trim().max(128).optional().describe(KMS.LIST_KEYS.search)
       }),
       response: {
         200: z.object({
-          keys: CmekSchema.array(),
+          keys: CmekListSchema.array(),
           totalCount: z.number()
         })
       }
@@ -395,6 +552,90 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { keys: cmeks.map(withAlgorithmAlias), totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/versions",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listKmsKeyVersions",
+      tags: [ApiDocsTags.KmsKeys],
+      description: "List versions of a KMS key.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.LIST_KEY_VERSIONS.keyId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).optional().default(0).describe(KMS.LIST_KEY_VERSIONS.offset),
+        limit: z.coerce.number().int().min(1).max(100).optional().default(100).describe(KMS.LIST_KEY_VERSIONS.limit),
+        orderBy: z
+          .nativeEnum(CmekKeyVersionsOrderBy)
+          .optional()
+          .default(CmekKeyVersionsOrderBy.Version)
+          .describe(KMS.LIST_KEY_VERSIONS.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .optional()
+          .default(OrderByDirection.ASC)
+          .describe(KMS.LIST_KEY_VERSIONS.orderDirection)
+      }),
+      response: {
+        200: z.object({
+          versions: z
+            .object({
+              id: z.string().uuid(),
+              version: z.number().int().positive(),
+              origin: z.enum(["internal", "imported"]),
+              createdAt: z.date()
+            })
+            .array(),
+          totalCount: z.number().int().nonnegative()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        query,
+        permission
+      } = req;
+
+      const { versions, totalCount, projectId } = await server.services.cmek.listCmekKeyVersions(
+        { keyId, ...query },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_LIST_KEY_VERSIONS,
+          metadata: {
+            keyId,
+            keyVersionIds: versions.map((version) => version.id)
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekKeyVersionsListed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: {
+            keyId,
+            projectId,
+            versionCount: versions.length
+          }
+        })
+        .catch(() => {});
+
+      return { versions, totalCount };
     }
   });
 

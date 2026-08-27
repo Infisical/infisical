@@ -1,7 +1,7 @@
-import { execFile } from "child_process";
-import fs from "fs/promises";
-import path from "path";
-import { promisify } from "util";
+import { execFile } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { opensslDerivePublicKey, opensslGenpkey, opensslSign, opensslVerify } from "@app/lib/crypto/pqc/pqc-openssl";
@@ -12,6 +12,19 @@ import { logger } from "@app/lib/logger";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
 export const isPqcKeyAlgorithm = (algo: string): boolean => algo.startsWith("ML_DSA");
+
+export const getEcCurveName = (keyAlgorithm: AsymmetricKeyAlgorithm): { full: string; short: string } => {
+  switch (keyAlgorithm) {
+    case AsymmetricKeyAlgorithm.ECC_NIST_P256:
+      return { full: "prime256v1", short: "p256" };
+    case AsymmetricKeyAlgorithm.ECC_NIST_P384:
+      return { full: "secp384r1", short: "p384" };
+    case AsymmetricKeyAlgorithm.ECC_NIST_P521:
+      return { full: "secp521r1", short: "p521" };
+    default:
+      throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
+  }
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -46,6 +59,13 @@ export const KMS_TO_OPENSSL_NAME: Partial<Record<AsymmetricKeyAlgorithm, string>
  * @returns Object with sign and verify functions
  */
 export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSignVerifyFns => {
+  const createPkcs8PrivateKey = (privateKey: Buffer) =>
+    crypto.nativeCrypto.createPrivateKey({
+      key: privateKey,
+      format: privateKey.subarray(0, 32).toString("ascii").startsWith("-----BEGIN") ? "pem" : "der",
+      type: "pkcs8"
+    });
+
   const $getSigningParams = (signingAlgorithm: SigningAlgorithm): SigningParams => {
     switch (signingAlgorithm) {
       // RSA PSS
@@ -95,20 +115,6 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
       default:
         throw new Error(`Unsupported signing algorithm: ${signingAlgorithm as string}`);
-    }
-  };
-
-  const $getEcCurveName = (keyAlgorithm: AsymmetricKeyAlgorithm): { full: string; short: string } => {
-    // We will support more in the future
-    switch (keyAlgorithm) {
-      case AsymmetricKeyAlgorithm.ECC_NIST_P256:
-        return { full: "prime256v1", short: "p256" };
-      case AsymmetricKeyAlgorithm.ECC_NIST_P384:
-        return { full: "secp384r1", short: "p384" };
-      case AsymmetricKeyAlgorithm.ECC_NIST_P521:
-        return { full: "secp521r1", short: "p521" };
-      default:
-        throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
     }
   };
 
@@ -428,11 +434,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return signature;
     }
 
-    const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
-      key: privateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
+    const privateKeyObject = createPkcs8PrivateKey(privateKey);
 
     // For RSA signatures
     if (signingAlgorithm.startsWith("RSA")) {
@@ -570,7 +572,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           }
         );
       } else {
-        const { full: namedCurve } = $getEcCurveName(algorithm);
+        const { full: namedCurve } = getEcCurveName(algorithm);
 
         crypto.nativeCrypto.generateKeyPair(
           "ec",
@@ -600,11 +602,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return opensslDerivePublicKey(privateKey);
     }
 
-    const privateKeyObj = crypto.nativeCrypto.createPrivateKey({
-      key: privateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
+    const privateKeyObj = createPkcs8PrivateKey(privateKey);
 
     const publicKey = crypto.nativeCrypto.createPublicKey(privateKeyObj).export({
       type: "spki",
@@ -614,10 +612,24 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     return publicKey;
   };
 
+  const getKeyTypeFromPrivateKey = async (privateKey: Buffer) => {
+    if (isPqcKeyAlgorithm(algorithm)) return undefined;
+
+    const privateKeyObj = createPkcs8PrivateKey(privateKey);
+
+    return {
+      keyType: privateKeyObj.asymmetricKeyType,
+      namedCurve: privateKeyObj.asymmetricKeyDetails?.namedCurve,
+      modulusLength: privateKeyObj.asymmetricKeyDetails?.modulusLength,
+      publicExponent: privateKeyObj.asymmetricKeyDetails?.publicExponent
+    };
+  };
+
   return {
     sign,
     verify,
     generateAsymmetricPrivateKey,
-    getPublicKeyFromPrivateKey
+    getPublicKeyFromPrivateKey,
+    getKeyTypeFromPrivateKey
   };
 };

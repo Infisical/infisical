@@ -23,8 +23,13 @@ import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
-import type { TDecryptAsymmetricInput, TDecryptSymmetricInput, TEncryptSymmetricInput } from "./types";
-import { DigestType, SymmetricKeySize } from "./types";
+import type {
+  KeyWrapAlgorithm,
+  TDecryptAsymmetricInput,
+  TDecryptSymmetricInput,
+  TEncryptSymmetricInput
+} from "./types";
+import { DigestType, OAEP_KEY_WRAP_ALGORITHMS, SymmetricKeySize } from "./types";
 
 const bytesToBits = (bytes: number) => bytes * 8;
 
@@ -201,6 +206,187 @@ const cryptographyFactory = () => {
     // if there is no server cfg, and FIPS_MODE is `true`, its a fresh FIPS deployment. We need to set the fipsEnabled to true.
     await $setFipsModeEnabled(true, hsmService, kmsRootConfigDAL, envCfg);
     return true;
+  };
+
+  const wrapKeys = () => {
+    type HashType = "SHA256" | "SHA1";
+    const AES_KEY_SIZE = 32; // AES-256
+    const AES_KWP_IV = Buffer.from("A65959A6", "hex");
+
+    const ckmRsaAesEncrypt = (data: Buffer, publicKey: string, hashType: HashType): Buffer => {
+      if (data.length === 0) {
+        throw new Error("Key material cannot be empty");
+      }
+
+      const keyObject = crypto.createPublicKey(publicKey);
+
+      // RSA-PSS keys are signature-restricted keys.
+      if (keyObject.asymmetricKeyType !== "rsa") {
+        throw new Error("Expected an RSA public wrapping key");
+      }
+
+      const modulusLength = keyObject.asymmetricKeyDetails?.modulusLength;
+
+      if (!modulusLength || modulusLength % 8 !== 0) {
+        throw new Error("Unable to determine RSA modulus length");
+      }
+
+      const aesKek = crypto.randomBytes(32);
+
+      try {
+        // RFC 5649 AES Key Wrap with Padding.
+        const cipher = crypto.createCipheriv("id-aes256-wrap-pad", aesKek, AES_KWP_IV);
+
+        const wrappedData = Buffer.concat([cipher.update(data), cipher.final()]);
+
+        // Wrap temporary AES KEK using RSAES-OAEP.
+        const wrappedAesKey = crypto.publicEncrypt(
+          {
+            key: keyObject,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: hashType.toLowerCase()
+          },
+          aesKek
+        );
+
+        // Sanity check: RSA ciphertext must equal modulus size.
+        if (wrappedAesKey.length !== modulusLength / 8) {
+          throw new Error(`Unexpected RSA ciphertext size: ${wrappedAesKey.length}`);
+        }
+
+        // CKM_RSA_AES_KEY_WRAP representation used by AWS:
+        //
+        // RSA-OAEP(AES-KEK) || AES-KWP(key-material)
+        return Buffer.concat([wrappedAesKey, wrappedData]);
+      } finally {
+        aesKek.fill(0);
+      }
+    };
+
+    /**
+     * Algorithm
+     * Reverse:
+     *   C1 = first RSA-modulus-size bytes
+     *   C2 = remaining bytes
+     *   AES_KEK = RSA-OAEP-DECRYPT(privateKey, C1)
+     *   data    = AES-KWP-UNWRAP(AES_KEK, C2)
+     */
+
+    /**
+     * @param privateKey supports RSA-* variants
+     */
+    const ckmRsaAesDecrypt = (data: Buffer, privateKey: string, hashType: HashType): Buffer => {
+      const keyObject = crypto.createPrivateKey(privateKey);
+
+      if (keyObject.asymmetricKeyType !== "rsa") {
+        throw new Error("Expected an RSA private wrapping key");
+      }
+
+      const modulusLength = keyObject.asymmetricKeyDetails?.modulusLength;
+
+      if (!modulusLength || modulusLength % 8 !== 0) {
+        throw new Error("Invalid RSA modulus length");
+      }
+
+      const rsaCiphertextLength = modulusLength / 8;
+
+      // Need:
+      //   RSA ciphertext
+      //   +
+      //   at least one valid AES-KWP ciphertext block
+      if (data.length <= rsaCiphertextLength) {
+        throw new Error("Invalid RSA-AES wrapped blob");
+      }
+
+      const wrappedAesKey = data.subarray(0, rsaCiphertextLength);
+      const wrappedKeyMaterial = data.subarray(rsaCiphertextLength);
+
+      let aesKek: Buffer | undefined;
+
+      try {
+        aesKek = crypto.privateDecrypt(
+          {
+            key: keyObject,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: hashType.toLowerCase()
+          },
+          wrappedAesKey
+        );
+
+        if (aesKek.length !== AES_KEY_SIZE) {
+          throw new Error(`Expected AES-256 KEK, got ${aesKek.length * 8} bits`);
+        }
+
+        const decipher = crypto.createDecipheriv("id-aes256-wrap-pad", aesKek, AES_KWP_IV);
+
+        return Buffer.concat([decipher.update(wrappedKeyMaterial), decipher.final()]);
+      } finally {
+        aesKek?.fill(0);
+      }
+    };
+
+    // PKCS #1 / RFC 8017 | RSAES_OEAP
+    const rsaesOaepEncrypt = (data: Buffer, publicKey: string, hashType: HashType): Buffer => {
+      return crypto.publicEncrypt(
+        {
+          key: publicKey,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: hashType.toLowerCase()
+        },
+        data
+      );
+    };
+
+    // PKCS #1 / RFC 8017 | RSAES_OEAP
+    const rsaesOaepDecrypt = (data: Buffer, privateKey: string, hashType: HashType): Buffer => {
+      return crypto.privateDecrypt(
+        {
+          key: privateKey,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: hashType.toLowerCase()
+        },
+        data
+      );
+    };
+
+    const decrypt = (data: Buffer, privateKey: string, algorithm: KeyWrapAlgorithm): Buffer => {
+      const rsaCiphertextLength = 4096 / 8;
+      const isOaep = OAEP_KEY_WRAP_ALGORITHMS.includes(algorithm);
+
+      if ((isOaep && data.length !== rsaCiphertextLength) || (!isOaep && data.length <= rsaCiphertextLength)) {
+        throw new Error("Encrypted key material has an invalid length for its wrapping algorithm.");
+      }
+
+      switch (algorithm) {
+        case "RSA_AES_KEY_WRAP_SHA_256":
+          return ckmRsaAesDecrypt(data, privateKey, "SHA256");
+        case "RSA_AES_KEY_WRAP_SHA_1":
+          return ckmRsaAesDecrypt(data, privateKey, "SHA1");
+        case "RSAES_OAEP_SHA_256":
+          return rsaesOaepDecrypt(data, privateKey, "SHA256");
+        case "RSAES_OAEP_SHA_1":
+          return rsaesOaepDecrypt(data, privateKey, "SHA1");
+        default:
+          throw new Error(`Unsupported key wrapping algorithm '${algorithm}'`);
+      }
+    };
+
+    const encrypt = (data: Buffer, publicKey: string, algorithm: KeyWrapAlgorithm): Buffer => {
+      switch (algorithm) {
+        case "RSA_AES_KEY_WRAP_SHA_256":
+          return ckmRsaAesEncrypt(data, publicKey, "SHA256");
+        case "RSA_AES_KEY_WRAP_SHA_1":
+          return ckmRsaAesEncrypt(data, publicKey, "SHA1");
+        case "RSAES_OAEP_SHA_256":
+          return rsaesOaepEncrypt(data, publicKey, "SHA256");
+        case "RSAES_OAEP_SHA_1":
+          return rsaesOaepEncrypt(data, publicKey, "SHA1");
+        default:
+          throw new Error(`Unsupported key wrapping algorithm '${algorithm}'`);
+      }
+    };
+
+    return { encrypt, decrypt };
   };
 
   const encryption = () => {
@@ -381,7 +567,8 @@ const cryptographyFactory = () => {
 
     return {
       asymmetric,
-      symmetric
+      symmetric,
+      wrapKeys
     };
   };
 

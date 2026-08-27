@@ -28,6 +28,7 @@ import {
   AllowedEncryptionKeyAlgorithms,
   AsymmetricKeyAlgorithm,
   HmacAlgorithm,
+  ImportableEncryptionKeyAlgorithms,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
   TCmek,
@@ -42,6 +43,8 @@ const formSchema = z.object({
   algorithm: z.enum(AllowedEncryptionKeyAlgorithms),
   keyUsage: z.nativeEnum(KmsKeyUsage),
   isExportable: z.boolean(),
+  isImportable: z.boolean(),
+  importOnly: z.boolean(),
   hasDeleteProtection: z.boolean()
 });
 
@@ -80,6 +83,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
       algorithm: SymmetricKeyAlgorithm.AES_GCM_256,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
       isExportable: cmek?.isExportable ?? true,
+      isImportable: cmek?.isImportable ?? false,
+      importOnly: cmek?.importOnly ?? false,
       hasDeleteProtection: cmek?.hasDeleteProtection ?? false
     }
   });
@@ -90,6 +95,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     description,
     keyUsage,
     isExportable,
+    isImportable,
+    importOnly,
     hasDeleteProtection
   }: FormData) => {
     const mutation = isUpdate
@@ -106,7 +113,9 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           description,
           keyUsage,
           algorithm: algorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm,
-          isExportable,
+          isExportable: isImportable ? false : isExportable,
+          isImportable,
+          importOnly: isImportable ? importOnly : false,
           hasDeleteProtection
         });
 
@@ -119,6 +128,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
   };
 
   const selectedKeyUsage = watch("keyUsage");
+  const selectedAlgorithm = watch("algorithm");
+  const isImportable = watch("isImportable");
 
   return (
     <form onSubmit={handleSubmit(handleCreateCmek)}>
@@ -162,7 +173,6 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                           shouldValidate: true
                         });
                       }
-
                       onChange(e);
                     }}
                     className="w-full"
@@ -192,7 +202,11 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                     onValueChange={onChange}
                     className="w-full"
                   >
-                    {Object.entries(AllowedEncryptionKeyAlgorithms)
+                    {Object.entries(
+                      isImportable
+                        ? ImportableEncryptionKeyAlgorithms
+                        : AllowedEncryptionKeyAlgorithms
+                    )
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       ?.filter(([_, value]) => {
                         if (selectedKeyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
@@ -210,7 +224,6 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                             value as unknown as HmacAlgorithm
                           );
                         }
-
                         return false;
                       })
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -251,10 +264,76 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           {...register("description")}
         />
       </FormControl>
+
+      {!isUpdate && (
+        <Controller
+          control={control}
+          name="isImportable"
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal" className="mb-6">
+              <FieldContent>
+                <FieldTitle>Importable</FieldTitle>
+                <FieldDescription>
+                  Import externally generated keys into KMS. KMS won&apos;t generate a keypair and
+                  the key remains in &apos;pending_import&apos; status until a key is imported.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="is-importable"
+                variant="project"
+                checked={value}
+                onCheckedChange={(checked) => {
+                  onChange(checked);
+                  setValue("isExportable", !checked, { shouldDirty: true, shouldValidate: true });
+
+                  if (checked && !ImportableEncryptionKeyAlgorithms.includes(selectedAlgorithm)) {
+                    setValue("algorithm", keyUsageDefaultOption[selectedKeyUsage], {
+                      shouldDirty: true,
+                      shouldValidate: true
+                    });
+                  }
+
+                  if (!checked) {
+                    setValue("importOnly", false, { shouldDirty: true, shouldValidate: true });
+                  }
+                }}
+              />
+            </Field>
+          )}
+        />
+      )}
+
+      {!isUpdate && (
+        <Controller
+          control={control}
+          name="importOnly"
+          disabled={!isImportable}
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal" className="mb-6">
+              <FieldContent>
+                <FieldTitle>Disable Generation</FieldTitle>
+                <FieldDescription>
+                  Applicable for Encrypt/Decrypt type keys. KMS won&apos;t generate a keypair.
+                  Rotation is only possible when imported key material exists for this key type.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="import-only"
+                variant="project"
+                checked={value}
+                onCheckedChange={onChange}
+                disabled={!isImportable}
+              />
+            </Field>
+          )}
+        />
+      )}
+
       {!isUpdate && (
         <Controller
           control={control}
           name="isExportable"
+          disabled={isImportable}
           render={({ field: { onChange, value } }) => (
             <Field orientation="horizontal" className="mb-6">
               <FieldContent>
@@ -269,11 +348,13 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                 variant="project"
                 checked={value}
                 onCheckedChange={onChange}
+                disabled={isImportable}
               />
             </Field>
           )}
         />
       )}
+
       <Controller
         control={control}
         name="hasDeleteProtection"

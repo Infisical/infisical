@@ -2,7 +2,13 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
+import {
+  KmsImportKeyMaterialTokensSchema,
+  KmsKeysSchema,
+  TKmsKeyImportMeta,
+  TKmsKeys,
+  TKmsRootConfig
+} from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
 import { GcpKmsProviderFactory } from "@app/ee/services/external-kms/providers/gcp-kms";
 import {
@@ -14,16 +20,25 @@ import {
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { isBase64 as isBase64String } from "@app/lib/base64";
 import { withCache } from "@app/lib/cache/with-cache";
 import { TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { AllowedEncryptionKeyAlgorithms, ImportableEncryptionKeyAlgorithms } from "@app/lib/crypto/cipher/types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
-import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
+import {
+  AsymmetricKeyAlgorithm,
+  getEcCurveName,
+  isPqcKeyAlgorithm,
+  KMS_TO_OPENSSL_NAME,
+  signingService
+} from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithmEnum } from "@app/lib/crypto/sign/types";
 import { delay } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -40,11 +55,15 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TInternalKmsKeyVersionDALFactory } from "./internal-kms-key-version-dal";
+import { TKmsImportKeyMaterialTokenDALFactory } from "./kms-import-key-material-token-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
+import { TKmsKeyImportMetaDALFactory } from "./kms-key-import-meta-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
+  KmsKeyStatus,
   KmsKeyUsage,
+  KmsMaterialOrigin,
   KmsType,
   RootKeyEncryptionStrategy,
   TDecryptWithKeyDTO,
@@ -56,21 +75,37 @@ import {
   TGenerateMacDTO,
   TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
+  TGetParamsForImportDTO,
   TGetPublicKeyDTO,
+  TImportEncryptedKeyMaterialDTO,
   TImportKeyMaterialDTO,
   TSignWithKmsDTO,
   TUpdateProjectSecretManagerKmsKeyDTO,
   TVerifyMacDTO,
   TVerifyWithKmsDTO
 } from "./kms-types";
+import { TCmekKeyEncryptionAlgorithm } from "../cmek/cmek-types";
+import {
+  HYBRID_KEY_WRAP_ALGORITHMS,
+  KeyWrapAlgorithm,
+  OAEP_KEY_WRAP_ALGORITHMS
+} from "@app/lib/crypto/cryptography/types";
 
 type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
-  internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
-  internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
+  internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById" | "findOne">;
+  internalKmsKeyVersionDAL: Pick<
+    TInternalKmsKeyVersionDALFactory,
+    "create" | "findBeforeVersion" | "findOne" | "findLatestByInternalKmsId"
+  >;
+  kmsImportKeyMaterialTokenDAL: Pick<
+    TKmsImportKeyMaterialTokenDALFactory,
+    "create" | "findByIdForUpdate" | "updateById"
+  >;
+  kmsKeyImportMetaDAL: TKmsKeyImportMetaDALFactory;
   hsmService: THsmServiceFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
@@ -114,18 +149,124 @@ const OPENSSL_TO_KMS: Record<string, string> = Object.fromEntries(
   Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k])
 );
 
+const MIN_RSA_PUBLIC_EXPONENT = 65537n;
+const MAX_RSA_PUBLIC_EXPONENT = 1n << 256n;
+
 export const kmsServiceFactory = ({
   envConfig,
   kmsDAL,
   kmsRootConfigDAL,
   internalKmsDAL,
   internalKmsKeyVersionDAL,
+  kmsImportKeyMaterialTokenDAL,
+  kmsKeyImportMetaDAL,
   orgDAL,
   projectDAL,
   hsmService,
   keyStore
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY: Buffer = Buffer.alloc(0);
+
+  const validateKeyWrapAlgorithm = (keyAlgorithm: TCmekKeyEncryptionAlgorithm, wrapAlgorithm: KeyWrapAlgorithm) => {
+    const supportsHybridKeyWrap =
+      keyAlgorithm === AsymmetricKeyAlgorithm.ECC_NIST_P521 || keyAlgorithm === AsymmetricKeyAlgorithm.RSA_4096;
+    const supportedAlgorithms = supportsHybridKeyWrap ? HYBRID_KEY_WRAP_ALGORITHMS : OAEP_KEY_WRAP_ALGORITHMS;
+
+    if (!supportedAlgorithms.includes(wrapAlgorithm)) {
+      throw new BadRequestError({
+        message: `Wrapping algorithm '${wrapAlgorithm}' is not supported for key algorithm '${keyAlgorithm}'.`
+      });
+    }
+  };
+
+  const validateImportedKeyMaterial = async (
+    key: Buffer,
+    keyUsage: KmsKeyUsage,
+    algorithm: TCmekKeyEncryptionAlgorithm
+  ) => {
+    if (!Buffer.isBuffer(key)) {
+      throw new BadRequestError({ message: "Key material must be provided as binary data." });
+    }
+
+    verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
+
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
+      }
+      return;
+    }
+
+    if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      const expectedLength = hmacService(algorithm as HmacAlgorithm).getKeyByteLength();
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid HMAC key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
+      }
+      return;
+    }
+
+    // The remaining importable key usages contain an asymmetric private key.
+    const asymmetricAlgorithm = algorithm as AsymmetricKeyAlgorithm;
+    let privateKey;
+    try {
+      privateKey = crypto.nativeCrypto.createPrivateKey({
+        key,
+        format: "der",
+        type: "pkcs8"
+      });
+    } catch {
+      throw new BadRequestError({
+        message: "Invalid private key material. Expected a BER- or DER-encoded PKCS #8 private key."
+      });
+    }
+
+    const isEcKey = [
+      AsymmetricKeyAlgorithm.ECC_NIST_P256,
+      AsymmetricKeyAlgorithm.ECC_NIST_P384,
+      AsymmetricKeyAlgorithm.ECC_NIST_P521
+    ].includes(asymmetricAlgorithm);
+
+    const expectedCurve = isEcKey ? getEcCurveName(asymmetricAlgorithm).full : undefined;
+    const keyDetails = privateKey.asymmetricKeyDetails;
+
+    if (
+      (asymmetricAlgorithm === AsymmetricKeyAlgorithm.RSA_4096 &&
+        (privateKey.asymmetricKeyType !== "rsa" || keyDetails?.modulusLength !== 4096)) ||
+      (expectedCurve && (privateKey.asymmetricKeyType !== "ec" || keyDetails?.namedCurve !== expectedCurve))
+    ) {
+      throw new BadRequestError({
+        message: `Key material does not match the declared algorithm '${asymmetricAlgorithm}'.`
+      });
+    }
+
+    /**
+     * DSS standard Criteria for IFC Key Pairs section of FIPS PUB 186-5
+     * Public exponent of RSA Keypair
+     *     minimum valid exponent: 65537
+     *     must be odd
+     *     maximum must be less than 2^256
+     */
+
+    if (asymmetricAlgorithm === AsymmetricKeyAlgorithm.RSA_4096) {
+      const publicExponent = keyDetails?.publicExponent;
+      const isValidPublicExponent =
+        typeof publicExponent === "bigint" &&
+        publicExponent >= MIN_RSA_PUBLIC_EXPONENT &&
+        publicExponent % 2n === 1n &&
+        publicExponent < MAX_RSA_PUBLIC_EXPONENT;
+
+      if (!isValidPublicExponent) {
+        throw new BadRequestError({
+          message: "RSA key public exponent must be odd, at least 65,537, and less than 2^256."
+        });
+      }
+    }
+  };
 
   /*
    * Generate KMS Key
@@ -136,6 +277,8 @@ export const kmsServiceFactory = ({
     orgId,
     isReserved = true,
     isExportable = true,
+    isImportable = false,
+    importOnly = false,
     hasDeleteProtection = false,
     tx,
     name,
@@ -147,31 +290,56 @@ export const kmsServiceFactory = ({
     // daniel: ensure that the key type (sign/encrypt) and the encryption algorithm are compatible.
     verifyKeyTypeAndAlgorithm(keyUsage, encryptionAlgorithm);
 
-    let kmsKeyMaterial: Buffer | null = null;
-    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-      kmsKeyMaterial = crypto.randomBytes(
-        getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
-      );
-    } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
-      const { generateAsymmetricPrivateKey, getPublicKeyFromPrivateKey } = signingService(
-        encryptionAlgorithm as AsymmetricKeyAlgorithm
-      );
-      kmsKeyMaterial = await generateAsymmetricPrivateKey();
+    let encryptedKeyMaterial: Uint8Array | null = null;
 
-      // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
-      await getPublicKeyFromPrivateKey(kmsKeyMaterial);
-    } else if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
-      kmsKeyMaterial = hmacService(encryptionAlgorithm as HmacAlgorithm).generateKeyMaterial();
-    }
-
-    if (!kmsKeyMaterial) {
+    // form validations
+    if (importOnly && !isImportable) {
       throw new BadRequestError({
-        message: `Invalid KMS key type. No key material was created for key usage '${keyUsage}' using algorithm '${encryptionAlgorithm}'`
+        message: `ImportOnly can be set only for importable keys`
       });
     }
 
-    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-    const encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
+    if (isImportable && isExportable) {
+      throw new BadRequestError({
+        message: `Importable keys can't be exported`
+      });
+    }
+
+    if (isImportable) {
+      // validate supported algorithms for importable key type
+      if (!ImportableEncryptionKeyAlgorithms.includes(encryptionAlgorithm)) {
+        throw new BadRequestError({
+          message: `Unsupported key algorithm for importable key type, using algorithm '${encryptionAlgorithm}'`
+        });
+      }
+    } else {
+      let kmsKeyMaterial: Buffer | null = null;
+      if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+        kmsKeyMaterial = crypto.randomBytes(
+          getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
+        );
+      } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+        const { generateAsymmetricPrivateKey, getPublicKeyFromPrivateKey } = signingService(
+          encryptionAlgorithm as AsymmetricKeyAlgorithm
+        );
+        kmsKeyMaterial = await generateAsymmetricPrivateKey();
+
+        // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
+        await getPublicKeyFromPrivateKey(kmsKeyMaterial);
+      } else if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+        kmsKeyMaterial = hmacService(encryptionAlgorithm as HmacAlgorithm).generateKeyMaterial();
+      }
+
+      if (!kmsKeyMaterial) {
+        throw new BadRequestError({
+          message: `Invalid KMS key type. No key material was created for key usage '${keyUsage}' using algorithm '${encryptionAlgorithm}'`
+        });
+      }
+
+      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
+    }
+
     const sanitizedName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
     const dbQuery = async (db: Knex) => {
       const kmsDoc = await kmsDAL.create(
@@ -180,6 +348,9 @@ export const kmsServiceFactory = ({
           keyUsage,
           orgId,
           isReserved,
+          isImportable,
+          importOnly,
+          status: isImportable ? KmsKeyStatus.PendingImport : KmsKeyStatus.Enabled,
           isExportable,
           hasDeleteProtection,
           projectId,
@@ -188,15 +359,36 @@ export const kmsServiceFactory = ({
         db
       );
 
-      await internalKmsDAL.create(
-        {
-          version: 1,
-          encryptedKey: encryptedKeyMaterial,
-          encryptionAlgorithm,
-          kmsKeyId: kmsDoc.id
-        },
-        db
-      );
+      if (isImportable) {
+        await kmsKeyImportMetaDAL.create(
+          {
+            encryptionAlgorithm,
+            keyId: kmsDoc.id
+          },
+          db
+        );
+      } else {
+        const internalKms = await internalKmsDAL.create(
+          {
+            version: 1,
+            encryptedKey: Buffer.from(encryptedKeyMaterial!),
+            encryptionAlgorithm,
+            kmsKeyId: kmsDoc.id,
+            origin: KmsMaterialOrigin.Internal
+          },
+          db
+        );
+        await internalKmsKeyVersionDAL.create(
+          {
+            internalKmsId: internalKms.id,
+            encryptedKey: Buffer.from(encryptedKeyMaterial!),
+            version: internalKms.version,
+            origin: KmsMaterialOrigin.Internal
+          },
+          db
+        );
+      }
+
       return kmsDoc;
     };
 
@@ -205,9 +397,222 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
+  const getParamsForImport = async ({
+    kmsId,
+    wrapKeyEncryptionAlgorithm,
+    wrapSigningAlgorithm
+  }: TGetParamsForImportDTO) => {
+    if (wrapKeyEncryptionAlgorithm !== AsymmetricKeyAlgorithm.RSA_4096) {
+      throw new BadRequestError({ message: "Only RSA_4096 wrapping keys are supported for key material import." });
+    }
+
+    if (!Object.values(KeyWrapAlgorithm).includes(wrapSigningAlgorithm)) {
+      throw new BadRequestError({ message: `Unsupported key wrapping algorithm '${wrapSigningAlgorithm}'.` });
+    }
+
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    if (!kmsDoc.isImportable) {
+      throw new BadRequestError({ message: `KMS with ID '${kmsId}' is not importable` });
+    }
+    if (kmsDoc.isDisabled) {
+      throw new BadRequestError({ message: `KMS Key with ID '${kmsId}' is in disabled state` });
+    }
+    if (
+      kmsDoc.status !== KmsKeyStatus.PendingImport &&
+      kmsDoc.importEncryptionAlgorithm &&
+      AsymmetricKeyAlgorithmEnum.includes(kmsDoc.importEncryptionAlgorithm)
+    ) {
+      throw new BadRequestError({
+        message: `KMS Key with ID '${kmsId}' is asymmetric and not in 'pending_import' state `
+      });
+    }
+
+    validateKeyWrapAlgorithm(kmsDoc.importEncryptionAlgorithm as TCmekKeyEncryptionAlgorithm, wrapSigningAlgorithm);
+
+    let publicKey: string;
+    let encryptedKey: Buffer;
+    try {
+      const signing = signingService(AsymmetricKeyAlgorithm.RSA_4096);
+      const privateKey = await signing.generateAsymmetricPrivateKey();
+      publicKey = crypto.nativeCrypto.createPublicKey(privateKey).export({ format: "pem", type: "spki" }).toString();
+      encryptedKey = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256).encrypt(privateKey, ROOT_ENCRYPTION_KEY);
+    } catch (error) {
+      logger.error(error, `KMS: Failed to create import wrapping key for '${kmsId}'`);
+      throw new InternalServerError({
+        error,
+        message: "Unable to create a wrapping key for key material import. Please try again."
+      });
+    }
+
+    const importToken = KmsImportKeyMaterialTokensSchema.parse(
+      await kmsImportKeyMaterialTokenDAL.create({
+        keyId: kmsId,
+        encryptedKey,
+        // 1 day
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        wrapAlgorithm: wrapSigningAlgorithm,
+        wrapKey: publicKey
+      })
+    );
+
+    return { kmsId, publicKey, token: importToken.id };
+  };
+
+  const importWrappedKeyMaterial = async ({ wrappedKeyMaterial, kmsId, token }: TImportEncryptedKeyMaterialDTO) => {
+    if (!isBase64String(wrappedKeyMaterial) || wrappedKeyMaterial.length === 0) {
+      throw new BadRequestError({ message: "Encrypted key material must be a non-empty base64-encoded value." });
+    }
+
+    const validateKmsState = (kmsDoc: TKmsKeys, kmsImportMeta: TKmsKeyImportMeta) => {
+      if (kmsDoc.isDisabled) {
+        throw new BadRequestError({ message: `KMS Key with ID '${kmsId}' is in disabled state` });
+      }
+      // one time import restriction for asymmetric algorithms , as no rotation feature
+      if (
+        kmsDoc.status != KmsKeyStatus.PendingImport &&
+        AsymmetricKeyAlgorithmEnum.includes(kmsImportMeta.encryptionAlgorithm)
+      ) {
+        throw new BadRequestError({
+          message: `KMS Key with ID '${kmsId}' is asymmetric type and not in 'pending_import' status`
+        });
+      }
+    };
+
+    const wrappedKeyMaterialRaw = Buffer.from(wrappedKeyMaterial, "base64");
+
+    return kmsDAL.transaction(async (tx) => {
+      const importToken = await kmsImportKeyMaterialTokenDAL.findByIdForUpdate(token, tx);
+      if (!importToken || importToken.keyId !== kmsId) {
+        throw new NotFoundError({
+          message: `Key material import token '${token}' not found for KMS with ID '${kmsId}'.`
+        });
+      }
+      if (importToken.isUtilized) {
+        throw new BadRequestError({ message: "This key material import token has already been used." });
+      }
+      if (new Date(importToken.expiresAt) <= new Date()) {
+        throw new BadRequestError({
+          message: "This key material import token has expired. Request a new wrapping key and try again."
+        });
+      }
+
+      // Validate and unwrap before locking the KMS row so the write lock is held only for persistence.
+      let kmsDoc = await kmsDAL.findById(kmsId, tx);
+      if (!kmsDoc) throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+      const kmsImportMeta = await kmsKeyImportMetaDAL.findOne({ keyId: kmsId }, tx);
+
+      validateKmsState(kmsDoc, kmsImportMeta);
+
+      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      let importedKeyMaterial: Buffer;
+      let privateKeyBuffer: Buffer;
+      try {
+        privateKeyBuffer = cipher.decrypt(importToken.encryptedKey, ROOT_ENCRYPTION_KEY);
+      } catch (error) {
+        logger.error(error, `KMS: Failed to decrypt import token for '${kmsId}'`);
+        throw new InternalServerError({
+          error,
+          message: "Unable to process this import token. Request a new wrapping key and try again."
+        });
+      }
+      try {
+        importedKeyMaterial = crypto
+          .encryption()
+          .wrapKeys()
+          .decrypt(wrappedKeyMaterialRaw, privateKeyBuffer.toString(), importToken.wrapAlgorithm as KeyWrapAlgorithm);
+      } catch (error) {
+        logger.error(error, `KMS: Failed to unwrap imported key material for '${kmsId}'`);
+        throw new BadRequestError({
+          message: "Unable to unwrap the key material. Verify that it was wrapped with the selected wrapping algorithm."
+        });
+      } finally {
+        // The wrapping private key is temporary; do not retain it in memory after use.
+        privateKeyBuffer.fill(0);
+      }
+
+      // Reject material that does not match the target key's declared usage and algorithm before persisting it.
+      await validateImportedKeyMaterial(
+        importedKeyMaterial,
+        kmsDoc.keyUsage as KmsKeyUsage,
+        kmsImportMeta.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
+      );
+
+      const encryptedImportedKeyMaterial = cipher.encrypt(importedKeyMaterial, ROOT_ENCRYPTION_KEY);
+
+      // acquired lock over kmskey
+      const lockedKmsDoc = await kmsDAL.findByIdForUpdate(kmsId, tx);
+      if (!lockedKmsDoc) {
+        throw new NotFoundError({ message: `KMS Key with ID '${kmsId}' not found` });
+      }
+      kmsDoc = lockedKmsDoc;
+      validateKmsState(kmsDoc, kmsImportMeta);
+
+      let internalKms = await internalKmsDAL.findOne({ kmsKeyId: kmsId }, tx);
+      // first import operation
+      if (!internalKms) {
+        // db level unqiue index locks are applicable
+        internalKms = await internalKmsDAL.create(
+          {
+            version: 1,
+            encryptedKey: encryptedImportedKeyMaterial,
+            encryptionAlgorithm: kmsImportMeta.encryptionAlgorithm,
+            kmsKeyId: kmsDoc.id,
+            origin: KmsMaterialOrigin.Imported
+          },
+          tx
+        );
+        const internalKmsKeyVersion = await internalKmsKeyVersionDAL.create(
+          {
+            internalKmsId: internalKms.id,
+            encryptedKey: encryptedImportedKeyMaterial,
+            version: internalKms.version,
+            origin: KmsMaterialOrigin.Imported
+          },
+          tx
+        );
+        await kmsDAL.updateById(kmsId, { status: "enabled" }, tx);
+        await kmsImportKeyMaterialTokenDAL.updateById(importToken.id, { isUtilized: true }, tx);
+        return {
+          kmsKeyVersionId: internalKmsKeyVersion.id,
+          keyId: kmsId,
+          keyVersion: 1,
+          wrappingAlgorithm: importToken.wrapAlgorithm as KeyWrapAlgorithm
+        };
+      }
+
+      const internalKmsVersion = await internalKmsKeyVersionDAL.findLatestByInternalKmsId(internalKms.id, tx);
+      if (!internalKmsVersion) {
+        logger.error({ internalKmsId: internalKms.id, kmsId }, "KMS: Latest imported key version is missing");
+        throw new InternalServerError({
+          message: "KMS key material is unavailable. Contact support if the problem persists."
+        });
+      }
+
+      // utilized for future rotations ,
+      // user performs manual rotation to advance active version
+      const internalKmsKeyVersion = await internalKmsKeyVersionDAL.create(
+        {
+          internalKmsId: internalKms.id,
+          encryptedKey: encryptedImportedKeyMaterial,
+          version: internalKmsVersion.version + 1,
+          origin: KmsMaterialOrigin.Imported
+        },
+        tx
+      );
+
+      return {
+        kmsKeyVersionId: internalKmsKeyVersion.id,
+        keyVersion: internalKmsVersion.version + 1,
+        keyId: kmsId,
+        wrappingAlgorithm: importToken.wrapAlgorithm as KeyWrapAlgorithm
+      };
+    });
+  };
+
   /*
    * Rotate KMS Key
-   * Archives the current key material in the key version table and generates fresh material.
+   * Advances the key material in version table , generates a new material when old material isn't found
    * Old material is never deleted so existing ciphertexts stay decryptable.
    */
   const rotateKmsKey = async (kmsKeyId: string, tx?: Knex) => {
@@ -241,29 +646,63 @@ export const kmsServiceFactory = ({
       }
 
       const internalKms = await internalKmsDAL.findByKmsKeyIdForUpdate(kmsKeyId, db);
+
+      if (!internalKms && kmsDoc.status === KmsKeyStatus.PendingImport) {
+        throw new BadRequestError({
+          message: "Importable Kms key should be importated before performing rotation"
+        });
+      }
+
+      // importOnly
+      // make the future versions , but not active and then
       if (!internalKms) {
         throw new NotFoundError({ message: `Internal KMS not found for KMS with ID '${kmsKeyId}'` });
+      }
+
+      // Retrieve a previously imported key with advanced version, for importable symmetric keys
+      if (kmsDoc.isImportable) {
+        const nextKmsKey = await internalKmsKeyVersionDAL.findOne(
+          {
+            internalKmsId: internalKms.id,
+            version: internalKms.version + 1
+          },
+          db
+        );
+
+        if (nextKmsKey) {
+          const updatedInternalKms = await internalKmsDAL.updateById(
+            internalKms.id,
+            {
+              encryptedKey: nextKmsKey.encryptedKey,
+              version: nextKmsKey.version,
+              origin: nextKmsKey.origin
+            },
+            db
+          );
+          return { id: kmsDoc.id, version: updatedInternalKms.version };
+        }
+      }
+      if (kmsDoc.importOnly) {
+        throw new NotFoundError({
+          message: `Imported Key Material with advanced version not found for '${kmsKeyId}' importOnly keys dont generate key material`
+        });
       }
 
       const encryptionAlgorithm = internalKms.encryptionAlgorithm as SymmetricKeyAlgorithm;
       const newKeyMaterial = crypto.randomBytes(getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm));
       const encryptedNewKeyMaterial = keyCipher.encrypt(newKeyMaterial, ROOT_ENCRYPTION_KEY);
 
-      // archive the current material BEFORE overwriting it
+      const payload = {
+        encryptedKey: encryptedNewKeyMaterial,
+        version: internalKms.version + 1,
+        origin: KmsMaterialOrigin.Internal
+      };
+
+      const updatedInternalKms = await internalKmsDAL.updateById(internalKms.id, payload, db);
       await internalKmsKeyVersionDAL.create(
         {
           internalKmsId: internalKms.id,
-          encryptedKey: internalKms.encryptedKey,
-          version: internalKms.version
-        },
-        db
-      );
-
-      const updatedInternalKms = await internalKmsDAL.updateById(
-        internalKms.id,
-        {
-          encryptedKey: encryptedNewKeyMaterial,
-          version: internalKms.version + 1
+          ...payload
         },
         db
       );
@@ -418,6 +857,10 @@ export const kmsServiceFactory = ({
       const orgKmsDataKey = await orgKmsDecryptor({
         cipherTextBlob: kmsDoc.orgKms.encryptedDataKey
       });
+      if (!orgKmsDataKey) {
+        logger.error({ kmsId }, "KMS: Failed to decrypt organization KMS key");
+        throw new InternalServerError({ message: "Unable to decrypt the organization KMS key. Please try again." });
+      }
 
       const kmsDecryptor = await decryptWithInputKey({
         key: orgKmsDataKey
@@ -466,8 +909,14 @@ export const kmsServiceFactory = ({
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
-
     // internal KMS
+
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
+    }
+
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const internalKmsId = kmsDoc.internalKms?.id as string;
@@ -479,7 +928,7 @@ export const kmsServiceFactory = ({
     const $loadArchivedVersions = async () => {
       if (archivedVersionsLoaded) return;
       // one query for all archived versions; DB errors propagate (never silently treated as a decrypt failure)
-      const archivedVersions = await internalKmsKeyVersionDAL.find({ internalKmsId }, { tx });
+      const archivedVersions = await internalKmsKeyVersionDAL.findBeforeVersion(internalKmsId, currentKeyVersion, tx);
       for (const archived of archivedVersions) {
         if (!keyMaterialByVersion.has(archived.version)) {
           keyMaterialByVersion.set(archived.version, keyCipher.decrypt(archived.encryptedKey, ROOT_ENCRYPTION_KEY));
@@ -570,6 +1019,11 @@ export const kmsServiceFactory = ({
         message: "You are not allowed to export this key"
       });
     }
+    if (kmsDoc.status == KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
+    }
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -590,6 +1044,7 @@ export const kmsServiceFactory = ({
       if (!kmsDoc.isExportable) {
         throw new BadRequestError({ message: `You are not allowed to export this key [kmsId=${kmsDoc.id}]` });
       }
+      // Imported Key Materials are not exportable , add a gate to check for status==PendingImport when opting into exports
 
       const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -695,15 +1150,27 @@ export const kmsServiceFactory = ({
         db
       );
 
-      await internalKmsDAL.create(
+      const internalKms = await internalKmsDAL.create(
         {
           version: 1,
           encryptedKey: encryptedKeyMaterial,
           encryptionAlgorithm: algorithm,
-          kmsKeyId: kmsDoc.id
+          kmsKeyId: kmsDoc.id,
+          origin: KmsMaterialOrigin.Imported
         },
         db
       );
+
+      await internalKmsKeyVersionDAL.create(
+        {
+          internalKmsId: internalKms.id,
+          encryptedKey: encryptedKeyMaterial,
+          version: 1,
+          origin: KmsMaterialOrigin.Imported
+        },
+        db
+      );
+
       return kmsDoc;
     };
     if (tx) return dbQuery(tx);
@@ -715,6 +1182,11 @@ export const kmsServiceFactory = ({
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
     }
 
     const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
@@ -762,6 +1234,11 @@ export const kmsServiceFactory = ({
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
+    }
 
     const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
@@ -784,6 +1261,11 @@ export const kmsServiceFactory = ({
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
+    }
 
     const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, macAlgorithm, {
@@ -803,6 +1285,11 @@ export const kmsServiceFactory = ({
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
     }
 
     const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
@@ -832,12 +1319,17 @@ export const kmsServiceFactory = ({
       }
 
       const orgKmsDecryptor = await decryptWithKmsKey({
-        kmsId: kmsDoc.orgKms.id
+        kmsId: kmsDoc.orgKms.id,
+        tx
       });
 
       const orgKmsDataKey = await orgKmsDecryptor({
         cipherTextBlob: kmsDoc.orgKms.encryptedDataKey
       });
+      if (!orgKmsDataKey) {
+        logger.error({ kmsId }, "KMS: Failed to decrypt organization KMS key");
+        throw new InternalServerError({ message: "Unable to decrypt the organization KMS key. Please try again." });
+      }
 
       const kmsDecryptor = await decryptWithInputKey({
         key: orgKmsDataKey
@@ -881,13 +1373,18 @@ export const kmsServiceFactory = ({
         }
       };
     }
-
     const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     // internal KMS
+    if (kmsDoc.status === KmsKeyStatus.PendingImport) {
+      throw new InternalServerError({
+        message: "Kms key hasn't imported key material yet"
+      });
+    }
+
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
@@ -1571,6 +2068,8 @@ export const kmsServiceFactory = ({
     getKeyMaterial,
     getBulkKeyMaterial,
     importKeyMaterial,
+    getParamsForImport,
+    importWrappedKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,
     generateMac,

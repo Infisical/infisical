@@ -218,6 +218,9 @@ export enum PostHogEventTypes {
 
   // CMEK
   CmekCreated = "CMEK Created",
+  CmekImportKeyMaterialTokenCreated = "CMEK Import Key Material Token Created",
+  CmekKeyMaterialImported = "CMEK Key Material Imported",
+  CmekKeyVersionsListed = "CMEK Key Versions Listed",
   CmekEncrypt = "CMEK Encrypt",
   CmekDecrypt = "CMEK Decrypt",
 
@@ -1840,6 +1843,37 @@ export type TCmekCreatedEvent = {
     projectId: string;
     encryptionAlgorithm: string;
     keyUsage: string;
+    isImportable: boolean;
+    importOnly: boolean;
+  };
+};
+
+export type TCmekImportKeyMaterialTokenCreatedEvent = {
+  event: PostHogEventTypes.CmekImportKeyMaterialTokenCreated;
+  properties: {
+    keyId: string;
+    projectId: string;
+    wrapKeyEncryptionAlgorithm: string;
+    wrapSigningAlgorithm: string;
+  };
+};
+
+export type TCmekKeyMaterialImportedEvent = {
+  event: PostHogEventTypes.CmekKeyMaterialImported;
+  properties: {
+    keyId: string;
+    projectId: string;
+    wrappingAlgorithm: string;
+    origin: "external";
+  };
+};
+
+export type TCmekKeyVersionsListedEvent = {
+  event: PostHogEventTypes.CmekKeyVersionsListed;
+  properties: {
+    keyId: string;
+    projectId: string;
+    versionCount: number;
   };
 };
 
@@ -2478,6 +2512,9 @@ export type TPostHogEvent = {
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
   | TCmekCreatedEvent
+  | TCmekImportKeyMaterialTokenCreatedEvent
+  | TCmekKeyMaterialImportedEvent
+  | TCmekKeyVersionsListedEvent
   | TCmekEncryptEvent
   | TCmekDecryptEvent
   | TSecretScanningDataSourceCreatedEvent

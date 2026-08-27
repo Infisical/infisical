@@ -14,7 +14,8 @@ export const InternalKmsSchema = z.object({
   encryptedKey: zodBuffer,
   encryptionAlgorithm: z.string(),
   version: z.number().default(1),
-  kmsKeyId: z.string().uuid()
+  kmsKeyId: z.string().uuid(),
+  origin: z.string().default("internal")
 });
 
 export type TInternalKms = z.infer<typeof InternalKmsSchema>;

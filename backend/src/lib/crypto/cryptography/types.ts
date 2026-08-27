@@ -52,3 +52,25 @@ export type TEncryptedWithRootEncryptionKey = {
   algorithm: SecretEncryptionAlgo;
   encoding: SecretKeyEncoding;
 };
+
+export enum KeyWrapAlgorithm {
+  RSAES_OAEP_SHA_256 = "RSAES_OAEP_SHA_256",
+  RSAES_OAEP_SHA_1 = "RSAES_OAEP_SHA_1",
+
+  RSA_AES_KEY_WRAP_SHA_256 = "RSA_AES_KEY_WRAP_SHA_256",
+  RSA_AES_KEY_WRAP_SHA_1 = "RSA_AES_KEY_WRAP_SHA_1"
+}
+
+export const HYBRID_KEY_WRAP_ALGORITHMS: readonly KeyWrapAlgorithm[] = [
+  KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_256,
+  KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_1
+];
+
+export const OAEP_KEY_WRAP_ALGORITHMS: readonly KeyWrapAlgorithm[] = [
+  KeyWrapAlgorithm.RSAES_OAEP_SHA_256,
+  KeyWrapAlgorithm.RSAES_OAEP_SHA_1
+];
+
+export type RSAOAEPAlgorithm = KeyWrapAlgorithm.RSAES_OAEP_SHA_256 | KeyWrapAlgorithm.RSAES_OAEP_SHA_1;
+
+export type RSAESAlgorithm = KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_256 | KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_1;

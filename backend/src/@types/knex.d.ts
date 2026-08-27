@@ -296,6 +296,12 @@ import {
   TKmipServers,
   TKmipServersInsert,
   TKmipServersUpdate,
+  TKmsImportKeyMaterialTokens,
+  TKmsImportKeyMaterialTokensInsert,
+  TKmsImportKeyMaterialTokensUpdate,
+  TKmsKeyImportMeta,
+  TKmsKeyImportMetaInsert,
+  TKmsKeyImportMetaUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -1427,6 +1433,16 @@ declare module "knex/types/tables" {
     >;
     [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
+    [TableName.KmsImportKeyMaterialToken]: KnexOriginal.CompositeTableType<
+      TKmsImportKeyMaterialTokens,
+      TKmsImportKeyMaterialTokensInsert,
+      TKmsImportKeyMaterialTokensUpdate
+    >;
+    [TableName.KmsKeyImportMeta]: KnexOriginal.CompositeTableType<
+      TKmsKeyImportMeta,
+      TKmsKeyImportMetaInsert,
+      TKmsKeyImportMetaUpdate
+    >;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
       TKmsKeyVersions,
       TKmsKeyVersionsInsert,

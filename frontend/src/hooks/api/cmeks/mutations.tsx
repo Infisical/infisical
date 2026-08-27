@@ -14,6 +14,8 @@ import {
   TCmekEncryptResponse,
   TCmekGenerateMac,
   TCmekGenerateMacResponse,
+  TCmekGetParamsForImportDTO,
+  TCmekGetParamsForImportResponse,
   TCmekSign,
   TCmekSignResponse,
   TCmekVerify,
@@ -89,6 +91,22 @@ export const useDeleteCmek = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
+    }
+  });
+};
+
+export const useGetCmekParamsForImport = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      wrapKeyEncryptionAlgorithm,
+      wrapSigningAlgorithm
+    }: TCmekGetParamsForImportDTO) => {
+      const { data } = await apiRequest.post<TCmekGetParamsForImportResponse>(
+        `/api/v1/kms/keys/${keyId}/params-for-import`,
+        { wrapKeyEncryptionAlgorithm, wrapSigningAlgorithm }
+      );
+      return data;
     }
   });
 };
@@ -195,7 +213,6 @@ export const useCmekDecrypt = () => {
           ciphertext
         }
       );
-
       return data;
     }
   });

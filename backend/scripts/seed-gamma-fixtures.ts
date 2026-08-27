@@ -28,6 +28,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import knexLib from "knex";
+// This operator-only script is executed with the repository's development dependencies.
+// eslint-disable-next-line import/no-extraneous-dependencies
 import promptSync from "prompt-sync";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
@@ -39,7 +41,9 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
+import { kmsImportKeyMaterialTokenDALFactory } from "@app/services/kms/kms-import-key-material-token-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKeyImportMetaDALFactory } from "@app/services/kms/kms-key-import-meta-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -148,6 +152,8 @@ const main = async () => {
   const kmsDAL = kmskeyDALFactory(knex);
   const internalKmsDAL = internalKmsDALFactory(knex);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(knex);
+  const kmsImportKeyMaterialTokenDAL = kmsImportKeyMaterialTokenDALFactory(knex);
+  const kmsKeyImportMetaDAL = kmsKeyImportMetaDALFactory(knex);
   const orgDAL = orgDALFactory(knex);
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
@@ -155,6 +161,8 @@ const main = async () => {
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
+    kmsImportKeyMaterialTokenDAL,
+    kmsKeyImportMetaDAL,
     orgDAL,
     projectDAL,
     hsmService,
@@ -235,9 +243,7 @@ const main = async () => {
     }
   }
 
-  let scimToken = await knex(TableName.ScimToken)
-    .where({ orgId: org.id, description: scimTokenDescription })
-    .first();
+  let scimToken = await knex(TableName.ScimToken).where({ orgId: org.id, description: scimTokenDescription }).first();
   if (!scimToken) {
     [scimToken] = await knex(TableName.ScimToken)
       .insert({
@@ -295,9 +301,7 @@ const main = async () => {
   // verification flow by inserting status=verified directly. Idempotent on
   // (orgId, domain). Future-dated codeExpiresAt is a placeholder — once
   // status is verified, the runtime code path doesn't read expiry.
-  const existingDomain = await knex(TableName.EmailDomains)
-    .where({ orgId: org.id, domain: E2E_EMAIL_DOMAIN })
-    .first();
+  const existingDomain = await knex(TableName.EmailDomains).where({ orgId: org.id, domain: E2E_EMAIL_DOMAIN }).first();
   if (!existingDomain) {
     const [domainRow] = await knex(TableName.EmailDomains)
       .insert({

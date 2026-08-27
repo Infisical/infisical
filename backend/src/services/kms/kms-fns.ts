@@ -4,6 +4,7 @@ import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
 import { BadRequestError } from "@app/lib/errors";
 
 import { KmsKeyUsage } from "./kms-types";
+import { TCmekKeyEncryptionAlgorithm } from "../cmek/cmek-types";
 
 export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 16;
 export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
@@ -22,7 +23,7 @@ export const getByteLengthForSymmetricEncryptionAlgorithm = (encryptionAlgorithm
 
 export const verifyKeyTypeAndAlgorithm = (
   keyUsage: KmsKeyUsage,
-  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm,
+  algorithm: TCmekKeyEncryptionAlgorithm,
   extra?: {
     forceType?: KmsKeyUsage;
   }

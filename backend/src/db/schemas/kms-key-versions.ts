@@ -9,6 +9,10 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
+/**
+ * origin : 'internal' , 'external',
+ */
+
 export const KmsKeyVersionsSchema = z.object({
   id: z.string().uuid(),
   encryptedKey: zodBuffer,

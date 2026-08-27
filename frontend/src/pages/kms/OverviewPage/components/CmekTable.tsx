@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   CheckIcon,
@@ -84,6 +85,7 @@ import {
 import {
   AsymmetricKeyAlgorithm,
   CmekOrderBy,
+  KmsKeyStatus,
   KmsKeyUsage,
   TCmek
 } from "@app/hooks/api/cmeks/types";
@@ -94,6 +96,7 @@ import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekExportKeyModal } from "./CmekExportKeyModal";
 import { CmekGenerateMacModal } from "./CmekGenerateMacModal";
+import { CmekGetImportParamsModal } from "./CmekGetImportParamsModal";
 import { CmekModal } from "./CmekModal";
 import { CmekSignModal } from "./CmekSignModal";
 import { CmekVerifyMacModal } from "./CmekVerifyMacModal";
@@ -103,10 +106,14 @@ import { cmekKeysToExportJSON, downloadJSON } from "./jsonExport";
 import { RotateCmekModal } from "./RotateCmekModal";
 
 const getStatusBadgeProps = (
-  isDisabled: boolean
+  isDisabled: boolean,
+  status: KmsKeyStatus
 ): { variant: TBadgeProps["variant"]; label: string } => {
   if (isDisabled) {
     return { variant: "danger", label: "Disabled" };
+  }
+  if (status === KmsKeyStatus.PendingImport) {
+    return { variant: "neutral", label: "Pending Import" };
   }
   return { variant: "success", label: "Active" };
 };
@@ -114,6 +121,7 @@ const getStatusBadgeProps = (
 export const CmekTable = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const navigate = useNavigate();
 
   const projectId = currentProject?.id ?? "";
 
@@ -179,6 +187,7 @@ export const CmekTable = () => {
     "generateMac",
     "verifyMac",
     "exportKey",
+    "importParams",
     "importKeys"
   ] as const);
 
@@ -263,6 +272,10 @@ export const CmekTable = () => {
   );
   const cannotExportPrivateKey = permission.cannot(
     ProjectPermissionCmekActions.ExportPrivateKey,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotGetParamsForImport = permission.cannot(
+    ProjectPermissionCmekActions.GetParamsForImport,
     ProjectPermissionSub.Cmek
   );
   const cannotReadKey = permission.cannot(
@@ -447,6 +460,7 @@ export const CmekTable = () => {
                   <TableHead>Algorithm</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead>Unrolled Versions</TableHead>
                   <TableHead className="w-5" />
                   <TableHead variant="action" />
                 </TableRow>
@@ -456,7 +470,7 @@ export const CmekTable = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 9 }).map((__, j) => (
+                      {Array.from({ length: 10 }).map((__, j) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
@@ -475,18 +489,28 @@ export const CmekTable = () => {
                       isDisabled,
                       isExportable,
                       hasDeleteProtection,
-                      keyUsage
+                      keyUsage,
+                      totalVersions,
+                      isImportable,
+                      importOnly,
+                      status
                     } = cmek;
-                    const { variant, label } = getStatusBadgeProps(isDisabled);
+                    const { variant, label } = getStatusBadgeProps(isDisabled, status);
                     const isSelected = selectedKeyIds.includes(id);
+                    const isPendingImport = status === KmsKeyStatus.PendingImport;
+                    const hasNoUnrolledVersions = importOnly && totalVersions - version <= 0;
+                    const canGetImportParams =
+                      keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
+                      (status === KmsKeyStatus.Enabled || isPendingImport);
 
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
                       algorithm as AsymmetricKeyAlgorithm
                     );
                     // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
-                      ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
-                      : cannotExportPrivateKey || !isExportable;
+                      ? ((cannotExportPrivateKey || !isExportable) && cannotReadKey) ||
+                        isPendingImport
+                      : cannotExportPrivateKey || !isExportable || isPendingImport;
 
                     return (
                       <TableRow
@@ -588,6 +612,23 @@ export const CmekTable = () => {
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>
+                          <div className="flex items-center gap-1 whitespace-nowrap">
+                            <span>{totalVersions - version}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon className="size-3.5 shrink-0 text-muted opacity-0 transition-all group-hover:opacity-100" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {`Total imported materials available to become active when rotation is performed${
+                                  !(isImportable && keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT)
+                                    ? ". Applicable for importable Encrypt/Decrypt keys only."
+                                    : ""
+                                }`}
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           {!isExportable && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -612,14 +653,18 @@ export const CmekTable = () => {
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("encryptData", cmek)}
-                                      isDisabled={cannotEncryptData || isDisabled}
+                                      isDisabled={
+                                        cannotEncryptData || isDisabled || isPendingImport
+                                      }
                                     >
                                       <LockIcon className="mr-2 size-4" />
                                       Encrypt Data
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("decryptData", cmek)}
-                                      isDisabled={cannotDecryptData || isDisabled}
+                                      isDisabled={
+                                        cannotDecryptData || isDisabled || isPendingImport
+                                      }
                                     >
                                       <UnlockIcon className="mr-2 size-4" />
                                       Decrypt Data
@@ -630,14 +675,14 @@ export const CmekTable = () => {
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("signData", cmek)}
-                                      isDisabled={cannotSignData || isDisabled}
+                                      isDisabled={cannotSignData || isDisabled || isPendingImport}
                                     >
                                       <FileSignatureIcon className="mr-2 size-4" />
                                       Sign Data
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("verifyData", cmek)}
-                                      isDisabled={cannotVerifyData || isDisabled}
+                                      isDisabled={cannotVerifyData || isDisabled || isPendingImport}
                                     >
                                       <CircleCheckIcon className="mr-2 size-4" />
                                       Verify Data
@@ -648,19 +693,32 @@ export const CmekTable = () => {
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("generateMac", cmek)}
-                                      isDisabled={cannotGenerateMac || isDisabled}
+                                      isDisabled={
+                                        cannotGenerateMac || isDisabled || isPendingImport
+                                      }
                                     >
                                       <FileSignatureIcon className="mr-2 size-4" />
                                       Generate MAC
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("verifyMac", cmek)}
-                                      isDisabled={cannotVerifyMac || isDisabled}
+                                      isDisabled={cannotVerifyMac || isDisabled || isPendingImport}
                                     >
                                       <CircleCheckIcon className="mr-2 size-4" />
                                       Verify MAC
                                     </DropdownMenuItem>
                                   </>
+                                )}
+                                {isImportable && (
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("importParams", cmek)}
+                                    isDisabled={
+                                      cannotGetParamsForImport || isDisabled || !canGetImportParams
+                                    }
+                                  >
+                                    <ImportIcon className="mr-2 size-4" />
+                                    Import Params
+                                  </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
@@ -678,8 +736,35 @@ export const CmekTable = () => {
                                 </DropdownMenuItem>
                                 {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
                                   <DropdownMenuItem
+                                    onSelect={() =>
+                                      navigate({
+                                        to: "/organizations/$orgId/projects/kms/$projectId/overview/keys/$keyId/versions",
+                                        params: {
+                                          orgId: currentProject.orgId,
+                                          projectId,
+                                          keyId: id
+                                        },
+                                        search: {
+                                          keyName: name,
+                                          algorithm
+                                        }
+                                      })
+                                    }
+                                    isDisabled={isPendingImport}
+                                  >
+                                    <InfoIcon className="mr-2 size-4" />
+                                    View Versions
+                                  </DropdownMenuItem>
+                                )}
+                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                  <DropdownMenuItem
                                     onClick={() => handlePopUpOpen("rotateKey", cmek)}
-                                    isDisabled={cannotRotateKey || isDisabled}
+                                    isDisabled={
+                                      cannotRotateKey ||
+                                      isDisabled ||
+                                      isPendingImport ||
+                                      hasNoUnrolledVersions
+                                    }
                                   >
                                     <RotateCwIcon className="mr-2 size-4" />
                                     Rotate Key
@@ -793,6 +878,11 @@ export const CmekTable = () => {
         isOpen={popUp.exportKey.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("exportKey", isOpen)}
         cmek={popUp.exportKey.data as TCmek}
+      />
+      <CmekGetImportParamsModal
+        isOpen={popUp.importParams.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importParams", isOpen)}
+        cmek={popUp.importParams.data as TCmek}
       />
       <CmekBulkImportModal
         isOpen={popUp.importKeys.isOpen}

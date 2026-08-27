@@ -13,7 +13,9 @@ export const InternalKmsKeyVersionSchema = z.object({
   id: z.string().uuid(),
   encryptedKey: zodBuffer,
   version: z.number(),
-  internalKmsId: z.string().uuid()
+  internalKmsId: z.string().uuid(),
+  origin: z.string().default("internal"),
+  createdAt: z.date()
 });
 
 export type TInternalKmsKeyVersion = z.infer<typeof InternalKmsKeyVersionSchema>;

@@ -187,6 +187,8 @@ export enum TableName {
   UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
+  KmsImportKeyMaterialToken = "kms_import_key_material_tokens",
+  KmsKeyImportMeta = "kms_key_import_meta",
   WorkflowIntegrations = "workflow_integrations",
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
