@@ -77,7 +77,7 @@ import {
   fetchFolderScopedPrivileges,
   filterOverriddenFolderScopedDenyRules,
   getProjectPermissionFingerprint,
-  handlebarsClient,
+  interpolatePermissionRules,
   isActiveRole,
   validateOrgSSO
 } from "./permission-fns";

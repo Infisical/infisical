@@ -578,6 +578,8 @@ export const filterOverriddenFolderScopedDenyRules = (
       return [{ ...rule, subject: sub, action: deniedActions } as RawRuleOf<MongoAbility<ProjectPermissionSet>>];
     });
   });
+};
+
 // Compiling a template is the most expensive step of building an ability, and almost no rule set needs
 // it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template
 // with no mustaches renders byte-identical to its input, so serializing once to look for one and
@@ -599,7 +601,6 @@ export {
   expandLegacyForbidActions,
   handlebarsClient,
   isAuthMethodSaml,
-  interpolatePermissionRules,
   validateOrgSSO,
   validatePrivilegeChangeOperation
 };
