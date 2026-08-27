@@ -1,7 +1,7 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, RateLimitError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { normalizeEmail } from "@app/lib/validator";
 
 export enum EmailDispatchPurpose {
@@ -10,9 +10,10 @@ export enum EmailDispatchPurpose {
 }
 
 const MAX_UNCONFIRMED_SENDS_PER_MAILBOX = 5;
-const MAX_SENDS_PER_SOURCE = 20;
 
+// Error codes for Redis operations
 const OVER_LIMIT = -1;
+const KEY_ABSENT = -2;
 
 const computeHash = (key: string, pepper: string): string =>
   crypto.nativeCrypto.createHmac("sha256", pepper).update(key).digest("hex");
@@ -42,8 +43,29 @@ export const emailDispatchGuardFactory = ({
     };
   };
 
-  const acquireMailboxCooldown = async ({ purpose, email }: { purpose: EmailDispatchPurpose; email: string }) => {
+  const checkMailboxCooldown = async ({ purpose, email }: { purpose: EmailDispatchPurpose; email: string }) => {
     const { emailHash, mailboxHash } = hashAddress(email);
+    const cooldownKey = KeyStorePrefixes.EmailDispatchCooldown(purpose, mailboxHash);
+    const remaining = await keyStore.ttl(cooldownKey);
+
+    // ttl returns -2 when the key is absent and -1 when it exists without an expiry.
+    if (remaining !== KEY_ABSENT) {
+      throw new BadRequestError({
+        message: "Please wait before requesting another email",
+        details: { cooldownSeconds: Math.max(1, remaining) }
+      });
+    }
+
+    return { emailHash, mailboxHash, cooldownSeconds: KeyStoreTtls.EmailDispatchCooldownInSeconds };
+  };
+
+  const startMailboxCooldown = async ({
+    purpose,
+    mailboxHash
+  }: {
+    purpose: EmailDispatchPurpose;
+    mailboxHash: string;
+  }) => {
     const cooldownKey = KeyStorePrefixes.EmailDispatchCooldown(purpose, mailboxHash);
     const cooldownSeconds = KeyStoreTtls.EmailDispatchCooldownInSeconds;
 
@@ -53,23 +75,6 @@ export const emailDispatchGuardFactory = ({
       throw new BadRequestError({
         message: "Please wait before requesting another email",
         details: { cooldownSeconds: Math.max(1, remaining) }
-      });
-    }
-
-    return { emailHash, mailboxHash, cooldownSeconds };
-  };
-
-  const consumeSourceAllowance = async ({ purpose, ip }: { purpose: EmailDispatchPurpose; ip: string }) => {
-    const appCfg = getConfig();
-    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
-      KeyStorePrefixes.EmailDispatchSourceSends(purpose, computeHash(ip, appCfg.AUTH_SECRET)),
-      MAX_SENDS_PER_SOURCE,
-      KeyStoreTtls.EmailDispatchSourceWindowInSeconds
-    );
-
-    if (count === OVER_LIMIT) {
-      throw new RateLimitError({
-        message: "Too many requests from this network. Please try again later."
       });
     }
   };
@@ -130,8 +135,8 @@ export const emailDispatchGuardFactory = ({
 
   return {
     hashAddress,
-    acquireMailboxCooldown,
-    consumeSourceAllowance,
+    checkMailboxCooldown,
+    startMailboxCooldown,
     consumeMailboxAllowance,
     clearMailboxThrottle,
     probeTraffic

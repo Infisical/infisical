@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mock
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, RateLimitError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { emailDispatchGuardFactory, EmailDispatchPurpose } from "./email-dispatch-guard";
 
@@ -35,7 +35,7 @@ type MockedKeyStore = Mocked<KeyStoreSlice>;
 const setup = () => {
   const keyStore = {
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
-    ttl: vi.fn().mockResolvedValue(-1),
+    ttl: vi.fn().mockResolvedValue(-2),
     incrementByAndRefreshExpiryIfUnderLimit: vi.fn().mockResolvedValue(1),
     deleteItemsByKeyIn: vi.fn().mockResolvedValue(2),
     probeDistinctMember: vi.fn().mockResolvedValue(true)
@@ -95,7 +95,7 @@ describe("emailDispatchGuard", () => {
     });
   });
 
-  describe("acquireMailboxCooldown", () => {
+  describe("checkMailboxCooldown", () => {
     // The signup bombing campaign varied dots and +tags; account recovery was reachable by varying
     // case alone, since its lookup lowercased the address while its rate-limit key did not. Both
     // collapse onto one bucket here or the cooldown is bypassable by changing a single character.
@@ -108,35 +108,32 @@ describe("emailDispatchGuard", () => {
     ])("%s shares the bucket of %s", async (variant, mailbox) => {
       const { keyStore, guard } = setup();
 
-      await guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: variant });
+      await guard.checkMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: variant });
 
-      expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledWith(
-        KeyStorePrefixes.EmailDispatchCooldown(EmailDispatchPurpose.Signup, hmac(mailbox)),
-        KeyStoreTtls.EmailDispatchCooldownInSeconds,
-        "1"
+      expect(keyStore.ttl).toHaveBeenCalledWith(
+        KeyStorePrefixes.EmailDispatchCooldown(EmailDispatchPurpose.Signup, hmac(mailbox))
       );
     });
 
     test("signup and recovery do not share a bucket", async () => {
       const { keyStore, guard } = setup();
 
-      await guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" });
-      await guard.acquireMailboxCooldown({
+      await guard.checkMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" });
+      await guard.checkMailboxCooldown({
         purpose: EmailDispatchPurpose.AccountRecovery,
         email: "dave@infisical.example"
       });
 
-      const keys = keyStore.setItemWithExpiryNX.mock.calls.map(([key]) => key);
+      const keys = keyStore.ttl.mock.calls.map(([key]) => key);
       expect(new Set(keys).size).toBe(2);
     });
 
     test("reports remaining TTL when the cooldown is active", async () => {
       const { keyStore, guard } = setup();
-      keyStore.setItemWithExpiryNX.mockResolvedValue(null);
       keyStore.ttl.mockResolvedValue(30);
 
       const err = await expectRejected(
-        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
+        guard.checkMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
         BadRequestError
       );
 
@@ -145,15 +142,51 @@ describe("emailDispatchGuard", () => {
 
     test("clamps remaining TTL to a minimum of 1", async () => {
       const { keyStore, guard } = setup();
-      keyStore.setItemWithExpiryNX.mockResolvedValue(null);
+      // -1 is "exists, no expiry", which still counts as an active cooldown.
       keyStore.ttl.mockResolvedValue(-1);
 
       const err = await expectRejected(
-        guard.acquireMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
+        guard.checkMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" }),
         BadRequestError
       );
 
       expect(err.details).toMatchObject({ cooldownSeconds: 1 });
+    });
+  });
+
+  describe("startMailboxCooldown", () => {
+    test("writes the cooldown for the normalized mailbox", async () => {
+      const { keyStore, guard } = setup();
+      const mailboxHash = hmac("dave@infisical.example");
+
+      await guard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash });
+
+      expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledWith(
+        KeyStorePrefixes.EmailDispatchCooldown(EmailDispatchPurpose.Signup, mailboxHash),
+        KeyStoreTtls.EmailDispatchCooldownInSeconds,
+        "1"
+      );
+    });
+
+    test("checking leaves no state behind", async () => {
+      const { keyStore, guard } = setup();
+
+      await guard.checkMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, email: "dave@infisical.example" });
+
+      expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+    });
+
+    test("loses the race gracefully when another request armed it first", async () => {
+      const { keyStore, guard } = setup();
+      keyStore.setItemWithExpiryNX.mockResolvedValue(null);
+      keyStore.ttl.mockResolvedValue(42);
+
+      const err = await expectRejected(
+        guard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash: hmac("dave@infisical.example") }),
+        BadRequestError
+      );
+
+      expect(err.details).toMatchObject({ cooldownSeconds: 42 });
     });
   });
 
@@ -185,44 +218,6 @@ describe("emailDispatchGuard", () => {
         5,
         KeyStoreTtls.EmailDispatchMailboxWindowInSeconds
       );
-    });
-  });
-
-  describe("consumeSourceAllowance", () => {
-    const args = { purpose: EmailDispatchPurpose.Signup, ip: "203.0.113.7" };
-
-    test("hashes the source address before it reaches the store", async () => {
-      const { keyStore, guard } = setup();
-
-      await guard.consumeSourceAllowance(args);
-
-      const [key] = keyStore.incrementByAndRefreshExpiryIfUnderLimit.mock.calls[0];
-      expect(key).toContain(hmac("203.0.113.7"));
-      expect(key).not.toContain("203.0.113.7");
-    });
-
-    test("admits a busy shared address while under the cap", async () => {
-      const { keyStore, guard } = setup();
-      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(20);
-
-      await expect(guard.consumeSourceAllowance(args)).resolves.toBeUndefined();
-    });
-
-    test("refuses loudly once the cap is reached", async () => {
-      const { keyStore, guard } = setup();
-      keyStore.incrementByAndRefreshExpiryIfUnderLimit.mockResolvedValueOnce(-1);
-
-      await expectRejected(guard.consumeSourceAllowance(args), RateLimitError);
-    });
-
-    test("uses the primitive that does not extend the window on refusal", async () => {
-      const { keyStore, guard } = setup();
-
-      await guard.consumeSourceAllowance(args);
-
-      const [, limit, ttl] = keyStore.incrementByAndRefreshExpiryIfUnderLimit.mock.calls[0];
-      expect(limit).toBe(20);
-      expect(ttl).toBe(KeyStoreTtls.EmailDispatchSourceWindowInSeconds);
     });
   });
 

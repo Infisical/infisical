@@ -148,8 +148,6 @@ export const KeyStorePrefixes = {
     `email-dispatch:${purpose}:${mailboxHash}:cd` as const,
   EmailDispatchMailboxSends: (purpose: string, mailboxHash: string) =>
     `email-dispatch:${purpose}:${mailboxHash}:sends` as const,
-  EmailDispatchSourceSends: (purpose: string, ipHash: string) =>
-    `email-dispatch:${purpose}:src:${ipHash}:sends` as const,
   EmailDispatchSourceProbe: (purpose: string, window: number) =>
     `email-dispatch-abuse:${purpose}:src:${window}` as const,
   EmailDispatchMailboxProbe: (purpose: string, window: number) =>
@@ -213,7 +211,6 @@ export const KeyStoreTtls = {
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailDispatchCooldownInSeconds: 60, // 1 minute
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
-  EmailDispatchSourceWindowInSeconds: 3600, // 1 hour
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour

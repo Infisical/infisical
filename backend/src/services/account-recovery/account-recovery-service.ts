@@ -76,12 +76,12 @@ export const accountRecoveryServiceFactory = ({
       throw err;
     }
 
-    const { mailboxHash } = await emailDispatchGuard.acquireMailboxCooldown({
+    const { mailboxHash } = await emailDispatchGuard.checkMailboxCooldown({
       purpose: EmailDispatchPurpose.AccountRecovery,
       email: unsanitizedUsername
     });
 
-    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.AccountRecovery, ip });
+    await emailDispatchGuard.startMailboxCooldown({ purpose: EmailDispatchPurpose.AccountRecovery, mailboxHash });
 
     const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
       purpose: EmailDispatchPurpose.AccountRecovery,

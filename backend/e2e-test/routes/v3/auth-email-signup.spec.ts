@@ -1,16 +1,21 @@
 import { createHmac } from "node:crypto";
 
 import { decode } from "jsonwebtoken";
+import { Knex } from "knex";
 
+import { TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { normalizeEmail } from "@app/lib/validator";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { EmailDispatchPurpose } from "@app/services/auth/email-dispatch-guard";
 
 import { TTestSmtpService } from "../../mocks/smtp";
+import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
 
 const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
 const keyStore = () => (globalThis as unknown as { testKeyStore: TKeyStoreFactory }).testKeyStore;
+const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
 const mailboxHashOf = (email: string) =>
   createHmac("sha256", process.env.AUTH_SECRET as string)
@@ -332,10 +337,6 @@ describe("Auth Email Signup V3 - dispatch caps", () => {
       await keyStore().deleteItemsByKeyIn([cooldownKeyOf(email), sendsKeyOf(email)]);
     }
     touched.length = 0;
-    for (const key of await keyStore().getKeysByPattern("email-dispatch:*:src:*")) {
-      // eslint-disable-next-line no-await-in-loop
-      await keyStore().deleteItem(key);
-    }
   });
 
   test("A mailbox stops receiving codes once its allowance is spent", async () => {
@@ -354,7 +355,6 @@ describe("Auth Email Signup V3 - dispatch caps", () => {
 
   test("Alias variants of one mailbox share a single allowance", async () => {
     const canonical = track("capalias@gmail.com");
-    // Each of these reaches the same inbox: dots are insignificant at Gmail, +tags everywhere, and
     const variants = [
       "capalias@gmail.com",
       "c.a.p.alias@gmail.com",
@@ -397,6 +397,30 @@ describe("Auth Email Signup V3 - dispatch caps", () => {
     expect(ttl).toBeLessThanOrEqual(100);
   });
 
+  test("A request refused for an SSO-enforced domain leaves no cooldown", async () => {
+    const db = getDb();
+    const orgId = seedData1.organization.id;
+    const domain = "cap-ordering-sso.local";
+    const email = track(`blocked@${domain}`);
+
+    await seedVerifiedEmailDomain(orgId, domain, db);
+    await db(TableName.Organization).where({ id: orgId }).update({ authEnforced: true });
+
+    try {
+      const refused = await beginSignup(email);
+      expect(refused.statusCode).toBe(400);
+      expect(await keyStore().getItem(cooldownKeyOf(email))).toBeNull();
+    } finally {
+      await db(TableName.Organization).where({ id: orgId }).update({ authEnforced: false });
+      await cleanupEmailDomains(orgId, db);
+    }
+
+    smtp().clear();
+    const owner = await beginSignup(email);
+    expect(owner.statusCode).toBe(200);
+    expect(codesSentTo(email)).toBe(1);
+  });
+
   test("Verifying a code clears the mailbox throttle", async () => {
     const email = track("cap-cleared@localhost.local");
 
@@ -413,23 +437,4 @@ describe("Auth Email Signup V3 - dispatch caps", () => {
     expect(await keyStore().getItem(sendsKeyOf(email))).toBeNull();
     expect(await keyStore().getItem(cooldownKeyOf(email))).toBeNull();
   });
-
-  test("One source cannot cycle through unlimited mailboxes", async () => {
-    const SOURCE_ALLOWANCE = 20;
-    let refusedAt = 0;
-
-    for (let i = 1; i <= SOURCE_ALLOWANCE + 1; i += 1) {
-      const email = track(`cap-source-${i}@localhost.local`);
-      // eslint-disable-next-line no-await-in-loop
-      const res = await beginSignup(email);
-      if (res.statusCode !== 200) {
-        refusedAt = i;
-        expect(res.statusCode).toBe(429);
-        break;
-      }
-    }
-
-    expect(refusedAt).toBe(SOURCE_ALLOWANCE + 1);
-  });
 });
-

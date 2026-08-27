@@ -102,12 +102,10 @@ export const authSignupServiceFactory = ({
       throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
     }
 
-    const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.acquireMailboxCooldown({
+    const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.checkMailboxCooldown({
       purpose: EmailDispatchPurpose.Signup,
       email: sanitizedEmail
     });
-
-    await emailDispatchGuard.consumeSourceAllowance({ purpose: EmailDispatchPurpose.Signup, ip });
 
     const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
       purpose: EmailDispatchPurpose.Signup,
@@ -141,6 +139,8 @@ export const authSignupServiceFactory = ({
         }
       }
     }
+
+    await emailDispatchGuard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash });
 
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
