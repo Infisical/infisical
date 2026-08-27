@@ -573,7 +573,7 @@ export const CreateSshDynamicSecretLease = ({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="md"
                 onClick={handleAddPrincipal}
                 isDisabled={!principalInput.trim()}
               >

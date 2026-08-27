@@ -22,6 +22,7 @@ import {
   AlertTitle,
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -128,182 +129,184 @@ export const DynamicSecretLease = ({
   });
 
   return (
-    <div className="flex min-h-0 flex-col gap-4">
-      {isLeaseError && (
-        <Alert variant="danger">
-          <CircleXIcon />
-          <AlertTitle>Could not load leases.</AlertTitle>
-          <AlertDescription>
-            Try loading the dynamic secret leases again.
-            <AlertAction>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => refetchLeases().catch(() => undefined)}
-              >
-                Retry
-              </Button>
-            </AlertAction>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!isLeaseError && !isLeaseLoading && leases?.length === 0 && (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>No leases found</EmptyTitle>
-            <EmptyDescription>
-              Provision a lease to generate temporary credentials from this dynamic secret.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <ProjectPermissionCan
-              I={ProjectPermissionDynamicSecretActions.Lease}
-              a={permissionSubject}
-            >
-              {(isAllowed) => (
+    <>
+      <DialogBody className="flex flex-col gap-4">
+        {isLeaseError && (
+          <Alert variant="danger">
+            <CircleXIcon />
+            <AlertTitle>Could not load leases.</AlertTitle>
+            <AlertDescription>
+              Try loading the dynamic secret leases again.
+              <AlertAction>
                 <Button
-                  variant="project"
-                  size="sm"
-                  onClick={onClickNewLease}
-                  isDisabled={!isAllowed}
+                  variant="outline"
+                  size="xs"
+                  onClick={() => refetchLeases().catch(() => undefined)}
                 >
-                  New Lease
+                  Retry
                 </Button>
-              )}
-            </ProjectPermissionCan>
-          </EmptyContent>
-        </Empty>
-      )}
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {!isLeaseError && (isLeaseLoading || Boolean(leases?.length)) && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Lease ID</TableHead>
-              <TableHead>Expires At</TableHead>
-              <TableHead variant="action" aria-label="Actions" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLeaseLoading &&
-              Array.from({ length: 3 }).map((_, index) => (
-                <TableRow key={`lease-loading-${index + 1}`}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
+        {!isLeaseError && !isLeaseLoading && leases?.length === 0 && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No leases found</EmptyTitle>
+              <EmptyDescription>
+                Provision a lease to generate temporary credentials from this dynamic secret.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <ProjectPermissionCan
+                I={ProjectPermissionDynamicSecretActions.Lease}
+                a={permissionSubject}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="project"
+                    size="sm"
+                    onClick={onClickNewLease}
+                    isDisabled={!isAllowed}
+                  >
+                    New Lease
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+            </EmptyContent>
+          </Empty>
+        )}
+
+        {!isLeaseError && (isLeaseLoading || Boolean(leases?.length)) && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Lease ID</TableHead>
+                <TableHead>Expires At</TableHead>
+                <TableHead variant="action" aria-label="Actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLeaseLoading &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TableRow key={`lease-loading-${index + 1}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell variant="action">
+                      <Skeleton className="ml-auto size-7" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {(leases || []).map(({ id, expireAt, status, statusDetails }) => (
+                <TableRow key={id}>
+                  <TableCell className="max-w-80 font-mono">
+                    <div className="flex min-w-0 items-center">
+                      <span className="truncate">{id}</span>
+                      {Boolean(status) && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-2 inline-flex shrink-0 rounded-xs text-warning outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label="Lease warning"
+                            >
+                              <TriangleAlertIcon className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {statusDetails || status || "Lease warning"}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-24" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="capitalize">
+                          {formatDistance(new Date(expireAt), new Date())}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}
+                      </TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell variant="action">
-                    <Skeleton className="ml-auto size-7" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            {(leases || []).map(({ id, expireAt, status, statusDetails }) => (
-              <TableRow key={id}>
-                <TableCell className="max-w-80 font-mono">
-                  <div className="flex min-w-0 items-center">
-                    <span className="truncate">{id}</span>
-                    {Boolean(status) && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="ml-2 inline-flex shrink-0 rounded-xs text-warning outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label="Lease warning"
-                          >
-                            <TriangleAlertIcon className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {statusDetails || status || "Lease warning"}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="capitalize">
-                        {formatDistance(new Date(expireAt), new Date())}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableCell>
-                <TableCell variant="action">
-                  <div className="flex items-center justify-end gap-1">
-                    {canRenew && (
+                    <div className="flex items-center justify-end gap-1">
+                      {canRenew && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionDynamicSecretActions.Lease}
+                          a={permissionSubject}
+                          renderTooltip
+                          allowedLabel="Renew lease"
+                        >
+                          {(isAllowed) => (
+                            <IconButton
+                              aria-label="Renew lease"
+                              variant="ghost-muted"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
+                            >
+                              <RefreshCwIcon />
+                            </IconButton>
+                          )}
+                        </ProjectPermissionCan>
+                      )}
                       <ProjectPermissionCan
                         I={ProjectPermissionDynamicSecretActions.Lease}
                         a={permissionSubject}
                         renderTooltip
-                        allowedLabel="Renew lease"
+                        allowedLabel="Revoke lease"
                       >
                         {(isAllowed) => (
                           <IconButton
-                            aria-label="Renew lease"
+                            aria-label="Revoke lease"
                             variant="ghost-muted"
                             size="xs"
                             isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
-                          >
-                            <RefreshCwIcon />
-                          </IconButton>
-                        )}
-                      </ProjectPermissionCan>
-                    )}
-                    <ProjectPermissionCan
-                      I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={permissionSubject}
-                      renderTooltip
-                      allowedLabel="Revoke lease"
-                    >
-                      {(isAllowed) => (
-                        <IconButton
-                          aria-label="Revoke lease"
-                          variant="ghost-muted"
-                          size="xs"
-                          isDisabled={!isAllowed}
-                          onClick={() => handlePopUpOpen("deleteSecret", { leaseId: id })}
-                        >
-                          <Trash2Icon />
-                        </IconButton>
-                      )}
-                    </ProjectPermissionCan>
-                    {status === DynamicSecretLeaseStatus.FailedDeletion && (
-                      <ProjectPermissionCan
-                        I={ProjectPermissionDynamicSecretActions.Lease}
-                        a={permissionSubject}
-                        renderTooltip
-                        allowedLabel="Force delete lease. This removes the lease from Infisical without revoking it in the external provider."
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            aria-label="Force delete lease"
-                            variant="danger"
-                            size="xs"
-                            isDisabled={!isAllowed}
-                            onClick={() =>
-                              handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })
-                            }
+                            onClick={() => handlePopUpOpen("deleteSecret", { leaseId: id })}
                           >
                             <Trash2Icon />
                           </IconButton>
                         )}
                       </ProjectPermissionCan>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+                      {status === DynamicSecretLeaseStatus.FailedDeletion && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionDynamicSecretActions.Lease}
+                          a={permissionSubject}
+                          renderTooltip
+                          allowedLabel="Force delete lease. This removes the lease from Infisical without revoking it in the external provider."
+                        >
+                          {(isAllowed) => (
+                            <IconButton
+                              aria-label="Force delete lease"
+                              variant="danger"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                              onClick={() =>
+                                handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })
+                              }
+                            >
+                              <Trash2Icon />
+                            </IconButton>
+                          )}
+                        </ProjectPermissionCan>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </DialogBody>
 
       {!isLeaseLoading && !isLeaseError && Boolean(leases?.length) && (
         <DialogFooter>
@@ -389,6 +392,6 @@ export const DynamicSecretLease = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };

@@ -2573,6 +2573,9 @@ const OverviewPageContent = () => {
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
     | (TDynamicSecret & { environment: string })
     | undefined;
+  const dynamicSecretLeaseCreateData = popUp.createDynamicSecretLease?.data as
+    | (TDynamicSecret & { environment: string })
+    | undefined;
   const dynamicSecretDeleteData = popUp.deleteDynamicSecret?.data as
     | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
@@ -3579,22 +3582,20 @@ const OverviewPageContent = () => {
             </DialogTitle>
             <DialogDescription>Revoke or renew active leases.</DialogDescription>
           </DialogHeader>
-          <DialogBody className="flex flex-col">
-            {dynamicSecretLeaseData && (
-              <DynamicSecretLease
-                dynamicSecret={dynamicSecretLeaseData}
-                onClickNewLease={() =>
-                  handlePopUpOpen("createDynamicSecretLease", dynamicSecretLeaseData)
-                }
-                onClose={() => handlePopUpClose("dynamicSecretLeases")}
-                projectSlug={projectSlug}
-                key={dynamicSecretLeaseData.id}
-                dynamicSecretName={dynamicSecretLeaseData.name}
-                secretPath={secretPath}
-                environment={dynamicSecretLeaseData.environment}
-              />
-            )}
-          </DialogBody>
+          {dynamicSecretLeaseData && (
+            <DynamicSecretLease
+              dynamicSecret={dynamicSecretLeaseData}
+              onClickNewLease={() =>
+                handlePopUpOpen("createDynamicSecretLease", dynamicSecretLeaseData)
+              }
+              onClose={() => handlePopUpClose("dynamicSecretLeases")}
+              projectSlug={projectSlug}
+              key={dynamicSecretLeaseData.id}
+              dynamicSecretName={dynamicSecretLeaseData.name}
+              secretPath={secretPath}
+              environment={dynamicSecretLeaseData.environment}
+            />
+          )}
         </DialogContent>
       </Dialog>
       <EditDynamicSecretForm
@@ -3620,25 +3621,18 @@ const OverviewPageContent = () => {
               Generate temporary credentials from this dynamic secret.
             </DialogDescription>
           </DialogHeader>
-          <DialogBody className="flex flex-col overflow-visible">
-            <CreateDynamicSecretLease
-              provider={
-                (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                  ?.type
-              }
-              onClose={() => handlePopUpClose("createDynamicSecretLease")}
-              projectSlug={projectSlug}
-              dynamicSecretName={
-                (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                  ?.name
-              }
-              secretPath={secretPath}
-              environment={
-                (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                  ?.environment
-              }
-            />
-          </DialogBody>
+          {dynamicSecretLeaseCreateData && (
+            <DialogBody className="flex flex-col overflow-visible">
+              <CreateDynamicSecretLease
+                provider={dynamicSecretLeaseCreateData.type}
+                onClose={() => handlePopUpClose("createDynamicSecretLease")}
+                projectSlug={projectSlug}
+                dynamicSecretName={dynamicSecretLeaseCreateData.name}
+                secretPath={secretPath}
+                environment={dynamicSecretLeaseCreateData.environment}
+              />
+            </DialogBody>
+          )}
         </DialogContent>
       </Dialog>
       <AlertDialog

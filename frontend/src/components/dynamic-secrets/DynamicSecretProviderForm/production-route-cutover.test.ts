@@ -65,6 +65,13 @@ describe("dynamic-secret production route cutover", () => {
     assert.doesNotMatch(leasesSource, /DYNAMIC_SECRETS_WITHOUT_RENEWAL/);
   });
 
+  it("only renders the lease provisioner while its dynamic-secret data is available", async () => {
+    const source = await readSource("../../../pages/secret-manager/OverviewPage/OverviewPage.tsx");
+
+    assert.match(source, /dynamicSecretLeaseCreateData &&/);
+    assert.match(source, /provider={dynamicSecretLeaseCreateData\.type}/);
+  });
+
   it("uses Combobox for every searchable selector in the shared provider forms", async () => {
     const sources = await Promise.all([
       readSource("./DynamicSecretProviderForm.tsx"),
