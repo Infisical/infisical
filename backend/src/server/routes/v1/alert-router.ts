@@ -78,7 +78,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.alert.createAlert({
         ...req.body,
@@ -130,7 +130,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.alertChannelTest.testChannel({
         ...req.body,
@@ -178,7 +178,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }),
       response: { 200: z.object({ alerts: AlertResponseSchema.array() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alerts = await server.services.alert.listAlerts({
         ...req.query,
@@ -200,7 +200,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       params: z.object({ alertId: z.string().uuid() }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.alert.getAlertById({
         alertId: req.params.alertId,
@@ -229,7 +229,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.alert.updateAlert({
         alertId: req.params.alertId,
@@ -267,7 +267,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       params: z.object({ alertId: z.string().uuid() }),
       response: { 200: z.object({ alert: z.object({ id: z.string().uuid() }) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.alert.deleteAlert({
         alertId: req.params.alertId,

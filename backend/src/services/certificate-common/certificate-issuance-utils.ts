@@ -19,6 +19,7 @@ import {
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 
 import {
   CERT_SUBJECT_ALTERNATIVE_NAMES,
@@ -34,28 +35,13 @@ import {
   convertKeyUsageArrayToLegacy
 } from "./certificate-utils";
 
-/**
- * Parses a TTL string (e.g., "30d", "24h", "60m") and returns the equivalent in days
- */
 export const parseTtlToDays = (ttl: string): number => {
-  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
-  if (!match) {
-    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
+  const durationMs = ms(ttl);
+  if (!durationMs || durationMs <= 0) {
+    throw new BadRequestError({ message: `Invalid TTL '${ttl}'. Use a duration such as '30d', '12h', or '1y'.` });
   }
 
-  const [, value, unit] = match;
-  const numValue = parseInt(value, 10);
-
-  switch (unit) {
-    case "d":
-      return numValue;
-    case "h":
-      return Math.ceil(numValue / 24);
-    case "m":
-      return Math.ceil(numValue / (24 * 60));
-    default:
-      throw new BadRequestError({ message: `Unsupported TTL unit: ${unit}` });
-  }
+  return Math.ceil(durationMs / (24 * 60 * 60 * 1000));
 };
 
 /**
@@ -108,6 +94,31 @@ export const calculateFinalRenewBeforeDays = (
   }
 
   return isValidRenewalTiming(renewBeforeDays, certificateExpiryDate) ? renewBeforeDays : undefined;
+};
+
+export const resolveRenewedCertificateRenewBeforeDays = ({
+  apiConfig,
+  previousRenewBeforeDays,
+  ttl,
+  notAfter
+}: {
+  apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number };
+  previousRenewBeforeDays?: number | null;
+  ttl: string;
+  notAfter: Date;
+}): number | undefined => {
+  const desiredRenewBeforeDays =
+    (apiConfig?.autoRenew ? apiConfig.renewBeforeDays : undefined) ?? previousRenewBeforeDays ?? undefined;
+  if (!desiredRenewBeforeDays) {
+    return undefined;
+  }
+
+  const renewBeforeDays = calculateRenewalThreshold(desiredRenewBeforeDays, parseTtlToDays(ttl));
+  if (!renewBeforeDays) {
+    return undefined;
+  }
+
+  return isValidRenewalTiming(renewBeforeDays, notAfter) ? renewBeforeDays : undefined;
 };
 
 /**
@@ -300,12 +311,7 @@ export type TSelfSignedCertificateRequest = {
 };
 
 export type TCertificatePolicy = {
-  subject?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: string;
     allowed?: string[];
@@ -334,12 +340,14 @@ export const generateSelfSignedCertificate = async ({
   certificateRequest,
   policy,
   effectiveSignatureAlgorithm,
-  effectiveKeyAlgorithm
+  effectiveKeyAlgorithm,
+  existingKeyPair
 }: {
   certificateRequest: TSelfSignedCertificateRequest;
   policy?: TCertificatePolicy | null;
   effectiveSignatureAlgorithm: CertSignatureAlgorithm;
   effectiveKeyAlgorithm: CertKeyAlgorithm;
+  existingKeyPair?: CryptoKeyPair;
 }): Promise<TSelfSignedCertificateResult> => {
   const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
   const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
@@ -363,7 +371,9 @@ export const generateSelfSignedCertificate = async ({
 
   const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
   const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
-  const keyPair = await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+  const keyPair =
+    existingKeyPair ??
+    (await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]));
 
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 

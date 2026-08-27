@@ -17,7 +17,7 @@ export const projectFolderGrantKeys = {
     [{ grantId, sourceProjectId }, "project-folder-grant-usage"] as const
 };
 
-export const useListProjectFolderGrants = (sourceProjectId: string) =>
+export const useListProjectFolderGrants = (sourceProjectId: string, enabled = true) =>
   useQuery({
     queryKey: projectFolderGrantKeys.listByProject(sourceProjectId),
     queryFn: async () => {
@@ -29,7 +29,7 @@ export const useListProjectFolderGrants = (sourceProjectId: string) =>
       );
       return data.grants;
     },
-    enabled: Boolean(sourceProjectId)
+    enabled: Boolean(sourceProjectId) && enabled
   });
 
 export const useListProjectFolderGrantsReceived = (targetProjectId: string) =>

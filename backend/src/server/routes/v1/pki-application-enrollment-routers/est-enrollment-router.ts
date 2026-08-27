@@ -32,7 +32,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setEstEnrollment({
         actor: req.permission.type,
@@ -65,8 +65,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 
@@ -88,7 +89,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearEstEnrollment({
         actor: req.permission.type,
@@ -112,8 +113,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 

@@ -1,5 +1,7 @@
 import { logger } from "@app/lib/logger";
 
+import { licenseErrorMessage, readLicenseRequestId } from "./license-client-errors";
+
 export type TLicenseTokenProvider = {
   // Exchanges the license key for a JWT (cached until near expiry) and returns it as a bearer.
   getToken: () => Promise<string>;
@@ -48,13 +50,14 @@ export const createSelfHostedTokenProvider = (
       body: "{}",
       redirect: "manual"
     });
+    const requestId = readLicenseRequestId(res);
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`license-client: token exchange failed [status=${res.status}] ${detail}`.trim());
+      throw new Error(licenseErrorMessage(requestId, `token exchange failed [status=${res.status}] ${detail}`).trim());
     }
     const body = (await res.json()) as { token?: string };
     if (!body.token) {
-      throw new Error("license-client: token exchange returned no token");
+      throw new Error(licenseErrorMessage(requestId, "token exchange returned no token"));
     }
     return body.token;
   };

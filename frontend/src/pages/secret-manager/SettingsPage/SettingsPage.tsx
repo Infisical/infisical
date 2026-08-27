@@ -1,11 +1,11 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
+import { LookingForOrgPageLink } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
@@ -18,7 +18,6 @@ import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection"
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
-  const { isSubOrganization } = useOrganization();
   const { currentProject } = useProject();
 
   const { selectedTab } = useSearch({
@@ -80,6 +79,7 @@ export const SettingsPage = () => {
     visibleTabs[0];
   const baseTitle = t("settings.project.title");
   const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
+  const ActiveTabComponent = activeTab?.Component;
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -92,24 +92,11 @@ export const SettingsPage = () => {
           title={activeTab?.name ?? baseTitle}
           description={activeTab?.description}
         >
-          <Link
-            to="/organizations/$orgId/settings"
-            params={{
-              orgId: currentProject.orgId
-            }}
-            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-          >
-            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization
-            settings?
-          </Link>
+          <LookingForOrgPageLink page="settings" />
         </PageHeader>
-        <Tabs orientation="vertical" value={activeTab?.key}>
-          {visibleTabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
-        </Tabs>
+        <div className="grow rounded-br-md rounded-bl-md py-5 outline-hidden xl:overflow-x-hidden xl:py-0">
+          {ActiveTabComponent ? <ActiveTabComponent /> : null}
+        </div>
       </div>
     </div>
   );

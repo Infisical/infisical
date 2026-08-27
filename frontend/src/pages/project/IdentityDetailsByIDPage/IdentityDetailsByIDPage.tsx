@@ -6,10 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -24,7 +23,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   OrgIcon,
+  PageHeader,
   PageLoader,
   SubOrgIcon,
   Tooltip,
@@ -47,12 +51,14 @@ import {
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { IdentityActionConfirmationDialog } from "./components/IdentityActionConfirmationDialog";
 import { IdentityPermissionAuditSheet } from "./components/IdentityPermissionAuditSheet";
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
@@ -71,9 +77,30 @@ const Page = () => {
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
+  const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isPam = currentProject?.type === ProjectType.PAM;
+  // Products where the underlying project is an internal detail the user never sees
+  const isStandaloneProduct = isCertManager || isPam;
+
+  let removeMenuItemLabel = "Remove From Project";
+  if (isProjectIdentity) {
+    removeMenuItemLabel = "Delete Machine Identity";
+  } else if (isPam) {
+    removeMenuItemLabel = "Remove From PAM";
+  }
+
+  let accessControlLabel = "project";
+  if (isCertManager) {
+    accessControlLabel = "certificate manager";
+  } else if (isPam) {
+    accessControlLabel = "PAM";
+  }
+  const pageDescription = `Configure and manage${
+    isProjectIdentity ? " machine identity and " : " "
+  }${accessControlLabel} access control`;
 
   const {
     data: identity,
@@ -97,12 +124,21 @@ const Page = () => {
   const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
 
   const onRemoveIdentitySubmit = async () => {
-    await removeIdentityMutateAsync({
-      identityId,
-      projectId
-    });
+    if (isPam) {
+      // PAM removal goes through the PAM endpoint so PAM audit events fire and
+      // folder/account resource memberships are cleaned up (the generic route skips that)
+      await removePamIdentityMutateAsync({
+        identityId,
+        projectId
+      });
+    } else {
+      await removeIdentityMutateAsync({
+        identityId,
+        projectId
+      });
+    }
     createNotification({
-      text: "Successfully removed machine identity from project",
+      text: `Successfully removed machine identity from ${isPam ? "PAM" : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -164,18 +200,14 @@ const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Identities
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-foreground"
           >
             <ChevronLeftIcon size={16} />
-            {isCertManager ? "Machine Identities" : "Project Machine Identities"}
+            {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
           </Link>
           <PageHeader
             scope={currentProject.type}
-            description={
-              isCertManager
-                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}certificate manager access control`
-                : `Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`
-            }
+            description={pageDescription}
             title={identityMembershipDetails.identity.name}
           >
             <div className="flex items-center gap-2">
@@ -193,7 +225,7 @@ const Page = () => {
                   readOnly
                 />
               )}
-              {!isCertManager && (
+              {!isStandaloneProduct && (
                 <Button variant="outline" onClick={() => setIsPermissionAuditOpen(true)}>
                   <ShieldIcon />
                   Permission Audit
@@ -260,7 +292,7 @@ const Page = () => {
                             : handlePopUpOpen("removeIdentity")
                         }
                       >
-                        {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
+                        {removeMenuItemLabel}
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
@@ -334,32 +366,39 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              {!isCertManager && (
+              {!isStandaloneProduct && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
             </div>
           </div>
-          <DeleteActionModal
-            isOpen={popUp.removeIdentity.isOpen}
-            title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
-            onChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
-            deleteKey="remove"
-            onDeleteApproved={() => onRemoveIdentitySubmit()}
+          <IdentityActionConfirmationDialog
+            open={popUp.removeIdentity.isOpen}
+            title={`Remove ${identityMembershipDetails.identity.name} from ${isPam ? "PAM" : "the project"}?`}
+            description={`The machine identity will lose access to ${isPam ? "PAM" : "this project"} but remain available in its organization.`}
+            descriptionAsAlert
+            confirmationText="remove"
+            actionLabel="Remove"
+            onOpenChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
+            onConfirm={onRemoveIdentitySubmit}
           />
-          <AssumePrivilegesModal
+          <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             actorType={ActorType.IDENTITY}
             actorId={identityId}
           />
-          <DeleteActionModal
-            isOpen={popUp.deleteIdentity.isOpen}
-            title={`Are you sure you want to delete ${identity?.name}?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-            deleteKey="confirm"
-            onDeleteApproved={handleDeleteIdentity}
+          <IdentityActionConfirmationDialog
+            open={popUp.deleteIdentity.isOpen}
+            title={`Delete ${identity?.name || "machine identity"}?`}
+            description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            descriptionAsAlert
+            descriptionAlertVariant="danger"
+            confirmationText="confirm"
+            actionLabel="Delete"
+            onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            onConfirm={handleDeleteIdentity}
           />
           {isPermissionAuditOpen && (
             <IdentityPermissionAuditSheet
@@ -371,7 +410,14 @@ const Page = () => {
           )}
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the machine identity." className="py-12" />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Machine identity not found</EmptyTitle>
+            <EmptyDescription>
+              The machine identity may have been removed or you may not have access to it.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </div>
   );

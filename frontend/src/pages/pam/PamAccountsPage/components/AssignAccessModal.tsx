@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
-import { BotIcon, CheckIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import { BotIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -13,7 +13,6 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -21,10 +20,8 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
-  TPamResourceRole,
   useAddAccountGroupMember,
   useAddAccountIdentityMember,
   useAddAccountMember,
@@ -78,37 +75,6 @@ const ASSIGNEE_ICON: Record<PamMemberKind, typeof UserIcon> = {
   [PamMemberKind.Identity]: BotIcon
 };
 
-const AssigneeSelectOption = ({ children, ...props }: OptionProps<AssigneeOption>) => {
-  const Icon = ASSIGNEE_ICON[props.data.kind];
-  return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <div className="min-w-0">
-          <p className="truncate">{children}</p>
-          {props.data.subtitle && (
-            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-          )}
-        </div>
-      </div>
-    </components.Option>
-  );
-};
-
-const ResourceRoleOption = ({ isSelected, children, ...props }: OptionProps<TPamResourceRole>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex items-start justify-between gap-2 whitespace-normal">
-      <div className="min-w-0">
-        <p>{children}</p>
-        {props.data.description && (
-          <p className="text-xs leading-4 text-muted">{props.data.description}</p>
-        )}
-      </div>
-      {isSelected && <CheckIcon className="mt-0.5 size-4 shrink-0" />}
-    </div>
-  </components.Option>
-);
-
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -133,12 +99,9 @@ export const AssignAccessModal = ({
   const { currentOrg } = useOrganization();
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({
-    organizationId: currentOrg.id,
-    limit: 1000
-  });
   const { data: productMembers } = useListPamProductMembers();
   const { data: productGroups } = useListPamProductGroups();
+  // Product identity members carry the identity name, covering both org-level and PAM-scoped identities
   const { data: productIdentities } = useListPamProductIdentities();
   const { data: resourceRoles } = useListPamResourceRoles();
 
@@ -194,10 +157,6 @@ export const AssignAccessModal = ({
     () => new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean) as string[]),
     [productGroups]
   );
-  const pamIdentityIds = useMemo(
-    () => new Set((productIdentities ?? []).map((m) => m.identityId).filter(Boolean) as string[]),
-    [productIdentities]
-  );
 
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
     const groups: AssigneeOption[] = (orgGroups ?? [])
@@ -217,11 +176,12 @@ export const AssignAccessModal = ({
       });
 
     const existingIds = existingIdentityIds ?? new Set<string>();
-    const identities: AssigneeOption[] = (orgIdentities?.identityMemberships ?? [])
-      .filter((im) => pamIdentityIds.has(im.identity.id) && !existingIds.has(im.identity.id))
-      .map((im) => ({
-        value: im.identity.id,
-        label: im.identity.name,
+    const identities: AssigneeOption[] = (productIdentities ?? [])
+      .filter((m): m is typeof m & { identityId: string } => Boolean(m.identityId))
+      .filter((m) => !existingIds.has(m.identityId))
+      .map((m) => ({
+        value: m.identityId,
+        label: m.name,
         kind: PamMemberKind.Identity,
         subtitle: "Machine Identity"
       }));
@@ -230,10 +190,9 @@ export const AssignAccessModal = ({
   }, [
     orgGroups,
     orgUsers,
-    orgIdentities,
+    productIdentities,
     pamGroupIds,
     pamUserIds,
-    pamIdentityIds,
     existingGroupIds,
     existingUserIds,
     existingIdentityIds
@@ -391,40 +350,74 @@ export const AssignAccessModal = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Access" : "Assign Access"}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           <Field>
-            <FieldLabel>Assignee</FieldLabel>
+            <FieldLabel htmlFor="pam-assign-access-assignee">Assignee</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                id="pam-assign-access-assignee"
                 value={isEdit ? lockedActor : selectedActor}
                 options={assigneeOptions}
                 isDisabled={isEdit}
-                onChange={(opt) => setSelectedActor((opt as AssigneeOption | null) ?? null)}
+                onValueChange={(opt) => setSelectedActor(opt)}
                 getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
                 getOptionLabel={(opt) => opt.label}
-                components={{ Option: AssigneeSelectOption }}
+                getOptionKeywords={(opt) => (opt.subtitle ? [opt.subtitle] : [])}
                 placeholder="Pick a user, group, or identity..."
-                noOptionsMessage={() => "No users, groups, or identities available to assign."}
+                searchPlaceholder="Pick a user, group, or identity..."
+                searchAriaLabel="Search users, groups, and identities"
+                emptyMessage="No users, groups, or identities available to assign."
+                modal
+                renderOption={(opt) => {
+                  const Icon = ASSIGNEE_ICON[opt.kind];
+                  return (
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <Icon className="size-4 shrink-0 text-muted" />
+                      <span className="min-w-0">
+                        <span className="block truncate">{opt.label}</span>
+                        {opt.subtitle && (
+                          <span className="block truncate text-xs leading-4 text-muted">
+                            {opt.subtitle}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  );
+                }}
               />
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>Role</FieldLabel>
+            <FieldLabel htmlFor="pam-assign-access-role">Role</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                id="pam-assign-access-role"
                 value={selectedRole}
                 options={resourceRoles ?? []}
-                onChange={(opt) => setRoleSlug((opt as TPamResourceRole | null)?.slug ?? "")}
+                onValueChange={(opt) => setRoleSlug(opt.slug)}
                 getOptionValue={(opt) => opt.slug}
                 getOptionLabel={(opt) => opt.name}
-                components={{ Option: ResourceRoleOption }}
                 placeholder="Select a role..."
+                searchPlaceholder="Select a role..."
+                searchAriaLabel="Search roles"
+                emptyMessage="No roles found."
+                modal
+                renderOption={(opt) => (
+                  <span className="block min-w-0">
+                    <span className="block">{opt.name}</span>
+                    {opt.description && (
+                      <span className="block text-xs leading-4 whitespace-normal text-muted">
+                        {opt.description}
+                      </span>
+                    )}
+                  </span>
+                )}
               />
             </FieldContent>
           </Field>

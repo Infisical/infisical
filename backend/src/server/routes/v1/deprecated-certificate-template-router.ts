@@ -36,7 +36,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.getCertTemplate({
         id: req.params.certificateTemplateId,
@@ -88,7 +88,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.createCertTemplate({
         actor: req.permission.type,
@@ -138,7 +138,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.updateCertTemplate({
         ...req.body,
@@ -169,7 +169,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         200: sanitizedCertificateTemplate
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.deleteCertTemplate({
         id: req.params.certificateTemplateId,
@@ -189,7 +189,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
@@ -245,7 +245,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
@@ -295,7 +295,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],

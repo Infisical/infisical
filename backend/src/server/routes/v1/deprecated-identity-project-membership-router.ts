@@ -232,7 +232,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],
@@ -327,7 +327,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],
@@ -391,7 +391,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],

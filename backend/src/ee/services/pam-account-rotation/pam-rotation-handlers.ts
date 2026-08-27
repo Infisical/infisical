@@ -6,7 +6,7 @@ import {
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
 import { TWindowsAdConnectionDetails, TWindowsConnectionDetails } from "../pam-account/pam-account-schemas";
 import { DEFAULT_WINRM_PORT, ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
@@ -60,6 +60,12 @@ const sqlRotationHandler: TPamRotationHandler = {
     // MSSQL Windows-auth (ntlm/kerberos) logins have no SQL-managed password to change, so only sql-login rotates.
     if (accountType === PamAccountType.MsSQL && authMethod !== "sql-login") {
       throw new BadRequestError({ message: "MSSQL rotation supports SQL Server authentication only" });
+    }
+    // An IAM login has no stored password: the gateway mints a short-lived token for each connection
+    if (accountType === PamAccountType.Postgres && authMethod === PamPostgresAuthMethod.AwsIam) {
+      throw new BadRequestError({
+        message: "PostgreSQL accounts using AWS IAM authentication have no password to rotate"
+      });
     }
   },
 

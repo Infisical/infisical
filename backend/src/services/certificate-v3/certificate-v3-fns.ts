@@ -1,30 +1,14 @@
-import RE2 from "re2";
-
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard
+} from "../certificate-common/certificate-constants";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-
-export const parseTtlToDays = (ttl: string): number => {
-  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
-  if (!match) {
-    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
-  }
-
-  const [, value, unit] = match;
-  const num = parseInt(value, 10);
-
-  switch (unit) {
-    case "d":
-      return num;
-    case "h":
-      return Math.ceil(num / 24);
-    case "m":
-      return Math.ceil(num / (24 * 60));
-    default:
-      throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
-  }
-};
 
 export const calculateRenewalThreshold = (
   profileRenewBeforeDays: number | undefined,
@@ -151,4 +135,57 @@ export const applyProfileDefaults = <
     basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints,
     altNames
   };
+};
+
+export const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
+  if (!keyUsages) return [];
+
+  const validKeyUsages = [...Object.values(CertKeyUsageType), ...Object.values(CertKeyUsage)] as string[];
+
+  const normalize = (usage: string): CertKeyUsageType | null => {
+    if (validKeyUsages.includes(usage)) {
+      return mapLegacyKeyUsageToStandard(usage as CertKeyUsageType);
+    }
+    return null;
+  };
+
+  let raw: string[];
+
+  if (Array.isArray(keyUsages)) {
+    raw = keyUsages.filter((u): u is string => typeof u === "string");
+  } else if (typeof keyUsages === "string") {
+    raw = keyUsages.split(",").map((u) => u.trim());
+  } else {
+    return [];
+  }
+
+  return raw.map((u) => normalize(u)).filter((u): u is CertKeyUsageType => u !== null);
+};
+
+export const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsageType[] => {
+  if (!extendedKeyUsages) return [];
+
+  const validExtendedKeyUsages = [
+    ...Object.values(CertExtendedKeyUsageType),
+    ...Object.values(CertExtendedKeyUsage)
+  ] as string[];
+
+  const normalize = (usage: string): CertExtendedKeyUsageType | null => {
+    if (validExtendedKeyUsages.includes(usage)) {
+      return mapLegacyExtendedKeyUsageToStandard(usage as CertExtendedKeyUsageType);
+    }
+    return null;
+  };
+
+  let raw: string[];
+
+  if (Array.isArray(extendedKeyUsages)) {
+    raw = extendedKeyUsages.filter((u): u is string => typeof u === "string");
+  } else if (typeof extendedKeyUsages === "string") {
+    raw = extendedKeyUsages.split(",").map((u) => u.trim());
+  } else {
+    return [];
+  }
+
+  return raw.map((u) => normalize(u)).filter((u): u is CertExtendedKeyUsageType => u !== null);
 };

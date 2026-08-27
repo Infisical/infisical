@@ -492,5 +492,9 @@ export const WebhooksTab = withProjectPermission(
       </Card>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Webhooks }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Webhooks,
+    accessRestrictedMode: "dialog"
+  }
 );

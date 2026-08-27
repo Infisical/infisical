@@ -18,6 +18,7 @@ import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-po
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
@@ -31,6 +32,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import {
@@ -61,6 +63,7 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-dal";
@@ -89,6 +92,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -96,10 +100,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  gatewayPoolService: Pick<
-    TGatewayPoolServiceFactory,
-    "getPlatformConnectionDetailsByPoolId" | "pickRandomHealthyGateway"
-  >;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -116,6 +117,7 @@ export const identityKubernetesAuthServiceFactory = ({
   identityDAL,
   identityKubernetesAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   identityAccessTokenDAL,
   permissionService,
   licenseService,
@@ -141,47 +143,59 @@ export const identityKubernetesAuthServiceFactory = ({
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = inputs.gatewayPoolId
-      ? await gatewayPoolService.getPlatformConnectionDetailsByPoolId({
-          poolId: inputs.gatewayPoolId,
-          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
-          targetPort: inputs.targetPort ?? 443
-        })
-      : await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-          gatewayId: inputs.gatewayId!,
-          targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
-          targetPort: inputs.targetPort ?? 443
-        });
+    let gatewayHttpsAgent: https.Agent | undefined;
+    if (!inputs.reviewTokenThroughGateway) {
+      gatewayHttpsAgent = new https.Agent({
+        ca: inputs.caCert || undefined,
+        rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
+        servername: inputs.targetHost
+      });
+    }
 
-    if (gatewayV2ConnectionDetails) {
-      let httpsAgent: https.Agent | undefined;
-      if (!inputs.reviewTokenThroughGateway) {
-        httpsAgent = new https.Agent({
-          ca: inputs.caCert || undefined,
-          rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
-          servername: inputs.targetHost
-        });
-      }
-
-      const callbackResult = await withGatewayV2Proxy(
+    const $proxyThroughGatewayV2 = async (details: TGatewayV2ConnectionDetails) =>
+      withGatewayV2Proxy(
         async (port) => {
           const res = await gatewayCallback(
             inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
             port,
-            httpsAgent
+            gatewayHttpsAgent
           );
           return res;
         },
         {
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay,
-          httpsAgent
+          ...details,
+          httpsAgent: gatewayHttpsAgent
         }
       );
 
-      return callbackResult;
+    // Pools are gateway-v2 only, so there is no v1 fallback to preserve on this branch.
+    if (inputs.gatewayPoolId) {
+      const { result } = await gatewayPoolService.runWithPoolFailover(
+        { poolId: inputs.gatewayPoolId },
+        async (gatewayId) => {
+          const details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+            gatewayId,
+            targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+            targetPort: inputs.targetPort ?? 443
+          });
+          if (!details) {
+            throw new NotFoundError({ message: `Connection details for gateway with ID '${gatewayId}' not found` });
+          }
+          return $proxyThroughGatewayV2(details);
+        }
+      );
+      return result;
+    }
+
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId!,
+      targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
+      targetPort: inputs.targetPort ?? 443
+    });
+
+    if (gatewayV2ConnectionDetails) {
+      return $proxyThroughGatewayV2(gatewayV2ConnectionDetails);
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId!);
@@ -675,26 +689,11 @@ export const identityKubernetesAuthServiceFactory = ({
         }
       }
 
-      await identityKubernetesAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH
       });
 
       const subOrgDetails =
@@ -803,8 +802,6 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachKubernetesAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -838,7 +835,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -851,7 +848,7 @@ export const identityKubernetesAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
@@ -965,7 +962,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
 
       // Validate connectivity through a random healthy pool member
-      const validationGateway = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      const validationGateway = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id);
         await validateKubernetesHostConnectivity({ gatewayExecutor });
@@ -999,6 +996,8 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -1070,7 +1069,8 @@ export const identityKubernetesAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateKubernetesAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1111,7 +1111,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -1123,7 +1123,10 @@ export const identityKubernetesAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -1204,6 +1207,8 @@ export const identityKubernetesAuthServiceFactory = ({
         throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
@@ -1292,7 +1297,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let validationGatewayId: string | null = effectiveGatewayId ?? null;
     if (!validationGatewayId && effectiveGatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
+      const picked = await gatewayPoolService.pickHealthyGateway(effectiveGatewayPoolId);
       validationGatewayId = picked.id;
     }
 
@@ -1492,7 +1497,8 @@ export const identityKubernetesAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeKubernetesAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1566,6 +1572,8 @@ export const identityKubernetesAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);

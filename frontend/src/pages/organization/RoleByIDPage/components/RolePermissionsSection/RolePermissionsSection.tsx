@@ -166,6 +166,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                     isDisabled={!isCustomRole}
                     isConditional={false}
                     isOpen={openPolicies.includes(subject)}
+                    onPolicyAdded={() =>
+                      setOpenPolicies((prev) =>
+                        prev.includes(subject) ? prev : [...prev, subject]
+                      )
+                    }
                     onRemoveLastRule={
                       isCustomRole
                         ? () => {

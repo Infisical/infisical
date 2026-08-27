@@ -101,7 +101,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         200: PkiSignersSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.create({
         ...req.body,
@@ -134,7 +134,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
         }
       });
 
@@ -171,7 +173,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.query.projectId ?? req.internalCertManagerProjectId;
       const { signers, totalCount } = await server.services.pkiSigner.list({
@@ -214,7 +216,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         200: SignerWithCertificateResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.getById({
         signerId: req.params.signerId,
@@ -267,7 +269,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiSigner.getMyPermissions({
         signerId: req.params.signerId,
@@ -295,7 +297,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         200: SignerWithCertificateResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.checkIssuanceNow({
         signerId: req.params.signerId,
@@ -327,7 +329,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         200: PkiSignersSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.update({
         signerId: req.params.signerId,
@@ -350,6 +352,17 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
+        }
+      });
+
       return signer;
     }
   });
@@ -368,7 +381,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         200: PkiSignersSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const signer = await server.services.pkiSigner.delete({
         signerId: req.params.signerId,
@@ -395,7 +408,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
         }
       });
 
@@ -416,7 +431,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       body: z.object({ status: z.enum(["active", "disabled"]) }),
       response: { 200: PkiSignersSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const wantDisabled = req.body.status === "disabled";
       const signer = wantDisabled
@@ -441,6 +456,18 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         event: {
           type: wantDisabled ? EventType.DISABLE_PKI_SIGNER : EventType.ENABLE_PKI_SIGNER,
           metadata: { signerId: signer.id, name: signer.name }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id,
+          status: req.body.status
         }
       });
 

@@ -14,9 +14,7 @@ export const getDefaultOnPremFeatures = () => {
     enterprisePamAccount: null,
     pkiCodeSigning: null,
     memberLimit: null,
-    membersUsed: 0,
     identityLimit: null,
-    identitiesUsed: 0,
     environmentLimit: null,
     environmentsUsed: 0,
     secretVersioning: true,
@@ -50,8 +48,6 @@ export const getDefaultOnPremFeatures = () => {
     fips: true
   };
 };
-
-export const setupLicenseRequestWithStore = () => {};
 
 export const getLicenseKeyConfig = () => {
   return {

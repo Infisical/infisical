@@ -112,7 +112,8 @@ export const secretApprovalPolicyServiceFactory = ({
     environment,
     environments,
     enforcementLevel,
-    allowedSelfApprovals
+    allowedSelfApprovals,
+    bypassForMachineIdentities
   }: TCreateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -216,7 +217,8 @@ export const secretApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals
+          allowedSelfApprovals,
+          bypassForMachineIdentities
         },
         tx
       );
@@ -329,7 +331,8 @@ export const secretApprovalPolicyServiceFactory = ({
     approvals,
     secretPolicyId,
     enforcementLevel,
-    allowedSelfApprovals
+    allowedSelfApprovals,
+    bypassForMachineIdentities
   }: TUpdateSapDTO) => {
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
@@ -436,7 +439,8 @@ export const secretApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals
+          allowedSelfApprovals,
+          bypassForMachineIdentities
         },
         tx
       );

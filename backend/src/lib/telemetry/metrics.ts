@@ -29,9 +29,24 @@ const resolveMeter = (meterName: string): Meter => {
   return meter;
 };
 
+export const resolveCoreMeter = (): Meter => resolveMeter("InfisicalCore");
+
 type LazyMeter = {
   createCounter: (name: string, options?: MetricOptions) => Counter;
   createHistogram: (name: string, options?: MetricOptions) => Histogram;
+};
+
+// Recording is fire-and-forget: a measurement is an observation of the work, never a step in it, so
+// nothing here may throw into a call site. The SDK can raise on a malformed instrument name or a
+// broken exporter, and getConfig() is empty until initEnvConfig() runs, which is reachable from
+// anything recording during boot. Swallowing is silent on purpose — the logger is itself initialised
+// from config, so reporting the failure here risks throwing a second time from the handler.
+const safely = (record: () => void) => {
+  try {
+    record();
+  } catch {
+    // metrics must never break the path they observe
+  }
 };
 
 // Returns instrument wrappers whose underlying instrument is created on first use (after init), so it
@@ -41,8 +56,10 @@ const lazyMeter = (meterName: string): LazyMeter => ({
     let instrument: Counter | undefined;
     return {
       add: (value: number, attributes?: Attributes) => {
-        if (!instrument) instrument = resolveMeter(meterName).createCounter(name, options);
-        instrument.add(value, attributes);
+        safely(() => {
+          if (!instrument) instrument = resolveMeter(meterName).createCounter(name, options);
+          instrument.add(value, attributes);
+        });
       }
     } as Counter;
   },
@@ -50,17 +67,52 @@ const lazyMeter = (meterName: string): LazyMeter => ({
     let instrument: Histogram | undefined;
     return {
       record: (value: number, attributes?: Attributes) => {
-        if (!instrument) instrument = resolveMeter(meterName).createHistogram(name, options);
-        instrument.record(value, attributes);
+        safely(() => {
+          if (!instrument) instrument = resolveMeter(meterName).createHistogram(name, options);
+          instrument.record(value, attributes);
+        });
       }
     } as Histogram;
   }
 });
 
+// Exported so a call site can skip work it would only do to produce a measurement (an extra query,
+// a serialization, a size computation). Recording is already gated internally, so this is never
+// needed to make a record*Metric call safe.
+export const isTelemetryEnabled = () => Boolean(getConfig()?.OTEL_TELEMETRY_COLLECTION_ENABLED);
+
+export const shouldRecordHighCardinalityMetrics = () =>
+  isTelemetryEnabled() && !getConfig()?.OTEL_DROP_HIGH_CARDINALITY_METERS;
+
+export const highCardinalityMeter = (meterName: string): LazyMeter => {
+  const meter = lazyMeter(meterName);
+
+  return {
+    createCounter: (name, options) => {
+      const counter = meter.createCounter(name, options);
+      return {
+        add: (value: number, attributes?: Attributes) => {
+          if (!shouldRecordHighCardinalityMetrics()) return;
+          counter.add(value, attributes);
+        }
+      } as Counter;
+    },
+    createHistogram: (name, options) => {
+      const histogram = meter.createHistogram(name, options);
+      return {
+        record: (value: number, attributes?: Attributes) => {
+          if (!shouldRecordHighCardinalityMetrics()) return;
+          histogram.record(value, attributes);
+        }
+      } as Histogram;
+    }
+  };
+};
+
 // High-cardinality, per-actor meter, kept on by default for self-hosted (where per-actor visibility is
 // useful and cardinality is bounded by a single org); dropped in multi-tenant/cloud via
 // OTEL_DROP_HIGH_CARDINALITY_METERS. The pre-existing metrics below ship with per-actor labels documented in the docs.
-const infisicalMeter = lazyMeter("Infisical");
+const infisicalMeter = highCardinalityMeter("Infisical");
 
 // The MeterProvider applies a strict attribute allowlist (View in
 // instrumentation.ts) to anything emitted here, dropping high-cardinality labels at the SDK level.
@@ -107,9 +159,7 @@ export const secretReadCounter = infisicalMeter.createCounter("infisical.secret.
 });
 
 export const recordSecretReadMetric = (params: { environment: string; secretPath: string; name?: string }) => {
-  const appCfg = getConfig();
-
-  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  if (shouldRecordHighCardinalityMetrics()) {
     const attributes: Record<string, string> = {
       "infisical.environment": params.environment,
       "infisical.secret.path": params.secretPath,
@@ -188,9 +238,7 @@ export const recordKmipOperationMetric = (params: {
   objectId?: string;
   objectName?: string;
 }) => {
-  const appCfg = getConfig();
-
-  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  if (shouldRecordHighCardinalityMetrics()) {
     const attributes: Record<string, string> = {
       "infisical.kmip.operation.type": params.operationType,
       "infisical.organization.id": params.orgId,
@@ -229,8 +277,6 @@ export const recordKmipOperationMetric = (params: {
 };
 
 // -- New low-cardinality instruments (InfisicalCore meter) ------------------------------------------
-
-const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
 
 // Queue worker lifecycle metrics. Wired in queue-service.ts via worker.on('completed' | 'failed' | 'stalled').
 export const queueJobCounter = infisicalCoreMeter.createCounter("infisical.queue.job.count", {
@@ -381,33 +427,6 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   description: "HTTP 429 responses (rate limit exceeded).",
   unit: "{request}"
 });
-
-// -- License Server v2 dual-read (InfisicalCore meter) ----------------------------------------------
-export const licenseDualReadDiffCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.diff.count", {
-  description:
-    "v1 vs License Server v2 entitlement comparison results, by feature and kind (mismatch/v2_missing/v1_absent/indeterminate). Match results are not counted.",
-  unit: "{result}"
-});
-
-export const licenseDualReadErrorCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.error.count", {
-  description: "Failures resolving the v2 entitlement set during dual-read comparison, by error type.",
-  unit: "{error}"
-});
-
-export const recordLicenseDualReadDiff = (params: { feature: string; kind: string }) => {
-  if (!isTelemetryEnabled()) return;
-  licenseDualReadDiffCounter.add(1, {
-    "license.feature": params.feature,
-    "license.dual_read.kind": params.kind
-  });
-};
-
-export const recordLicenseDualReadError = (params: { error?: unknown }) => {
-  if (!isTelemetryEnabled()) return;
-  const attributes: Record<string, string> = {};
-  if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
-  licenseDualReadErrorCounter.add(1, attributes);
-};
 
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
@@ -642,12 +661,70 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
   });
 };
 
+export enum ProductAnalyticsDropReason {
+  Retention = "retention",
+  Unparseable = "unparseable"
+}
+
+export const productAnalyticsPublishedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.published.count",
+  {
+    description: "Buffered product analytics events drained from Redis and published to PostHog, by event type.",
+    unit: "{event}"
+  }
+);
+
+export const productAnalyticsDroppedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.dropped.count",
+  {
+    description:
+      "Buffered product analytics events dropped before reaching PostHog, by event type and reason. Occasional retention drops are tolerable; a sustained rate means the drain is not keeping up and the limits need tweaking.",
+    unit: "{event}"
+  }
+);
+
+export const productAnalyticsBacklogHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.product_analytics.shard.backlog",
+  {
+    description:
+      "Entries left in a shard after its drain, by event type. Zero on a healthy run: a backlog that persists across runs is what precedes retention drops and, near the 100k MAXLEN, silent write-path eviction.",
+    unit: "{entry}"
+  }
+);
+
+export const recordProductAnalyticsPublishedMetric = (params: { eventType: string; count: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled() || params.count === 0) return;
+    productAnalyticsPublishedCounter.add(params.count, { "product_analytics.event_type": params.eventType });
+  });
+
+export const recordProductAnalyticsDroppedMetric = (params: {
+  eventType: string;
+  reason: ProductAnalyticsDropReason;
+  count: number;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled() || params.count === 0) return;
+    productAnalyticsDroppedCounter.add(params.count, {
+      "product_analytics.event_type": params.eventType,
+      "product_analytics.drop_reason": params.reason
+    });
+  });
+
+export const recordProductAnalyticsBacklogMetric = (params: { eventType: string; backlog: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    productAnalyticsBacklogHistogram.record(params.backlog, {
+      "product_analytics.event_type": params.eventType
+    });
+  });
+
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
 // Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has
 // installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't
 // be deferred to first use like counters/histograms — the SDK pulls them on each export).
 export const registerInfrastructureMetrics = (db: Knex) => {
-  const meter = resolveMeter("InfisicalCore");
+  const meter = resolveCoreMeter();
 
   // Build info: constant-value gauge that emits 1 with build identification labels on every export.
   const buildInfoGauge = meter.createObservableGauge("infisical.build.info", {
@@ -685,5 +762,34 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numUsed?.() ?? 0, { "db.pool.state": "used" });
     result.observe(pool.numFree?.() ?? 0, { "db.pool.state": "free" });
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
+  });
+};
+
+// -- Legacy root-key usage (InfisicalCore meter) -----------------------------------------------------
+// The pre-KMS tier pins the instance root encryption key, so it can never be rotated while anything
+// still uses it. This counter is the evidence for when that tier can be deleted.
+export const legacyRootKeyUsageCounter = infisicalCoreMeter.createCounter("infisical.legacy_root_key.usage", {
+  description:
+    "Reads and writes that still use the instance root encryption key directly instead of the KMS envelope, by surface."
+});
+
+export type LegacyRootKeySurface =
+  | "project_bot"
+  | "user_private_key"
+  | "blind_index"
+  | "external_migration"
+  | "org_bot"
+  | "project_ghost_user";
+
+export const recordLegacyRootKeyUsageMetric = (params: {
+  operation: "encrypt" | "decrypt";
+  surface: LegacyRootKeySurface;
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    legacyRootKeyUsageCounter.add(1, {
+      "legacy_key.operation": params.operation,
+      "legacy_key.surface": params.surface
+    });
   });
 };

@@ -28,7 +28,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsByProject({
         actorId: req.permission.id,
@@ -63,7 +63,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsForTargetProject({
         actorId: req.permission.id,
@@ -138,7 +138,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.projectFolderGrant.getGrantUsage({
         actorId: req.permission.id,

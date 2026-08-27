@@ -62,7 +62,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       </Step>
     </Steps>
 
-    ## Certificate Templates
+    ## Certificate templates
 
     Infisical retrieves the templates published on your CA in real time, so a profile can only reference a template that exists and is reachable. The template lives on the issuance flow (the profile), not on the CA.
 
@@ -90,7 +90,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       The certificate template must allow "Supply in the request" for subject information so that the CSR's subject fields are honored. A subordinate CA template (for example, `SubCA`) is the typical choice.
     </Warning>
 
-    ## Installing an Intermediate CA Certificate via AD CS
+    ## Installing an intermediate CA certificate via AD CS
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -147,7 +147,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       </Tab>
     </Tabs>
 
-    ## Auto-Renewal
+    ## Auto-renewal
 
     Infisical supports automatic renewal of intermediate CA certificates signed by AD CS. When enabled, Infisical submits a fresh CSR to AD CS through the Gateway and imports the renewed certificate before the current one expires.
 

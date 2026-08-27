@@ -1,5 +1,6 @@
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -10,7 +11,6 @@ import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -450,8 +450,8 @@ export const secretReplicationServiceFactory = ({
               destinationFolder.environmentSlug,
               destinationFolder.path
             );
-            // this means it should be a approval request rather than direct replication
-            if (policy && actor === ActorType.USER) {
+            // this means it should be an approval request rather than direct replication
+            if (shouldApplyPolicy(policy, actor)) {
               const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
               const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
                 destinationReplicationFolderId,
@@ -465,7 +465,7 @@ export const secretReplicationServiceFactory = ({
                     policyId: policy.id,
                     status: "open",
                     hasMerged: false,
-                    committerUserId: actorId,
+                    ...getCommitterIds(actor, actorId),
                     isReplicated: true
                   },
                   tx
@@ -728,7 +728,7 @@ export const secretReplicationServiceFactory = ({
             destinationFolder.path
           );
           // this means it should be a approval request rather than direct replication
-          if (policy && actor === ActorType.USER) {
+          if (shouldApplyPolicy(policy, actor)) {
             const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
             const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
               destinationReplicationFolderId,
@@ -742,7 +742,7 @@ export const secretReplicationServiceFactory = ({
                   policyId: policy.id,
                   status: "open",
                   hasMerged: false,
-                  committerUserId: actorId,
+                  ...getCommitterIds(actor, actorId),
                   isReplicated: true
                 },
                 tx

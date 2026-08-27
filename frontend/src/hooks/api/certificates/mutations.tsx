@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
@@ -12,6 +13,8 @@ import {
   TDownloadPkcs12DTO,
   TImportCertificateDTO,
   TImportCertificateResponse,
+  TImportPkcs12EntriesDTO,
+  TImportPkcs12EntriesResult,
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
@@ -38,7 +41,7 @@ export const useDeleteCert = () => {
         queryKey: certKeys.getCertificateById(id)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -72,7 +75,7 @@ export const useRevokeCert = () => {
         queryKey: certKeys.getCertificateById(id)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -108,13 +111,55 @@ export const useImportCertificate = () => {
   });
 };
 
+// Failures are returned rather than thrown, so one bad entry neither aborts the rest nor raises a
+// toast from the global error handler.
+export const useImportPkcs12Entries = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TImportPkcs12EntriesResult[], object, TImportPkcs12EntriesDTO>({
+    mutationFn: async ({ entries, applicationId }) => {
+      const results: TImportPkcs12EntriesResult[] = [];
+
+      await entries.reduce<Promise<void>>(async (prev, entry) => {
+        await prev;
+        try {
+          await apiRequest.post<TImportCertificateResponse>(
+            "/api/v1/cert-manager/certificates/import-certificate",
+            {
+              certificatePem: entry.certificatePem,
+              ...(entry.chainPem ? { chainPem: entry.chainPem } : {}),
+              ...(entry.privateKeyPem ? { privateKeyPem: entry.privateKeyPem } : {}),
+              applicationId
+            }
+          );
+          results.push({ entry });
+        } catch (err) {
+          results.push({
+            entry,
+            error:
+              (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+              "Could not import this certificate."
+          });
+        }
+      }, Promise.resolve());
+
+      return results;
+    },
+    onSuccess: (results) => {
+      if (results.some((result) => !result.error)) {
+        queryClient.invalidateQueries({ queryKey: projectKeys.allProjectCertificates() });
+        queryClient.invalidateQueries({ queryKey: ["cert-dashboard-stats"] });
+      }
+    }
+  });
+};
+
 export const useRenewCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TRenewCertificateResponse, object, TRenewCertificateDTO>({
-    mutationFn: async ({ certificateId }) => {
+    mutationFn: async ({ certificateId, ...body }) => {
       const { data } = await apiRequest.post<TRenewCertificateResponse>(
         `/api/v1/cert-manager/certificates/${certificateId}/renew`,
-        {}
+        body
       );
       return data;
     },
@@ -123,7 +168,7 @@ export const useRenewCertificate = () => {
         queryKey: certKeys.getCertificateById(certificateId)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -242,7 +287,7 @@ export const useUnifiedCertificateIssuance = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()

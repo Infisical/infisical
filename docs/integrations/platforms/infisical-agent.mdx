@@ -8,12 +8,12 @@ It eliminates the need to modify application logic by enabling clients to decide
 
 ![agent diagram](/images/agent/infisical-agent-diagram.png)
 
-## Key Features
+## Key features
 
 - **Token lifecycle management**: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
 - **Templating**: Renders secrets and dynamic secret leases via user provided templates to desired formats for applications to consume
 
-## Token Renewal
+## Token renewal
 
 The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a `Method`, which is the authentication process suitable for your current setup, and `Sinks`, which are the places where the agent deposits the new access token whenever it receives updates.
 
@@ -180,7 +180,7 @@ The secret template functions is what you will use to fetch resources such as st
 
 The Infisical Agent supports clientside caching of Dynamic Secret leases. If the cache is enabled, the agent will persist the dynamic secret leases to the cache across restarts of the agent.
 
-### Persistent Caching
+### Persistent caching
 
 The Agent currently only supports persistent caching. To utilize persistent caching, you must be within a Kubernetes environment. We recommend using the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) to inject the agent into pods within your Kubernetes cluster on demand.
 
@@ -192,7 +192,7 @@ The cache will also automatically evict cached data that has gone stale or is ab
 If a stale dynamic secret lease is detected, it will be automatically evicted from the cache and replaced with a new up-to-date lease.
 
 
-### Cache Configuration
+### Cache configuration
 
 Configuring the cache is done through the agent configuration file. The following fields are available to configure the cache:
 

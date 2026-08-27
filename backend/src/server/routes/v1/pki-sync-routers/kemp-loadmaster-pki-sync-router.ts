@@ -57,7 +57,7 @@ export const registerKempLoadMasterPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.query;
 

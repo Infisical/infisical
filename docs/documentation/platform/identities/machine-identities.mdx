@@ -1,5 +1,5 @@
 ---
-title: Machine Identities
+title: Machine identities
 description: "Learn how to use Machine Identities to programmatically interact with Infisical."
 ---
 
@@ -49,7 +49,7 @@ perform organization-level operations. Organization-level identities are useful 
     </Tab>
 </Tabs>
 
-## Authentication Methods
+## Authentication methods
 
 To interact with various resources in Infisical, Machine Identities can authenticate with the Infisical API using:
 
@@ -62,13 +62,13 @@ To interact with various resources in Infisical, Machine Identities can authenti
 - [OIDC Auth](/documentation/platform/identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
 - [SPIFFE Auth](/documentation/platform/identities/spiffe-auth): A SPIFFE-native authentication method for workloads using JWT-SVIDs issued by SPIRE.
 
-## Identity Lockout
+## Identity lockout
 
 Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth), [LDAP Auth](/documentation/platform/identities/ldap-auth/general).
 
 Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
 
-## Access Token Revocation
+## Access token revocation
 
 Machine identity access tokens can be invalidated before their natural expiry. An access token is revoked when you:
 
@@ -86,7 +86,7 @@ Once revoked, the token is rejected on subsequent authenticated requests and can
   If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
 </Note>
 
-## Credential Expiry Alerts
+## Credential expiry alerts
 
 A machine identity whose credential expires unnoticed takes your workload down with it. Expiry alerts watch the credentials attached to an identity and notify your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
 
@@ -99,7 +99,7 @@ Alerts currently cover **Universal Auth client secrets that have a TTL**. A clie
   Client Secret TTL, Access Token TTL, and Access Token Max TTL.
 </Note>
 
-### Create an Alert
+### Create an alert
 
 Open the machine identity you want to monitor and find the **Alert** row in its details. Click the bell icon to create one.
 
@@ -115,7 +115,7 @@ Open the machine identity you want to monitor and find the **Alert** row in its 
 
 With **Daily Reminder** off, each credential triggers the alert once. Turn it on for credentials you cannot afford to miss, and you will get one notification per day until the credential expires or is rotated.
 
-### Notification Channels
+### Notification channels
 
 An alert delivers through one or more channels, up to 10 per alert. Add at least one.
 
@@ -126,7 +126,7 @@ An alert delivers through one or more channels, up to 10 per alert. Add at least
 | **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (32-character hex string). Triggers one incident per expiring credential, deduplicated by credential. |
 | **Webhook** | Any HTTPS endpoint, with an optional signing secret for verification. |
 
-### Webhook Payload
+### Webhook payload
 
 Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents with the type `com.infisical.identity.authentication.expiration`. Every credential due for this run is listed in `data.items`:
 
@@ -185,7 +185,7 @@ You can learn more about how to do this in the CLI quickstart [here](/cli/usage)
 </Accordion>
 
 <Accordion title="What is the difference between an identity and service token?">
-  A service token is a project-level authentication method that is being deprecated in favor of identities. The service token method will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+  A [service token](/documentation/platform/token) is a project-level authentication method that is being deprecated in favor of identities. The service token method will be removed in a future release, so we recommend migrating any remaining service tokens to identities.
 
   Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
   permission system as user identities, and come with a significantly larger number of configurable authentication and security features.

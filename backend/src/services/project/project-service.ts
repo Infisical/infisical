@@ -53,6 +53,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -1147,6 +1148,7 @@ export const projectServiceFactory = ({
       });
     }
 
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
     const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({
@@ -2233,7 +2235,7 @@ export const projectServiceFactory = ({
     await projectAccessRequestDAL.upsertPendingRequest({
       projectId,
       requesterUserId: permission.id,
-      comment: comment ?? null
+      comment: comment || null
     });
 
     await notificationService.createUserNotifications(

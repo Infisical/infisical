@@ -57,7 +57,7 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
         onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-3xl overflow-visible">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {selectedType ? (

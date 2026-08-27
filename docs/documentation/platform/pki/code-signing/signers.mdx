@@ -12,7 +12,7 @@ A Signer is a single signing identity inside Code Signing. It bundles three thin
 
 You'll typically have one Signer per real-world signing concern, such as `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`.
 
-## What's in a Signer?
+## What's in a signer?
 
 <CardGroup cols={2}>
   <Card title="Certificate" icon="certificate">
@@ -41,7 +41,7 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
   The user who creates a Signer becomes its Administrator automatically.
 </Info>
 
-## Create a Signer
+## Create a signer
 
 In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through five steps in order: Basics, Certificate, Signing Key, Members, and Approval Policy.
 
@@ -109,7 +109,7 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
   </Step>
 </Steps>
 
-## HSM-backed Signers
+## HSM-backed signers
 
 When you pick **Key source = HSM** on the Signing Key step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use. The Key algorithm choices narrow to the HSM-supported subset. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
 
@@ -127,7 +127,7 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
 | **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Reissue with a new validity period. |
 
-## Edit a Signer
+## Edit a signer
 
 Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
 
@@ -167,7 +167,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
   </Step>
 </Steps>
 
-## Signing with a Signer
+## Signing with a signer
 
 To sign with a Signer, pick the integration that matches your tooling:
 

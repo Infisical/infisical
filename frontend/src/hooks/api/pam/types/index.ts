@@ -143,6 +143,8 @@ export enum PamFieldWidget {
   Password = "password"
 }
 
+export type TPamFieldCondition = { field: string; equals: string | boolean };
+
 export type TPamFieldDescriptor = {
   key: string;
   label: string;
@@ -150,9 +152,10 @@ export type TPamFieldDescriptor = {
   required: boolean;
   secret: boolean;
   optional?: boolean;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; docsUrl?: string }[];
   defaultValue?: string | number | boolean;
-  showWhen?: { field: string; equals: string | boolean };
+  showWhen?: TPamFieldCondition;
+  forceWhen?: { when: TPamFieldCondition; value: string | number | boolean; reason: string }[];
   tooltip?: string;
 };
 
@@ -259,6 +262,8 @@ export type TSessionEvent = {
   eventType: "input" | "output" | "resize" | "error";
   channelType?: SessionChannelType;
   data: string;
+  // set by gateways that render the terminal before recording. absent on older recordings, whose data is raw terminal bytes
+  rendered?: boolean;
   elapsedTime: number;
 };
 
@@ -301,6 +306,7 @@ export type TPamSession = {
   selectedHost?: string | null;
   accessMethod?: string | null;
   userId?: string | null;
+  identityId?: string | null;
   actorName: string;
   actorEmail: string;
   actorIp: string;
@@ -450,6 +456,13 @@ export type TPamMember = {
   isActive: boolean;
   expiresAt?: string | null;
   createdAt: string;
+};
+
+// Identity members come back enriched with the identity's name and scope
+export type TPamIdentityMember = TPamMember & {
+  name: string;
+  identityProjectId?: string | null;
+  identityOrgId?: string | null;
 };
 
 export type TPamResourceRole = {
@@ -658,6 +671,8 @@ export type TPamAccessRequest = {
   projectId: string;
   policyId: string;
   requesterId: string | null;
+  // Set instead of requesterId when a machine identity raised the request
+  machineIdentityId?: string | null;
   requesterName: string;
   requesterEmail: string;
   type: string;

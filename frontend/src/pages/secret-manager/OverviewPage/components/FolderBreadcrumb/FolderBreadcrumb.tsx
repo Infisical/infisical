@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Check, Copy, FolderIcon, SlashIcon } from "lucide-react";
 
 import {
@@ -23,7 +23,6 @@ import { useTimedReset } from "@app/hooks";
 
 type Props = {
   secretPath?: string;
-  onResetSearch: (secretPath: string) => void;
 };
 
 type Measurements = {
@@ -34,11 +33,7 @@ type Measurements = {
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
-  const navigate = useNavigate({
-    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
-  });
-
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -54,17 +49,13 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
 
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
 
-  const onFolderCrumbClick = useCallback(
-    (index: number) => {
-      const newSecPath = `/${secretPath.split("/").filter(Boolean).slice(0, index).join("/")}`;
-      if (secretPath === newSecPath) return;
-      navigate({
-        search: (prev) => ({ ...prev, secretPath: newSecPath })
-      }).then(() => onResetSearch(newSecPath));
-    },
-    [secretPath, navigate, onResetSearch]
+  const getCrumbPath = useCallback(
+    (index: number) => `/${secretPath.split("/").filter(Boolean).slice(0, index).join("/")}`,
+    [secretPath]
   );
 
+  // The crumb is a real link, so the browser owns the navigation and preserves the other search
+  // parameters through the route transition.
   // Measure all elements and track container width
   const measureElements = useCallback(() => {
     const container = containerRef.current;
@@ -253,9 +244,16 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       <Breadcrumb className="min-w-0 overflow-hidden">
         <BreadcrumbList className="flex-nowrap">
           {/* Root folder icon */}
-          <BreadcrumbItem onClick={() => onFolderCrumbClick(0)}>
-            <BreadcrumbLink>
-              <FolderIcon />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link
+                from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                to="."
+                search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
+                aria-label="Root folder"
+              >
+                <FolderIcon />
+              </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
 
@@ -270,12 +268,15 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                   {path}
                 </BreadcrumbPage>
               ) : (
-                <BreadcrumbItem
-                  onClick={() => onFolderCrumbClick(index + 1)}
-                  onKeyDown={() => null}
-                >
-                  <BreadcrumbLink title={path} className="truncate">
-                    {path}
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild title={path} className="truncate">
+                    <Link
+                      from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                      to="."
+                      search={(prev) => ({ ...prev, secretPath: getCrumbPath(index + 1) })}
+                    >
+                      {path}
+                    </Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
               )}
@@ -301,15 +302,24 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                       const originalIndex = startCount + idx;
                       return (
                         <DropdownMenuItem
+                          asChild
                           key={`hidden-${originalIndex}`}
-                          onClick={() => onFolderCrumbClick(originalIndex + 1)}
                           className="text-accent hover:text-foreground"
                           title={segment}
                         >
-                          <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
+                          <Link
+                            from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                            to="."
+                            search={(prev) => ({
+                              ...prev,
+                              secretPath: getCrumbPath(originalIndex + 1)
+                            })}
+                          >
+                            <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
 
-                          <FolderIcon className="text-folder" />
-                          <span className="truncate">{segment}</span>
+                            <FolderIcon className="text-folder" />
+                            <span className="truncate">{segment}</span>
+                          </Link>
                         </DropdownMenuItem>
                       );
                     })}
@@ -333,12 +343,18 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                     {path}
                   </BreadcrumbPage>
                 ) : (
-                  <BreadcrumbItem
-                    onClick={() => onFolderCrumbClick(originalIndex + 1)}
-                    onKeyDown={() => null}
-                  >
-                    <BreadcrumbLink title={path} className="truncate">
-                      {path}
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild title={path} className="truncate">
+                      <Link
+                        from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                        to="."
+                        search={(prev) => ({
+                          ...prev,
+                          secretPath: getCrumbPath(originalIndex + 1)
+                        })}
+                      >
+                        {path}
+                      </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                 )}

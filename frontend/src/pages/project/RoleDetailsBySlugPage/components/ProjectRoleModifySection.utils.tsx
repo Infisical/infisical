@@ -1,3 +1,13 @@
+import {
+  BotIcon,
+  EyeIcon,
+  KeyRoundIcon,
+  type LucideIcon,
+  PencilIcon,
+  ServerIcon,
+  Share2Icon,
+  UsersIcon
+} from "lucide-react";
 import picomatch from "picomatch";
 import { z } from "zod";
 
@@ -477,6 +487,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -595,6 +606,7 @@ const IdentityPolicyActionSchema = createPolicySchemaWithConditions(
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.EditAuth]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -1232,6 +1244,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ProjectPermissionIdentityActions.AssumePrivileges
           );
           const canRevokeAuth = action.includes(ProjectPermissionIdentityActions.RevokeAuth);
+          const canEditAuth = action.includes(ProjectPermissionIdentityActions.EditAuth);
           const canCreateToken = action.includes(ProjectPermissionIdentityActions.CreateToken);
           const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
           const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
@@ -1248,6 +1261,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
               canAssignAdditionalPrivileges,
             [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
             [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
+            [ProjectPermissionIdentityActions.EditAuth]: canEditAuth,
             [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
             [ProjectPermissionIdentityActions.GetToken]: canGetToken,
             [ProjectPermissionIdentityActions.DeleteToken]: canDeleteToken,
@@ -2266,6 +2280,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke Auth",
         value: ProjectPermissionIdentityActions.RevokeAuth,
         description: "Revoke authentication for a machine identity"
+      },
+      {
+        label: "Configure Auth Methods",
+        value: ProjectPermissionIdentityActions.EditAuth,
+        description: "Add or update authentication methods for a machine identity"
       },
       {
         label: "Create Token",
@@ -3302,6 +3321,7 @@ export type RoleTemplate = {
   id: string;
   name: string;
   description: string;
+  icon: LucideIcon;
   permissions: { subject: ProjectPermissionSub; actions: string[] }[];
 };
 
@@ -3311,6 +3331,7 @@ const projectManagerTemplate = (
   id: "project-manager",
   name: "Project Management Policies",
   description: "Grants access to manage project members and settings",
+  icon: UsersIcon,
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
@@ -3353,6 +3374,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kms-viewer",
       name: "KMS Viewing Policies",
       description: "Grants read access to KMS keys and KMIP clients",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3368,6 +3390,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "key-editor",
       name: "KMS Key Editing Policies",
       description: "Grants read and edit access to KMS keys",
+      icon: KeyRoundIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3379,6 +3402,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kmip-editor",
       name: "KMIP Client Editing Policies",
       description: "Grants read and edit access to KMIP clients",
+      icon: ServerIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Kmip,
@@ -3393,6 +3417,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-viewer",
       name: "Certificate Viewing Policies",
       description: "Grants read access to certificates and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3435,6 +3460,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-editor",
       name: "Certificate Editing Policies",
       description: "Grants read and edit access to certificates and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3477,6 +3503,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-viewer",
       name: "Secret Scanning Viewing Policies",
       description: "Grants read access to data sources and findings",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3500,6 +3527,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-editor",
       name: "Secret Scanning Editing Policies",
       description: "Grants read and edit access to data sources and findings",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3527,6 +3555,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-viewer",
       name: "Secret Viewing Policies",
       description: "Grants read access to secrets and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretRollback,
@@ -3585,6 +3614,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-editor",
       name: "Secret Editing Policies",
       description: "Grants read and edit access to secrets and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Environments,
@@ -3684,6 +3714,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent-proxy",
       name: "Agent Proxy Policies",
       description: "Reads secret values, mints dynamic secret leases, and reports service usage",
+      icon: Share2Icon,
       permissions: [
         {
           subject: ProjectPermissionSub.Secrets,
@@ -3706,6 +3737,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent",
       name: "Agent Policies",
       description: "Routes traffic through proxied services",
+      icon: BotIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.ProxiedServices,

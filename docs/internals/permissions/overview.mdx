@@ -10,17 +10,17 @@ The Infisical permissions system is based on a role-based access control (RBAC) 
 Permissions are built on a subject-action-object model. The subject is the resource the permission is being applied to, the action is what the permission allows.
 An example of a subject/action combination would be `secrets/read`. This permission allows the subject to read secrets.
 
-## Permission Scope Levels
+## Permission scope levels
 
 Infisical's permission system operates at two distinct levels, providing comprehensive and flexible access control across your entire security infrastructure:
 
-### Project Permissions
+### Project permissions
 
 Project permissions control access to resources within a specific project, including secrets management, PKI, and KMS functionality.
 
 For a comprehensive list of all project-level subjects, actions, and detailed descriptions, please refer to the [Project Permissions](/internals/permissions/project-permissions) documentation.
 
-### Organization Permissions
+### Organization permissions
 
 Organization permissions control access to organization-wide resources and settings such as workspaces, billing, identity providers, and more.
 

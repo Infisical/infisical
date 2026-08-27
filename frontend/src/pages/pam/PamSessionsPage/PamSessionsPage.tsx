@@ -73,11 +73,16 @@ const TerminateCell = ({
   session: TPamSession;
   onTerminate: (session: TPamSession, e?: React.MouseEvent) => void;
 }) => {
-  const { data: perm } = usePamAccountPermission(session.accountId ?? "");
-  const canTerminate = perm?.permission.can(
-    PamResourcePermissionActions.TerminateSessions,
-    PamResourcePermissionSub.PamResource
+  const { data: perm } = usePamAccountPermission(
+    session.accountId ?? "",
+    Boolean(session.accountId)
   );
+  const canTerminate =
+    !session.accountId ||
+    perm?.permission.can(
+      PamResourcePermissionActions.TerminateSessions,
+      PamResourcePermissionSub.PamResource
+    );
 
   if (session.status !== PamSessionStatus.Active || !canTerminate) return null;
 
@@ -297,7 +302,13 @@ export const PamSessionsPage = () => {
                           <HighlightText text={session.actorName} highlight={search} />
                         </span>
                         <span className="text-xs text-muted">
-                          <HighlightText text={session.actorEmail} highlight={search} />
+                          {/* identityId is SET NULL on identity deletion; a machine session with a
+                              deleted identity has neither actor FK and an empty actorEmail */}
+                          {session.identityId || (!session.userId && !session.actorEmail) ? (
+                            "Machine Identity"
+                          ) : (
+                            <HighlightText text={session.actorEmail} highlight={search} />
+                          )}
                         </span>
                       </div>
                     </TableCell>

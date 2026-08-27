@@ -335,7 +335,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         ...req.body,
         identityId: req.params.identityId,
-        allowedArns: req.body.allowedArns
+        allowedArns: req.body.allowedArns,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -379,7 +380,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getAlicloudAuth",
@@ -454,7 +455,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

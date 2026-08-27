@@ -20,6 +20,7 @@ type Props = {
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onRequestAccess: (account: TAccessiblePamAccount) => void;
   onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
+  indented?: boolean;
 };
 
 export const FolderAccountRow = ({
@@ -28,7 +29,8 @@ export const FolderAccountRow = ({
   onOpenAccount,
   onLaunchAccount,
   onRequestAccess,
-  onDeleteAccount
+  onDeleteAccount,
+  indented
 }: Props) => {
   // Permissions come embedded in the list item, so no per-account request is made here.
   const { can } = usePamAccountActionsFromPermissions(account.permissions);
@@ -74,7 +76,7 @@ export const FolderAccountRow = ({
       launchDisabledReason={launchDisabledReason}
       onLaunch={() => onLaunchAccount(launchableAccount)}
       onRequestAccess={() => onRequestAccess(launchableAccount)}
-      indented
+      indented={indented}
       accessibilityBadge={
         <>
           <AccountAccessibilityBadgeWithPermission

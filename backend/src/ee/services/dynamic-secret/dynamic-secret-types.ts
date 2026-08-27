@@ -59,6 +59,10 @@ export type TGetSshCaPublicKeyDTO = {
   dynamicSecretId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TDynamicSecretProviderDiscoveryDTO = {
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type ListDynamicSecretsFilters = {
   offset?: number;
   limit?: number;
@@ -118,23 +122,34 @@ export type TDynamicSecretServiceFactory = {
   ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string }>>;
   getDynamicSecretCount: (arg: TGetDynamicSecretsCountDTO) => Promise<number>;
   getCountMultiEnv: (arg: TListDynamicSecretsMultiEnvDTO) => Promise<number>;
-  fetchAzureEntraIdUsers: (arg: { tenantId: string; applicationId: string; clientSecret: string }) => Promise<
+  fetchAzureEntraIdUsers: (
+    arg: {
+      tenantId: string;
+      applicationId: string;
+      clientSecret: string;
+    } & TDynamicSecretProviderDiscoveryDTO
+  ) => Promise<
     {
       name: string;
       id: string;
       email: string;
     }[]
   >;
-  fetchIbmApiConnectOrgs: (arg: TIbmApiConnectBaseCredentials) => Promise<TApiConnectResource[]>;
+  fetchIbmApiConnectOrgs: (
+    arg: TIbmApiConnectBaseCredentials & TDynamicSecretProviderDiscoveryDTO
+  ) => Promise<TApiConnectResource[]>;
   fetchIbmApiConnectOrgCatalogs: (
-    arg: TIbmApiConnectBaseCredentials & { orgId: string }
+    arg: TIbmApiConnectBaseCredentials & { orgId: string } & TDynamicSecretProviderDiscoveryDTO
   ) => Promise<TApiConnectResource[]>;
   fetchIbmApiConnectOrgApps: (
-    arg: TIbmApiConnectBaseCredentials & { orgId: string; catalogId: string }
+    arg: TIbmApiConnectBaseCredentials & { orgId: string; catalogId: string } & TDynamicSecretProviderDiscoveryDTO
   ) => Promise<TApiConnectApp[]>;
   listDynamicSecretsByFolderIds: (
     arg: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor
-  ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string; path: string }>>;
+  ) => Promise<{
+    dynamicSecrets: Array<TDynamicSecretWithMetadata & { environment: string; path: string }>;
+    isLimitReached: boolean;
+  }>;
   getSshCaPublicKey: (arg: TGetSshCaPublicKeyDTO) => Promise<{ caPublicKey: string }>;
 };

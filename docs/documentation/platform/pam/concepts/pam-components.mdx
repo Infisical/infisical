@@ -1,6 +1,6 @@
 ---
-title: "Core Components"
-sidebarTitle: "PAM Components"
+title: "Core components"
+sidebarTitle: "PAM components"
 description: "Understand how Infisical PAM is structured."
 ---
 
@@ -8,9 +8,9 @@ Infisical PAM is built around four core components: accounts, folders, account t
 
 ## Accounts
 
-An **account** represents a single database or server you want to manage. You provide the connection details (host, port, database) and credentials (username, password), and Infisical stores them securely. Users connect through Infisical without ever seeing the underlying credentials.
+An **account** represents a single database or server you want to manage. You provide the connection details (host, port, database) and credentials (username, password), and Infisical stores them securely. Whoever connects, a person or a machine, goes through Infisical without ever seeing the underlying credentials.
 
-Infisical supports databases (PostgreSQL, MySQL, MS SQL, MongoDB), servers (SSH, Windows), Kubernetes clusters, and AWS IAM roles.
+Infisical supports databases (PostgreSQL, MySQL, MS SQL, MongoDB, Redis), servers (SSH, Windows), Kubernetes clusters, and cloud accounts (AWS IAM, GCP, Azure).
 
 [Learn more about Accounts →](/documentation/platform/pam/accounts/overview)
 
@@ -24,7 +24,7 @@ Permissions are set at the folder level, so everyone with access to a folder can
 
 [Learn more about Folders →](/documentation/platform/pam/folders/overview)
 
-## Account Templates
+## Account templates
 
 **Account templates** define the policies that apply when someone connects to an account:
 
@@ -42,7 +42,7 @@ Every account uses a template of the same type. Infisical provides default templ
 
 ## Memberships
 
-**Memberships** determine who can access what by assigning users or groups a role on a folder or account.
+**Memberships** determine who can access what by assigning a user, group, or [machine identity](/documentation/platform/identities/machine-identities) a role on a folder or account.
 
 | Role | Capabilities |
 |------|-------------|
@@ -52,9 +52,11 @@ Every account uses a template of the same type. Infisical provides default templ
 
 Memberships on a folder cascade to all accounts inside. For most cases, this is all you need. For exceptions, you can assign memberships directly on individual accounts.
 
+Machine identities hold these same roles, which is how an [AI agent](/documentation/platform/pam/ai-agents/overview) reaches an account when it runs unattended. **Connector** is the usual choice.
+
 [Learn more about Access Control →](/documentation/platform/pam/concepts/access-control)
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Launch Your First Session" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">

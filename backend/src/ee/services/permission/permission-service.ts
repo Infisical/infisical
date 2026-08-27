@@ -8,6 +8,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
+  ProjectType,
   ResourceMembershipRole,
   ResourceType,
   ServiceTokenScopes,
@@ -20,6 +21,8 @@ import {
   applicationAuditorPermissions,
   applicationOperatorPermissions,
   cryptographicOperatorPermissions,
+  pamProjectAdminPermissions,
+  pamProjectMemberPermissions,
   pamResourceAdminPermissions,
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
@@ -86,9 +89,10 @@ import {
   ProjectPermissionSub
 } from "./project-permission";
 
-// Returns the delegated OAuth scopes for the current request, or undefined when this is not an
-// OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
-// narrowing applies, while undefined means a first-party session / background job is untouched.
+// Returns the scopes to narrow this request to, or undefined when no narrowing applies. Any array, even
+// an empty one, means narrowing applies, so [] denies all scope-guarded access. undefined covers
+// first-party sessions, background jobs and fully-delegated RFC 8693 tokens: inject-identity leaves the
+// key unset only for those, so a token carrying neither delegation marker ends up with zero permissions.
 const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   const raw = requestContext.get(RequestContextKey.OauthScopes);
   if (!raw) return undefined;
@@ -120,10 +124,20 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   return rules;
 };
 
-const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
+// A PAM project's role slugs are the PAM product roles, and they mean something different from the
+// generic project roles: everything a product member can do comes from their folder/account memberships,
+// which PAM resolves separately. Anything that is not the product admin therefore resolves to the same
+// read-only member ability — including Custom, which covers both custom roles and additional privileges,
+// neither of which PAM issues (it only ever assigns `admin`/`member`).
+const resolvePamProjectRoleRules = (role: string) =>
+  role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
+
+const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO, projectType?: string) => {
   const rules = expandLegacyForbidActions(
     projectUserRoles
       .map(({ role, permissions }) => {
+        if (projectType === ProjectType.PAM) return resolvePamProjectRoleRules(role);
+
         switch (role) {
           case ProjectMembershipRole.Admin:
             return projectAdminPermissions;
@@ -642,7 +656,7 @@ export const permissionServiceFactory = ({
         );
       }
 
-      const rules = buildProjectPermissionRules(permissionFromRoles);
+      const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type);
       const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
@@ -1011,6 +1025,13 @@ export const permissionServiceFactory = ({
       isCustom: !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
     }));
 
+    // The rules a role slug resolves to depend on the product, so the privilege-boundary comparison has
+    // to build the managed role the same way the actor's own ability was built. Without this, a PAM
+    // product admin is measured against the generic project Admin rules and can never assign a role.
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+
     const customRoles = formattedRoles.filter((el) => el.isCustom).map((el) => el.name);
     const customRoleDetails = customRoles.length
       ? await roleDAL.find({
@@ -1032,9 +1053,10 @@ export const permissionServiceFactory = ({
         const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
         return {
           permission: createMongoAbility<ProjectPermissionSet>(
-            buildProjectPermissionRules([
-              { role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }
-            ]),
+            buildProjectPermissionRules(
+              [{ role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }],
+              project?.type
+            ),
             {
               conditionsMatcher
             }
@@ -1045,7 +1067,7 @@ export const permissionServiceFactory = ({
 
       return {
         permission: createMongoAbility<ProjectPermissionSet>(
-          buildProjectPermissionRules([{ role: el.name, permissions: [] }]),
+          buildProjectPermissionRules([{ role: el.name, permissions: [] }], project?.type),
           {
             conditionsMatcher
           }

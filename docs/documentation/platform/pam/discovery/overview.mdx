@@ -10,7 +10,7 @@ Discovery scans external systems to find privileged accounts you may not know ex
 Discovery is available to **Product Admins**. See [Access Control](/documentation/platform/pam/concepts/access-control) for how roles work.
 </Note>
 
-## How It Works
+## How it works
 
 <Steps>
   <Step title="Configure a discovery source">
@@ -27,7 +27,7 @@ Discovery is available to **Product Admins**. See [Access Control](/documentatio
   </Step>
 </Steps>
 
-## Discovery Sources
+## Discovery sources
 
 <CardGroup cols={2}>
   <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
@@ -36,19 +36,22 @@ Discovery is available to **Product Admins**. See [Access Control](/documentatio
   <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
     Scan Linux and Unix hosts over SSH for local accounts.
   </Card>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
+    Scan PostgreSQL instances for login roles.
+  </Card>
 </CardGroup>
 
 <Note>
   Additional discovery sources will be added in future releases.
 </Note>
 
-## Staged Accounts
+## Staged accounts
 
 A staged account is an account that a scan found but that has not been imported yet. Each staged account records its name and type but does not become usable until you import it.
 
 Discovery deduplicates accounts by a stable fingerprint per source. Re-running a scan updates existing staged accounts rather than creating duplicates, and accounts you have already imported are left untouched so they cannot be imported twice.
 
-## Importing Accounts
+## Importing accounts
 
 When you import staged accounts, you choose:
 
@@ -59,7 +62,7 @@ When you import staged accounts, you choose:
 Discovered accounts are found with a username but no password. Imported accounts arrive without a credential and stay unusable until you add one on the account.
 </Warning>
 
-## Scans and Schedules
+## Scans and schedules
 
 Each source can scan on demand or automatically:
 
@@ -85,7 +88,7 @@ Scheduled scans are evaluated once a day, so a source runs on its next scheduled
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
@@ -93,6 +96,9 @@ Scheduled scans are evaluated once a day, so a source runs on its next scheduled
   </Card>
   <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
     Configure a Linux/Unix discovery source.
+  </Card>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
+    Configure a PostgreSQL discovery source.
   </Card>
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
     Manage the accounts you import.

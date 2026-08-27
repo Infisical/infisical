@@ -15,5 +15,6 @@ export type {
   TDeleteCertificatePolicyDTO,
   TGetCertificatePolicyByIdDTO,
   TListCertificatePoliciesDTO,
+  TSubjectRule,
   TUpdateCertificatePolicyDTO
 } from "./types";

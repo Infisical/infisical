@@ -96,7 +96,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.create({
         actor: req.permission.type,
@@ -203,7 +203,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dynamicSecret, updatedFields, projectId, environment, secretPath } =
         await server.services.dynamicSecret.updateByName({
@@ -272,7 +272,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.deleteByName({
         actor: req.permission.type,
@@ -343,7 +343,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.getDetails({
         actor: req.permission.type,
@@ -394,7 +394,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dynamicSecrets, environment, secretPath, projectId } =
         await server.services.dynamicSecret.listDynamicSecretsByEnv({
@@ -450,7 +450,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { leases, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.listLeases({
@@ -499,7 +499,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         200: z.string()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
@@ -600,7 +600,7 @@ echo ""
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
@@ -625,7 +625,10 @@ echo ""
         instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
-        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
+        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+          "The slug of the project to configure the dynamic secret in"
+        )
       }),
       response: {
         200: z
@@ -637,13 +640,18 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgs({
         instanceUrl: req.body.instanceUrl,
         apiKey: req.body.apiKey,
         clientId: req.body.clientId,
-        clientSecret: req.body.clientSecret
+        clientSecret: req.body.clientSecret,
+        projectSlug: req.body.projectSlug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
       return data;
     }
@@ -663,7 +671,10 @@ echo ""
         instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
-        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
+        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+          "The slug of the project to configure the dynamic secret in"
+        )
       }),
       response: {
         200: z
@@ -675,14 +686,19 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgCatalogs({
         instanceUrl: req.body.instanceUrl,
         apiKey: req.body.apiKey,
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
-        orgId: req.params.orgId
+        orgId: req.params.orgId,
+        projectSlug: req.body.projectSlug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
       return data;
     }
@@ -703,7 +719,10 @@ echo ""
         instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
-        clientSecret: z.string().min(1).describe("The IBM API Connect client secret")
+        clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
+        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+          "The slug of the project to configure the dynamic secret in"
+        )
       }),
       response: {
         200: z
@@ -716,7 +735,7 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchIbmApiConnectOrgApps({
         instanceUrl: req.body.instanceUrl,
@@ -724,7 +743,12 @@ echo ""
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
         orgId: req.params.orgId,
-        catalogId: req.params.catalogId
+        catalogId: req.params.catalogId,
+        projectSlug: req.body.projectSlug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
       return data;
     }
@@ -740,7 +764,10 @@ echo ""
       body: z.object({
         tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
         applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
-        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
+        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration"),
+        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+          "The slug of the project to configure the dynamic secret in"
+        )
       }),
       response: {
         200: z
@@ -752,12 +779,17 @@ echo ""
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
         tenantId: req.body.tenantId,
         applicationId: req.body.applicationId,
-        clientSecret: req.body.clientSecret
+        clientSecret: req.body.clientSecret,
+        projectSlug: req.body.projectSlug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
       return data;
     }

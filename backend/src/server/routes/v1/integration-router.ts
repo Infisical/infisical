@@ -3,16 +3,17 @@ import { z } from "zod";
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, INTEGRATION } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { NATIVE_INTEGRATION_DEPRECATION_MESSAGE } from "@app/services/integration/integration-deprecation-fns";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { Integrations } from "@app/services/integration-auth/integration-list";
 import {
   PostHogEventTypes,
-  TIntegrationCreatedEvent,
   TIntegrationDeletedEvent,
   TIntegrationSyncedEvent
 } from "@app/services/telemetry/telemetry-types";
@@ -28,9 +29,10 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createIntegration",
       tags: [ApiDocsTags.Integrations],
-      description: "Create an integration to sync secrets.",
+      description: "Create an integration to sync secrets. Deprecated: use Secret Syncs instead.",
       security: [
         {
           bearerAuth: []
@@ -71,53 +73,12 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { integration, integrationAuth } = await server.services.integration.createIntegration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
-      });
-
-      const createIntegrationEventProperty = shake({
-        integrationId: integration.id.toString(),
-        integration: integration.integration,
-        environment: req.body.sourceEnvironment,
-        secretPath: req.body.secretPath,
-        url: integration.url,
-        app: integration.app,
-        appId: integration.appId,
-        targetEnvironment: integration.targetEnvironment,
-        targetEnvironmentId: integration.targetEnvironmentId,
-        targetService: integration.targetService,
-        targetServiceId: integration.targetServiceId,
-        path: integration.path,
-        region: integration.region
-      }) as TIntegrationCreatedEvent["properties"];
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: integrationAuth.projectId,
-        event: {
-          type: EventType.CREATE_INTEGRATION,
-          // eslint-disable-next-line
-          metadata: createIntegrationEventProperty
-        }
-      });
-
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.IntegrationCreated,
-        organizationId: req.permission.orgId,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          ...createIntegrationEventProperty,
-          projectId: integrationAuth.projectId,
-          ...req.auditLogInfo
-        }
-      });
-      return { integration };
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    // Native integrations are closed to new creation ahead of the deprecation date. The route stays registered so
+    // existing callers get an explanation pointing at Secret Syncs rather than a 404. Everything else on this router
+    // (read, update, delete, manual sync) keeps working until the cutoff. See integration-deprecation-fns.ts.
+    handler: async () => {
+      throw new BadRequestError({ message: NATIVE_INTEGRATION_DEPRECATION_MESSAGE });
     }
   });
 
@@ -169,7 +130,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
@@ -214,7 +175,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.getIntegration({
         actorId: req.permission.id,
@@ -286,7 +247,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,
@@ -367,7 +328,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.syncIntegration({
         actorId: req.permission.id,

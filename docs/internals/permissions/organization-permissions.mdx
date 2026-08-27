@@ -1,5 +1,5 @@
 ---
-title: "Organization Permissions"
+title: "Organization permissions"
 description: "Comprehensive guide to Infisical's organization-level permissions"
 ---
 
@@ -14,11 +14,11 @@ Each permission consists of:
 
 Some organization-level resources—specifically `app-connections`—support conditional permissions and permission inversion for more granular access control.
 
-## Available Organization Permissions
+## Available organization permissions
 
 Below is a comprehensive list of all available organization-level subjects and their supported actions, organized by functional area.
 
-### Project Management
+### Project management
 
 #### Subject: `project` (formerly workspace)
 
@@ -37,7 +37,7 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `direct-access` | Access and switch into sub-organizations the user has membership in                       |
 | `link-group`    | Link a root organization group to a sub-organization (and unlink it). Root org role only. |
 
-### Role Management
+### Role management
 
 #### Subject: `role`
 
@@ -48,7 +48,7 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `edit`   | Modify existing organization roles                     |
 | `delete` | Remove organization roles                              |
 
-### User Management
+### User management
 
 #### Subject: `member`
 
@@ -83,11 +83,12 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `delete`           | Remove identities from organization                 |
 | `grant-privileges` | Change permission levels of organization identities |
 | `revoke-auth`      | Revoke authentication for identities                |
+| `edit-auth`        | Modify authentication methods for identities        |
 | `create-token`     | Create new authentication tokens                    |
 | `delete-token`     | Delete authentication tokens                        |
 | `get-token`        | Retrieve authentication tokens                      |
 
-### Security & Compliance
+### Security & compliance
 
 #### Subject: `secret-scanning`
 
@@ -131,7 +132,7 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `verify-domain` | Verify ownership of an email domain      |
 | `delete`        | Remove email domains                     |
 
-### Identity Provider Integration
+### Identity provider integration
 
 #### Subject: `sso`
 
@@ -170,7 +171,7 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `edit`   | Modify GitHub organization sync settings   |
 | `delete` | Remove GitHub organization sync            |
 
-### Billing & Subscriptions
+### Billing & subscriptions
 
 #### Subject: `billing`
 
@@ -179,7 +180,7 @@ Below is a comprehensive list of all available organization-level subjects and t
 | `read`           | View billing information and subscription status |
 | `manage-billing` | Manage billing details and subscription plans    |
 
-### Templates & Automation
+### Templates & automation
 
 #### Subject: `project-templates`
 
@@ -205,7 +206,7 @@ Supports conditions and permission inversion
 | `connect`            | Use app connections                |
 | `rotate-credentials` | Rotate app connection credentials  |
 
-### Key Management
+### Key management
 
 #### Subject: `kms`
 
@@ -226,7 +227,7 @@ Supports conditions and permission inversion
 | `delete-kmip-servers`       | Remove KMIP servers from the organization               |
 | `revoke-kmip-server-access` | Revoke a KMIP server's access and invalidate its tokens |
 
-### Honey Tokens
+### Honey tokens
 
 #### Subject: `honey-tokens`
 
@@ -234,7 +235,17 @@ Supports conditions and permission inversion
 | ------- | ---------------------------- |
 | `setup` | Set up and configure honey tokens |
 
-### Admin Tools
+### Insights
+
+#### Subject: `secrets-management-insights`
+
+| Action            | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `read`            | View secrets management insights                |
+| `generate-report` | Generate new secrets management insight reports |
+| `delete-report`   | Delete secrets management insight reports       |
+
+### Admin tools
 
 #### Subject: `organization-admin-console`
 
@@ -242,7 +253,7 @@ Supports conditions and permission inversion
 | --------------------- | ------------------------------------------- |
 | `access-all-projects` | Access all projects within the organization |
 
-### Secure Share
+### Secure share
 
 #### Subject: `secret-share`
 
@@ -250,7 +261,7 @@ Supports conditions and permission inversion
 | ----------------- | ---------------------------- |
 | `manage-settings` | Manage secret share settings |
 
-### Gateway Management
+### Gateway management
 
 #### Subject: `gateway`
 

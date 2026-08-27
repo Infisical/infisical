@@ -6,6 +6,7 @@ import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const metadataSchema = z.object({
   key: z.string().trim().min(1, "Metadata key cannot be empty"),
@@ -122,6 +123,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
         },
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
           identityId: req.params.identityId
         },
@@ -182,6 +184,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
         },
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
           identityId: req.params.identityId
         }
@@ -208,7 +211,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getOrganizationMachineIdentityById",
       tags: [ApiDocsTags.Identities],
@@ -249,7 +252,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "listOrganizationMachineIdentities",
       tags: [ApiDocsTags.Identities],

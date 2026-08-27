@@ -18,6 +18,7 @@ export type TAccessApprovalPolicy = {
   approvers?: Approver[];
   bypassers?: Bypasser[];
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
 };

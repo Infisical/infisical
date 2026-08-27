@@ -1,6 +1,5 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import opentelemetry from "@opentelemetry/api";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -9,6 +8,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ConflictError,
   CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
@@ -25,7 +25,13 @@ import {
 import { classifyError } from "@app/lib/errors/classify";
 import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
+import {
+  coreHttpErrorCounter,
+  highCardinalityMeter,
+  rateLimitExceededCounter,
+  shouldRecordHighCardinalityMetrics
+} from "@app/lib/telemetry/metrics";
+import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -36,6 +42,7 @@ enum JWTErrors {
 enum HttpStatusCodes {
   BadRequest = 400,
   NotFound = 404,
+  Conflict = 409,
   Unauthorized = 401,
   Forbidden = 403,
   UnprocessableContent = 422,
@@ -48,13 +55,13 @@ enum HttpStatusCodes {
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
-  const apiMeter = opentelemetry.metrics.getMeter("API");
+  const apiMeter = highCardinalityMeter("API");
   const errorHistogram = apiMeter.createHistogram("API_errors", {
     description: "API errors by type, status code, and name",
     unit: "1"
   });
 
-  const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+  const infisicalMeter = highCardinalityMeter("Infisical");
   const errorCounter = infisicalMeter.createCounter("infisical.http.server.error.count", {
     description: "Total number of API errors in Infisical (covers both human users and machine identities)",
     unit: "{error}"
@@ -66,11 +73,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     const isExpectedClientError =
       error instanceof BadRequestError ||
       error instanceof NotFoundError ||
+      error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
       error instanceof ForbiddenError ||
       error instanceof ForbiddenRequestError ||
       error instanceof PermissionBoundaryError ||
       error instanceof ZodError ||
+      (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
@@ -101,76 +110,79 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       const { method } = req;
       const route = req.routeOptions.url;
-      const errorType =
-        error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
 
-      errorHistogram.record(1, {
-        route,
-        method,
-        type: errorType,
-        name: error.name
-      });
+      if (shouldRecordHighCardinalityMetrics()) {
+        const errorType =
+          error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
 
-      const orgId = requestContext.get(RequestContextKey.OrgId);
-      const orgName = requestContext.get(RequestContextKey.OrgName);
-      const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
-      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
-      const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
+        errorHistogram.record(1, {
+          route,
+          method,
+          type: errorType,
+          name: error.name
+        });
 
-      const attributes: Record<string, string | number> = {
-        "http.request.method": method,
-        "http.route": route ?? "",
-        "error.type": errorType,
-        "error.name": error.name
-      };
+        const orgId = requestContext.get(RequestContextKey.OrgId);
+        const orgName = requestContext.get(RequestContextKey.OrgName);
+        const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+        const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+        const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
 
-      if (orgId) {
-        attributes["infisical.organization.id"] = orgId;
-      }
-      if (orgName) {
-        attributes["infisical.organization.name"] = orgName;
-      }
+        const attributes: Record<string, string | number> = {
+          "http.request.method": method,
+          "http.route": route ?? "",
+          "error.type": errorType,
+          "error.name": error.name
+        };
 
-      if (userAuthInfo) {
-        if (userAuthInfo.userId) {
-          attributes["infisical.user.id"] = userAuthInfo.userId;
+        if (orgId) {
+          attributes["infisical.organization.id"] = orgId;
         }
-        if (userAuthInfo.email) {
-          attributes["infisical.user.email"] = userAuthInfo.email;
+        if (orgName) {
+          attributes["infisical.organization.name"] = orgName;
         }
-      }
 
-      if (identityAuthInfo) {
-        if (identityAuthInfo.identityId) {
-          attributes["infisical.identity.id"] = identityAuthInfo.identityId;
+        if (userAuthInfo) {
+          if (userAuthInfo.userId) {
+            attributes["infisical.user.id"] = userAuthInfo.userId;
+          }
+          if (userAuthInfo.email) {
+            attributes["infisical.user.email"] = userAuthInfo.email;
+          }
         }
-        if (identityAuthInfo.identityName) {
-          attributes["infisical.identity.name"] = identityAuthInfo.identityName;
-        }
-        if (identityAuthInfo.authMethod) {
-          attributes["infisical.auth.method"] = identityAuthInfo.authMethod;
-        }
-      }
 
-      if (projectDetails) {
-        if (projectDetails.id) {
-          attributes["infisical.project.id"] = projectDetails.id;
+        if (identityAuthInfo) {
+          if (identityAuthInfo.identityId) {
+            attributes["infisical.identity.id"] = identityAuthInfo.identityId;
+          }
+          if (identityAuthInfo.identityName) {
+            attributes["infisical.identity.name"] = identityAuthInfo.identityName;
+          }
+          if (identityAuthInfo.authMethod) {
+            attributes["infisical.auth.method"] = identityAuthInfo.authMethod;
+          }
         }
-        if (projectDetails.name) {
-          attributes["infisical.project.name"] = projectDetails.name;
+
+        if (projectDetails) {
+          if (projectDetails.id) {
+            attributes["infisical.project.id"] = projectDetails.id;
+          }
+          if (projectDetails.name) {
+            attributes["infisical.project.name"] = projectDetails.name;
+          }
         }
-      }
 
-      const userAgent = req.headers["user-agent"];
-      if (userAgent) {
-        attributes["user_agent.original"] = userAgent;
-      }
+        const userAgent = req.headers["user-agent"];
+        if (userAgent) {
+          attributes["user_agent.original"] = userAgent;
+        }
 
-      if (req.realIp) {
-        attributes["client.address"] = req.realIp;
-      }
+        if (req.realIp) {
+          attributes["client.address"] = req.realIp;
+        }
 
-      errorCounter.add(1, attributes);
+        errorCounter.add(1, attributes);
+      }
 
       const coreAttrs: Record<string, string | number> = {
         "http.request.method": method,
@@ -180,7 +192,23 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       coreHttpErrorCounter.add(1, coreAttrs);
     }
 
-    if (error instanceof BadRequestError) {
+    // The OAuth token endpoint's error contract is RFC 6749 section 5.2, not the house envelope. See
+    // OauthTokenError; only that endpoint raises this, and it maps everything it can throw itself.
+    if (error instanceof OauthTokenError) {
+      // RFC 6749 section 5.2: a client that authenticated with the Authorization header must get a 401
+      // carrying a challenge for the scheme it used.
+      if (
+        error.oauthErrorCode === OauthTokenErrorCode.InvalidClient &&
+        req.headers.authorization?.toLowerCase().startsWith("basic ")
+      ) {
+        void res.header("WWW-Authenticate", 'Basic realm="Infisical", charset="UTF-8"');
+      }
+
+      void res.status(error.statusCode).send({
+        error: error.oauthErrorCode,
+        error_description: toErrorDescription(error.message)
+      });
+    } else if (error instanceof BadRequestError) {
       void res.status(HttpStatusCodes.BadRequest).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.BadRequest,
@@ -188,6 +216,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name,
         details: error.details
       });
+    } else if (error instanceof ConflictError) {
+      void res
+        .status(HttpStatusCodes.Conflict)
+        .send({ reqId: req.id, statusCode: HttpStatusCodes.Conflict, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)

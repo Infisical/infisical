@@ -5,13 +5,19 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  PageHeader,
+  Skeleton
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -44,7 +50,8 @@ const Page = () => {
     currentProject.type
   );
 
-  const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
+  const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
+    useDeleteGroupFromWorkspace();
   const navigate = useNavigate();
 
   const { handlePopUpToggle, popUp, handlePopUpClose, handlePopUpOpen } = usePopUp([
@@ -52,56 +59,81 @@ const Page = () => {
   ] as const);
 
   const onRemoveGroupSubmit = async () => {
-    await deleteMutateAsync({
-      groupId: groupMembership!.group.id,
-      projectId: currentProject.id
-    });
+    if (!groupMembership) return;
+
+    try {
+      await deleteMutateAsync({
+        groupId: groupMembership.group.id,
+        projectId: currentProject.id,
+        projectType: currentProject.type
+      });
+    } catch {
+      return;
+    }
 
     createNotification({
-      text: "Successfully removed group from project",
+      text: `Successfully removed group from ${
+        currentProject.type === ProjectType.CertificateManager ? "certificate manager" : "project"
+      }`,
       type: "success"
     });
+
+    handlePopUpClose("deleteGroup");
 
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management`,
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {
-        selectedTab: "groups"
+        selectedTab: ProjectAccessControlTabs.Groups
       }
     });
-
-    handlePopUpClose("deleteGroup");
   };
 
-  if (isPending)
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+
+  if (isPending) {
     return (
-      <div className="flex w-full items-center justify-center p-24">
-        <Spinner />
+      <div
+        className="mx-auto flex max-w-8xl flex-col gap-5"
+        role="status"
+        aria-label="Loading group details"
+        aria-busy="true"
+      >
+        <Skeleton className="h-4 w-36" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="flex flex-col gap-5 lg:flex-row">
+          <Skeleton className="h-64 w-full lg:max-w-[24rem]" />
+          <Skeleton className="h-64 flex-1" />
+        </div>
       </div>
     );
-
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  }
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
+      <Link
+        to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+        params={{
+          projectId: currentProject.id,
+          orgId: currentOrg.id
+        }}
+        search={{
+          selectedTab: ProjectAccessControlTabs.Groups
+        }}
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        <ChevronLeftIcon size={16} />
+        {isCertManager ? "Groups" : "Project Groups"}
+      </Link>
       {groupMembership ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId: currentProject.id,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Groups
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            {isCertManager ? "Groups" : "Project Groups"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
@@ -141,7 +173,7 @@ const Page = () => {
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("deleteGroup")}
                     >
-                      Remove From Project
+                      Remove From {productLabel}
                     </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
@@ -154,17 +186,27 @@ const Page = () => {
           </div>
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the group." className="py-12" />
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Group Not Found</EmptyTitle>
+            <EmptyDescription>
+              This group is unavailable or is no longer assigned to the {productLabel.toLowerCase()}
+              .
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to remove the group ${
-          groupMembership?.group.name
-        } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        buttonText="Remove"
-        onDeleteApproved={onRemoveGroupSubmit}
+        onOpenChange={(isOpen) => {
+          if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
+        }}
+        title={`Remove "${groupMembership?.group.name}" from ${productLabel}?`}
+        description={`This removes the group's access to this ${productLabel.toLowerCase()}. You can add the group again later.`}
+        confirmKey={groupMembership?.group.name ?? ""}
+        confirmLabel="Remove Group"
+        isPending={isRemovingGroup}
+        onConfirm={onRemoveGroupSubmit}
       />
     </div>
   );

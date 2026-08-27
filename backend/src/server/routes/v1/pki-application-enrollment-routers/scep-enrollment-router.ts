@@ -38,7 +38,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setScepEnrollment({
         actor: req.permission.type,
@@ -74,8 +74,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "scep",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "scep"
         }
       });
 
@@ -95,7 +96,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearScepEnrollment({
         actor: req.permission.type,
@@ -119,8 +120,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "scep",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "scep"
         }
       });
 

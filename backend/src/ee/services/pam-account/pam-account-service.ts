@@ -21,9 +21,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
-import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -43,11 +44,15 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  applyForcedFields,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
+  normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
@@ -70,13 +75,18 @@ type TPamAccountServiceFactoryDep = {
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service: Pick<
+    TGatewayV2ServiceFactory,
+    "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
+  >;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
@@ -140,6 +150,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,
+    pamSessionDAL,
+    userDAL,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -217,7 +229,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     ];
 
     const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
       // Resolve every account's effective permissions in one membership fetch
       getAccountPermissionRulesMap(
@@ -335,7 +351,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials);
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
     if (!test) return;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
@@ -444,8 +460,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ctx
     );
 
-    const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
-    const validatedCredentials = validateCredentials(accountType, credentials);
+    const forced = applyForcedFields(accountType, {
+      connectionDetails,
+      credentials: normalizeCredentialAuthMethod(accountType, credentials)
+    });
+    const validatedConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
+    const validatedCredentials = validateCredentials(accountType, forced.credentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
@@ -623,37 +643,58 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
     if (settingsOverrides !== undefined) updateData.settingsOverrides = settingsOverrides;
 
-    if (connectionDetails) {
-      const validated = validateConnectionDetails(accountType, connectionDetails);
-      updateData.encryptedConnectionDetails = await encrypt(projectId, validated);
-    }
-
+    // Forced fields cross the two groups, so a change to either side is resolved against the merged
+    // view and both are rewritten
     let principalChanged = false;
-    if (credentials) {
+    let authMethodChanged = false;
+    let connectionTargetChanged = false;
+    let effectiveConnectionDetails: Record<string, unknown> | null = null;
+    let effectiveCredentials: Record<string, unknown> | null = null;
+
+    if (connectionDetails || credentials) {
+      const existingConnectionDetails = await decrypt(projectId, existing.encryptedConnectionDetails);
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
-      const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
-      const templateSettings = templateId
-        ? (await pamAccountTemplateDAL.findById(templateId))?.settings
-        : existing.templateSettings;
-      assertPasswordMeetsRequirements(validated, templateSettings);
-      updateData.encryptedCredentials = await encrypt(projectId, validated);
-      updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
+
+      const forced = applyForcedFields(accountType, {
+        connectionDetails: connectionDetails ?? existingConnectionDetails,
+        credentials: normalizeCredentialAuthMethod(accountType, { ...existingCredentials, ...(credentials ?? {}) })
+      });
+
+      effectiveConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
+      effectiveCredentials = validateCredentials(accountType, forced.credentials);
+
+      if (credentials) {
+        const templateSettings = templateId
+          ? (await pamAccountTemplateDAL.findById(templateId))?.settings
+          : existing.templateSettings;
+        assertPasswordMeetsRequirements(effectiveCredentials, templateSettings);
+      }
+
+      updateData.encryptedConnectionDetails = await encrypt(projectId, effectiveConnectionDetails);
+      updateData.encryptedCredentials = await encrypt(projectId, effectiveCredentials);
+      updateData.credentialConfigured = isCredentialConfigured(accountType, effectiveCredentials);
+
+      const oldConn = validateConnectionDetails(accountType, existingConnectionDetails) as {
+        host?: string;
+        port?: number;
+      };
+      const newConn = effectiveConnectionDetails as { host?: string; port?: number };
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) connectionTargetChanged = true;
+
       const oldUsername = (existingCredentials as { username?: string }).username;
-      const newUsername = (validated as { username?: string }).username;
+      const newUsername = (effectiveCredentials as { username?: string }).username;
       if (oldUsername !== newUsername) principalChanged = true;
+
+      // Normalized on both sides so an older account without a stored auth method doesn't read as a change
+      const oldAuthMethod = normalizeCredentialAuthMethod(accountType, existingCredentials).authMethod;
+      if (oldAuthMethod !== (effectiveCredentials as { authMethod?: string }).authMethod) authMethodChanged = true;
     }
 
-    let routingChanged =
+    const routingChanged =
+      connectionTargetChanged ||
+      authMethodChanged ||
       (gatewayId !== undefined && gatewayId !== existing.gatewayId) ||
       (gatewayPoolId !== undefined && gatewayPoolId !== existing.gatewayPoolId);
-    if (connectionDetails) {
-      const oldConn = validateConnectionDetails(
-        accountType,
-        await decrypt(projectId, existing.encryptedConnectionDetails)
-      ) as { host?: string; port?: number };
-      const newConn = validateConnectionDetails(accountType, connectionDetails) as { host?: string; port?: number };
-      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) routingChanged = true;
-    }
     if ((routingChanged || principalChanged) && existing.rotationAccountId) {
       updateData.rotationAccountId = null;
     }
@@ -666,9 +707,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId !== undefined ||
       templateId !== undefined
     ) {
-      const effectiveConnectionDetails = connectionDetails
-        ? validateConnectionDetails(accountType, connectionDetails)
-        : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
+      const testConnectionDetails =
+        effectiveConnectionDetails ??
+        validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
 
       // only test with credentials supplied in this request to prevent exfiltration
       let testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
@@ -677,7 +718,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       }
       await assertConnectionOk(
         accountType,
-        effectiveConnectionDetails,
+        testConnectionDetails,
         testCredentials,
         {
           gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
@@ -739,7 +780,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     try {
-      return await pamAccountDAL.transaction(async (tx) => {
+      // Every session cancellation this delete triggers is held back until COMMIT: the delete can still
+      // fail on the rotationAccountId FK guard below, and a cut tunnel can't be brought back.
+      let sendSessionCancellations: (() => void) | undefined;
+
+      const deleted = await pamAccountDAL.transaction(async (tx) => {
         const memberships = await membershipDAL.find(
           {
             scope: RESOURCE_SCOPE,
@@ -757,13 +802,43 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
         await pamAccountDAL.updateById(accountId, { rotationAccountId: null }, tx);
 
-        await deps.pamAccessRequestService.cleanupAccountResources(
+        const sendGrantCancellations = await deps.pamAccessRequestService.cleanupAccountResources(
           { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
           tx
         );
 
+        // Sweep every live session on the account, not just the ones grant revocation reached: an
+        // account in a folder with no approval policy has no grant rows at all, and a session can be
+        // held by someone who is not a grantee. The account row is about to disappear (pam_sessions
+        // keeps history with a null accountId), so there is no access left to re-evaluate.
+        const liveSessions = await pamSessionDAL.find(
+          { accountId, $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] } },
+          { tx }
+        );
+
+        let sendSweepCancellations: (() => void) | undefined;
+        if (liveSessions.length > 0) {
+          const actor = await userDAL.findById(ctx.actorId, tx);
+          sendSweepCancellations = await terminatePamSessions({
+            sessions: liveSessions,
+            actorId: ctx.actorId,
+            actorEmail: actor?.email ?? "",
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
+
+        sendSessionCancellations = () => {
+          sendGrantCancellations();
+          sendSweepCancellations?.();
+        };
+
         return pamAccountDAL.deleteById(accountId, tx);
       });
+
+      sendSessionCancellations?.();
+      return deleted;
     } catch (err) {
       // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
       // to name them (rather than paying for that lookup on every delete).
@@ -858,13 +933,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
     const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
     ]);
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+        const { requiresApproval, requireReason, requireMfa } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
@@ -885,6 +964,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
           requireReason,
+          // Machine identities cannot satisfy MFA, so launch rejects them outright (see
+          // pam-session-service). Callers acting as an identity should treat this as unusable.
+          requireMfa,
           accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           disabledReason,

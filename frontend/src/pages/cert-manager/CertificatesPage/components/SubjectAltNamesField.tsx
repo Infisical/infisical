@@ -22,6 +22,7 @@ type SubjectAltNamesFieldProps = {
   control: Control<any>;
   allowedSanTypes: CertSubjectAlternativeNameType[];
   error?: string;
+  rowErrors?: (string | undefined)[];
   shouldUnregister?: boolean;
   namePrefix?: string;
 };
@@ -30,6 +31,7 @@ export const SubjectAltNamesField = ({
   control,
   allowedSanTypes,
   error,
+  rowErrors,
   shouldUnregister,
   namePrefix = "subjectAltNames"
 }: SubjectAltNamesFieldProps) => {
@@ -71,16 +73,20 @@ export const SubjectAltNamesField = ({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
-                    value={san.value}
-                    onChange={(e) => {
-                      const newValue = [...currentValues];
-                      newValue[index] = { ...san, value: e.target.value };
-                      onChange(newValue);
-                    }}
-                    placeholder={getSanPlaceholder(san.type)}
-                    className="flex-1"
-                  />
+                  <div className="flex-1">
+                    <Input
+                      value={san.value}
+                      onChange={(e) => {
+                        const newValue = [...currentValues];
+                        newValue[index] = { ...san, value: e.target.value };
+                        onChange(newValue);
+                      }}
+                      placeholder={getSanPlaceholder(san.type)}
+                      isError={Boolean(rowErrors?.[index])}
+                      className="w-full"
+                    />
+                    {rowErrors?.[index] ? <FieldError>{rowErrors[index]}</FieldError> : null}
+                  </div>
                   <IconButton
                     type="button"
                     variant="ghost"

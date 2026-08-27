@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
+import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import {
@@ -20,6 +21,7 @@ import {
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 
 import {
+  getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
 } from "../../CertificatesPage/components/CertificatesTable.utils";
@@ -64,6 +66,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const { variant: expiryVariant, label: expiryLabel } = getCertValidUntilBadgeDetails(
     certificate.notAfter
   );
+  const displayStatus = getCertificateDisplayStatus(certificate);
 
   const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
 
@@ -78,15 +81,17 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
           <DetailGroup>
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
-              <DetailValue>{certificate.commonName}</DetailValue>
+              <DetailValue>
+                {certificate.commonName || <span className="text-muted">—</span>}
+              </DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {certificate.status === CertStatus.REVOKED ? (
-                  <Badge variant="danger">Revoked</Badge>
-                ) : (
+                {displayStatus.status === CertStatus.ACTIVE ? (
                   <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                ) : (
+                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                 )}
               </DetailValue>
             </Detail>
@@ -221,7 +226,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(
+                        certificate,
+                        64,
+                        certificate.renewedFromCertificateId
+                      ).displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
@@ -240,7 +251,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
+                        .displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>

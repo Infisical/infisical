@@ -1,5 +1,5 @@
 ---
-title: "Windows Local Account Rotation"
+title: "Windows local account rotation"
 description: "Learn how to automatically rotate Windows local account passwords using SMB."
 ---
 
@@ -36,12 +36,12 @@ description: "Learn how to automatically rotate Windows local account passwords 
     ```
 </Accordion>
 
-## Create a Windows Local Account Rotation in Infisical
+## Create a Windows local account rotation in Infisical
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
-        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+        1. Navigate to your Secrets Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secrets Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
         2. Select the **Windows Local Account** option.
         ![Select Windows Local Account](/images/secret-rotations-v2/windows-local-account/select-windows-local-account-option.png)
@@ -86,7 +86,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
         8. Your **Windows Local Account** credentials are now available for use via the mapped secrets.
         ![Rotation Created](/images/secret-rotations-v2/windows-local-account/windows-local-account-created.png)
 
-        ### Login as Target Requirements
+        ### Login as target requirements
 
         The **Login as Target** method allows a user to rotate their own password without requiring separate administrator credentials in the SMB Connection. However, this method has specific requirements due to Windows security restrictions:
 
@@ -112,7 +112,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
           If you cannot or prefer not to disable Remote UAC token filtering, use the **Login as Root** method instead, which uses domain administrator or built-in Administrator credentials from the SMB Connection.
         </Note>
 
-        ### Reconcile Windows Local Account
+        ### Reconcile Windows local account
 
         If you suspect the credentials are out of sync (for example, after a manual password change on the server), you can regain access by using **Reconcile**. This will use the configured Windows App Connection's administrator account to reset the target user's password and sync it with Infisical.
 
