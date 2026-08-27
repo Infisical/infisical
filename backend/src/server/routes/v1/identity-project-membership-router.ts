@@ -8,7 +8,7 @@ import {
   SecretFolderRole,
   TemporaryPermissionMode
 } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, SecretFolderAccessEventMetadata } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, FOLDER_ACCESS, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
@@ -43,6 +43,27 @@ const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS
 
 const identityFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
   identityId: z.string().uuid()
+});
+
+const toSecretFolderAccessAuditMetadata = (
+  folderAccess: z.infer<typeof SanitizedFolderAccessSchema>,
+  actor: { userId: string } | { identityId: string }
+): SecretFolderAccessEventMetadata => ({
+  folderAccessId: folderAccess.id,
+  folderId: folderAccess.folderId,
+  environment: folderAccess.environment,
+  secretPath: folderAccess.secretPath,
+  permission: folderAccess.permission,
+  ...actor,
+  isTemporary: folderAccess.isTemporary,
+  ...(folderAccess.isTemporary
+    ? {
+        temporaryMode: folderAccess.temporaryMode ?? undefined,
+        temporaryRange: folderAccess.temporaryRange ?? undefined,
+        temporaryAccessStartTime: folderAccess.temporaryAccessStartTime?.toISOString(),
+        temporaryAccessEndTime: folderAccess.temporaryAccessEndTime?.toISOString()
+      }
+    : {})
 });
 
 export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
@@ -636,6 +657,16 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         type: req.body.type
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.CREATE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
   });
@@ -685,6 +716,16 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         type: req.body.type
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
   });
@@ -723,6 +764,16 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
         target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.DELETE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
       });
 
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
