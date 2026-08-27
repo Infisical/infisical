@@ -1970,6 +1970,8 @@ export const registerRoutes = async (
     pamAccessRequestService
   });
 
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     pamFolderDAL,
@@ -1977,6 +1979,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     pamSessionDAL,
+    pamDiscoverySourceDAL,
     userDAL,
     permissionService,
     kmsService,
@@ -1988,7 +1991,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);

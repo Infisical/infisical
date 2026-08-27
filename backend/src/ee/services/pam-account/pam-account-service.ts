@@ -15,6 +15,8 @@ import {
 import { conditionsMatcher } from "@app/lib/casl";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { logger } from "@app/lib/logger";
 import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -43,6 +45,7 @@ import {
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
@@ -76,6 +79,7 @@ type TPamAccountServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -151,6 +155,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipDAL,
     membershipRoleDAL,
     pamSessionDAL,
+    pamDiscoverySourceDAL,
     userDAL,
     permissionService,
     kmsService,
@@ -840,12 +845,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       sendSessionCancellations?.();
       return deleted;
     } catch (err) {
-      // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
-      // to name them (rather than paying for that lookup on every delete).
-      if (
-        err instanceof DatabaseError &&
-        (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation
-      ) {
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         const dependents = (await pamAccountDAL.find({ rotationAccountId: accountId })).filter(
           (dependent) => dependent.id !== accountId
         );
@@ -876,9 +876,24 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
               : "This account is used as the rotation account for another account. Reassign it before deleting this one."
           });
         }
-        // The other restricting reference is a discovery source using this account as its credential
+        const sources = await pamDiscoverySourceDAL.find({ credentialAccountId: accountId });
+        if (sources.length) {
+          // Discovery is Admin-only, so a non-admin gets the count rather than the source names.
+          const { hasRole } = await verifyMembership(projectId, ctx);
+          const plural = sources.length > 1;
+          const subject = hasRole(PamProductRole.Admin)
+            ? `discovery source${plural ? "s" : ""} ${sources.map((source) => `'${source.name}'`).join(", ")}`
+            : `${sources.length} discovery source${plural ? "s" : ""}`;
+          throw new BadRequestError({
+            message: `This account is the credential for ${subject}. Point ${
+              plural ? "them" : "it"
+            } at another account, or delete ${plural ? "them" : "it"}, before deleting this account.`
+          });
+        }
+
+        logger.error(err, `Unhandled FK violation deleting PAM account [accountId=${accountId}]`);
         throw new BadRequestError({
-          message: "This account is used as the credential for a discovery source. Delete that source first."
+          message: "This account is still referenced by another resource. Remove that reference before deleting it."
         });
       }
       throw err;
