@@ -67,6 +67,7 @@ import {
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -162,6 +163,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -195,7 +197,8 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService,
   notificationService,
-  telemetryService
+  telemetryService,
+  secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -1837,6 +1840,8 @@ export const secretApprovalRequestServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
+    const secretsToValidate: { key: string; value?: string; secretId?: string }[] = [];
+
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];
     if (createdSecrets && createdSecrets?.length) {
@@ -1849,6 +1854,8 @@ export const secretApprovalRequestServiceFactory = ({
       );
       if (secrets.length)
         throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+
+      secretsToValidate.push(...createdSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
 
       commits.push(
         ...createdSecrets.map((createdSecret) => ({
@@ -1912,6 +1919,8 @@ export const secretApprovalRequestServiceFactory = ({
               missingSecrets.filter((s) => !createdKeys.has(s.secretKey)).map((s) => [s.secretKey, s] as const)
             ).values()
           ];
+
+          secretsToValidate.push(...upsertSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
 
           commits.push(
             ...upsertSecrets.map((secret) => ({
@@ -1980,6 +1989,17 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       const updatingSecretsGroupByKey = groupBy(secretsToUpdateStoredInDB, (el) => el.key);
+
+      secretsToValidate.push(
+        ...actualSecretsToUpdate
+          .filter((s) => s.secretValue !== undefined || s.newSecretName)
+          .map((s) => ({
+            key: s.newSecretName || s.secretKey,
+            value: s.secretValue,
+            secretId: updatingSecretsGroupByKey[s.secretKey]?.[0]?.id
+          }))
+      );
+
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
         folderId,
         secretsToUpdateStoredInDB.map(({ id }) => id)
@@ -2108,6 +2128,16 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
+
+    if (secretsToValidate.length) {
+      await secretValidationRuleService.validateSecrets({
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: secretsToValidate
+      });
+    }
 
     const tagIds = unique(Object.values(commitTagIds).flat());
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
