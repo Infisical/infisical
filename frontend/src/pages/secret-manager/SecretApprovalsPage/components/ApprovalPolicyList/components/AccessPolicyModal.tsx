@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import {
@@ -21,6 +22,7 @@ import {
   Badge,
   Button,
   Combobox,
+  CreatableSelect,
   DiscardChangesAlertDialog,
   Field,
   FieldContent,
@@ -57,10 +59,10 @@ import {
   useUpdateAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval";
 import {
-  Approver,
   ApproverType,
   BypasserType,
-  TAccessApprovalPolicy
+  TAccessApprovalPolicy,
+  TApprovalPolicyApproverInput
 } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
@@ -68,9 +70,56 @@ import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { approvalPolicyFormSchema, TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
+import {
+  approvalPolicyFormSchema,
+  isValidMemberEmail,
+  TApprovalPolicyFormSchema
+} from "./approvalPolicyFormSchema";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 import { ApproverOption, ApproverOptionData } from "./ApproverOption";
+
+const getApproverOptionValue = (option: ApproverOptionData) =>
+  `${option.type}-${option.id ?? option.username ?? ""}`;
+
+const getApproverOptionLabel = (option: ApproverOptionData) =>
+  option.name ?? option.username ?? option.id ?? "Unknown approver";
+
+const formatApproverOptionLabel = (
+  option: ApproverOptionData,
+  { context }: FormatOptionLabelMeta<ApproverOptionData>
+) =>
+  context === "menu" ? (
+    <ApproverOption option={option} label={getApproverOptionLabel(option)} />
+  ) : (
+    getApproverOptionLabel(option)
+  );
+
+const filterApproverOption = ({ data }: { data: ApproverOptionData }, input: string) => {
+  const search = input.trim().toLowerCase();
+  return [data.name, data.memberEmail, data.username, data.id].some((value) =>
+    value?.toLowerCase().includes(search)
+  );
+};
+
+const getManualMemberOption = (
+  email: string,
+  type: ApproverType.User | BypasserType.User
+): ApproverOptionData => {
+  const username = email.trim().toLowerCase();
+  return { type, username, name: username };
+};
+
+const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]) => {
+  const username = input.trim().toLowerCase();
+  if (!isValidMemberEmail(username)) return false;
+
+  return !options.some((option) =>
+    [option.username, option.memberEmail].some((value) => value?.toLowerCase() === username)
+  );
+};
+
+const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData & { id: string } =>
+  Boolean(option.id);
 
 type Props = {
   isOpen?: boolean;
@@ -116,15 +165,20 @@ const Form = ({
             userApprovers:
               editValues.approvers
                 ?.filter((approver) => approver.type === ApproverType.User)
-                .map(({ id, type, isOrgMembershipActive }) => ({
+                .map(({ id, type, name, isOrgMembershipActive }) => ({
                   id,
                   type: type as ApproverType.User,
+                  name,
                   isOrgMembershipActive
                 })) || [],
             groupApprovers:
               editValues.approvers
                 ?.filter((approver) => approver.type === ApproverType.Group)
-                .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
+                .map(({ id, type, name }) => ({
+                  id,
+                  type: type as ApproverType.Group,
+                  name
+                })) || [],
             userBypassers:
               editValues.bypassers
                 ?.filter((bypasser) => bypasser.type === BypasserType.User)
@@ -216,9 +270,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -266,9 +318,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -311,12 +361,13 @@ const Form = ({
     }
   };
 
-  const memberOptions: Omit<Approver, "sequence" | "approvalsRequired">[] = useMemo(
+  const memberOptions = useMemo<ApproverOptionData[]>(
     () =>
       members.map((member) => ({
         id: member.user.id,
         type: ApproverType.User,
-        name: member.user.username,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -326,7 +377,8 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: ApproverType.Group
+        type: ApproverType.Group,
+        name: group.name
       })),
     [groups]
   );
@@ -336,27 +388,24 @@ const Form = ({
     [memberOptions, groupOptions]
   );
 
-  const getApproverLabel = (option: ApproverOptionData) => {
-    if (option.type === ApproverType.Group) {
-      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
-    }
-    const member = members?.find((m) => m.user.id === option.id);
-    if (!member) return option.name || option.id;
-    return getMemberLabel(member);
-  };
-
   const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
       .filter((option) => option.type === ApproverType.User)
       .map((option) => ({
         type: ApproverType.User as const,
         id: option.id,
+        username: option.username,
         name: option.name,
         isOrgMembershipActive: option.isOrgMembershipActive
       })),
     groups: selected
       .filter((option) => option.type === ApproverType.Group)
-      .map((option) => ({ type: ApproverType.Group as const, id: option.id }))
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: ApproverType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
   });
 
   const bypasserMemberOptions = useMemo(
@@ -364,6 +413,8 @@ const Form = ({
       members.map((member) => ({
         id: member.user.id,
         type: BypasserType.User,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -373,7 +424,8 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: BypasserType.Group
+        type: BypasserType.Group,
+        name: group.name
       })),
     [groups]
   );
@@ -383,27 +435,50 @@ const Form = ({
     [bypasserMemberOptions, bypasserGroupOptions]
   );
 
-  const getBypasserLabel = (option: ApproverOptionData) => {
-    if (option.type === BypasserType.Group) {
-      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
-    }
-    const member = members?.find((m) => m.user.id === option.id);
-    if (!member) return option.name || option.id;
-    return getMemberLabel(member);
-  };
-
   const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
       .filter((option) => option.type === BypasserType.User)
       .map((option) => ({
         type: BypasserType.User as const,
         id: option.id,
+        username: option.username,
         isOrgMembershipActive: option.isOrgMembershipActive
       })),
     groups: selected
       .filter((option) => option.type === BypasserType.Group)
-      .map((option) => ({ type: BypasserType.Group as const, id: option.id }))
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: BypasserType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
   });
+
+  const selectedPolicyApprovers: ApproverOptionData[] = [
+    ...(formUserApprovers ?? []),
+    ...(formGroupApprovers ?? [])
+  ];
+  const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+    setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupApprovers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const selectedPolicyBypassers: ApproverOptionData[] = [
+    ...(formUserBypassers ?? []),
+    ...(formGroupBypassers ?? [])
+  ];
+  const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
+    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupBypassers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -446,41 +521,60 @@ const Form = ({
     }
   };
 
-  const renderApproverSelect = (index: number) => (
-    <Combobox
-      multiple
-      modal
-      aria-label={`Approvers for step ${index + 1}`}
-      placeholder="Select members or groups..."
-      searchPlaceholder="Search members or groups..."
-      searchAriaLabel="Search approvers"
-      options={approverOptions}
-      getOptionValue={(option) => `${option.type}-${option.id}`}
-      getOptionLabel={getApproverLabel}
-      renderOption={(option) => <ApproverOption option={option} label={getApproverLabel(option)} />}
-      isOptionDisabled={(option) =>
-        option.type === ApproverType.User && option.isOrgMembershipActive === false
-      }
-      value={[
-        ...(watch(`sequenceApprovers.${index}.user`) ?? []),
-        ...(watch(`sequenceApprovers.${index}.group`) ?? [])
-      ]}
-      onValueChange={(newValue) => {
-        const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
-        setValue(`sequenceApprovers.${index}.user`, users, {
-          shouldDirty: true,
-          shouldValidate: true
-        });
-        setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
-          shouldDirty: true,
-          shouldValidate: true
-        });
-      }}
-      isError={Boolean(
-        errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
-      )}
-    />
-  );
+  const renderApproverSelect = (index: number) => {
+    const selectedOptions: ApproverOptionData[] = [
+      ...(watch(`sequenceApprovers.${index}.user`) ?? []),
+      ...(watch(`sequenceApprovers.${index}.group`) ?? [])
+    ];
+    const updateSelectedOptions = (newValue: readonly ApproverOptionData[]) => {
+      const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+      setValue(`sequenceApprovers.${index}.user`, users, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+      setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+    };
+
+    return (
+      <CreatableSelect<ApproverOptionData>
+        isMulti
+        aria-label={`Approvers for step ${index + 1}`}
+        placeholder="Select approvers or enter a member email..."
+        options={approverOptions}
+        getOptionValue={getApproverOptionValue}
+        getOptionLabel={getApproverOptionLabel}
+        filterOption={filterApproverOption}
+        formatOptionLabel={formatApproverOptionLabel}
+        formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+        isValidNewOption={(input, value) =>
+          canAddMemberEmail(input, [
+            ...(value as MultiValue<ApproverOptionData>),
+            ...approverOptions
+          ])
+        }
+        isOptionDisabled={(option) =>
+          option.type === ApproverType.User && option.isOrgMembershipActive === false
+        }
+        value={selectedOptions}
+        onChange={(newValue) =>
+          updateSelectedOptions([...(newValue as MultiValue<ApproverOptionData>)])
+        }
+        onCreateOption={(input) =>
+          updateSelectedOptions([
+            ...selectedOptions,
+            getManualMemberOption(input, ApproverType.User)
+          ])
+        }
+        noOptionsMessage={() => "Enter an exact project member email address."}
+        isError={Boolean(
+          errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
+        )}
+      />
+    );
+  };
 
   const renderMinApprovals = (index: number, inputClassName: string) => (
     <Controller
@@ -512,9 +606,9 @@ const Form = ({
         {hasApproverOptionsError && (
           <Alert variant="danger">
             <CircleAlertIcon />
-            <AlertTitle>Could not load approver options</AlertTitle>
+            <AlertTitle>Could not load all approver suggestions</AlertTitle>
             <AlertDescription>
-              <span>Retry before saving this approval policy.</span>
+              <span>You can enter exact project member emails or retry.</span>
               <Button
                 size="xs"
                 variant="danger"
@@ -733,7 +827,7 @@ const Form = ({
         <div>
           <p className="text-sm font-medium text-foreground">Approvers</p>
           <p className="text-xs text-muted">
-            Select members or groups that are allowed to approve requests from this policy.
+            Select readable members or groups, or enter an exact project member email.
           </p>
         </div>
         {isAccessPolicyType ? (
@@ -849,31 +943,36 @@ const Form = ({
           <Field>
             <FieldLabel>Approvers</FieldLabel>
             <FieldContent>
-              <Combobox
-                multiple
-                modal
+              <CreatableSelect<ApproverOptionData>
+                isMulti
                 aria-label="Approvers"
-                placeholder="Select members or groups..."
-                searchPlaceholder="Search members or groups..."
-                searchAriaLabel="Search approvers"
+                placeholder="Select approvers or enter a member email..."
                 options={approverOptions}
-                getOptionValue={(option) => `${option.type}-${option.id}`}
-                getOptionLabel={getApproverLabel}
-                renderOption={(option) => (
-                  <ApproverOption option={option} label={getApproverLabel(option)} />
-                )}
+                getOptionValue={getApproverOptionValue}
+                getOptionLabel={getApproverOptionLabel}
+                filterOption={filterApproverOption}
+                formatOptionLabel={formatApproverOptionLabel}
+                formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                isValidNewOption={(input, value) =>
+                  canAddMemberEmail(input, [
+                    ...(value as MultiValue<ApproverOptionData>),
+                    ...approverOptions
+                  ])
+                }
                 isOptionDisabled={(option) =>
                   option.type === ApproverType.User && option.isOrgMembershipActive === false
                 }
-                value={[...(formUserApprovers ?? []), ...(formGroupApprovers ?? [])]}
-                onValueChange={(newValue) => {
-                  const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
-                  setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
-                  setValue("groupApprovers", selectedGroups, {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  });
-                }}
+                value={selectedPolicyApprovers}
+                onChange={(newValue) =>
+                  updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
+                }
+                onCreateOption={(input) =>
+                  updatePolicyApprovers([
+                    ...selectedPolicyApprovers,
+                    getManualMemberOption(input, ApproverType.User)
+                  ])
+                }
+                noOptionsMessage={() => "Enter an exact project member email address."}
                 isError={Boolean(errors.userApprovers || errors.groupApprovers)}
               />
               <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
@@ -950,31 +1049,36 @@ const Form = ({
             <Field>
               <FieldLabel>Bypassers</FieldLabel>
               <FieldContent>
-                <Combobox
-                  multiple
-                  modal
+                <CreatableSelect<ApproverOptionData>
+                  isMulti
                   aria-label="Bypassers"
-                  placeholder="Select members or groups..."
-                  searchPlaceholder="Search members or groups..."
-                  searchAriaLabel="Search bypassers"
+                  placeholder="Select bypassers or enter a member email..."
                   options={bypasserOptions}
-                  getOptionValue={(option) => `${option.type}-${option.id}`}
-                  getOptionLabel={getBypasserLabel}
-                  renderOption={(option) => (
-                    <ApproverOption option={option} label={getBypasserLabel(option)} />
-                  )}
+                  getOptionValue={getApproverOptionValue}
+                  getOptionLabel={getApproverOptionLabel}
+                  filterOption={filterApproverOption}
+                  formatOptionLabel={formatApproverOptionLabel}
+                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                  isValidNewOption={(input, value) =>
+                    canAddMemberEmail(input, [
+                      ...(value as MultiValue<ApproverOptionData>),
+                      ...bypasserOptions
+                    ])
+                  }
                   isOptionDisabled={(option) =>
                     option.type === BypasserType.User && option.isOrgMembershipActive === false
                   }
-                  value={[...(formUserBypassers ?? []), ...(formGroupBypassers ?? [])]}
-                  onValueChange={(newValue) => {
-                    const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
-                    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
-                    setValue("groupBypassers", selectedGroups, {
-                      shouldDirty: true,
-                      shouldValidate: true
-                    });
-                  }}
+                  value={selectedPolicyBypassers}
+                  onChange={(newValue) =>
+                    updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
+                  }
+                  onCreateOption={(input) =>
+                    updatePolicyBypassers([
+                      ...selectedPolicyBypassers,
+                      getManualMemberOption(input, BypasserType.User)
+                    ])
+                  }
+                  noOptionsMessage={() => "Enter an exact project member email address."}
                   isError={Boolean(errors.userBypassers || errors.groupBypassers)}
                 />
                 <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
@@ -993,12 +1097,7 @@ const Form = ({
         )}
       </div>
       <SheetFooter className="border-t">
-        <Button
-          type="submit"
-          variant="project"
-          isPending={isSubmitting}
-          isDisabled={isSubmitting || hasApproverOptionsError}
-        >
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
           {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>

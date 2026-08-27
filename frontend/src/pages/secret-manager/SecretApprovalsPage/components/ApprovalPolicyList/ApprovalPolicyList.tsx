@@ -182,7 +182,6 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     data: members,
     isError: isMembersError,
     isFetching: isMembersFetching,
-    isPending: isMembersPending,
     refetch: refetchMembers
   } = useGetWorkspaceUsers(projectId, true, undefined, {
     enabled: canReadMembers && Boolean(projectId)
@@ -191,7 +190,6 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     data: groups,
     isError: isGroupsError,
     isFetching: isGroupsFetching,
-    isPending: isGroupsPending,
     refetch: refetchGroups
   } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
     enabled: canReadGroups && Boolean(currentProject?.id)
@@ -206,26 +204,11 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     refetchSecretPolicies
   } = useApprovalPolicies(permission, currentProject);
 
-  const hasApproverSourcePermission = canReadMembers || canReadGroups;
   const isApproverOptionsError =
     (canReadMembers && isMembersError) || (canReadGroups && isGroupsError);
-  const isApproverOptionsLoading =
-    (canReadMembers && isMembersPending) || (canReadGroups && isGroupsPending);
   const isApproverOptionsRetrying =
     (canReadMembers && isMembersFetching) || (canReadGroups && isGroupsFetching);
-  let approverOptionsDisabledReason: string | undefined;
-
-  if (!hasApproverSourcePermission) {
-    approverOptionsDisabledReason = "Member Read or Group Read permission is required";
-  } else if (isApproverOptionsLoading) {
-    approverOptionsDisabledReason = "Approver options are loading";
-  } else if (isApproverOptionsError) {
-    approverOptionsDisabledReason = "Approver options are unavailable";
-  }
-
-  const addPolicyDisabledReason = canCreatePolicies
-    ? approverOptionsDisabledReason
-    : "Access restricted";
+  const addPolicyDisabledReason = canCreatePolicies ? undefined : "Access restricted";
 
   const [filters, setFilters] = useState<PolicyFilters>({
     type: null,
@@ -449,9 +432,9 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
               {isApproverOptionsError && (
                 <Alert variant="danger">
                   <CircleAlertIcon />
-                  <AlertTitle>Could not load approver options</AlertTitle>
+                  <AlertTitle>Could not load all approver suggestions</AlertTitle>
                   <AlertDescription>
-                    <span>Retry before creating or editing an approval policy.</span>
+                    <span>Enter an exact project member email or retry.</span>
                     <Button
                       size="xs"
                       variant="danger"
@@ -543,14 +526,8 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                             key={policy.id}
                             members={members}
                             groups={groups}
-                            canEdit={
-                              canEditPolicies &&
-                              hasApproverSourcePermission &&
-                              !isApproverOptionsLoading &&
-                              !isApproverOptionsError
-                            }
+                            canEdit={canEditPolicies}
                             canDelete={canDeletePolicies}
-                            editDisabledReason={approverOptionsDisabledReason}
                             onEdit={() => handlePopUpOpen("policyForm", policy)}
                             onDelete={() => handlePopUpOpen("deletePolicy", policy)}
                           />

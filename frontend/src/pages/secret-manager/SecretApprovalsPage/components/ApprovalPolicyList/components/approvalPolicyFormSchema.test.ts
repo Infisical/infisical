@@ -106,4 +106,32 @@ describe("approval policy form schema", () => {
     assert.ok(issuePaths.includes("userApprovers.0"));
     assert.ok(issuePaths.includes("userBypassers.0"));
   });
+
+  it("accepts an exact member email when directory options are unavailable", () => {
+    const result = approvalPolicyFormSchema.safeParse({
+      ...basePolicy,
+      userApprovers: [
+        {
+          type: ApproverType.User,
+          username: "approver@example.com"
+        }
+      ]
+    });
+
+    assert.equal(result.success, true);
+  });
+
+  it("rejects a malformed manually entered member email", () => {
+    const issuePaths = getIssuePaths({
+      ...basePolicy,
+      userApprovers: [
+        {
+          type: ApproverType.User,
+          username: "not-an-email"
+        }
+      ]
+    });
+
+    assert.ok(issuePaths.includes("userApprovers.0.username"));
+  });
 });

@@ -9,6 +9,33 @@ import { getEmptyApprovalStepIndexes } from "./approvalPolicyFormUtils";
 const MIN_EXPIRATION_MS = 60 * 1000;
 const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_POLICY_SUBJECTS = 100;
+const memberEmailSchema = z.string().trim().email().max(255);
+
+export const isValidMemberEmail = (value: string) => memberEmailSchema.safeParse(value).success;
+
+const userApproverSchema = z
+  .object({
+    type: z.literal(ApproverType.User),
+    id: z.string().optional(),
+    username: memberEmailSchema.optional(),
+    name: z.string().optional(),
+    isOrgMembershipActive: z.boolean().optional()
+  })
+  .refine(({ id, username }) => Boolean(id || username), {
+    message: "Select a member or enter their exact email address"
+  });
+
+const userBypasserSchema = z
+  .object({
+    type: z.literal(BypasserType.User),
+    id: z.string().optional(),
+    username: memberEmailSchema.optional(),
+    name: z.string().optional(),
+    isOrgMembershipActive: z.boolean().optional()
+  })
+  .refine(({ id, username }) => Boolean(id || username), {
+    message: "Select a member or enter their exact email address"
+  });
 
 const durationSchema = z
   .string()
@@ -48,29 +75,14 @@ export const approvalPolicyFormSchema = z
     name: z.string().optional(),
     secretPath: z.string().trim().min(1),
     approvals: z.number().min(1).default(1),
-    userApprovers: z
-      .object({
-        type: z.literal(ApproverType.User),
-        id: z.string(),
-        name: z.string().optional(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
+    userApprovers: userApproverSchema.array().default([]),
     groupApprovers: z
-      .object({ type: z.literal(ApproverType.Group), id: z.string() })
+      .object({ type: z.literal(ApproverType.Group), id: z.string(), name: z.string().optional() })
       .array()
       .default([]),
-    userBypassers: z
-      .object({
-        type: z.literal(BypasserType.User),
-        id: z.string(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
+    userBypassers: userBypasserSchema.array().default([]),
     groupBypassers: z
-      .object({ type: z.literal(BypasserType.Group), id: z.string() })
+      .object({ type: z.literal(BypasserType.Group), id: z.string(), name: z.string().optional() })
       .array()
       .default([]),
     policyType: z.nativeEnum(PolicyType),
@@ -79,17 +91,13 @@ export const approvalPolicyFormSchema = z
     bypassForMachineIdentities: z.boolean().optional().default(false),
     sequenceApprovers: z
       .object({
-        user: z
-          .object({
-            type: z.literal(ApproverType.User),
-            id: z.string(),
-            name: z.string().optional(),
-            isOrgMembershipActive: z.boolean().optional()
-          })
-          .array()
-          .default([]),
+        user: userApproverSchema.array().default([]),
         group: z
-          .object({ type: z.literal(ApproverType.Group), id: z.string() })
+          .object({
+            type: z.literal(ApproverType.Group),
+            id: z.string(),
+            name: z.string().optional()
+          })
           .array()
           .default([]),
         approvals: z.number().min(1).default(1)

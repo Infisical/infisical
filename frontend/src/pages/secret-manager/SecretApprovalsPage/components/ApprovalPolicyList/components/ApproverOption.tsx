@@ -5,7 +5,9 @@ import { Badge } from "@app/components/v3";
 import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
 
 export type ApproverOptionData = {
-  id: string;
+  id?: string;
+  username?: string;
+  memberEmail?: string;
   type: ApproverType | BypasserType;
   name?: string;
   isOrgMembershipActive?: boolean;
