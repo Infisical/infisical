@@ -41,11 +41,7 @@ type TMembershipIdentityServiceFactoryDep = {
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getProjectPermissionByRoles"
-    | "getOrgPermissionByRoles"
-    | "invalidateProjectFolderPermissionCache"
+    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -432,7 +428,6 @@ export const membershipIdentityServiceFactory = ({
       if (scopeData.scope === AccessScope.Project) {
         const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
         if (projectScopeFields.scopeProjectId) {
-          await permissionService.invalidateProjectFolderPermissionCache(projectScopeFields.scopeProjectId, tx);
           await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
             {
               projectId: projectScopeFields.scopeProjectId,
@@ -446,19 +441,6 @@ export const membershipIdentityServiceFactory = ({
 
       // Durable deny atomic with the org-membership removal.
       if (scopeData.scope === AccessScope.Organization) {
-        const projectMemberships = await membershipIdentityDAL.find(
-          {
-            scope: AccessScope.Project,
-            scopeOrgId: scopeData.orgId,
-            actorIdentityId: dto.selector.identityId
-          },
-          { tx }
-        );
-        await permissionService.invalidateProjectFolderPermissionCache(
-          projectMemberships.map((el) => el.scopeProjectId).filter((id): id is string => Boolean(id)),
-          tx
-        );
-
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
           orgId: scopeData.orgId,

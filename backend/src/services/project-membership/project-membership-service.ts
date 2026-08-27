@@ -44,10 +44,7 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectFolderPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -366,8 +363,6 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
-
       const deletedMemberships = await membershipUserDAL.delete(
         {
           scopeProjectId: projectId,
@@ -478,8 +473,6 @@ export const projectMembershipServiceFactory = ({
         },
         tx
       );
-
-      await permissionService.invalidateProjectFolderPermissionCache(project.id, tx);
 
       await secretReminderRecipientsDAL.delete(
         {

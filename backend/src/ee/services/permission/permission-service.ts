@@ -304,7 +304,7 @@ type TPermissionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };

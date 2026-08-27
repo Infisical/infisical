@@ -913,7 +913,10 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    additionalPrivilegeDAL,
+    identityGroupMembershipDAL,
+    userGroupMembershipDAL
   });
 
   const roleService = roleServiceFactory({

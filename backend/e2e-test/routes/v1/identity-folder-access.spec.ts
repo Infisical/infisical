@@ -7,10 +7,15 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { removeIdentitiesFromGroup } from "@app/ee/services/group/group-fns";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { membershipDALFactory } from "@app/services/membership/membership-dal";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -686,6 +691,198 @@ describe("Identity folder access CRUD", () => {
           body: { ...listTarget }
         });
       }
+    });
+  });
+
+  describe("group removal reaps folder grants", () => {
+    let reapIdentityId: string;
+    let directIdentityId: string;
+    let firstGroup: { id: string; name: string; slug: string; orgId: string };
+    let secondGroup: { id: string; name: string; slug: string; orgId: string };
+    let removalDeps: Omit<
+      Parameters<typeof removeIdentitiesFromGroup>[0],
+      "group" | "identityIds" | "usageMeteringService"
+    >;
+
+    const createProjectGroup = async () => {
+      const slug = `identity-folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
+      const [created] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
+
+      for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        const [membership] = await testDb(TableName.Membership)
+          .insert({
+            scope,
+            scopeOrgId: orgId,
+            scopeProjectId: scope === AccessScope.Project ? projectId : null,
+            actorGroupId: created.id
+          })
+          .returning("*");
+        // eslint-disable-next-line no-await-in-loop
+        await testDb(TableName.MembershipRole).insert({
+          membershipId: membership.id,
+          role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+        });
+      }
+
+      return { id: created.id, name: created.name, slug: created.slug, orgId };
+    };
+
+    beforeAll(async () => {
+      removalDeps = {
+        identityDAL: identityDALFactory(testDb),
+        membershipDAL: membershipDALFactory(testDb),
+        identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb)
+      };
+
+      const [identity] = await testDb(TableName.Identity)
+        .insert({ name: `identity-folder-reap-${alphaNumericNanoId(8)}`, orgId })
+        .returning("*");
+      reapIdentityId = identity.id;
+
+      const [orgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorIdentityId: reapIdentityId
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+      ({ identityId: directIdentityId } = await createProjectIdentity(ProjectMembershipRole.Member));
+
+      firstGroup = await createProjectGroup();
+      secondGroup = await createProjectGroup();
+      await testDb(TableName.IdentityGroupMembership).insert([
+        { identityId: reapIdentityId, groupId: firstGroup.id },
+        { identityId: reapIdentityId, groupId: secondGroup.id },
+        { identityId: directIdentityId, groupId: firstGroup.id }
+      ]);
+    });
+
+    afterAll(async () => {
+      const groupIds = [firstGroup.id, secondGroup.id];
+      await testDb(TableName.AdditionalPrivilege).whereIn("actorIdentityId", [reapIdentityId, directIdentityId]).del();
+      await testDb(TableName.IdentityGroupMembership).whereIn("groupId", groupIds).del();
+      await testDb(TableName.Membership).whereIn("actorGroupId", groupIds).del();
+      await testDb(TableName.Groups).whereIn("id", groupIds).del();
+      await deleteProjectIdentity(reapIdentityId);
+      await deleteProjectIdentity(directIdentityId);
+    });
+
+    test("deletes the grant only when the last group-derived project access is removed", async () => {
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(reapIdentityId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(createRes.statusCode).toBe(200);
+      const grantId = createRes.json().folderAccess.id;
+
+      await removeIdentitiesFromGroup({ ...removalDeps, group: firstGroup, identityIds: [reapIdentityId] });
+
+      // still reaches the project through the second group, so the grant survives untouched
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
+
+      await removeIdentitiesFromGroup({ ...removalDeps, group: secondGroup, identityIds: [reapIdentityId] });
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+    });
+
+    test("keeps the grant when the identity still holds a direct project membership", async () => {
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(directIdentityId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(createRes.statusCode).toBe(200);
+      const grantId = createRes.json().folderAccess.id;
+
+      await removeIdentitiesFromGroup({ ...removalDeps, group: firstGroup, identityIds: [directIdentityId] });
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
+    });
+  });
+
+  describe("group removed from project reaps folder grants", () => {
+    let groupOnlyIdentityId: string;
+    let group: { id: string };
+
+    const createProjectGroup = async () => {
+      const slug = `identity-folder-proj-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
+      const [created] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
+
+      for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        const [membership] = await testDb(TableName.Membership)
+          .insert({
+            scope,
+            scopeOrgId: orgId,
+            scopeProjectId: scope === AccessScope.Project ? projectId : null,
+            actorGroupId: created.id
+          })
+          .returning("*");
+        // eslint-disable-next-line no-await-in-loop
+        await testDb(TableName.MembershipRole).insert({
+          membershipId: membership.id,
+          role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+        });
+      }
+
+      return { id: created.id };
+    };
+
+    beforeAll(async () => {
+      group = await createProjectGroup();
+
+      const [groupOnlyIdentity] = await testDb(TableName.Identity)
+        .insert({ name: `identity-folder-proj-reap-${alphaNumericNanoId(8)}`, orgId })
+        .returning("*");
+      groupOnlyIdentityId = groupOnlyIdentity.id;
+      const [groupOnlyOrgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorIdentityId: groupOnlyIdentityId
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: groupOnlyOrgMembership.id,
+        role: OrgMembershipRole.Member
+      });
+
+      await testDb(TableName.IdentityGroupMembership).insert({ identityId: groupOnlyIdentityId, groupId: group.id });
+    });
+
+    afterAll(async () => {
+      await testDb(TableName.AdditionalPrivilege).where({ actorIdentityId: groupOnlyIdentityId }).del();
+      await testDb(TableName.IdentityGroupMembership).where({ groupId: group.id }).del();
+      await testDb(TableName.Membership).where({ actorGroupId: group.id }).del();
+      await testDb(TableName.Groups).where({ id: group.id }).del();
+      await deleteProjectIdentity(groupOnlyIdentityId);
+    });
+
+    test("deletes folder-scoped additional privileges when the group is removed from the project", async () => {
+      const grantRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(groupOnlyIdentityId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(grantRes.statusCode).toBe(200);
+      const grantId = grantRes.json().folderAccess.id;
+
+      const removeRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/projects/${projectId}/memberships/groups/${group.id}`,
+        headers: authHeaders()
+      });
+      expect(removeRes.statusCode).toBe(200);
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
     });
   });
 });

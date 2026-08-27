@@ -70,7 +70,10 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
-  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
+  identityGroupMembershipDAL: Pick<
+    TIdentityGroupMembershipDALFactory,
+    "find" | "delete" | "insertMany" | "filterProjectsByIdentityMembership"
+  >;
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
@@ -100,10 +103,7 @@ type TGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getOrgPermissionByRoles" | "invalidateProjectFolderPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -1198,7 +1198,6 @@ export const groupServiceFactory = ({
       membershipGroupDAL,
       projectKeyDAL,
       additionalPrivilegeDAL,
-      permissionService,
       alertChannelRecipientDAL
     });
 
@@ -1288,7 +1287,7 @@ export const groupServiceFactory = ({
       identityDAL,
       membershipDAL,
       identityGroupMembershipDAL,
-      membershipGroupDAL
+      additionalPrivilegeDAL
     });
 
     await cleanUpSubOrgProjectMemberships({

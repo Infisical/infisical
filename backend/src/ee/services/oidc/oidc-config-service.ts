@@ -94,7 +94,7 @@ type TOidcConfigServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "invalidateProjectFolderPermissionCache">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
@@ -450,7 +450,6 @@ export const oidcConfigServiceFactory = ({
           membershipGroupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
-          permissionService,
           usageMeteringService,
           alertChannelRecipientDAL
         });

@@ -70,7 +70,6 @@ type TMembershipUserServiceFactoryDep = {
     | "getOrgPermission"
     | "getOrgPermissionByRoles"
     | "getResourcePermission"
-    | "invalidateProjectFolderPermissionCache"
   >;
   licenseService: TLicenseServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;
@@ -557,8 +556,7 @@ export const membershipUserServiceFactory = ({
           membershipRoleDAL,
           additionalPrivilegeDAL,
           approvalPolicyDAL,
-          alertChannelRecipientDAL,
-          permissionService
+          alertChannelRecipientDAL
         });
         return doc;
       }
@@ -571,8 +569,6 @@ export const membershipUserServiceFactory = ({
           },
           tx
         );
-
-        await permissionService.invalidateProjectFolderPermissionCache(dto.scopeData.projectId, tx);
 
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {

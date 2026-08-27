@@ -102,7 +102,7 @@ type TLdapConfigServiceFactoryDep = {
     | "findUserEncKeyByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "invalidateProjectFolderPermissionCache">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -725,7 +725,6 @@ export const ldapConfigServiceFactory = ({
               membershipGroupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              permissionService,
               usageMeteringService,
               alertChannelRecipientDAL,
               tx

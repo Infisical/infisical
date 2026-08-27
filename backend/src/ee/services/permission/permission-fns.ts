@@ -497,35 +497,41 @@ export const fetchFolderScopedPrivileges = async (
     additionalPrivilegeDAL,
     secretFolderDAL
   }: {
-    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
+    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges" | "transaction">;
     secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   }
 ): Promise<TCachedFolderScopedPrivileges> => {
-  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
-  if (!rows.length) return { privileges: [] };
+  return additionalPrivilegeDAL.transaction(async (tx) => {
+    const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges(
+      { projectId, actorId, actorType: actor },
+      tx
+    );
+    if (!rows.length) return { privileges: [] };
 
-  const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
-    projectId,
-    rows.map((row) => row.folderId)
-  );
+    const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
+      projectId,
+      rows.map((row) => row.folderId),
+      tx
+    );
 
-  return {
-    privileges: rows.flatMap((row, idx) => {
-      const folder = foldersWithPath[idx];
-      if (!folder || !row.role) return [];
-      return [
-        {
-          id: row.id,
-          folderId: row.folderId,
-          role: row.role,
-          environmentSlug: folder.environmentSlug,
-          secretPath: folder.path,
-          isTemporary: row.isTemporary,
-          temporaryAccessEndTime: row.temporaryAccessEndTime
-        }
-      ];
-    })
-  };
+    return {
+      privileges: rows.flatMap((row, idx) => {
+        const folder = foldersWithPath[idx];
+        if (!folder || !row.role) return [];
+        return [
+          {
+            id: row.id,
+            folderId: row.folderId,
+            role: row.role,
+            environmentSlug: folder.environmentSlug,
+            secretPath: folder.path,
+            isTemporary: row.isTemporary,
+            temporaryAccessEndTime: row.temporaryAccessEndTime
+          }
+        ];
+      })
+    };
+  });
 };
 
 export const buildFolderScopedPrivilegeRules = (

@@ -128,7 +128,7 @@ type TScimServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "invalidateProjectFolderPermissionCache">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
@@ -884,8 +884,7 @@ export const scimServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      permissionService
+      alertChannelRecipientDAL
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
@@ -1357,7 +1356,6 @@ export const scimServiceFactory = ({
           membershipGroupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
-          permissionService,
           alertChannelRecipientDAL,
           tx,
           shouldFailOnMissingMembers

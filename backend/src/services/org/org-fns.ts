@@ -1,7 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -29,7 +28,6 @@ type TDeleteOrgMemberships = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  permissionService: Pick<TPermissionServiceFactory, "invalidateProjectFolderPermissionCache">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -44,8 +42,7 @@ export const deleteOrgMembershipsFn = async ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
-  alertChannelRecipientDAL,
-  permissionService
+  alertChannelRecipientDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     await assertWillRetainOrgAdmin({
@@ -134,8 +131,6 @@ export const deleteOrgMembershipsFn = async ({
       },
       tx
     );
-
-    await permissionService.invalidateProjectFolderPermissionCache(projectIds, tx);
 
     await approvalPolicyDAL.deleteUserStepApproversInProjects(
       {

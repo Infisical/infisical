@@ -12,13 +12,9 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
-import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -26,13 +22,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
-import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
-import { roleDALFactory } from "@app/services/role/role-dal";
-import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
@@ -1104,32 +1095,12 @@ describe("User folder access CRUD", () => {
     };
 
     beforeAll(async () => {
-      initLogger();
-      await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
-      const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
-
-      // the `services` decoration is encapsulated inside the routes plugin, so build the
-      // permission service directly against the same DB/Redis the test server runs on
-      const permissionService = permissionServiceFactory({
-        permissionDAL: permissionDALFactory(testDb),
-        serviceTokenDAL: serviceTokenDALFactory(testDb),
-        projectDAL: projectDALFactory(testDb),
-        userDAL: userDALFactory(testDb),
-        identityDAL: identityDALFactory(testDb),
-        keyStore,
-        roleDAL: roleDALFactory(testDb),
-        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        groupDAL: groupDALFactory(testDb),
-        secretFolderDAL: secretFolderDALFactory(testDb)
-      });
-
       removalDeps = {
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        permissionService,
         alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
       };
 
@@ -1180,18 +1151,14 @@ describe("User folder access CRUD", () => {
       expect(createRes.statusCode).toBe(200);
       const grantId = createRes.json().folderAccess.id;
 
-      const versionAfterGrant = await getFolderPermissionVersion();
-
       await removeUsersFromGroupByUserIds({ ...removalDeps, group: firstGroup, userIds: [reapUserId] });
 
       // still reaches the project through the second group, so the grant survives untouched
       expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
-      expect(await getFolderPermissionVersion()).toBe(versionAfterGrant);
 
       await removeUsersFromGroupByUserIds({ ...removalDeps, group: secondGroup, userIds: [reapUserId] });
 
       expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
-      expect(await getFolderPermissionVersion()).toBeGreaterThan(versionAfterGrant);
     });
   });
 });

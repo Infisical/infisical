@@ -1216,8 +1216,7 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      permissionService
+      alertChannelRecipientDAL
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
@@ -1270,8 +1269,7 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      permissionService
+      alertChannelRecipientDAL
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
