@@ -116,7 +116,7 @@ export const VaultConnectionAndNamespaceFields = ({
             )}
           />
           <FieldDescription>
-            Project-scoped HashiCorp Vault app connections available to you
+            HashiCorp Vault app connections available to you in this project.
           </FieldDescription>
         </Field>
       )}
