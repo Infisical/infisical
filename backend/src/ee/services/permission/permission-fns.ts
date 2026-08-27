@@ -439,6 +439,8 @@ const hbsTrimSuffix = (text: string, suffix: string) => {
 
   if (typeof suffix !== "string" || !suffix) return textStr;
 
+  if (suffix.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
+
   if (!picomatch.scan(suffix).isGlob) {
     return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
   }
