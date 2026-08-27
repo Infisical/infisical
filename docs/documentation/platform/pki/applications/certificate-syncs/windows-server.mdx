@@ -153,7 +153,7 @@ Both commands run as the account the WinRM Connection authenticates with, so con
 
 Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right cannot be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical does not block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
 
-Anyone who can edit the sync can change either command, so treat edit access to these syncs as access to the target server.
+Only Application Admins can set either command, so treat that role as access to the target server.
 
 ### Health check
 

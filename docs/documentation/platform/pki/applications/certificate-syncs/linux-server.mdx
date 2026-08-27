@@ -145,7 +145,7 @@ Both commands run as the account the SSH Connection authenticates with, so const
 svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
 ```
 
-Anyone who can edit the sync can change either command, so treat edit access to these syncs as access to the target server.
+Only Application Admins can set either command, so treat that role as access to the target server.
 
 <Warning>
   The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
