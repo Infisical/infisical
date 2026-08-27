@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { TUsers } from "@app/db/schemas";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { adoptProvisionedShadowUser, resolveAliasUserIds } from "./user-alias-fns";
 
@@ -103,7 +103,7 @@ const OTHER_ORG_ID = "org-2";
 const buildDeps = ({
   candidate = shadowUser(),
   existingAlias = null,
-  membership = [{ id: "membership-1", scopeOrgId: ORG_ID }],
+  membership = [{ id: "membership-1", scopeOrgId: ORG_ID, isActive: true }],
   orgs = []
 }: {
   candidate?: TUsers | null;
@@ -221,7 +221,7 @@ describe("adoptProvisionedShadowUser", () => {
   test("declines when the placeholder also holds a membership in an unrelated org", async () => {
     const deps = buildDeps({
       membership: [
-        { id: "membership-1", scopeOrgId: ORG_ID },
+        { id: "membership-1", scopeOrgId: ORG_ID, isActive: true },
         { id: "membership-2", scopeOrgId: OTHER_ORG_ID }
       ],
       orgs: [{ id: OTHER_ORG_ID, rootOrgId: null }]
@@ -234,13 +234,36 @@ describe("adoptProvisionedShadowUser", () => {
   test("adopts when the extra membership is a sub-org of this one, which is the same tenant", async () => {
     const deps = buildDeps({
       membership: [
-        { id: "membership-1", scopeOrgId: ORG_ID },
+        { id: "membership-1", scopeOrgId: ORG_ID, isActive: true },
         { id: "membership-2", scopeOrgId: OTHER_ORG_ID }
       ],
       orgs: [{ id: OTHER_ORG_ID, rootOrgId: ORG_ID }]
     });
 
     expect((await adopt(deps))?.user.username).toBe(ASSERTED_EMAIL);
+  });
+
+  // Declining is not neutral for a deactivated member: the caller reads null as "no placeholder"
+  // and creates a second account with a fresh active membership, handing them the org back.
+  test("fails the login when this org's placeholder has been deactivated", async () => {
+    const deps = buildDeps({ membership: [{ id: "membership-1", scopeOrgId: ORG_ID, isActive: false }] });
+
+    await expect(adopt(deps)).rejects.toThrow(ForbiddenRequestError);
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("fails the login for a deactivated placeholder even when adoption would be declined anyway", async () => {
+    const deps = buildDeps({
+      existingAlias: { id: "alias-1" },
+      membership: [
+        { id: "membership-1", scopeOrgId: ORG_ID, isActive: false },
+        { id: "membership-2", scopeOrgId: OTHER_ORG_ID, isActive: true }
+      ],
+      orgs: [{ id: OTHER_ORG_ID, rootOrgId: null }]
+    });
+
+    await expect(adopt(deps)).rejects.toThrow(ForbiddenRequestError);
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
   });
 
   test("yields to the winner when a concurrent write takes the asserted email first", async () => {

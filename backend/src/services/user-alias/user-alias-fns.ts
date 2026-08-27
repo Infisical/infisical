@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScope, TableName, TUserAliases, TUsers } from "@app/db/schemas";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { sanitizeEmail } from "@app/lib/validator/validate-email";
 
@@ -219,6 +219,10 @@ type TAdoptProvisionedShadowUserResult = {
  * Returns null if there is nothing safe to adopt. Only call this once a lookup on the asserted
  * email has missed. A non-null result carries `adoptedFromUsername`, which is null on the yield
  * path: the user is real either way, but only a non-null value means an account was rewritten.
+ *
+ * Throws when the placeholder is this org's own but its membership has been deactivated. A null
+ * there would read as "no placeholder" and let the caller create a second account with a fresh
+ * active membership, so the deactivation has to fail the login instead.
  */
 export const adoptProvisionedShadowUser = async ({
   externalId,
@@ -245,11 +249,6 @@ export const adoptProvisionedShadowUser = async ({
   // email-verified, or has a password all mean it belongs to someone.
   if (candidate.isGhost || candidate.isAccepted || candidate.isEmailVerified || candidate.hashedPassword) return null;
 
-  // Any alias, in any org, means some IdP already owns this account. Without this check one org's
-  // IdP could steal an account bound to another's.
-  const existingAlias = await userAliasDAL.findOne({ userId: candidate.id }, tx);
-  if (existingAlias) return null;
-
   // Keeps this to placeholders the org itself created through an authorized invite.
   const orgMemberships = await orgDAL.findMembership(
     {
@@ -258,7 +257,22 @@ export const adoptProvisionedShadowUser = async ({
     },
     { tx }
   );
-  if (!orgMemberships.some((membership) => membership.scopeOrgId === orgId)) return null;
+  const orgMembership = orgMemberships.find((membership) => membership.scopeOrgId === orgId);
+  if (!orgMembership) return null;
+
+  // Resolved before every remaining decline, because declining is not neutral here: the caller
+  // reads a null as "no placeholder" and creates a second account with a fresh active membership,
+  // handing a deactivated person their org back. Adopting is no better, since it mutates a
+  // deactivated account. Failing the login is the only safe answer, and it is what an already
+  // aliased deactivated member gets.
+  if (!orgMembership.isActive) {
+    throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+  }
+
+  // Any alias, in any org, means some IdP already owns this account. Without this check one org's
+  // IdP could steal an account bound to another's.
+  const existingAlias = await userAliasDAL.findOne({ userId: candidate.id }, tx);
+  if (existingAlias) return null;
 
   // That membership proves the placeholder belongs to this org, not that it belongs only to this
   // org. Username lookup is global, so a second tenant that invited the same identifier shares the

@@ -386,6 +386,13 @@ human has claimed (accepted, email-verified, holding a password), anything alrea
 (any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
 anything without a membership in the org doing the login.
 
+One case is a refusal to *log in* rather than a refusal to adopt: a placeholder whose membership in
+the login org is **inactive**. Declining is not neutral there, because the caller reads a `null` as
+"no placeholder" and creates a second account with a fresh active membership, handing a deactivated
+person their org back (`selectOrganization` then accepts it). So the inactive check is resolved
+before every remaining decline — the alias check and the cross-tenant check both sit after it — and
+it throws the same `ForbiddenRequestError` an already-aliased deactivated member gets.
+
 It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
 family, and that one is the security-critical check rather than a tidiness one. The username lookup
 that finds the placeholder is global, so a second tenant that invited the same identifier shares the
