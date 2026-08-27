@@ -19,7 +19,7 @@ If you are still experiencing trouble, please seek support.
 <Accordion title="Can I fetch secrets with Infisical if I am offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
-If you prefer not to have secrets cached on disk, set the `INFISICAL_DISABLE_SECRETS_BACKUP` environment variable. The CLI will then never save fetched secrets locally or serve them while offline. Run `infisical reset` to remove any previously cached secrets.
+If you prefer not to have secrets cached on disk, set the `INFISICAL_DISABLE_SECRETS_BACKUP` environment variable. The CLI will then never save fetched secrets locally or serve them while offline. You can remove any previously cached secrets with `infisical reset`, but note that this also clears your login session and all other Infisical-generated configuration on the machine.
 
 </Accordion>
 
