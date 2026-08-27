@@ -182,7 +182,10 @@ describe("emailDispatchGuard", () => {
       keyStore.ttl.mockResolvedValue(42);
 
       const err = await expectRejected(
-        guard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash: hmac("dave@infisical.example") }),
+        guard.startMailboxCooldown({
+          purpose: EmailDispatchPurpose.Signup,
+          mailboxHash: hmac("dave@infisical.example")
+        }),
         BadRequestError
       );
 
