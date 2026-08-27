@@ -227,6 +227,33 @@ export const identityAuthTemplateServiceFactory = ({
     return { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
   };
 
+  // the gateway exemption on the host check is only sound while the reference still points at
+  // a live gateway: identity_kubernetes_auths loses its gateway columns to ON DELETE SET NULL,
+  // but the template keeps the id inside its encrypted blob, so a deleted gateway leaves the
+  // two out of sync and the linked rows fall back to dialing the host directly
+  const $kubernetesTemplateGatewayIsLive = async ({
+    gatewayId,
+    gatewayPoolId,
+    orgId
+  }: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    orgId: string;
+  }) => {
+    if (gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      return Boolean(pool && pool.orgId === orgId);
+    }
+    if (gatewayId) {
+      const [[gateway], [gatewayV2]] = await Promise.all([
+        gatewayDAL.find({ id: gatewayId, orgId }),
+        gatewayV2DAL.find({ id: gatewayId, orgId })
+      ]);
+      return Boolean(gateway || gatewayV2);
+    }
+    return false;
+  };
+
   const createTemplate = async ({
     name,
     authMethod,
@@ -379,16 +406,50 @@ export const identityAuthTemplateServiceFactory = ({
         merged.verifyTlsCertificate = Boolean(patch.caCert?.length);
       }
       $validateKubernetesTemplateFields(merged);
-      // the merged host propagates to every linked identity and is dialed by the backend
-      // at login, so it gets the same local/private-address block as the identity attach
-      // flow (gateway-dialed hosts are exempt)
+      // gateway references are re-resolved (and re-authorized) only when the patch touches
+      // them; linked rows keep their columns otherwise, so a gateway that was deleted after
+      // authoring cannot block unrelated edits like rotating the reviewer JWT
+      const patchTouchesGateway = "gatewayId" in patch || "gatewayPoolId" in patch;
+      let resolvedGateway: Awaited<ReturnType<typeof $resolveKubernetesTemplateGateway>> | undefined;
+      if (patchTouchesGateway) {
+        $authorizeKubernetesTemplateGateway({
+          gatewayId: merged.gatewayId,
+          gatewayPoolId: merged.gatewayPoolId,
+          plan,
+          permission
+        });
+        resolvedGateway = await $resolveKubernetesTemplateGateway({
+          gatewayId: merged.gatewayId,
+          gatewayPoolId: merged.gatewayPoolId,
+          orgId: template.orgId
+        });
+      }
+      // the merged host propagates to every linked identity and is dialed by the backend at
+      // login, so it gets the same local/private-address block as the identity attach flow.
+      // only patches that change where we dial are checked: re-checking on every edit would
+      // strand a template whose gateway was deleted, since its host is legitimately private.
+      // gateway-dialed hosts stay exempt, but only while the reference still resolves, as the
+      // linked rows have already lost the gateway a stale id in the blob still claims
+      const patchAffectsDialing = patchTouchesGateway || "kubernetesHost" in patch || "tokenReviewMode" in patch;
       if (
+        patchAffectsDialing &&
         merged.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-        merged.kubernetesHost &&
-        !merged.gatewayId &&
-        !merged.gatewayPoolId
+        merged.kubernetesHost
       ) {
-        await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
+        const dialsThroughGateway = resolvedGateway
+          ? Boolean(
+              resolvedGateway.resolvedGatewayId ||
+                resolvedGateway.resolvedGatewayV2Id ||
+                resolvedGateway.resolvedGatewayPoolId
+            )
+          : await $kubernetesTemplateGatewayIsLive({
+              gatewayId: merged.gatewayId,
+              gatewayPoolId: merged.gatewayPoolId,
+              orgId: template.orgId
+            });
+        if (!dialsThroughGateway) {
+          await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
+        }
       }
       kubernetesPropagationData = {
         kubernetesHost: merged.kubernetesHost ?? null,
@@ -403,25 +464,10 @@ export const identityAuthTemplateServiceFactory = ({
           : null,
         isTokenReviewerJwtTemplateSourced: Boolean(merged.tokenReviewerJwt)
       };
-      // gateway references are re-resolved (and re-authorized) only when the patch touches
-      // them; linked rows keep their columns otherwise, so a gateway that was deleted after
-      // authoring cannot block unrelated edits like rotating the reviewer JWT
-      if ("gatewayId" in patch || "gatewayPoolId" in patch) {
-        $authorizeKubernetesTemplateGateway({
-          gatewayId: merged.gatewayId,
-          gatewayPoolId: merged.gatewayPoolId,
-          plan,
-          permission
-        });
-        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
-          await $resolveKubernetesTemplateGateway({
-            gatewayId: merged.gatewayId,
-            gatewayPoolId: merged.gatewayPoolId,
-            orgId: template.orgId
-          });
-        kubernetesPropagationData.gatewayId = resolvedGatewayId;
-        kubernetesPropagationData.gatewayV2Id = resolvedGatewayV2Id;
-        kubernetesPropagationData.gatewayPoolId = resolvedGatewayPoolId;
+      if (resolvedGateway) {
+        kubernetesPropagationData.gatewayId = resolvedGateway.resolvedGatewayId;
+        kubernetesPropagationData.gatewayV2Id = resolvedGateway.resolvedGatewayV2Id;
+        kubernetesPropagationData.gatewayPoolId = resolvedGateway.resolvedGatewayPoolId;
       }
     }
 
