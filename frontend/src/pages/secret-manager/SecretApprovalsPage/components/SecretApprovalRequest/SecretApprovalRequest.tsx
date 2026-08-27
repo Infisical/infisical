@@ -73,7 +73,9 @@ import {
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { SecretApprovalRequestOrderBy } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
 import {
@@ -82,10 +84,10 @@ import {
 } from "./components/SecretApprovalRequestChanges";
 
 enum ChangeRequestOrderBy {
-  Environment = "environment",
-  SecretPath = "secret-path",
-  Author = "author",
-  OpenedAt = "opened-at"
+  Environment = SecretApprovalRequestOrderBy.Environment,
+  SecretPath = SecretApprovalRequestOrderBy.SecretPath,
+  Author = SecretApprovalRequestOrderBy.Author,
+  OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
 export const SecretApprovalRequest = () => {
@@ -135,7 +137,9 @@ export const SecretApprovalRequest = () => {
     committer: committerFilter,
     search: debouncedSearchFilter,
     limit,
-    offset
+    offset,
+    orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
+    orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
 
   const totalApprovalCount = data?.totalCount ?? 0;
@@ -181,50 +185,12 @@ export const SecretApprovalRequest = () => {
     label: user.username
   }));
 
-  const sortedSecretApprovalRequests = useMemo(() => {
-    if (!sort) return secretApprovalRequests;
-
-    const getCommitterName = (request: (typeof secretApprovalRequests)[number]) =>
-      request.committerUser
-        ? [request.committerUser.firstName, request.committerUser.lastName]
-            .filter(Boolean)
-            .join(" ") || request.committerUser.email
-        : (request.committerIdentity?.name ?? "");
-
-    return [...secretApprovalRequests].sort((requestOne, requestTwo) => {
-      let comparison = 0;
-
-      switch (sort.column) {
-        case ChangeRequestOrderBy.Environment:
-          comparison = (
-            environmentNamesBySlug[requestOne.environment] ?? requestOne.environment
-          ).localeCompare(environmentNamesBySlug[requestTwo.environment] ?? requestTwo.environment);
-          break;
-        case ChangeRequestOrderBy.SecretPath:
-          comparison = (requestOne.policy.secretPath ?? "").localeCompare(
-            requestTwo.policy.secretPath ?? ""
-          );
-          break;
-        case ChangeRequestOrderBy.Author:
-          comparison = getCommitterName(requestOne).localeCompare(getCommitterName(requestTwo));
-          break;
-        case ChangeRequestOrderBy.OpenedAt:
-          comparison =
-            new Date(requestOne.createdAt).getTime() - new Date(requestTwo.createdAt).getTime();
-          break;
-        default:
-          break;
-      }
-
-      return sort.direction === "ascending" ? comparison : -comparison;
-    });
-  }, [environmentNamesBySlug, secretApprovalRequests, sort]);
-
   const getSortDirection = (column: ChangeRequestOrderBy): TableSortDirection =>
     sort?.column === column ? sort.direction : "none";
 
   const handleSort = (column: ChangeRequestOrderBy, direction: TableSortDirection) => {
     setSort(direction === "none" ? null : { column, direction });
+    setPage(1);
   };
 
   const getSortIconClassName = (column: ChangeRequestOrderBy) => {
@@ -447,7 +413,7 @@ export const SecretApprovalRequest = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                {sortedSecretApprovalRequests.map((secretApproval) => {
+                {secretApprovalRequests.map((secretApproval) => {
                   const {
                     id: reqId,
                     commits,

@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -89,7 +89,11 @@ import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
 import { RequestAccessModal } from "./components/RequestAccessModal";
 import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
-import { formatAccessDuration, parseAccessDurationMs } from "./AccessApprovalRequest.utils";
+import {
+  formatAccessDuration,
+  getAccessRequestState,
+  parseAccessDurationMs
+} from "./AccessApprovalRequest.utils";
 
 enum AccessRequestOrderBy {
   Duration = "duration",
@@ -99,11 +103,14 @@ enum AccessRequestOrderBy {
   RequestedAt = "requested-at"
 }
 
-type ClosedRequestFilter = "approved" | "expired";
+type ClosedRequestFilter = Exclude<ReturnType<typeof getAccessRequestState>, "pending">;
 
 const CLOSED_REQUEST_FILTERS: { label: string; value: ClosedRequestFilter }[] = [
   { label: "Approved", value: "approved" },
-  { label: "Expired", value: "expired" }
+  { label: "Rejected", value: "rejected" },
+  { label: "Revoked", value: "revoked" },
+  { label: "Expired", value: "expired" },
+  { label: "Policy Deleted", value: "policy-deleted" }
 ];
 
 export const AccessApprovalRequest = ({
@@ -133,8 +140,12 @@ export const AccessApprovalRequest = ({
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = useMemo(
     () =>
       members?.reduce<Record<string, TWorkspaceUser>>(
@@ -164,14 +175,26 @@ export const AccessApprovalRequest = ({
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);
-  const [closedRequestFilters, setClosedRequestFilters] = useState<ClosedRequestFilter[]>([
-    "approved",
-    "expired"
-  ]);
+  const [closedRequestFilters, setClosedRequestFilters] = useState<ClosedRequestFilter[]>(() =>
+    CLOSED_REQUEST_FILTERS.map(({ value }) => value)
+  );
   const [sort, setSort] = useState<{
     column: AccessRequestOrderBy;
     direction: Exclude<TableSortDirection, "none">;
   } | null>(null);
+  const validEnvFilter =
+    envFilter &&
+    currentProject?.environments &&
+    !currentProject.environments.some(({ slug }) => slug === envFilter)
+      ? undefined
+      : envFilter;
+  const validRequestedByFilter =
+    requestedByFilter &&
+    canReadMembers &&
+    (areMembersPending ||
+      members?.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter))
+      ? requestedByFilter
+      : undefined;
 
   const { data: requestCount } = useGetAccessRequestsCount({
     projectSlug
@@ -187,8 +210,8 @@ export const AccessApprovalRequest = ({
     isPending: areRequestsPending
   } = useGetAccessApprovalRequests({
     projectSlug,
-    authorUserId: requestedByFilter,
-    envSlug: envFilter
+    authorUserId: validRequestedByFilter,
+    envSlug: validEnvFilter
   });
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
@@ -201,41 +224,22 @@ export const AccessApprovalRequest = ({
   };
 
   const isRequestExpired = useCallback((request: TAccessApprovalRequest) => {
-    return (
-      request.status === ApprovalStatus.PENDING &&
-      request.expiresAt &&
-      new Date(request.expiresAt) < new Date()
-    );
+    return getAccessRequestState(request) === "expired";
   }, []);
 
   const filteredRequests = useMemo(() => {
     let accessRequests: typeof requests;
 
     if (statusFilter === "open")
-      accessRequests = requests?.filter(
-        (request) =>
-          !request.policy.deletedAt &&
-          !request.isApproved &&
-          request.status !== ApprovalStatus.REVOKED &&
-          !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
-          !isRequestExpired(request)
-      );
+      accessRequests = requests?.filter((request) => getAccessRequestState(request) === "pending");
     else if (statusFilter === "close")
-      accessRequests = requests?.filter(
-        (request) =>
-          request.policy.deletedAt ||
-          request.isApproved ||
-          request.status === ApprovalStatus.REVOKED ||
-          request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
-          isRequestExpired(request)
-      );
+      accessRequests = requests?.filter((request) => getAccessRequestState(request) !== "pending");
 
     if (statusFilter === "close") {
-      accessRequests = accessRequests?.filter((request) =>
-        isRequestExpired(request)
-          ? closedRequestFilters.includes("expired")
-          : closedRequestFilters.includes("approved")
-      );
+      accessRequests = accessRequests?.filter((request) => {
+        const requestState = getAccessRequestState(request);
+        return requestState !== "pending" && closedRequestFilters.includes(requestState);
+      });
     }
 
     return (
@@ -254,16 +258,7 @@ export const AccessApprovalRequest = ({
         );
       }) ?? []
     );
-  }, [
-    requests,
-    statusFilter,
-    requestedByFilter,
-    envFilter,
-    search,
-    isRequestExpired,
-    closedRequestFilters,
-    environmentNamesBySlug
-  ]);
+  }, [requests, statusFilter, search, closedRequestFilters, environmentNamesBySlug]);
 
   const sortedRequests = useMemo(() => {
     if (!sort) return filteredRequests;
@@ -336,6 +331,28 @@ export const AccessApprovalRequest = ({
     );
   };
 
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      requestedByFilter &&
+      (!canReadMembers ||
+        (!areMembersPending &&
+          members &&
+          !members.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter)))
+    ) {
+      setRequestedByFilter(undefined);
+    }
+  }, [areMembersPending, canReadMembers, members, requestedByFilter]);
+
   useResetPageHelper({
     totalCount: filteredRequests.length,
     offset,
@@ -344,14 +361,15 @@ export const AccessApprovalRequest = ({
 
   const generateRequestDetails = useCallback(
     (request: TAccessApprovalRequest) => {
+      const requestState = getAccessRequestState(request);
       const isReviewedByUser =
         request.reviewers.findIndex(({ userId }) => userId === user.id) !== -1;
-      const isRejectedByAnyone = request.reviewers.some(
-        ({ status }) => status === ApprovalStatus.REJECTED
-      );
+      const isRejectedByAnyone =
+        request.status === ApprovalStatus.REJECTED ||
+        request.reviewers.some(({ status }) => status === ApprovalStatus.REJECTED);
       const isApprover =
         request.policy.approvers.findIndex((el) => el.userId === user.id || "") !== -1;
-      const isAccepted = request.isApproved;
+      const isAccepted = requestState === "approved";
       const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
@@ -370,19 +388,15 @@ export const AccessApprovalRequest = ({
         icon: null
       };
 
-      const isRevoked = request.status === ApprovalStatus.REVOKED;
+      const isRevoked = requestState === "revoked";
+      const isPolicyDeleted = requestState === "policy-deleted";
 
       const isAccessExpired =
         request.privilege &&
         request.isApproved &&
         new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
 
-      const hasRequestExpired =
-        !isAccepted &&
-        !isRejectedByAnyone &&
-        !isRevoked &&
-        request.expiresAt &&
-        new Date(request.expiresAt) < new Date();
+      const hasRequestExpired = requestState === "expired";
 
       if (hasRequestExpired)
         displayData = {
@@ -416,12 +430,18 @@ export const AccessApprovalRequest = ({
           icon: CheckIcon,
           tooltipContent: `Granted ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
         };
-      else if (isRejectedByAnyone)
+      else if (requestState === "rejected")
         displayData = {
           label: "Rejected",
           type: "danger",
           icon: BanIcon,
           tooltipContent: `Rejected ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isPolicyDeleted)
+        displayData = {
+          label: "Policy Deleted",
+          type: "danger",
+          icon: ShieldBanIcon
         };
       else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
@@ -478,8 +498,8 @@ export const AccessApprovalRequest = ({
 
   const isFiltered = Boolean(
     search ||
-      envFilter ||
-      requestedByFilter ||
+      validEnvFilter ||
+      validRequestedByFilter ||
       (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
   );
 
@@ -553,7 +573,11 @@ export const AccessApprovalRequest = ({
                     <IconButton
                       aria-label="Filter closed access requests by status"
                       className="mr-2"
-                      variant={closedRequestFilters.length < 2 ? "project" : "outline"}
+                      variant={
+                        closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length
+                          ? "project"
+                          : "outline"
+                      }
                     >
                       <FilterIcon />
                     </IconButton>
@@ -612,7 +636,7 @@ export const AccessApprovalRequest = ({
                 placeholder="All Environments"
               />
             </div>
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+            {canReadMembers && (
               <div className="w-42 shrink-0">
                 <Combobox
                   aria-label="Filter users"
@@ -902,8 +926,8 @@ export const AccessApprovalRequest = ({
             queryClient.invalidateQueries({
               queryKey: accessApprovalKeys.getAccessApprovalRequests(
                 projectSlug,
-                envFilter,
-                requestedByFilter
+                validEnvFilter,
+                validRequestedByFilter
               )
             });
             handlePopUpClose("requestAccess");

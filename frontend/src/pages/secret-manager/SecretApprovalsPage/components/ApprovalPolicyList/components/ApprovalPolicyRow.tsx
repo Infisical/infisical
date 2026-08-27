@@ -8,11 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   TableCell,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
@@ -91,16 +91,23 @@ export const ApprovalPolicyRow = ({
       <TableCell title={environmentNames}>{environmentNames}</TableCell>
       <TableCell title={policy.secretPath || "*"}>{policy.secretPath || "*"}</TableCell>
       <TableCell>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant={variant}>
-              <Icon />
-              <span>{policyDetails[policy.policyType].name}</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Badge asChild variant={variant}>
+              <button
+                type="button"
+                className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`View approvers for ${policy.name || "unnamed policy"}`}
+              >
+                <Icon />
+                <span>{policyDetails[policy.policyType].name}</span>
+              </button>
             </Badge>
-          </TooltipTrigger>
-          <TooltipContent
+          </PopoverTrigger>
+          <PopoverContent
             align="end"
             className="max-h-96 thin-scrollbar w-64 overflow-y-auto px-3 py-2.5"
+            aria-label={`Approvers for ${policy.name || "unnamed policy"}`}
           >
             {labels && labels.length > 0 ? (
               <div className="flex flex-col gap-3">
@@ -126,17 +133,13 @@ export const ApprovalPolicyRow = ({
                                   <span key={approver.id} className="flex items-center gap-1">
                                     <span className="flex items-center gap-1.5 opacity-40">
                                       {approver.name || approver.id}
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Badge variant="neutral">
-                                            <BanIcon />
-                                            Removed
-                                          </Badge>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          This user has been removed from the project.
-                                        </TooltipContent>
-                                      </Tooltip>
+                                      <Badge variant="neutral">
+                                        <BanIcon />
+                                        Removed
+                                      </Badge>
+                                      <span className="sr-only">
+                                        This user has been removed from the project.
+                                      </span>
                                     </span>
                                     {!isLast && ","}
                                   </span>
@@ -152,18 +155,14 @@ export const ApprovalPolicyRow = ({
                                 <span key={member.id} className="flex items-center gap-1">
                                   <span className="flex items-center gap-1.5 opacity-40">
                                     {getMemberLabel(member)}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Badge variant="neutral">
-                                          <BanIcon />
-                                          Inactive
-                                        </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        This user has been deactivated and no longer has an active
-                                        organization membership.
-                                      </TooltipContent>
-                                    </Tooltip>
+                                    <Badge variant="neutral">
+                                      <BanIcon />
+                                      Inactive
+                                    </Badge>
+                                    <span className="sr-only">
+                                      This user has been deactivated and no longer has an active
+                                      organization membership.
+                                    </span>
                                   </span>
                                   {!isLast && ","}
                                 </span>
@@ -185,8 +184,8 @@ export const ApprovalPolicyRow = ({
             ) : (
               <span className="text-sm text-muted">No approvers configured.</span>
             )}
-          </TooltipContent>
-        </Tooltip>
+          </PopoverContent>
+        </Popover>
       </TableCell>
       <TableCell variant="action">
         <DropdownMenu>
