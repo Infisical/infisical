@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
@@ -7,6 +8,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateDALFactory } from "./certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
@@ -400,4 +402,19 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };
+};
+
+export const linkRenewedCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
+  originalCertificateId: string,
+  renewedCertificateId: string,
+  tx?: Knex
+) => {
+  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+
+  if (originalCertificate?.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  }
+
+  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };

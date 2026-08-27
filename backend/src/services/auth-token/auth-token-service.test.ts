@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mock
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
@@ -25,7 +25,6 @@ const hmac = (value: string) => createHmac("sha256", AUTH_SECRET).update(value).
 
 const emailHash = hmac(TEST_EMAIL);
 const otpKey = KeyStorePrefixes.EmailSignupOtpHash(emailHash);
-const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
 
 type KeyStoreSlice = Pick<
   TKeyStoreFactory,
@@ -129,51 +128,6 @@ describe("tokenServiceFactory — email signup OTP", () => {
     vi.clearAllMocks();
   });
 
-  describe("acquireEmailSignupCooldown", () => {
-    test("returns emailHash and cooldownSeconds on first call", async () => {
-      const { service } = setup();
-
-      const result = await service.acquireEmailSignupCooldown(TEST_EMAIL);
-
-      expect(result.emailHash).toBe(emailHash);
-      expect(result.cooldownSeconds).toBe(KeyStoreTtls.EmailSignupResendCooldownInSeconds);
-    });
-
-    test("sets cooldown key atomically via NX", async () => {
-      const { service, keyStore } = setup();
-
-      await service.acquireEmailSignupCooldown(TEST_EMAIL);
-
-      expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledWith(
-        cooldownKey,
-        KeyStoreTtls.EmailSignupResendCooldownInSeconds,
-        "1"
-      );
-    });
-
-    test("throws when cooldown is active", async () => {
-      const { service } = setup().mockCooldown(45);
-
-      await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
-    });
-
-    test("reports remaining TTL in error details", async () => {
-      const { service } = setup().mockCooldown(30);
-
-      const err = await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
-
-      expect(err.details).toMatchObject({ cooldownSeconds: 30 });
-    });
-
-    test("clamps remaining TTL to minimum 1", async () => {
-      const { service } = setup().mockCooldown(-1);
-
-      const err = await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
-
-      expect(err.details).toMatchObject({ cooldownSeconds: 1 });
-    });
-  });
-
   describe("createEmailSignupToken", () => {
     test("returns a six-digit numeric token", async () => {
       const { service } = setup();
@@ -230,12 +184,12 @@ describe("tokenServiceFactory — email signup OTP", () => {
       await expect(service.validateEmailSignupToken(TEST_EMAIL, "123456")).resolves.toBeUndefined();
     });
 
-    test("deletes OTP and cooldown on success", async () => {
+    test("deletes the OTP on success", async () => {
       const { service, keyStore } = setup().mockOtp();
 
       await service.validateEmailSignupToken(TEST_EMAIL, "123456");
 
-      expect(keyStore.deleteItemsByKeyIn).toHaveBeenCalledWith(expect.arrayContaining([otpKey, cooldownKey]));
+      expect(keyStore.deleteItem).toHaveBeenCalledWith(otpKey);
     });
 
     test("throws when OTP missing", async () => {

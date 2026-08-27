@@ -91,6 +91,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     {
       viewSessionsFolderIds,
       viewSessionsAccountIds,
+      includeOrphaned = false,
       offset,
       limit,
       search,
@@ -98,6 +99,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     }: {
       viewSessionsFolderIds: string[];
       viewSessionsAccountIds: string[];
+      includeOrphaned?: boolean;
       offset?: number;
       limit?: number;
       search?: string;
@@ -107,7 +109,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   ) => {
     // Visibility comes solely from ViewSessions scopes; no scopes means no sessions, and skipping
     // this guard would leave the filter block empty and match every session in the project.
-    if (viewSessionsFolderIds.length === 0 && viewSessionsAccountIds.length === 0) {
+    if (viewSessionsFolderIds.length === 0 && viewSessionsAccountIds.length === 0 && !includeOrphaned) {
       return { sessions: [], totalCount: 0 };
     }
 
@@ -120,6 +122,9 @@ export const pamSessionDALFactory = (db: TDbClient) => {
         }
         if (viewSessionsAccountIds.length > 0) {
           void top.orWhereIn(`${TableName.PamSession}.accountId`, viewSessionsAccountIds);
+        }
+        if (includeOrphaned) {
+          void top.orWhereNull(`${TableName.PamSession}.accountId`);
         }
       });
 

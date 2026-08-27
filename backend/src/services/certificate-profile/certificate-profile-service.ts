@@ -27,6 +27,7 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
@@ -1365,7 +1366,7 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
     offset?: number;
     limit?: number;
-    status?: "active" | "expired" | "revoked";
+    status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
     const profile = await certificateProfileDAL.findById(profileId);

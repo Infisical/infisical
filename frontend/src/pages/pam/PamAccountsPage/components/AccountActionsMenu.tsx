@@ -1,4 +1,4 @@
-import { Clock, KeyRound, MoreHorizontal, Rocket, Trash2 } from "lucide-react";
+import { Clock, KeyRound, MoreHorizontal, Rocket, Settings, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -58,6 +58,12 @@ export const AccountActionsMenu = ({
   // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
   const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);
 
+  const availableTabs = PAM_ACCOUNT_TABS.filter(
+    (tab) => (tab.value !== PamSheetTab.Rotation || isRotatable) && (!tab.action || can(tab.action))
+  );
+  const configureTab =
+    availableTabs.find((tab) => tab.value === PamSheetTab.Configuration) ?? availableTabs[0];
+
   let launchDisabledReason = "";
   if (!canLaunch) {
     launchDisabledReason = "You don't have permission to launch sessions";
@@ -109,31 +115,24 @@ export const AccountActionsMenu = ({
           </Tooltip>
         )}
         <DropdownMenuSeparator />
-        {PAM_ACCOUNT_TABS.filter((tab) => tab.value !== PamSheetTab.Rotation || isRotatable).map(
-          (tab) => {
-            const hasPermission = !tab.action || can(tab.action);
-            return (
-              <Tooltip key={tab.value}>
-                <TooltipTrigger asChild>
-                  <div>
-                    <DropdownMenuItem
-                      isDisabled={!hasPermission}
-                      onClick={() => onOpenTab(tab.value)}
-                    >
-                      <tab.icon className="size-4" />
-                      {tab.label}
-                    </DropdownMenuItem>
-                  </div>
-                </TooltipTrigger>
-                {!hasPermission && (
-                  <TooltipContent side="left">
-                    You don&apos;t have permission to access {tab.label.toLowerCase()}
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            );
-          }
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem
+                isDisabled={!configureTab}
+                onClick={() => configureTab && onOpenTab(configureTab.value)}
+              >
+                <Settings className="size-4" />
+                Configure
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!configureTab && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to configure this account
+            </TooltipContent>
+          )}
+        </Tooltip>
         <DropdownMenuSeparator />
         <Tooltip>
           <TooltipTrigger asChild>

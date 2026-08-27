@@ -59,6 +59,7 @@ export const KeyStorePrefixes = {
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
+  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
@@ -82,6 +83,13 @@ export const KeyStorePrefixes = {
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+  // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
+  // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
+  // cluster refuses a multi-key command whose keys span slots. They are small counters, so
+  // concentrating them costs nothing.
+  GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:{gw-pool}:${gatewayId}` as const,
+  GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:{gw-pool}:${gatewayId}` as const,
+  GatewaySuspect: (gatewayId: string) => `gateway-suspect:{gw-pool}:${gatewayId}` as const,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
@@ -144,7 +152,14 @@ export const KeyStorePrefixes = {
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
-  EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
+  EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>
+    `email-dispatch:${purpose}:${mailboxHash}:cd` as const,
+  EmailDispatchMailboxSends: (purpose: string, mailboxHash: string) =>
+    `email-dispatch:${purpose}:${mailboxHash}:sends` as const,
+  EmailDispatchSourceProbe: (purpose: string, window: number) =>
+    `email-dispatch-abuse:${purpose}:src:${window}` as const,
+  EmailDispatchMailboxProbe: (purpose: string, window: number) =>
+    `email-dispatch-abuse:${purpose}:mailbox:${window}` as const,
   // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
@@ -202,7 +217,9 @@ export const KeyStoreTtls = {
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
   EmailSignupOtpInSeconds: 300, // 5 minutes
-  EmailSignupResendCooldownInSeconds: 60, // 1 minute
+  EmailDispatchCooldownInSeconds: 60, // 1 minute
+  EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
+  EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
@@ -257,8 +274,10 @@ type TWaitTillReady = {
 export type TKeyStoreFactory = {
   setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
   getItem: (key: string, prefix?: string) => Promise<string | null>;
+  getItemBuffer: (key: string, prefix?: string) => Promise<Buffer | null>;
   getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
+  getItemsPrimary: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
   ttl: (key: string) => Promise<number>;
   setItemWithExpiry: (
@@ -279,7 +298,9 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
+  probeDistinctMember: (key: string, member: string, expiryInSeconds: number) => Promise<boolean>;
   incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
@@ -371,7 +392,15 @@ export const keyStoreFactory = (
   const getItem = async (key: string, prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
 
+  // Reads a value written as raw bytes. Callers holding binary blobs (ciphertext) use this instead of
+  // getItem so the payload never round-trips through a base64 string on either side.
+  const getItemBuffer = async (key: string, prefix?: string) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).getBuffer(prefix ? `${prefix}:${key}` : key);
+
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
+
+  const getItemsPrimary = async (keys: string[], prefix?: string) =>
+    primaryRedis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
 
   const getItems = async (keys: string[], prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
@@ -475,6 +504,51 @@ export const keyStoreFactory = (
     return Number(result);
   };
 
+  // Choosing and claiming has to be one round trip. Done as separate read and write calls, every
+  // concurrent selection reads the same minimum before any of them claims it and they all pile onto
+  // the same gateway, which is the stampede the reservation exists to prevent.
+  const CLAIM_LEAST_LOADED_SCRIPT = `
+    local ttl = tonumber(ARGV[#ARGV])
+    local bestIdx = 0
+    local bestTotal = nil
+    for i = 1, #KEYS do
+      local reserved = tonumber(redis.call("GET", KEYS[i]) or "0")
+      local total = tonumber(ARGV[i]) + reserved
+      -- strict less-than, so ties fall to the caller's order (pre-shuffled for a random tie-break)
+      if bestTotal == nil or total < bestTotal then
+        bestTotal = total
+        bestIdx = i
+      end
+    end
+    if bestIdx == 0 then return 0 end
+    -- Set the expiry only on the first increment. Refreshing it on every claim means a busy key
+    -- never elapses, so a crashed pod's leaked reservations would stay counted indefinitely.
+    if redis.call("INCR", KEYS[bestIdx]) == 1 then
+      redis.call("EXPIRE", KEYS[bestIdx], ttl)
+    end
+    return bestIdx
+  `;
+
+  /** Returns the 1-based index of the claimed key, or 0 when no keys were given. */
+  const claimLeastLoaded = async (
+    keys: string[],
+    baseOccupancies: number[],
+    expiryInSeconds: number
+  ): Promise<number> => {
+    if (keys.length === 0) return 0;
+    if (keys.length !== baseOccupancies.length) {
+      throw new Error("claimLeastLoaded: baseOccupancies must have one entry per key");
+    }
+    const result = await primaryRedis.eval(
+      CLAIM_LEAST_LOADED_SCRIPT,
+      keys.length,
+      ...keys,
+      ...baseOccupancies.map((n) => String(n)),
+      String(expiryInSeconds)
+    );
+    return Number(result);
+  };
+
   const INCREMENT_WITH_EXPIRY = `
     local v = redis.call('INCRBY', KEYS[1], ARGV[1])
     redis.call('EXPIRE', KEYS[1], ARGV[2])
@@ -503,6 +577,20 @@ export const keyStoreFactory = (
   const incrementSeededWithExpiry = async (key: string, seed: number, expiryInSeconds: number): Promise<number> => {
     const result = await primaryRedis.eval(INCREMENT_SEEDED_WITH_EXPIRY, 1, key, String(seed), String(expiryInSeconds));
     return Number(result);
+  };
+
+  const PROBE_DISTINCT_MEMBER = `
+    local isNew = redis.call('PFADD', KEYS[1], ARGV[1])
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return isNew
+  `;
+
+  // Records `member` in a HyperLogLog and reports whether it had not been seen in this key before.
+  // The HLL stores a fixed ~12KB register array rather than the members themselves, so a caller can
+  // count distinct values without the store ever holding one.
+  const probeDistinctMember = async (key: string, member: string, expiryInSeconds: number): Promise<boolean> => {
+    const result = await primaryRedis.eval(PROBE_DISTINCT_MEMBER, 1, key, member, String(expiryInSeconds));
+    return Number(result) === 1;
   };
 
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
@@ -721,6 +809,7 @@ export const keyStoreFactory = (
   return {
     setItem,
     getItem,
+    getItemBuffer,
     getItemPrimary,
     setExpiry,
     ttl,
@@ -731,7 +820,9 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    claimLeastLoaded,
     incrementByWithExpiry,
+    probeDistinctMember,
     incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
@@ -740,6 +831,7 @@ export const keyStoreFactory = (
     getKeysByPattern,
     deleteItemsByKeyIn,
     getItems,
+    getItemsPrimary,
     pgGetIntItem,
     pgIncrementBy,
     hashSet,

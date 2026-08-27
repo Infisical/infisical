@@ -39,7 +39,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
@@ -202,7 +202,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
@@ -240,7 +240,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updatePkiSubscriber",
@@ -423,7 +423,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
@@ -456,7 +456,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "orderPkiSubscriberCertificate",
@@ -519,7 +519,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "issuePkiSubscriberCertificate",
@@ -592,7 +592,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "signPkiSubscriberCertificate",
@@ -689,7 +689,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
         await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
@@ -747,12 +747,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema),
+          certificates: z.array(CertificatesSchema.omit({ orderId: true })),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
         subscriberName: req.params.subscriberName,

@@ -84,7 +84,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const secretRotationOptions = server.services.secretRotationV2.listSecretRotationOptions();
       return { secretRotationOptions };
@@ -109,7 +109,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
         200: z.object({ secretRotations: SecretRotationV2Schema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

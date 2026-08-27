@@ -45,7 +45,7 @@ export const registerPamResourceRoleRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ roles: z.array(ResourceRoleSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async () => {
       return { roles: DEFAULT_RESOURCE_ROLES };
     }

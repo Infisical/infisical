@@ -6,6 +6,8 @@ description: "Deploy certificates to Windows servers over WinRM."
 
 import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
 import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
+import HealthCheckVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/health-check-variables.mdx";
+import HealthCheckFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/health-check-flow.mdx";
 
 Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
 
@@ -47,8 +49,9 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Post-Sync Command**, or leave it empty:
-            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
+        5. Configure the **Commands**, or leave them empty:
+            - **Health check**: A PowerShell command run on the server before any certificate is written, to confirm the host is ready, for example `Get-Service W3SVC | Where-Object Status -ne 'Running' | ForEach-Object { throw "W3SVC is not running" }`. A failure stops the sync, so nothing is delivered. See [health checks](#health-checks).
+            - **Post-sync command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. See [Post-Sync Commands](#post-sync-commands).
 
         6. Configure the **Details**:
             - **Name**: The name of your sync.
@@ -81,6 +84,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
                 "exportFormat": "pkcs12",
                 "canRemoveCertificates": true,
                 "certificateNameSchema": "{{commonName}}",
+                "healthCheckCommand": "if (-not (Test-Path {{certificateDirectory}})) { throw \"destination folder is missing\" }",
                 "postSyncCommand": "Restart-Service -Name W3SVC"
             },
             "destinationConfig": {
@@ -119,6 +123,75 @@ When syncing certificates, Infisical asks the Gateway to open a WinRM session to
 
 When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
 
+## Health checks
+
+A sync can only tell you the host was not ready once it has already tried. If the destination folder was renamed or the service that owns the certificate is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+
+A health check moves that discovery earlier. It is one PowerShell command that the Gateway runs on the target server before any certificate is written. If it fails, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs. Leaving the field empty means nothing runs, so there is no separate toggle.
+
+The same check also runs on its own once a day, so a host that stops being ready between syncs is reported when it happens rather than at the next renewal.
+
+Write a check that answers a question rather than one that changes something. Testing that the folder exists or that a service is running is a good check. Creating the folder or starting the service is work for the post-sync command.
+
+<HealthCheckFlow />
+
+### Setting a check
+
+<Steps>
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
+  </Step>
+  <Step title="Write the check">
+    The script runs with `$ErrorActionPreference` set to `Stop`, so a failing cmdlet is enough to mark the host not ready. Use `throw "reason"` when you want to say why:
+
+    ```powershell
+    if (-not (Test-Path {{certificateDirectory}})) { throw "destination folder is missing" }
+    if ((Get-Service W3SVC).Status -ne "Running") { throw "W3SVC is not running" }
+    ```
+  </Step>
+  <Step title="Save and trigger a sync">
+    Save the sync, then trigger it. If the check fails, the sync fails without delivering, and the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Available variables
+
+<HealthCheckVariables />
+
+### Length limit
+
+A check is limited to 8192 characters, counted as you write it, before variables are substituted. For anything longer, put the logic in a script file on the server and have the check call that script.
+
+Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or later. See the Gateway version note above.
+
+### Health check FAQ
+
+<AccordionGroup>
+  <Accordion title="When exactly does the check run?">
+    Before anything else in a sync run, in its own WinRM session, before the one Infisical would deliver with. It also runs once a day on its own, whether or not a sync is due.
+  </Accordion>
+  <Accordion title="What happens when the check fails?">
+    The sync is marked failed and the reason appears as the sync's last error. Every certificate in the run is reported as skipped with that same reason, so it is clear nothing reached the host. Files already on the server from an earlier run are left exactly as they are, because the sync never wrote or deleted anything.
+  </Accordion>
+  <Accordion title="How do I make the check fail deliberately?">
+    Use `throw "reason"`, the same as in a post-sync command. Avoid `exit`: PowerShell stops the script there before it can report its result, so the check is treated as failed with a message saying the outcome could not be read rather than with your reason.
+  </Accordion>
+  <Accordion title="Where do I see the result of the daily check?">
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+  </Accordion>
+  <Accordion title="Is there a time limit?">
+    Yes, 15 seconds, and a check that runs out of time counts as a failure. The limit is deliberately much shorter than the post-sync command's, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer.
+
+    On Windows the fifteen seconds bound how long Infisical waits, not the host. WinRM gives no way to cancel a command once it has started, so a check that hangs is reported as a timeout and the sync fails, but the command itself keeps running on the server until it finishes. This is the other reason to keep a check to a cheap question rather than real work.
+  </Accordion>
+  <Accordion title="Does a failed check get retried?">
+    Not within the run. A host that is not ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
+  </Accordion>
+  <Accordion title="Can I use it to prepare the host instead of just checking it?">
+    You can, since it is a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
+  </Accordion>
+</AccordionGroup>
+
 ## Post-sync commands
 
 Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
@@ -138,8 +211,8 @@ Your Gateway runs the command, never Infisical. A WinRM Connection already requi
 ### Setting a command
 
 <Steps>
-  <Step title="Open the sync's Post-Sync Command step">
-    Edit the sync and select **Post-Sync Command**.
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
   </Step>
   <Step title="Write the command">
     Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
@@ -159,7 +232,7 @@ Your Gateway runs the command, never Infisical. A WinRM Connection already requi
 
 ### Length limit
 
-A command is limited to 8192 characters, counted after the variables are substituted. For anything longer, put the logic in a script on the server and call that script.
+A command is limited to 8192 characters, counted as you write it, before variables are substituted. For anything longer, put the logic in a script on the server and call that script.
 
 Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or later. See the Gateway version note above.
 
@@ -195,11 +268,11 @@ Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or late
 
 ### Least privilege
 
-The command runs as the account the WinRM Connection authenticates with, so constraining that account bounds what any command can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
+Both the health check and the post-sync command run as the account the WinRM Connection authenticates with, so constraining that account bounds what either can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
 
 Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right cannot be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical does not block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
 
-Anyone who can edit the sync can change the command, so treat edit access to these syncs as access to the target server.
+Anyone who can edit the sync can change either command, so treat edit access to these syncs as access to the target server. Setting them is a separate permission from editing the sync, so a role can be allowed to change a sync's destination and options without being allowed to change what it runs on the host.
 
 ## Security
 

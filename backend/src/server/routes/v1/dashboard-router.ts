@@ -102,7 +102,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
       const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
@@ -302,7 +302,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         secretPath,
@@ -978,7 +978,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         secretPath,
@@ -1543,7 +1543,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretPath, projectId, search, limit, offset } = req.query;
 
@@ -1789,7 +1789,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, environment, secretPath, filterByAction, recursive } = req.query;
 
@@ -1844,7 +1844,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretPath, projectId, environment, viewSecretValue } = req.query;
 
@@ -1930,7 +1930,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
@@ -2004,7 +2004,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
@@ -2077,7 +2077,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretVersions = await server.services.secret.getSecretVersions({
         actor: req.permission.type,
@@ -2112,7 +2112,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { version, secretId } = req.params;
 
@@ -2181,7 +2181,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.folder.getFolderMoveEligibility({
         actor: req.permission.type,
