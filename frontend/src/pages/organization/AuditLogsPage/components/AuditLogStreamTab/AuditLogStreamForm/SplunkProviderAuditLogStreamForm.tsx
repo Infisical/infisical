@@ -2,8 +2,24 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
-import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  SPLUNK_CLOUD_HEC_PORT,
+  SPLUNK_ENTERPRISE_HEC_PORT
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
@@ -43,6 +59,7 @@ const formSchema = z.object({
           ctx.addIssue({ code: "custom", message: "Invalid hostname" });
         }
       }),
+    port: z.union([z.literal(SPLUNK_ENTERPRISE_HEC_PORT), z.literal(SPLUNK_CLOUD_HEC_PORT)]),
     token: z.string().uuid().trim().min(1)
   }),
   ...auditLogStreamFiltersSchema.shape
@@ -55,9 +72,18 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: auditLogStream ?? {
-      provider: LogProvider.Splunk
-    }
+    defaultValues: auditLogStream
+      ? {
+          ...auditLogStream,
+          credentials: {
+            ...auditLogStream.credentials,
+            port: auditLogStream.credentials.port ?? SPLUNK_ENTERPRISE_HEC_PORT
+          }
+        }
+      : {
+          provider: LogProvider.Splunk,
+          credentials: { port: SPLUNK_ENTERPRISE_HEC_PORT }
+        }
   });
 
   const { handleSubmit, control } = form;
@@ -65,23 +91,52 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Controller
-          name="credentials.hostname"
-          control={control}
-          shouldUnregister
-          render={({ field, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
-              <Input
-                id="hostname"
-                {...field}
-                placeholder="splunk.example.com"
-                isError={Boolean(error?.message)}
-              />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <Controller
+            name="credentials.hostname"
+            control={control}
+            shouldUnregister
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
+                <Input
+                  id="hostname"
+                  {...field}
+                  placeholder="splunk.example.com"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.port"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="port">Port</FieldLabel>
+                <Select
+                  value={String(value ?? SPLUNK_ENTERPRISE_HEC_PORT)}
+                  onValueChange={(val) => onChange(Number(val))}
+                >
+                  <SelectTrigger id="port" className="!w-24" isError={Boolean(error?.message)}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={String(SPLUNK_ENTERPRISE_HEC_PORT)}>
+                      {SPLUNK_ENTERPRISE_HEC_PORT}
+                    </SelectItem>
+                    <SelectItem value={String(SPLUNK_CLOUD_HEC_PORT)}>
+                      {SPLUNK_CLOUD_HEC_PORT}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </div>
         <Controller
           name="credentials.token"
           control={control}

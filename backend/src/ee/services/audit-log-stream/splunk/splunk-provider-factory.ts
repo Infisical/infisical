@@ -11,6 +11,7 @@ import {
   TLogStreamFactoryGetProviderBatchLimit,
   TLogStreamFactoryValidateCredentials
 } from "../audit-log-stream-types";
+import { SPLUNK_ENTERPRISE_HEC_PORT } from "./splunk-provider-schemas";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
 function createPayload(event: Record<string, unknown> & { createdAt?: Date | string }) {
@@ -25,7 +26,7 @@ function createPayload(event: Record<string, unknown> & { createdAt?: Date | str
   };
 }
 
-async function createSplunkUrl(hostname: string) {
+async function createSplunkUrl(hostname: string, port?: number) {
   let parsedHostname: string;
   try {
     parsedHostname = new URL(`https://${hostname}`).hostname;
@@ -35,16 +36,16 @@ async function createSplunkUrl(hostname: string) {
 
   await blockAuditLogStreamInternalIps(`https://${parsedHostname}`);
 
-  return `https://${parsedHostname}:8088/services/collector/event`;
+  return `https://${parsedHostname}:${port ?? SPLUNK_ENTERPRISE_HEC_PORT}/services/collector/event`;
 }
 
 export const SplunkProviderFactory = () => {
   const validateCredentials: TLogStreamFactoryValidateCredentials<TSplunkProviderCredentials> = async ({
     credentials
   }) => {
-    const { hostname, token } = credentials;
+    const { hostname, port, token } = credentials;
 
-    const url = await createSplunkUrl(hostname);
+    const url = await createSplunkUrl(hostname, port);
 
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
@@ -69,9 +70,9 @@ export const SplunkProviderFactory = () => {
   }) => {
     if (auditLogs.length === 0) return;
 
-    const { hostname, token } = credentials;
+    const { hostname, port, token } = credentials;
 
-    const url = await createSplunkUrl(hostname);
+    const url = await createSplunkUrl(hostname, port);
 
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
