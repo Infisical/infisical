@@ -7,75 +7,72 @@ icon: "play"
 
 import AiAgentsCallout from "/snippets/ai-agents-callout.mdx";
 
-<Card
-  title="What is Infisical?"
-  href="/documentation/getting-started/introduction"
->
-  Learn what Infisical is and how it can help you manage secrets, certificates,
-  and secure access across your infrastructure.
+<Card title="What is Infisical?" href="/documentation/getting-started/introduction">
+  Learn what Infisical is and how it can help you manage secrets, certificates, and secure access across your infrastructure.
 </Card>
 
 ## Products
 
-<Columns cols="2">
-  <Card
-    title="Secrets Management"
-    href="/documentation/platform/secrets-mgmt/overview"
-    icon="vault"
-  >
-  Securely store, manage, and control access to sensitive application secrets across your environments.
+Select a product to get started:
 
+<CardGroup cols={2}>
+  <Card title="Secrets Management" icon="vault" href="/documentation/platform/secrets-mgmt/overview">
+    Securely store, manage, and control access to sensitive application secrets across your environments.
   </Card>
-  <Card
-    title="Secrets Scanning"
-    href="/documentation/platform/secret-scanning/overview"
-    icon="radar"
-  >
-  Automatically detect and alert on hardcoded secrets in source code, CI pipelines, and infrastructure.
+  <Card title="Secrets Scanning" icon="radar" href="/documentation/platform/secret-scanning/overview">
+    Automatically detect and alert on hardcoded secrets in source code, CI pipelines, and infrastructure.
   </Card>
-  <Card
-    title="Certificate Management"
-    href="/documentation/platform/pki/overview"
-    icon="file-certificate"
-  >
-  Automate CA and X.509 certificate lifecycle management across your infrastructure.
+  <Card title="Certificate Management" icon="file-certificate" href="/documentation/platform/pki/overview">
+    Automate CA and X.509 certificate lifecycle management across your infrastructure.
   </Card>
-  <Card
-    title="Infisical PAM"
-    href="/documentation/platform/pam/overview"
-    icon="user-shield"
-  >
-    Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
-  </Card>
-  <Card
-    title="Infisical KMS"
-    href="/documentation/platform/kms/overview"
-    icon="key"
-  >
+  <Card title="KMS" icon="key" href="/documentation/platform/kms/overview">
     Encrypt and decrypt sensitive data using a centralized key management system.
   </Card>
-</Columns>
+  <Card title="Privileged Access Management" icon="user-shield" href="/documentation/platform/pam/overview">
+    Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
+  </Card>
+</CardGroup>
 
-## Resources
+## Platform
 
-<Columns cols="2">
-  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
-    Explore Infisical’s command-line interface for managing secrets,
-    certificates, and system operations via terminal.
+Configuration and infrastructure shared across every product. You will end up here whichever one you started with.
+
+<CardGroup cols={3}>
+  <Card title="Organizations" icon="building" href="/documentation/platform/organization">
+    Organizations, projects, audit logs, and how to structure a rollout.
   </Card>
-  <Card title="API Reference" icon="book-open-lines" href="/api-reference/overview/introduction">
-    Browse Infisical’s API documentation to programmatically interact with
-    secrets, access controls, and certificate workflows.
+  <Card title="Identity and access" icon="id-card" href="/documentation/platform/identities/overview">
+    Who and what can sign in, how they authenticate, and what they may do.
   </Card>
-</Columns>
-<Columns cols="2">
-  <Card title="Self-Hosting" icon="server" href="/self-hosting/overview">
-    Learn how to deploy and operate Infisical on your own infrastructure with
-    full control and data ownership.
+  <Card title="App connections" icon="plug" href="/integrations/app-connections/overview">
+    Stored credentials that let Infisical reach your third-party services.
   </Card>
-  <Card title="Security" icon="shield" href="/internals/security">
-    Learn about the security model and implementation best practices.
+  <Card title="Networking" icon="network-wired" href="/documentation/platform/gateways/overview">
+    Gateways and relays, for reaching systems that are not on the public internet.
   </Card>
-</Columns>
+  <Card title="Self-hosting" icon="server" href="/self-hosting/overview">
+    Run Infisical on your own infrastructure, from one container to a high availability cluster.
+  </Card>
+  <Card title="Internals" icon="diagram-project" href="/internals/overview">
+    Architecture, the security and encryption model, and how permissions are evaluated.
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/contributing/getting-started/overview">
+    Propose a change, run the platform locally, and open a pull request.
+  </Card>
+</CardGroup>
+
+## Reference
+
+<CardGroup cols={3}>
+  <Card title="CLI" icon="terminal" href="/cli/overview">
+    Every command, from `infisical run` to gateway and scanning operations.
+  </Card>
+  <Card title="API" icon="book-open-lines" href="/api-reference/overview/introduction">
+    The full REST API for every resource Infisical manages.
+  </Card>
+  <Card title="SDKs" icon="cubes" href="/sdks/overview">
+    Official clients for Node.js, Python, Go, Java, .NET, C++, Ruby, and Rust.
+  </Card>
+</CardGroup>
 
 <AiAgentsCallout />

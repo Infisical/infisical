@@ -774,7 +774,8 @@
                     "pages": [
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix"
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres"
                     ]
                   },
                   {
@@ -981,7 +982,14 @@
                   "documentation/platform/identities/machine-identities",
                   "documentation/platform/identities/auth-templates",
                   "documentation/platform/token",
-                  "documentation/platform/oauth-applications"
+                  {
+                    "group": "OAuth applications",
+                    "pages": [
+                      "documentation/platform/oauth-applications/overview",
+                      "documentation/platform/oauth-applications/authorization-code",
+                      "documentation/platform/oauth-applications/token-exchange"
+                    ]
+                  }
                 ]
               },
               {
@@ -1203,6 +1211,7 @@
                   "self-hosting/guides/upgrading-infisical",
                   "self-hosting/guides/replication",
                   "self-hosting/guides/production-hardening",
+                  "self-hosting/guides/rotating-the-encryption-key",
                   "self-hosting/guides/monitoring-telemetry",
                   "self-hosting/guides/mongo-to-postgres"
                 ]
@@ -5022,6 +5031,10 @@
     {
       "source": "/documentation/platform/pki/enrollment-methods/scep",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/scep"
+    },
+    {
+      "source": "/documentation/platform/oauth-applications",
+      "destination": "/documentation/platform/oauth-applications/overview"
     }
   ]
 }
