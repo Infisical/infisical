@@ -62,16 +62,34 @@ const LdapFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   const { control, reset, setValue, watch } = useFormContext<TLdapFormValues>();
   const credentialType = watch("inputs.credentialType");
   const common = [
-    { name: "inputs.url", type: "text", label: "URL" },
-    { name: "inputs.binddn", type: "text", label: "Bind DN", layout: "half" },
+    {
+      name: "inputs.url",
+      type: "text",
+      label: "URL",
+      placeholder: "ldaps://ldap.example.com:636"
+    },
+    {
+      name: "inputs.binddn",
+      type: "text",
+      label: "Bind DN",
+      placeholder: "cn=admin,dc=example,dc=com",
+      layout: "half"
+    },
     {
       name: "inputs.bindpass",
       type: "secret",
       label: "Bind Password",
+      placeholder: "Enter bind password",
       layout: "half",
       autoComplete: "new-password"
     },
-    { name: "inputs.ca", type: "textarea", label: "CA", isOptional: true }
+    {
+      name: "inputs.ca",
+      type: "textarea",
+      label: "CA",
+      placeholder: "-----BEGIN CERTIFICATE----- ...",
+      isOptional: true
+    }
   ] satisfies readonly TDynamicSecretProviderField<TLdapFormValues>[];
   const handleImport = (role: VaultLdapRole) => {
     try {

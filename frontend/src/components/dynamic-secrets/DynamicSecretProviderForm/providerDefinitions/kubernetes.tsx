@@ -73,7 +73,12 @@ const authMethodField = [
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const clusterUrlField = [
-  { name: "inputs.url", type: "text", label: "Cluster URL" }
+  {
+    name: "inputs.url",
+    type: "text",
+    label: "Cluster URL",
+    placeholder: "https://kubernetes.example.com:6443"
+  }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const clusterTokenField = [
@@ -81,6 +86,7 @@ const clusterTokenField = [
     name: "inputs.clusterToken",
     type: "secret",
     label: "Cluster Token",
+    placeholder: "Enter service account token",
     autoComplete: "new-password"
   }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
@@ -104,6 +110,7 @@ const serviceAccountField = [
     name: "inputs.serviceAccountName",
     type: "text",
     label: "Service Account Name",
+    placeholder: "infisical-dynamic-secrets",
     autoComplete: "new-password",
     layout: "half"
   }
@@ -125,6 +132,7 @@ const namespaceField = (isStatic: boolean) =>
       name: "inputs.namespace",
       type: "text",
       label: isStatic ? "Namespace" : "Allowed Namespace(s)",
+      placeholder: isStatic ? "default" : "default,production",
       layout: "half"
     }
   ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
@@ -140,7 +148,13 @@ const roleFields = [
       { label: "Role", value: KubernetesRoleType.Role }
     ]
   },
-  { name: "inputs.role", type: "text", label: "Role", layout: "half" }
+  {
+    name: "inputs.role",
+    type: "text",
+    label: "Role",
+    placeholder: "view",
+    layout: "half"
+  }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const KubernetesVaultImport = ({ onImport }: { onImport: (role: VaultKubernetesRole) => void }) => {

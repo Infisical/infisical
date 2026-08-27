@@ -27,6 +27,12 @@ const credentialLabels = {
   clientSecret: "Client Secret"
 } as const;
 
+const credentialPlaceholders = {
+  tenantId: "00000000-0000-0000-0000-000000000000",
+  applicationId: "00000000-0000-0000-0000-000000000000",
+  clientSecret: "Enter client secret"
+} as const;
+
 const EMPTY_USERS: { id: string; name: string; email: string }[] = [];
 
 const AzureEntraIdFields = ({
@@ -106,6 +112,7 @@ const AzureEntraIdFields = ({
                   {...field}
                   id={`azure-entra-${key}`}
                   type={key === "clientSecret" ? "password" : "text"}
+                  placeholder={credentialPlaceholders[key]}
                   autoComplete={key === "clientSecret" ? "new-password" : "off"}
                   isError={Boolean(error)}
                   aria-describedby={error ? `azure-entra-${key}-error` : undefined}

@@ -33,19 +33,51 @@ import {
 } from "./cassandraContract";
 
 const cassandraFields = [
-  { name: "inputs.host", type: "text", label: "Host", placeholder: "host1,host2", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "cassandra-1.example.com,cassandra-2.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.localDataCenter", type: "text", label: "Local Data Center" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half", autoComplete: "off" },
+  {
+    name: "inputs.localDataCenter",
+    type: "text",
+    label: "Local Data Center",
+    placeholder: "datacenter1"
+  },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "cassandra",
+    layout: "half",
+    autoComplete: "off"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     layout: "half",
     autoComplete: "new-password"
   },
-  { name: "inputs.keyspace", type: "text", label: "Keyspace", isOptional: true },
-  { name: "inputs.ca", type: "textarea", label: "CA (SSL)", isOptional: true, rows: 3 }
+  {
+    name: "inputs.keyspace",
+    type: "text",
+    label: "Keyspace",
+    placeholder: "app_keyspace",
+    isOptional: true
+  },
+  {
+    name: "inputs.ca",
+    type: "textarea",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true,
+    rows: 3
+  }
 ] satisfies readonly TDynamicSecretProviderField<TCassandraFormValues>[];
 
 const advancedFields = buildStatementFields<TCassandraFormValues>({

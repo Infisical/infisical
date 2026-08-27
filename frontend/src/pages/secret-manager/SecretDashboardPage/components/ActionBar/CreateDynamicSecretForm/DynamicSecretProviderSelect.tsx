@@ -14,53 +14,6 @@ import {
 } from "@app/components/v3";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-type TProviderPresentation = {
-  brand: string;
-  image?: string;
-};
-
-const PROVIDER_PRESENTATION: Record<DynamicSecretProviders, TProviderPresentation> = {
-  [DynamicSecretProviders.SqlDatabase]: { brand: "SQL", image: "Postgres.png" },
-  [DynamicSecretProviders.Cassandra]: { brand: "Cassandra", image: "Cassandra.png" },
-  [DynamicSecretProviders.Redis]: { brand: "Redis", image: "Redis.png" },
-  [DynamicSecretProviders.AwsElastiCache]: {
-    brand: "AWS",
-    image: "Amazon Web Services.png"
-  },
-  [DynamicSecretProviders.AwsMemoryDb]: { brand: "AWS", image: "Amazon Web Services.png" },
-  [DynamicSecretProviders.AwsIam]: { brand: "AWS", image: "Amazon Web Services.png" },
-  [DynamicSecretProviders.MongoAtlas]: { brand: "MongoDB", image: "MongoDB.png" },
-  [DynamicSecretProviders.MongoDB]: { brand: "MongoDB", image: "MongoDB.png" },
-  [DynamicSecretProviders.ElasticSearch]: { brand: "Elastic", image: "Elastic.png" },
-  [DynamicSecretProviders.RabbitMq]: { brand: "RabbitMQ" },
-  [DynamicSecretProviders.AzureEntraId]: {
-    brand: "Azure",
-    image: "Microsoft Azure.png"
-  },
-  [DynamicSecretProviders.AzureSqlDatabase]: {
-    brand: "Azure",
-    image: "Microsoft Azure.png"
-  },
-  [DynamicSecretProviders.Ldap]: { brand: "LDAP", image: "LDAP.png" },
-  [DynamicSecretProviders.SapHana]: { brand: "SAP" },
-  [DynamicSecretProviders.SapAse]: { brand: "SAP" },
-  [DynamicSecretProviders.Snowflake]: { brand: "Snowflake", image: "Snowflake.png" },
-  [DynamicSecretProviders.Totp]: { brand: "TOTP" },
-  [DynamicSecretProviders.Vertica]: { brand: "Vertica" },
-  [DynamicSecretProviders.Kubernetes]: { brand: "Kubernetes", image: "Kubernetes.png" },
-  [DynamicSecretProviders.GcpIam]: {
-    brand: "Google Cloud",
-    image: "Google Cloud Platform.png"
-  },
-  [DynamicSecretProviders.Github]: { brand: "GitHub", image: "GitHub.png" },
-  [DynamicSecretProviders.Couchbase]: { brand: "Couchbase" },
-  [DynamicSecretProviders.Milvus]: { brand: "Milvus" },
-  [DynamicSecretProviders.Clickhouse]: { brand: "ClickHouse" },
-  [DynamicSecretProviders.Ssh]: { brand: "SSH", image: "SSH.png" },
-  [DynamicSecretProviders.IbmApiConnect]: { brand: "IBM", image: "IBM.png" },
-  [DynamicSecretProviders.Tailscale]: { brand: "Tailscale" }
-};
-
 const ProviderCard = ({
   provider,
   onSelect
@@ -69,7 +22,7 @@ const ProviderCard = ({
   onSelect: () => void;
 }) => {
   const definition = dynamicSecretProviderRegistry.requireDefinition(provider);
-  const { brand, image } = PROVIDER_PRESENTATION[provider];
+  const { brand, image } = dynamicSecretProviderRegistry.requirePresentation(provider);
 
   return (
     <button
@@ -113,7 +66,7 @@ export const DynamicSecretProviderSelect = ({
 
     return dynamicSecretProviderRegistry.providers.filter((provider) => {
       const definition = dynamicSecretProviderRegistry.requireDefinition(provider);
-      const { brand } = PROVIDER_PRESENTATION[provider];
+      const { brand } = dynamicSecretProviderRegistry.requirePresentation(provider);
       return [definition.label, brand, provider].some((value) =>
         value.toLowerCase().includes(query)
       );

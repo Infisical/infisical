@@ -34,13 +34,31 @@ import {
 } from "./ibmApiConnectContract";
 
 const credentialFields = [
-  { name: "inputs.instanceUrl", type: "text", label: "Instance URL" },
-  { name: "inputs.apiKey", type: "secret", label: "API Key", autoComplete: "new-password" },
-  { name: "inputs.clientId", type: "text", label: "Client ID", layout: "half" },
+  {
+    name: "inputs.instanceUrl",
+    type: "text",
+    label: "Instance URL",
+    placeholder: "https://api-manager.example.com"
+  },
+  {
+    name: "inputs.apiKey",
+    type: "secret",
+    label: "API Key",
+    placeholder: "Enter API key",
+    autoComplete: "new-password"
+  },
+  {
+    name: "inputs.clientId",
+    type: "text",
+    label: "Client ID",
+    placeholder: "Enter client ID",
+    layout: "half"
+  },
   {
     name: "inputs.clientSecret",
     type: "secret",
     label: "Client Secret",
+    placeholder: "Enter client secret",
     autoComplete: "new-password",
     layout: "half"
   }

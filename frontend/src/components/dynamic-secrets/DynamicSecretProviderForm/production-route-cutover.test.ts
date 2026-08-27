@@ -39,6 +39,32 @@ describe("dynamic-secret production route cutover", () => {
     assert.match(editSource, /not available in the shared provider registry/);
   });
 
+  it("keeps provider presentation and lease behavior behind the shared registry", async () => {
+    const [pickerSource, rowSource, provisionSource, leasesSource] = await Promise.all([
+      readSource(
+        "../../../pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/DynamicSecretProviderSelect.tsx"
+      ),
+      readSource(
+        "../../../pages/secret-manager/OverviewPage/components/DynamicSecretTableRow/DynamicSecretTableRow.tsx"
+      ),
+      readSource(
+        "../../../pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease.tsx"
+      ),
+      readSource(
+        "../../../pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease.tsx"
+      )
+    ]);
+
+    assert.match(pickerSource, /requirePresentation/);
+    assert.doesNotMatch(pickerSource, /PROVIDER_PRESENTATION/);
+    assert.match(rowSource, /dynamicSecretProviderRegistry\.requireDefinition/);
+    assert.doesNotMatch(rowSource, /DYNAMIC_SECRET_PROVIDER_NAMES/);
+    assert.match(provisionSource, /requireLeaseCapabilities/);
+    assert.doesNotMatch(provisionSource, /provider === DynamicSecretProviders/);
+    assert.match(leasesSource, /requireLeaseCapabilities/);
+    assert.doesNotMatch(leasesSource, /DYNAMIC_SECRETS_WITHOUT_RENEWAL/);
+  });
+
   it("uses Combobox for every searchable selector in the shared provider forms", async () => {
     const sources = await Promise.all([
       readSource("./DynamicSecretProviderForm.tsx"),

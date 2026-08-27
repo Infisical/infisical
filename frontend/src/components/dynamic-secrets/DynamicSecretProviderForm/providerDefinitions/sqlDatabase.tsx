@@ -69,11 +69,12 @@ import {
 } from "./sqlDatabaseContract";
 
 const sqlConnectionFields = [
-  { name: "inputs.host", type: "text", label: "Host" },
+  { name: "inputs.host", type: "text", label: "Host", placeholder: "db.example.com" },
   {
     name: "inputs.username",
     type: "text",
     label: "User",
+    placeholder: "postgres",
     autoComplete: "off",
     layout: "half"
   },
@@ -81,10 +82,17 @@ const sqlConnectionFields = [
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   },
-  { name: "inputs.database", type: "text", label: "Database Name", layout: "half" }
+  {
+    name: "inputs.database",
+    type: "text",
+    label: "Database Name",
+    placeholder: "app_db",
+    layout: "half"
+  }
 ] satisfies readonly TDynamicSecretProviderField<TSqlDatabaseFormValues>[];
 
 const usernameTemplateField = [
