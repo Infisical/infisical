@@ -122,11 +122,11 @@ Agents follow the same rule as any other workload: **identities are permission-b
 
 | How the agent authenticates | Counts as |
 |-----------------------------|-----------|
-| **As a person.** An agent started with the [local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) authenticates as the user who ran `infisical login`, so the agent-to-user ratio is 1:1. | The operator's existing user identity. No machine identity. |
+| **As a person.** An agent started with the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) authenticates as the user who ran `infisical login`, so the agent-to-user ratio is 1:1. | The operator's existing user identity. No machine identity. |
 | **As itself.** An agent that runs perpetually in its own environment, on a schedule, or unattended, plus any agent you deliberately scope to its own identity, authenticates with its own [machine identity](/documentation/platform/identities/machine-identities). | One machine identity per unique permission set. |
 
 <Note>
-  Running a coding agent on your own computer does not consume a machine identity. With the [local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
+  Running a coding agent on your own computer does not consume a machine identity. With the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
 </Note>
 
 <Tip>
@@ -142,10 +142,10 @@ For agents that authenticate as themselves, scope identities by purpose and perm
 | Multiple instances or runs of the same agent, with the same access | 1 |
 | Two agents serving different functions, such as recruitment and engineering | 2 |
 | One agent that needs access to two different security tiers | Consider 2, scoped per tier |
-| A [standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) in front of those agents | Add 1 for the proxy itself |
+| A [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) in front of those agents | Add 1 for the proxy itself |
 
 <Info>
-  In a standalone Agent Proxy deployment, the proxy authenticates as its own machine identity, separate from the agents behind it. The proxy needs read access to the secrets its [proxied services](/documentation/platform/agent-proxy/proxied-services) reference, while each agent holds only the **Proxy** permission on the services it uses. Count the proxy's identity in addition to the agents'.
+  In a Standalone Agent Proxy deployment there are two kinds of identity. Each agent authenticates to the proxy with its own machine identity, which holds only the **Proxy** permission on the services that agent uses. The proxy has a separate identity of its own, and that is the one that fetches the secrets its [proxied services](/documentation/platform/agent-proxy/proxied-services) reference from Infisical. Count the proxy's identity on top of one identity per agent permission set.
 </Info>
 
 <Accordion title="Example 6: Local coding agents">
@@ -158,8 +158,8 @@ For agents that authenticate as themselves, scope identities by purpose and perm
 
 <Accordion title="Example 7: Standalone agents with different purposes">
   **Scenario**: You run two always-on Slack agents in your own infrastructure:
-  - A recruitment agent that reads ATS and calendar credentials
-  - An engineering agent that reads CI and observability credentials
+  - A recruitment agent scoped to ATS and calendar access
+  - An engineering agent scoped to CI and observability access
 
   **Machine identities needed**: **2**
 
@@ -174,12 +174,12 @@ For agents that authenticate as themselves, scope identities by purpose and perm
   Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity, the same way 10 VMs with identical access do.
 </Accordion>
 
-<Accordion title="Example 9: Remote agents behind a standalone Agent Proxy">
-  **Scenario**: Two remote agents with different permission sets run behind one [standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+<Accordion title="Example 9: Remote agents behind a Standalone Agent Proxy">
+  **Scenario**: Two remote agents with different permission sets run behind one [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
   **Machine identities needed**: **3**
 
-  One identity per agent permission set, plus the proxy's own identity. The proxy and each agent authenticate separately, and the proxy's identity is always separate from the agents'.
+  Two for the agents, since each authenticates to the proxy with its own machine identity, plus one for the proxy, which uses a separate identity to fetch secrets back from Infisical.
 </Accordion>
 
 ## Best practices
