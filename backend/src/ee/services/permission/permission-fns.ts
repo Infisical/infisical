@@ -502,10 +502,7 @@ export const fetchFolderScopedPrivileges = async (
   }
 ): Promise<TCachedFolderScopedPrivileges> => {
   return additionalPrivilegeDAL.transaction(async (tx) => {
-    const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges(
-      { projectId, actorId, actorType: actor },
-      tx
-    );
+    const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor }, tx);
     if (!rows.length) return { privileges: [] };
 
     const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(

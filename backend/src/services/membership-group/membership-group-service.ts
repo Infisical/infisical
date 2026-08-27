@@ -63,8 +63,8 @@ type TMembershipGroupServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -431,30 +431,33 @@ export const membershipGroupServiceFactory = ({
         );
 
         const projectId = existingMembership.scopeProjectId;
-        const identityMembers = await identityGroupMembershipDAL.find({ groupId: dto.selector.groupId }, { tx });
-        const identityIds = identityMembers.map((member) => member.identityId);
-        const userMembers = await userGroupMembershipDAL.find({ groupId: dto.selector.groupId }, { tx });
-        const userIds = userMembers.map((member) => member.userId);
+        const projectIds = [projectId];
+        const { groupId } = dto.selector;
 
-        if (identityIds.length) {
-          await additionalPrivilegeDAL.delete(
-            {
-              projectId,
-              $in: { actorIdentityId: identityIds },
-              $notNull: ["folderId"]
-            },
+        const identityMembers = await identityGroupMembershipDAL.find({ groupId }, { tx });
+        for await (const { identityId } of identityMembers) {
+          const projectsIdentityStillMemberOf = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+            identityId,
+            groupId,
+            projectIds,
             tx
           );
+          if (!projectsIdentityStillMemberOf.has(projectId)) {
+            await additionalPrivilegeDAL.delete({ actorIdentityId: identityId, projectId }, tx);
+          }
         }
-        if (userIds.length) {
-          await additionalPrivilegeDAL.delete(
-            {
-              projectId,
-              $in: { actorUserId: userIds },
-              $notNull: ["folderId"]
-            },
+
+        const userMembers = await userGroupMembershipDAL.find({ groupId }, { tx });
+        for await (const { userId } of userMembers) {
+          const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
+            userId,
+            groupId,
+            projectIds,
             tx
           );
+          if (!projectsUserStillMemberOf.has(projectId)) {
+            await additionalPrivilegeDAL.delete({ actorUserId: userId, projectId }, tx);
+          }
         }
       }
 

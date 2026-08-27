@@ -809,6 +809,7 @@ describe("Identity folder access CRUD", () => {
 
   describe("group removed from project reaps folder grants", () => {
     let groupOnlyIdentityId: string;
+    let directIdentityId: string;
     let group: { id: string };
 
     const createProjectGroup = async () => {
@@ -854,26 +855,43 @@ describe("Identity folder access CRUD", () => {
         role: OrgMembershipRole.Member
       });
 
-      await testDb(TableName.IdentityGroupMembership).insert({ identityId: groupOnlyIdentityId, groupId: group.id });
+      ({ identityId: directIdentityId } = await createProjectIdentity(ProjectMembershipRole.Member));
+
+      await testDb(TableName.IdentityGroupMembership).insert([
+        { identityId: groupOnlyIdentityId, groupId: group.id },
+        { identityId: directIdentityId, groupId: group.id }
+      ]);
     });
 
     afterAll(async () => {
-      await testDb(TableName.AdditionalPrivilege).where({ actorIdentityId: groupOnlyIdentityId }).del();
+      await testDb(TableName.AdditionalPrivilege)
+        .whereIn("actorIdentityId", [groupOnlyIdentityId, directIdentityId])
+        .del();
       await testDb(TableName.IdentityGroupMembership).where({ groupId: group.id }).del();
       await testDb(TableName.Membership).where({ actorGroupId: group.id }).del();
       await testDb(TableName.Groups).where({ id: group.id }).del();
       await deleteProjectIdentity(groupOnlyIdentityId);
+      await deleteProjectIdentity(directIdentityId);
     });
 
-    test("deletes folder-scoped additional privileges when the group is removed from the project", async () => {
-      const grantRes = await testServer.inject({
+    test("reaps the grant for a group-only identity and keeps it for a direct project member", async () => {
+      const groupOnlyGrantRes = await testServer.inject({
         method: "POST",
         url: folderAccessUrl(groupOnlyIdentityId),
         headers: authHeaders(),
         body: { ...folderTarget, permission: SecretFolderRole.Read }
       });
-      expect(grantRes.statusCode).toBe(200);
-      const grantId = grantRes.json().folderAccess.id;
+      expect(groupOnlyGrantRes.statusCode).toBe(200);
+      const groupOnlyGrantId = groupOnlyGrantRes.json().folderAccess.id;
+
+      const directMemberGrantRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(directIdentityId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(directMemberGrantRes.statusCode).toBe(200);
+      const directMemberGrantId = directMemberGrantRes.json().folderAccess.id;
 
       const removeRes = await testServer.inject({
         method: "DELETE",
@@ -882,7 +900,8 @@ describe("Identity folder access CRUD", () => {
       });
       expect(removeRes.statusCode).toBe(200);
 
-      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: groupOnlyGrantId })).toEqual([]);
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: directMemberGrantId })).toHaveLength(1);
     });
   });
 });
