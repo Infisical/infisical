@@ -28,12 +28,20 @@ const templateNameSchema = z
 // Credential fields are stripped server-side by $sanitizeTemplate; declaring the
 // exact shape here documents each method's fields and makes the response serializer a
 // second barrier that drops anything undeclared
+// the gateway reference is stored in columns so it can carry a foreign key, but it stays
+// inside templateFields in the API, so the v1/v2 column split is not part of the contract
+const templateRowSchema = IdentityAuthTemplatesSchema.omit({
+  gatewayId: true,
+  gatewayV2Id: true,
+  gatewayPoolId: true
+});
+
 const sanitizedTemplateSchema = z.discriminatedUnion("authMethod", [
-  IdentityAuthTemplatesSchema.extend({
+  templateRowSchema.extend({
     authMethod: z.literal(IdentityAuthTemplateMethod.LDAP),
     templateFields: ldapTemplateFieldsResponseSchema
   }),
-  IdentityAuthTemplatesSchema.extend({
+  templateRowSchema.extend({
     authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
     templateFields: kubernetesTemplateFieldsResponseSchema
   })

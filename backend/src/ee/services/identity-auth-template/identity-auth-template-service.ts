@@ -227,31 +227,35 @@ export const identityAuthTemplateServiceFactory = ({
     return { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
   };
 
-  // the gateway exemption on the host check is only sound while the reference still points at
-  // a live gateway: identity_kubernetes_auths loses its gateway columns to ON DELETE SET NULL,
-  // but the template keeps the id inside its encrypted blob, so a deleted gateway leaves the
-  // two out of sync and the linked rows fall back to dialing the host directly
-  const $kubernetesTemplateGatewayIsLive = async ({
-    gatewayId,
-    gatewayPoolId,
-    orgId
-  }: {
-    gatewayId?: string | null;
-    gatewayPoolId?: string | null;
-    orgId: string;
-  }) => {
-    if (gatewayPoolId) {
-      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
-      return Boolean(pool && pool.orgId === orgId);
-    }
-    if (gatewayId) {
-      const [[gateway], [gatewayV2]] = await Promise.all([
-        gatewayDAL.find({ id: gatewayId, orgId }),
-        gatewayV2DAL.find({ id: gatewayId, orgId })
-      ]);
-      return Boolean(gateway || gatewayV2);
-    }
-    return false;
+  // the gateway reference lives in columns rather than the encrypted blob so it can carry a
+  // foreign key. ON DELETE SET NULL then clears it in step with the identical columns on the
+  // linked identity rows, which is what stops a deleted gateway from leaving a stale id behind
+  // that still looks live to the host check below
+  const GATEWAY_TEMPLATE_FIELD_KEYS = ["gatewayId", "gatewayPoolId"];
+
+  const $toBlobFields = (fields: Record<string, unknown>) => {
+    const blobFields = { ...fields };
+    GATEWAY_TEMPLATE_FIELD_KEYS.forEach((key) => delete blobFields[key]);
+    return blobFields;
+  };
+
+  // derived from the method's own field schema rather than a hardcoded list, so a method that
+  // later gains gateway support starts round-tripping the columns with no change here
+  const $methodHasGatewayFields = (authMethod: string) =>
+    (templateFieldPatchKeysByMethod[authMethod as IdentityAuthTemplateMethod] ?? []).includes("gatewayId");
+
+  // the API keeps one logical gatewayId covering both gateway generations, so the v1/v2
+  // column split stays an implementation detail
+  const $withGatewayFields = (
+    template: Pick<TIdentityAuthTemplates, "authMethod" | "gatewayId" | "gatewayV2Id" | "gatewayPoolId">,
+    fields: Record<string, unknown>
+  ) => {
+    if (!$methodHasGatewayFields(template.authMethod)) return fields;
+    return {
+      ...fields,
+      gatewayId: template.gatewayV2Id ?? template.gatewayId ?? null,
+      gatewayPoolId: template.gatewayPoolId ?? null
+    };
   };
 
   const createTemplate = async ({
@@ -282,6 +286,11 @@ export const identityAuthTemplateServiceFactory = ({
     );
 
     let fieldsToPersist: Record<string, unknown> = templateFields;
+    let gatewayColumns: Pick<TIdentityAuthTemplates, "gatewayId" | "gatewayV2Id" | "gatewayPoolId"> = {
+      gatewayId: null,
+      gatewayV2Id: null,
+      gatewayPoolId: null
+    };
     if (authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
       const kubernetesFields = templateFields as TKubernetesTemplateFields;
       const normalizedFields: TKubernetesTemplateFields = {
@@ -307,11 +316,17 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        await $resolveKubernetesTemplateGateway({
-          gatewayId: normalizedFields.gatewayId,
-          gatewayPoolId: normalizedFields.gatewayPoolId,
-          orgId: actorOrgId
-        });
+        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
+          await $resolveKubernetesTemplateGateway({
+            gatewayId: normalizedFields.gatewayId,
+            gatewayPoolId: normalizedFields.gatewayPoolId,
+            orgId: actorOrgId
+          });
+        gatewayColumns = {
+          gatewayId: resolvedGatewayId,
+          gatewayV2Id: resolvedGatewayV2Id,
+          gatewayPoolId: resolvedGatewayPoolId
+        };
       }
       fieldsToPersist = normalizedFields;
     }
@@ -320,14 +335,16 @@ export const identityAuthTemplateServiceFactory = ({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
+    const blobFields = $toBlobFields(fieldsToPersist);
     const template = await identityAuthTemplateDAL.create({
       name,
       authMethod,
-      templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(fieldsToPersist)) }).cipherTextBlob,
-      orgId: actorOrgId
+      templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(blobFields)) }).cipherTextBlob,
+      orgId: actorOrgId,
+      ...gatewayColumns
     });
 
-    return $sanitizeTemplate(template, fieldsToPersist);
+    return $sanitizeTemplate(template, $withGatewayFields(template, blobFields));
   };
 
   const updateTemplate = async ({
@@ -389,14 +406,16 @@ export const identityAuthTemplateServiceFactory = ({
         }[])
       : [];
 
-    const currentTemplateFields = JSON.parse(
-      decryptor({ cipherTextBlob: template.templateFields }).toString()
-    ) as Record<string, unknown>;
+    const currentTemplateFields = $withGatewayFields(
+      template,
+      JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString()) as Record<string, unknown>
+    );
     const mergedTemplateFields: Record<string, unknown> = fieldPatch
       ? { ...currentTemplateFields, ...fieldPatch }
       : currentTemplateFields;
 
     let kubernetesPropagationData: TIdentityKubernetesAuthsUpdate | undefined;
+    let gatewayColumnUpdate: Pick<TIdentityAuthTemplates, "gatewayId" | "gatewayV2Id" | "gatewayPoolId"> | undefined;
     if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
       const merged = mergedTemplateFields as TKubernetesTemplateFields;
       const patch = fieldPatch as Partial<TKubernetesTemplateFields>;
@@ -406,11 +425,10 @@ export const identityAuthTemplateServiceFactory = ({
         merged.verifyTlsCertificate = Boolean(patch.caCert?.length);
       }
       $validateKubernetesTemplateFields(merged);
-      // gateway references are re-resolved (and re-authorized) only when the patch touches
-      // them; linked rows keep their columns otherwise, so a gateway that was deleted after
-      // authoring cannot block unrelated edits like rotating the reviewer JWT
+      // a gateway reference is only re-resolved (and re-authorized) when the patch supplies
+      // one; otherwise the columns already on the row stand, and the FK guarantees they name
+      // a gateway that still exists
       const patchTouchesGateway = "gatewayId" in patch || "gatewayPoolId" in patch;
-      let resolvedGateway: Awaited<ReturnType<typeof $resolveKubernetesTemplateGateway>> | undefined;
       if (patchTouchesGateway) {
         $authorizeKubernetesTemplateGateway({
           gatewayId: merged.gatewayId,
@@ -418,38 +436,32 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        resolvedGateway = await $resolveKubernetesTemplateGateway({
-          gatewayId: merged.gatewayId,
-          gatewayPoolId: merged.gatewayPoolId,
-          orgId: template.orgId
-        });
+        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
+          await $resolveKubernetesTemplateGateway({
+            gatewayId: merged.gatewayId,
+            gatewayPoolId: merged.gatewayPoolId,
+            orgId: template.orgId
+          });
+        gatewayColumnUpdate = {
+          gatewayId: resolvedGatewayId,
+          gatewayV2Id: resolvedGatewayV2Id,
+          gatewayPoolId: resolvedGatewayPoolId
+        };
       }
       // the merged host propagates to every linked identity and is dialed by the backend at
       // login, so it gets the same local/private-address block as the identity attach flow.
-      // only patches that change where we dial are checked: re-checking on every edit would
-      // strand a template whose gateway was deleted, since its host is legitimately private.
-      // gateway-dialed hosts stay exempt, but only while the reference still resolves, as the
-      // linked rows have already lost the gateway a stale id in the blob still claims
+      // only patches that can change where we dial are checked, so losing a gateway to a
+      // deletion does not strand the template: its host is legitimately private, and an edit
+      // that cannot repoint the dial target has no new address to vet
       const patchAffectsDialing = patchTouchesGateway || "kubernetesHost" in patch || "tokenReviewMode" in patch;
       if (
         patchAffectsDialing &&
         merged.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-        merged.kubernetesHost
+        merged.kubernetesHost &&
+        !merged.gatewayId &&
+        !merged.gatewayPoolId
       ) {
-        const dialsThroughGateway = resolvedGateway
-          ? Boolean(
-              resolvedGateway.resolvedGatewayId ||
-                resolvedGateway.resolvedGatewayV2Id ||
-                resolvedGateway.resolvedGatewayPoolId
-            )
-          : await $kubernetesTemplateGatewayIsLive({
-              gatewayId: merged.gatewayId,
-              gatewayPoolId: merged.gatewayPoolId,
-              orgId: template.orgId
-            });
-        if (!dialsThroughGateway) {
-          await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
-        }
+        await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
       }
       kubernetesPropagationData = {
         kubernetesHost: merged.kubernetesHost ?? null,
@@ -464,11 +476,14 @@ export const identityAuthTemplateServiceFactory = ({
           : null,
         isTokenReviewerJwtTemplateSourced: Boolean(merged.tokenReviewerJwt)
       };
-      if (resolvedGateway) {
-        kubernetesPropagationData.gatewayId = resolvedGateway.resolvedGatewayId;
-        kubernetesPropagationData.gatewayV2Id = resolvedGateway.resolvedGatewayV2Id;
-        kubernetesPropagationData.gatewayPoolId = resolvedGateway.resolvedGatewayPoolId;
-      }
+      const effectiveGatewayColumns = gatewayColumnUpdate ?? {
+        gatewayId: template.gatewayId ?? null,
+        gatewayV2Id: template.gatewayV2Id ?? null,
+        gatewayPoolId: template.gatewayPoolId ?? null
+      };
+      kubernetesPropagationData.gatewayId = effectiveGatewayColumns.gatewayId;
+      kubernetesPropagationData.gatewayV2Id = effectiveGatewayColumns.gatewayV2Id;
+      kubernetesPropagationData.gatewayPoolId = effectiveGatewayColumns.gatewayPoolId;
     }
 
     const { updatedTemplate, propagatedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
@@ -479,8 +494,10 @@ export const identityAuthTemplateServiceFactory = ({
           ...(fieldPatch && {
             // persist the merged result, not the raw patch, so a partial update cannot
             // destroy the fields it does not carry
-            templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(mergedTemplateFields)) }).cipherTextBlob
-          })
+            templateFields: encryptor({ plainText: Buffer.from(JSON.stringify($toBlobFields(mergedTemplateFields))) })
+              .cipherTextBlob
+          }),
+          ...gatewayColumnUpdate
         },
         tx
       );
@@ -656,7 +673,7 @@ export const identityAuthTemplateServiceFactory = ({
     const decryptedTemplateFields = JSON.parse(
       decryptor({ cipherTextBlob: template.templateFields }).toString()
     ) as Record<string, unknown>;
-    return $sanitizeTemplate(template, decryptedTemplateFields);
+    return $sanitizeTemplate(template, $withGatewayFields(template, decryptedTemplateFields));
   };
 
   const listTemplates = async ({
@@ -695,7 +712,7 @@ export const identityAuthTemplateServiceFactory = ({
           string,
           unknown
         >;
-        return $sanitizeTemplate(doc, parsedTemplateFields);
+        return $sanitizeTemplate(doc, $withGatewayFields(doc, parsedTemplateFields));
       })
     };
   };
@@ -732,7 +749,7 @@ export const identityAuthTemplateServiceFactory = ({
         string,
         unknown
       >;
-      return $sanitizeTemplate(doc, parsedTemplateFields);
+      return $sanitizeTemplate(doc, $withGatewayFields(doc, parsedTemplateFields));
     });
   };
 

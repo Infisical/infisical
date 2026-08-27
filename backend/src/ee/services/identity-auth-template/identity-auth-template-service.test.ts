@@ -13,58 +13,69 @@ vi.mock("@app/lib/config/env", () => ({
 const ORG_ID = "org-id";
 const TEMPLATE_ID = "template-id";
 const GATEWAY_ID = "gateway-id";
+const GATEWAY_V2_ID = "gateway-v2-id";
 const PRIVATE_HOST = "https://10.0.0.1";
+// a literal IP keeps the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup
 const PUBLIC_HOST = "https://8.8.8.8";
 
-const baseTemplateFields = {
+const baseBlobFields = {
   kubernetesHost: PUBLIC_HOST,
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
   tokenReviewerJwt: "reviewer-jwt",
-  allowedAudience: "",
-  gatewayId: GATEWAY_ID
+  allowedAudience: ""
 };
 
+const NO_GATEWAY = { gatewayId: null, gatewayV2Id: null, gatewayPoolId: null };
+
 const createService = ({
-  templateFields = baseTemplateFields,
-  liveGatewayIds = [GATEWAY_ID]
+  authMethod = IdentityAuthTemplateMethod.KUBERNETES,
+  blobFields = baseBlobFields,
+  gatewayColumns = { gatewayId: GATEWAY_ID, gatewayV2Id: null, gatewayPoolId: null },
+  liveGatewayIds = [GATEWAY_ID],
+  liveGatewayV2Ids = [GATEWAY_V2_ID]
 }: {
-  templateFields?: Record<string, unknown>;
+  authMethod?: IdentityAuthTemplateMethod;
+  blobFields?: Record<string, unknown>;
+  gatewayColumns?: { gatewayId: string | null; gatewayV2Id: string | null; gatewayPoolId: string | null };
   liveGatewayIds?: string[];
+  liveGatewayV2Ids?: string[];
 } = {}) => {
   const identityKubernetesAuthDAL = {
     updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }])
   };
 
+  const templateRow = {
+    id: TEMPLATE_ID,
+    orgId: ORG_ID,
+    name: "auth-template",
+    authMethod,
+    // the fake cipher pair below round-trips plaintext, so the "encrypted" blob is the JSON
+    templateFields: Buffer.from(JSON.stringify(blobFields)),
+    ...gatewayColumns
+  };
+
   const identityAuthTemplateDAL = {
-    findByIdAndOrgId: vi.fn().mockResolvedValue({
-      id: TEMPLATE_ID,
-      orgId: ORG_ID,
-      name: "k8s-template",
-      authMethod: IdentityAuthTemplateMethod.KUBERNETES,
-      // the fake cipher pair below round-trips plaintext, so the "encrypted" blob is the JSON
-      templateFields: Buffer.from(JSON.stringify(templateFields))
-    }),
+    findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow),
     findTemplateUsages: vi.fn().mockResolvedValue([{ identityId: "identity-id", identityName: "identity" }]),
     updateById: vi.fn().mockImplementation((id: string, data: Record<string, unknown>) => ({
+      ...templateRow,
       id,
-      orgId: ORG_ID,
-      name: "k8s-template",
-      authMethod: IdentityAuthTemplateMethod.KUBERNETES,
       ...data
     })),
     transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({}))
   };
 
-  // a live gateway resolves as v1; anything else is treated as deleted by both DALs
   const gatewayDAL = {
     find: vi.fn().mockImplementation(({ id }: { id: string }) => (liveGatewayIds.includes(id) ? [{ id }] : []))
   };
-  const gatewayV2DAL = { find: vi.fn().mockResolvedValue([]) };
+  const gatewayV2DAL = {
+    find: vi.fn().mockImplementation(({ id }: { id: string }) => (liveGatewayV2Ids.includes(id) ? [{ id }] : []))
+  };
   const gatewayPoolDAL = { findById: vi.fn().mockResolvedValue(null) };
 
   const service = identityAuthTemplateServiceFactory({
     identityAuthTemplateDAL,
-    identityLdapAuthDAL: { updateByTemplateId: vi.fn() },
+    identityLdapAuthDAL: { updateByTemplateId: vi.fn().mockResolvedValue([]) },
     identityKubernetesAuthDAL,
     gatewayDAL,
     gatewayV2DAL,
@@ -89,10 +100,10 @@ const createService = ({
   return { service, identityKubernetesAuthDAL, identityAuthTemplateDAL };
 };
 
-const updateHost = (service: ReturnType<typeof createService>["service"], kubernetesHost: string) =>
+const patchTemplate = (service: ReturnType<typeof createService>["service"], templateFields: Record<string, unknown>) =>
   service.updateTemplate({
     templateId: TEMPLATE_ID,
-    templateFields: { kubernetesHost },
+    templateFields,
     actorId: "actor-id",
     actor: "user",
     actorAuthMethod: undefined,
@@ -102,19 +113,21 @@ const updateHost = (service: ReturnType<typeof createService>["service"], kubern
 describe("identityAuthTemplateServiceFactory kubernetes host validation", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("blocks a private host when the template's gateway no longer exists", async () => {
-    // the linked identities lost their gateway columns to ON DELETE SET NULL when the gateway
-    // was deleted, so the stale id in the encrypted blob must not exempt the host check
-    const { service, identityKubernetesAuthDAL } = createService({ liveGatewayIds: [] });
+  it("blocks a private host when the template has no gateway", async () => {
+    // a deleted gateway leaves these columns NULL via ON DELETE SET NULL, so the reference
+    // cannot outlive the gateway the way a stale id in the encrypted blob could
+    const { service, identityKubernetesAuthDAL } = createService({ gatewayColumns: NO_GATEWAY });
 
-    await expect(updateHost(service, PRIVATE_HOST)).rejects.toThrow("Local IPs not allowed as URL");
+    await expect(patchTemplate(service, { kubernetesHost: PRIVATE_HOST })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
     expect(identityKubernetesAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
   });
 
-  it("allows a private host while the template's gateway is still live", async () => {
+  it("allows a private host while the template's gateway column is set", async () => {
     const { service, identityKubernetesAuthDAL } = createService();
 
-    await updateHost(service, PRIVATE_HOST);
+    await patchTemplate(service, { kubernetesHost: PRIVATE_HOST });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
       { templateId: TEMPLATE_ID },
@@ -123,58 +136,99 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     );
   });
 
-  it("blocks a private host when the template has no gateway at all", async () => {
-    const { service } = createService({
-      templateFields: { ...baseTemplateFields, gatewayId: undefined }
-    });
+  it("blocks a private host when the patch clears the gateway", async () => {
+    const { service } = createService();
 
-    await expect(updateHost(service, PRIVATE_HOST)).rejects.toThrow("Local IPs not allowed as URL");
+    await expect(patchTemplate(service, { kubernetesHost: PRIVATE_HOST, gatewayId: null })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
   });
 
-  it("still permits unrelated edits when the gateway was deleted after authoring", async () => {
-    // rotating the reviewer JWT carries no host, so a dangling gateway must not block it
-    const { service, identityKubernetesAuthDAL } = createService({ liveGatewayIds: [] });
+  it("rejects a gateway the org does not have", async () => {
+    const { service } = createService();
 
-    await service.updateTemplate({
-      templateId: TEMPLATE_ID,
-      templateFields: { tokenReviewerJwt: "rotated-jwt" },
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
-    } as unknown as Parameters<typeof service.updateTemplate>[0]);
-
-    expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalled();
+    await expect(patchTemplate(service, { gatewayId: "11111111-1111-1111-1111-111111111111" })).rejects.toThrow(
+      "was not found in this organization"
+    );
   });
 
   it("still permits unrelated edits when a private host sits behind a deleted gateway", async () => {
-    // the host is legitimately private because it was only ever reached through the gateway;
-    // re-checking it on an edit that cannot change where we dial would strand the template
+    // rotating the reviewer JWT cannot repoint the dial target, so it must not be blocked by a
+    // host that is only private because it was always reached through the now-deleted gateway
     const { service, identityKubernetesAuthDAL } = createService({
-      templateFields: { ...baseTemplateFields, kubernetesHost: PRIVATE_HOST },
-      liveGatewayIds: []
+      blobFields: { ...baseBlobFields, kubernetesHost: PRIVATE_HOST },
+      gatewayColumns: NO_GATEWAY
     });
 
-    await service.updateTemplate({
-      templateId: TEMPLATE_ID,
-      templateFields: { tokenReviewerJwt: "rotated-jwt" },
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
-    } as unknown as Parameters<typeof service.updateTemplate>[0]);
+    await patchTemplate(service, { tokenReviewerJwt: "rotated-jwt" });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalled();
   });
+});
 
-  it("propagates a public host regardless of gateway state", async () => {
-    const { service, identityKubernetesAuthDAL } = createService({ liveGatewayIds: [] });
+describe("identityAuthTemplateServiceFactory gateway column storage", () => {
+  beforeEach(() => vi.clearAllMocks());
 
-    await updateHost(service, PUBLIC_HOST);
+  it("stores the gateway in columns and keeps it out of the encrypted blob", async () => {
+    const { service, identityAuthTemplateDAL } = createService({ gatewayColumns: NO_GATEWAY });
+
+    await patchTemplate(service, { gatewayId: GATEWAY_V2_ID });
+
+    const [, update] = identityAuthTemplateDAL.updateById.mock.calls[0] as [string, Record<string, unknown>];
+    // a v2 gateway resolves onto its own column, mirroring identity_kubernetes_auths
+    expect(update.gatewayV2Id).toBe(GATEWAY_V2_ID);
+    expect(update.gatewayId).toBeNull();
+    expect(JSON.parse((update.templateFields as Buffer).toString())).not.toHaveProperty("gatewayId");
+  });
+
+  it("reports the logical gatewayId from whichever column holds it", async () => {
+    const { service } = createService({
+      gatewayColumns: { gatewayId: null, gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null }
+    });
+
+    const updated = await patchTemplate(service, { allowedAudience: "aud" });
+
+    expect(updated.templateFields).toMatchObject({ gatewayId: GATEWAY_V2_ID, gatewayPoolId: null });
+  });
+
+  it("propagates the template's gateway columns onto linked identities", async () => {
+    const { service, identityKubernetesAuthDAL } = createService({ gatewayColumns: NO_GATEWAY });
+
+    await patchTemplate(service, { gatewayId: GATEWAY_ID });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
       { templateId: TEMPLATE_ID },
-      expect.objectContaining({ kubernetesHost: PUBLIC_HOST }),
+      expect.objectContaining({ gatewayId: GATEWAY_ID, gatewayV2Id: null, gatewayPoolId: null }),
+      expect.anything()
+    );
+  });
+
+  it("keeps gateway fields out of a method that does not declare them", async () => {
+    // LDAP has no gateway concept, so its fields view must not sprout the columns and rely on
+    // the route's response schema to strip them again
+    const { service } = createService({
+      authMethod: IdentityAuthTemplateMethod.LDAP,
+      blobFields: { url: "ldap://example.com", bindDN: "cn=admin", bindPass: "pw", searchBase: "dc=example" },
+      gatewayColumns: NO_GATEWAY
+    });
+
+    const updated = await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(updated.templateFields).not.toHaveProperty("gatewayId");
+    expect(updated.templateFields).not.toHaveProperty("gatewayPoolId");
+  });
+
+  it("leaves the gateway columns alone when the patch does not mention them", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL } = createService();
+
+    await patchTemplate(service, { allowedAudience: "aud" });
+
+    const [, update] = identityAuthTemplateDAL.updateById.mock.calls[0] as [string, Record<string, unknown>];
+    expect(update).not.toHaveProperty("gatewayV2Id");
+    // linked rows still get the row's existing gateway, so they cannot drift from the template
+    expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      expect.objectContaining({ gatewayId: GATEWAY_ID }),
       expect.anything()
     );
   });

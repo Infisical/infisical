@@ -902,8 +902,10 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = templateFields.caCert || undefined;
       tokenReviewerJwt = templateFields.tokenReviewerJwt || undefined;
       tokenReviewMode = templateFields.tokenReviewMode;
-      gatewayId = templateFields.gatewayId ?? null;
-      gatewayPoolId = templateFields.gatewayPoolId ?? null;
+      // the template's gateway lives in columns, not the encrypted fields, so it can carry a
+      // foreign key and clear itself in step with the columns copied onto this row
+      gatewayId = template.gatewayV2Id ?? template.gatewayId ?? null;
+      gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
     } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !kubernetesHost) {
@@ -1235,8 +1237,10 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = templateFields.caCert ?? "";
       tokenReviewerJwt = templateFields.tokenReviewerJwt || null;
       tokenReviewMode = templateFields.tokenReviewMode;
-      gatewayId = templateFields.gatewayId ?? null;
-      gatewayPoolId = templateFields.gatewayPoolId ?? null;
+      // the template's gateway lives in columns, not the encrypted fields, so it can carry a
+      // foreign key and clear itself in step with the columns copied onto this row
+      gatewayId = template.gatewayV2Id ?? template.gatewayId ?? null;
+      gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
     } else if (templateId === undefined && identityKubernetesAuth.templateId) {
@@ -1255,6 +1259,25 @@ export const identityKubernetesAuthServiceFactory = ({
             "This identity's Kubernetes auth connection settings are managed by an auth template. Update the template to change them, or unlink the template by setting templateId to null."
         });
       }
+    }
+
+    // a template-sourced reviewer JWT stays write-only to the caller, so it must only ever be
+    // sent to the host the template chose. unlinking deliberately leaves the credential in
+    // place to keep login working, which would otherwise let an actor with EditAuth alone
+    // repoint the host and have the unauthenticated login endpoint deliver the JWT to a server
+    // they control. keyed on the provenance flag rather than on the unlink itself, so a repoint
+    // in a later request is caught too
+    if (
+      !template &&
+      identityKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
+      tokenReviewerJwt === undefined &&
+      kubernetesHost !== undefined &&
+      kubernetesHost !== identityKubernetesAuth.kubernetesHost
+    ) {
+      throw new BadRequestError({
+        message:
+          "This identity still uses the token reviewer JWT copied from its auth template, so its Kubernetes host cannot be changed. Supply your own tokenReviewerJwt with this change, or set tokenReviewerJwt to null to remove the stored one."
+      });
     }
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
