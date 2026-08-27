@@ -677,6 +677,7 @@
                 "group": "Reference",
                 "pages": [
                   "documentation/platform/pki/reference/pqc-algorithms",
+                  "documentation/platform/pki/reference/infisical-agent",
                   "documentation/platform/pki/migration"
                 ]
               }
@@ -5035,6 +5036,10 @@
     {
       "source": "/documentation/platform/oauth-applications",
       "destination": "/documentation/platform/oauth-applications/overview"
+    },
+    {
+      "source": "/integrations/platforms/certificate-agent",
+      "destination": "/documentation/platform/pki/reference/infisical-agent"
     }
   ]
 }
