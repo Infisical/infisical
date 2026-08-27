@@ -1216,25 +1216,25 @@
             "pages": [
               "internals/overview",
               {
-                "group": "Internals",
+                "group": "Architecture and security",
                 "pages": [
-                  {
-                    "group": "Permissions",
-                    "pages": [
-                      "internals/permissions/overview",
-                      "internals/permissions/project-permissions",
-                      "internals/permissions/organization-permissions",
-                      "internals/permissions/migration"
-                    ]
-                  },
-                  {
-                    "group": "Architecture",
-                    "pages": [
-                      "internals/architecture/components",
-                      "internals/architecture/cloud"
-                    ]
-                  },
-                  "internals/security",
+                  "internals/architecture/components",
+                  "internals/architecture/cloud",
+                  "internals/security"
+                ]
+              },
+              {
+                "group": "Permissions",
+                "pages": [
+                  "internals/permissions/overview",
+                  "internals/permissions/project-permissions",
+                  "internals/permissions/organization-permissions",
+                  "internals/permissions/migration"
+                ]
+              },
+              {
+                "group": "Service tokens",
+                "pages": [
                   "internals/service-tokens"
                 ]
               }
@@ -1253,17 +1253,12 @@
                 ]
               },
               {
-                "group": "Contributing",
+                "group": "Platform",
                 "pages": [
-                  {
-                    "group": "Contributing to platform",
-                    "pages": [
-                      "contributing/platform/developing",
-                      "contributing/platform/pam-development",
-                      "contributing/platform/backend/how-to-create-a-feature",
-                      "contributing/platform/backend/folder-structure"
-                    ]
-                  }
+                  "contributing/platform/developing",
+                  "contributing/platform/pam-development",
+                  "contributing/platform/backend/how-to-create-a-feature",
+                  "contributing/platform/backend/folder-structure"
                 ]
               }
             ]

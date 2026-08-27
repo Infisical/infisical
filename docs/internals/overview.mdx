@@ -1,38 +1,25 @@
 ---
-title: "Overview"
-description: "Read how Infisical works under the hood."
+title: "Internals"
+description: "How Infisical is built, how it secures your data, and how permissions are evaluated."
 sidebarTitle: "Internals"
 icon: "diagram-project"
 ---
 
-This section covers the internals of Infisical including its technical underpinnings, architecture, and security properties.
-
-<Note>
-  Knowledge of this section is recommended but not required to use Infisical.
-  However, if you're operating Infisical, we recommend understanding the
-  internals.
-</Note>
-
-## Learn more
+This section covers how Infisical works underneath: the components it is built from, the security properties it guarantees, and how permissions are evaluated.
 
 <CardGroup cols={2}>
-  <Card
-    href="./architecture/components"
-    title="Components"
-    icon="boxes-stacked"
-  >
-    Learn about the fundamental parts of Infisical.
+  <Card title="Architecture and security" icon="boxes-stacked" href="/internals/architecture/components">
+    The parts Infisical is built from, how Infisical Cloud is deployed, and the encryption and isolation model.
   </Card>
-  <Card href="./security" title="Security" icon="shield" >
-    Read about most common security-related topics and questions.
+  <Card title="Permissions" icon="user-lock" href="/internals/permissions/overview">
+    How the permission system evaluates access, and the full list of what each action grants.
   </Card>
-  <Card
-    href="./service-tokens"
-    title="Service tokens"
-    icon="ticket"
-  >
-    Learn best practices for utilizing Infisical service tokens. Please note
-    that service tokens are now deprecated and will be removed entirely in the
-    future.
+  <Card title="Service tokens" icon="ticket" href="/internals/service-tokens">
+    How a service token is structured, and how to scope, store, and rotate one safely.
   </Card>
 </CardGroup>
+
+<Note>
+  You don't need to read this section to use Infisical. It is worth reading if you operate an
+  instance, or if you are answering security questions about how Infisical handles your data.
+</Note>
