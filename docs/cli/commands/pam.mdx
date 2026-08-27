@@ -92,7 +92,7 @@ SSH accounts connect you directly to a shell on the target. Every other account 
 
 ## Account types and behavior
 
-Based on the account's template, the CLI starts the appropriate local proxy or credential helper.
+Based on the account's template, the CLI connects you directly or starts the appropriate local proxy or credential helper. SSH accounts connect directly by default; every other type starts a proxy or credential helper.
 
 <AccordionGroup>
   <Accordion title="Databases (PostgreSQL, MySQL, SQL Server, MongoDB)">
