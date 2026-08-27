@@ -10,6 +10,7 @@ import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock"
 
 export const CronJobName = {
   HealthAlert: "health-alert",
+  KmsRootKeyCleanup: "kms-root-key-cleanup",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
   DailySecretVersionCleanup: "daily-secret-version-cleanup",

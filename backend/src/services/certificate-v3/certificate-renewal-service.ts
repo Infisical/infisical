@@ -541,7 +541,8 @@ export const certificateRenewalServiceFactory = ({
 
     if (!originalCert.profileId) {
       throw new ForbiddenRequestError({
-        message: "Only certificates issued from a profile can be renewed"
+        message:
+          "This certificate is not linked to a certificate profile, so it cannot be renewed. The profile it was issued from may have been deleted."
       });
     }
 

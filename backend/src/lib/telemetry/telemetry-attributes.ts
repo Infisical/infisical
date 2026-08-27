@@ -26,7 +26,15 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "scim.operation",
   "sso.provider",
   "sso.action",
+  "email_dispatch.purpose",
+  "email_dispatch.mailbox_provider",
+  "email_dispatch.address_form",
+  "email_dispatch.outcome",
+  "email_dispatch.dimension",
   "db.pool.state",
+  // Closed enums on infisical.legacy_root_key.usage; per-project attribution is in logs, not here.
+  "legacy_key.operation",
+  "legacy_key.surface",
   "cache.result",
   "cache.if_none_match",
   "cache.etag_miss_reason",
@@ -35,9 +43,6 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "destination",
   "type",
   "operation",
-  // License Server v2 dual-read comparison (bounded: feature key set + a small set of diff kinds)
-  "license.feature",
-  "license.dual_read.kind",
   // Build info gauge labels — single-value per deploy, no cardinality concern
   "service.version",
   "git.commit.sha",

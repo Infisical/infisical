@@ -2217,7 +2217,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Only certificates issued from a profile can be renewed");
+      ).rejects.toThrow("This certificate is not linked to a certificate profile, so it cannot be renewed");
     });
 
     it("refuses to renew a certificate into a name the caller may not edit", async () => {

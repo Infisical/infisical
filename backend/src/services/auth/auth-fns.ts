@@ -1,5 +1,4 @@
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
@@ -145,26 +144,14 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
   }
 };
 
-export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number | null, captchaToken?: string) => {
-  const appCfg = getConfig();
-  if (consecutiveFailedPasswordAttempts && consecutiveFailedPasswordAttempts >= 10 && Boolean(appCfg.CAPTCHA_SECRET)) {
-    if (!captchaToken) {
-      throw new BadRequestError({
-        name: "Captcha Required",
-        message: "Accomplish the required captcha by logging in via Web"
-      });
-    }
-
-    // validate captcha token
-    const response = await request.postForm<{ success: boolean }>("https://api.hcaptcha.com/siteverify", {
-      response: captchaToken,
-      secret: appCfg.CAPTCHA_SECRET
-    });
-
-    if (!response.data.success) {
-      throw new BadRequestError({
-        name: "Invalid Captcha"
-      });
-    }
-  }
-};
+/*
+ * The org that invited a user who has not accepted yet: the org the signup token was issued for,
+ * and only when it is still one of the user's own pending invitations, since the token outlives the
+ * invitation it was minted for. Nothing else identifies the invite a signup came from, and a user
+ * can be invited by several orgs before accepting, so anything inferred from the memberships alone
+ * would group the signup under an org that did not recruit them. Attribute nothing instead.
+ */
+export const resolveInvitingOrgId = (pendingInviteMemberships: { scopeOrgId: string }[], invitedOrgId?: string) =>
+  invitedOrgId && pendingInviteMemberships.some((membership) => membership.scopeOrgId === invitedOrgId)
+    ? invitedOrgId
+    : undefined;

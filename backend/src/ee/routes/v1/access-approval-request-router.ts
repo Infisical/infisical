@@ -59,7 +59,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
         actor: req.permission.type,
@@ -124,7 +124,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { count } = await server.services.accessApprovalRequest.getCount({
         projectSlug: req.query.projectSlug,
@@ -201,7 +201,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests } = await server.services.accessApprovalRequest.listApprovalRequests({
         projectSlug: req.query.projectSlug,
@@ -297,7 +297,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.accessApprovalRequest.revokeAccessRequest({
         requestId: req.params.requestId,

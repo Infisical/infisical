@@ -58,7 +58,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getApprovalConfiguration({
         folderId: req.params.folderId,
@@ -90,7 +90,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.setApprovalConfiguration({
         folderId: req.params.folderId,

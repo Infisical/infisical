@@ -531,7 +531,9 @@ export const useListPamDiscoverySources = (params?: { search?: string }) => {
       );
       return data.sources;
     },
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    refetchInterval: (query) =>
+      query.state.data?.some((source) => source.lastRunStatus === "running") ? 5000 : false
   });
 };
 

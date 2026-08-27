@@ -21,6 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
@@ -52,6 +53,7 @@ export const INFISICAL_SECRET_VALUE_HIDDEN_MASK = "<hidden-by-infisical>";
 
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
+  recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "blind_index" });
   const secretBlindIndex = await buildSecretBlindIndexFromName({
     secretName,
     keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,

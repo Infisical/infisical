@@ -72,7 +72,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSources: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -118,7 +118,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -172,7 +172,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { sourceName } = req.params;
       const { projectId } = req.query;
@@ -359,7 +359,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -403,7 +403,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId, resourceId } = req.params;
 
@@ -447,7 +447,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ resources: SecretScanningResourcesSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -492,7 +492,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ scans: SecretScanningScansSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -542,7 +542,7 @@ export const registerSecretScanningEndpoints = <
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -592,7 +592,7 @@ export const registerSecretScanningEndpoints = <
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 

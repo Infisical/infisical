@@ -405,7 +405,11 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     AccountsPage: setRoute(
       "/organizations/$orgId/pam/accounts",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/"
+    ),
+    FolderPage: setRoute(
+      "/organizations/$orgId/pam/accounts/$folderId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId"
     ),
     TemplatesPage: setRoute(
       "/organizations/$orgId/pam/templates",

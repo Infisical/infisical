@@ -1,0 +1,87 @@
+name: Check docs style
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Files to lint
+        type: choice
+        options:
+          - changed
+          - all
+        default: changed
+
+jobs:
+  changes:
+    name: Detect docs changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      docs: ${{ steps.detect.outputs.docs }}
+    steps:
+      - name: Look for docs in the pull request diff
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "docs=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename')"
+
+          if printf '%s\n' "$files" | grep -Eq '^docs/|^\.github/workflows/check-docs-style\.yml$'; then
+            echo "docs=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs=false" >> "$GITHUB_OUTPUT"
+            echo "No files under docs/ in this pull request. Skipping Vale."
+          fi
+
+  vale:
+    name: Vale
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          fetch-depth: 0
+
+      - name: Install Vale
+        run: |
+          set -euo pipefail
+
+          VERSION="$(cat docs/.vale-version)"
+          TARBALL="vale_${VERSION}_Linux_64-bit.tar.gz"
+          BASE="https://github.com/errata-ai/vale/releases/download/v${VERSION}"
+
+          curl -fsSL -o "$TARBALL" "$BASE/$TARBALL"
+          curl -fsSL -o vale-checksums.txt "$BASE/vale_${VERSION}_checksums.txt"
+          grep " $TARBALL\$" vale-checksums.txt | sha256sum -c -
+
+          tar -xzf "$TARBALL" vale
+          sudo install -m 0755 vale /usr/local/bin/vale
+          rm -f "$TARBALL" vale-checksums.txt vale
+
+          vale --version
+
+      - name: Lint documentation
+        env:
+          SCOPE: ${{ inputs.scope || 'changed' }}
+          BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
+        run: |
+          if [ "$SCOPE" = "all" ]; then
+            ./docs/scripts/lint-docs.sh --all
+          else
+            ./docs/scripts/lint-docs.sh --changed --base "origin/${BASE_REF}"
+          fi

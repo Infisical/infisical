@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useBlocker } from "@tanstack/react-router";
+import { type ShouldBlockFn, useBlocker } from "@tanstack/react-router";
 
 import {
   BatchContext,
@@ -12,27 +12,37 @@ type TNavigationBlockerReturn = {
 
 export const useNavigationBlocker = ({
   shouldBlock = false,
+  shouldBlockNavigation,
   message = "Are you sure you want to leave? You may have unsaved changes.",
   context
 }: {
   shouldBlock: boolean;
+  shouldBlockNavigation?: ShouldBlockFn;
   message: string;
   context: BatchContext;
 }): TNavigationBlockerReturn => {
   const { clearAllPendingChanges } = useBatchModeActions();
-  const blockerFn = useCallback(() => {
-    if (!shouldBlock) return false;
+  const blockerFn: ShouldBlockFn = useCallback(
+    async (args) => {
+      if (!shouldBlock) return false;
+      if (shouldBlockNavigation && !(await shouldBlockNavigation(args))) return false;
 
-    // eslint-disable-next-line no-alert
-    const confirmed = window.confirm(message);
-    if (confirmed) {
-      clearAllPendingChanges(context);
-    }
+      // eslint-disable-next-line no-alert
+      const confirmed = window.confirm(message);
+      if (confirmed) {
+        clearAllPendingChanges(context);
+      }
 
-    return !confirmed;
-  }, [shouldBlock, message, context]);
+      return !confirmed;
+    },
+    [shouldBlock, shouldBlockNavigation, message, context, clearAllPendingChanges]
+  );
 
-  useBlocker(blockerFn, shouldBlock);
+  useBlocker({
+    shouldBlockFn: blockerFn,
+    disabled: !shouldBlock,
+    enableBeforeUnload: shouldBlock
+  });
 
   return {
     isBlocked: shouldBlock

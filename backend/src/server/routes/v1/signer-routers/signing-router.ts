@@ -5,6 +5,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { MAX_SIGNING_COMMAND_LENGTH } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -69,10 +70,10 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       let actorName: string | undefined;
-      if (req.auth.authMode === AuthMode.JWT) {
+      if (isUserSessionAuth(req.auth)) {
         actorName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim() || undefined;
       } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
         actorName = req.auth.identityName ?? undefined;
@@ -134,7 +135,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiSigner.getPublicKey({
         signerId: req.params.signerId,
