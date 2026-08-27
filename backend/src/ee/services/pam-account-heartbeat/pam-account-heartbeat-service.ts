@@ -326,6 +326,12 @@ export const pamAccountHeartbeatServiceFactory = ({
   const checkScheduledAccount = async (accountId: string): Promise<TPamHeartbeatResult | null> => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account) return null;
+
+    // Settings can change between the scan that queued this and the worker picking it up, and a disabled
+    // feature must not still be signing in to a customer's target.
+    const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
+    if (!isHeartbeatScheduled(heartbeat)) return null;
+
     return runCheck(account);
   };
 

@@ -16,7 +16,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
+import { PamAccountType, PamHeartbeatStatus, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
@@ -25,6 +25,7 @@ import {
 } from "../pam/pam-permission";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
+import { computeNextHeartbeatAt, isHeartbeatScheduled } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
 import { resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
@@ -162,16 +163,29 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return computeNextRotationAt({ anchor: now, intervalSeconds: rotation.intervalSeconds, now });
   };
 
-  const markRotated = (account: TPamAccountDetail, encryptedBlob: Buffer, now: Date) =>
-    pamAccountDAL.updateById(account.id, {
+  const markRotated = async (account: TPamAccountDetail, encryptedBlob: Buffer, now: Date) => {
+    // Rotation only commits after its own verify step authenticated with the new credential, so this doubles as
+    // a health check: the account is known good right now, and any earlier rejection described a password that
+    // no longer exists. Without this an account stopped for a bad credential would stay stopped and red.
+    const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
+
+    await pamAccountDAL.updateById(account.id, {
       encryptedCredentials: encryptedBlob,
       encryptedPendingCredentials: null,
       credentialConfigured: true,
       lastRotatedAt: now,
       rotationStatus: ROTATION_STATUS.Success,
       encryptedLastRotationMessage: null,
-      nextRotationAt: nextRotationAfter(account.templateSettings, now)
+      nextRotationAt: nextRotationAfter(account.templateSettings, now),
+      heartbeatStatus: PamHeartbeatStatus.Healthy,
+      lastHeartbeatAt: now,
+      lastHeartbeatHealthyAt: now,
+      encryptedLastHeartbeatMessage: null,
+      nextHeartbeatAt: isHeartbeatScheduled(heartbeat)
+        ? computeNextHeartbeatAt({ anchor: now, intervalSeconds: heartbeat.intervalSeconds as number, now })
+        : null
     });
+  };
 
   const resolveConnectionDetails = (
     accountType: PamAccountType,

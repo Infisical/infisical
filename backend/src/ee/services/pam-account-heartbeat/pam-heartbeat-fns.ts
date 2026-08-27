@@ -49,6 +49,13 @@ const TRANSPORT_ERROR_PATTERNS = [
   "enotfound",
   "eai_again",
   "socket hang up",
+  "x509",
+  "tls",
+  "certificate",
+  "service unavailable",
+  "internalfailure",
+  "internal server error",
+  "bad gateway",
   "throttl",
   "slowdown",
   "rate exceeded",
@@ -67,10 +74,33 @@ export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartb
   return PamHeartbeatStatus.InvalidCredentials;
 };
 
-// Cloud accounts (AWS IAM, GCP, Azure) are brokered by us rather than logged into, so there is no lockout to trigger
-// and a rejection here means access was revoked. Transport failures still have to stay out of that bucket.
+// Cloud accounts (AWS IAM, GCP, Azure) are brokered by us rather than logged into, so there is no lockout to
+// protect against. That inverts the bias used elsewhere: only a recognised rejection stops the schedule, so a
+// provider outage, a throttle, or a TLS failure keeps checking instead of reporting access as revoked.
+const CLOUD_REJECTION_PATTERNS = [
+  "accessdenied",
+  "access denied",
+  "unauthorized",
+  "unauthorised",
+  "invalid_client",
+  "invalid_grant",
+  "invalidclienttokenid",
+  "signaturedoesnotmatch",
+  "expiredtoken",
+  "invalid credentials",
+  "permission denied",
+  "forbidden",
+  "not authorized to perform",
+  "invalid jwt",
+  "is disabled",
+  "has been deleted"
+];
+
 export const classifyCloudProbeError = (err: unknown): PamHeartbeatStatus => {
   const message = (err instanceof Error ? err.message : String(err)).toLowerCase();
   if (TRANSPORT_ERROR_PATTERNS.some((pattern) => message.includes(pattern))) return PamHeartbeatStatus.CannotCheck;
-  return PamHeartbeatStatus.InvalidCredentials;
+  if (CLOUD_REJECTION_PATTERNS.some((pattern) => message.includes(pattern))) {
+    return PamHeartbeatStatus.InvalidCredentials;
+  }
+  return PamHeartbeatStatus.CannotCheck;
 };
