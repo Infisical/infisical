@@ -103,7 +103,32 @@ export const FolderAccessSheet = ({
   );
 
   const isLoading = isUsersPending || isIdentitiesPending;
-  const totalCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
+  // the endpoints page the project roster and only then split each page into the actors that do and
+  // do not have access here, so this count pages members and not the rows below it
+  const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
+  const pageStart = (page - 1) * PER_PAGE + 1;
+  const pageEnd = Math.min(page * PER_PAGE, rosterCount);
+  const isSearching = Boolean(debouncedSearch.trim());
+
+  const emptyState = (() => {
+    if (rosterCount === 0) {
+      return isSearching
+        ? {
+            title: "No matches found",
+            description: "No users or machine identities match your search."
+          }
+        : {
+            title: "No project members",
+            description: "This project has no users or machine identities to grant access to."
+          };
+    }
+    return {
+      title: "No access on this page",
+      description: isSearching
+        ? "None of the members matching your search on this page have access to this folder. Check another page, or refine your search."
+        : `None of project members ${pageStart}–${pageEnd} have access to this folder. Check another page, or search for someone by name.`
+    };
+  })();
 
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
   // server's own message, so only the success side is announced here
@@ -217,18 +242,14 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {!isLoading && totalCount === 0 && (
-              <Empty>
+            {!isLoading && !actors.length && (
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <UsersIcon />
                   </EmptyMedia>
-                  <EmptyTitle>No matches found</EmptyTitle>
-                  <EmptyDescription>
-                    {debouncedSearch.trim()
-                      ? "No users or machine identities match your search."
-                      : "No users or machine identities have access to this folder."}
-                  </EmptyDescription>
+                  <EmptyTitle>{emptyState.title}</EmptyTitle>
+                  <EmptyDescription>{emptyState.description}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}
@@ -255,14 +276,15 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {!isLoading && totalCount > PER_PAGE && (
+            {!isLoading && rosterCount > PER_PAGE && (
               <Pagination
-                count={totalCount}
+                count={rosterCount}
                 page={page}
                 perPage={PER_PAGE}
                 onChangePage={setPage}
                 onChangePerPage={() => {}}
                 perPageList={[PER_PAGE]}
+                startAdornment={<span className="text-xs text-muted">Project members</span>}
               />
             )}
           </div>
