@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -16,20 +17,7 @@ import {
 } from "@app/components/v3";
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-export type SubjectAttribute = {
-  type: CertSubjectAttributeType;
-  value: string;
-};
-
-const SUBJECT_ATTRIBUTE_LABELS: Record<CertSubjectAttributeType, string> = {
-  [CertSubjectAttributeType.COMMON_NAME]: "Common Name",
-  [CertSubjectAttributeType.ORGANIZATION]: "Organization",
-  [CertSubjectAttributeType.ORGANIZATIONAL_UNIT]: "Organizational Unit",
-  [CertSubjectAttributeType.COUNTRY]: "Country",
-  [CertSubjectAttributeType.STATE]: "State/Province",
-  [CertSubjectAttributeType.LOCALITY]: "Locality",
-  [CertSubjectAttributeType.DOMAIN_COMPONENT]: "Domain Component"
-};
+import { SUBJECT_ATTRIBUTE_LABELS, SubjectAttribute } from "./certificateUtils";
 
 const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string => {
   switch (type) {
@@ -58,6 +46,8 @@ type SubjectAttributesFieldProps = {
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
   rowErrors?: (string | undefined)[];
+  rowHints?: (string | undefined)[];
+  notices?: string[];
   shouldUnregister?: boolean;
   namePrefix?: string;
 };
@@ -67,6 +57,8 @@ export const SubjectAttributesField = ({
   allowedAttributeTypes,
   error,
   rowErrors,
+  rowHints,
+  notices,
   shouldUnregister,
   namePrefix = "subjectAttributes"
 }: SubjectAttributesFieldProps) => {
@@ -89,7 +81,7 @@ export const SubjectAttributesField = ({
         return (
           <Field className="mb-4">
             <FieldLabel>Subject Attributes</FieldLabel>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {currentValues.map((attr, index) => {
                 const selectableTypes = allowedAttributeTypes.filter(
                   (type) => type === attr.type || isMultiValued(type) || !usedTypes.includes(type)
@@ -132,7 +124,10 @@ export const SubjectAttributesField = ({
                         isError={Boolean(rowErrors?.[index])}
                         className="w-full"
                       />
-                      <FieldError>{rowErrors?.[index]}</FieldError>
+                      <FieldError className="mt-1.5">{rowErrors?.[index]}</FieldError>
+                      {!rowErrors?.[index] && rowHints?.[index] && (
+                        <FieldDescription className="mt-1.5">{rowHints[index]}</FieldDescription>
+                      )}
                     </div>
                     <IconButton
                       type="button"
@@ -159,6 +154,7 @@ export const SubjectAttributesField = ({
               )}
             </div>
             <FieldError>{error}</FieldError>
+            {notices?.map((notice) => <FieldError key={notice}>{notice}</FieldError>)}
           </Field>
         );
       }}

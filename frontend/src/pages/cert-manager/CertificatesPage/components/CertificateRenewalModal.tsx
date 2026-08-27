@@ -42,6 +42,7 @@ import {
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
+import { mergeRowErrors } from "./certificatePolicyGuidance";
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
@@ -50,6 +51,7 @@ import {
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
+import { PolicyRequirementsAlert } from "./PolicyRequirementsAlert";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import {
@@ -57,6 +59,7 @@ import {
   deriveTemplateConstraints,
   useCertificatePolicyOptions
 } from "./useCertificatePolicy";
+import { useSubjectPolicyGuidance } from "./useSubjectPolicyGuidance";
 
 const formSchema = z
   .object({
@@ -370,11 +373,28 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     return keys;
   }, [keySource, constraints.shouldShowSubjectSection, constraints.shouldShowSanSection]);
 
+  const policyGuidance = useSubjectPolicyGuidance({
+    policy: policyData,
+    watch,
+    setValue,
+    isSubjectSectionShown: constraints.shouldShowSubjectSection,
+    isSanSectionShown: constraints.shouldShowSanSection,
+    isEnabled: keySource !== CertificateRenewalKeySource.Csr
+  });
+
+  const hasPolicyIssuesRef = useRef(false);
+  hasPolicyIssuesRef.current = policyGuidance.hasBlockingIssues;
+
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
     stepKeys,
     stepFields: STEP_FIELDS,
     invalidMessage: "Please fix the highlighted fields before renewing.",
-    validateStep: (fields) => trigger(fields as (keyof RenewalFormData)[])
+    validateStep: async (fields) => {
+      const isValid = await trigger(fields as (keyof RenewalFormData)[]);
+      if (!isValid) return false;
+      // The subject step is where policy violations can be fixed, so don't let them reach renewal.
+      return !fields.includes("subjectAttributes") || !hasPolicyIssuesRef.current;
+    }
   });
 
   const steps = useMemo(
@@ -409,6 +429,16 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const onFormSubmit = async (formData: RenewalFormData) => {
     if (!certificateId) return;
+
+    if (keySource !== CertificateRenewalKeySource.Csr && hasPolicyIssuesRef.current) {
+      const subjectStepIndex = stepKeys.indexOf("subject");
+      if (subjectStepIndex >= 0) setStep(subjectStepIndex);
+      createNotification({
+        text: "Resolve the policy violations on the Subject step before renewing.",
+        type: "error"
+      });
+      return;
+    }
 
     const result = await renewCertificate({
       certificateId,
@@ -572,6 +602,10 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
       {currentStepKey === "subject" && (
         <div className="space-y-4">
+          <PolicyRequirementsAlert
+            requirements={policyGuidance.requirements}
+            onAddMissing={policyGuidance.addMissingFields}
+          />
           {constraints.shouldShowSubjectSection && (
             <SubjectAttributesField
               control={control}
@@ -580,9 +614,14 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
-              rowErrors={rowErrorsOf(
-                (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+              rowErrors={mergeRowErrors(
+                rowErrorsOf(
+                  (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+                ),
+                policyGuidance.subjectRowErrors
               )}
+              rowHints={policyGuidance.subjectRowHints}
+              notices={policyGuidance.subjectNotices}
             />
           )}
           {constraints.shouldShowSanSection && (
@@ -593,9 +632,11 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
-              rowErrors={rowErrorsOf(
-                (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
+              rowErrors={mergeRowErrors(
+                rowErrorsOf((formState.errors as { subjectAltNames?: unknown }).subjectAltNames),
+                policyGuidance.sanRowErrors
               )}
+              rowHints={policyGuidance.sanRowHints}
             />
           )}
         </div>

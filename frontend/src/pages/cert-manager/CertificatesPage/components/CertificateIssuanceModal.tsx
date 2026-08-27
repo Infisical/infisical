@@ -45,6 +45,7 @@ import {
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
 import { buildManagedRequest } from "./buildManagedRequest";
+import { mergeRowErrors } from "./certificatePolicyGuidance";
 import {
   detectSanTypeFromValue,
   EXTERNAL_CA_TEMPLATE_HINT,
@@ -53,9 +54,11 @@ import {
 } from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
+import { PolicyRequirementsAlert } from "./PolicyRequirementsAlert";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import { useCertificatePolicy } from "./useCertificatePolicy";
+import { useSubjectPolicyGuidance } from "./useSubjectPolicyGuidance";
 
 enum RequestMethod {
   MANAGED = "managed",
@@ -382,6 +385,18 @@ export const CertificateIssuanceModal = ({
     watch
   );
 
+  const policyGuidance = useSubjectPolicyGuidance({
+    policy: policyData,
+    watch,
+    setValue,
+    isSubjectSectionShown: constraints.shouldShowSubjectSection,
+    isSanSectionShown: constraints.shouldShowSanSection,
+    isEnabled: requestMethod === RequestMethod.MANAGED
+  });
+
+  const hasPolicyIssuesRef = useRef(false);
+  hasPolicyIssuesRef.current = policyGuidance.hasBlockingIssues;
+
   const resetAllState = useCallback(() => {
     resetConstraints();
     reset();
@@ -405,7 +420,12 @@ export const CertificateIssuanceModal = ({
     stepKeys,
     stepFields: STEP_FIELDS,
     invalidMessage: "Please fix the highlighted fields before requesting.",
-    validateStep: (fields) => trigger(fields as (keyof FormData)[])
+    validateStep: async (fields) => {
+      const isValid = await trigger(fields as (keyof FormData)[]);
+      if (!isValid) return false;
+      // The subject step is where policy violations can be fixed, so don't let them reach issuance.
+      return !fields.includes("subjectAttributes") || !hasPolicyIssuesRef.current;
+    }
   });
 
   const steps = useMemo(() => stepKeys.map((key) => STEP_META[key]), [stepKeys]);
@@ -465,6 +485,16 @@ export const CertificateIssuanceModal = ({
       if (!formProfileId) {
         createNotification({
           text: "Please select a certificate profile.",
+          type: "error"
+        });
+        return;
+      }
+
+      if (formData.requestMethod === RequestMethod.MANAGED && hasPolicyIssuesRef.current) {
+        const subjectStepIndex = stepKeys.indexOf("subject");
+        if (subjectStepIndex >= 0) setStep(subjectStepIndex);
+        createNotification({
+          text: "Resolve the policy violations on the Subject step before requesting.",
           type: "error"
         });
         return;
@@ -550,7 +580,9 @@ export const CertificateIssuanceModal = ({
       isAdcsProfile,
       handlePopUpToggle,
       navigate,
-      resetAllState
+      resetAllState,
+      stepKeys,
+      setStep
     ]
   );
 
@@ -721,6 +753,13 @@ export const CertificateIssuanceModal = ({
             />
           )}
 
+          {currentStepKey === "subject" && (
+            <PolicyRequirementsAlert
+              requirements={policyGuidance.requirements}
+              onAddMissing={policyGuidance.addMissingFields}
+            />
+          )}
+
           {currentStepKey === "subject" && constraints.shouldShowSubjectSection && (
             <SubjectAttributesField
               control={control}
@@ -729,9 +768,14 @@ export const CertificateIssuanceModal = ({
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
-              rowErrors={rowErrorsOf(
-                (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+              rowErrors={mergeRowErrors(
+                rowErrorsOf(
+                  (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+                ),
+                policyGuidance.subjectRowErrors
               )}
+              rowHints={policyGuidance.subjectRowHints}
+              notices={policyGuidance.subjectNotices}
             />
           )}
 
@@ -743,9 +787,11 @@ export const CertificateIssuanceModal = ({
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
-              rowErrors={rowErrorsOf(
-                (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
+              rowErrors={mergeRowErrors(
+                rowErrorsOf((formState.errors as { subjectAltNames?: unknown }).subjectAltNames),
+                policyGuidance.sanRowErrors
               )}
+              rowHints={policyGuidance.sanRowHints}
             />
           )}
 

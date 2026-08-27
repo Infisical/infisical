@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -23,6 +24,7 @@ type SubjectAltNamesFieldProps = {
   allowedSanTypes: CertSubjectAlternativeNameType[];
   error?: string;
   rowErrors?: (string | undefined)[];
+  rowHints?: (string | undefined)[];
   shouldUnregister?: boolean;
   namePrefix?: string;
 };
@@ -32,6 +34,7 @@ export const SubjectAltNamesField = ({
   allowedSanTypes,
   error,
   rowErrors,
+  rowHints,
   shouldUnregister,
   namePrefix = "subjectAltNames"
 }: SubjectAltNamesFieldProps) => {
@@ -47,7 +50,7 @@ export const SubjectAltNamesField = ({
         return (
           <Field className="mb-4">
             <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {currentValues.map((san, index) => (
                 // eslint-disable-next-line react/no-array-index-key
                 <div key={`subject-alt-name-${index}`} className="flex items-start gap-2">
@@ -85,7 +88,12 @@ export const SubjectAltNamesField = ({
                       isError={Boolean(rowErrors?.[index])}
                       className="w-full"
                     />
-                    {rowErrors?.[index] ? <FieldError>{rowErrors[index]}</FieldError> : null}
+                    {rowErrors?.[index] ? (
+                      <FieldError className="mt-1.5">{rowErrors[index]}</FieldError>
+                    ) : null}
+                    {!rowErrors?.[index] && rowHints?.[index] && (
+                      <FieldDescription className="mt-1.5">{rowHints[index]}</FieldDescription>
+                    )}
                   </div>
                   <IconButton
                     type="button"

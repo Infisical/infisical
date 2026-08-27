@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -49,6 +49,7 @@ interface Props {
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
+  const navigate = useNavigate();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -113,7 +114,19 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
       </TableHeader>
       <TableBody>
         {policies.map((policy) => (
-          <TableRow key={policy.id}>
+          <TableRow
+            key={policy.id}
+            onClick={() =>
+              navigate({
+                to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
+                params: {
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  policyId: policy.id
+                }
+              })
+            }
+          >
             <TableCell>
               <div className="flex items-center gap-2">
                 <Link
@@ -124,6 +137,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     policyId: policy.id
                   }}
                   className="hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {policy.name}
                 </Link>
@@ -140,7 +154,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             <TableCell>
               <span className="text-sm">{formatDate(policy.createdAt)}</span>
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton variant="ghost" size="xs" aria-label="Policy actions">

@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -46,6 +46,7 @@ interface Props {
 export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeleteProfile }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const navigate = useNavigate();
   const isInternalCa = !profile.certificateAuthority?.isExternal;
   const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
@@ -68,7 +69,19 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
   });
 
   return (
-    <TableRow key={profile.id}>
+    <TableRow
+      key={profile.id}
+      onClick={() =>
+        navigate({
+          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId",
+          params: {
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            profileId: profile.id
+          }
+        })
+      }
+    >
       <TableCell>
         <div className="flex items-center gap-2">
           <Link
@@ -79,6 +92,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
               profileId: profile.id
             }}
             className="hover:underline"
+            onClick={(e) => e.stopPropagation()}
           >
             {profile.slug}
           </Link>
@@ -103,7 +117,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
                 profile.caId}
         </span>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <Link
           to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
           params={{
@@ -116,7 +130,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
           {policyData?.name || profile.certificatePolicyId}
         </Link>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton variant="ghost" size="xs" aria-label="Profile actions">
