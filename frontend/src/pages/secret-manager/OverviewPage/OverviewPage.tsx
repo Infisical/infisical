@@ -3601,25 +3601,18 @@ const OverviewPageContent = () => {
           )}
         </ModalContent>
       </Modal>
-      <Modal
+      <EditDynamicSecretForm
         isOpen={popUp.editDynamicSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}
-      >
-        <ModalContent title="Edit dynamic secret" className="max-w-3xl">
-          <EditDynamicSecretForm
-            onClose={() => handlePopUpClose("editDynamicSecret")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
+        onToggle={(state) => handlePopUpToggle("editDynamicSecret", state)}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        }
+        secretPath={secretPath}
+        environment={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.environment
+        }
+      />
       <Modal
         isOpen={popUp.createDynamicSecretLease.isOpen}
         onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}

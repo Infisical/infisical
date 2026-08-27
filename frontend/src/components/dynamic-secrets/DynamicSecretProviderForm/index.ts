@@ -2,6 +2,7 @@ export { DynamicSecretProviderFields } from "./DynamicSecretProviderFields";
 export { DynamicSecretProviderForm } from "./DynamicSecretProviderForm";
 export { DynamicSecretProviderFormItems } from "./DynamicSecretProviderFormItems";
 export { DynamicSecretProviderGroup } from "./DynamicSecretProviderGroup";
+export * from "./productionRegistry";
 export * from "./providerDefinitions";
 export * from "./registry";
 export * from "./scalarValues";
