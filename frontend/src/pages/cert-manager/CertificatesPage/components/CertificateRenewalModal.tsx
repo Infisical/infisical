@@ -24,6 +24,7 @@ import { IssuerType, useGetCertificateProfileById } from "@app/hooks/api/certifi
 import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -309,6 +310,18 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       ),
     [availableSignatureAlgorithms, watchedSignatureAlgorithm]
   );
+
+  const caKeyAlgorithm = profile?.certificateAuthority?.keyAlgorithm;
+
+  // The form seeds this from the existing certificate, which the same fixed CA signed, so a mismatch
+  // should be unreachable. Kept as a guard because the seeded value is submitted untouched by default,
+  // and the field asking again beats posting one the CA is guaranteed to reject.
+  useEffect(() => {
+    if (!isOpen || !watchedSignatureAlgorithm) return;
+    if (getCaSignatureIncompatibilityReason(watchedSignatureAlgorithm, caKeyAlgorithm)) {
+      setValue("signatureAlgorithm", "");
+    }
+  }, [isOpen, watchedSignatureAlgorithm, caKeyAlgorithm, setValue]);
 
   const selectableSubjectAttributeTypes = useMemo(
     () =>
@@ -613,6 +626,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
             control={control}
             availableSignatureAlgorithms={selectableSignatureAlgorithms}
             availableKeyAlgorithms={selectableKeyAlgorithms}
+            caKeyAlgorithm={caKeyAlgorithm}
             keyAlgorithmDisabledReason={
               keySource === CertificateRenewalKeySource.Reuse
                 ? "The key algorithm is fixed while the existing key pair is reused."
