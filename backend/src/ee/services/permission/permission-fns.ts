@@ -437,6 +437,8 @@ const hbsTrimSuffix = (text: string, suffix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
 
+  if (typeof suffix !== "string" || !suffix) return textStr;
+
   if (!picomatch.scan(suffix).isGlob) {
     return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
   }
