@@ -3828,6 +3828,8 @@ const OverviewPageContent = () => {
         }}
       />
       <ReplicateFolderFromBoard
+        destinationEnvironment={replicateDestinationEnvironment}
+        destinationPath={secretPath}
         isOpen={popUp.replicateFolder.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
         onParsedEnv={handleParsedEnvMultiFolder}

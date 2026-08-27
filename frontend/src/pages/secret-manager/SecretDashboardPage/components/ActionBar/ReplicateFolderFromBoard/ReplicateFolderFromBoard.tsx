@@ -54,6 +54,8 @@ const formSchema = z.object({
 type TFormSchema = z.infer<typeof formSchema>;
 
 type Props = {
+  destinationEnvironment: string;
+  destinationPath: string;
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   onParsedEnv: (
@@ -78,6 +80,8 @@ const getAllSecretsInFolder = (folder: SecretFolder): SecretV3Raw[] => [
 ];
 
 export const ReplicateFolderFromBoard = ({
+  destinationEnvironment,
+  destinationPath,
   environments = [],
   projectId,
   isOpen,
@@ -304,56 +308,96 @@ export const ReplicateFolderFromBoard = ({
           </SheetHeader>
 
           <div className="@container flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-            <div className="grid items-center gap-4 @md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-              <Controller
-                control={control}
-                name="environment"
-                render={({ field: { value, onChange } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="replicate-secrets-source-environment">
-                      Source environment
-                    </FieldLabel>
-                    <Combobox
-                      id="replicate-secrets-source-environment"
-                      modal
-                      value={value}
-                      onValueChange={onChange}
-                      options={environments}
-                      placeholder="Select environment..."
-                      searchPlaceholder="Search environments..."
-                      searchAriaLabel="Search source environments"
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.slug}
-                      isDisabled={isSubmitting}
-                    />
-                    <FieldDescription>The environment to copy from.</FieldDescription>
-                  </Field>
-                )}
-              />
+            <div className="grid items-center gap-3 @md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              <section
+                aria-labelledby="replicate-secrets-source-heading"
+                className="flex h-full flex-col gap-4 rounded-md border border-border bg-card p-4"
+              >
+                <div>
+                  <h3
+                    id="replicate-secrets-source-heading"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Source
+                  </h3>
+                  <p className="text-2xs text-muted">Choose where to replicate secrets from.</p>
+                </div>
+                <Controller
+                  control={control}
+                  name="environment"
+                  render={({ field: { value, onChange } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="replicate-secrets-source-environment">
+                        Environment
+                      </FieldLabel>
+                      <Combobox
+                        id="replicate-secrets-source-environment"
+                        modal
+                        value={value}
+                        onValueChange={onChange}
+                        options={environments}
+                        placeholder="Select environment..."
+                        searchPlaceholder="Search environments..."
+                        searchAriaLabel="Search source environments"
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.slug}
+                        isDisabled={isSubmitting}
+                      />
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="secretPath"
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel htmlFor="replicate-secrets-source-path">Root path</FieldLabel>
+                      <SecretPathInput
+                        {...field}
+                        id="replicate-secrets-source-path"
+                        projectId={projectId}
+                        placeholder="/"
+                        environment={selectedEnvironment?.slug}
+                        disabled={isSubmitting}
+                      />
+                      <FieldDescription>
+                        Only secrets at or below this path are shown.
+                      </FieldDescription>
+                    </Field>
+                  )}
+                />
+              </section>
               <ArrowRightIcon
                 className="size-4 rotate-90 justify-self-center text-muted @md:rotate-0"
                 aria-hidden
               />
-              <Controller
-                control={control}
-                name="secretPath"
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel htmlFor="replicate-secrets-source-path">
-                      Source root path
-                    </FieldLabel>
-                    <SecretPathInput
-                      {...field}
-                      id="replicate-secrets-source-path"
-                      projectId={projectId}
-                      placeholder="/"
-                      environment={selectedEnvironment?.slug}
-                      disabled={isSubmitting}
-                    />
-                    <FieldDescription>Descendants recreated here</FieldDescription>
-                  </Field>
-                )}
-              />
+              <section
+                aria-labelledby="replicate-secrets-destination-heading"
+                className="flex h-full flex-col gap-4 rounded-md border border-project/20 bg-project/5 p-4"
+              >
+                <div>
+                  <h3
+                    id="replicate-secrets-destination-heading"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Destination
+                  </h3>
+                  <p className="text-2xs text-muted">The current location.</p>
+                </div>
+                <dl className="grid gap-4">
+                  <div className="grid gap-1">
+                    <dt className="text-xs font-medium text-accent">Environment</dt>
+                    <dd className="text-sm text-foreground">{destinationEnvironment}</dd>
+                  </div>
+                  <div className="grid gap-1">
+                    <dt className="text-xs font-medium text-accent">Root path</dt>
+                    <dd className="font-mono text-sm text-foreground">{destinationPath}</dd>
+                  </div>
+                </dl>
+                <p className="mt-auto text-2xs text-muted">
+                  Source folder structure is recreated under this path.
+                </p>
+              </section>
             </div>
 
             <Controller
@@ -361,8 +405,10 @@ export const ReplicateFolderFromBoard = ({
               name="secrets"
               render={({ field: { value, onChange } }) => (
                 <FieldSet>
-                  <FieldLegend>Affected secrets</FieldLegend>
-                  <FieldDescription>Select the secrets and folders to replicate.</FieldDescription>
+                  <FieldLegend>Secrets to replicate</FieldLegend>
+                  <FieldDescription>
+                    Select individual secrets or entire folders from the source location.
+                  </FieldDescription>
                   <SecretTreeView
                     data={secretsFilteredByPath}
                     selectedItems={value}
@@ -413,7 +459,7 @@ export const ReplicateFolderFromBoard = ({
               isDisabled={isReplicateDisabled}
             >
               <CopyIcon />
-              Check and replicate
+              Replicate
             </Button>
           </SheetFooter>
         </form>

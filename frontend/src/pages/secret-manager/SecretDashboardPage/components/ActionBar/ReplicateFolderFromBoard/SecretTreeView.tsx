@@ -338,7 +338,7 @@ export const SecretTreeView = ({
       className={cn("w-full rounded-md border border-border bg-container", className)}
       aria-busy={isFetching || undefined}
     >
-      <div className="h-[32vh] min-h-64 overflow-auto p-3">{renderContent()}</div>
+      <div className="max-h-[32vh] overflow-auto p-3">{renderContent()}</div>
       {!isLoading && !isError && !isInvalidPath && !isEmptyData && data && (
         <div className="flex justify-end border-t border-border px-3 py-2">
           <p className="text-xs text-muted" aria-live="polite">
