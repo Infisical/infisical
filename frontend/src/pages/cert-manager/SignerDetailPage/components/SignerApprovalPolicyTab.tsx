@@ -1,10 +1,15 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { PencilIcon, UsersIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, UsersIcon } from "lucide-react";
 
 import {
+  Button,
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -25,6 +30,7 @@ import { EditSignerPolicyModal } from "./EditSignerPolicyModal";
 
 type Props = {
   signerId: string;
+  isStandalone?: boolean;
 };
 
 type ApproverDisplay = {
@@ -113,7 +119,7 @@ const ApproverStack = ({ approvers }: { approvers: ApproverDisplay[] }) => {
   );
 };
 
-export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
+export const SignerApprovalPolicyTab = ({ signerId, isStandalone = false }: Props) => {
   const { data: policy, isLoading } = useGetSignerPolicy(signerId);
   const { permission } = useSignerPermission();
   const canManagePolicy = permission.can(
@@ -162,34 +168,37 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
 
   const stepsCount = policy?.steps.length ?? 0;
 
+  const addPolicyButton = (
+    <Button variant="project" onClick={() => setIsEditOpen(true)} isDisabled={!canManagePolicy}>
+      <PlusIcon />
+      Add Policy
+    </Button>
+  );
+
   return (
     <>
       <Card>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-lg leading-none font-semibold text-foreground">
-              Approval Policy
-            </div>
-            <p className="mt-1 text-sm text-accent">
-              {hasSteps
-                ? "Control when approval is required before signing."
-                : "Approval is not configured. Members can sign directly."}
-            </p>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                aria-label="Edit policy"
-                variant="ghost"
-                onClick={() => setIsEditOpen(true)}
-                isDisabled={!canManagePolicy}
-              >
-                <PencilIcon />
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>Edit policy</TooltipContent>
-          </Tooltip>
-        </div>
+        <CardHeader className={isStandalone ? "border-b" : undefined}>
+          <CardTitle className="justify-between">
+            {isStandalone ? "Approvals" : "Approval Policy"}
+            {hasSteps && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label="Edit policy"
+                    variant="ghost"
+                    onClick={() => setIsEditOpen(true)}
+                    isDisabled={!canManagePolicy}
+                  >
+                    <PencilIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Edit policy</TooltipContent>
+              </Tooltip>
+            )}
+          </CardTitle>
+          <CardDescription>Control when approval is required before signing.</CardDescription>
+        </CardHeader>
         <CardContent>
           {hasSteps ? (
             <>
@@ -257,13 +266,27 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
               </div>
             </>
           ) : (
-            <Empty className="border border-solid">
+            <Empty className="border">
               <EmptyHeader>
-                <EmptyTitle>No approval steps</EmptyTitle>
+                <EmptyTitle>No approval policy</EmptyTitle>
                 <EmptyDescription>
-                  Add approvers in the editor to require approval before signing.
+                  Any member can sign directly until you add approvers.
                 </EmptyDescription>
               </EmptyHeader>
+              <EmptyContent>
+                {canManagePolicy ? (
+                  addPolicyButton
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{addPolicyButton}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Requires the Manage Policy permission on this signer.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </EmptyContent>
             </Empty>
           )}
         </CardContent>
