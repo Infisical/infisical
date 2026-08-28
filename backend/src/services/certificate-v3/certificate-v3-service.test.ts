@@ -58,9 +58,13 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
   };
 });
 
-vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  assertCaInProfileProject: vi.fn()
-}));
+vi.mock("../certificate-authority/certificate-authority-fns", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../certificate-authority/certificate-authority-fns")>();
+  return {
+    ...actual,
+    assertCaInProfileProject: vi.fn()
+  };
+});
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
