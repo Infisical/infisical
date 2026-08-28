@@ -2871,6 +2871,9 @@ export const AppConnections = {
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
     },
+    DAYTONA: {
+      apiKey: "The Daytona API key used to authenticate with Daytona. It must carry the manage:secrets permission."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -3283,6 +3286,10 @@ export const SecretSyncs = {
     },
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."
+    },
+    DAYTONA: {
+      organizationName:
+        "A display name for the Daytona organization secrets are synced to. The connection's API key determines the organization; this label is shown in Infisical only."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",

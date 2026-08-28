@@ -53,7 +53,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.HasuraCloud]: "Hasura Cloud",
   [SecretSync.Qovery]: "Qovery",
   [SecretSync.Cloud66]: "Cloud 66",
-  [SecretSync.Spacelift]: "Spacelift"
+  [SecretSync.Spacelift]: "Spacelift",
+  [SecretSync.Daytona]: "Daytona"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -104,7 +105,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
-  [SecretSync.Spacelift]: AppConnection.Spacelift
+  [SecretSync.Spacelift]: AppConnection.Spacelift,
+  [SecretSync.Daytona]: AppConnection.Daytona
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -155,7 +157,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.HasuraCloud]: SecretSyncPlanType.Regular,
   [SecretSync.Qovery]: SecretSyncPlanType.Regular,
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular,
-  [SecretSync.Spacelift]: SecretSyncPlanType.Regular
+  [SecretSync.Spacelift]: SecretSyncPlanType.Regular,
+  [SecretSync.Daytona]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -215,7 +218,9 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.HasuraCloud]: ["projectName"],
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
-  [SecretSync.Spacelift]: ["contextName"]
+  [SecretSync.Spacelift]: ["contextName"],
+  // Display-only label; excluded from duplicate matching so the connection check below decides.
+  [SecretSync.Daytona]: ["organizationName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
@@ -334,7 +339,11 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.HasuraCloud]: defaultDuplicateCheck,
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
-  [SecretSync.Spacelift]: defaultDuplicateCheck
+  [SecretSync.Spacelift]: defaultDuplicateCheck,
+  // A Daytona API key is bound to one organization and nothing scopes below it, so two syncs sharing a
+  // connection write the same secrets. The stored organization name is a label and cannot be trusted here.
+  [SecretSync.Daytona]: async ({ existingSync, newSync }) =>
+    Boolean(newSync.connectionId) && existingSync.connectionId === newSync.connectionId
 };
 
 /**

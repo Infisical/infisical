@@ -1,0 +1,153 @@
+---
+title: "Daytona sync"
+description: "Learn how to configure a Daytona sync for Infisical."
+---
+
+**Prerequisites:**
+- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+- Create a [Daytona connection](/integrations/app-connections/daytona)
+
+<Note>
+    Daytona secret names must start with a letter or an underscore, and can contain only letters, digits, hyphens, and underscores. A sync that includes a key Daytona rejects fails and names the offending key, so no secrets are written. Use a **key schema** to reshape names that do not fit.
+</Note>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Select the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select 'Daytona'">
+                Select the **Daytona** option from the list of available secret syncs.
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then select **Next**.
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then select **Next**.
+
+                - **Daytona Connection**: The Daytona connection to authenticate with. Its API key determines which Daytona organization receives the secrets.
+                - **Organization Name**: A label for that organization. It is shown in Infisical only and does not affect where secrets are written.
+            </Step>
+            <Step title="Configure sync options">
+                Configure the **Sync Options** to specify how secrets should be synced, then select **Next**.
+
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                    - **Overwrite Destination Secrets**: Removes any secrets in the Daytona organization not present in Infisical.
+
+                    <Note>
+                        Daytona never returns a secret's value through its API, so this sync cannot import existing secrets from Daytona into Infisical. Only **Overwrite Destination Secrets** is available as an initial sync behavior.
+                    </Note>
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+                <Note>
+                    We highly recommend using a key schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+                - **Auto-Sync Enabled**: If enabled, secrets are automatically synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Disable Secret Deletion**: If enabled, Infisical does not remove secrets from the Daytona organization. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your Daytona sync, then select **Next**.
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review configuration">
+                Review your Daytona sync configuration, then select **Create Sync**.
+            </Step>
+            <Step title="Sync created">
+                If enabled, your Daytona sync begins syncing your secrets to the destination organization.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **Daytona sync**, make an API request to the [Create Daytona Sync](/api-reference/endpoints/secret-syncs/daytona/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/daytona \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-daytona-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination",
+                        "autoSyncEnabled": true,
+                        "disableSecretDeletion": false
+                    },
+                    "destinationConfig": {
+                        "organizationName": "My Daytona Organization"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-daytona-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2026-08-28T05:31:56Z",
+                "updatedAt": "2026-08-28T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2026-08-28T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "autoSyncEnabled": true,
+                    "disableSecretDeletion": false
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "daytona",
+                    "name": "my-daytona-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "daytona",
+                "destinationConfig": {
+                    "organizationName": "My Daytona Organization"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

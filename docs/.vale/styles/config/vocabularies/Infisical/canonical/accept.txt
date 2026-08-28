@@ -246,6 +246,7 @@ Nutanix Prism Central
 Devin
 Mintlify
 Ona
+Daytona
 DBT
 Ab Initio
 Initio

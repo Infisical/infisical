@@ -1,0 +1,187 @@
+/* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+
+import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
+import { getDaytonaAuthHeaders } from "@app/services/app-connection/daytona";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+
+import { TDaytonaListSecretsResponse, TDaytonaSecret, TDaytonaSyncWithCredentials } from "./daytona-sync-types";
+
+const DAYTONA_SECRET_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+const DAYTONA_SECRET_NAME_RULE =
+  "Daytona secret names must start with a letter or underscore and contain only letters, digits, hyphens and underscores.";
+
+const DAYTONA_PAGE_SIZE = 100;
+const DAYTONA_MAX_PAGES = 100;
+
+const DAYTONA_MAX_RETRIES = 3;
+const DAYTONA_BASE_RETRY_DELAY_MS = 500;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const withDaytonaRetry = async <T>(fn: () => Promise<T>): Promise<T> => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRateLimited = error instanceof AxiosError && error.response?.status === 429;
+      if (!isRateLimited || attempt >= DAYTONA_MAX_RETRIES) throw error;
+      await sleep(DAYTONA_BASE_RETRY_DELAY_MS * 2 ** attempt);
+    }
+  }
+};
+
+const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => {
+  const secrets: TDaytonaSecret[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < DAYTONA_MAX_PAGES; page += 1) {
+    const currentCursor = cursor;
+
+    const { data } = await withDaytonaRetry(() =>
+      request.get<TDaytonaListSecretsResponse>(`${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`, {
+        params: { limit: DAYTONA_PAGE_SIZE, ...(currentCursor ? { cursor: currentCursor } : {}) },
+        headers: getDaytonaAuthHeaders(apiKey)
+      })
+    );
+
+    secrets.push(...(data.items ?? []));
+
+    cursor = data.nextCursor ?? undefined;
+    if (!cursor) return secrets;
+  }
+
+  logger.warn(
+    `Daytona secret listing stopped at the ${DAYTONA_MAX_PAGES} page cap; the destination may hold more secrets than were read`
+  );
+
+  return secrets;
+};
+
+const createDaytonaSecret = (apiKey: string, name: string, value: string) =>
+  withDaytonaRetry(() =>
+    request.post(
+      `${IntegrationUrls.DAYTONA_API_URL}/secret`,
+      { name, value },
+      { headers: getDaytonaAuthHeaders(apiKey) }
+    )
+  );
+
+const updateDaytonaSecretValue = (apiKey: string, secretId: string, value: string) =>
+  withDaytonaRetry(() =>
+    request.patch(
+      `${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`,
+      { value },
+      { headers: getDaytonaAuthHeaders(apiKey) }
+    )
+  );
+
+const deleteDaytonaSecret = (apiKey: string, secretId: string) =>
+  withDaytonaRetry(() =>
+    request.delete(`${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`, {
+      headers: getDaytonaAuthHeaders(apiKey)
+    })
+  );
+
+export const DaytonaSyncFns = {
+  async syncSecrets(secretSync: TDaytonaSyncWithCredentials, secretMap: TSecretMap) {
+    const {
+      connection,
+      environment,
+      syncOptions: { disableSecretDeletion, keySchema }
+    } = secretSync;
+
+    const { apiKey } = connection.credentials;
+
+    // Rejected up front so a run either writes every key or writes none, rather than failing partway
+    // through and leaving the destination half updated.
+    const invalidKeys = Object.keys(secretMap).filter((key) => !DAYTONA_SECRET_NAME_PATTERN.test(key));
+    if (invalidKeys.length) {
+      throw new SecretSyncError({
+        secretKey: invalidKeys[0],
+        shouldRetry: false,
+        message: `${invalidKeys.length} secret ${
+          invalidKeys.length === 1 ? "key is" : "keys are"
+        } not a valid Daytona secret name: ${invalidKeys.join(", ")}. ${DAYTONA_SECRET_NAME_RULE}`
+      });
+    }
+
+    const existingSecrets = await listDaytonaSecrets(apiKey);
+    const existingByName = new Map(existingSecrets.map((secret) => [secret.name, secret]));
+
+    for (const [key, { value }] of Object.entries(secretMap)) {
+      const existing = existingByName.get(key);
+
+      try {
+        if (existing) {
+          // Daytona never returns a secret's value, so there is no way to skip an unchanged write.
+          await updateDaytonaSecretValue(apiKey, existing.id, value);
+        } else {
+          await createDaytonaSecret(apiKey, key, value);
+        }
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 409) {
+          throw new SecretSyncError({
+            error,
+            secretKey: key,
+            message: `A Daytona secret named "${key}" already exists but was not present when this sync started. Re-run the sync.`
+          });
+        }
+
+        throw new SecretSyncError({ error, secretKey: key });
+      }
+    }
+
+    if (disableSecretDeletion) return;
+
+    for (const secret of existingSecrets) {
+      if (secret.name in secretMap) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (!matchesSchema(secret.name, environment?.slug || "", keySchema)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      try {
+        await deleteDaytonaSecret(apiKey, secret.id);
+      } catch (error) {
+        throw new SecretSyncError({ error, secretKey: secret.name });
+      }
+    }
+  },
+
+  getSecrets: async (): Promise<TSecretMap> => {
+    // Daytona returns only a secret's metadata and an opaque placeholder, never its value, so there is
+    // nothing to import. Reflected as canImportSecrets: false on the schema and list item.
+    throw new Error("Daytona does not support importing secrets.");
+  },
+
+  async removeSecrets(secretSync: TDaytonaSyncWithCredentials, secretMap: TSecretMap) {
+    const { apiKey } = secretSync.connection.credentials;
+
+    const existingSecrets = await listDaytonaSecrets(apiKey);
+
+    for (const secret of existingSecrets) {
+      if (!(secret.name in secretMap)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      try {
+        await deleteDaytonaSecret(apiKey, secret.id);
+      } catch (error) {
+        throw new SecretSyncError({ error, secretKey: secret.name });
+      }
+    }
+  }
+};

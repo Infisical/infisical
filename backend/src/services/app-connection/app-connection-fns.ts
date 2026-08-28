@@ -120,6 +120,7 @@ import {
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
 import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
+import { DaytonaConnectionMethod, getDaytonaConnectionListItem, validateDaytonaConnectionCredentials } from "./daytona";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
@@ -424,7 +425,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
-    getSpaceliftConnectionListItem()
+    getSpaceliftConnectionListItem(),
+    getDaytonaConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -677,7 +679,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -786,6 +789,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case DaytonaConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -947,7 +951,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
-  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported
+  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
+  [AppConnection.Daytona]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

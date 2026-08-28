@@ -42,6 +42,7 @@ import {
   CloudflareWorkersSyncReviewFields
 } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
+import { DaytonaSyncReviewFields } from "./DaytonaSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
@@ -258,6 +259,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Cloud66:
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;
+      break;
+    case SecretSync.Daytona:
+      DestinationFieldsComponent = <DaytonaSyncReviewFields />;
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
