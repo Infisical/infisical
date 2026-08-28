@@ -2046,6 +2046,13 @@ export const secretRotationV2ServiceFactory = ({
     ] as TLocalAccountRotationGeneratedCredentials[number];
     const appConnection = await decryptAppConnection(connection, kmsService);
 
+    const passwordValidationContext = await $resolvePasswordValidationContext({
+      projectId,
+      envId: environment.id,
+      secretPath: folder.path,
+      type
+    });
+
     // Use the rotation factory to perform a rotation using the app connection credentials
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type](
       {
@@ -2061,7 +2068,8 @@ export const secretRotationV2ServiceFactory = ({
       kmsService,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      passwordValidationContext
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

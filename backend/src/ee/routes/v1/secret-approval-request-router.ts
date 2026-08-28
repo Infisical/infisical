@@ -61,6 +61,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               allowedSelfApprovals: z.boolean()
             }),
             committerUser: approvalRequestUser.nullish(),
+            committerIdentity: z
+              .object({
+                identityId: z.string(),
+                name: z.string()
+              })
+              .nullish(),
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
             reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
@@ -74,7 +80,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { approvals, totalCount } = await server.services.secretApprovalRequest.getSecretApprovals({
         actor: req.permission.type,
@@ -108,7 +114,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalRequest.requestCount({
         actor: req.permission.type,
@@ -359,6 +365,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),
               committerUser: approvalRequestUser.nullish(),
+              committerIdentity: z
+                .object({
+                  identityId: z.string(),
+                  name: z.string()
+                })
+                .nullish(),
               reviewers: approvalRequestUser
                 .extend({
                   status: z.string(),
@@ -418,7 +430,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
         actor: req.permission.type,

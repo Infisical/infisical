@@ -70,7 +70,7 @@ const createService = ({
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
     } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     projectDAL: {
       findActorAccessibleProjectIds: vi.fn(),
       findOrgProjectIds: vi.fn(),

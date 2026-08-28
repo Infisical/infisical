@@ -142,9 +142,7 @@ export const MilvusProvider = ({
 
     if (gatewayV2ConnectionDetails) {
       return withGatewayV2Proxy(async (port) => gatewayCallback("localhost", port), {
-        relayHost: gatewayV2ConnectionDetails.relayHost,
-        gateway: gatewayV2ConnectionDetails.gateway,
-        relay: gatewayV2ConnectionDetails.relay,
+        ...gatewayV2ConnectionDetails,
         protocol: GatewayProxyProtocol.Tcp,
         httpsAgent: inputs.httpsAgent
       });

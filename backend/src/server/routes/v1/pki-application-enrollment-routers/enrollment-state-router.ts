@@ -71,7 +71,7 @@ export const registerPkiApplicationEnrollmentStateRouter = async (server: Fastif
       }),
       response: { 200: EnrollmentStateSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.getEnrollment({
         actor: req.permission.type,

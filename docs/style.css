@@ -3,11 +3,13 @@
 }
 
 .chat-assistant-floating-input {
-  display: none !important;
+  visibility: hidden !important;
 }
 
 #sidebar li > a.text-primary {
-  background-color: #f7f7f6;
+  background-color: #fbfde9;
+  border-left-color: #dbf530;
+  color: #5f7000;
 }
 
 #header {
@@ -571,6 +573,7 @@ a.ifx-steps__label:hover {
 .ifx-card {
   --ifx-ink: #6f6f6f;
   --ifx-accent: #dbf530;
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -667,6 +670,17 @@ a.ifx-card:hover .ifx-card__icon {
 a.ifx-card__title {
   align-self: flex-start;
   text-decoration: none;
+}
+
+div.ifx-card a.ifx-card__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+div.ifx-card a:not(.ifx-card__title) {
+  position: relative;
+  z-index: 1;
 }
 
 .ifx-card__chevron {
@@ -942,4 +956,84 @@ a.ifx-card__title:hover .ifx-card__chevron {
   .ifx-home__hero-aside {
     align-self: stretch;
   }
+}
+
+[data-component-part="field-name"] {
+  position: relative;
+}
+
+[data-component-part="field-name"]::after {
+  content: "Click to copy";
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #18181b;
+  color: #ffffff;
+  font: 500 0.75rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-component-part="field-name"]:hover::after,
+[data-component-part="field-name"]:focus-visible::after {
+  visibility: visible;
+}
+
+[data-component-part="field-name"][data-copy-state="copied"]::after {
+  content: "Copied";
+  visibility: visible;
+}
+
+/* Section header in the sidebar.
+   Each dropdown item hoists its landing page above every group in docs.json, so
+   it renders as the first <ul class="sidebar-group"> with a single <li> and no
+   collapse <button>. It reads as a section label; when the reader is actually on
+   that page it takes the #header treatment from doc pages, so the yellow rule
+   keeps meaning "you are here". Depends on Mintlify's sidebar markup; recheck
+   after an upgrade. */
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) {
+  margin-bottom: 1rem;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  /* transparent rule reserves the 2px so nothing shifts when it becomes active */
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 16px !important;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #101114;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: #dbf530;
+  background-color: #f7f7f6;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  color: #101114;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: #dbf530;
+  background-color: #101114;
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  color: #f3f3f4;
 }

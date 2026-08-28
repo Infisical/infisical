@@ -32,7 +32,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const rules = await server.services.secretValidationRule.listByProjectId({
         actor: req.permission.type,

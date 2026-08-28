@@ -3,7 +3,6 @@ import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { AxiosError } from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
@@ -262,16 +261,8 @@ export const CreateProjectIdentityForm = ({
           params: { identityId }
         });
       }
-    } catch (err) {
-      const message = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
-      createNotification({
-        text:
-          message ??
-          (data.mode === CreateProjectIdentityMode.Assign
-            ? "Failed to add machine identity"
-            : "Failed to create machine identity"),
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 

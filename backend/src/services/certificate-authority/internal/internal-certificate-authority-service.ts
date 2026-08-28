@@ -1833,7 +1833,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     locality,
     ou,
     domainComponents,
-    tx
+    tx,
+    onPersisted
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -2223,6 +2224,10 @@ export const internalCertificateAuthorityServiceFactory = ({
           },
           transaction
         );
+      }
+
+      if (onPersisted) {
+        await onPersisted(cert, transaction);
       }
 
       return cert;

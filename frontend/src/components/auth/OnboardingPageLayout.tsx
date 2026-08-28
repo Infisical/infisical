@@ -11,7 +11,7 @@ type Props = Omit<ComponentProps<typeof AuthPageLayout>, "children" | "headerAct
   totalSteps: number;
 };
 
-const OnboardingProgress = ({
+export const OnboardingProgress = ({
   currentStep,
   totalSteps
 }: Pick<Props, "currentStep" | "totalSteps">) => (

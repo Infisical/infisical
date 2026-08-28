@@ -15,6 +15,8 @@ Rotation is configured in two places that work together:
 
 An account rotates only once both parts are in place: its template has rotation enabled and the account has a rotation account set.
 
+Accounts that authenticate without a stored password have nothing to rotate and cannot be given a rotation account. This covers PostgreSQL accounts using [AWS IAM authentication](/documentation/platform/pam/accounts/postgresql#aws-iam-authentication) and Microsoft SQL Server accounts using Windows authentication.
+
 ### Rotation account
 
 The rotation account is the account whose credentials are used to connect to the target and change the password. You have three options:

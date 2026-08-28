@@ -19,7 +19,10 @@ import { mapEnumsForValidation } from "@app/services/certificate-common/certific
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
-import { TCertificateIssuedResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TCertificateIssuedResponse
+} from "@app/services/certificate-v3/certificate-v3-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -111,7 +114,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateRequestForService: CertificateRequestForService = {
         commonName: req.body.commonName,
@@ -240,7 +243,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.certificateV3.signCertificateFromProfile({
         actor: req.permission.type,
@@ -371,7 +374,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateOrderObject = {
         altNames: req.body.subjectAlternativeNames,
@@ -465,7 +468,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const originalCertificate = await server.services.certificate.getCert({
         actor: req.permission.type,
@@ -501,6 +504,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
+            renewalKeySource: CertificateRenewalKeySource.New,
+            changedAttributes: certificateData.changedAttributes ?? [],
             originalCertificateId: req.params.certificateId,
             newCertificateId: certificateData.certificateId,
             profileName: certificateData.profileName,
@@ -540,7 +545,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({

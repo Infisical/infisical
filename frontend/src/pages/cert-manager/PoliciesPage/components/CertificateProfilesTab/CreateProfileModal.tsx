@@ -51,6 +51,7 @@ import {
 } from "@app/hooks/api/certificatePolicies";
 import {
   IssuerType,
+  TCertificateProfile,
   TCertificateProfileDefaults,
   TCertificateProfileWithDetails,
   TCreateCertificateProfileDTO,
@@ -463,9 +464,16 @@ interface Props {
   onClose: () => void;
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit" | "clone";
+  onComplete?: (profile: TCertificateProfile) => void;
 }
 
-export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
+export const CreateProfileModal = ({
+  isOpen,
+  onClose,
+  profile,
+  mode = "create",
+  onComplete
+}: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { orgId, projectId } = useParams({ strict: false }) as {
@@ -652,6 +660,9 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }, [selectedPolicyData]);
 
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
+  // Only internal CAs sign with a key Infisical holds; an external CA's signing key is its own concern.
+  const caKeyAlgorithm =
+    selectedCa?.type === CaType.INTERNAL ? selectedCa.configuration.keyAlgorithm : undefined;
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
@@ -798,7 +809,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         createData.defaults = serializedDefaults;
       }
 
-      await createProfile.mutateAsync(createData);
+      const createdProfile = await createProfile.mutateAsync(createData);
+      onComplete?.(createdProfile);
     }
 
     createNotification({
@@ -1130,6 +1142,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   policyConstraints={policyConstraints}
                   isAwsAcmPublicCa={isAwsAcmPublicCa}
                   isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
+                  caKeyAlgorithm={caKeyAlgorithm}
                 />
               )}
             </div>

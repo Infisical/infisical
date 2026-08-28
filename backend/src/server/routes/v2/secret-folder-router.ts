@@ -57,7 +57,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
@@ -145,7 +151,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
@@ -234,7 +246,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
         ...req.body,
@@ -305,7 +323,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
@@ -383,7 +407,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
@@ -429,7 +459,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.getFolderById({
         actorId: req.permission.id,
@@ -474,7 +510,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.folder.moveFolder({
         actorId: req.permission.id,

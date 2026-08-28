@@ -29,7 +29,7 @@ type Props = {
 };
 
 const schema = z.object({
-  name: z.string(),
+  name: z.string().min(1, { message: "Environment Name field must be at least 1 character" }),
   slug: slugSchema({ min: 1, max: 64 })
 });
 
