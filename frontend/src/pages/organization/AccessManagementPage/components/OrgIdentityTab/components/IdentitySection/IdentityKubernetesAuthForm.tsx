@@ -5,6 +5,7 @@ import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
+import { VaultKubernetesAuthImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -62,7 +63,6 @@ import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitFi
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
-import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z

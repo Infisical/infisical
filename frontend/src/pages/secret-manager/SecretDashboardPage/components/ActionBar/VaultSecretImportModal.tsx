@@ -1,24 +1,35 @@
-import { useEffect, useRef, useState } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useReducer, useRef } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import {
-  defaultVaultConnectionId,
-  VaultConnectionAndNamespaceFields
+  VaultConnectionAndNamespaceFields,
+  VaultFieldLabel
 } from "@app/components/external-migrations";
+import {
+  createVaultImportSelection,
+  vaultImportSelectionReducer
+} from "@app/components/external-migrations/vaultImportSelection";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
   Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3/generic/Alert";
+  Combobox,
+  Field,
+  FieldDescription,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-badge-overflow";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
@@ -26,23 +37,16 @@ import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migrat
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  environment: string;
-  secretPath: string;
   appConnections: TAvailableAppConnection[];
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
-  environment: string;
-  secretPath: string;
   appConnections: TAvailableAppConnection[];
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
-// Cap the rendered path length so every badge stays a predictable size. Longer
-// paths are truncated from the start with a leading ellipsis so the meaningful
-// tail (including the wildcard `+`) stays visible.
 const MAX_PATH_LENGTH = 30;
 
 const getDisplayPath = (path: string) =>
@@ -51,7 +55,6 @@ const getDisplayPath = (path: string) =>
 const renderWildcardPath = (path: string) => {
   const isTruncated = path.length > MAX_PATH_LENGTH;
   const visiblePath = isTruncated ? path.slice(path.length - MAX_PATH_LENGTH) : path;
-
   let position = 0;
 
   return (
@@ -73,34 +76,36 @@ const renderWildcardPath = (path: string) => {
   );
 };
 
-const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
+const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
-    defaultVaultConnectionId(appConnections)
+  const [state, dispatch] = useReducer(
+    vaultImportSelectionReducer<string[]>,
+    appConnections.map(({ id }) => id),
+    createVaultImportSelection<string[]>
   );
-  const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
-  const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
-  const [shouldFetchPaths, setShouldFetchPaths] = useState(false);
-  const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
+  const { connectionId, mountPath, namespace } = state;
+  const selectedPaths = state.selection ?? [];
+  const activeConnectionId = hasAppConnections ? (connectionId ?? undefined) : undefined;
+  const shouldFetchMounts = Boolean(namespace && activeConnectionId);
+  const shouldFetchPaths = Boolean(namespace && mountPath && activeConnectionId);
 
-  const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
-
-  const { data: vaultSecretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
+  const vaultSecretPathsQuery = useGetVaultSecretPaths(
     shouldFetchPaths,
-    selectedNamespace ?? undefined,
-    selectedMountPath ?? undefined,
+    namespace ?? undefined,
+    mountPath ?? undefined,
     activeConnectionId
   );
-  const secretPaths = vaultSecretPaths?.secretPaths;
-  const skippedWildcardPaths = vaultSecretPaths?.skippedWildcardPaths ?? [];
-  const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
+  const secretPaths = vaultSecretPathsQuery.data?.secretPaths ?? [];
+  const skippedWildcardPaths = vaultSecretPathsQuery.data?.skippedWildcardPaths ?? [];
+  const mountsQuery = useGetVaultMounts(
     shouldFetchMounts,
-    selectedNamespace ?? undefined,
+    namespace ?? undefined,
     activeConnectionId
   );
-
-  const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+  const kvMounts =
+    mountsQuery.data?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv")) ?? [];
+  const pathOptions = secretPaths.map((path) => ({ path }));
+  const selectedPathOptions = selectedPaths.map((path) => ({ path }));
 
   const badgeContainerRef = useRef<HTMLDivElement>(null);
   const { visibleItems: visibleSkippedPaths, hiddenCount } = useBadgeOverflow({
@@ -113,35 +118,6 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
   });
   const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
-  const handleConnectionChange = (id: string) => {
-    setSelectedConnectionId(id);
-    setSelectedNamespace(null);
-    setSelectedMountPath(null);
-    setSelectedPaths([]);
-    setShouldFetchMounts(false);
-    setShouldFetchPaths(false);
-  };
-
-  const handleNamespaceChange = (ns: string) => {
-    setSelectedNamespace(ns);
-    setSelectedMountPath(null);
-    setSelectedPaths([]);
-  };
-
-  useEffect(() => {
-    if (selectedNamespace) {
-      setShouldFetchMounts(true);
-    }
-  }, [selectedNamespace]);
-
-  useEffect(() => {
-    if (selectedNamespace && selectedMountPath) {
-      setShouldFetchPaths(true);
-    } else {
-      setShouldFetchPaths(false);
-    }
-  }, [selectedNamespace, selectedMountPath]);
-
   const handleImport = () => {
     if (!selectedPaths.length) {
       createNotification({
@@ -150,18 +126,15 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
       });
       return;
     }
-
-    if (!selectedConnectionId) {
+    if (!connectionId) {
       createNotification({ type: "error", text: "Please select an app connection" });
       return;
     }
-
-    if (!selectedNamespace) {
+    if (!namespace) {
       createNotification({ type: "error", text: "Please select a namespace" });
       return;
     }
-
-    if (!mounts || mounts.length === 0) {
+    if (!kvMounts.length) {
       createNotification({
         type: "error",
         text: "No Vault mounts found. Please ensure you have KV secret engines configured."
@@ -169,160 +142,164 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
       return;
     }
 
-    onImport(selectedPaths, selectedNamespace, selectedConnectionId);
+    onImport(selectedPaths, namespace, connectionId);
     onClose();
   };
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
-        <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
-          <div>
-            <div className="mb-2">
-              <strong>Import Secrets from HashiCorp Vault</strong>
-            </div>
-            <div className="space-y-1.5 text-xs leading-relaxed">
-              <p>
-                Select a Vault namespace and one or more secret paths to import secrets into the
-                current Infisical environment (<code className="text-xs">{environment}</code>) at
-                path <code className="text-xs">{secretPath}</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div className="flex min-h-0 flex-1 flex-col space-y-5 overflow-y-auto p-4">
+        <VaultConnectionAndNamespaceFields
+          appConnections={appConnections}
+          connectionId={connectionId}
+          onConnectionIdChange={(value) => dispatch({ type: "connection", value })}
+          namespace={namespace}
+          onNamespaceChange={(value) => dispatch({ type: "namespace", value })}
+          namespaceTooltip="Select the Vault namespace containing the secrets you want to import."
+          namespaceHelpText="Select the Vault namespace to fetch available mounts"
+          idPrefix="vault-secret-import"
+        />
 
-      <VaultConnectionAndNamespaceFields
-        appConnections={appConnections}
-        connectionId={selectedConnectionId}
-        onConnectionIdChange={handleConnectionChange}
-        namespace={selectedNamespace}
-        onNamespaceChange={handleNamespaceChange}
-        namespaceTooltip="Select the Vault namespace containing the secrets you want to import."
-        namespaceHelpText="Select the Vault namespace to fetch available mounts"
-      />
-
-      <FormControl
-        label="Secrets Engine"
-        className="mb-4"
-        tooltipText="Select the KV secrets engine to narrow down secret paths."
-      >
-        <>
-          <FilterableSelect
-            value={kvMounts?.find((mount) => mount.path === selectedMountPath)}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                const mount = value as { path: string; type: string; version: string | null };
-                setSelectedMountPath(mount.path.replace(/\/$/, "")); // Remove trailing slash
-                setSelectedPaths([]);
-              }
-            }}
-            options={kvMounts || []}
-            getOptionValue={(option) => option.path}
-            getOptionLabel={(option) => option.path.replace(/\/$/, "")}
-            isDisabled={isLoadingMounts || !kvMounts?.length}
-            placeholder="Select secrets engine..."
-            className="w-full"
+        <Field>
+          <VaultFieldLabel
+            htmlFor="vault-secret-import-mount"
+            tooltip="Select the KV secrets engine to narrow down secret paths."
+            tooltipLabel="Secrets Engine"
+          >
+            Secrets Engine
+          </VaultFieldLabel>
+          <Combobox
+            id="vault-secret-import-mount"
+            value={kvMounts.find((mount) => mount.path.replace(/\/$/, "") === mountPath) ?? null}
+            onValueChange={(mount) =>
+              dispatch({ type: "mount", value: mount.path.replace(/\/$/, "") })
+            }
+            onClear={() => dispatch({ type: "mount", value: null })}
+            options={kvMounts}
+            getOptionValue={(mount) => mount.path}
+            getOptionLabel={(mount) => mount.path.replace(/\/$/, "")}
+            isDisabled={!namespace || mountsQuery.isLoading || !kvMounts.length}
+            isLoading={mountsQuery.isLoading}
+            isError={mountsQuery.isError}
+            placeholder={namespace ? "Select secrets engine..." : "Select a namespace first..."}
+            searchPlaceholder="Search secrets engines..."
+            searchAriaLabel="Search Secrets Engine"
+            clearAriaLabel="Clear Secrets Engine"
+            emptyMessage="No KV secrets engines found."
+            modal
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <FieldDescription>
             Choose a KV secrets engine to filter available secret paths
-          </p>
-        </>
-      </FormControl>
+          </FieldDescription>
+        </Field>
 
-      <FormControl label="Vault Secret Path" className="mb-6">
-        <>
-          <FilterableSelect
-            isMulti
-            value={selectedPaths.map((path) => ({ path }))}
-            onChange={(value) => {
-              if (!value) {
-                setSelectedPaths([]);
-              } else if (Array.isArray(value)) {
-                setSelectedPaths(value.map((option) => option.path));
-              }
-            }}
-            options={(secretPaths || []).map((path) => ({ path }))}
+        <Field>
+          <VaultFieldLabel
+            htmlFor="vault-secret-import-paths"
+            tooltip="Choose one or more secret paths from the selected mount to import into Infisical."
+            tooltipLabel="Vault Secret Path"
+          >
+            Vault Secret Path
+          </VaultFieldLabel>
+          <Combobox
+            id="vault-secret-import-paths"
+            multiple
+            value={selectedPathOptions}
+            onValueChange={(options) =>
+              dispatch({ type: "selection", value: options.map(({ path }) => path) })
+            }
+            onClear={() => dispatch({ type: "selection", value: [] })}
+            options={pathOptions}
             getOptionValue={(option) => option.path}
             getOptionLabel={(option) => option.path}
-            isDisabled={isLoadingPaths || !secretPaths?.length || !selectedMountPath}
+            isDisabled={!mountPath || vaultSecretPathsQuery.isLoading || !secretPaths.length}
+            isLoading={vaultSecretPathsQuery.isLoading}
+            isError={vaultSecretPathsQuery.isError}
             placeholder={
-              !selectedMountPath
-                ? "Select a mount path first..."
-                : "Select Vault path(s) to import..."
+              mountPath ? "Select Vault path(s) to import..." : "Select a mount path first..."
             }
-            isClearable
-            className="w-full"
+            searchPlaceholder="Search Vault secret paths..."
+            searchAriaLabel="Search Vault secret paths"
+            clearAriaLabel="Clear Vault secret paths"
+            emptyMessage="No Vault secret paths found."
+            modal
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <FieldDescription>
             Choose one or more secret paths from the selected mount to import into Infisical
-          </p>
-        </>
-      </FormControl>
+          </FieldDescription>
+        </Field>
 
-      {skippedWildcardPaths.length > 0 && (
-        <Alert variant="warning" className="mb-4">
-          <TriangleAlertIcon />
-          <AlertTitle>
-            {skippedWildcardPaths.length} secret path
-            {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
-          </AlertTitle>
-          <AlertDescription>
-            <p>
+        {skippedWildcardPaths.length > 0 && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>
               {skippedWildcardPaths.length} secret path
-              {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
-              imports don&apos;t support wildcard (<code className="text-yellow-500/80">+</code>){" "}
-              paths. In Vault, update the policy on the App role or token behind this App Connection
-              to grant access to absolute paths instead.
-            </p>
-            <div ref={badgeContainerRef} className="mt-2 flex flex-wrap items-start gap-1">
-              {visibleSkippedPaths.map((path) => (
-                <Badge key={path} variant="warning" className="font-mono text-foreground/80">
-                  {renderWildcardPath(path)}
-                </Badge>
-              ))}
-              {hiddenCount > 0 && (
-                <Tooltip
-                  className="max-w-sm p-2"
-                  content={
-                    <div className="flex flex-wrap gap-1">
-                      {hiddenSkippedPaths.map((path) => (
-                        <Badge
-                          isTruncatable
-                          key={path}
-                          variant="warning"
-                          className="font-mono text-foreground/80"
-                        >
-                          {renderWildcardPath(path)}
-                        </Badge>
-                      ))}
-                    </div>
-                  }
-                >
-                  <Badge variant="warning" className="cursor-default font-mono">
-                    +{hiddenCount} more
+              {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                {skippedWildcardPaths.length} secret path
+                {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection.
+                Vault imports don&apos;t support wildcard (
+                <code className="text-warning/80">+</code>) paths. In Vault, update the policy on
+                the App role or token behind this App Connection to grant access to absolute paths
+                instead.
+              </p>
+              <div ref={badgeContainerRef} className="mt-2 flex flex-wrap items-start gap-1">
+                {visibleSkippedPaths.map((path) => (
+                  <Badge key={path} variant="warning" className="font-mono text-foreground/80">
+                    {renderWildcardPath(path)}
                   </Badge>
-                </Tooltip>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+                ))}
+                {hiddenCount > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Show ${hiddenCount} more unavailable secret paths`}
+                        className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Badge variant="warning" className="cursor-default font-mono">
+                          +{hiddenCount} more
+                        </Badge>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm p-2">
+                      <div className="flex flex-wrap gap-1">
+                        {hiddenSkippedPaths.map((path) => (
+                          <Badge
+                            isTruncatable
+                            key={path}
+                            variant="warning"
+                            className="font-mono text-foreground/80"
+                          >
+                            {renderWildcardPath(path)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
 
-      <div className="mt-8 flex space-x-4">
+      <SheetFooter className="border-t">
+        <SheetClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </SheetClose>
         <Button
+          variant="project"
           onClick={handleImport}
-          isDisabled={!selectedPaths.length || isLoadingMounts || isLoadingPaths}
+          isDisabled={
+            !selectedPaths.length || mountsQuery.isLoading || vaultSecretPathsQuery.isLoading
+          }
         >
           Import Secrets
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </SheetFooter>
     </>
   );
 };
@@ -330,27 +307,30 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 export const VaultSecretImportModal = ({
   isOpen,
   onOpenChange,
-  environment,
-  secretPath,
   appConnections,
   onImport
-}: Props) => {
-  return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title="Import from HashiCorp Vault"
-        subTitle="Select a Vault namespace and one or more secret paths to import secrets into the current environment and folder."
-        className="max-w-2xl"
-      >
+}: Props) => (
+  <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    {isOpen && (
+      <SheetContent className="sm:max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <div className="flex size-5 items-center justify-center rounded-full bg-foreground/75">
+              <img src="/images/integrations/Vault.png" alt="" className="mt-0.5 size-4" />
+            </div>
+            Import from HashiCorp Vault
+          </SheetTitle>
+          <SheetDescription>
+            Select a Vault namespace and one or more secret paths to import secrets into the current
+            environment and folder.
+          </SheetDescription>
+        </SheetHeader>
         <Content
           onClose={() => onOpenChange(false)}
-          environment={environment}
-          secretPath={secretPath}
           appConnections={appConnections}
           onImport={onImport}
         />
-      </ModalContent>
-    </Modal>
-  );
-};
+      </SheetContent>
+    )}
+  </Sheet>
+);
