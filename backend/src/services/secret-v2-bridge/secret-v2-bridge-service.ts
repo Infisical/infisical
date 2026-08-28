@@ -167,14 +167,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "getItem"
-    | "getItemBuffer"
-    | "setExpiry"
-    | "setItemWithExpiry"
-    | "deleteItem"
-    | "pgGetIntItem"
-    | "hashGet"
-    | "hashSet"
+    "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem" | "hashGet" | "hashSet"
   >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
@@ -1374,11 +1367,11 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
+    const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets });
+        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
         // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
@@ -1658,7 +1651,7 @@ export const secretV2BridgeServiceFactory = ({
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
       if (stored) {
-        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
+        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
@@ -1750,7 +1743,7 @@ export const secretV2BridgeServiceFactory = ({
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
     if (stored) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
+      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
