@@ -242,6 +242,7 @@ export const pkiSyncQueueFactory = ({
     let isSynced = false;
     let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
+    let partialFailure = false;
     let postSyncCommandResult: TPostSyncCommandResult | undefined;
     let healthCheckResult: THealthCheckCommandResult | undefined;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
@@ -401,6 +402,7 @@ export const pkiSyncQueueFactory = ({
       }
 
       postSyncCommandResult = syncResult.postSyncCommand;
+      partialFailure = Boolean(syncResult.partialFailureMessage);
       healthCheckResult = syncResult.healthCheck;
 
       const reasons =
@@ -410,6 +412,7 @@ export const pkiSyncQueueFactory = ({
               certSyncFailureCount > 0
                 ? `${certSyncFailureCount} certificate(s) failed to sync to the destination`
                 : null,
+              syncResult.partialFailureMessage ?? null,
               postSyncCommandResult?.status === PkiSyncStatus.Failed
                 ? buildPostSyncCommandFailureMessage(postSyncCommandResult)
                 : null
@@ -449,7 +452,11 @@ export const pkiSyncQueueFactory = ({
       const ranAt = new Date();
       const postSyncCommandFailed = postSyncCommandResult?.status === PkiSyncStatus.Failed;
       const fullySynced =
-        isSynced && certSyncFailureCount === 0 && !postSyncCommandFailed && !didHealthCheckFail(healthCheckResult);
+        isSynced &&
+        certSyncFailureCount === 0 &&
+        !postSyncCommandFailed &&
+        !partialFailure &&
+        !didHealthCheckFail(healthCheckResult);
       const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({

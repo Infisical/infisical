@@ -87,6 +87,22 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
                 Add the required permissions for secret syncs:
                 ![Assign Service Account Permission](/images/app-connections/gcp/service-account-secret-sync-permission.png)
             </Tab>
+            <Tab title="Certificate Sync">
+                Add the required permissions for [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager):
+                ![Assign Service Account Permission](/images/app-connections/gcp/service-account-certificate-sync-permission.png)
+
+                Grant these roles on the project that holds your certificates, and enable the three APIs Infisical calls on that same project:
+
+                ```bash
+                gcloud services enable \
+                    certificatemanager.googleapis.com \
+                    cloudresourcemanager.googleapis.com \
+                    serviceusage.googleapis.com \
+                    --project=PROJECT_ID
+                ```
+
+                Certificate Manager Owner is needed if you enable certificate removal on a sync, or if you attach a sync to a certificate map. `roles/certificatemanager.editor` grants no delete permissions, and maintaining a map entry replaces or removes it.
+            </Tab>
         </Tabs>
         After configuring the appropriate roles, press "DONE".
     </Step>
