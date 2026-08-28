@@ -412,7 +412,7 @@ The `read_folders` lookup plugin retrieves folders inline, the same way `read_se
 ```yaml
 - name: Read folder names with a lookup
   set_fact:
-    folder_names: "{{ lookup('infisical.vault.read_folders', login_data=infisical_login, project_id='<project-id>', env_slug='dev', path='/') | map(attribute='name') | list }}"
+    folder_names: "{{ lookup('infisical.vault.read_folders', login_data=infisical_login.login_data, project_id='<project-id>', env_slug='dev', path='/') | map(attribute='name') | list }}"
 ```
 
 ### Dynamic secrets
