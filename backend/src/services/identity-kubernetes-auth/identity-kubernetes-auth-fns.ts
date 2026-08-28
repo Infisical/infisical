@@ -10,15 +10,34 @@ const SCHEME_PREFIX = "^https?://";
 export const withKubernetesHostScheme = (kubernetesHost: string) =>
   new RE2(SCHEME_PREFIX).test(kubernetesHost) ? kubernetesHost : `https://${kubernetesHost}`;
 
+// The host as a bare name or address: scheme, port and IPv6 brackets removed. Parsing rather
+// than splitting on the last colon is what makes IPv6 come out right; the split truncates
+// "[::1]:6443" to "[::1]" and a bare "::1" to ":".
+export const getKubernetesHostname = (kubernetesHost: string): string | undefined => {
+  let hostname: string;
+  try {
+    ({ hostname } = new URL(withKubernetesHostScheme(kubernetesHost)));
+  } catch {
+    return undefined;
+  }
+
+  // `new URL` keeps IPv6 literals bracketed, which isIP does not recognize.
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    hostname = hostname.slice(1, -1);
+  }
+
+  return hostname || undefined;
+};
+
 // Undefined for a bare IP: SNI carries host names only, so an IP host is matched on IP SANs.
 // Passing the IP as SNI makes verification fail outright.
-export const getKubernetesServerName = (kubernetesHost: string) => {
-  let servername = new RE2(SCHEME_PREFIX).replace(kubernetesHost, "");
-  const lastColonIndex = servername.lastIndexOf(":");
-  if (lastColonIndex !== -1) {
-    servername = servername.substring(0, lastColonIndex);
-  }
-  return isIP(servername) ? undefined : servername;
+//
+// Only correct when the request is addressed to the Kubernetes host itself, so that Node can
+// fall back to the URL host for the certificate identity check. A request tunnelled through a
+// gateway is addressed to localhost and needs getKubernetesHostname instead.
+export const getKubernetesServerName = (kubernetesHost: string): string | undefined => {
+  const hostname = getKubernetesHostname(kubernetesHost);
+  return !hostname || isIP(hostname) ? undefined : hostname;
 };
 
 /**

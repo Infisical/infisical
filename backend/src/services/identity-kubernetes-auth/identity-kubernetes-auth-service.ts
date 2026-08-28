@@ -55,7 +55,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { safeRequest } from "@app/lib/validator/safe-request";
+import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -69,7 +69,12 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-dal";
 import { handleAxiosError, isKnownError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
-import { extractK8sUsername, getKubernetesServerName, withKubernetesHostScheme } from "./identity-kubernetes-auth-fns";
+import {
+  extractK8sUsername,
+  getKubernetesHostname,
+  getKubernetesServerName,
+  withKubernetesHostScheme
+} from "./identity-kubernetes-auth-fns";
 import {
   IdentityKubernetesAuthTokenReviewMode,
   TAttachKubernetesAuthDTO,
@@ -151,7 +156,7 @@ export const identityKubernetesAuthServiceFactory = ({
   ): Promise<T> => {
     let gatewayHttpsAgent: https.Agent | undefined;
     if (!inputs.reviewTokenThroughGateway) {
-      gatewayHttpsAgent = new https.Agent({
+      gatewayHttpsAgent = getSharedHttpsAgent({
         ca: inputs.caCert || undefined,
         rejectUnauthorized: inputs.verifyTlsCertificate ?? true,
         servername: inputs.targetHost
@@ -221,15 +226,7 @@ export const identityKubernetesAuthServiceFactory = ({
         targetPort: inputs.targetPort,
         relayDetails,
         // only needed for TCP protocol, because the gateway as reviewer will use the pod's CA cert for auth directly
-        ...(!inputs.reviewTokenThroughGateway
-          ? {
-              httpsAgent: new https.Agent({
-                ca: inputs.caCert || undefined,
-                rejectUnauthorized: inputs.verifyTlsCertificate ?? true,
-                servername: inputs.targetHost
-              })
-            }
-          : {})
+        ...(gatewayHttpsAgent ? { httpsAgent: gatewayHttpsAgent } : {})
       }
     );
 
@@ -365,6 +362,7 @@ export const identityKubernetesAuthServiceFactory = ({
         }
 
         const servername = getKubernetesServerName(identityKubernetesAuth.kubernetesHost);
+        const tunnelServername = getKubernetesHostname(identityKubernetesAuth.kubernetesHost);
         const baseUrl = port ? `${host}:${port}` : withKubernetesHostScheme(host);
         const url = `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`;
         const body = {
@@ -389,10 +387,10 @@ export const identityKubernetesAuthServiceFactory = ({
           isThroughGateway
             ? request.post<TCreateTokenReviewResponse>(url, body, {
                 ...config,
-                httpsAgent: new https.Agent({
+                httpsAgent: getSharedHttpsAgent({
                   ca: caCert || undefined,
                   rejectUnauthorized: identityKubernetesAuth.verifyTlsCertificate,
-                  servername
+                  servername: tunnelServername
                 })
               })
             : safeRequest.post<TCreateTokenReviewResponse>(url, body, {
