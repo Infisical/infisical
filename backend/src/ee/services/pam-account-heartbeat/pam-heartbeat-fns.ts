@@ -36,63 +36,50 @@ export const isHeartbeatScheduled = (heartbeat: TPamHeartbeatConfig | undefined)
 // Retrying a rejected credential is how a monitoring feature locks out a privileged account.
 export const stopsSchedule = (status: PamHeartbeatStatus) => status === PamHeartbeatStatus.InvalidCredentials;
 
-const TRANSPORT_ERROR_PATTERNS = [
-  "etimedout",
-  "econnrefused",
-  "econnreset",
-  "ehostunreach",
-  "enetunreach",
-  "enotfound",
-  "eai_again",
-  "socket hang up",
-  "x509",
-  "tls",
-  "certificate",
-  "service unavailable",
-  "internalfailure",
-  "internal server error",
-  "bad gateway",
-  "throttl",
-  "slowdown",
-  "rate exceeded",
-  "too many requests",
-  "timeout",
-  "timed out",
-  "gateway",
-  "tunnel"
-];
-
 // Unclassified resolves to rejected on purpose: an ambiguous result costs a false alarm, not a lockout.
 export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartbeatStatus => {
   if (kind === "transport") return PamHeartbeatStatus.CannotCheck;
   return PamHeartbeatStatus.InvalidCredentials;
 };
 
-// Cloud accounts have no lockout, so the bias inverts: only a recognised rejection stops the schedule.
-const CLOUD_REJECTION_PATTERNS = [
-  "accessdenied",
-  "access denied",
-  "unauthorized",
-  "unauthorised",
-  "invalid_client",
-  "invalid_grant",
-  "invalidclienttokenid",
-  "signaturedoesnotmatch",
-  "expiredtoken",
-  "invalid credentials",
-  "permission denied",
-  "forbidden",
-  "not authorized to perform",
-  "invalid jwt",
-  "is disabled",
-  "has been deleted"
-];
+// Cloud accounts are brokered over HTTP, so the provider's status says what its prose only hints at. A status
+// at all means the request was answered and the credential judged; 5xx, 408, and 429 are the provider having a
+// bad day rather than a verdict on the credential.
+const RETRYABLE_STATUSES = new Set([408, 429]);
+
+const CONNECTION_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ECONNABORTED",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EPIPE"
+]);
+
+// Walks the cause chain the errors thrown by the federation helpers carry on their `error` field.
+const httpStatusOf = (err: unknown): number | undefined => {
+  let current = err;
+  for (let depth = 0; current && typeof current === "object" && depth < 5; depth += 1) {
+    const candidate = current as {
+      response?: { status?: number };
+      $metadata?: { httpStatusCode?: number };
+      code?: unknown;
+      error?: unknown;
+      cause?: unknown;
+    };
+    const status = candidate.response?.status ?? candidate.$metadata?.httpStatusCode;
+    if (typeof status === "number") return status;
+    if (typeof candidate.code === "string" && CONNECTION_ERROR_CODES.has(candidate.code)) return undefined;
+    current = candidate.error ?? candidate.cause;
+  }
+  return undefined;
+};
 
 export const classifyCloudProbeError = (err: unknown): PamHeartbeatStatus => {
-  const message = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  if (TRANSPORT_ERROR_PATTERNS.some((pattern) => message.includes(pattern))) return PamHeartbeatStatus.CannotCheck;
-  if (CLOUD_REJECTION_PATTERNS.some((pattern) => message.includes(pattern))) {
-    return PamHeartbeatStatus.InvalidCredentials;
+  const status = httpStatusOf(err);
+  if (status === undefined || status >= 500 || RETRYABLE_STATUSES.has(status)) {
+    return PamHeartbeatStatus.CannotCheck;
   }
-  return PamHeartbeatStatus.CannotCheck;
+  return status >= 400 ? PamHeartbeatStatus.InvalidCredentials : PamHeartbeatStatus.CannotCheck;
 };
