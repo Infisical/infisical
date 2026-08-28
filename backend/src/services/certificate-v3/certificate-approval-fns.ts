@@ -19,6 +19,7 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -643,16 +644,7 @@ export const certificateApprovalServiceFactory = (
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    if (
-      caType !== CaType.ACME &&
-      caType !== CaType.AZURE_AD_CS &&
-      caType !== CaType.ADCS &&
-      caType !== CaType.AWS_PCA &&
-      caType !== CaType.DIGICERT &&
-      caType !== CaType.AWS_ACM_PUBLIC_CA &&
-      caType !== CaType.VENAFI_TPP &&
-      caType !== CaType.GODADDY
-    ) {
+    if (!caUsesExternalIssuanceQueue(caType)) {
       return null;
     }
 
@@ -678,11 +670,10 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
-    // The request row only persists explicitly supplied fields, so a BYO CSR's subject and SANs
-    // must be re-derived from the CSR itself when validating and queuing.
-    const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
-
     if (caType === CaType.GODADDY) {
+      // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
+      // non-RSA key or extra SANs the GoDaddy guard never saw.
+      const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
       validateGoDaddyIssuanceInputs({
         keyAlgorithm: certRequest.csr
           ? extractAlgorithmsFromCSR(certRequest.csr).keyAlgorithm
@@ -734,9 +725,8 @@ export const certificateApprovalServiceFactory = (
       ttl: effectiveTtl,
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",
-      commonName: certRequest.commonName || csrDerived?.commonName || "",
-      altNames:
-        (altNames ?? csrDerived?.subjectAlternativeNames)?.map((san) => ({ type: san.type, value: san.value })) || [],
+      commonName: certRequest.commonName || "",
+      altNames: altNames?.map((san) => ({ type: san.type, value: san.value })) || [],
       keyUsages: certRequest.keyUsages || [],
       extendedKeyUsages: certRequest.extendedKeyUsages || [],
       certificateRequestId,
