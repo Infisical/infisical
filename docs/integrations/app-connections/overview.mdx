@@ -58,14 +58,6 @@ Create it at the **project** level when the credential belongs to that project a
     Creating a connection from inside a setup form always creates it at the project level. If several teams do this against the same account, you end up storing the same credential several times over. When you expect a connection to be shared, ask an organization admin to create it once at the organization level instead.
 </Warning>
 
-## Who can create one
-
-Creating a connection requires admin permissions, because a connection stores a credential.
-
-- **Project admins** can create connections in their own project. Anyone who creates a project becomes its admin.
-- **Organization admins** can also create connections shared across every project.
-- **Project members** can use existing connections but cannot create new ones. If none exist for the service you picked, the setup form will say so and tell you to ask an admin.
-
 ## Workflow
 
 App Connections require initial setup in both your third-party application and Infisical. Follow these steps to establish a secure connection:
