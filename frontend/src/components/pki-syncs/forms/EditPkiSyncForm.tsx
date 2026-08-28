@@ -179,7 +179,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const renderStep = () => {
     switch (currentStep.key) {
       case "destination":
-        return <PkiSyncDestinationFields />;
+        return <PkiSyncDestinationFields isUpdate />;
       case "options":
         return (
           <>

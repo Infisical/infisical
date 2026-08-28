@@ -226,6 +226,10 @@ const secretManagerMappings: TFeatureMapping[] = [
   {
     v2Key: "honey_token_limit",
     v1Field: "honeyTokenLimit"
+  },
+  {
+    v2Key: "secrets_folder_rbac",
+    v1Field: "secretsFolderRbac"
   }
 ];
 

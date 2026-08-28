@@ -10,6 +10,7 @@ import type { Knex } from "knex";
 
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { getAgentPoolStats } from "@app/lib/validator/agent-pool";
 
 import { getConfig } from "../config/env";
 
@@ -417,6 +418,23 @@ export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: bo
   }
 };
 
+// -- safeRequest HTTPS agent pool (InfisicalCore meter) ----------------------------------------
+// The pool is bounded, so a 201st distinct TLS signature costs the least recently used entry its
+// connection. Non-zero for a sustained window means the cap is too low and should be raised.
+export const safeRequestAgentEvictionCounter = infisicalCoreMeter.createCounter(
+  "infisical.safe_request.agent_eviction.count",
+  {
+    description:
+      "Agents evicted from the safeRequest connection pool because it was at capacity. Non-zero for a sustained window means raise AGENT_CACHE_MAX.",
+    unit: "{eviction}"
+  }
+);
+
+export const recordSafeRequestAgentEvictionMetric = () => {
+  if (!isTelemetryEnabled()) return;
+  safeRequestAgentEvictionCounter.add(1);
+};
+
 export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.core.http.error.count", {
   description: "API errors with bounded error classification. Labels limited to InfisicalCore View allowlist.",
   unit: "{error}"
@@ -807,6 +825,20 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numUsed?.() ?? 0, { "db.pool.state": "used" });
     result.observe(pool.numFree?.() ?? 0, { "db.pool.state": "free" });
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
+  });
+
+  // safeRequest agent pool: an in-memory Map size, so it's cheap to observe on every export.
+  // Read alongside infisical.safe_request.agent_eviction.count — size pinned at max with a
+  // non-zero eviction rate is the signal that the cap is too low.
+  const agentPoolGauge = meter.createObservableGauge("infisical.safe_request.agent_pool.size", {
+    description: "Agents currently held in the safeRequest connection pool.",
+    unit: "{agent}"
+  });
+
+  agentPoolGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    const { size, max } = getAgentPoolStats();
+    result.observe(size, { "pool.max": String(max) });
   });
 };
 

@@ -1,0 +1,315 @@
+import { useMemo, useState } from "react";
+import { FolderIcon, InfoIcon, SearchIcon, UsersIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Badge,
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useDebounce } from "@app/hooks";
+import {
+  SecretFolderRole,
+  TFolderGrantType,
+  useCreateIdentityFolderAccess,
+  useCreateUserFolderAccess,
+  useDeleteIdentityFolderAccess,
+  useDeleteUserFolderAccess,
+  useListFolderAccessIdentities,
+  useListFolderAccessUsers,
+  useUpdateIdentityFolderAccess,
+  useUpdateUserFolderAccess
+} from "@app/hooks/api/folderAccess";
+
+import { AddFolderAccessSheet } from "./AddFolderAccessSheet";
+import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
+import {
+  byAdminThenName,
+  TFolderAccessActor,
+  toIdentityActor,
+  toUserActor
+} from "./folder-access.utils";
+import { FolderAccessRow } from "./FolderAccessRow";
+import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
+
+// users and identities come from two separately paginated endpoints that share this page
+const PER_PAGE = 20;
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  projectId: string;
+  environmentSlug: string;
+  folderPath: string;
+  environmentName: string;
+};
+
+export const FolderAccessSheet = ({
+  isOpen,
+  onOpenChange,
+  projectId,
+  environmentSlug,
+  folderPath,
+  environmentName
+}: Props) => {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
+
+  const listArgs = {
+    projectId,
+    environmentSlug,
+    secretPath: folderPath,
+    limit: PER_PAGE,
+    offset: (page - 1) * PER_PAGE,
+    search: debouncedSearch.trim() || undefined
+  };
+  const { data: users, isPending: isUsersPending } = useListFolderAccessUsers(listArgs);
+  const { data: identities, isPending: isIdentitiesPending } =
+    useListFolderAccessIdentities(listArgs);
+
+  const createUserAccess = useCreateUserFolderAccess();
+  const updateUserAccess = useUpdateUserFolderAccess();
+  const deleteUserAccess = useDeleteUserFolderAccess();
+  const createIdentityAccess = useCreateIdentityFolderAccess();
+  const updateIdentityAccess = useUpdateIdentityFolderAccess();
+  const deleteIdentityAccess = useDeleteIdentityFolderAccess();
+
+  const actors = useMemo(
+    () =>
+      [
+        ...(users?.users ?? []).map(toUserActor),
+        ...(identities?.identities ?? []).map(toIdentityActor)
+      ].sort(byAdminThenName),
+    [users, identities]
+  );
+
+  const isLoading = isUsersPending || isIdentitiesPending;
+  // the endpoints page the project roster and only then split each page into the actors that do and
+  // do not have access here, so this count pages members and not the rows below it
+  const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
+  const pageStart = (page - 1) * PER_PAGE + 1;
+  const pageEnd = Math.min(page * PER_PAGE, rosterCount);
+  const isSearching = Boolean(debouncedSearch.trim());
+
+  const emptyState = (() => {
+    if (rosterCount === 0) {
+      return isSearching
+        ? {
+            title: "No matches found",
+            description: "No users or machine identities match your search."
+          }
+        : {
+            title: "No project members",
+            description: "This project has no users or machine identities to grant access to."
+          };
+    }
+    return {
+      title: "No access on this page",
+      description: isSearching
+        ? "None of the members matching your search on this page have access to this folder. Check another page, or refine your search."
+        : `None of project members ${pageStart}–${pageEnd} have access to this folder. Check another page, or search for someone by name.`
+    };
+  })();
+
+  // failures are already surfaced by the global MutationCache.onError toast, which carries the
+  // server's own message, so only the success side is announced here
+  const notifySuccess = (text: string) => createNotification({ text, type: "success" });
+
+  const setTier = (actor: TFolderAccessActor, permission: SecretFolderRole) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
+    const onSuccess = () =>
+      notifySuccess(
+        actor.access
+          ? `Updated ${actor.name} to ${tierLabel} on this folder`
+          : `Granted ${actor.name} ${tierLabel} access to this folder`
+      );
+
+    if (actor.type === "user") {
+      const dto = { ...target, userId: actor.id, permission };
+      if (actor.access) updateUserAccess.mutate(dto, { onSuccess });
+      else createUserAccess.mutate(dto, { onSuccess });
+      return;
+    }
+    const dto = { ...target, identityId: actor.id, permission };
+    if (actor.access) updateIdentityAccess.mutate(dto, { onSuccess });
+    else createIdentityAccess.mutate(dto, { onSuccess });
+  };
+
+  const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const onSuccess = () =>
+      notifySuccess(
+        type.isTemporary
+          ? `${actor.name}'s folder access now expires in ${type.temporaryRange}`
+          : `Removed the expiration on ${actor.name}'s folder access`
+      );
+
+    if (actor.type === "user")
+      updateUserAccess.mutate({ ...target, userId: actor.id, type }, { onSuccess });
+    else updateIdentityAccess.mutate({ ...target, identityId: actor.id, type }, { onSuccess });
+  };
+
+  const removeAccess = (actor: TFolderAccessActor) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const onSuccess = () => {
+      notifySuccess(`Removed ${actor.name}'s folder access`);
+      setRemovalActor(null);
+    };
+
+    if (actor.type === "user")
+      deleteUserAccess.mutate({ ...target, userId: actor.id }, { onSuccess });
+    else deleteIdentityAccess.mutate({ ...target, identityId: actor.id }, { onSuccess });
+  };
+
+  return (
+    <>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent className="gap-y-0 sm:max-w-[640px]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Manage Permissions
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-72">
+                  Permissions granted here apply only to this folder, nested folders do not inherit
+                  these permissions. The folder can still be moved, edited, or deleted by anyone
+                  with folder edit or delete permissions.
+                </TooltipContent>
+              </Tooltip>
+            </SheetTitle>
+            <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
+              <Badge variant="project" className="shrink-0">
+                {environmentName}
+              </Badge>
+
+              <FolderIcon className="size-3.5 shrink-0 text-folder" />
+              <span className="truncate font-mono text-mineshaft-100/80">{folderPath}</span>
+            </div>
+          </SheetHeader>
+
+          <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
+            <div className="flex items-center gap-2">
+              <InputGroup className="flex-1">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search users & machine identities..."
+                />
+              </InputGroup>
+              <Button
+                variant="project"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setIsAddOpen(true)}
+              >
+                Add Access
+              </Button>
+            </div>
+
+            {isLoading && (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            )}
+
+            {!isLoading && !actors.length && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <UsersIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>{emptyState.title}</EmptyTitle>
+                  <EmptyDescription>{emptyState.description}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+
+            {!isLoading && Boolean(actors.length) && (
+              <div className="flex flex-col">
+                {actors.map((actor) => (
+                  <FolderAccessRow
+                    key={`${actor.type}-${actor.id}`}
+                    actor={actor}
+                    onSetTier={(tier) => setTier(actor, tier)}
+                    onSetTemporaryRange={(range) =>
+                      setAccessType(actor, {
+                        isTemporary: true,
+                        temporaryMode: "relative",
+                        temporaryRange: range,
+                        temporaryAccessStartTime: new Date().toISOString()
+                      })
+                    }
+                    onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
+                    onRemove={() => setRemovalActor(actor)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && rosterCount > PER_PAGE && (
+              <Pagination
+                count={rosterCount}
+                page={page}
+                perPage={PER_PAGE}
+                onChangePage={setPage}
+                onChangePerPage={() => {}}
+                perPageList={[PER_PAGE]}
+                startAdornment={<span className="text-xs text-muted">Project members</span>}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AddFolderAccessSheet
+        isOpen={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        projectId={projectId}
+        environmentSlug={environmentSlug}
+        folderPath={folderPath}
+        environmentName={environmentName}
+      />
+
+      <RemoveFolderAccessDialog
+        actor={removalActor}
+        onOpenChange={(open) => {
+          if (!open) setRemovalActor(null);
+        }}
+        onConfirm={removeAccess}
+        isPending={deleteUserAccess.isPending || deleteIdentityAccess.isPending}
+        folderPath={folderPath}
+        environmentName={environmentName}
+      />
+    </>
+  );
+};

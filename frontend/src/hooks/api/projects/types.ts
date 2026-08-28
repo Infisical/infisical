@@ -43,6 +43,7 @@ export type Project = {
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
   enforceEncryptedSecretManagerSecretMetadata: boolean;
+  isLegacyAdditionalPrivilegesEnabled: boolean;
 };
 
 export type ProjectEnv = {

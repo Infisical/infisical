@@ -655,7 +655,7 @@ const ImportSecretsContent = ({
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <Combobox
+              <Combobox<{ name: string; slug: string }>
                 id="target-environments"
                 multiple
                 singleLine

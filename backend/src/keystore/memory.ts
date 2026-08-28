@@ -65,13 +65,6 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       }
       return null;
     },
-    // Redis stores values as bytes, so a string written by setItem reads back as its utf8 bytes here.
-    getItemBuffer: async (key) => {
-      const value = store[key];
-      if (Buffer.isBuffer(value)) return value;
-      if (typeof value === "string") return Buffer.from(value, "utf8");
-      return null;
-    },
     getItemPrimary: async (key) => {
       const value = store[key];
       if (typeof value === "string") {

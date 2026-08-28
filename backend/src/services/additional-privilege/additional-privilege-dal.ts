@@ -1,6 +1,10 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
+import { chunkArray } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
+import { ActorType } from "@app/services/auth/auth-type";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
 
@@ -71,9 +75,50 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     return Boolean(result);
   };
 
+  const findFolderScopedPrivileges = async (
+    {
+      projectId,
+      actorId,
+      actorType
+    }: { projectId: string; actorId: string; actorType: ActorType.USER | ActorType.IDENTITY },
+    tx?: Knex
+  ) => {
+    const docs = await (tx || db)(TableName.AdditionalPrivilege)
+      .where({ projectId })
+      .whereNotNull("folderId")
+      .where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId })
+      .select("id", "name", "folderId", "role", "isTemporary", "temporaryAccessEndTime");
+
+    return docs as {
+      id: string;
+      name: string;
+      folderId: string;
+      role: string | null;
+      isTemporary: boolean;
+      temporaryAccessEndTime: Date | null;
+    }[];
+  };
+
+  const remapFolderIds = async (pairs: { oldFolderId: string; newFolderId: string }[], tx: Knex) => {
+    for (const chunk of chunkArray(pairs, 500)) {
+      const values = chunk.map(() => "(?::uuid, ?::uuid)").join(", ");
+      const bindings = chunk.flatMap(({ oldFolderId, newFolderId }) => [oldFolderId, newFolderId]);
+      // eslint-disable-next-line no-await-in-loop
+      await tx.raw(
+        `UPDATE ${TableName.AdditionalPrivilege} AS ap
+         SET "folderId" = m.new_id
+         FROM (VALUES ${values}) AS m(old_id, new_id)
+         WHERE ap."folderId" = m.old_id`,
+        bindings
+      );
+    }
+  };
+
   return {
     ...orm,
     findWithAccessApprovalStatus,
-    isLinkedToAccessApproval
+    isLinkedToAccessApproval,
+    findFolderScopedPrivileges,
+    remapFolderIds
   };
 };
