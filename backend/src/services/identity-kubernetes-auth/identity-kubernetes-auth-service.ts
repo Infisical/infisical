@@ -60,6 +60,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -85,6 +86,8 @@ import {
 } from "./identity-kubernetes-auth-types";
 import {
   GatewayRequestExecutor,
+  TKubernetesConnectionFields,
+  validateKubernetesConnectionFields,
   validateKubernetesHostConnectivity,
   validateTokenReviewerPermissions
 } from "./identity-kubernetes-auth-validators";
@@ -308,6 +311,24 @@ export const identityKubernetesAuthServiceFactory = ({
   ): boolean => {
     if (!caCert?.length) return false;
     return storedVerify ?? false;
+  };
+
+  const $validateTemplateSourcedConnection = async (templateName: string, fields: TKubernetesConnectionFields) => {
+    const issues = validateKubernetesConnectionFields(fields);
+    if (issues.length > 0) {
+      throw new BadRequestError({
+        message: `Cannot use auth template '${templateName}': ${issues[0].message}. The template's gateway or gateway pool may have been deleted; update the template's connection settings and try again.`
+      });
+    }
+    if (
+      (fields.tokenReviewMode ?? IdentityKubernetesAuthTokenReviewMode.Api) ===
+        IdentityKubernetesAuthTokenReviewMode.Api &&
+      fields.kubernetesHost &&
+      !fields.gatewayId &&
+      !fields.gatewayPoolId
+    ) {
+      await blockLocalAndPrivateIpAddresses(fields.kubernetesHost);
+    }
   };
 
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
@@ -902,12 +923,19 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = templateFields.caCert || undefined;
       tokenReviewerJwt = templateFields.tokenReviewerJwt || undefined;
       tokenReviewMode = templateFields.tokenReviewMode;
-      // the template's gateway lives in columns, not the encrypted fields, so it can carry a
-      // foreign key and clear itself in step with the columns copied onto this row
       gatewayId = template.gatewayV2Id ?? template.gatewayId ?? null;
       gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
+
+      await $validateTemplateSourcedConnection(template.name, {
+        tokenReviewMode,
+        kubernetesHost,
+        caCert,
+        verifyTlsCertificate,
+        gatewayId,
+        gatewayPoolId
+      });
     } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !kubernetesHost) {
       throw new BadRequestError({
         message: "When token review mode is set to API, a Kubernetes host must be provided"
@@ -1247,6 +1275,15 @@ export const identityKubernetesAuthServiceFactory = ({
       gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
+
+      await $validateTemplateSourcedConnection(template.name, {
+        tokenReviewMode,
+        kubernetesHost,
+        caCert,
+        verifyTlsCertificate,
+        gatewayId,
+        gatewayPoolId
+      });
     } else if (templateId === undefined && identityKubernetesAuth.templateId) {
       const hasTemplateManagedFieldChanges =
         kubernetesHost !== undefined ||

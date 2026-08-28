@@ -51,6 +51,8 @@ import {
 } from "@app/hooks/api/identityAuthTemplates";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { templateAuthMethods } from "./IdentityAuthTemplateModal";
+
 enum TemplatesOrderBy {
   Name = "name",
   AuthMethod = "authMethod"
@@ -224,77 +226,89 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                 </TableRow>
               ))}
             {!isPending &&
-              templates?.map((template) => (
-                <TableRow key={`template-${template.id}`}>
-                  <TableCell isTruncatable>{template.name}</TableCell>
-                  <TableCell>
-                    <span className="uppercase">{template.authMethod}</span>
-                  </TableCell>
-                  <TableCell isTruncatable>
-                    {template.authMethod === MachineIdentityAuthMethod.KUBERNETES
-                      ? template.templateFields.kubernetesHost || "Gateway"
-                      : template.templateFields.url}
-                  </TableCell>
-                  <TableCell variant="action">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
-                          <MoreHorizontalIcon />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePopUpOpen("viewUsages", { template });
-                          }}
-                        >
-                          <EyeIcon />
-                          {TEMPLATE_UI_LABELS.VIEW_USAGES}
-                        </DropdownMenuItem>
-                        <OrgPermissionCan
-                          I={OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates}
-                          a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("editTemplate", { template });
-                              }}
-                              isDisabled={!isAllowed}
-                            >
-                              <EditIcon />
-                              {TEMPLATE_UI_LABELS.EDIT_TEMPLATE}
-                            </DropdownMenuItem>
-                          )}
-                        </OrgPermissionCan>
-                        <OrgPermissionCan
-                          I={OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates}
-                          a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("deleteTemplate", {
-                                  templateId: template.id,
-                                  name: template.name
-                                });
-                              }}
-                              isDisabled={!isAllowed}
-                            >
-                              <TrashIcon />
-                              {TEMPLATE_UI_LABELS.DELETE_TEMPLATE}
-                            </DropdownMenuItem>
-                          )}
-                        </OrgPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              templates?.map((template) => {
+                const methodOption = templateAuthMethods.find(
+                  ({ value }) => value === template.authMethod
+                );
+                return (
+                  <TableRow key={`template-${template.id}`}>
+                    <TableCell isTruncatable>{template.name}</TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        {methodOption?.icon}
+                        {methodOption?.label ?? template.authMethod}
+                      </span>
+                    </TableCell>
+                    <TableCell isTruncatable>
+                      {template.authMethod === MachineIdentityAuthMethod.KUBERNETES
+                        ? template.templateFields.kubernetesHost || "Gateway"
+                        : template.templateFields.url}
+                    </TableCell>
+                    <TableCell variant="action">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePopUpOpen("viewUsages", { template });
+                            }}
+                          >
+                            <EyeIcon />
+                            {TEMPLATE_UI_LABELS.VIEW_USAGES}
+                          </DropdownMenuItem>
+                          <OrgPermissionCan
+                            I={OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates}
+                            a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("editTemplate", { template });
+                                }}
+                                isDisabled={!isAllowed}
+                              >
+                                <EditIcon />
+                                {TEMPLATE_UI_LABELS.EDIT_TEMPLATE}
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                          <OrgPermissionCan
+                            I={OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates}
+                            a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteTemplate", {
+                                    templateId: template.id,
+                                    name: template.name
+                                  });
+                                }}
+                                isDisabled={!isAllowed}
+                              >
+                                <TrashIcon />
+                                {TEMPLATE_UI_LABELS.DELETE_TEMPLATE}
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
         {totalCount > 0 && (

@@ -42,6 +42,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { superRefineKubernetesConnectionFields } from "@app/helpers/identityAuthSchemas";
+import { IdentityAuthMethod } from "@app/hooks/api";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/hooks/api/identities/types";
 import {
   type IdentityAuthTemplate,
@@ -53,9 +54,24 @@ import {
 } from "@app/hooks/api/identityAuthTemplates";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const authMethods = [
-  { label: "LDAP Auth", value: MachineIdentityAuthMethod.LDAP },
-  { label: "Kubernetes Auth", value: MachineIdentityAuthMethod.KUBERNETES }
+import { identityAuthMethodOptions } from "./IdentityAuthMethodModalContent";
+
+// reuse the identity auth method icons so the template pickers and tables cannot
+// drift apart from the direct identity auth presentation
+const getMethodIcon = (method: IdentityAuthMethod) =>
+  identityAuthMethodOptions.find(({ value }) => value === method)?.icon;
+
+export const templateAuthMethods = [
+  {
+    label: "LDAP Auth",
+    value: MachineIdentityAuthMethod.LDAP,
+    icon: getMethodIcon(IdentityAuthMethod.LDAP_AUTH)
+  },
+  {
+    label: "Kubernetes Auth",
+    value: MachineIdentityAuthMethod.KUBERNETES,
+    icon: getMethodIcon(IdentityAuthMethod.KUBERNETES_AUTH)
+  }
 ];
 
 const schema = z
@@ -367,9 +383,12 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                       <SelectValue placeholder="Select auth method..." />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {authMethods.map(({ label, value }) => (
+                      {templateAuthMethods.map(({ label, value, icon }) => (
                         <SelectItem key={value} value={value}>
-                          {label}
+                          <span className="flex items-center gap-2">
+                            {icon}
+                            {label}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -603,6 +622,7 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                                 id="identity-auth-template-clear-token-reviewer-jwt"
                                 checked={value}
                                 onCheckedChange={onChange}
+                                variant={isSubOrganization ? "sub-org" : "org"}
                               />
                               <FieldLabel
                                 htmlFor="identity-auth-template-clear-token-reviewer-jwt"
@@ -651,6 +671,7 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                                 checked={hasCaCert ? true : value}
                                 onCheckedChange={onChange}
                                 disabled={hasCaCert}
+                                variant={isSubOrganization ? "sub-org" : "org"}
                               />
                               <FieldLabel
                                 htmlFor="identity-auth-template-verify-tls"

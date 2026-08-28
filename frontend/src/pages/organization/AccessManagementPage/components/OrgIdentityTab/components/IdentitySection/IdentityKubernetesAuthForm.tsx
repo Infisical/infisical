@@ -9,7 +9,10 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -79,6 +82,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
         .default(IdentityKubernetesAuthTokenReviewMode.Api),
       kubernetesHost: z.string().optional().nullable(),
       tokenReviewerJwt: z.string().optional(),
+      removeTemplateSourcedJwt: z.boolean().optional(),
       gatewayId: z.string().optional().nullable(),
       gatewayPoolId: z.string().optional().nullable(),
       allowedNames: z.string(),
@@ -155,7 +159,7 @@ export const IdentityKubernetesAuthForm = ({
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
 
-  const { data: templates, isPending: isTemplatesPending } = useGetAvailableTemplates(
+  const { data: templates, isLoading: isTemplatesLoading } = useGetAvailableTemplates(
     MachineIdentityAuthMethod.KUBERNETES,
     { enabled: canAttachTemplates && Boolean(subscription?.machineIdentityAuthTemplates) }
   );
@@ -200,6 +204,7 @@ export const IdentityKubernetesAuthForm = ({
       tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
       tokenReviewerJwt: "",
+      removeTemplateSourcedJwt: false,
       allowedNames: "",
       allowedNamespaces: "",
       gatewayId: "",
@@ -221,6 +226,7 @@ export const IdentityKubernetesAuthForm = ({
         tokenReviewMode: data.tokenReviewMode,
         kubernetesHost: data.kubernetesHost,
         tokenReviewerJwt: data.tokenReviewerJwt,
+        removeTemplateSourcedJwt: false,
         allowedNames: data.allowedNames,
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
@@ -242,6 +248,7 @@ export const IdentityKubernetesAuthForm = ({
         tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
         kubernetesHost: "",
         tokenReviewerJwt: "",
+        removeTemplateSourcedJwt: false,
         allowedNames: "",
         allowedNamespaces: "",
         allowedAudience: "",
@@ -383,6 +390,7 @@ export const IdentityKubernetesAuthForm = ({
     templateId: submissionTemplateId,
     kubernetesHost,
     tokenReviewerJwt,
+    removeTemplateSourcedJwt,
     allowedNames,
     allowedNamespaces,
     allowedAudience,
@@ -425,6 +433,14 @@ export const IdentityKubernetesAuthForm = ({
     };
 
     if (data) {
+      // a blank field can only mean "clear" when the stored JWT was readable and
+      // prefilled; template-sourced JWTs read back as "" so blank must keep them, and
+      // removing one takes the explicit checkbox
+      let tokenReviewerJwtUpdate: string | null | undefined =
+        tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined);
+      if (removeTemplateSourcedJwt) {
+        tokenReviewerJwtUpdate = null;
+      }
       await updateMutateAsync(
         submissionScope === "template"
           ? { ...basePayload, templateId: submissionTemplateId }
@@ -433,9 +449,7 @@ export const IdentityKubernetesAuthForm = ({
               ...customConfigPayload,
               // unlink an existing template so the custom values are accepted
               ...(data.templateId ? { templateId: null } : {}),
-              // a blank field can only mean "clear" when the stored JWT was readable and
-              // prefilled; template-sourced JWTs read back as "" so blank must keep them
-              tokenReviewerJwt: tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined),
+              tokenReviewerJwt: tokenReviewerJwtUpdate,
               caCert
             }
       );
@@ -463,7 +477,16 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const isRemovingTemplateJwt = watch("removeTemplateSourcedJwt");
+  const hasTemplateSourcedJwt = Boolean(data?.isTokenReviewerJwtTemplateSourced);
   const templateDisabledClass = scope === "template" ? "opacity-55" : "";
+
+  let tokenReviewerJwtPlaceholder = "eyJhbGciOiJSUzI1NiIs...";
+  if (scope === "template") {
+    tokenReviewerJwtPlaceholder = "Defined in template";
+  } else if (hasTemplateSourcedJwt) {
+    tokenReviewerJwtPlaceholder = "Leave blank to keep the stored JWT";
+  }
 
   return (
     <form
@@ -542,7 +565,7 @@ export const IdentityKubernetesAuthForm = ({
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
-                      isLoading={isTemplatesPending}
+                      isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
                       onChange={(option) => {
                         const selectedOption = option as ConfigurationOption | null;
@@ -772,13 +795,44 @@ export const IdentityKubernetesAuthForm = ({
                       id="tokenReviewerJwt"
                       type="password"
                       autoComplete="new-password"
-                      placeholder={
-                        scope === "template" ? "Defined in template" : "eyJhbGciOiJSUzI1NiIs..."
-                      }
-                      disabled={scope === "template"}
+                      placeholder={tokenReviewerJwtPlaceholder}
+                      disabled={scope === "template" || isRemovingTemplateJwt}
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
+            {scope === "custom" && hasTemplateSourcedJwt && (
+              <Controller
+                control={control}
+                name="removeTemplateSourcedJwt"
+                render={({ field: { value, onChange } }) => (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id="removeTemplateSourcedJwt"
+                      variant={scopeVariant}
+                      isChecked={Boolean(value)}
+                      onCheckedChange={(next) => {
+                        const checked = next === true;
+                        onChange(checked);
+                        if (checked) setValue("tokenReviewerJwt", "");
+                      }}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="removeTemplateSourcedJwt" className="cursor-pointer">
+                        Remove template-sourced token reviewer JWT
+                      </FieldLabel>
+                      <FieldDescription>
+                        This identity stores a write-only token reviewer JWT copied from its auth
+                        template. Its connection settings cannot be changed while the JWT is kept.
+                        Check to remove it on save
+                        {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+                          ? ", or enter a new JWT above to replace it."
+                          : "."}
+                      </FieldDescription>
+                    </FieldContent>
                   </Field>
                 )}
               />

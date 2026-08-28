@@ -243,7 +243,7 @@ export const IdentityLdapAuthForm = ({
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
 
-  const { data: templates, isPending: isTemplatesPending } = useGetAvailableTemplates(
+  const { data: templates, isLoading: isTemplatesLoading } = useGetAvailableTemplates(
     MachineIdentityAuthMethod.LDAP,
     { enabled: canAttachTemplates && Boolean(subscription?.machineIdentityAuthTemplates) }
   );
@@ -542,7 +542,7 @@ export const IdentityLdapAuthForm = ({
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
-                      isLoading={isTemplatesPending}
+                      isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
                       onChange={(option) => {
                         const selectedOption = option as ConfigurationOption | null;
