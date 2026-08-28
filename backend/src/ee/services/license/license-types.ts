@@ -115,6 +115,7 @@ export type TFeatureSet = {
   secretsTemporaryAccess: null;
   enterprisePamAccount: null;
   crossProjectSecretSharing: false;
+  secretsFolderRbac: false;
 };
 
 export type TOrgPlanDTO = {

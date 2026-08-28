@@ -104,6 +104,14 @@ export const KeyStorePrefixes = {
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
+  // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
+  ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
+
+  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string, page: string) =>
+    `project-folder-access-marker:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
+    `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
+
   KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
@@ -205,6 +213,8 @@ export const KeyStoreTtls = {
   IdentityTrustedIpsInSeconds: 300, // 5 minutes
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
+  ProjectFolderAccessMarkerTtlSeconds: 20,
+  ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes

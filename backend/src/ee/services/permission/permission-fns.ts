@@ -3,12 +3,24 @@ import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@
 import handlebars from "handlebars";
 import { z } from "zod";
 
-import { TOrganizations } from "@app/db/schemas";
+import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
-import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
+import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import { OrgPermissionSet } from "./org-permission";
+import { TPermissionDALFactory } from "./permission-dal";
+import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
@@ -437,6 +449,136 @@ const handlebarsClient = (() => {
 
   return hbs;
 })();
+
+export const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
+  role: U
+): boolean =>
+  !role.isTemporary ||
+  Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
+
+export const getFolderPermissionVersionFingerprint = async (
+  projectId: string,
+  keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">
+) => String((await keyStore.pgGetIntItem(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId))) ?? 0);
+
+export const getProjectPermissionFingerprint = async (
+  {
+    projectId,
+    orgId,
+    actorId,
+    actorType
+  }: {
+    projectId: string;
+    orgId: string;
+    actorId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+  },
+  {
+    permissionDAL,
+    keyStore
+  }: {
+    permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
+    keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">;
+  }
+): Promise<string> => {
+  const [membershipFingerprint, folderVersion] = await Promise.all([
+    permissionDAL.getPermissionFingerprint({ projectId, orgId, actorId, actorType }),
+    getFolderPermissionVersionFingerprint(projectId, keyStore)
+  ]);
+
+  return `${membershipFingerprint}:${folderVersion}`;
+};
+
+export const fetchFolderScopedPrivileges = async (
+  projectId: string,
+  actor: ActorType.USER | ActorType.IDENTITY,
+  actorId: string,
+  {
+    additionalPrivilegeDAL,
+    secretFolderDAL
+  }: {
+    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
+    secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  }
+): Promise<TCachedFolderScopedPrivileges> => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
+  if (!rows.length) return { privileges: [] };
+
+  const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
+    projectId,
+    rows.map((row) => row.folderId)
+  );
+
+  return {
+    privileges: rows.flatMap((row, idx) => {
+      const folder = foldersWithPath[idx];
+      if (!folder || !row.role) return [];
+      return [
+        {
+          id: row.id,
+          folderId: row.folderId,
+          role: row.role,
+          environmentSlug: folder.environmentSlug,
+          secretPath: folder.path,
+          isTemporary: row.isTemporary,
+          temporaryAccessEndTime: row.temporaryAccessEndTime
+        }
+      ];
+    })
+  };
+};
+
+export const buildFolderScopedPrivilegeRules = (
+  privileges: TProjectFolderScopedPrivilege[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const scopedGrants = privileges.map((privilege) => {
+    // make sure the role is valid
+    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
+      throw new NotFoundError({
+        name: "FolderRoleInvalid",
+        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
+      });
+    }
+    return {
+      role: privilege.role as SecretFolderRole,
+      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
+    };
+  });
+
+  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
+    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
+
+  // first we deny all tthe defined paths, and later we just allow the ones that the role has access.
+  // on CASL, the last match rule wins, so this works as expected.
+  return [
+    ...scopedGrants.flatMap(({ conditions }) => withConditions(FOLDER_SCOPED_DENY_RULES, conditions)),
+    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
+  ];
+};
+
+export const filterOverriddenFolderScopedDenyRules = (
+  rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
+
+  const allowedPairs = new Set<string>();
+  rules
+    .filter((rule) => !rule.inverted)
+    .forEach((rule) => {
+      toArray(rule.subject as string | string[]).forEach((sub) => {
+        toArray(rule.action).forEach((action) => allowedPairs.add(`${sub}:${action}`));
+      });
+    });
+
+  return rules.flatMap((rule) => {
+    if (!rule.inverted) return [rule];
+    return toArray(rule.subject as string | string[]).flatMap((sub) => {
+      const deniedActions = toArray(rule.action).filter((action) => !allowedPairs.has(`${sub}:${action}`));
+      if (!deniedActions.length) return [];
+      return [{ ...rule, subject: sub, action: deniedActions } as RawRuleOf<MongoAbility<ProjectPermissionSet>>];
+    });
+  });
+};
 
 // Compiling a template is the most expensive step of building an ability, and almost no rule set needs
 // it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template

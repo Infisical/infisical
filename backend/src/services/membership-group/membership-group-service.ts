@@ -10,6 +10,8 @@ import {
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
@@ -21,6 +23,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
@@ -59,6 +62,9 @@ type TMembershipGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -78,7 +84,10 @@ export const membershipGroupServiceFactory = ({
   applicationMembershipCleanupService,
   projectDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  additionalPrivilegeDAL,
+  identityGroupMembershipDAL,
+  userGroupMembershipDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -420,6 +429,41 @@ export const membershipGroupServiceFactory = ({
           },
           tx
         );
+
+        const projectId = existingMembership.scopeProjectId;
+        const { groupId } = dto.selector;
+
+        const identityMembers = await identityGroupMembershipDAL.find({ groupId }, { tx });
+        if (identityMembers.length) {
+          const identityIds = identityMembers.map(({ identityId }) => identityId);
+          const identitiesStillInProject = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+            identityIds,
+            groupId,
+            [projectId],
+            tx
+          );
+          const identityIdsToDelete = identityIds.filter(
+            (identityId) => !identitiesStillInProject.get(identityId)?.has(projectId)
+          );
+          if (identityIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
+          }
+        }
+
+        const userMembers = await userGroupMembershipDAL.find({ groupId }, { tx });
+        if (userMembers.length) {
+          const userIds = userMembers.map(({ userId }) => userId);
+          const usersStillInProject = await userGroupMembershipDAL.filterProjectsByUserMembership(
+            userIds,
+            groupId,
+            [projectId],
+            tx
+          );
+          const userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+          if (userIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorUserId: userIdsToDelete } }, tx);
+          }
+        }
       }
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
