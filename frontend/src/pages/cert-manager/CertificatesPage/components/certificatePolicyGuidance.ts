@@ -11,7 +11,7 @@ import {
 
 import { SUBJECT_ATTRIBUTE_LABELS, SubjectAltName, SubjectAttribute } from "./certificateUtils";
 
-export type SanRule = NonNullable<TCertificatePolicyRule["sans"]>[number];
+type SanRule = NonNullable<TCertificatePolicyRule["sans"]>[number];
 
 type ValueRule = {
   allowed?: string[];
@@ -27,13 +27,14 @@ const formatPatterns = (patterns: string[]): string => {
   return remaining > 0 ? `${shown.join(", ")} (+${remaining} more)` : shown.join(", ");
 };
 
-// Messages end on the pattern list rather than a period, because a trailing period reads as part of
-// a domain name ("dawg.com." is a valid FQDN).
-const asSentence = (clauses: string[]): string | undefined => {
-  if (clauses.length === 0) return undefined;
-  const joined = clauses.join("; ");
-  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}`;
-};
+/**
+ * Hints carry the policy editor's own words (Require / Allow / Deny) so a requester can line the
+ * constraint up against the rule that produced it. Each constraint gets its own line, and a line
+ * ends on the pattern list rather than a period, because a trailing period reads as part of a
+ * domain name ("dawg.com." is a valid FQDN).
+ */
+const labelledLine = (label: "Required" | "Allowed" | "Denied", patterns: string[]): string =>
+  `${label}: ${formatPatterns(patterns)}`;
 
 const patternClause = (verb: string, connector: string, patterns: string[]): string =>
   patterns.length === 1
@@ -80,11 +81,18 @@ const parseSequence = (value: string): string[] =>
 const formatSequence = (sequence: string[]): string =>
   sequence.map((component) => `DC=${component}`).join(",");
 
-const formatSequences = (sequences: string[][]): string =>
-  formatPatterns(sequences.map(formatSequence));
+/**
+ * The same values as `formatPatterns`, but one per entry. A domain component sequence contains
+ * commas of its own, so comma-joining a list of them reads as one long undifferentiated run.
+ */
+const listPatterns = (patterns: string[]): string[] => {
+  const shown = patterns.slice(0, MAX_LISTED_PATTERNS);
+  const remaining = patterns.length - shown.length;
+  return remaining > 0 ? [...shown, `+${remaining} more`] : shown;
+};
 
-const sequenceClause = (verb: string, connector: string, sequences: string[][]): string =>
-  patternClause(verb, connector, sequences.map(formatSequence));
+const listSequences = (sequences: string[][]): string[] =>
+  listPatterns(sequences.map(formatSequence));
 
 const matchesSequence = (request: string[], policy: string[]): boolean =>
   request.length === policy.length &&
@@ -120,7 +128,7 @@ const mergeRules = <T extends ValueRule>(existing: T | undefined, incoming: T): 
       }
     : incoming;
 
-export type CertificatePolicyRules = {
+type CertificatePolicyRules = {
   subject: Partial<Record<CertSubjectAttributeType, TSubjectRule>>;
   sans: Partial<Record<CertSubjectAlternativeNameType, SanRule>>;
   /** An absent subject/SAN policy means no constraint at all, which is different from an empty one. */
@@ -128,7 +136,7 @@ export type CertificatePolicyRules = {
   hasSanPolicy: boolean;
 };
 
-export const EMPTY_POLICY_RULES: CertificatePolicyRules = {
+const EMPTY_POLICY_RULES: CertificatePolicyRules = {
   subject: {},
   sans: {},
   hasSubjectPolicy: false,
@@ -158,54 +166,107 @@ export const buildPolicyRules = (policy?: TCertificatePolicy | null): Certificat
   };
 };
 
+const getSubjectAttributeHint = (rule?: TSubjectRule): string[] | undefined => {
+  if (!rule) return undefined;
+
+  const lines: string[] = [];
+  // `allowed` cannot widen a rule that already carries `required`, so only one of the two is real.
+  if (rule.required?.length) lines.push(labelledLine("Required", rule.required));
+  else if (rule.allowed?.length) lines.push(labelledLine("Allowed", rule.allowed));
+  if (rule.denied?.length) lines.push(labelledLine("Denied", rule.denied));
+  return lines.length > 0 ? lines : undefined;
+};
+
+const formatComponentCounts = (lengths: number[]): string => {
+  const unique = Array.from(new Set(lengths)).sort((a, b) => a - b);
+  return `${unique.join(" or ")} component${unique.length === 1 && unique[0] === 1 ? "" : "s"}`;
+};
+
+/** The sequence a domain component rule accepts, preferring `required` the way the backend does. */
+const acceptedSequences = (rule: TSubjectRule): string[][] | undefined => {
+  const patterns = rule.required?.length ? rule.required : rule.allowed;
+  return patterns?.length ? patterns.map(parseSequence) : undefined;
+};
+
 /**
- * The values a rule accepts. When a rule carries `required` patterns the backend demands a match
- * against those specifically, so `allowed` no longer widens the set for subject attributes.
+ * Domain components are an ordered sequence, so each row is constrained by its own position rather
+ * than by the sequence as a whole.
  */
-const acceptedSubjectPatterns = (rule: TSubjectRule): string[] | undefined =>
-  rule.required?.length ? rule.required : rule.allowed;
+const getDomainComponentHint = (
+  rule: TSubjectRule | undefined,
+  position: number
+): string[] | undefined => {
+  const sequences = rule && acceptedSequences(rule);
+  if (!sequences) return undefined;
 
-export const getSubjectAttributeHint = (
-  type: CertSubjectAttributeType,
-  rule?: TSubjectRule
-): string | undefined => {
-  if (!rule) return undefined;
+  const options = Array.from(
+    new Set(sequences.filter((sequence) => position < sequence.length).map((s) => s[position]))
+  );
 
-  if (type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
-    const sequences = (rule.required?.length ? rule.required : rule.allowed)?.map(parseSequence);
-    const clauses: string[] = [];
-    if (sequences?.length) {
-      clauses.push(sequenceClause("the ordered sequence must match", "one of", sequences));
-    }
-    if (rule.denied?.length) {
-      clauses.push(sequenceClause("cannot contain", "any of", rule.denied.map(parseSequence)));
-    }
-    return asSentence(clauses);
+  if (options.length === 0) {
+    return [
+      `The sequence takes ${formatComponentCounts(sequences.map((s) => s.length))}, so this row is past its end`
+    ];
   }
 
-  const clauses: string[] = [];
-  const accepted = acceptedSubjectPatterns(rule);
-  if (accepted?.length) clauses.push(patternClause("must match", "one of", accepted));
-  if (rule.denied?.length) clauses.push(patternClause("cannot match", "any of", rule.denied));
-  return asSentence(clauses);
+  // A bare "*" accepts anything at this position, so there is nothing to tell the requester.
+  if (options.includes("*")) return undefined;
+
+  return [labelledLine(rule?.required?.length ? "Required" : "Allowed", options)];
 };
 
-export const getSanHint = (rule?: SanRule): string | undefined => {
+// Mirrors parseTTL in backend/src/services/certificate-policy/certificate-policy-service.ts.
+const parseTtlToMs = (ttl: string): number | undefined => {
+  const match = /^(\d+)([dmyh])$/.exec(ttl.trim());
+  if (!match) return undefined;
+
+  const value = Number(match[1]);
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+  switch (match[2]) {
+    case "h":
+      return value * hour;
+    case "d":
+      return value * day;
+    case "m":
+      return value * 30 * day;
+    case "y":
+      return value * 365 * day;
+    default:
+      return undefined;
+  }
+};
+
+export const getValidityHint = (maxTtl?: string): string[] | undefined =>
+  maxTtl ? [`Maximum: ${maxTtl}`] : undefined;
+
+export const validateTtlAgainstPolicy = (ttl: string, maxTtl?: string): string | undefined => {
+  const trimmed = ttl?.trim() ?? "";
+  // An empty value is the schema's business, not the policy's.
+  if (!trimmed) return undefined;
+
+  // The backend throws on an unparseable TTL, so catching the format here keeps that off the wire.
+  const requested = parseTtlToMs(trimmed);
+  if (requested === undefined) return "Enter a duration such as 30d, 12h, 6m, or 1y";
+
+  const max = maxTtl ? parseTtlToMs(maxTtl) : undefined;
+  if (max === undefined || requested <= max) return undefined;
+  return `Exceeds the maximum validity of ${maxTtl} allowed by this policy`;
+};
+
+const getSanHint = (rule?: SanRule): string[] | undefined => {
   if (!rule) return undefined;
 
-  const clauses: string[] = [];
-  if (rule.allowed?.length) {
-    clauses.push(
-      patternClause("must match", "one of", [...(rule.required ?? []), ...rule.allowed])
-    );
-  } else if (rule.required?.length) {
-    clauses.push(patternClause("this policy requires one matching", "any of", rule.required));
-  }
-  if (rule.denied?.length) clauses.push(patternClause("cannot match", "any of", rule.denied));
-  return asSentence(clauses);
+  // Unlike a subject attribute, a required SAN pattern does not narrow what any one row may hold:
+  // it demands that some SAN of this type match it, and `allowed` still widens the set.
+  const lines: string[] = [];
+  if (rule.required?.length) lines.push(labelledLine("Required", rule.required));
+  if (rule.allowed?.length) lines.push(labelledLine("Allowed", rule.allowed));
+  if (rule.denied?.length) lines.push(labelledLine("Denied", rule.denied));
+  return lines.length > 0 ? lines : undefined;
 };
 
-export const validateSubjectAttributeValue = (
+const validateSubjectAttributeValue = (
   type: CertSubjectAttributeType,
   value: string,
   rule: TSubjectRule | undefined,
@@ -232,7 +293,7 @@ export const validateSubjectAttributeValue = (
   return undefined;
 };
 
-export const validateSanValue = (
+const validateSanValue = (
   type: CertSubjectAlternativeNameType,
   value: string,
   rule: SanRule | undefined,
@@ -258,17 +319,55 @@ export const validateSanValue = (
 const DOMAIN_COMPONENT_ORDER_NOTE =
   "Rows are order-sensitive, so they must follow the policy's order.";
 
-const reversalHint = (request: string[], policies: string[][]): string => {
-  const reversed = [...request].reverse();
-  if (request.length < 2 || !matchesAnySequence(reversed, policies)) return "";
-  return " The same components in the opposite order would match, so check the row order.";
+const DOMAIN_COMPONENT_REVERSAL_NOTE =
+  "The same components in the opposite order would match, so check the row order.";
+
+const isReversalOf = (request: string[], candidates: string[][]): boolean =>
+  request.length > 1 && matchesAnySequence([...request].reverse(), candidates);
+
+/**
+ * The sequences a rule accepts that are as long as the request. Only these can say anything about
+ * an individual row, since a position means nothing across sequences of a different length.
+ */
+const comparableSequences = (components: string[], rule?: TSubjectRule): string[][] => {
+  const sequences = rule && acceptedSequences(rule);
+  return (sequences ?? []).filter((sequence) => sequence.length === components.length);
 };
 
-/** Sequence-level domain component errors. An absent sequence is reported as a requirement instead. */
-export const validateDomainComponents = (components: string[], rule?: TSubjectRule): string[] => {
+/**
+ * Per-row domain component errors, so a wrong component is marked where it was typed rather than
+ * only in a summary underneath. Empty rows are left to the schema's own required-value error.
+ */
+const validateDomainComponentRows = (
+  components: string[],
+  rule?: TSubjectRule
+): (string | undefined)[] => {
+  const candidates = comparableSequences(components, rule);
+  if (candidates.length === 0) return [];
+
+  const label = SUBJECT_ATTRIBUTE_LABELS[CertSubjectAttributeType.DOMAIN_COMPONENT];
+
+  return components.map((component, position) => {
+    if (!component) return undefined;
+
+    const options = Array.from(new Set(candidates.map((sequence) => sequence[position])));
+    const isAccepted = options.some((option) =>
+      matchesNormalizedPattern(component.toLowerCase(), option.toLowerCase())
+    );
+
+    return isAccepted ? undefined : `${label} ${patternClause("must match", "one of", options)}`;
+  });
+};
+
+/** Domain component faults no single row can own: the wrong count, a denied run, a reversed order. */
+const validateDomainComponents = (
+  components: string[],
+  rule: TSubjectRule | undefined,
+  isReportedPerRow: boolean
+): PolicyNotice[] => {
   if (!rule || components.length === 0) return [];
 
-  const errors: string[] = [];
+  const notices: PolicyNotice[] = [];
   const allowed = (rule.allowed ?? []).map(parseSequence);
   const required = (rule.required ?? []).map(parseSequence);
   const denied = (rule.denied ?? []).map(parseSequence);
@@ -276,60 +375,146 @@ export const validateDomainComponents = (components: string[], rule?: TSubjectRu
 
   const isDenied = containsAnySequence(components, denied);
   if (isDenied) {
-    errors.push(
-      `Domain components "${formatted}" are denied by this policy. Denied: ${formatSequences(denied)}`
-    );
+    notices.push({
+      message: `Domain components "${formatted}" are denied by this policy.`,
+      label: "Denied",
+      items: listSequences(denied)
+    });
   }
+
+  const describeMismatch = (candidates: string[][], label: string) => {
+    if (candidates.length === 0 || matchesAnySequence(components, candidates)) return;
+
+    const items = listSequences(candidates);
+    const lengths = candidates.map((sequence) => sequence.length);
+    if (!lengths.includes(components.length)) {
+      // A count mismatch is the most common way a sequence fails, and naming it beats "do not match".
+      notices.push({
+        message: `Domain components must form a sequence of ${formatComponentCounts(lengths)}, but this request has ${components.length}.`,
+        label,
+        items
+      });
+    } else if (!isReportedPerRow) {
+      // Otherwise the rows carry the fault themselves, on the exact component that is wrong.
+      notices.push({
+        message: `Domain components "${formatted}" do not match. ${DOMAIN_COMPONENT_ORDER_NOTE}`,
+        label,
+        items
+      });
+    }
+
+    if (isReversalOf(components, candidates)) {
+      notices.push({ message: DOMAIN_COMPONENT_REVERSAL_NOTE });
+    }
+  };
 
   const satisfiesRequired = required.length > 0 && matchesAnySequence(components, required);
-  if (required.length > 0 && !satisfiesRequired) {
-    errors.push(
-      `Domain components "${formatted}" do not match a required sequence. ${DOMAIN_COMPONENT_ORDER_NOTE}${reversalHint(components, required)} Required: ${formatSequences(required)}`
-    );
-  }
+  describeMismatch(required, "Required");
+  if (!isDenied && !satisfiesRequired) describeMismatch(allowed, "Allowed");
 
-  if (!isDenied && !satisfiesRequired && allowed.length > 0) {
-    if (!matchesAnySequence(components, allowed)) {
-      errors.push(
-        `Domain components "${formatted}" are not allowed by this policy. ${DOMAIN_COMPONENT_ORDER_NOTE}${reversalHint(components, allowed)} Allowed: ${formatSequences(allowed)}`
-      );
-    }
-  }
-
-  return errors;
-};
-
-export type PolicyRequirement = {
-  id: string;
-  message: string;
-  /** Rows to append when the request is missing this attribute or SAN entirely. */
-  addRows?:
-    | { kind: "subject"; type: CertSubjectAttributeType; values: string[] }
-    | { kind: "san"; type: CertSubjectAlternativeNameType; values: string[] };
+  return notices;
 };
 
 /** A single literal pattern can be filled in for the user; wildcards cannot. */
 const literalSuggestion = (patterns: string[]): string =>
   patterns.length === 1 && !isWildcardPattern(patterns[0]) ? patterns[0] : "";
 
-export type SubjectPolicyGuidance = {
-  subjectRowHints: (string | undefined)[];
-  subjectRowErrors: (string | undefined)[];
-  subjectNotices: string[];
-  sanRowHints: (string | undefined)[];
-  sanRowErrors: (string | undefined)[];
-  requirements: PolicyRequirement[];
-  hasBlockingIssues: boolean;
+const requiredSequenceRows = (rule: TSubjectRule): string[] => {
+  const sequences = (rule.required ?? []).map(parseSequence);
+  const onlySequence = sequences.length === 1 ? sequences[0] : undefined;
+  const isFillable = Boolean(onlySequence?.every((part) => !isWildcardPattern(part)));
+  return isFillable && onlySequence ? onlySequence : [""];
 };
 
-export const EMPTY_SUBJECT_POLICY_GUIDANCE: SubjectPolicyGuidance = {
-  subjectRowHints: [],
-  subjectRowErrors: [],
-  subjectNotices: [],
-  sanRowHints: [],
-  sanRowErrors: [],
-  requirements: [],
-  hasBlockingIssues: false
+/**
+ * Seeds the rows the policy demands so the requirement is visible as a field the moment a profile
+ * is chosen, rather than as a banner the requester has to act on. Literal patterns are filled in;
+ * wildcard ones leave a blank row for the requester.
+ */
+export const withRequiredRows = (
+  rules: CertificatePolicyRules,
+  subjectAttributes: SubjectAttribute[],
+  subjectAltNames: SubjectAltName[]
+): { subjectAttributes: SubjectAttribute[]; subjectAltNames: SubjectAltName[] } => {
+  const subject = subjectAttributes.map((attr) => ({ ...attr }));
+
+  Object.entries(rules.subject).forEach(([rawType, rule]) => {
+    const type = rawType as CertSubjectAttributeType;
+    if (!rule?.required?.length) return;
+
+    if (type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
+      if (subject.some((attr) => attr.type === type)) return;
+      requiredSequenceRows(rule).forEach((value) => subject.push({ type, value }));
+      return;
+    }
+
+    const suggestion = literalSuggestion(rule.required);
+    const existing = subject.find((attr) => attr.type === type);
+    if (!existing) {
+      subject.push({ type, value: suggestion });
+    } else if (!existing.value && suggestion) {
+      existing.value = suggestion;
+    }
+  });
+
+  const sans = subjectAltNames.map((san) => ({ ...san }));
+
+  Object.entries(rules.sans).forEach(([rawType, rule]) => {
+    const type = rawType as CertSubjectAlternativeNameType;
+    if (!rule?.required?.length) return;
+
+    const isUri = type === CertSubjectAlternativeNameType.URI;
+    let unclaimedBlankRows = sans.filter((san) => san.type === type && !san.value.trim()).length;
+
+    rule.required.forEach((pattern) => {
+      const isSatisfied = sans.some(
+        (san) =>
+          san.type === type && san.value.trim() && matchesAny(san.value.trim(), [pattern], isUri)
+      );
+      if (isSatisfied) return;
+
+      if (!isWildcardPattern(pattern)) {
+        sans.push({ type, value: pattern });
+      } else if (unclaimedBlankRows > 0) {
+        unclaimedBlankRows -= 1;
+      } else {
+        sans.push({ type, value: "" });
+      }
+    });
+  });
+
+  return { subjectAttributes: subject, subjectAltNames: sans };
+};
+
+/** What the policy has to say about one subject attribute or SAN row. */
+export type PolicyRowGuidance = {
+  /** The constraint in the policy editor's own words, one line per clause. */
+  hint?: string[];
+  /** How this row's current value breaks the policy. */
+  error?: string;
+  /** Seeded to satisfy a `required` rule: neither removable nor retypeable. */
+  isLocked: boolean;
+};
+
+/** A finding no single row can own, such as an ordered sequence or a set-level requirement. */
+export type PolicyNotice = {
+  message: string;
+  /** Names what `items` are, in the policy editor's words. */
+  label?: string;
+  /** Rendered one per line, because an entry may contain commas of its own. */
+  items?: string[];
+};
+
+export type PolicySectionGuidance = {
+  rows: PolicyRowGuidance[];
+  notices: PolicyNotice[];
+  /** Whether this section holds something the request cannot be submitted with. */
+  isBlocking: boolean;
+};
+
+export type SubjectPolicyGuidance = {
+  subject: PolicySectionGuidance;
+  sans: PolicySectionGuidance;
 };
 
 export const evaluateSubjectStep = ({
@@ -345,146 +530,155 @@ export const evaluateSubjectStep = ({
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;
 }): SubjectPolicyGuidance => {
-  const requirements: PolicyRequirement[] = [];
+  const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
 
-  const subjectRowHints = subjectAttributes.map((attr, index) => {
-    const isFirstOfType =
-      subjectAttributes.findIndex((other) => other.type === attr.type) === index;
-    // A domain component rule spans every DC row, so only the first row carries the hint.
-    if (attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && !isFirstOfType) return undefined;
-    return getSubjectAttributeHint(attr.type, rules.subject[attr.type]);
-  });
-
-  const subjectRowErrors = subjectAttributes.map((attr) =>
-    validateSubjectAttributeValue(
-      attr.type,
-      attr.value,
-      rules.subject[attr.type],
-      rules.hasSubjectPolicy
-    )
+  // Domain components are one ordered sequence spread across rows, so they are judged in row order
+  // rather than individually like every other attribute type.
+  const domainComponentValues = subjectAttributes
+    .filter((attr) => attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT)
+    .map((attr) => attr.value.trim());
+  const domainComponentErrors = validateDomainComponentRows(
+    domainComponentValues,
+    domainComponentRule
   );
 
-  const domainComponents = subjectAttributes
-    .filter((attr) => attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT)
-    .map((attr) => attr.value.trim())
-    .filter(Boolean);
+  let domainComponentPosition = 0;
+  let lockableDomainComponents = domainComponentRule?.required?.length
+    ? requiredSequenceRows(domainComponentRule).length
+    : 0;
 
-  const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
-  const subjectNotices = validateDomainComponents(domainComponents, domainComponentRule);
+  const subjectRows: PolicyRowGuidance[] = subjectAttributes.map((attr) => {
+    const rule = rules.subject[attr.type];
 
+    if (attr.type !== CertSubjectAttributeType.DOMAIN_COMPONENT) {
+      return {
+        hint: getSubjectAttributeHint(rule),
+        error: validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy),
+        isLocked: Boolean(rule?.required?.length)
+      };
+    }
+
+    const position = domainComponentPosition;
+    domainComponentPosition += 1;
+
+    // A required sequence has a fixed length, so removing any row within it breaks the request.
+    // Rows beyond that length are the requester's own and stay removable.
+    const isLocked = lockableDomainComponents > 0;
+    if (isLocked) lockableDomainComponents -= 1;
+
+    return {
+      hint: getDomainComponentHint(domainComponentRule, position),
+      error: domainComponentErrors[position],
+      isLocked
+    };
+  });
+
+  const subjectNotices = validateDomainComponents(
+    domainComponentValues.filter(Boolean),
+    domainComponentRule,
+    domainComponentErrors.some(Boolean)
+  );
+
+  // A required attribute normally has a seeded row, and an empty or wrong value on that row reports
+  // itself. This only speaks up when the row is missing entirely.
   if (isSubjectSectionShown) {
     Object.entries(rules.subject).forEach(([rawType, rule]) => {
       const type = rawType as CertSubjectAttributeType;
       if (!rule?.required?.length) return;
+      if (subjectAttributes.some((attr) => attr.type === type)) return;
 
       const label = SUBJECT_ATTRIBUTE_LABELS[type];
       if (type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
         const sequences = rule.required.map(parseSequence);
-        // A populated sequence that does not match already produces its own notice.
-        if (domainComponents.length > 0) return;
-
-        const onlySequence = sequences.length === 1 ? sequences[0] : undefined;
-        const isFillable = Boolean(onlySequence?.every((part) => !isWildcardPattern(part)));
-        requirements.push({
-          id: `subject-${type}`,
-          message:
-            sequences.length === 1
-              ? `${label} rows must form the sequence ${formatSequence(sequences[0])}`
-              : `${label} rows must form one of: ${formatSequences(sequences)}`,
-          ...(subjectAttributes.every((attr) => attr.type !== type) && {
-            addRows: {
-              kind: "subject" as const,
-              type,
-              values: isFillable && onlySequence ? onlySequence : [""]
-            }
-          })
+        subjectNotices.push({
+          message: `${label} rows are required.`,
+          label: "Required",
+          items: listSequences(sequences)
         });
         return;
       }
 
-      const current = subjectAttributes.find((attr) => attr.type === type);
-      const value = current?.value.trim() ?? "";
-      if (value && matchesAny(value, rule.required)) return;
-
-      requirements.push({
-        id: `subject-${type}`,
-        message: `${label} is required and ${patternClause("must match", "one of", rule.required)}`,
-        ...(!current && {
-          addRows: {
-            kind: "subject" as const,
-            type,
-            values: [literalSuggestion(rule.required)]
-          }
-        })
+      subjectNotices.push({
+        message: `${label} is required and ${patternClause("must match", "one of", rule.required)}`
       });
     });
   }
 
-  const sanRowHints = subjectAltNames.map((san) => getSanHint(rules.sans[san.type]));
-  const sanRowErrors = subjectAltNames.map((san) =>
-    validateSanValue(san.type, san.value, rules.sans[san.type], rules.hasSanPolicy)
-  );
+  // A SAN row is fixed when it is the one holding a required pattern up: either it satisfies the
+  // pattern or it is the blank row standing in for it. Claiming rows the same way withRequiredRows
+  // seeds them keeps the lock on the row that matters, wherever it sits in the list.
+  const lockedSanRows = new Set<number>();
+  Object.entries(rules.sans).forEach(([rawType, rule]) => {
+    const type = rawType as CertSubjectAlternativeNameType;
+    if (!rule?.required?.length) return;
 
+    const isUri = type === CertSubjectAlternativeNameType.URI;
+    const claim = (predicate: (san: SubjectAltName) => boolean) => {
+      const index = subjectAltNames.findIndex(
+        (san, position) => !lockedSanRows.has(position) && san.type === type && predicate(san)
+      );
+      if (index >= 0) lockedSanRows.add(index);
+      return index >= 0;
+    };
+
+    rule.required.forEach((pattern) => {
+      const isSatisfiedBy = (san: SubjectAltName) =>
+        Boolean(san.value.trim()) && matchesAny(san.value.trim(), [pattern], isUri);
+      if (!claim(isSatisfiedBy)) claim((san) => !san.value.trim());
+    });
+  });
+
+  const sanRows: PolicyRowGuidance[] = subjectAltNames.map((san, index) => {
+    const rule = rules.sans[san.type];
+
+    return {
+      hint: getSanHint(rule),
+      error: validateSanValue(san.type, san.value, rule, rules.hasSanPolicy),
+      isLocked: lockedSanRows.has(index)
+    };
+  });
+
+  // A required SAN pattern is set-level: the backend only asks that some SAN of that type match it,
+  // so it cannot be reported on any one row.
+  const sanNotices: PolicyNotice[] = [];
   if (isSanSectionShown) {
     Object.entries(rules.sans).forEach(([rawType, rule]) => {
       const type = rawType as CertSubjectAlternativeNameType;
       if (!rule?.required?.length) return;
 
       const isUri = type === CertSubjectAlternativeNameType.URI;
-      const presentValues = subjectAltNames
-        .filter((san) => san.type === type)
-        .map((san) => san.value.trim())
-        .filter(Boolean);
-
-      // A wildcard pattern cannot be filled in for the user, so each unmet one needs its own blank
-      // row. Blank rows already on the form are claimed first, one per requirement.
-      let unclaimedEmptyRows = subjectAltNames.filter(
-        (san) => san.type === type && !san.value.trim()
-      ).length;
+      const rows = subjectAltNames.filter((san) => san.type === type);
+      const presentValues = rows.map((san) => san.value.trim()).filter(Boolean);
+      // A blank row of the right type is a requirement the requester is still filling in, and the
+      // empty-value error on that row already blocks. Only speak up once no blank row is left.
+      let unclaimedBlankRows = rows.length - presentValues.length;
 
       rule.required.forEach((pattern) => {
         if (presentValues.some((value) => matchesAny(value, [pattern], isUri))) return;
-
-        const requirement: PolicyRequirement = {
-          id: `san-${type}-${pattern}`,
-          message: `A ${formatSANType(type)} SAN matching ${pattern} is required`
-        };
-
-        if (!isWildcardPattern(pattern)) {
-          requirement.addRows = { kind: "san", type, values: [pattern] };
-        } else if (unclaimedEmptyRows > 0) {
-          unclaimedEmptyRows -= 1;
-        } else {
-          requirement.addRows = { kind: "san", type, values: [""] };
+        if (unclaimedBlankRows > 0) {
+          unclaimedBlankRows -= 1;
+          return;
         }
-
-        requirements.push(requirement);
+        sanNotices.push({
+          message: `A ${formatSANType(type)} SAN matching ${pattern} is required`
+        });
       });
     });
   }
 
-  // Only issues on a rendered section can block, otherwise there is nowhere to go and fix them.
-  const hasBlockingIssues =
-    (isSubjectSectionShown && (subjectRowErrors.some(Boolean) || subjectNotices.length > 0)) ||
-    (isSanSectionShown && sanRowErrors.some(Boolean)) ||
-    requirements.length > 0;
+  // Only findings on a rendered section can block, otherwise there is nowhere to go and fix them.
+  const toSection = (
+    rows: PolicyRowGuidance[],
+    notices: PolicyNotice[],
+    isShown: boolean
+  ): PolicySectionGuidance => ({
+    rows,
+    notices,
+    isBlocking: isShown && (rows.some((row) => row.error) || notices.length > 0)
+  });
 
   return {
-    subjectRowHints,
-    subjectRowErrors,
-    subjectNotices,
-    sanRowHints,
-    sanRowErrors,
-    requirements,
-    hasBlockingIssues
+    subject: toSection(subjectRows, subjectNotices, isSubjectSectionShown),
+    sans: toSection(sanRows, sanNotices, isSanSectionShown)
   };
 };
-
-export const mergeRowErrors = (
-  formErrors: (string | undefined)[] | undefined,
-  policyErrors: (string | undefined)[]
-): (string | undefined)[] =>
-  Array.from(
-    { length: Math.max(formErrors?.length ?? 0, policyErrors.length) },
-    (_, index) => formErrors?.[index] ?? policyErrors[index]
-  );

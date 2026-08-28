@@ -4,7 +4,6 @@ import { Plus, Trash2 } from "lucide-react";
 import {
   Button,
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -17,7 +16,9 @@ import {
 } from "@app/components/v3";
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
 import { SUBJECT_ATTRIBUTE_LABELS, SubjectAttribute } from "./certificateUtils";
+import { PolicyRowMessage } from "./PolicyRowMessage";
 
 const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string => {
   switch (type) {
@@ -46,8 +47,12 @@ type SubjectAttributesFieldProps = {
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
   rowErrors?: (string | undefined)[];
-  rowHints?: (string | undefined)[];
-  notices?: string[];
+  /** Per-row policy findings: the constraint, how the value breaks it, and whether it is fixed. */
+  policyRows?: PolicyRowGuidance[];
+  /** Policy findings spanning several rows, such as an ordered sequence. */
+  policyNotices?: PolicyNotice[];
+  /** Policy findings stay hidden until the requester tries to leave the step. */
+  revealPolicyErrors?: boolean;
   shouldUnregister?: boolean;
   namePrefix?: string;
 };
@@ -57,8 +62,9 @@ export const SubjectAttributesField = ({
   allowedAttributeTypes,
   error,
   rowErrors,
-  rowHints,
-  notices,
+  policyRows,
+  policyNotices,
+  revealPolicyErrors,
   shouldUnregister,
   namePrefix = "subjectAttributes"
 }: SubjectAttributesFieldProps) => {
@@ -86,6 +92,9 @@ export const SubjectAttributesField = ({
                 const selectableTypes = allowedAttributeTypes.filter(
                   (type) => type === attr.type || isMultiValued(type) || !usedTypes.includes(type)
                 );
+                const policy = policyRows?.[index];
+                const rowError =
+                  rowErrors?.[index] ?? (revealPolicyErrors ? policy?.error : undefined);
 
                 return (
                   <div
@@ -101,7 +110,7 @@ export const SubjectAttributesField = ({
                         onChange(newValue);
                       }}
                     >
-                      <SelectTrigger className="w-52">
+                      <SelectTrigger className="w-52" disabled={policy?.isLocked}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -112,7 +121,7 @@ export const SubjectAttributesField = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <Input
                         value={attr.value}
                         onChange={(e) => {
@@ -121,22 +130,24 @@ export const SubjectAttributesField = ({
                           onChange(newValue);
                         }}
                         placeholder={getSubjectAttributePlaceholder(attr.type)}
-                        isError={Boolean(rowErrors?.[index])}
+                        isError={Boolean(rowError)}
                         className="w-full"
                       />
-                      <FieldError className="mt-1.5">{rowErrors?.[index]}</FieldError>
-                      {!rowErrors?.[index] && rowHints?.[index] && (
-                        <FieldDescription className="mt-1.5">{rowHints[index]}</FieldDescription>
-                      )}
+                      {rowError && <PolicyRowMessage isError lines={[rowError]} />}
+                      {!rowError && policy?.hint && <PolicyRowMessage lines={policy.hint} />}
                     </div>
-                    <IconButton
-                      type="button"
-                      variant="ghost"
-                      aria-label="Remove entry"
-                      onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
-                    >
-                      <Trash2 />
-                    </IconButton>
+                    {policy?.isLocked ? (
+                      <span className="w-9 shrink-0" />
+                    ) : (
+                      <IconButton
+                        type="button"
+                        variant="ghost"
+                        aria-label="Remove entry"
+                        onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 />
+                      </IconButton>
+                    )}
                   </div>
                 );
               })}
@@ -154,7 +165,23 @@ export const SubjectAttributesField = ({
               )}
             </div>
             <FieldError>{error}</FieldError>
-            {notices?.map((notice) => <FieldError key={notice}>{notice}</FieldError>)}
+            {revealPolicyErrors && Boolean(policyNotices?.length) && (
+              <div className="mb-2 space-y-2">
+                {policyNotices?.map((notice) => (
+                  <FieldError key={notice.message}>
+                    <span className="block">
+                      {notice.message}
+                      {notice.label ? ` ${notice.label}:` : null}
+                    </span>
+                    {notice.items?.map((item) => (
+                      <span key={item} className="block pl-3">
+                        {item}
+                      </span>
+                    ))}
+                  </FieldError>
+                ))}
+              </div>
+            )}
           </Field>
         );
       }}
