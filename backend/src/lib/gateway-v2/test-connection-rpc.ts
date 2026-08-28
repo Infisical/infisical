@@ -1,7 +1,6 @@
 import { postGatewayRpc } from "./gateway-rpc";
 
-// The gateway classifies a probe failure at the source, where the driver error still exists. Older gateways
-// send no kind, which the caller must treat as unclassified rather than as either outcome.
+// Older gateways send no kind, which the caller must treat as unclassified rather than as either outcome.
 export type GatewayFailureKind = "auth" | "transport" | "unknown";
 
 export type TestConnectionResponse =

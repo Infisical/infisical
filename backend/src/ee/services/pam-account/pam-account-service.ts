@@ -338,8 +338,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     };
   };
 
-  // Throws to block create/update when the account can't reach/authenticate its target. Returns whether the
-  // credential itself was proven, which is false when the probe could only reach the host.
+  // Returns whether the credential itself was proven, which is false when the probe only reached the host.
   const assertConnectionOk = async (
     accountType: PamAccountType,
     connectionDetails: Record<string, unknown>,
@@ -391,7 +390,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
 
-    // A TCP probe only proves the host answered, so it cannot stand in for a verified credential.
     return Boolean(result?.ok) && test.request.mode !== TestConnectionMode.Tcp;
   };
 
@@ -504,8 +502,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
 
-    // Only a probe that authenticated proves the credential; discovery imports skip the test entirely, and some
-    // account types can only be reached, not logged into. Those start unverified.
     const credentialProvenAt = credentialVerified ? new Date() : null;
 
     try {
@@ -766,10 +762,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       );
     }
 
-    // A stored verdict describes the credential that was just replaced, so it cannot stand once the credential
-    // changes. Clearing it is what lets checking resume: several account types (Windows, SSH certificates,
-    // MSSQL Windows auth) cannot be verified on this path, and leaving them rejected would strand them stopped
-    // with a badge telling the user to do the very thing they just did.
+    // Clearing the old verdict is what resumes checking: the types that cannot be verified on this path would
+    // otherwise stay stopped, telling the user to do the very thing they just did.
     if (credentials) {
       updateData.heartbeatStatus = credentialVerified ? PamHeartbeatStatus.Healthy : null;
       updateData.encryptedLastHeartbeatMessage = null;

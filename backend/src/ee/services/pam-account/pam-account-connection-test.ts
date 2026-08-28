@@ -96,9 +96,8 @@ export const buildGatewayConnectionTest = async (
   connectionDetails: Record<string, unknown>,
   credentials: Record<string, unknown> | null,
   orgId: string,
-  // Windows-auth MSSQL needs a gateway that routes it through the WinRM-capable proxy handshake. Callers that
-  // must not fail against an older gateway (account create and update) leave this off and get a reachability
-  // check for those logins, exactly as before.
+  // Off for account create and update, which must not start failing against a gateway that predates the
+  // Windows-auth proxy handshake.
   opts?: { allowWindowsAuthSql?: boolean }
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
@@ -163,7 +162,6 @@ export const buildGatewayConnectionTest = async (
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate,
-          // MSSQL Windows-auth logins carry the domain or realm the gateway needs to complete the handshake.
           ...(accountType === PamAccountType.MsSQL
             ? {
                 authMethod: c.authMethod,
@@ -289,7 +287,6 @@ export const buildGatewayConnectionTest = async (
         privateKey?: string;
         certificate?: string;
       } | null;
-      // Certificate accounts store no long-lived secret; the caller mints a short-lived cert and passes it here.
       if (!c || (c.authMethod === PamSshAuthMethod.Certificate && !c.certificate)) return tcp(host, port);
       return {
         host,

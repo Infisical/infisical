@@ -54,6 +54,7 @@ export const pamAccountHeartbeatQueueServiceFactory = async ({
             type: EventType.PAM_ACCOUNT_HEARTBEAT,
             metadata: {
               accountId: job.data.accountId,
+              accountName: result.accountName,
               accountType: result.accountType,
               heartbeatStatus: result.status,
               manual: false,

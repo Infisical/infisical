@@ -236,8 +236,6 @@ export const winrmRpcWithGateway = async <T>({
   );
 
   if (!response.ok) {
-    // Carries the gateway's classification so a caller can tell a rejected credential from an unreachable
-    // host without re-parsing the message.
     const err = new BadRequestError({
       message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}`
     }) as BadRequestError & { gatewayFailureKind?: GatewayFailureKind | null };

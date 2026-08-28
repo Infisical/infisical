@@ -287,7 +287,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return Number(result[0]?.count ?? 0);
   };
 
-  // Due and enabled. Mirrors dueRotationQuery, minus the rotatable-type filter: heartbeat covers every account type.
   const dueHeartbeatQuery = (now: Date, tx?: Knex) =>
     (tx || db.replicaNode())(TableName.PamAccount)
       .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
@@ -310,8 +309,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return Number(result[0]?.count ?? 0);
   };
 
-  // Bulk reschedule when a template's heartbeat settings change. Accounts already stopped by a rejected credential
-  // stay stopped: a settings change is not the human event that clears that.
+  // Accounts stopped by a rejected credential stay stopped: a settings change is not what clears that.
   const reconcileHeartbeatScheduleForTemplate = async (
     templateId: string,
     opts?: { rescheduleAll?: boolean },
@@ -336,7 +334,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     const { intervalSeconds } = heartbeat;
     const jitterCapSeconds = heartbeatJitterCapSeconds(intervalSeconds);
 
-    // NULL-safe on purpose: an account that has never been checked has a null status, and `whereNot` would drop it.
+    // NULL-safe on purpose: a never-checked account has a null status, which `whereNot` would drop.
     const update = dbClient(TableName.PamAccount)
       .where({ templateId })
       .whereRaw(`("heartbeatStatus" is null or "heartbeatStatus" <> ?)`, [PamHeartbeatStatus.InvalidCredentials]);
@@ -362,7 +360,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     if (!heartbeat?.enabled || heartbeat.intervalSeconds == null) {
       nextHeartbeatAt = null;
     } else if (!current && account.heartbeatStatus === PamHeartbeatStatus.InvalidCredentials) {
-      // Stopped for a rejected credential. Only a credential change clears that, not a gateway or template edit.
       nextHeartbeatAt = null;
     } else if (!current) {
       nextHeartbeatAt = computeNextHeartbeatAt({

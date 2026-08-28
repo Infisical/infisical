@@ -790,8 +790,7 @@ export const useCheckPamAccountHeartbeat = () => {
     },
     onSettled: (_, __, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountHeartbeat(accountId) });
-      // The row badge reads its status from the account lists, which are keyed by filters this caller
-      // doesn't know, so invalidate the whole account namespace rather than guess them.
+      // The row badge reads its status from lists keyed by filters this caller doesn't know.
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });

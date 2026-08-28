@@ -2,6 +2,7 @@ import { PamAccountType, PamHeartbeatStatus } from "../pam/pam-enums";
 
 export type TPamHeartbeatResult = {
   accountId: string;
+  accountName: string;
   projectId: string;
   accountType: PamAccountType;
   status: PamHeartbeatStatus;

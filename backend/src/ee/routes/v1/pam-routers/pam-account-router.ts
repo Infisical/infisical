@@ -705,6 +705,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_HEARTBEAT,
           metadata: {
             accountId: req.params.accountId,
+            accountName: result.accountName,
             accountType: result.accountType,
             heartbeatStatus: result.status,
             manual: true,
@@ -713,7 +714,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      // A failed check is a recorded result, not a failed request: the caller asked us to check, and we did.
       return { heartbeatStatus: result.status, ...(result.message ? { message: result.message } : {}) };
     }
   });

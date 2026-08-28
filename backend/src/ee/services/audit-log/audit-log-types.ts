@@ -6057,6 +6057,7 @@ interface PamAccountHeartbeatEvent {
   type: EventType.PAM_ACCOUNT_HEARTBEAT;
   metadata: {
     accountId: string;
+    accountName: string;
     accountType: string;
     heartbeatStatus: string;
     manual: boolean;

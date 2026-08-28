@@ -75,8 +75,6 @@ export const pamAccountHeartbeatServiceFactory = ({
     return encryptor({ plainText: Buffer.from(JSON.stringify({ message })) }).cipherTextBlob;
   };
 
-  // Certificate accounts hold no long-lived secret: what can break is the host no longer trusting our CA, or the
-  // principal no longer existing. Minting a very short-lived certificate and logging in tests exactly that.
   const mintEphemeralSshCertificate = async (
     account: TPamAccountDetail,
     credentials: Record<string, unknown>
@@ -105,8 +103,6 @@ export const pamAccountHeartbeatServiceFactory = ({
     return { ...credentials, privateKey: clientPrivateKey, certificate: signedPublicKey };
   };
 
-  // A delegated Windows local account usually cannot WinRM in as itself, so the rotator validates its credential on
-  // the box the same way rotation does. AD binds with its own credential, so it never needs this.
   const resolveWindowsVerifier = async (
     account: TPamAccountDetail,
     accountType: PamAccountType
@@ -126,9 +122,6 @@ export const pamAccountHeartbeatServiceFactory = ({
     return { username: rotatorCredentials.username, password: rotatorCredentials.password };
   };
 
-  // Runs the account's own auth probe and classifies the outcome. Never throws for a target-side problem: a thrown
-  // error from here means we could not run the check at all, which is not a statement about the credential.
-  // Collected as the probe decrypts them, so any message we persist can be scrubbed of the credential itself.
   const probe = async (
     account: TPamAccountDetail,
     usedSecrets: string[]
@@ -167,8 +160,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       }
     }
 
-    // Windows and AD have a real credential probe already (WinRM, or an LDAP bind for AD), but only through the
-    // rotation handlers; the shared connection test still falls back to a TCP check for them.
+    // The shared connection test only reaches these over TCP; the rotation handlers hold the real probe.
     if (isWindowsRotatableType(accountType)) {
       const handler = rotationHandlers[accountType as TRotatableType];
       const { username, password } = credentials as { username: string; password?: string };
@@ -179,8 +171,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       const verifyVia = await resolveWindowsVerifier(account, accountType);
       if (verifyVia?.password) usedSecrets.push(verifyVia.password);
 
-      // A self-checked Windows account surfaces a rejected password as a thrown 401 rather than `false`, so
-      // without this branch it would read as unreachable and keep retrying into a lockout.
+      // WinRM throws a 401 instead of returning false, which would otherwise read as unreachable and retry.
       let authenticated: boolean;
       try {
         authenticated = await handler.testCredential(
@@ -200,8 +191,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       } catch (err) {
         const kind = (err as { gatewayFailureKind?: GatewayFailureKind | null }).gatewayFailureKind ?? null;
         if (kind === "auth") {
-          // A delegated check signs in as the rotation account, so a refused login there says nothing about
-          // this account's credential. Blaming the target would mark every account the rotator verifies.
+          // The rotator's own login was refused, which says nothing about this account's credential.
           if (verifyVia) {
             return {
               status: PamHeartbeatStatus.CannotCheck,
@@ -231,9 +221,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };
     }
 
-    // Every account type has a login-based check, so a TCP fallback here means the stored credential is incomplete
-    // (an SSH certificate account with no CA, a Kubernetes account missing its auth fields). Reaching the host proves
-    // nothing about the credential, so it can never read as Healthy.
+    // Every type has a login-based check, so a TCP fallback means the credential is incomplete, not healthy.
     if (test.request.mode === TestConnectionMode.Tcp) {
       return {
         status: PamHeartbeatStatus.Unknown,
@@ -261,7 +249,6 @@ export const pamAccountHeartbeatServiceFactory = ({
       HEARTBEAT_TIMEOUT_MS
     );
 
-    // A null result is our own gateway failing to answer, never the target refusing the credential.
     if (!result) {
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };
     }
@@ -295,8 +282,7 @@ export const pamAccountHeartbeatServiceFactory = ({
 
   const runCheck = async (account: TPamAccountDetail): Promise<TPamHeartbeatResult> => {
     const now = new Date();
-    // A target can echo the credential back in its error (the WinRM path interpolates it into a script), and
-    // this message is persisted and audited, so everything the probe used gets scrubbed out of it.
+    // A target can echo the credential back in its error, and this message is persisted and audited.
     const usedSecrets: string[] = [];
     let outcome: { status: PamHeartbeatStatus; message?: string };
     try {
@@ -316,6 +302,7 @@ export const pamAccountHeartbeatServiceFactory = ({
 
     return {
       accountId: account.id,
+      accountName: account.name,
       projectId: account.projectId as string,
       accountType: account.accountType as PamAccountType,
       status: outcome.status,
@@ -327,8 +314,7 @@ export const pamAccountHeartbeatServiceFactory = ({
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account) return null;
 
-    // Settings can change between the scan that queued this and the worker picking it up, and a disabled
-    // feature must not still be signing in to a customer's target.
+    // Settings can change between the scan that queued this and the worker picking it up.
     const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
     if (!isHeartbeatScheduled(heartbeat)) return null;
 
@@ -341,12 +327,14 @@ export const pamAccountHeartbeatServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
+    // ViewCredentials, not EditAccounts: this sends the stored credential to whatever target the account
+    // points at, so an editor who can re-point the host must not be able to trigger it.
     await checkAccountAccess(
       permissionService,
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.EditAccounts,
+      ResourcePermissionPamResourceActions.ViewCredentials,
       ctx
     );
 

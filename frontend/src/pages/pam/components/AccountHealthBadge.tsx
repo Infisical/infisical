@@ -30,9 +30,7 @@ const BADGE: Partial<
   }
 };
 
-// The row only calls out what needs attention, like the stale badge. Healthy is silent, and so is an account
-// nobody has checked yet: the schedule will get to it, and one with no credential already has its own badge.
-// A stored result also stops being a claim about the present once checking is off, so the badge goes with it.
+// A stored result stops being a claim about the present once checking is off, so the badge goes with it.
 export const AccountHealthBadge = ({
   status,
   enabled = true

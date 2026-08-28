@@ -346,8 +346,7 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
-              // Absent means a template that predates credential health. Defaulting it on here would turn
-              // scheduled logins on for its accounts the next time anything else on this form is saved.
+              // Defaulting this on would start scheduled logins for every template that predates the feature.
               heartbeatEnabled: heartbeat.enabled ?? false,
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:

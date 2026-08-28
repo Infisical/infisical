@@ -5,11 +5,9 @@ import { TPamHeartbeatConfig } from "../pam-account-template/pam-account-templat
 
 export const HEARTBEAT_TIMEOUT_MS = 15_000;
 
-// The check issues a genuinely usable certificate, so it lives only as long as the probe itself needs.
 export const HEARTBEAT_SSH_CERT_TTL_SECONDS = 60;
 
-// A heartbeat is a real login attempt, so a whole template's accounts must not fire at the same instant against
-// one domain controller. Same shape as rotation's jitter: a fraction of the interval, capped.
+// Spreads a template's accounts so they don't all log in to one domain controller at the same instant.
 export const HEARTBEAT_JITTER_FACTOR = 0.1;
 export const HEARTBEAT_JITTER_CAP_SECONDS = 30 * 60;
 
@@ -35,9 +33,7 @@ export const computeNextHeartbeatAt = ({
 export const isHeartbeatScheduled = (heartbeat: TPamHeartbeatConfig | undefined): heartbeat is TPamHeartbeatConfig =>
   heartbeat?.enabled === true && heartbeat.intervalSeconds != null;
 
-// A rejected credential takes the account off the schedule entirely: retrying a wrong password is how a monitoring
-// feature locks out a customer's privileged account. A person clears it by fixing the credential, running a manual
-// check, or rotating.
+// Retrying a rejected credential is how a monitoring feature locks out a privileged account.
 export const stopsSchedule = (status: PamHeartbeatStatus) => status === PamHeartbeatStatus.InvalidCredentials;
 
 const TRANSPORT_ERROR_PATTERNS = [
@@ -66,17 +62,13 @@ const TRANSPORT_ERROR_PATTERNS = [
   "tunnel"
 ];
 
-// The gateway classifies the failure where the driver error still exists. An unclassified failure (an older
-// gateway, or one the gateway could not place) resolves to a rejected credential, matching the rule that an
-// ambiguous result costs a false alarm rather than a retry loop into a lockout.
+// Unclassified resolves to rejected on purpose: an ambiguous result costs a false alarm, not a lockout.
 export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartbeatStatus => {
   if (kind === "transport") return PamHeartbeatStatus.CannotCheck;
   return PamHeartbeatStatus.InvalidCredentials;
 };
 
-// Cloud accounts (AWS IAM, GCP, Azure) are brokered by us rather than logged into, so there is no lockout to
-// protect against. That inverts the bias used elsewhere: only a recognised rejection stops the schedule, so a
-// provider outage, a throttle, or a TLS failure keeps checking instead of reporting access as revoked.
+// Cloud accounts have no lockout, so the bias inverts: only a recognised rejection stops the schedule.
 const CLOUD_REJECTION_PATTERNS = [
   "accessdenied",
   "access denied",
