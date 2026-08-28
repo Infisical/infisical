@@ -15,9 +15,7 @@ export const getKeyValue = (pastedContent: string, delimiters: string[]) => {
     }
   });
 
-  const hasValueAfterDelimiter = pastedContent.length > firstDelimiterIndex + foundDelimiter.length;
-
-  if (firstDelimiterIndex === -1 || !hasValueAfterDelimiter) {
+  if (firstDelimiterIndex === -1) {
     return { key: pastedContent.trim(), value: "" };
   }
 
