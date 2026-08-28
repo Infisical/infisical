@@ -51,3 +51,24 @@ export const caSupportsCapability = (caType: CaType, capability: CaCapability): 
   const capabilities = CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP[caType] || [];
   return capabilities.includes(capability);
 };
+
+/**
+ * Internal CAs sign inline; every other type places an order with an upstream CA asynchronously via
+ * the certificate issuance queue. Exhaustive by type so a new CaType cannot be added without
+ * choosing an issuance path — the direct and post-approval dispatches previously kept separate
+ * inline lists and drifted apart.
+ */
+export const CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP: Record<CaType, boolean> = {
+  [CaType.INTERNAL]: false,
+  [CaType.ACME]: true,
+  [CaType.AZURE_AD_CS]: true,
+  [CaType.ADCS]: true,
+  [CaType.AWS_PCA]: true,
+  [CaType.DIGICERT]: true,
+  [CaType.AWS_ACM_PUBLIC_CA]: true,
+  [CaType.VENAFI_TPP]: true,
+  [CaType.GODADDY]: true
+};
+
+export const caUsesExternalIssuanceQueue = (caType: CaType): boolean =>
+  CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP[caType] ?? false;
