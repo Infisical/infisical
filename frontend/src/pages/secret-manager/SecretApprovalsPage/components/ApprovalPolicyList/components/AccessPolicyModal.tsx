@@ -1,24 +1,35 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GripVerticalIcon, InfoIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
-import ms from "ms";
+import axios from "axios";
+import {
+  CircleAlertIcon,
+  GripVerticalIcon,
+  InfoIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Combobox,
+  CreatableSelect,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
   IconButton,
   Input,
   Item,
@@ -28,11 +39,6 @@ import {
   ItemMedia,
   ItemSeparator,
   SecretPathInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -46,218 +52,162 @@ import {
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
-import {
-  useCreateSecretApprovalPolicy,
-  useListWorkspaceGroups,
-  useUpdateSecretApprovalPolicy
-} from "@app/hooks/api";
+import { useDiscardChangesGuard } from "@app/hooks";
+import { useCreateSecretApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
 import {
   useCreateAccessApprovalPolicy,
   useUpdateAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval";
 import {
-  Approver,
   ApproverType,
   BypasserType,
-  TAccessApprovalPolicy
+  TAccessApprovalPolicy,
+  TApprovalPolicyApproverInput
 } from "@app/hooks/api/accessApproval/types";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
+import { onRequestError } from "@app/hooks/api/reactQuery";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
+import {
+  approvalPolicyFormSchema,
+  isValidMemberEmail,
+  TApprovalPolicyFormSchema
+} from "./approvalPolicyFormSchema";
+import { groupApproversBySequence } from "./approvalPolicyRowUtils";
+import { ApproverOption, ApproverOptionData } from "./ApproverOption";
+
+const getApproverOptionValue = (option: ApproverOptionData) =>
+  `${option.type}-${option.id ?? option.username ?? ""}`;
+
+const getApproverOptionLabel = (option: ApproverOptionData) =>
+  option.name ?? option.username ?? option.id ?? "Unknown approver";
+
+const formatApproverOptionLabel = (
+  option: ApproverOptionData,
+  { context }: FormatOptionLabelMeta<ApproverOptionData>
+) =>
+  context === "menu" ? (
+    <ApproverOption option={option} label={getApproverOptionLabel(option)} />
+  ) : (
+    getApproverOptionLabel(option)
+  );
+
+const filterApproverOption = ({ data }: { data: ApproverOptionData }, input: string) => {
+  const search = input.trim().toLowerCase();
+  return [data.name, data.memberEmail, data.username, data.id].some((value) =>
+    value?.toLowerCase().includes(search)
+  );
+};
+
+const getManualMemberOption = (
+  email: string,
+  type: ApproverType.User | BypasserType.User
+): ApproverOptionData => {
+  const username = email.trim().toLowerCase();
+  return { type, username, name: username };
+};
+
+const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]) => {
+  const username = input.trim().toLowerCase();
+  if (!isValidMemberEmail(username)) return false;
+
+  return !options.some((option) =>
+    [option.username, option.memberEmail].some((value) => value?.toLowerCase() === username)
+  );
+};
+
+const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData & { id: string } =>
+  Boolean(option.id);
 
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectId: string;
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
+  hasApproverOptionsError: boolean;
+  isRetryingApproverOptions: boolean;
+  onRetryApproverOptions: () => void;
 };
-
-const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
-const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
-
-const durationSchema = z
-  .string()
-  .trim()
-  .nullish()
-  .superRefine((val, ctx) => {
-    if (!val || val === "never") return;
-    const parsed = ms(val);
-
-    if (typeof parsed !== "number" || parsed <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Invalid duration format. Use formats like '1h', '3d', '72h'."
-      });
-      return;
-    }
-
-    if (parsed < MIN_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration must be at least 1 minute."
-      });
-      return;
-    }
-
-    if (parsed > MAX_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration cannot exceed 1 year."
-      });
-    }
-  });
-
-const formSchema = z
-  .object({
-    environments: z.array(z.object({ slug: z.string(), name: z.string() })).min(1),
-    name: z.string().optional(),
-    secretPath: z.string().trim().min(1),
-    approvals: z.number().min(1).default(1),
-    userApprovers: z
-      .object({
-        type: z.literal(ApproverType.User),
-        id: z.string(),
-        name: z.string().optional(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupApprovers: z
-      .object({ type: z.literal(ApproverType.Group), id: z.string() })
-      .array()
-      .default([]),
-    userBypassers: z
-      .object({
-        type: z.literal(BypasserType.User),
-        id: z.string(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupBypassers: z
-      .object({ type: z.literal(BypasserType.Group), id: z.string() })
-      .array()
-      .default([]),
-    policyType: z.nativeEnum(PolicyType),
-    enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-    allowedSelfApprovals: z.boolean().default(true),
-    bypassForMachineIdentities: z.boolean().optional().default(false),
-    sequenceApprovers: z
-      .object({
-        user: z
-          .object({
-            type: z.literal(ApproverType.User),
-            id: z.string(),
-            name: z.string().optional(),
-            isOrgMembershipActive: z.boolean().optional()
-          })
-          .array()
-          .default([]),
-        group: z
-          .object({ type: z.literal(ApproverType.Group), id: z.string() })
-          .array()
-          .default([]),
-        approvals: z.number().min(1).default(1)
-      })
-      .array()
-      .default([])
-      .optional(),
-    maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
-  })
-  .superRefine((data, ctx) => {
-    if (data.policyType === PolicyType.ChangePolicy) {
-      if (!(data.groupApprovers.length || data.userApprovers.length)) {
-        ctx.addIssue({
-          path: ["userApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-        ctx.addIssue({
-          path: ["groupApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-      }
-    }
-  });
-
-type TFormSchema = z.infer<typeof formSchema>;
 
 const Form = ({
   onToggle,
   members = [],
+  groups = [],
   projectId,
   projectSlug,
   editValues,
-  isEditMode
-}: Props & { isEditMode: boolean }) => {
+  isEditMode,
+  onDirtyChange,
+  onSubmittingChange,
+  onRequestClose,
+  hasApproverOptionsError,
+  isRetryingApproverOptions,
+  onRetryApproverOptions
+}: Props & {
+  isEditMode: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
+  onSubmittingChange: (isSubmitting: boolean) => void;
+  onRequestClose: () => void;
+}) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
+    () =>
+      editValues
+        ? ({
+            ...editValues,
+            environments: editValues.environments,
+            userApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.User)
+                .map(({ id, type, name, isOrgMembershipActive }) => ({
+                  id,
+                  type: type as ApproverType.User,
+                  name,
+                  isOrgMembershipActive
+                })) || [],
+            groupApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.Group)
+                .map(({ id, type, name }) => ({
+                  id,
+                  type: type as ApproverType.Group,
+                  name
+                })) || [],
+            userBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.User)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
+            groupBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.Group)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
+            approvals: editValues.approvals,
+            allowedSelfApprovals: editValues.allowedSelfApprovals,
+            bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
+            maxTimePeriod: editValues.maxTimePeriod,
+            requestExpirationTime: editValues.requestExpirationTime,
+            sequenceApprovers: groupApproversBySequence(editValues.approvers, editValues.approvals)
+          } as TApprovalPolicyFormSchema)
+        : undefined,
+    [editValues]
+  );
   const {
     control,
     handleSubmit,
     watch,
     resetField,
+    setError,
     setValue,
-    formState: { isSubmitting, errors }
-  } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
-    values: editValues
-      ? ({
-          ...editValues,
-          environments: editValues.environments,
-          userApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.User)
-              .map(({ id, type, isOrgMembershipActive }) => ({
-                id,
-                type: type as ApproverType.User,
-                isOrgMembershipActive
-              })) || [],
-          groupApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.Group)
-              .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
-          userBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.User)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
-          groupBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.Group)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
-          approvals: editValues?.approvals,
-          allowedSelfApprovals: editValues?.allowedSelfApprovals,
-          bypassForMachineIdentities: editValues?.bypassForMachineIdentities ?? true,
-          maxTimePeriod: editValues?.maxTimePeriod,
-          requestExpirationTime: editValues?.requestExpirationTime,
-          sequenceApprovers: editValues.approvers?.reduce(
-            (acc, curr) => {
-              if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
-                acc[acc.length - 1][curr.type]?.push(curr);
-                return acc;
-              }
-              const approvals = curr.approvalsRequired || editValues.approvals;
-              acc.push(
-                curr.type === ApproverType.User
-                  ? {
-                      user: [curr],
-                      group: [],
-                      sequence: curr.sequence,
-                      approvals
-                    }
-                  : { group: [curr], user: [], sequence: curr.sequence, approvals }
-              );
-              return acc;
-            },
-            [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-          )
-        } as TFormSchema)
-      : undefined,
+    formState: { isDirty, isSubmitting, errors }
+  } = useForm<TApprovalPolicyFormSchema>({
+    resolver: zodResolver(approvalPolicyFormSchema),
+    values: editFormValues,
     defaultValues: !editValues
       ? {
           secretPath: "/",
@@ -265,13 +215,16 @@ const Form = ({
         }
       : undefined
   });
+
+  useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
+  useEffect(() => onSubmittingChange(isSubmitting), [isSubmitting, onSubmittingChange]);
+
   const sequenceApproversFieldArray = useFieldArray({
     control,
     name: "sequenceApprovers"
   });
 
   const { currentProject } = useProject();
-  const { data: groups } = useListWorkspaceGroups(projectId);
 
   const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
@@ -299,7 +252,7 @@ const Form = ({
     userBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId) return;
 
     const bypassers = [...userBypassers, ...groupBypassers];
@@ -317,9 +270,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -346,7 +297,7 @@ const Form = ({
     groupBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
@@ -367,9 +318,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -388,20 +337,37 @@ const Form = ({
     onToggle(false);
   };
 
-  const handleFormSubmit = async (data: TFormSchema) => {
-    if (isEditMode) {
-      await handleUpdatePolicy(data);
-    } else {
-      await handleCreatePolicy(data);
+  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+    try {
+      if (isEditMode) {
+        await handleUpdatePolicy(data);
+      } else {
+        await handleCreatePolicy(data);
+      }
+    } catch (error) {
+      const serverResponse = axios.isAxiosError(error) ? error.response?.data : undefined;
+      const message = serverResponse?.message;
+
+      if (
+        typeof message === "string" &&
+        message.startsWith("A policy for secret path") &&
+        message.includes("already exists in environment")
+      ) {
+        setError("secretPath", { type: "server", message }, { shouldFocus: true });
+        return;
+      }
+
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
     }
   };
 
-  const memberOptions: Omit<Approver, "sequence" | "approvalsRequired">[] = useMemo(
+  const memberOptions = useMemo<ApproverOptionData[]>(
     () =>
       members.map((member) => ({
         id: member.user.id,
         type: ApproverType.User,
-        name: member.user.username,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -411,7 +377,8 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: ApproverType.Group
+        type: ApproverType.Group,
+        name: group.name
       })),
     [groups]
   );
@@ -421,27 +388,24 @@ const Form = ({
     [memberOptions, groupOptions]
   );
 
-  const getApproverLabel = (option: ApproverOptionData) => {
-    if (option.type === ApproverType.Group) {
-      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
-    }
-    const member = members?.find((m) => m.user.id === option.id);
-    if (!member) return option.name || option.id;
-    return getMemberLabel(member);
-  };
-
   const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
       .filter((option) => option.type === ApproverType.User)
       .map((option) => ({
         type: ApproverType.User as const,
         id: option.id,
+        username: option.username,
         name: option.name,
         isOrgMembershipActive: option.isOrgMembershipActive
       })),
     groups: selected
       .filter((option) => option.type === ApproverType.Group)
-      .map((option) => ({ type: ApproverType.Group as const, id: option.id }))
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: ApproverType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
   });
 
   const bypasserMemberOptions = useMemo(
@@ -449,6 +413,8 @@ const Form = ({
       members.map((member) => ({
         id: member.user.id,
         type: BypasserType.User,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -458,7 +424,8 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: BypasserType.Group
+        type: BypasserType.Group,
+        name: group.name
       })),
     [groups]
   );
@@ -468,27 +435,50 @@ const Form = ({
     [bypasserMemberOptions, bypasserGroupOptions]
   );
 
-  const getBypasserLabel = (option: ApproverOptionData) => {
-    if (option.type === BypasserType.Group) {
-      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
-    }
-    const member = members?.find((m) => m.user.id === option.id);
-    if (!member) return option.name || option.id;
-    return getMemberLabel(member);
-  };
-
   const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
       .filter((option) => option.type === BypasserType.User)
       .map((option) => ({
         type: BypasserType.User as const,
         id: option.id,
+        username: option.username,
         isOrgMembershipActive: option.isOrgMembershipActive
       })),
     groups: selected
       .filter((option) => option.type === BypasserType.Group)
-      .map((option) => ({ type: BypasserType.Group as const, id: option.id }))
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: BypasserType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
   });
+
+  const selectedPolicyApprovers: ApproverOptionData[] = [
+    ...(formUserApprovers ?? []),
+    ...(formGroupApprovers ?? [])
+  ];
+  const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+    setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupApprovers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const selectedPolicyBypassers: ApproverOptionData[] = [
+    ...(formUserBypassers ?? []),
+    ...(formGroupBypassers ?? [])
+  ];
+  const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
+    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupBypassers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -519,31 +509,72 @@ const Form = ({
     setDragOverItem(null);
   };
 
-  const renderApproverSelect = (index: number) => (
-    <FilterableSelect
-      menuPosition="fixed"
-      isMulti
-      placeholder="Select members or groups..."
-      options={approverOptions}
-      components={{
-        Option: ApproverOption,
-        MultiValueLabel: ApproverMultiValueLabel
-      }}
-      getOptionValue={(option) => `${option.type}-${option.id}`}
-      getOptionLabel={getApproverLabel}
-      value={[
-        ...(watch(`sequenceApprovers.${index}.user`) ?? []),
-        ...(watch(`sequenceApprovers.${index}.group`) ?? [])
-      ]}
-      onChange={(newValue) => {
-        const { users, groups: selectedGroups } = splitSelectedApprovers(
-          newValue as ApproverOptionData[]
-        );
-        setValue(`sequenceApprovers.${index}.user`, users, { shouldValidate: true });
-        setValue(`sequenceApprovers.${index}.group`, selectedGroups, { shouldValidate: true });
-      }}
-    />
-  );
+  const handleReorderKeyDown = (event: React.KeyboardEvent, index: number) => {
+    if (event.key === "ArrowUp" && index > 0) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index - 1);
+    }
+
+    if (event.key === "ArrowDown" && index < sequenceApproversFieldArray.fields.length - 1) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index + 1);
+    }
+  };
+
+  const renderApproverSelect = (index: number) => {
+    const selectedOptions: ApproverOptionData[] = [
+      ...(watch(`sequenceApprovers.${index}.user`) ?? []),
+      ...(watch(`sequenceApprovers.${index}.group`) ?? [])
+    ];
+    const updateSelectedOptions = (newValue: readonly ApproverOptionData[]) => {
+      const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+      setValue(`sequenceApprovers.${index}.user`, users, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+      setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+    };
+
+    return (
+      <CreatableSelect<ApproverOptionData>
+        isMulti
+        aria-label={`Approvers for step ${index + 1}`}
+        placeholder="Select approvers or enter a member email..."
+        options={approverOptions}
+        getOptionValue={getApproverOptionValue}
+        getOptionLabel={getApproverOptionLabel}
+        filterOption={filterApproverOption}
+        formatOptionLabel={formatApproverOptionLabel}
+        formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+        isValidNewOption={(input, value) =>
+          canAddMemberEmail(input, [
+            ...(value as MultiValue<ApproverOptionData>),
+            ...approverOptions
+          ])
+        }
+        isOptionDisabled={(option) =>
+          option.type === ApproverType.User && option.isOrgMembershipActive === false
+        }
+        value={selectedOptions}
+        onChange={(newValue) =>
+          updateSelectedOptions([...(newValue as MultiValue<ApproverOptionData>)])
+        }
+        onCreateOption={(input) =>
+          updateSelectedOptions([
+            ...selectedOptions,
+            getManualMemberOption(input, ApproverType.User)
+          ])
+        }
+        noOptionsMessage={() => "Enter an exact project member email address."}
+        isError={Boolean(
+          errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
+        )}
+      />
+    );
+  };
 
   const renderMinApprovals = (index: number, inputClassName: string) => (
     <Controller
@@ -551,13 +582,17 @@ const Form = ({
       name={`sequenceApprovers.${index}.approvals` as const}
       defaultValue={1}
       render={({ field }) => (
-        <Input
-          {...field}
-          type="number"
-          min={1}
-          className={inputClassName}
-          onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
-        />
+        <>
+          <Input
+            {...field}
+            type="number"
+            min={1}
+            className={inputClassName}
+            isError={Boolean(errors.sequenceApprovers?.[index]?.approvals)}
+            onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
+          />
+          <FieldError errors={[errors.sequenceApprovers?.[index]?.approvals]} />
+        </>
       )}
     />
   );
@@ -568,6 +603,26 @@ const Form = ({
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {hasApproverOptionsError && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertTitle>Could not load all approver suggestions</AlertTitle>
+            <AlertDescription>
+              <span>You can enter exact project member emails or retry.</span>
+              <Button
+                size="xs"
+                variant="danger"
+                type="button"
+                isPending={isRetryingApproverOptions}
+                isDisabled={isRetryingApproverOptions}
+                onClick={onRetryApproverOptions}
+              >
+                <RefreshCwIcon />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <Controller
           control={control}
           name="policyType"
@@ -582,31 +637,29 @@ const Form = ({
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     Change policies govern secret changes within a given environment and secret
-                    path. Access policies allow underprivileged user to request access to
-                    environment/secret path.
+                    path. Access policies allow underprivileged users to request access to an
+                    environment and secret path.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <Select
-                  value={value}
-                  onValueChange={(val) => {
-                    onChange(val as PolicyType);
+                <Combobox
+                  modal
+                  aria-label="Policy type"
+                  options={Object.values(PolicyType)}
+                  value={value ?? null}
+                  onValueChange={(policyType) => {
+                    onChange(policyType);
                     resetField("secretPath");
                   }}
-                  disabled={isEditMode}
-                >
-                  <SelectTrigger className="w-full" isError={Boolean(error)}>
-                    <SelectValue placeholder="Select policy type" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {Object.values(PolicyType).map((policyType) => (
-                      <SelectItem value={policyType} key={`policy-type-${policyType}`}>
-                        {policyDetails[policyType].name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  getOptionValue={(policyType) => policyType}
+                  getOptionLabel={(policyType) => policyDetails[policyType].name}
+                  placeholder="Select policy type"
+                  searchPlaceholder="Search policy types..."
+                  searchAriaLabel="Search policy types"
+                  isDisabled={isEditMode}
+                  isError={Boolean(error)}
+                />
                 <FieldError errors={[error]} />
               </FieldContent>
             </Field>
@@ -670,11 +723,15 @@ const Form = ({
             <Field>
               <FieldLabel>Environments</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  multiple
+                  modal
+                  aria-label="Environments"
                   value={value}
-                  isMulti
-                  onChange={onChange}
+                  onValueChange={onChange}
                   placeholder="Select environments..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
                   options={availableEnvironments}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
@@ -686,7 +743,7 @@ const Form = ({
           )}
         />
         {isAccessPolicyType && (
-          <div className="flex items-start gap-x-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
             <Controller
               control={control}
               name="maxTimePeriod"
@@ -770,7 +827,7 @@ const Form = ({
         <div>
           <p className="text-sm font-medium text-foreground">Approvers</p>
           <p className="text-xs text-muted">
-            Select members or groups that are allowed to approve requests from this policy.
+            Select readable members or groups, or enter an exact project member email.
           </p>
         </div>
         {isAccessPolicyType ? (
@@ -779,7 +836,15 @@ const Form = ({
               <div className="flex items-start gap-3">
                 <Field className="min-w-0 flex-1">
                   <FieldLabel>Approvers</FieldLabel>
-                  <FieldContent>{renderApproverSelect(0)}</FieldContent>
+                  <FieldContent>
+                    {renderApproverSelect(0)}
+                    <FieldError
+                      errors={[
+                        errors.sequenceApprovers?.[0]?.user,
+                        errors.sequenceApprovers?.[0]?.group
+                      ]}
+                    />
+                  </FieldContent>
                 </Field>
                 <Field className="w-28">
                   <FieldLabel>Min. Approvals</FieldLabel>
@@ -803,20 +868,33 @@ const Form = ({
                       <ItemMedia>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div
+                            <IconButton
+                              type="button"
                               draggable
+                              aria-label={`Reorder step ${index + 1}`}
+                              variant="ghost-muted"
+                              size="xs"
                               onDragStart={(e) => handleDragStart(e, index)}
                               onDragEnd={handleDragEnd}
-                              className="cursor-move text-muted hover:text-foreground"
+                              onKeyDown={(event) => handleReorderKeyDown(event, index)}
+                              className="cursor-move"
                             >
-                              <GripVerticalIcon className="size-4" />
-                            </div>
+                              <GripVerticalIcon />
+                            </IconButton>
                           </TooltipTrigger>
-                          <TooltipContent>Drag to reorder</TooltipContent>
+                          <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
                         </Tooltip>
                         <Badge variant="neutral">Step {index + 1}</Badge>
                       </ItemMedia>
-                      <ItemContent className="min-w-0">{renderApproverSelect(index)}</ItemContent>
+                      <ItemContent className="min-w-0">
+                        {renderApproverSelect(index)}
+                        <FieldError
+                          errors={[
+                            errors.sequenceApprovers?.[index]?.user,
+                            errors.sequenceApprovers?.[index]?.group
+                          ]}
+                        />
+                      </ItemContent>
                       <ItemActions>
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs text-muted">Min</span>
@@ -834,7 +912,7 @@ const Form = ({
                               <Trash2Icon />
                             </IconButton>
                           </TooltipTrigger>
-                          <TooltipContent>Remove step</TooltipContent>
+                          <TooltipContent>Remove Step</TooltipContent>
                         </Tooltip>
                       </ItemActions>
                     </Item>
@@ -858,30 +936,43 @@ const Form = ({
                 <PlusIcon />
                 Add Step
               </Button>
+              <FieldError errors={[errors.sequenceApprovers]} />
             </div>
           </>
         ) : (
           <Field>
             <FieldLabel>Approvers</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <CreatableSelect<ApproverOptionData>
                 isMulti
-                placeholder="Select members or groups..."
+                aria-label="Approvers"
+                placeholder="Select approvers or enter a member email..."
                 options={approverOptions}
-                components={{
-                  Option: ApproverOption,
-                  MultiValueLabel: ApproverMultiValueLabel
-                }}
-                getOptionValue={(option) => `${option.type}-${option.id}`}
-                getOptionLabel={getApproverLabel}
-                value={[...(formUserApprovers ?? []), ...(formGroupApprovers ?? [])]}
-                onChange={(newValue) => {
-                  const { users, groups: selectedGroups } = splitSelectedApprovers(
-                    newValue as ApproverOptionData[]
-                  );
-                  setValue("userApprovers", users, { shouldValidate: true });
-                  setValue("groupApprovers", selectedGroups, { shouldValidate: true });
-                }}
+                getOptionValue={getApproverOptionValue}
+                getOptionLabel={getApproverOptionLabel}
+                filterOption={filterApproverOption}
+                formatOptionLabel={formatApproverOptionLabel}
+                formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                isValidNewOption={(input, value) =>
+                  canAddMemberEmail(input, [
+                    ...(value as MultiValue<ApproverOptionData>),
+                    ...approverOptions
+                  ])
+                }
+                isOptionDisabled={(option) =>
+                  option.type === ApproverType.User && option.isOrgMembershipActive === false
+                }
+                value={selectedPolicyApprovers}
+                onChange={(newValue) =>
+                  updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
+                }
+                onCreateOption={(input) =>
+                  updatePolicyApprovers([
+                    ...selectedPolicyApprovers,
+                    getManualMemberOption(input, ApproverType.User)
+                  ])
+                }
+                noOptionsMessage={() => "Enter an exact project member email address."}
                 isError={Boolean(errors.userApprovers || errors.groupApprovers)}
               />
               <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
@@ -900,6 +991,7 @@ const Form = ({
               </FieldContent>
               <Switch
                 id="self-approvals"
+                aria-label="Allow self approvals"
                 variant="project"
                 checked={value}
                 onCheckedChange={onChange}
@@ -914,13 +1006,14 @@ const Form = ({
             render={({ field: { value, onChange } }) => (
               <Field orientation="horizontal">
                 <FieldContent>
-                  <FieldTitle>Bypass approval for machine identities</FieldTitle>
+                  <FieldTitle>Bypass Approval for Machine Identities</FieldTitle>
                   <FieldDescription>
                     When enabled, machine identities can modify secrets without requiring approval
                   </FieldDescription>
                 </FieldContent>
                 <Switch
                   id="bypass-machine-identities"
+                  aria-label="Bypass approval for machine identities"
                   variant="project"
                   checked={value}
                   onCheckedChange={onChange}
@@ -943,6 +1036,7 @@ const Form = ({
               </FieldContent>
               <Switch
                 id="bypass-approvals"
+                aria-label="Allow approval bypass"
                 variant="project"
                 checked={value === EnforcementLevel.Soft}
                 onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
@@ -955,24 +1049,36 @@ const Form = ({
             <Field>
               <FieldLabel>Bypassers</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <CreatableSelect<ApproverOptionData>
                   isMulti
-                  placeholder="Select members or groups..."
+                  aria-label="Bypassers"
+                  placeholder="Select bypassers or enter a member email..."
                   options={bypasserOptions}
-                  components={{
-                    Option: ApproverOption,
-                    MultiValueLabel: ApproverMultiValueLabel
-                  }}
-                  getOptionValue={(option) => `${option.type}-${option.id}`}
-                  getOptionLabel={getBypasserLabel}
-                  value={[...(formUserBypassers ?? []), ...(formGroupBypassers ?? [])]}
-                  onChange={(newValue) => {
-                    const { users, groups: selectedGroups } = splitSelectedBypassers(
-                      newValue as ApproverOptionData[]
-                    );
-                    setValue("userBypassers", users, { shouldValidate: true });
-                    setValue("groupBypassers", selectedGroups, { shouldValidate: true });
-                  }}
+                  getOptionValue={getApproverOptionValue}
+                  getOptionLabel={getApproverOptionLabel}
+                  filterOption={filterApproverOption}
+                  formatOptionLabel={formatApproverOptionLabel}
+                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                  isValidNewOption={(input, value) =>
+                    canAddMemberEmail(input, [
+                      ...(value as MultiValue<ApproverOptionData>),
+                      ...bypasserOptions
+                    ])
+                  }
+                  isOptionDisabled={(option) =>
+                    option.type === BypasserType.User && option.isOrgMembershipActive === false
+                  }
+                  value={selectedPolicyBypassers}
+                  onChange={(newValue) =>
+                    updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
+                  }
+                  onCreateOption={(input) =>
+                    updatePolicyBypassers([
+                      ...selectedPolicyBypassers,
+                      getManualMemberOption(input, BypasserType.User)
+                    ])
+                  }
+                  noOptionsMessage={() => "Enter an exact project member email address."}
                   isError={Boolean(errors.userBypassers || errors.groupBypassers)}
                 />
                 <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
@@ -994,7 +1100,7 @@ const Form = ({
         <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
           {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
-        <Button onClick={() => onToggle(false)} variant="outline" type="button">
+        <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
         </Button>
       </SheetFooter>
@@ -1004,15 +1110,52 @@ const Form = ({
 
 export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Props) => {
   const isEditMode = Boolean(editValues);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const closeSheet = useCallback(() => {
+    setIsDirty(false);
+    setIsSubmitting(false);
+    onToggle(false);
+  }, [onToggle]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!isSubmitting) requestDiscard();
+      return;
+    }
+
+    onToggle(true);
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onToggle}>
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
-        <SheetHeader className="border-b">
-          <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
-        </SheetHeader>
-        <Form {...props} onToggle={onToggle} editValues={editValues} isEditMode={isEditMode} />
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
+          </SheetHeader>
+          <Form
+            {...props}
+            onToggle={closeSheet}
+            editValues={editValues}
+            isEditMode={isEditMode}
+            onDirtyChange={setIsDirty}
+            onSubmittingChange={setIsSubmitting}
+            onRequestClose={requestDiscard}
+          />
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved policy changes will be lost."
+      />
+    </>
   );
 };

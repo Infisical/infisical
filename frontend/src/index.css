@@ -35,15 +35,20 @@
     @apply overflow-hidden;
   }
 
-  /* Override browser/password-manager autofill styling for dark theme */
+  input {
+    color-scheme: dark;
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: var(--color-foreground) !important;
-    caret-color: var(--color-foreground);
-    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: 0 0 0 1000px var(--autofill-background, var(--color-background)) inset !important;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"] {
+    --autofill-background: var(--color-popover);
   }
 
   /* NordPass autofill override */

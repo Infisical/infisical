@@ -248,7 +248,9 @@ export const secretApprovalRequestServiceFactory = ({
     committer,
     limit,
     offset,
-    search
+    search,
+    orderBy,
+    orderDirection
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
@@ -282,7 +284,9 @@ export const secretApprovalRequestServiceFactory = ({
         userId: userIdFilter,
         limit,
         offset,
-        search
+        search,
+        orderBy,
+        orderDirection
       });
     }
 
@@ -294,7 +298,9 @@ export const secretApprovalRequestServiceFactory = ({
       userId: userIdFilter,
       limit,
       offset,
-      search
+      search,
+      orderBy,
+      orderDirection
     });
   };
 
