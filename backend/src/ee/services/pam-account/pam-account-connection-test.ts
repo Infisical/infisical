@@ -96,8 +96,7 @@ export const buildGatewayConnectionTest = async (
   connectionDetails: Record<string, unknown>,
   credentials: Record<string, unknown> | null,
   orgId: string,
-  // Off for account create and update, which must not start failing against a gateway that predates the
-  // Windows-auth proxy handshake.
+  // Off for account create and update, which must not fail against a gateway predating the proxy handshake.
   opts?: { allowWindowsAuthSql?: boolean }
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;

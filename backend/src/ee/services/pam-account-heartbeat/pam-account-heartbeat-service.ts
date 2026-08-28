@@ -282,15 +282,13 @@ export const pamAccountHeartbeatServiceFactory = ({
 
   const runCheck = async (account: TPamAccountDetail): Promise<TPamHeartbeatResult> => {
     const now = new Date();
-    // A target can echo the credential back in its error, and this message is persisted and audited.
     const usedSecrets: string[] = [];
     let outcome: { status: PamHeartbeatStatus; message?: string };
     try {
       outcome = await probe(account, usedSecrets);
     } catch (err) {
       const message = redactRotationError(err, usedSecrets);
-      // Logged as the redacted string, never the error object: a target that echoed the credential back would
-      // otherwise copy it into the application log, which no later redaction reaches.
+      // Never the error object: a target can echo the credential back, and no later redaction reaches a log.
       logger.warn(`PAM heartbeat could not complete [accountId=${account.id}]: ${message}`);
       outcome = { status: PamHeartbeatStatus.CannotCheck, message };
     }
@@ -327,8 +325,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    // ViewCredentials, not EditAccounts: this sends the stored credential to whatever target the account
-    // points at, so an editor who can re-point the host must not be able to trigger it.
+    // ViewCredentials, not EditAccounts: this sends the credential wherever the account currently points.
     await checkAccountAccess(
       permissionService,
       account.id,

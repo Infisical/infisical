@@ -64,8 +64,6 @@ describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
     expect(result?.request).toMatchObject({ domain: undefined, realm: undefined });
   });
 
-  // Account create and update call this without the opt so they keep working against a gateway that predates
-  // the proxy handshake, where sending a Windows login as a SQL login would fail the save outright.
   test("callers that omit the opt keep the old reachability check", async () => {
     const result = await buildGatewayConnectionTest(
       PamAccountType.MsSQL,

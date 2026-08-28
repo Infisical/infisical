@@ -120,7 +120,6 @@ describe("withGatewayRetry", () => {
     expect(attempts).toBe(3);
   });
 
-  // Every retry of a refused credential is another failed logon counting toward the target's lockout.
   test("gives up immediately when the target rejected the credential", async () => {
     let attempts = 0;
     const authErr = Object.assign(new Error("WinRM authentication failed"), { gatewayFailureKind: "auth" });

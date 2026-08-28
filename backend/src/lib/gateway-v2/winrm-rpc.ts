@@ -40,7 +40,7 @@ export type WinRmRpcFailure = {
   ok: false;
   status: number;
   errorMessage: string;
-  // The gateway separates a rejected credential from an unreachable host. Older gateways send nothing.
+  // Older gateways send nothing.
   kind?: GatewayFailureKind | null;
 };
 export type WinRmRpcResponse<T> = WinRmRpcSuccess<T> | WinRmRpcFailure;

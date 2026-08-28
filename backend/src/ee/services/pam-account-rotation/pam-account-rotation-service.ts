@@ -164,8 +164,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   };
 
   const markRotated = async (account: TPamAccountDetail, encryptedBlob: Buffer, now: Date) => {
-    // Rotation commits only after authenticating with the new credential, so an account stopped for a
-    // rejected password resumes checking here instead of staying stopped and red.
+    // Rotation commits only after authenticating, so an account stopped for a bad password resumes here.
     const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
 
     await pamAccountDAL.updateById(account.id, {

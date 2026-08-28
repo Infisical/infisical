@@ -762,8 +762,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       );
     }
 
-    // Clearing the old verdict is what resumes checking: the types that cannot be verified on this path would
-    // otherwise stay stopped, telling the user to do the very thing they just did.
+    // Clearing the old verdict resumes checking; types unverifiable here would otherwise stay stopped.
     if (credentials) {
       updateData.heartbeatStatus = credentialVerified ? PamHeartbeatStatus.Healthy : null;
       updateData.encryptedLastHeartbeatMessage = null;
