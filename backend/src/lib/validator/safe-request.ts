@@ -169,10 +169,25 @@ const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
 
 // Pool of agents keyed by connection signature for connection reuse across
 // repeated calls. The cache key includes the validated IP set so DNS record
-// changes naturally produce a fresh entry. The hard cap is cleared wholesale
-// when exceeded — misses just rebuild.
+// changes naturally produce a fresh entry. Insertion order doubles as LRU
+// recency, so eviction at the cap drops the least recently used entry.
 const AGENT_CACHE_MAX = 200;
 const agentCache = new Map<string, http.Agent | https.Agent>();
+
+// A keepAlive agent's idle sockets keep the agent itself reachable through their
+// own event listeners, so dropping the map entry frees neither: the agent is
+// never collected and each pooled socket holds its fd (and the peer's connection
+// slot) for the life of the process. Every eviction has to destroy the agent.
+const evictLeastRecentlyUsedAgents = () => {
+  while (agentCache.size >= AGENT_CACHE_MAX) {
+    const oldest = agentCache.entries().next();
+    if (oldest.done) return;
+    const [key, agent] = oldest.value;
+    agentCache.delete(key);
+    agent.destroy();
+    logger.debug(`safeRequest: evicted least recently used agent [cacheSize=${agentCache.size}]`);
+  }
+};
 
 const buildAgentCacheKey = (
   validated: TValidatedHost | undefined,
@@ -249,14 +264,14 @@ const buildPinnedAgent = (
   const cacheKey = buildAgentCacheKey(validated, protocol, opts);
   const cached = agentCache.get(cacheKey);
   if (cached) {
+    // Re-insert so the map's insertion order tracks recency of use.
+    agentCache.delete(cacheKey);
+    agentCache.set(cacheKey, cached);
     logger.debug(`safeRequest: pinned agent cache hit [hostname=${validated?.hostname ?? "n/a"}]`);
     return cached;
   }
 
-  if (agentCache.size >= AGENT_CACHE_MAX) {
-    logger.info(`safeRequest: pinned agent cache full, clearing [size=${agentCache.size}]`);
-    agentCache.clear();
-  }
+  evictLeastRecentlyUsedAgents();
 
   const agent = constructAgent(validated, protocol, opts);
   agentCache.set(cacheKey, agent);
@@ -297,6 +312,21 @@ export const buildSsrfSafeAgent = async (
     checkServerIdentity
   });
 };
+
+type TSharedHttpsAgentOptions = {
+  ca?: string;
+  rejectUnauthorized: boolean;
+  servername?: string;
+};
+
+// A pooled https.Agent for callers that customize TLS (custom CA, SNI, verification
+// toggle) but cannot go through `safeRequest` (gateway paths, for example)
+//
+// The point of pooling here is that building one per request re-parses the CA into a
+// fresh OpenSSL trust store and forces a full TLS handshake every time, with no session
+// reuse: an agent's TLS session cache is per-agent.
+export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Agent =>
+  buildPinnedAgent(undefined, "https:", options) as https.Agent;
 
 type TSafeRequestExtras = {
   allowPrivateIps?: boolean;
