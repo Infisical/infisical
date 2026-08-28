@@ -27,6 +27,7 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   PkiSync,
   PkiSyncExportFormat,
@@ -47,6 +48,7 @@ import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFiel
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -66,6 +68,13 @@ const STEP_META: Record<
     rightLabel: "DESTINATION",
     rightDescription:
       "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
+  },
+  targetHost: {
+    short: "Which machine to reach",
+    subtitle: "Name the machine this sync delivers to and how to reach it.",
+    rightLabel: "TARGET HOST",
+    rightDescription:
+      "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
   },
   options: {
     short: "Sync behavior",
@@ -113,20 +122,30 @@ const STEP_META: Record<
 
 const getFormTabs = (
   destination: PkiSync,
-  canRunHostCommands: boolean
+  canRunHostCommands: boolean,
+  needsTargetHost: boolean
 ): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
       name: "Destination",
       key: "destination",
       fields: ["connection", "destinationConfig"] as FieldPath<TPkiSyncForm>[]
-    },
-    {
-      name: "Sync Options",
-      key: "options",
-      fields: ["syncOptions", "credentials"] as FieldPath<TPkiSyncForm>[]
     }
   ];
+
+  if (needsTargetHost) {
+    baseTabs.push({
+      name: "Target Host",
+      key: "targetHost",
+      fields: ["destinationConfig"] as FieldPath<TPkiSyncForm>[]
+    });
+  }
+
+  baseTabs.push({
+    name: "Sync Options",
+    key: "options",
+    fields: ["syncOptions", "credentials"] as FieldPath<TPkiSyncForm>[]
+  });
 
   if (destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) {
     baseTabs.push({
@@ -182,12 +201,6 @@ export const CreatePkiSyncForm = ({
   const { syncOption } = usePkiSyncOption(destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
   const canSetHealthCheckCommand = useCanSetHealthCheckCommand(applicationId);
-  const FORM_TABS = getFormTabs(
-    destination,
-    (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
-      (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand)
-  );
-
   const formMethods = useForm<TPkiSyncForm>({
     resolver: zodResolver(PkiSyncFormSchema),
     defaultValues: {
@@ -227,6 +240,14 @@ export const CreatePkiSyncForm = ({
     reValidateMode: "onChange"
   });
 
+  const selectedConnectionApp = formMethods.watch("connection")?.app;
+  const FORM_TABS = getFormTabs(
+    destination,
+    (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
+      (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand),
+    selectedConnectionApp === AppConnection.LDAP
+  );
+
   const onSubmit = async ({
     connection,
     destinationConfig,
@@ -264,6 +285,19 @@ export const CreatePkiSyncForm = ({
   const isStepValid = async (index: number) => {
     const isValid = await trigger(FORM_TABS[index].fields);
     if (!isValid) return false;
+
+    // The union member is still incomplete at this point (name is unset), so the schema's cross-field
+    // rule does not surface here. Same reason the PKCS#12 rule below is checked by hand.
+    if (FORM_TABS[index].key === "targetHost") {
+      const { destinationConfig } = getValues() as { destinationConfig?: { host?: string } };
+      if (!destinationConfig?.host) {
+        setError("destinationConfig.host" as FieldPath<TPkiSyncForm>, {
+          type: "manual",
+          message: "A target host is required when using an LDAP connection"
+        });
+        return false;
+      }
+    }
 
     if (FORM_TABS[index].key === "options") {
       const values = getValues() as {
@@ -353,6 +387,9 @@ export const CreatePkiSyncForm = ({
               <p className="mt-1 text-sm text-muted">{currentDetail.subtitle}</p>
             </div>
             {currentKey === "destination" && <PkiSyncDestinationFields />}
+            {currentKey === "targetHost" && (
+              <PkiSyncTargetHostField applicationId={applicationId} />
+            )}
             {currentKey === "options" && (
               <>
                 <PkiSyncOptionsFields destination={destination} />

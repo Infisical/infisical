@@ -58,8 +58,13 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
-  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
-  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
+    `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
+    `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
+  LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
+    `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
@@ -196,6 +201,9 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
+  LdapDirectoryMachinesInSeconds: 60,
+  LdapHostLoginInSeconds: 3600,
+  LdapGuessedHostLoginInSeconds: 30,
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,

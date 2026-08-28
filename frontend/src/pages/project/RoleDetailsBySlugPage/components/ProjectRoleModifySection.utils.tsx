@@ -169,6 +169,7 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetTargetHost]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
@@ -1114,6 +1115,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canSetHealthCheckCommand = action.includes(
             ProjectPermissionPkiSyncActions.SetHealthCheckCommand
           );
+          const canSetTargetHost = action.includes(ProjectPermissionPkiSyncActions.SetTargetHost);
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
@@ -1128,6 +1130,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
             [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
             [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
+            [ProjectPermissionPkiSyncActions.SetTargetHost]: canSetTargetHost,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2914,6 +2917,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Set Post-Sync Command",
         value: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
         description: "Set the command a sync runs on the destination host after delivering"
+      },
+      {
+        label: "Set Target Host",
+        value: ProjectPermissionPkiSyncActions.SetTargetHost,
+        description: "Choose which host a sync delivers to when using an LDAP connection"
       }
     ]
   },

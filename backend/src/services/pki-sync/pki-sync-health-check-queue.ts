@@ -46,6 +46,7 @@ import {
   THealthCheckCommandResult
 } from "./pki-sync-health-check-command-fns";
 import { commandNeedsCertificateData, HostCommandFailure } from "./pki-sync-host-command-fns";
+import { getPkiSyncTargetHost } from "./pki-sync-target-host-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncRaw } from "./pki-sync-types";
 
 const ENQUEUE_CHUNK_SIZE = 200;
@@ -71,7 +72,10 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
     | "recordHealthCheckOutcome"
     | "findById"
   >;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete" | "getItem" | "setItemWithExpiry"
+  >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
   kmsService: Pick<
@@ -140,23 +144,31 @@ export const pkiSyncHealthCheckQueueFactory = ({
     observableResult.observe(lastDiscoveryCount);
   });
 
-  const $withConnectionHostAccess = async <T>(connectionId: string, run: () => Promise<T>): Promise<T> => {
+  const $withConnectionHostAccess = async <T>(
+    connectionId: string,
+    targetHost: string | undefined,
+    run: () => Promise<T>
+  ): Promise<T> => {
     const connectionLock = await keyStore
       .acquireLock(
-        [KeyStorePrefixes.AppConnectionCommandLock(connectionId)],
+        [KeyStorePrefixes.AppConnectionCommandLock(connectionId, targetHost)],
         HEALTH_CHECK_LOCK_TTL_MS,
         PKI_SYNC_CONNECTION_LOCK_RETRY
       )
       .catch(() => null);
     if (!connectionLock) {
-      throw new HealthCheckBusyError("This connection is busy running another command.");
+      throw new HealthCheckBusyError(
+        targetHost
+          ? `The host ${targetHost} is busy running another command.`
+          : "This connection is busy running another command."
+      );
     }
 
     let admittedSlot = false;
     try {
       admittedSlot =
         (await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
-          KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
+          KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId, targetHost),
           PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
           PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
         )) !== -1;
@@ -168,7 +180,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
     } finally {
       await Promise.allSettled([
         admittedSlot
-          ? keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId))
+          ? keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId, targetHost))
           : undefined,
         connectionLock.release()
       ]);
@@ -312,33 +324,40 @@ export const pkiSyncHealthCheckQueueFactory = ({
 
     const certificateMap = await $certificatesForCheck(pkiSync, command);
 
-    const result = await $withConnectionHostAccess(pkiSync.connectionId, async () => {
-      const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.PkiSyncLock(syncId)], HEALTH_CHECK_LOCK_TTL_MS)
-        .catch(() => null);
-      if (!lock) {
-        logger.info(`cron[${CronJobName.PkiSyncHealthCheck}]: a sync is already running, skipping [syncId=${syncId}]`);
-        return HealthCheckSkipReason.SyncInProgress;
-      }
-
-      try {
-        const checkResult = await PkiSyncFns.runHealthCheck(pkiSyncWithCredentials, certificateMap, {
-          certificateSyncDAL,
-          gatewayV2Service,
-          gatewayPoolService
-        });
-        if (!checkResult) {
-          return commandNeedsCertificateData(command)
-            ? HealthCheckSkipReason.NoCertificateData
-            : HealthCheckSkipReason.NotSupported;
+    const result = await $withConnectionHostAccess(
+      pkiSync.connectionId,
+      getPkiSyncTargetHost(pkiSync.destinationConfig),
+      async () => {
+        const lock = await keyStore
+          .acquireLock([KeyStorePrefixes.PkiSyncLock(syncId)], HEALTH_CHECK_LOCK_TTL_MS)
+          .catch(() => null);
+        if (!lock) {
+          logger.info(
+            `cron[${CronJobName.PkiSyncHealthCheck}]: a sync is already running, skipping [syncId=${syncId}]`
+          );
+          return HealthCheckSkipReason.SyncInProgress;
         }
 
-        await $recordCheckResult(pkiSync, checkResult, isFinalAttempt, messageSubject);
-        return checkResult;
-      } finally {
-        await lock.release();
+        try {
+          const checkResult = await PkiSyncFns.runHealthCheck(pkiSyncWithCredentials, certificateMap, {
+            certificateSyncDAL,
+            gatewayV2Service,
+            gatewayPoolService,
+            keyStore
+          });
+          if (!checkResult) {
+            return commandNeedsCertificateData(command)
+              ? HealthCheckSkipReason.NoCertificateData
+              : HealthCheckSkipReason.NotSupported;
+          }
+
+          await $recordCheckResult(pkiSync, checkResult, isFinalAttempt, messageSubject);
+          return checkResult;
+        } finally {
+          await lock.release();
+        }
       }
-    });
+    );
 
     if (typeof result === "string") return { skipped: result };
 
@@ -425,11 +444,12 @@ export const pkiSyncHealthCheckQueueFactory = ({
       }
     };
 
-    return $withConnectionHostAccess(connection.id, async () => {
+    return $withConnectionHostAccess(connection.id, getPkiSyncTargetHost(target.destinationConfig), async () => {
       const result = await PkiSyncFns.runHealthCheck(target, linkedCertificates, {
         certificateSyncDAL,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        keyStore
       }).catch((err) => {
         if (err instanceof PkiSyncError) throw new BadRequestError({ message: err.message });
         throw err;

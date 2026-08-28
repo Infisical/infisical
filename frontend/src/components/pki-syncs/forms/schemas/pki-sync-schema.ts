@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
 import {
@@ -81,6 +82,32 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateNutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
+const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
+  const { connection, destinationConfig } = data as {
+    connection?: { app?: AppConnection };
+    destinationConfig?: { host?: string };
+  };
+
+  if (!connection?.app) return;
+
+  if (connection.app === AppConnection.LDAP && !destinationConfig?.host) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "host"],
+      message: "A target host is required when using an LDAP connection"
+    });
+    return;
+  }
+
+  if (connection.app !== AppConnection.LDAP && destinationConfig?.host) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "host"],
+      message: "A target host cannot be set when the connection already targets a single host"
+    });
+  }
+};
+
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   if (
     (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
@@ -93,9 +120,11 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
       message: "A password is required for PKCS#12 exports"
     });
   }
+
+  refineTargetHost(data, ctx);
 });
 
-export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema;
+export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine(refineTargetHost);
 
 export type TPkiSyncForm = z.infer<typeof PkiSyncFormSchema>;
 

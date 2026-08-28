@@ -31,3 +31,13 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };
+
+const PKI_SYNC_ADDITIONAL_CONNECTION_MAP: Partial<Record<PkiSync, AppConnection[]>> = {
+  [PkiSync.LinuxServer]: [AppConnection.LDAP],
+  [PkiSync.WindowsServer]: [AppConnection.LDAP]
+};
+
+export const getPkiSyncConnectionApps = (destination: PkiSync): AppConnection[] => [
+  PKI_SYNC_CONNECTION_MAP[destination],
+  ...(PKI_SYNC_ADDITIONAL_CONNECTION_MAP[destination] ?? [])
+];

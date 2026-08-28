@@ -17,12 +17,13 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 
 ## Prerequisites
 
-- A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
+- A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server, or an [LDAP Connection](/integrations/app-connections/ldap) to the domain the server belongs to. See [using an LDAP connection for many servers](#using-an-ldap-connection-for-many-servers).
+- For an LDAP Connection: the connection URL must use LDAPS on port 636, because a hardened domain controller rejects a plaintext simple bind on port 389 with `strongerAuthRequired`. A Gateway must be assigned to the LDAP Connection itself, and that Gateway must reach both the domain controller and the target server.
 - An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
 - The connection user must be able to write to the destination directory
 
 <Note>
-  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with. HTTPS is also supported.
+  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with. HTTPS is also supported: on a Windows (WinRM) Connection it is a property of the connection, and on an LDAP Connection the sync itself carries **Enable SSL**.
 </Note>
 
 ## Create a Windows Server sync
@@ -34,10 +35,21 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
         2. Select the **Windows Server** option.
 
         3. Configure the **Destination**:
-            - **Windows (WinRM) Connection**: The WinRM Connection used to reach the server.
+            - **Connection**: The WinRM Connection used to reach the server, or an LDAP Connection to the server's domain.
             - **Destination Directory**: The absolute Windows drive path where certificate files are written, for example `C:\certs`. It is created if it does not exist. The path cannot contain `..` segments or consecutive separators.
 
-        4. Configure the **Sync Options**:
+        4. Configure the **Target Host**. This step appears only when the connection is an LDAP Connection, because that connection reaches a whole domain rather than one machine. A Windows (WinRM) Connection carries all of these itself:
+            - **Target Host**: The machine this sync delivers to. Servers found in the directory are offered as suggestions, and you can enter a host that is not listed. Enter a host name or an IPv4 address. Underscores, ports and IPv6 literals are not accepted.
+            - **Port**: Leave empty to use 5985, or 5986 when **Enable SSL** is on. Set a value only if the WinRM listener is on a non-standard port.
+            - **Enable SSL**: Connect over HTTPS. When off, HTTP with NTLM message encryption is used and no server certificate is required.
+            - **SSL Certificate**: Leave empty to verify against the system trust store, or paste the listener's certificate to verify a self-signed WinRM HTTPS listener.
+            - **Reject Unauthorized**: When on, Infisical only connects if the listener presents a valid, trusted certificate.
+
+            <Note>
+              With **Reject Unauthorized** on, the **Target Host** must match the name on the listener's certificate. A WinRM HTTPS listener created by `winrm quickconfig -transport:https` carries the machine name, so target `server01.corp.example.com` rather than its IP address, otherwise the connection fails on a name mismatch even when the certificate is trusted.
+            </Note>
+
+        5. Configure the **Sync Options**:
             - **Export Format**: Choose **PKCS#12** to write a single password-protected `.pfx` bundle, or **PEM** to write separate certificate, chain, and key files.
             - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
             - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file) and skip the separate chain file.
@@ -49,20 +61,22 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Commands**, or leave them empty:
+        6. Configure the **Commands**, or leave them empty:
             - **Health check**: A PowerShell command run on the server before any certificate is written, to confirm the host is ready, for example `Get-Service W3SVC | Where-Object Status -ne 'Running' | ForEach-Object { throw "W3SVC is not running" }`. A failure stops the sync, so nothing is delivered. See [health checks](#health-checks).
             - **Post-sync command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. See [Post-Sync Commands](#post-sync-commands).
 
-        6. Configure the **Details**:
+        7. Configure the **Details**:
             - **Name**: The name of your sync.
             - **Description**: Optional description.
 
-        7. Select which certificates should be synced.
+        8. Select which certificates should be synced.
 
-        8. Review and click **Create Sync**.
+        9. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **Windows Server Certificate Sync**, make an API request to the [Create Windows Server PKI Sync](/api-reference/endpoints/pki/syncs/windows-server/create) endpoint.
+
+        `destinationConfig.host` is required when `connectionId` refers to an LDAP Connection, and optional `port`, `sslEnabled`, `sslRejectUnauthorized` and `sslCertificate` sit alongside it. All five are rejected when `connectionId` refers to a Windows (WinRM) Connection, because that connection carries them itself.
 
         ### Sample request
 
@@ -88,12 +102,41 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
                 "postSyncCommand": "Restart-Service -Name W3SVC"
             },
             "destinationConfig": {
-                "destinationPath": "C:\\certs"
+                "destinationPath": "C:\\certs",
+                "host": "server01.corp.example.com"
             }
         }'
         ```
     </Tab>
 </Tabs>
+
+## Using an LDAP connection for many servers
+
+A Windows (WinRM) Connection stores the target machine's address alongside its credential, so it reaches exactly one server. Pushing one certificate to fifty servers means fifty connections holding the same credential, and fifty objects to update when that credential is rotated.
+
+An LDAP Connection removes that duplication. It is both the credential and the directory, so one connection serves as many syncs as you have servers. Each sync names its own **Target Host**, and every sync shares the one credential. When you rotate the service account's password on the connection, every sync that uses it picks up the new password on its next run with no further action.
+
+This works because an Active Directory service account is a single identity. The same username and password that performs the LDAP bind performs the WinRM logon, so no second credential is needed.
+
+Infisical derives that logon name rather than asking for it twice. It reads the domain's NetBIOS name from the directory and signs in as `NETBIOS\account`, for example `CORP\svc-certs`. The account part comes from the connection's bind identity: from the name before the `@` when the bind is a user principal name, and read from the directory as the account's `sAMAccountName` when the bind is a distinguished name. Grant WinRM rights to that account, not to the connection's bind string.
+
+The **Target Host** field offers servers read from the directory. The list is not closed, because the name a domain controller advertises is not always the address you can reach, so you can enter a host that is not listed. The value must be a host name or an IPv4 address.
+
+### Preparing the service account
+
+The service account needs permission to open a WinRM session on each target server. Add it to the **Remote Management Users** group on the server:
+
+```powershell
+Add-LocalGroupMember -Group "Remote Management Users" -Member "CORP\svc-certs"
+```
+
+<Warning>
+  On a domain controller, use `Add-ADGroupMember` instead. A domain controller has no local groups, and `Add-LocalGroupMember` reports success while doing nothing, which surfaces later as a 401 at the WinRM handshake.
+
+  ```powershell
+  Add-ADGroupMember -Identity "Remote Management Users" -Members "svc-certs"
+  ```
+</Warning>
 
 ## Export formats
 

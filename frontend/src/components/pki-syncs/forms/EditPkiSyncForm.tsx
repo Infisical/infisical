@@ -16,6 +16,7 @@ import {
   Switch
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   PkiSync,
   TPkiSync,
@@ -32,6 +33,7 @@ import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -50,7 +52,11 @@ type FormStep = {
   rightDescription: string;
 };
 
-const getFormSteps = (destination: PkiSync, canRunHostCommands: boolean): FormStep[] => {
+const getFormSteps = (
+  destination: PkiSync,
+  canRunHostCommands: boolean,
+  needsTargetHost: boolean
+): FormStep[] => {
   const steps: FormStep[] = [
     {
       key: "destination",
@@ -62,6 +68,20 @@ const getFormSteps = (destination: PkiSync, canRunHostCommands: boolean): FormSt
       rightDescription:
         "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
     },
+    ...(needsTargetHost
+      ? [
+          {
+            key: "targetHost",
+            name: "Target Host",
+            description: "Which machine to reach",
+            title: "Target Host",
+            subtitle: "Name the machine this sync delivers to and how to reach it.",
+            rightLabel: "TARGET HOST",
+            rightDescription:
+              "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
+          }
+        ]
+      : []),
     {
       key: "options",
       name: "Sync Options",
@@ -114,17 +134,20 @@ const getFormSteps = (destination: PkiSync, canRunHostCommands: boolean): FormSt
   return steps;
 };
 
+const LDAP_TARGET_DEFAULTS = {
+  host: undefined,
+  port: undefined,
+  sslEnabled: undefined,
+  sslRejectUnauthorized: undefined,
+  sslCertificate: undefined
+};
+
 export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
   const canSetHealthCheckCommand = useCanSetHealthCheckCommand(pkiSync.applicationId);
-  const steps = getFormSteps(
-    pkiSync.destination,
-    Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand)
-  );
-
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
 
   const formMethods = useForm<TUpdatePkiSyncForm>({
@@ -135,14 +158,24 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       description: pkiSync.description ?? "",
       connection: {
         id: pkiSync.connectionId,
-        name: pkiSync.appConnectionName
+        name: pkiSync.appConnectionName,
+        app: pkiSync.connection.app
       },
       syncOptions: pkiSync.syncOptions,
-      destinationConfig: pkiSync.destinationConfig,
+      destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...pkiSync.destinationConfig },
       isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
+
+  const selectedConnectionApp = (
+    formMethods.watch("connection") as { app?: AppConnection } | undefined
+  )?.app;
+  const steps = getFormSteps(
+    pkiSync.destination,
+    Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand),
+    selectedConnectionApp === AppConnection.LDAP
+  );
 
   const {
     handleSubmit,
@@ -180,6 +213,8 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
     switch (currentStep.key) {
       case "destination":
         return <PkiSyncDestinationFields />;
+      case "targetHost":
+        return <PkiSyncTargetHostField applicationId={pkiSync.applicationId} />;
       case "options":
         return (
           <>

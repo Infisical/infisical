@@ -3,12 +3,19 @@ import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { WinRmRpcEndpoint, WinRmRunCommandResult } from "@app/lib/gateway-v2/winrm-rpc";
 import { logger } from "@app/lib/logger";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import {
+  LdapTargetConfigurationError,
+  resolveLdapBackedHostCredentials
+} from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
+import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
@@ -37,6 +44,7 @@ type TWindowsServerPkiSyncFactoryDeps = {
   >;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
 type TWindowsServerSyncOptions = {
@@ -61,13 +69,72 @@ const resolveWindowsExportOptions = (options: TWindowsServerSyncOptions) => ({
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
 const joinWindowsPath = (dir: string, name: string): string => `${dir.replace(TRAILING_BACKSLASH, "")}\\${name}`;
 
-const buildWinRMTarget = (pkiSync: THealthCheckTarget) => {
+type TWinRMSyncTarget = {
+  credentials: TWinRMCredentials;
+  gatewayId?: string;
+  gatewayPoolId?: string | null;
+};
+
+type TGatewayServices = Pick<TWindowsServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService" | "keyStore">;
+
+const DEFAULT_WINRM_PORT = 5985;
+const DEFAULT_WINRM_HTTPS_PORT = 5986;
+
+const buildLdapBackedWinRMTarget = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TWinRMSyncTarget> => {
   const { connection } = pkiSync;
+  const { host, port, sslEnabled, sslRejectUnauthorized, sslCertificate } =
+    pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
+
+  const credentials = await resolveLdapBackedHostCredentials(
+    { connection, host },
+    {
+      gatewayV2Service: gatewayServices.gatewayV2Service,
+      gatewayPoolService: gatewayServices.gatewayPoolService,
+      keyStore: gatewayServices.keyStore
+    }
+  ).catch((err: unknown) => {
+    if (err instanceof LdapTargetConfigurationError) {
+      throw new PkiSyncError({ shouldRetry: false, message: err.message });
+    }
+    throw err;
+  });
+
+  return {
+    credentials: {
+      ...credentials,
+      port: port ?? (sslEnabled ? DEFAULT_WINRM_HTTPS_PORT : DEFAULT_WINRM_PORT),
+      sslEnabled,
+      sslRejectUnauthorized,
+      sslCertificate
+    },
+    gatewayId: connection.gatewayId,
+    gatewayPoolId: connection.gatewayPoolId
+  };
+};
+
+const buildWinRMTarget = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TWinRMSyncTarget> => {
+  const { connection } = pkiSync;
+
+  if (connection.app === AppConnection.LDAP) return buildLdapBackedWinRMTarget(pkiSync, gatewayServices);
+
+  if (connection.app !== AppConnection.WinRM) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: `A ${connection.app} connection cannot deliver to a Windows Server sync.`
+    });
+  }
+
   const credentials = connection.credentials as TWinRMConnection["credentials"];
 
   const winrmCredentials: TWinRMCredentials = {
     host: credentials.host,
-    port: credentials.port ?? 5985,
+    port: credentials.port ?? DEFAULT_WINRM_PORT,
     username: credentials.username,
     password: credentials.password,
     sslEnabled: credentials.sslEnabled,
@@ -89,7 +156,7 @@ const reconcileWindowsServerRemovals = async (args: {
   pkiSync: TPkiSyncWithCredentials;
   certificateMap: TCertificateMap;
   deliveredPaths: Set<string>;
-  target: ReturnType<typeof buildWinRMTarget>;
+  target: TWinRMSyncTarget;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
 }): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
@@ -140,7 +207,7 @@ const reconcileWindowsServerRemovals = async (args: {
 const executeWindowsServerHostCommand = async (
   kind: HostCommandKind,
   plan: { command: string; context: THostCommandContext },
-  target: ReturnType<typeof buildWinRMTarget>,
+  target: TWinRMSyncTarget,
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1]
 ): Promise<THostCommandExecutionResult> => {
   const result = await executeWinRMGatewayOperation<WinRmRunCommandResult>(
@@ -157,17 +224,17 @@ const executeWindowsServerHostCommand = async (
   return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
 };
 
-const runWindowsServerHealthCheckCommand = ({
+const runWindowsServerHealthCheckCommand = async ({
   pkiSync,
   certificateMap,
-  target,
+  resolveTarget,
   gatewayDeps
 }: {
   pkiSync: THealthCheckTarget;
   certificateMap: TCertificateMap;
-  target: ReturnType<typeof buildWinRMTarget>;
+  resolveTarget: () => Promise<TWinRMSyncTarget>;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
-}): Promise<THealthCheckCommandResult> | undefined => {
+}): Promise<THealthCheckCommandResult | undefined> => {
   const options = (pkiSync.syncOptions ?? {}) as TWindowsServerSyncOptions;
   const config = pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
   const exportOptions = resolveWindowsExportOptions(options);
@@ -183,10 +250,15 @@ const runWindowsServerHealthCheckCommand = ({
   });
   if (!plan) return undefined;
 
+  const target = await resolveTarget().catch((err: unknown) => err as Error);
+
   return runHealthCheckCommand({
     syncId: pkiSync.id,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () => executeWindowsServerHostCommand(HostCommandKind.HealthCheck, plan, target, gatewayDeps)
+    execute: async () => {
+      if (target instanceof Error) throw target;
+      return executeWindowsServerHostCommand(HostCommandKind.HealthCheck, plan, target, gatewayDeps);
+    }
   });
 };
 
@@ -198,7 +270,7 @@ const runWindowsServerPostSyncCommand = ({
 }: {
   syncId: string;
   plan: TPostSyncCommandPlan;
-  target: ReturnType<typeof buildWinRMTarget>;
+  target: TWinRMSyncTarget;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
 }) =>
   runPostSyncCommand({
@@ -210,9 +282,10 @@ const runWindowsServerPostSyncCommand = ({
 export const windowsServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  keyStore
 }: TWindowsServerPkiSyncFactoryDeps) => {
-  const gatewayDeps = { gatewayV2Service, gatewayPoolService };
+  const gatewayDeps = { gatewayV2Service, gatewayPoolService, keyStore };
 
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
@@ -232,11 +305,16 @@ export const windowsServerPkiSyncFactory = ({
     // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
     const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
-    const target = buildWinRMTarget(pkiSync);
+    const target = await buildWinRMTarget(pkiSync, gatewayDeps);
     let uploaded = 0;
     let removed = 0;
 
-    const healthCheck = await runWindowsServerHealthCheckCommand({ pkiSync, certificateMap, target, gatewayDeps });
+    const healthCheck = await runWindowsServerHealthCheckCommand({
+      pkiSync,
+      certificateMap,
+      resolveTarget: async () => target,
+      gatewayDeps
+    });
     if (healthCheck && didHealthCheckFail(healthCheck)) {
       logger.info(
         `Windows Server PKI sync [syncId=${pkiSync.id}]: health check failed, delivered nothing (${buildHealthCheckCommandFailureMessage(healthCheck)})`
@@ -394,7 +472,7 @@ export const windowsServerPkiSyncFactory = ({
     }
 
     if (pathsToRemove.size > 0) {
-      const target = buildWinRMTarget(pkiSync);
+      const target = await buildWinRMTarget(pkiSync, gatewayDeps);
       await executeWinRMGatewayOperation(
         { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: Array.from(pathsToRemove) } },
         gatewayDeps
@@ -411,7 +489,7 @@ export const windowsServerPkiSyncFactory = ({
     runWindowsServerHealthCheckCommand({
       pkiSync,
       certificateMap,
-      target: buildWinRMTarget(pkiSync),
+      resolveTarget: () => buildWinRMTarget(pkiSync, gatewayDeps),
       gatewayDeps
     });
 

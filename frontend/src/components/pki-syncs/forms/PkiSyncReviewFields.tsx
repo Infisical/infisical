@@ -146,6 +146,19 @@ export const PkiSyncReviewFields = () => {
           {destinationConfig && "vaultBaseUrl" in destinationConfig && (
             <ReviewFieldLabel label="Vault URL">{destinationConfig.vaultBaseUrl}</ReviewFieldLabel>
           )}
+          {destinationConfig && "host" in destinationConfig && destinationConfig.host && (
+            <ReviewFieldLabel label="Target Host">
+              {destinationConfig.host}
+              {"port" in destinationConfig && destinationConfig.port
+                ? `:${destinationConfig.port}`
+                : ""}
+            </ReviewFieldLabel>
+          )}
+          {destinationConfig &&
+            "sslEnabled" in destinationConfig &&
+            destinationConfig.sslEnabled && (
+              <ReviewFieldLabel label="WinRM Transport">HTTPS</ReviewFieldLabel>
+            )}
         </div>
       </div>
       <div className="flex flex-col gap-3">

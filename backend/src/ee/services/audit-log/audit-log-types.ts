@@ -4544,6 +4544,8 @@ interface CreatePkiSyncEvent {
     destination: string;
     applicationId?: string;
     connectionId?: string;
+    connectionName?: string;
+    targetHost?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
@@ -4556,6 +4558,10 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    destination?: string;
+    connectionId?: string;
+    connectionName?: string;
+    targetHost?: string;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
   };

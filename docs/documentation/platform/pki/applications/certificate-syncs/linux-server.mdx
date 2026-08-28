@@ -17,7 +17,8 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
 
 ## Prerequisites
 
-- An [SSH Connection](/integrations/app-connections/ssh) with access to the target server
+- An [SSH Connection](/integrations/app-connections/ssh) with access to the target server, or an [LDAP Connection](/integrations/app-connections/ldap) to the domain the server is joined to. See [using an LDAP connection for many servers](#using-an-ldap-connection-for-many-servers).
+- For an LDAP Connection: the connection URL must use LDAPS on port 636, because a hardened domain controller rejects a plaintext simple bind on port 389 with `strongerAuthRequired`. The domain controller must be reachable as well as the target server, since every run reads the directory to derive the login.
 - The destination directory must already exist on the server and the connection user must be able to write to it
 - The server must be reachable from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
 - A Gateway is required to use a [health check](#health-checks) or a [post-sync command](#post-sync-commands), because the Gateway is what executes them. It must be running Infisical CLI v0.43.120 or later
@@ -31,10 +32,14 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
         2. Select the **Linux Server** option.
 
         3. Configure the **Destination**:
-            - **SSH Connection**: The SSH Connection used to reach the server.
+            - **Connection**: The SSH Connection used to reach the server, or an LDAP Connection to the domain the server is joined to.
             - **Destination Directory**: The absolute path to the directory where certificate files are written, for example `/etc/ssl/certs`.
 
-        4. Configure the **Sync Options**:
+        4. Configure the **Target Host**. This step appears only when the connection is an LDAP Connection, because that connection reaches a whole domain rather than one machine:
+            - **Target Host**: The machine this sync delivers to. Servers found in the directory are offered as suggestions, and you can enter a host that is not listed. Enter a host name or an IPv4 address. Underscores, ports and IPv6 literals are not accepted.
+            - **Port**: Leave empty to use 22. Set a value only if the SSH listener is on a non-standard port.
+
+        5. Configure the **Sync Options**:
             - **Export Format**: Choose **PEM** to write separate certificate, chain, and key files, or **PKCS#12** to write a single password-protected `.pfx` bundle.
             - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
             - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file, as nginx expects) and skip the separate chain file.
@@ -47,20 +52,22 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Commands**, or leave them empty:
+        6. Configure the **Commands**, or leave them empty:
             - **Health check**: A command run on the server before any certificate is written, to confirm the host is ready, for example `test -w /etc/ssl/certs`. A non-zero exit stops the sync, so nothing is delivered. See [health checks](#health-checks).
             - **Post-sync command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. See [Post-Sync Commands](#post-sync-commands).
 
-        6. Configure the **Details**:
+        7. Configure the **Details**:
             - **Name**: The name of your sync.
             - **Description**: Optional description.
 
-        7. Select which certificates should be synced.
+        8. Select which certificates should be synced.
 
-        8. Review and click **Create Sync**.
+        9. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **Linux Server Certificate Sync**, make an API request to the [Create Linux Server PKI Sync](/api-reference/endpoints/pki/syncs/linux-server/create) endpoint.
+
+        `destinationConfig.host` is required when `connectionId` refers to an LDAP Connection, and an optional `port` sits alongside it, defaulting to 22. Both are rejected when `connectionId` refers to an SSH Connection, because that connection carries its own host and port.
 
         ### Sample request
 
@@ -84,12 +91,42 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
                 "postSyncCommand": "sudo systemctl reload nginx"
             },
             "destinationConfig": {
-                "destinationPath": "/etc/ssl/certs"
+                "destinationPath": "/etc/ssl/certs",
+                "host": "server01.corp.example.com"
             }
         }'
         ```
     </Tab>
 </Tabs>
+
+## Using an LDAP connection for many servers
+
+An SSH Connection stores the target machine's address alongside its credential, so it reaches exactly one server. Pushing one certificate to fifty servers means fifty connections holding the same credential, and fifty objects to update when that credential is rotated.
+
+An LDAP Connection removes that duplication. It is both the credential and the directory, so one connection serves as many syncs as you have servers. Each sync names its own **Target Host**, and every sync shares the one credential. When you rotate the service account's password on the connection, every sync that uses it picks up the new password on its next run with no further action.
+
+This works because an Active Directory service account is a single identity. On a domain-joined Linux host, the same username and password that performs the LDAP bind performs the SSH logon, so no second credential is needed. The host must accept domain credentials over SSH, which is what a directory client such as SSSD provides.
+
+The **Target Host** field offers machines read from the directory. The list is not closed, because the name a domain controller advertises is not always the address you can reach, so you can enter a host that is not listed. The value must be a host name or an IPv4 address.
+
+### The host must accept the `DOMAIN\user` login form
+
+Infisical logs in to the server as `DOMAIN\user`, for example `CORP\svc-certs`. Whether a Linux host
+accepts that form depends on how its directory client is configured.
+
+A host joined to the domain with `realm join` uses the SSSD `ad` provider, which understands
+`DOMAIN\user` out of the box. A host configured against the directory over LDAP instead uses the
+`ldap` provider, whose default name parsing only understands `user@domain`, so the login is rejected
+before the password is ever checked. Add the domain-qualified form to that host's `sssd.conf`:
+
+```ini
+[domain/CORP]
+re_expression = (((?P<domain>[^\\]+)\\(?P<name>.+$))|((?P<name>[^@]+)@(?P<domain>.+$))|(^(?P<name>[^@\\]+)$))
+use_fully_qualified_names = False
+```
+
+Confirm it with `getent passwd 'CORP\svc-certs'` on the server before creating the sync. If that
+returns nothing, the sync will fail to authenticate no matter what the connection holds.
 
 ## Export formats
 
@@ -126,7 +163,7 @@ The same check also runs on its own once a day, so a host that stops being ready
 Write a check that answers a question rather than one that changes something. `test -w /etc/ssl/certs` and `systemctl is-active nginx` are good checks. Creating the directory or starting the service is work for the post-sync command.
 
 <Note>
-  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the check, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the check is rejected when you save the sync.
+  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the check, never Infisical. The sync's App Connection must therefore use a gateway, otherwise the check is rejected when you save the sync.
 </Note>
 
 <HealthCheckFlow />
@@ -193,7 +230,7 @@ Set one command on the sync. It runs on the target server, in that server's own 
 The field accepts a whole script, so several steps can run in one go: put each on its own line, or chain them with `&&`.
 
 <Note>
-  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the command, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
+  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the command, never Infisical. The sync's App Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
 
   The Gateway must be running Infisical CLI **v0.43.120 or later**. Earlier Gateways either cannot run the command at all or cannot unlock an SSH Connection's passphrase-protected private key, so the command fails. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>

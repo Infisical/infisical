@@ -7,8 +7,13 @@ import { Client, SFTPWrapper } from "ssh2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import {
+  LdapTargetConfigurationError,
+  resolveLdapBackedHostCredentials
+} from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connection-enums";
 import { executeSshCommandViaGateway, withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
@@ -43,6 +48,7 @@ type TLinuxServerPkiSyncFactoryDeps = {
   >;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
 type TLinuxServerSyncOptions = {
@@ -60,8 +66,63 @@ type TLinuxServerSyncOptions = {
   postSyncCommand?: string;
 };
 
-const buildSshConfig = (pkiSync: THealthCheckTarget): TSshConnectionConfig => {
+type TGatewayServices = Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService" | "keyStore">;
+
+const DEFAULT_SSH_PORT = 22;
+
+const buildLdapBackedSshConfig = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TSshConnectionConfig> => {
   const { connection } = pkiSync;
+  const { host, port } = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+
+  if (!gatewayServices.gatewayV2Service) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: "Reading the directory for an LDAP-backed sync requires the Gateway service."
+    });
+  }
+
+  const credentials = await resolveLdapBackedHostCredentials(
+    { connection, host },
+    {
+      gatewayV2Service: gatewayServices.gatewayV2Service,
+      gatewayPoolService: gatewayServices.gatewayPoolService,
+      keyStore: gatewayServices.keyStore
+    }
+  ).catch((err: unknown) => {
+    if (err instanceof LdapTargetConfigurationError) {
+      throw new PkiSyncError({ shouldRetry: false, message: err.message });
+    }
+    throw err;
+  });
+
+  return {
+    app: AppConnection.SSH,
+    method: SshConnectionMethod.Password,
+    credentials: { ...credentials, port: port ?? DEFAULT_SSH_PORT },
+    gatewayId: connection.gatewayId,
+    gatewayPoolId: connection.gatewayPoolId,
+    orgId: connection.orgId
+  } as TSshConnectionConfig;
+};
+
+const buildSshConfig = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TSshConnectionConfig> => {
+  const { connection } = pkiSync;
+
+  if (connection.app === AppConnection.LDAP) return buildLdapBackedSshConfig(pkiSync, gatewayServices);
+
+  if (connection.app !== AppConnection.SSH) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: `A ${connection.app} connection cannot deliver to a Linux Server sync.`
+    });
+  }
+
   const credentials = connection.credentials as { privateKey?: string };
 
   let method: SshConnectionMethod;
@@ -252,15 +313,17 @@ const executeLinuxServerHostCommand = (
     timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
   });
 
-const runLinuxServerHealthCheckCommand = ({
+const runLinuxServerHealthCheckCommand = async ({
   pkiSync,
   certificateMap,
+  resolveSshConfig,
   gatewayServices
 }: {
   pkiSync: THealthCheckTarget;
   certificateMap: TCertificateMap;
-  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
-}): Promise<THealthCheckCommandResult> | undefined => {
+  resolveSshConfig: () => Promise<TSshConnectionConfig>;
+  gatewayServices: TGatewayServices;
+}): Promise<THealthCheckCommandResult | undefined> => {
   const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
   const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
   const exportOptions = resolveLinuxExportOptions(options);
@@ -276,11 +339,15 @@ const runLinuxServerHealthCheckCommand = ({
   });
   if (!plan) return undefined;
 
+  const sshConfig = await resolveSshConfig().catch((err: unknown) => err as Error);
+
   return runHealthCheckCommand({
     syncId: pkiSync.id,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () =>
-      executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, buildSshConfig(pkiSync), gatewayServices)
+    execute: async () => {
+      if (sshConfig instanceof Error) throw sshConfig;
+      return executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, sshConfig, gatewayServices);
+    }
   });
 };
 
@@ -304,7 +371,8 @@ const runLinuxServerPostSyncCommand = ({
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  keyStore
 }: TLinuxServerPkiSyncFactoryDeps) => {
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
@@ -329,12 +397,13 @@ export const linuxServerPkiSyncFactory = ({
     let uploaded = 0;
     let removed = 0;
 
-    const sshConfig = buildSshConfig(pkiSync);
+    const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
 
     const healthCheck = await runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
-      gatewayServices: { gatewayV2Service, gatewayPoolService }
+      resolveSshConfig: async () => sshConfig,
+      gatewayServices: { gatewayV2Service, gatewayPoolService, keyStore }
     });
     if (healthCheck && didHealthCheckFail(healthCheck)) {
       logger.info(
@@ -504,7 +573,7 @@ export const linuxServerPkiSyncFactory = ({
     }
 
     if (pathsToRemove.size > 0) {
-      const sshConfig = buildSshConfig(pkiSync);
+      const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
       await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
         const sftp = await openSftp(client);
         for (const filePath of pathsToRemove) {
@@ -524,7 +593,8 @@ export const linuxServerPkiSyncFactory = ({
     runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
-      gatewayServices: { gatewayV2Service, gatewayPoolService }
+      resolveSshConfig: () => buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore }),
+      gatewayServices: { gatewayV2Service, gatewayPoolService, keyStore }
     });
 
   return { syncCertificates, removeCertificates, runHealthCheck };

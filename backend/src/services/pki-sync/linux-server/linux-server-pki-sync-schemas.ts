@@ -6,7 +6,13 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { BaseHealthCheckTestSchema, HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BaseHealthCheckTestSchema,
+  HostCommandSchema,
+  PkiSyncSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
 
@@ -23,7 +29,9 @@ export const LinuxServerPkiSyncConfigSchema = z.object({
     .min(1, "Destination path is required")
     .max(4096, "Destination path is too long")
     .refine((p) => p.startsWith("/"), { message: "Destination path must be absolute (start with /)" })
-    .refine((p) => !PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" })
+    .refine((p) => !PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" }),
+  host: PkiSyncTargetHostSchema,
+  port: PkiSyncTargetPortSchema
 });
 
 export const LinuxServerPkiSyncOptionsSchema = z.object({
@@ -127,6 +135,7 @@ export const UpdateLinuxServerPkiSyncSchema = z.object({
 export const LinuxServerPkiSyncListItemSchema = z.object({
   name: z.literal("Linux Server"),
   connection: z.literal(AppConnection.SSH),
+  additionalConnections: z.literal(AppConnection.LDAP).array().optional(),
   destination: z.literal(PkiSync.LinuxServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
