@@ -219,6 +219,7 @@ export const KmipServerTab = withPermission(
   },
   {
     action: OrgKmipServerPermissionActions.ListKmipServers,
-    subject: OrgPermissionSubjects.KmipServer
+    subject: OrgPermissionSubjects.KmipServer,
+    accessRestrictedMode: "dialog"
   }
 );

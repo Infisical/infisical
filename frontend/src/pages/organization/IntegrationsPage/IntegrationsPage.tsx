@@ -30,7 +30,8 @@ const AppConnectionsTab = withPermission(
   ),
   {
     action: OrgPermissionAppConnectionActions.Read,
-    subject: OrgPermissionSubjects.AppConnections
+    subject: OrgPermissionSubjects.AppConnections,
+    accessRestrictedMode: "dialog"
   }
 );
 

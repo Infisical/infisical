@@ -152,6 +152,7 @@ export const InsightsPage = withProjectPermission(
   },
   {
     action: ProjectPermissionInsightsActions.Read,
-    subject: ProjectPermissionSub.Insights
+    subject: ProjectPermissionSub.Insights,
+    accessRestrictedMode: "dialog"
   }
 );

@@ -1,5 +1,5 @@
 ---
-title: "Point-in-Time Recovery"
+title: "Point-in-time recovery"
 description: "Learn how to rollback secrets and configurations to any snapshot with Infisical."
 ---
 
@@ -28,17 +28,17 @@ The short video below walks through secret versioning and point-in-time recovery
 
 <br />
 
-## Understanding Commits
+## Understanding commits
 
 Similar to Git, a commit in Infisical represents a snapshot of changes made to your project's resources at a specific point in time. Each commit is scoped to an environment and [folder](./folder) within it. Unlike the legacy snapshot system, the new commits interface provides granular tracking of individual changes, allowing you to see exactly what was modified, added, or removed in each commit.
 
-### Accessing Commits
+### Accessing commits
 
 From your secrets management interface, you can access the commits functionality by clicking the **Commits Button**. This button is located in the top-right area of your secrets view and shows the number of commits for the current folder (e.g., "4 Commits").
 
 ![Commits Button](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commits-button.png)
 
-### Commits List View
+### Commits list view
 
 The commits page displays a comprehensive chronological history of all changes made to your environment and folders:
 
@@ -53,13 +53,13 @@ The commits page displays a comprehensive chronological history of all changes m
 - **Search Functionality**: Use the search bar to quickly find specific commits
 - **Sorting Options**: Sort commits by various criteria using the sort controls
 
-### Detailed Commit Inspection
+### Detailed commit inspection
 
 Clicking on any commit from the list opens a detailed view showing the list of changes made in that commit.
 
 ![Detailed Commit Inspection](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commit-changes.png)
 
-#### Change Categories
+#### Change categories
 
 The commit changes details can be grouped into the following categories:
 
@@ -82,7 +82,7 @@ The commit changes details can be grouped into the following categories:
 - Red "-" indicators show deletions
 - Modified content shows both old and new states
 
-### Restoration Options
+### Restoration options
 
 Each commit provides two distinct restoration methods accessible via the **Restore Options** dropdown:
 

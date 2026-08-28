@@ -15,7 +15,7 @@ Starting from **v5**, the Node.js SDK requires **Node.js 20 or higher**.
 | `>= v5`     | `>= 20`         |
 | `<= v4`     | `>= 14`         |
 
-## Deprecation Notice
+## Deprecation notice
 
 Please be aware that all versions prior to `4.0.0` are officially fully unsupported.
 Please upgrade to version 4.0.0 or newer in order to receive the latest updates.
@@ -26,7 +26,7 @@ Please upgrade to version 4.0.0 or newer in order to receive the latest updates.
 npm install @infisical/sdk
 ```
 
-## Getting Started
+## Getting started
 
 ```typescript
 import { InfisicalSDK } from '@infisical/sdk'
@@ -49,7 +49,7 @@ const allSecrets = await client.secrets().listSecrets({
 console.log("Fetched secrets", allSecrets)
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -65,7 +65,7 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth` component provides methods for authentication:
 
-#### Universal Auth
+#### Universal auth
 
 #### Authenticating
 ```typescript
@@ -125,7 +125,7 @@ await client.auth().awsIamAuth.renew();
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+#### List secrets
 
 ```typescript
 const allSecrets = await client.secrets().listSecrets({
@@ -181,7 +181,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 
 
 
-#### Create Secret
+#### Create secret
 
 ```typescript
 	const newSecret = await client.secrets().createSecret("SECRET_NAME", {
@@ -215,7 +215,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 **Returns:**
 - `CreateSecretResponse`: The response after creating the secret.
 
-#### Update Secret
+#### Update secret
 
 ```typescript
 const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
@@ -255,7 +255,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `UpdateSecretResponse`: The response after updating the secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```typescript
 	const singleSecret = await client.secrets().getSecret({
@@ -286,7 +286,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 **Returns:**
 - `Secret`: Returns the secret object.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```typescript
 const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {

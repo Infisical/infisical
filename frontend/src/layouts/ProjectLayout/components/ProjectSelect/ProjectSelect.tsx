@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, Plus, Star } from "lucide-react";
+import { Check, Plus, Star } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -14,10 +14,6 @@ import {
   CommandItem,
   CommandList,
   IconButton,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon
 } from "@app/components/v3";
 import {
@@ -34,6 +30,11 @@ import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 
 // Modified and middle clicks belong to the browser: it opens the row's href in a new tab
 // or window, so we neither preventDefault nor navigate programmatically on those paths.
@@ -132,7 +133,7 @@ const ProjectSelectInner = () => {
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover
+      <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
           // Clearing on open lets cmdk pick the first row again, as it did while its
@@ -142,7 +143,6 @@ const ProjectSelectInner = () => {
           setOpen(nextOpen);
         }}
       >
-        <PopoverAnchor className="absolute left-18" />
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
@@ -157,12 +157,8 @@ const ProjectSelectInner = () => {
             Project
           </Badge>
         </Link>
-        <PopoverTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="switch-project">
-            <ChevronsUpDown />
-          </IconButton>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+        <NavbarSwitcherTrigger aria-label="switch-project" />
+        <NavbarSwitcherContent className="w-96">
           <Command value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
@@ -256,8 +252,8 @@ const ProjectSelectInner = () => {
               </OrgPermissionCan>
             </div>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </NavbarSwitcherContent>
+      </NavbarSwitcher>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

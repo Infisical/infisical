@@ -7,7 +7,6 @@ import {
   Book,
   Check,
   ChevronLeft,
-  ChevronsUpDown,
   CircleHelp,
   Clipboard,
   ExternalLink,
@@ -58,10 +57,6 @@ import {
   IconButton,
   InstanceIcon,
   OrgIcon,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   SubOrgIcon,
   Tooltip,
   TooltipContent,
@@ -97,6 +92,11 @@ import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 import {
   ApplicationSelect,
   ProjectSelect
@@ -395,8 +395,7 @@ export const Navbar = () => {
                 isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
-              <Popover open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <PopoverAnchor className="absolute left-2" />
+              <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
@@ -451,12 +450,8 @@ export const Navbar = () => {
                     </Tooltip>
                   )}
                 </div>
-                <PopoverTrigger asChild>
-                  <IconButton variant="ghost" size="xs" aria-label="switch-org">
-                    <ChevronsUpDown />
-                  </IconButton>
-                </PopoverTrigger>
-                <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+                <NavbarSwitcherTrigger aria-label="switch-org" />
+                <NavbarSwitcherContent className="w-96">
                   <Command>
                     <CommandInput
                       aria-label="Search organizations"
@@ -598,8 +593,8 @@ export const Navbar = () => {
                       </button>
                     </div>
                   </Command>
-                </PopoverContent>
-              </Popover>
+                </NavbarSwitcherContent>
+              </NavbarSwitcher>
             </div>
             {isProjectScope && (
               <>

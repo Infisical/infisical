@@ -37,6 +37,7 @@ export const AppConnectionsPage = withProjectPermission(
   },
   {
     action: ProjectPermissionAppConnectionActions.Read,
-    subject: ProjectPermissionSub.AppConnections
+    subject: ProjectPermissionSub.AppConnections,
+    accessRestrictedMode: "dialog"
   }
 );

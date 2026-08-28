@@ -1,5 +1,5 @@
 ---
-title: "Infisical Documentation"
+title: "Infisical documentation"
 sidebarTitle: "Documentation"
 description: "Learn how to use Infisical to manage secrets, certificates, and secure infrastructure access."
 mode: custom
@@ -45,7 +45,7 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
     <HomeCard
       title="Secrets Management"
       href="/documentation/platform/secrets-mgmt/overview"
-      icon="vault"
+      icon="secrets"
       product="secrets"
       wide
       panel={
@@ -117,7 +117,7 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
     <HomeCard
       title="Key Management"
       href="/documentation/platform/kms/overview"
-      icon="key"
+      icon="lock"
       product="kms"
       links={[
         { label: "Encrypt Kubernetes", href: "/documentation/platform/kms/kubernetes-encryption" },
@@ -126,6 +126,59 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
       ]}
     >
       Encrypt and decrypt sensitive data with centrally managed keys.
+    </HomeCard>
+  </HomeGrid>
+</HomeSection>
+
+<HomeSection title="Platform">
+  <HomeGrid cols={2}>
+    <HomeCard
+      title="Self-hosting"
+      href="/self-hosting/overview"
+      icon="server"
+      links={[
+        { label: "System requirements", href: "/self-hosting/configuration/requirements" },
+        { label: "Docker Compose", href: "/self-hosting/deployment-options/docker-compose" },
+        { label: "Kubernetes", href: "/self-hosting/deployment-options/kubernetes-helm" }
+      ]}
+    >
+      Deploy Infisical on your own infrastructure and retain control over your data, network, and deployment topology.
+    </HomeCard>
+    <HomeCard
+      title="Audit Logs"
+      href="/documentation/platform/audit-logs"
+      icon="audit"
+      links={[
+        { label: "Audit log streams", href: "/documentation/platform/audit-log-streams/audit-log-streams" },
+        { label: "Export audit logs", href: "/api-reference/endpoints/audit-logs/export-audit-log" },
+        { label: "ClickHouse storage", href: "/documentation/platform/audit-logs-clickhouse-setup" }
+      ]}
+    >
+      Track access and changes across Infisical, investigate activity, and send events to your security tooling.
+    </HomeCard>
+    <HomeCard
+      title="Security"
+      href="/internals/security"
+      icon="shield"
+      links={[
+        { label: "Cryptography", href: "/internals/security#cryptography" },
+        { label: "Access control", href: "/documentation/platform/access-controls/overview" },
+        { label: "Production hardening", href: "/self-hosting/guides/production-hardening" }
+      ]}
+    >
+      Understand Infisical's threat model, encryption architecture, authentication, and authorization controls.
+    </HomeCard>
+    <HomeCard
+      title="Contributing"
+      href="/contributing/getting-started/overview"
+      icon="code"
+      links={[
+        { label: "Local development", href: "/contributing/platform/developing" },
+        { label: "Pull requests", href: "/contributing/getting-started/pull-requests" },
+        { label: "Code of conduct", href: "/contributing/getting-started/code-of-conduct" }
+      ]}
+    >
+      Set up the Infisical codebase, follow the contribution workflow, and submit changes to the project.
     </HomeCard>
   </HomeGrid>
 </HomeSection>

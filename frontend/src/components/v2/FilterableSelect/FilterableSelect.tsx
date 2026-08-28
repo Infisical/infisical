@@ -9,6 +9,10 @@ import {
   Option
 } from "../Select/components";
 
+/**
+ * @deprecated Migrate searchable single- and multi-select callsites to the v3 `Combobox` when its
+ * contract fits. Creatable, grouped, and advanced compatibility consumers remain supported.
+ */
 export const FilterableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,

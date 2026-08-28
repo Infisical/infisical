@@ -6,7 +6,7 @@ Deploying Infisical on-premise with high availability requires expertise in netw
 This guide serves as a reference architecture and a starting point. Actual deployments may vary depending on your organization's existing infrastructure and capabilities.
 
 
-## Architecture Overview
+## Architecture overview
 {/* ![On premise architecture](/images/self-hosting/reference-architectures/on-premise-architecture.png) */}
 ```mermaid
 flowchart TB
@@ -100,13 +100,13 @@ However, if you lack deep expertise in Kubernetes operators or database manageme
     These managed services automatically handle provisioning, scaling, failover, backups and rollbacks.
 </Warning>
 
-## Core Components
-### Kubernetes Cluster
+## Core components
+### Kubernetes cluster
 Infisical is deployed on a Kubernetes cluster, which allows for container management, auto-scaling, and self-healing capabilities. 
 A load balancer sits in front of the Kubernetes cluster, directing traffic and making sure there is an even load distribution across the application nodes.
 This is the entry point where all other services will interact with Infisical.
 
-### Object Storage
+### Object storage
 The architecture requires S3-compatible object storage for database backups and cross-datacenter replication. This can be provided by:
 - Existing enterprise object storage solution
 - Dedicated MinIO deployment
@@ -116,13 +116,13 @@ The object storage must be accessible from all Kubernetes clusters and provides:
 - Storage for PostgreSQL WAL archiving and backups
 - Storage for Redis backups
 
-### CloudNativePG for High Availability PostgreSQL
+### CloudNativePG for high availability PostgreSQL
 The database layer is powered by PostgreSQL, managed by CloudNativePG operator for high availability:
 - **Redundancy:** CloudNativePG manages a primary-replica setup where the primary handles write operations and replicas handle read operations
 - **Failover:** The operator automatically handles failover within a cluster by promoting a replica to primary when needed
 - **Backup and Recovery:** Built-in support for backup to S3-compatible storage with point-in-time recovery capabilities
 
-### Redis High Availability
+### Redis high availability
 Redis is deployed using the [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/redis) in a simple primary configuration:
 - Single Redis instance per cluster without streaming replication
 - Regular backups to object storage
@@ -132,7 +132,7 @@ Redis is deployed using the [Bitnami Helm chart](https://github.com/bitnami/char
 Infisical does not support Redis cluster mode, and since this is an active-passive setup, we use a simple Redis deployment with backup/restore for failover.
 </Note>
 
-#### PostgreSQL Backup and Restore
+#### PostgreSQL backup and restore
 PostgreSQL is the single source of truth for nearly all application data on Infisical.
 
 CloudNativePG provides well defined backup and restore capabilities:
@@ -140,7 +140,7 @@ CloudNativePG provides well defined backup and restore capabilities:
 - **Point-in-Time Recovery:** Supports restoring to any point in time using WAL archiving
 - **Regular Testing:** Periodically test backup restoration to exercise the full lifecycle of this process
 
-#### Redis Backup and Restore
+#### Redis backup and restore
 Each Redis instance is backed up through a Kubernetes CronJob that:
 1. Executes the Redis `SAVE` command
 2. Copies the resulting `dump.rdb` to object storage
@@ -176,22 +176,22 @@ Each Redis instance is backed up through a Kubernetes CronJob that:
 
 During failover, the latest Redis backup is restored from object storage to the passive data center. This process is manual and requires operator intervention.
 
-## Multi Data Center Deployment
+## Multi data center deployment
 Infisical can be deployed across multiple data centers in an active-passive configuration for disaster recovery. In this setup, one data center serves as the active site while others remain as passive standbys.
 
-### Active Data Center 
+### Active data center
 The active data center contains:
 - The primary PostgreSQL cluster managed by CloudNativePG handling all write operations
 - The active Redis instance handling all traffic
 - The active Infisical deployment serving all user traffic
 
-### Passive Data Centers
+### Passive data centers
 Passive data centers act as disaster recovery sites. Each contains:
 - A replica PostgreSQL cluster that replicates from the active site's primary cluster
 - A standby Redis instance (not receiving traffic)
 - A standby Infisical deployment (not receiving traffic)
 
-### Traffic Management and Failover
+### Traffic management and failover
 Traffic routing between data centers requires:
 1. A global load balancer for traffic management. For on-premises deployments, this can be implemented using:
    - HAProxy or NGINX configured as a global load balancer
@@ -215,15 +215,15 @@ During failover:
 This is an active-passive setup where failover must be initiated manually by an operator. Automatic failover between data centers is not recommended as it can lead to split-brain scenarios. The operator should verify the state of both data centers before initiating failover.
 </Note>
 
-## Data Replication Across Data Centers
+## Data replication across data centers
 
-### PostgreSQL Replication
+### PostgreSQL replication
 CloudNativePG manages replication across data centers:
 - **Replica Clusters:** Each data center runs a replica cluster that replicates from the primary cluster
 - **WAL Shipping:** Changes are replicated via WAL shipping to object storage
 - **Failover:** The operator can promote a replica cluster to primary during planned switchovers or failures
 
-### Object Storage Configuration
+### Object storage configuration
 If using MinIO for object storage, ensure:
 - High availability deployment if running dedicated MinIO cluster
 - Proper access controls and encryption for data at rest

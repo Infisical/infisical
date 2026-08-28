@@ -5,7 +5,7 @@ description: "Infisical High Availability Deployment architecture for Linux"
 
 This guide describes how to achieve a highly available deployment of Infisical on Linux machines without containerization. The architecture provided serves as a foundation for minimum high availability, which you can scale based on your specific requirements.
 
-## Architecture Overview
+## Architecture overview
 
 ![High availability stack](/images/self-hosting/deployment-options/native/ha-stack.png)
 
@@ -20,7 +20,7 @@ The deployment consists of the following key components:
 | Redis + Sentinel          | 3+3   | 2 vCPU, 8 GB memory      | n1-standard-2  | m5.large     |
 | Infisical Core           | 3     | 2 vCPU, 4 GB memory      |  n1-highcpu-2   | c5.large   |
 
-### Network Architecture
+### Network architecture
 
 All servers operate within the 52.1.0.0/24 private network range with the following IP assignments:
 
@@ -44,9 +44,9 @@ All servers operate within the 52.1.0.0/24 private network range with the follow
 | Infisical Core 2     | 52.1.0.16  |
 | Infisical Core 3     | 52.1.0.17  |
 
-## Component Setup Guide
+## Component setup guide
 
-### 1. Configure Etcd Cluster
+### 1. Configure Etcd cluster
 
 The Etcd cluster is needed for leader election in the PostgreSQL HA setup. Skip this step if using managed PostgreSQL.
 
@@ -73,7 +73,7 @@ advertise-client-urls: http://52.1.0.3:2379
 
 For production deployments, you have two options for highly available PostgreSQL:
 
-#### Option A: Managed PostgreSQL Service (Recommended for Most Users)
+#### Option A: Managed PostgreSQL service (recommended for most users)
 
 Use cloud provider managed services:
 - AWS: Amazon RDS for PostgreSQL with Multi-AZ
@@ -82,7 +82,7 @@ Use cloud provider managed services:
 
 These services handle replication, failover, and maintenance automatically.
 
-#### Option B: Self-Managed PostgreSQL Cluster
+#### Option B: Self-managed PostgreSQL cluster
 
 Full HA installation guide of PostgreSQL is beyond the scope of this document. However, we have provided an overview of resources and code snippets below to guide your deployment.
 
@@ -160,7 +160,7 @@ bootstrap:
 
 Similar to PostgreSQL, a full HA Redis setup guide is beyond the scope of this document. Below are the key resources and considerations for your deployment.
 
-#### Option A: Managed Redis Service (Recommended for Most Users)
+#### Option A: Managed Redis service (recommended for most users)
 
 Use cloud provider managed Redis services:
 - AWS: ElastiCache for Redis with Multi-AZ
@@ -172,7 +172,7 @@ Follow your cloud provider's documentation:
 - [GCP Memorystore Documentation](https://cloud.google.com/memorystore/docs/redis)
 - [Azure Redis Cache Documentation](https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/)
 
-#### Option B: Self-Managed Redis Cluster
+#### Option B: Self-managed Redis cluster
 
 Setting up a production Redis HA cluster requires understanding several components. Refer to these linked resources:
 
@@ -225,7 +225,7 @@ sentinel parallel-syncs mymaster 1
    - [Redis High Availability Tools](https://redis.io/topics/high-availability)
    - [Redis Sentinel Client Implementation](https://redis.io/topics/sentinel-clients)
 
-### 4. Configure HAProxy Load Balancer
+### 4. Configure HAProxy load balancer
 
 Install and configure HAProxy for internal load balancing:
 
@@ -369,7 +369,7 @@ sudo infisical-ctl reconfigure
 sudo infisical-ctl status
 ```
 
-## Monitoring and Maintenance
+## Monitoring and maintenance
 
 1. Monitor HAProxy stats: `http://52.1.0.2:7000/haproxy?stats`
 2. Monitor Infisical logs: `sudo infisical-ctl tail`

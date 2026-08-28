@@ -1,5 +1,5 @@
 ---
-title: "Email Domain Verification"
+title: "Email domain verification"
 description: "Learn how to verify your organization's email domains for secure SSO and user provisioning."
 ---
 
@@ -18,7 +18,7 @@ Email Domain Verification allows organizations to prove ownership of their email
 - **SCIM provisioning** — SCIM user provisioning requires a verified email domain to ensure only authorized organizations can manage users.
 - **Simplified login experience** — Users enter their work email to login in via SSO.
 
-## How It Works
+## How it works
 
 Email domain verification uses DNS TXT records to prove ownership. The flow is:
 
@@ -29,7 +29,7 @@ Email domain verification uses DNS TXT records to prove ownership. The flow is:
 
 The verification code expires after **7 days**. You must complete verification within this window.
 
-### DNS Record Format
+### DNS record format
 
 | Field            | Value                                               |
 | ---------------- | --------------------------------------------------- |
@@ -42,7 +42,7 @@ The verification code expires after **7 days**. You must complete verification w
   that case, enter only `_infisical-verification` as the host/name.
 </Note>
 
-## Setting Up Email Domain Verification
+## Setting up email domain verification
 
 <Steps>
   <Step title="Navigate to Email Domain Settings">
@@ -103,7 +103,7 @@ The verification code expires after **7 days**. You must complete verification w
   </Step>
 </Steps>
 
-## SSO Login with Email Domain
+## SSO login with email domain
 
 Once your domain is verified, users can log in via SSO by entering their work email instead of an organization slug.
 
@@ -124,7 +124,7 @@ Once your domain is verified, users can log in via SSO by entering their work em
   </Step>
 </Steps>
 
-## Domain Hierarchy
+## Domain hierarchy
 
 Email domains are verified at the exact domain level:
 
@@ -132,14 +132,14 @@ Email domains are verified at the exact domain level:
 - Each subdomain must be verified separately if you want SSO to work for subdomain email addresses.
 - You can verify both a parent domain and its subdomains independently.
 
-## Platform-Level Uniqueness
+## Platform-level uniqueness
 
 Each domain can only be verified by **one organization** across the entire Infisical instance:
 
 - If Organization A verifies `company.com`, Organization B cannot verify or claim the same domain.
 - This prevents cross-organization user provisioning attacks where a malicious org could claim users by email domain.
 
-## SCIM Integration
+## SCIM integration
 
 When [SCIM provisioning](/documentation/platform/scim/overview) is enabled, email domain verification is **required**:
 

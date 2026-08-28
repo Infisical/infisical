@@ -16,6 +16,7 @@ import {
   SearchIcon,
   StarIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -272,7 +273,6 @@ const MyProjectsForType = ({
   onUpgradePlan,
   isAddingProjectsAllowed
 }: SubViewProps) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
@@ -355,13 +355,6 @@ const MyProjectsForType = ({
         projectFavorites: (projectFavorites || []).filter((entry) => entry !== projectId)
       });
     }
-  };
-
-  const navigateToProject = (workspace: Project) => {
-    navigate({
-      to: getProjectHomePage(workspace.type, workspace.environments),
-      params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-    });
   };
 
   const renderFavoriteButton = (workspace: Project & { isFavorite: boolean }) =>
@@ -544,28 +537,28 @@ const MyProjectsForType = ({
             {workspacesWithFaveProp.map((workspace) => {
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
               return (
-                <TableRow
-                  key={workspace.id}
-                  className="group"
-                  onClick={() => navigateToProject(workspace)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") navigateToProject(workspace);
-                  }}
-                  tabIndex={0}
-                >
+                <TableRow key={workspace.id} className="group relative cursor-pointer">
                   <TableCell className="w-0 pr-0">
                     <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                       <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                     </div>
                   </TableCell>
-                  <TableCell isTruncatable>{workspace.name}</TableCell>
+                  <TableCell isTruncatable>
+                    <Link
+                      to={getProjectHomePage(workspace.type, workspace.environments)}
+                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                    >
+                      {workspace.name}
+                    </Link>
+                  </TableCell>
                   <TableCell isTruncatable>
                     {workspace.description || <span className="text-muted">—</span>}
                   </TableCell>
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="w-0 pr-3 text-right">
+                  <TableCell className="relative z-10 w-0 pr-3 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
@@ -767,34 +760,38 @@ const AllProjectsForType = ({
         <TableBody>
           {searchedProjects?.projects?.map((workspace) => {
             const WorkspaceIcon = getProjectLucideIcon(workspace.type);
-            const goToProject = () =>
-              navigate({
-                to: getProjectHomePage(workspace.type, workspace.environments),
-                params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-              });
             return (
               <TableRow
                 key={workspace.id}
-                className="group"
-                onClick={workspace.isMember ? goToProject : undefined}
-                onKeyDown={(evt) => {
-                  if (evt.key === "Enter" && workspace.isMember) goToProject();
-                }}
-                tabIndex={workspace.isMember ? 0 : -1}
+                className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
               >
                 <TableCell className="w-0 pr-0">
                   <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                     <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                   </div>
                 </TableCell>
-                <TableCell isTruncatable>{workspace.name}</TableCell>
+                <TableCell isTruncatable>
+                  {/* Only members can open the project, so only their rows get the stretched
+                      anchor; everyone else sees plain text with no navigation. */}
+                  {workspace.isMember ? (
+                    <Link
+                      to={getProjectHomePage(workspace.type, workspace.environments)}
+                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                    >
+                      {workspace.name}
+                    </Link>
+                  ) : (
+                    workspace.name
+                  )}
+                </TableCell>
                 <TableCell isTruncatable>
                   {workspace.description || <span className="text-muted">—</span>}
                 </TableCell>
                 <TableCell className="w-0 text-xs whitespace-nowrap">
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell className="w-0 pr-3 text-right">
+                <TableCell className="relative z-10 w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
                       <Badge variant="info">

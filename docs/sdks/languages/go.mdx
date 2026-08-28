@@ -9,7 +9,7 @@ If you're working with Go, the official Infisical Go SDK package is the easiest 
 - [Package](https://pkg.go.dev/github.com/infisical/go-sdk)
 - [Github Repository](https://github.com/infisical/go-sdk)
 
-# Basic Usage
+# Basic usage
 
 ```go
 package main
@@ -76,7 +76,7 @@ client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 	})
 ```
 
-### Configuration Options
+### Configuration options
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
@@ -118,7 +118,7 @@ You can opt-out by setting `AutoTokenRefresh` to `false` in the client settings.
   })
 ```
 
-### Client Lifecycle
+### Client lifecycle
 
 When using automatic token refreshing it's important to understand how your application uses the Infisical client. If you are instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
 
@@ -139,7 +139,7 @@ If you are only creating one instance of the client, and it will be used through
 
 ## Authentication
 
-### Authentication Methods
+### Authentication methods
 
 The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
 
@@ -399,7 +399,7 @@ The SDK supports a variety of authentication methods. The most common authentica
 
 
 
-### Sub-Organization Authentication
+### Sub-organization authentication
 
 <Note>
   This section is only relevant to you if your organization is utilizing [sub-organizations](/documentation/platform/sub-organizations) within Infisical.
@@ -425,7 +425,7 @@ if err != nil {
 
 ## Secrets
 
-### List Secrets
+### List secrets
 
 `client.Secrets().List(options)`
 
@@ -475,7 +475,7 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 
 </ParamField>
 
-### Retrieve Secret
+### Retrieve secret
 
 `client.Secrets().Retrieve(options)`
 
@@ -516,7 +516,7 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
   </Expandable>
 </ParamField>
 
-### Create Secret
+### Create secret
 
 `client.Secrets().Create(options)`
 
@@ -563,7 +563,7 @@ secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
   </Expandable>
 </ParamField>
 
-### Update Secret
+### Update secret
 
 `client.Secrets().Update(options)`
 
@@ -614,7 +614,7 @@ secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
   </Expandable>
 </ParamField>
 
-### Delete Secret
+### Delete secret
 
 `client.Secrets().Delete(options)`
 
@@ -652,7 +652,7 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
   </Expandable>
 </ParamField>
 
-### Batch Create Secrets
+### Batch create secrets
 
 `client.Secrets().Batch().Create(options)`
 
@@ -725,7 +725,7 @@ Create multiple secrets in Infisical.
 
 ## Folders
 
-### List Folders
+### List folders
 
 `client.Folders().List(options)`
 
@@ -758,7 +758,7 @@ folders, err := client.Folders().List(infisical.ListFoldersOptions{
 
 </ParamField>
 
-### Create Folder
+### Create folder
 
 `client.Folders().Create(options)`
 
@@ -793,7 +793,7 @@ folder, err := client.Folders().Create(infisical.CreateFolderOptions{
   </Expandable>
 </ParamField>
 
-### Update Folder
+### Update folder
 
 `client.Folders().Update(options)`
 
@@ -832,7 +832,7 @@ folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
   </Expandable>
 </ParamField>
 
-### Delete Folder
+### Delete folder
 
 `client.Folders().Delete(options)`
 
@@ -873,7 +873,7 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
 
 </ParamField>
 
-## Dynamic Secrets
+## Dynamic secrets
 
 [Dynamic secrets](/documentation/platform/dynamic-secrets/overview) generate credentials on-demand instead of storing static values. Credentials are issued through short-lived **leases** that Infisical automatically revokes when they expire.
 
@@ -884,7 +884,7 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
   [API](/api-reference/endpoints/dynamic-secrets/create).
 </Note>
 
-### List Dynamic Secrets
+### List dynamic secrets
 
 `client.DynamicSecrets().List(options)`
 
@@ -915,7 +915,7 @@ dynamicSecrets, err := client.DynamicSecrets().List(infisical.ListDynamicSecrets
   </Expandable>
 </ParamField>
 
-### Get Dynamic Secret by Name
+### Get dynamic secret by name
 
 `client.DynamicSecrets().GetByName(options)`
 
@@ -950,11 +950,11 @@ dynamicSecret, err := client.DynamicSecrets().GetByName(infisical.GetDynamicSecr
   </Expandable>
 </ParamField>
 
-## Dynamic Secret Leases
+## Dynamic secret leases
 
 A lease represents a single set of generated credentials with its own TTL. Use leases to generate, inspect, renew, and revoke credentials from a dynamic secret. Access the leases interface with `client.DynamicSecrets().Leases()`.
 
-### Create Lease
+### Create lease
 
 `client.DynamicSecrets().Leases().Create(options)`
 
@@ -1010,7 +1010,7 @@ credentials, dynamicSecret, lease, err := client.DynamicSecrets().Leases().Creat
   lease details, and an error if the request failed.
 </ParamField>
 
-### List Leases
+### List leases
 
 `client.DynamicSecrets().Leases().List(options)`
 
@@ -1045,7 +1045,7 @@ leases, err := client.DynamicSecrets().Leases().List(infisical.ListDynamicSecret
   </Expandable>
 </ParamField>
 
-### Get Lease by ID
+### Get lease by ID
 
 `client.DynamicSecrets().Leases().GetById(options)`
 
@@ -1087,7 +1087,7 @@ lease, err := client.DynamicSecrets().Leases().GetById(infisical.GetDynamicSecre
   field, and an error if the request failed.
 </ParamField>
 
-### Renew Lease
+### Renew lease
 
 `client.DynamicSecrets().Leases().RenewById(options)`
 
@@ -1141,7 +1141,7 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
   </Expandable>
 </ParamField>
 
-### Delete Lease
+### Delete lease
 
 `client.DynamicSecrets().Leases().DeleteById(options)`
 
@@ -1184,7 +1184,7 @@ lease, err := client.DynamicSecrets().Leases().DeleteById(infisical.DeleteDynami
 
 ## KMS
 
-### Create Key
+### Create key
 
 `client.Kms().Keys().Create(options)`
 
@@ -1266,7 +1266,7 @@ Create a new key in Infisical.
   </Expandable>
 </ParamField>
 
-### Delete Key
+### Delete key
 
 `client.Kms().Keys().Delete(options)`
 
@@ -1322,7 +1322,7 @@ deletedKey, err = client.Kms().Keys().Delete(infisical.KmsDeleteKeyOptions{
   </Expandable>
 </ParamField>
 
-### Signing Data
+### Signing data
 
 `client.Kms().Signing().Sign(options)`
 Sign data in Infisical.
@@ -1378,7 +1378,7 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
   The signature of the data that was signed.
 </ParamField>
 
-### Verifying Data
+### Verifying data
 
 `client.Kms().Signing().Verify(options)`
 Verify data in Infisical.
@@ -1426,7 +1426,7 @@ res, err := client.Kms().Signing().Verify(infisical.KmsVerifyDataOptions{
   </Expandable>
 </ParamField>
 
-### List Signing Algorithms
+### List signing algorithms
 
 `client.Kms().Signing().ListSigningAlgorithms(options)`
 List signing algorithms in Infisical.
@@ -1453,7 +1453,7 @@ res, err := client.Kms().Signing().ListSigningAlgorithms(infisical.KmsListSignin
   The signing algorithms that are available for the key.
 </ParamField>
 
-### Get Public Key
+### Get public key
 
 <Note>
   This method is only available for keys with key usage `sign-verify`. If you
@@ -1486,7 +1486,7 @@ publicKey, err := client.Kms().Signing().GetPublicKey(infisical.KmsGetPublicKeyO
   The public key for the key.
 </ParamField>
 
-### Encrypt Data
+### Encrypt data
 
 `client.Kms().Encryption().Encrypt(options)`
 Encrypt data with a key in Infisical KMS.
@@ -1514,7 +1514,7 @@ res, err := client.Kms().EncryptData(infisical.KmsEncryptDataOptions{
   The encrypted data.
 </ParamField>
 
-### Decrypt Data
+### Decrypt data
 
 `client.Kms().DecryptData(options)`
 Decrypt data with a key in Infisical KMS.

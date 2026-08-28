@@ -1,5 +1,5 @@
 ---
-title: "Audit Log Streams"
+title: "Audit log streams"
 description: "Learn how to stream Infisical Audit Logs to external logging providers."
 ---
 
@@ -11,7 +11,7 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 
 Infisical Audit Log Streaming enables you to transmit your organization's audit logs to external logging providers for monitoring and analysis.
 
-### Disabling PostgreSQL Audit Log Storage
+### Disabling PostgreSQL audit log storage
 
 If you're using audit log streams as your primary log destination and don't need audit logs stored in PostgreSQL, you can disable PostgreSQL audit log storage by setting the following environment variable:
 
@@ -60,7 +60,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 		</Step>
 </Steps>
 
-## Example Providers
+## Example providers
 
 <AccordionGroup>
     <Accordion title="Azure">
@@ -384,7 +384,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
     </Accordion>
 </AccordionGroup>
 
-## Delivery Reliability and Failure Handling
+## Delivery reliability and failure handling
 
 Audit log delivery is decoupled from the action that produced the event. When something happens in Infisical, the event is first recorded as an audit log and durably queued for streaming, and only then delivered to your configured destinations in the background. A streaming failure never blocks or rolls back the underlying action, and a temporary outage at your destination does not lose events that were already queued.
 
@@ -417,7 +417,7 @@ Because streaming is best-effort with bounded retries, your durable source of tr
     Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and are not using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events cannot be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
 </Warning>
 
-## Delivery Format
+## Delivery format
 
 Infisical streams audit logs to your destination in **batches**. Rather than sending one HTTP request per event, Infisical accumulates events and delivers them together, which improves throughput and reduces load on your receiver.
 
@@ -436,7 +436,7 @@ Your endpoint must be able to accept a JSON array. Batches are bounded — your 
     **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
 </Note>
 
-### Example Log Entry
+### Example log entry
 
 The example below shows a single audit log event. For Custom streams using batch delivery, this object appears as an element inside the JSON array described above.
 
@@ -468,7 +468,7 @@ The example below shows a single audit log event. For Custom streams using batch
 }
 ```
 
-### Audit Logs Structure
+### Audit logs structure
 
 <Warning>
     Streamed audit log structure **varies based on provider**, but they all share the audit log fields shown below.
