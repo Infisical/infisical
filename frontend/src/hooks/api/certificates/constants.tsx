@@ -1,26 +1,4 @@
-import {
-  CertExtendedKeyUsage,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertStatus,
-  CrlReason
-} from "./enums";
-
-export const certStatusToNameMap: { [K in CertStatus]: string } = {
-  [CertStatus.ACTIVE]: "Active",
-  [CertStatus.REVOKED]: "Revoked"
-};
-
-export const getCertStatusBadgeVariant = (status: CertStatus) => {
-  switch (status) {
-    case CertStatus.ACTIVE:
-      return "success";
-    case CertStatus.REVOKED:
-      return "danger";
-    default:
-      return "primary";
-  }
-};
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage, CrlReason } from "./enums";
 
 export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_2048]: "RSA 2048",
@@ -142,6 +120,44 @@ export const buildExtendedKeyUsageToggleSchema = <T,>(field: T) =>
     CertExtendedKeyUsage,
     T
   >;
+
+const getSignatureAlgorithmFamily = (signatureAlgorithm: string): string => {
+  if (signatureAlgorithm.startsWith("ML-DSA")) return "ML-DSA";
+  if (signatureAlgorithm.startsWith("SLH-DSA")) return "SLH-DSA";
+  return signatureAlgorithm.split("-")[0];
+};
+
+const getCaKeyAlgorithmFamily = (caKeyAlgorithm: string): string | null => {
+  if (caKeyAlgorithm.startsWith("RSA")) return "RSA";
+  if (caKeyAlgorithm.startsWith("EC")) return "ECDSA";
+  if (caKeyAlgorithm.startsWith("ML-DSA")) return "ML-DSA";
+  if (caKeyAlgorithm.startsWith("SLH-DSA")) return "SLH-DSA";
+  return null;
+};
+
+// Mirrors the CA signature check in the backend internal CA service. Keep both in sync.
+export const getCaSignatureIncompatibilityReason = (
+  signatureAlgorithm: string,
+  caKeyAlgorithm?: string | null
+): string | undefined => {
+  if (!caKeyAlgorithm) return undefined;
+
+  const caFamily = getCaKeyAlgorithmFamily(caKeyAlgorithm);
+  if (!caFamily) return undefined;
+
+  const caKeyName =
+    (certKeyAlgorithmToNameMap as Record<string, string | undefined>)[caKeyAlgorithm] ??
+    caKeyAlgorithm;
+
+  if (caFamily === "ML-DSA" || caFamily === "SLH-DSA") {
+    if (signatureAlgorithm === caKeyAlgorithm) return undefined;
+    return `Incompatible with the profile's CA. Its ${caKeyName} key can only sign with ${caKeyName}.`;
+  }
+
+  if (getSignatureAlgorithmFamily(signatureAlgorithm) === caFamily) return undefined;
+
+  return `Incompatible with the profile's CA. Its ${caKeyName} key can only sign ${caFamily} signature algorithms.`;
+};
 
 export const SIGNATURE_ALGORITHMS_OPTIONS = [
   { value: "RSA-SHA256", label: "RSA-SHA256" },

@@ -121,4 +121,13 @@ jobs:
             "${REVIEWER_FLAG[@]}" \
             --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
 
-          Review the generated YAML for self-hosted upgrade accuracy before merging."
+          Review the generated YAML for self-hosted upgrade accuracy before merging.
+
+          ## Type
+
+          - [ ] Fix
+          - [ ] Feature
+          - [ ] Improvement
+          - [ ] Breaking
+          - [ ] Docs
+          - [x] Chore"

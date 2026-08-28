@@ -42,6 +42,7 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
+  useSubscription,
   useUser
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -49,6 +50,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberPermissionAuditSheet } from "./components/MemberPermissionAuditSheet";
@@ -64,6 +66,7 @@ export const Page = () => {
   });
   const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
+  const { subscription } = useSubscription();
   const {
     user: { id: currentUserId }
   } = useUser();
@@ -280,9 +283,24 @@ export const Page = () => {
                   })
                 }
               />
-              {!isCertManager && (
+              {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
               )}
+              {currentProject.type === ProjectType.SecretManager &&
+                subscription?.secretsFolderRbac && (
+                  <FolderAccessSection
+                    actor={{
+                      type: "user",
+                      id: membershipDetails.user.id,
+                      membershipId: membershipDetails.id,
+                      username: membershipDetails.user.username,
+                      email: membershipDetails.user.email,
+                      firstName: membershipDetails.user.firstName,
+                      lastName: membershipDetails.user.lastName
+                    }}
+                    hideActions={isOwnProjectMembershipDetails}
+                  />
+                )}
             </div>
           </div>
           <DeleteConfirmDialog

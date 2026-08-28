@@ -173,6 +173,31 @@ export const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, ope
 };
 
 /**
+ * A CA signs with its own key, so it can only produce signatures of that key's family. PQC keys are
+ * their own signature algorithm and require an exact match.
+ */
+export const isSignatureAlgorithmCompatibleWithCaKey = (
+  signatureAlgorithm: string,
+  caKeyAlgorithm: string
+): boolean => {
+  if (signatureAlgorithm.startsWith("ML-DSA") || signatureAlgorithm.startsWith("SLH-DSA")) {
+    return signatureAlgorithm === caKeyAlgorithm;
+  }
+
+  const parts = signatureAlgorithm.split("-");
+
+  if (caKeyAlgorithm.startsWith("RSA")) {
+    return parts.includes(CertKeyType.RSA);
+  }
+
+  if (caKeyAlgorithm.startsWith("EC")) {
+    return parts.includes(CertKeyType.ECDSA);
+  }
+
+  return false;
+};
+
+/**
  * Validates that the CA's key algorithm is compatible with the template's signature algorithms
  */
 export const validateAlgorithmCompatibility = (
@@ -193,24 +218,9 @@ export const validateAlgorithmCompatibility = (
   }
 
   const compatibleAlgorithms =
-    template.algorithms?.signature?.filter((sigAlg: string) => {
-      // PQC: key algorithm = signature algorithm, so require exact match
-      if (sigAlg.startsWith("ML-DSA") || sigAlg.startsWith("SLH-DSA")) {
-        return sigAlg === caKeyAlgorithm;
-      }
-
-      const parts = sigAlg.split("-");
-
-      if (caKeyAlgorithm.startsWith("RSA")) {
-        return parts.includes(CertKeyType.RSA);
-      }
-
-      if (caKeyAlgorithm.startsWith("EC")) {
-        return parts.includes(CertKeyType.ECDSA);
-      }
-
-      return false;
-    }) || [];
+    template.algorithms?.signature?.filter((sigAlg: string) =>
+      isSignatureAlgorithmCompatibleWithCaKey(sigAlg, caKeyAlgorithm)
+    ) || [];
 
   if (compatibleAlgorithms.length === 0) {
     throw new BadRequestError({

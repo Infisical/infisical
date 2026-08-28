@@ -1,7 +1,8 @@
 ---
 title: "Key management service (KMS)"
-sidebarTitle: "Overview"
 description: "Learn how to manage and use cryptographic keys with Infisical."
+sidebarTitle: "KMS"
+icon: "key"
 ---
 
 ## Concept
@@ -50,6 +51,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
                 - Algorithm: The encryption algorithm associated with the key (e.g. `AES-GCM-256`).
                 - Description: An optional description of what the intended usage is for the key.
                 - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
+                - Delete Protection: Whether the key is protected from deletion. While enabled, the key cannot be deleted on its own. You can turn this off at any time by editing the key. Deleting the whole project still removes its keys.
 
                 ![kms add key modal](/images/platform/kms/infisical-kms/kms-add-key-modal.png)
             </Step>
@@ -388,6 +390,7 @@ In the following steps, we explore how to generate a key and use it to produce a
                 - Algorithm: The HMAC algorithm associated with the key (e.g. `HMAC_SHA_256`). Supported algorithms are `HMAC_SHA_1`, `HMAC_SHA_224`, `HMAC_SHA_256`, `HMAC_SHA_384`, and `HMAC_SHA_512`.
                 - Description: An optional description of what the intended usage is for the key.
                 - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
+                - Delete Protection: Whether the key is protected from deletion. While enabled, the key cannot be deleted on its own. You can turn this off at any time by editing the key. Deleting the whole project still removes its keys.
             </Step>
             <Step title="Generating a MAC with the KMS key">
                 Once your key is generated, open the options menu for the newly created key and select generate MAC.

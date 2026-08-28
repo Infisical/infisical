@@ -171,7 +171,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: KmipServerWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.getOrgKmipServer({
         kmipServerId: req.params.kmipServerId,
@@ -201,7 +201,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: z.array(SanitizedKmipServerSchema.omit({ canRevoke: true }))
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.kmipServer.listKmipServers({ actor: req.permission });
     }

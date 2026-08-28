@@ -387,6 +387,32 @@ poorly out of context; otherwise the title is used.
 - Brief intro
 - Navigation cards to sub-pages
 
+A landing page that heads a whole section has a further job: it should let a reader
+understand what the section contains without reading the sidebar. Mirror the section's
+structure on the page.
+
+- Open with one or two sentences saying what the section is for. Not a definition of the
+  product, just what a reader will find here.
+- Cover every group in that section's sidebar. How much you expand each one depends on the
+  group:
+  - **One card for the group** when its pages are steps or reference for a single topic. The
+    card points at the group's entry point and the description says what the group is for.
+    Networking does this: one card for Gateways, one for Relays.
+  - **A card per page** when the pages are parallel choices the reader picks between, and
+    seeing all the options is the point. Self-hosting does this for deployment platforms,
+    where a reader is scanning for the one they already run.
+- Give each group its own `##` heading, using the same name as the sidebar, once a section
+  has enough groups that a single card group would run long. A short section can carry them
+  all in one `<CardGroup>` with no headings at all.
+- Card titles should match their sidebar labels so a card and its destination read the same.
+- Put deeper explanation below the cards, not above them. Someone who arrived to navigate
+  should not have to scroll past a concept page to find the links.
+- Detail that only some readers want, such as the reasoning behind a choice, belongs in an
+  `<Accordion>` so it does not push the cards down the page.
+
+See `self-hosting/overview`, `documentation/platform/gateways/overview`, and
+`documentation/platform/identities/overview` for the pattern.
+
 **Reference pages:**
 
 - Structured information (tables, field descriptions)
@@ -398,8 +424,10 @@ Use the structure that best serves the reader for that type of content.
 
 ## 12. What Vale enforces
 
-Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs` from the
-repository root before opening a documentation pull request.
+Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs-branch` from
+the repository root before opening a documentation pull request, or `make lint-docs` to check
+every page. The `Check docs style` CI check runs the same rules over the files the pull request
+touched.
 
 Vale cannot see prose indented inside components, which is a large share of this repo. A clean
 run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.

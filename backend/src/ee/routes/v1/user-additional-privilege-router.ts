@@ -254,7 +254,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
         req.query.projectMembershipId,
@@ -303,7 +303,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)

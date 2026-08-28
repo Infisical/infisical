@@ -209,7 +209,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -581,12 +581,6 @@ export const appConnectionServiceFactory = ({
       });
     }
 
-    let validationGatewayId: string | null | undefined = gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      validationGatewayId = picked.id;
-    }
-
     await enterpriseAppCheck(
       licenseService,
       app,
@@ -601,21 +595,33 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    const validatedCredentials = await validateAppConnectionCredentials(
-      {
-        app,
-        credentials,
-        method,
-        orgId: actor.orgId,
-        projectId,
-        version: 2,
-        gatewayId: validationGatewayId,
-        projectType: project?.type
-      } as TAppConnectionConfig,
-      gatewayService,
-      gatewayV2Service,
-      { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
-    );
+    const runValidation = (validationGatewayId: string | null | undefined) =>
+      validateAppConnectionCredentials(
+        {
+          app,
+          credentials,
+          method,
+          orgId: actor.orgId,
+          projectId,
+          version: 2,
+          gatewayId: validationGatewayId,
+          projectType: project?.type
+        } as TAppConnectionConfig,
+        gatewayService,
+        gatewayV2Service,
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+      );
+
+    // Validation only dials the target and reads back, so retrying it on another member is safe.
+    let validationGatewayId: string | null | undefined = gatewayId;
+    let validatedCredentials: Awaited<ReturnType<typeof runValidation>>;
+    if (gatewayPoolId) {
+      const outcome = await gatewayPoolService.runWithPoolFailover({ poolId: gatewayPoolId }, runValidation);
+      validatedCredentials = outcome.result;
+      validationGatewayId = outcome.gatewayId;
+    } else {
+      validatedCredentials = await runValidation(gatewayId);
+    }
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
@@ -833,17 +839,11 @@ export const appConnectionServiceFactory = ({
     }
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
-    let validationGatewayId: string | null | undefined;
 
     const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {
-      validationGatewayId = effectiveGatewayIdForUpdate;
-      if (effectiveGatewayPoolIdForUpdate) {
-        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-        validationGatewayId = picked.id;
-      }
-
       // Only checked when the caller explicitly selects an app — merged-in existing credentials
       // (gitHubAppId undefined) keep already-configured connections editable.
       if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
@@ -886,21 +886,34 @@ export const appConnectionServiceFactory = ({
 
       const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
 
-      updatedCredentials = await validateAppConnectionCredentials(
-        {
-          app,
-          orgId: actor.orgId,
-          projectId: appConnection.projectId,
-          version: appConnection.version,
-          credentials: credentialsToValidate,
-          method,
-          gatewayId: validationGatewayId,
-          projectType: updateProject?.type
-        } as TAppConnectionConfig,
-        gatewayService,
-        gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
-      );
+      const runUpdateValidation = (validationGatewayId: string | null | undefined) =>
+        validateAppConnectionCredentials(
+          {
+            app,
+            orgId: actor.orgId,
+            projectId: appConnection.projectId,
+            version: appConnection.version,
+            credentials: credentialsToValidate,
+            method,
+            gatewayId: validationGatewayId,
+            projectType: updateProject?.type
+          } as TAppConnectionConfig,
+          gatewayService,
+          gatewayV2Service,
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        );
+
+      // Validation only dials the target and reads back, so retrying it on another member is safe.
+      if (effectiveGatewayPoolIdForUpdate) {
+        const outcome = await gatewayPoolService.runWithPoolFailover(
+          { poolId: effectiveGatewayPoolIdForUpdate },
+          runUpdateValidation
+        );
+        updatedCredentials = outcome.result;
+        validationGatewayIdForUpdate = outcome.gatewayId;
+      } else {
+        updatedCredentials = await runUpdateValidation(effectiveGatewayIdForUpdate);
+      }
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
@@ -967,7 +980,7 @@ export const appConnectionServiceFactory = ({
               orgId: actor.orgId,
               credentials: updatedCredentials,
               method,
-              gatewayId: validationGatewayId
+              gatewayId: validationGatewayIdForUpdate
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
             gatewayService,

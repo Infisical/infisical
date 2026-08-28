@@ -14,6 +14,7 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { DIGICERT_CS_PRODUCT_NAME_IDS } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
 import {
@@ -62,7 +63,7 @@ type TDigiCertCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -550,7 +551,7 @@ export const DigiCertCertificateAuthorityFns = ({
       );
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(

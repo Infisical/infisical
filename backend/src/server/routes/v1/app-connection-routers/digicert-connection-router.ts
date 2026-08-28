@@ -43,7 +43,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       return server.services.appConnection.digicert.listOrganizations(connectionId, req.permission);
@@ -72,7 +72,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       return server.services.appConnection.digicert.listProducts(connectionId, req.permission);
@@ -100,7 +100,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;
@@ -140,7 +140,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;

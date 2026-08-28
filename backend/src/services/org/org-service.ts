@@ -122,7 +122,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -672,23 +672,16 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      userEmail,
       orgName
     }: {
       userId?: string;
       orgName: string;
-      userEmail?: string | null;
     },
     trx?: Knex
   ) => {
-    const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-
     const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create(
-        { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
-        tx
-      );
+      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -789,6 +782,12 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+    // if root org null = this is a root org then cancel the subscription.
+    if (!org.rootOrgId) {
+      await licenseService.cancelOrgSubscription(orgId);
+    }
+
     const response = await orgDAL.transaction(async (tx) => {
       const projects = await projectDAL.find({ orgId }, { tx });
 
@@ -803,10 +802,6 @@ export const orgServiceFactory = ({
       }
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
-
-      if (deletedOrg.customerId) {
-        await licenseService.removeOrgCustomer(deletedOrg.customerId);
-      }
 
       // Generate new tokens without the organization ID present
       const user = await userDAL.findById(userId, tx);
@@ -841,15 +836,16 @@ export const orgServiceFactory = ({
     role,
     isActive,
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipId,
     actorAuthMethod,
     actorOrgId,
     metadata
   }: TUpdateOrgMembershipDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
@@ -862,11 +858,11 @@ export const orgServiceFactory = ({
       scope: AccessScope.Organization,
       scopeOrgId: actorOrgId
     });
-    if (!foundMembership)
-      throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
+    if (!foundMembership?.actorUserId)
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
-    if (foundMembership.actorUserId === userId)
+    if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
@@ -1138,7 +1134,10 @@ export const orgServiceFactory = ({
     const token = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
-        userId: user.id
+        userId: user.id,
+        // the invite this signup was started from, so completing the account can attribute it to
+        // this org rather than guess among every org that invited the user
+        organizationId: orgMembership.scopeOrgId
       },
       appCfg.AUTH_SECRET,
       {
@@ -1180,20 +1179,29 @@ export const orgServiceFactory = ({
 
   const deleteOrgMembership = async ({
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipId,
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+
+    const membershipToDelete = await membershipUserDAL.findOne({
+      id: membershipId,
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId
+    });
+    if (!membershipToDelete?.actorUserId)
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
 
     const [deletedMembership] = await deleteOrgMembershipsFn({
       orgMembershipIds: [membershipId],
@@ -1202,7 +1210,7 @@ export const orgServiceFactory = ({
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId,
+      userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
@@ -1219,14 +1227,15 @@ export const orgServiceFactory = ({
 
   const bulkDeleteOrgMemberships = async ({
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipIds,
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipsDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
@@ -1234,9 +1243,18 @@ export const orgServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    if (membershipIds.includes(userId)) {
-      throw new BadRequestError({ message: "You cannot delete your own organization membership" });
-    }
+    const membershipsToDelete = await membershipUserDAL.find({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      $in: { id: membershipIds },
+      $notNull: ["actorUserId"]
+    });
+    const foundMembershipIds = new Set(membershipsToDelete.map((el) => el.id));
+    const missingMembershipIds = membershipIds.filter((id) => !foundMembershipIds.has(id));
+    if (missingMembershipIds.length)
+      throw new NotFoundError({
+        message: `Organization membership with ID '${missingMembershipIds.join("', '")}' not found`
+      });
 
     const deletedMemberships = await deleteOrgMembershipsFn({
       orgMembershipIds: membershipIds,
@@ -1245,7 +1263,7 @@ export const orgServiceFactory = ({
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId,
+      userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
