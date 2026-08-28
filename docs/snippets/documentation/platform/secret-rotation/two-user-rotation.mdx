@@ -1,0 +1,7 @@
+<Accordion title="Why create two users?">
+    Infisical never creates or drops database users, so it rotates the passwords of the two users you name, alternating between them.
+
+    Each cycle, Infisical generates a new password for whichever user is not currently active and maps it to your secrets. The other user's password stays valid as a grace-period credential until the following cycle replaces it, which is what makes the rotation [dual-phase](/documentation/platform/secret-rotation/overview#dual-phase). A single user has nowhere to write a new password except over the one in use, so every client still holding the old password would be locked out immediately.
+
+    The cycle never needs more than two users, which is why the configuration form has fixed **Database Username 1** and **Database Username 2** fields. Both users must be dedicated to Infisical, and neither can be the user your app connection authenticates with.
+</Accordion>
