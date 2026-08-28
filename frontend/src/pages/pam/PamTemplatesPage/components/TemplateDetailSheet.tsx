@@ -346,7 +346,8 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
-              // Defaulting this on would start scheduled logins for every template that predates the feature.
+              // New templates are seeded on by the API; one with no heartbeat key predates the feature and
+              // must stay off, so an upgrade never starts signing in to targets on its own.
               heartbeatEnabled: heartbeat.enabled ?? false,
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:

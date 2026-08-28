@@ -16,6 +16,9 @@ export const PamHeartbeatConfigSchema = z.object({
   intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
 });
 
+// Daily, matching the interval the template form offers by default.
+export const DEFAULT_HEARTBEAT_CONFIG: TPamHeartbeatConfig = { enabled: true, intervalSeconds: 86_400 };
+
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
   region: z.nativeEnum(AWSRegion),

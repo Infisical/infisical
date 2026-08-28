@@ -19,6 +19,7 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
+  DEFAULT_HEARTBEAT_CONFIG,
   PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema,
   TPamTemplateSettings
@@ -153,6 +154,13 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
+    // Credential health checking is on for a new template unless the caller says otherwise. Templates that
+    // predate the feature are left alone, so an upgrade never starts signing in to targets on its own.
+    const seededSettings: TPamTemplateSettings = {
+      ...(settings ?? {}),
+      heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG
+    };
+
     try {
       const template = await pamAccountTemplateDAL.create({
         projectId,
@@ -160,7 +168,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         description,
         type,
         policies: validatedPolicies,
-        settings: settings ?? undefined,
+        settings: seededSettings,
         gatewayId,
         gatewayPoolId,
         recordingConnectionId

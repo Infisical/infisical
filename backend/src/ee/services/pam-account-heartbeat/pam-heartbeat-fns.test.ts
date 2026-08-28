@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import { PamHeartbeatStatus } from "../pam/pam-enums";
-import { classifyCloudProbeError } from "./pam-heartbeat-fns";
+import {
+  DEFAULT_HEARTBEAT_CONFIG,
+  PamHeartbeatConfigSchema
+} from "../pam-account-template/pam-account-template-schemas";
+import { classifyCloudProbeError, isHeartbeatScheduled } from "./pam-heartbeat-fns";
 
 // Shapes the three federation helpers actually throw: axios (Azure, GCP) and the AWS SDK.
 const axiosError = (status: number) => ({ isAxiosError: true, response: { status } });
@@ -40,5 +44,14 @@ describe("classifyCloudProbeError", () => {
   // A transport code above a status must not be read as a verdict on the credential.
   test("a connection error wrapping nothing stays unchecked", () => {
     expect(classifyCloudProbeError(wrapped({ code: "ETIMEDOUT" }))).toBe(PamHeartbeatStatus.CannotCheck);
+  });
+});
+
+describe("DEFAULT_HEARTBEAT_CONFIG", () => {
+  // New templates opt in; the interval has to be one the scheduler and the template form both accept.
+  test("is enabled and within the allowed interval range", () => {
+    expect(DEFAULT_HEARTBEAT_CONFIG.enabled).toBe(true);
+    expect(PamHeartbeatConfigSchema.safeParse(DEFAULT_HEARTBEAT_CONFIG).success).toBe(true);
+    expect(isHeartbeatScheduled(DEFAULT_HEARTBEAT_CONFIG)).toBe(true);
   });
 });
