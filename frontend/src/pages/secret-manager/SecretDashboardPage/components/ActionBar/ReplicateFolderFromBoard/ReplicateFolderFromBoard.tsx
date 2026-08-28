@@ -15,6 +15,7 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
+  Input,
   SecretPathInput,
   Sheet,
   SheetContent,
@@ -384,16 +385,25 @@ export const ReplicateFolderFromBoard = ({
                   </h3>
                   <p className="text-2xs text-muted">The current location.</p>
                 </div>
-                <dl className="grid gap-4">
-                  <div className="grid gap-1">
-                    <dt className="text-xs font-medium text-accent">Environment</dt>
-                    <dd className="text-sm text-foreground">{destinationEnvironment}</dd>
-                  </div>
-                  <div className="grid gap-1">
-                    <dt className="text-xs font-medium text-accent">Root path</dt>
-                    <dd className="font-mono text-sm text-foreground">{destinationPath}</dd>
-                  </div>
-                </dl>
+                <Field>
+                  <FieldLabel htmlFor="replicate-secrets-destination-environment">
+                    Environment
+                  </FieldLabel>
+                  <Input
+                    id="replicate-secrets-destination-environment"
+                    value={destinationEnvironment}
+                    readOnly
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="replicate-secrets-destination-path">Root path</FieldLabel>
+                  <Input
+                    id="replicate-secrets-destination-path"
+                    className="font-mono"
+                    value={destinationPath}
+                    readOnly
+                  />
+                </Field>
                 <p className="mt-auto text-2xs text-muted">
                   Source folder structure is recreated under this path.
                 </p>
