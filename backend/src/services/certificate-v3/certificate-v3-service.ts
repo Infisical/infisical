@@ -1781,6 +1781,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             csr: certificateOrder.csr || null,
             commonName: certificateOrder.commonName || null,

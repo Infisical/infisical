@@ -678,10 +678,11 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
+    // The request row only persists explicitly supplied fields, so a BYO CSR's subject and SANs
+    // must be re-derived from the CSR itself when validating and queuing.
+    const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
+
     if (caType === CaType.GODADDY) {
-      // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
-      // non-RSA key or extra SANs the GoDaddy guard never saw.
-      const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
       validateGoDaddyIssuanceInputs({
         keyAlgorithm: certRequest.csr
           ? extractAlgorithmsFromCSR(certRequest.csr).keyAlgorithm
@@ -733,8 +734,9 @@ export const certificateApprovalServiceFactory = (
       ttl: effectiveTtl,
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",
-      commonName: certRequest.commonName || "",
-      altNames: altNames?.map((san) => ({ type: san.type, value: san.value })) || [],
+      commonName: certRequest.commonName || csrDerived?.commonName || "",
+      altNames:
+        (altNames ?? csrDerived?.subjectAlternativeNames)?.map((san) => ({ type: san.type, value: san.value })) || [],
       keyUsages: certRequest.keyUsages || [],
       extendedKeyUsages: certRequest.extendedKeyUsages || [],
       certificateRequestId,
