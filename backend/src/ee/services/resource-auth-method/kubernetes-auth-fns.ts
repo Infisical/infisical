@@ -1,8 +1,5 @@
-import { isIP } from "node:net";
-
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
-import RE2 from "re2";
 
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,7 +9,11 @@ import {
   handleAxiosError,
   KubernetesAuthErrorContext
 } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-error-handlers";
-import { extractK8sUsername } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
+import {
+  extractK8sUsername,
+  getKubernetesServerName,
+  withKubernetesHostScheme
+} from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { TCreateTokenReviewResponse } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { ResourceAuthLoginFailureReason } from "./resource-auth-method-fns";
@@ -29,16 +30,6 @@ const TOKEN_REVIEW_MAX_RESPONSE_BYTES = 64 * 1024;
 // The host is operator-supplied and the backend POSTs to it on every login, so without this an
 // org admin could use the auth config to reach hosts inside our own network. Does a DNS lookup,
 // so call it outside a transaction.
-// Undefined for a bare IP: SNI carries host names only, so an IP host is matched on IP SANs.
-const toServerName = (kubernetesHost: string) => {
-  let servername = new RE2("^https?://").replace(kubernetesHost, "");
-  const lastColonIndex = servername.lastIndexOf(":");
-  if (lastColonIndex !== -1) {
-    servername = servername.substring(0, lastColonIndex);
-  }
-  return isIP(servername) ? undefined : servername;
-};
-
 // One shape for both routes to the API server: straight out from Infisical, or tunnelled through a
 // gateway. Callers below only deal in paths, so nothing downstream has to know which is in play.
 export type TKubernetesRequestExecutor = <T = unknown>(
@@ -47,9 +38,6 @@ export type TKubernetesRequestExecutor = <T = unknown>(
   body?: object,
   headers?: Record<string, string>
 ) => Promise<{ status: number; data: T }>;
-
-const withScheme = (kubernetesHost: string) =>
-  new RE2("^https?://").test(kubernetesHost) ? kubernetesHost : `https://${kubernetesHost}`;
 
 export const buildDirectKubernetesExecutor = ({
   kubernetesHost,
@@ -60,7 +48,7 @@ export const buildDirectKubernetesExecutor = ({
   caCertificate?: string;
   verifyTlsCertificate: boolean;
 }): TKubernetesRequestExecutor => {
-  const baseUrl = withScheme(kubernetesHost);
+  const baseUrl = withKubernetesHostScheme(kubernetesHost);
 
   return async <T>(method: "get" | "post", path: string, body?: object, headers?: Record<string, string>) => {
     // Fresh per call: an abort signal must not be shared between requests.
@@ -68,7 +56,7 @@ export const buildDirectKubernetesExecutor = ({
       headers,
       ca: caCertificate || undefined,
       rejectUnauthorized: verifyTlsCertificate,
-      servername: toServerName(kubernetesHost),
+      servername: getKubernetesServerName(kubernetesHost),
       timeout: TOKEN_REVIEW_TIMEOUT_MS,
       signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
       maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
