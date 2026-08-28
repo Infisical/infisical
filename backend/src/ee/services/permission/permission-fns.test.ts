@@ -263,47 +263,28 @@ describe("trimSuffix handlebars helper", () => {
   const render = (template: string, value: string) =>
     handlebarsClient.compile(template)({ identity: { auth: { kubernetes: { namespace: value } } } });
 
-  const trim = (value: string, pattern: string) =>
-    render(`{{ trimSuffix identity.auth.kubernetes.namespace '${pattern}' }}`, value);
+  const trim = (value: string, suffix: string) =>
+    render(`{{ trimSuffix identity.auth.kubernetes.namespace '${suffix}' }}`, value);
 
-  test("trims a matching glob suffix", () => {
-    expect(trim("myapp-pr-1", "-pr-*")).toBe("myapp");
-    expect(trim("myapp-pr-42", "-pr-*")).toBe("myapp");
-  });
-
-  test("returns the value unchanged when nothing matches the pattern", () => {
-    expect(trim("myapp", "-pr-*")).toBe("myapp");
-    expect(trim("myapp-mr-1", "-pr-*")).toBe("myapp-mr-1");
-  });
-
-  test("removes the shortest matching suffix, not the longest", () => {
-    expect(trim("app-pr-1", "-*")).toBe("app-pr");
-  });
-
-  test("trims a literal suffix when the pattern has no glob syntax", () => {
+  test("trims a matching suffix", () => {
     expect(trim("myapp-prod", "-prod")).toBe("myapp");
-    expect(trim("myapp", "-prod")).toBe("myapp");
   });
 
-  test("supports the wider glob syntax used by permission conditions", () => {
-    expect(trim("myapp-pr-1", "-{pr,mr}-*")).toBe("myapp");
-    expect(trim("myapp-pr-1", "-pr-?")).toBe("myapp");
+  test("returns the value unchanged when it does not end with the suffix", () => {
+    expect(trim("myapp", "-prod")).toBe("myapp");
+    expect(trim("myapp-staging", "-prod")).toBe("myapp-staging");
   });
 
   test("leaves an unresolved attribute literal intact so the condition fails closed", () => {
-    expect(trim("{{identity.auth.kubernetes.namespace}}", "-pr-*")).toBe("{{identity.auth.kubernetes.namespace}}");
+    expect(trim("{{identity.auth.kubernetes.namespace}}", "-prod")).toBe("{{identity.auth.kubernetes.namespace}}");
   });
 
   test("returns an empty string for an empty value", () => {
-    expect(trim("", "-pr-*")).toBe("");
+    expect(trim("", "-prod")).toBe("");
   });
 
-  test("returns the value unchanged for a malformed pattern instead of throwing", () => {
-    expect(trim("myapp-pr-1", "-pr-+(")).toBe("myapp-pr-1");
-  });
-
-  test("returns the value unchanged when no pattern is supplied", () => {
-    expect(render("{{ trimSuffix identity.auth.kubernetes.namespace }}", "myapp-pr-1")).toBe("myapp-pr-1");
+  test("returns the value unchanged when no suffix is supplied", () => {
+    expect(render("{{ trimSuffix identity.auth.kubernetes.namespace }}", "myapp-prod")).toBe("myapp-prod");
   });
 });
 describe("getProjectPermissionFingerprint", () => {

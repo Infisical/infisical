@@ -119,34 +119,18 @@ Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
 
 **trimSuffix**
 
-Removes a suffix from the end of a string. The suffix is a glob pattern, using the same syntax as
-the **Glob Match** condition operator, so it can match a part of the value that varies. The
-shortest matching suffix is removed. If nothing at the end of the string matches the pattern, the
-string is returned unchanged.
-
-This is useful when a namespace or resource name carries a generated trailing segment. For
-example, an ArgoCD ApplicationSet using the pull request generator creates one namespace per open
-pull request, such as `myapp-pr-1` and `myapp-pr-42`. Trimming the generated segment lets every one
-of those namespaces resolve to the same secret path as the base namespace, without writing a
-condition for each pull request.
+Removes a suffix from the end of a string. If the string does not end with the given suffix, it is returned unchanged.
 
 **Examples:**
 
-Given `identity.auth.kubernetes.namespace` = `myapp-pr-42`:
+Given `identity.auth.kubernetes.namespace` = `myapp-prod`:
 
 ```handlebars
-{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
+{{ trimSuffix identity.auth.kubernetes.namespace '-prod' }}  ->  myapp
 ```
 
-Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the pattern):
+Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the suffix):
 
 ```handlebars
-{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
-```
-
-You can combine this with a secret path condition so both the base namespace and its pull request
-namespaces read from one path:
-
-```handlebars
-/{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}/**
+{{ trimSuffix identity.auth.kubernetes.namespace '-prod' }}  ->  myapp
 ```

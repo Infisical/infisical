@@ -1,7 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
 import handlebars from "handlebars";
-import picomatch from "picomatch";
 import { z } from "zod";
 
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
@@ -436,8 +435,6 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
-const HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH = 256;
-
 const hbsStripPrefix = (text: string, prefix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
@@ -451,26 +448,7 @@ const hbsTrimSuffix = (text: string, suffix: string) => {
 
   if (typeof suffix !== "string" || !suffix) return textStr;
 
-  if (suffix.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
-
-  if (!picomatch.scan(suffix).isGlob) {
-    return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
-  }
-
-  if (textStr.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
-
-  let isSuffixMatch: (input: string) => boolean;
-  try {
-    isSuffixMatch = picomatch(suffix, { dot: true });
-  } catch {
-    return textStr;
-  }
-
-  for (let i = textStr.length; i >= 0; i -= 1) {
-    if (isSuffixMatch(textStr.slice(i))) return textStr.slice(0, i);
-  }
-
-  return textStr;
+  return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
 };
 
 const handlebarsClient = (() => {
