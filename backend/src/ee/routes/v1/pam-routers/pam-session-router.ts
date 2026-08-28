@@ -552,8 +552,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
             accountType: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
-            tokenVersionId: z.string().uuid(),
-            accessVersion: z.number(),
+            tokenVersionId: z.string().uuid().optional(),
+            accessVersion: z.number().optional(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
             selectedHost: z.string().nullable().optional(),
@@ -575,11 +575,14 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           return;
         }
 
-        await server.services.authToken.validateUserSessionFreshness({
-          userId,
-          tokenVersionId: payload.tokenVersionId,
-          accessVersion: payload.accessVersion
-        });
+        if (payload.tokenVersionId && payload.accessVersion !== undefined) {
+          await server.services.authToken.validateUserSessionFreshness({
+            userId,
+            tokenVersionId: payload.tokenVersionId,
+            accessVersion: payload.accessVersion,
+            readFromPrimary: true
+          });
+        }
 
         await server.services.pamWebAccess.handleWebSocketConnection({
           socket: connection,

@@ -358,13 +358,17 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const validateUserSessionFreshness = async ({
     userId,
     tokenVersionId,
-    accessVersion
+    accessVersion,
+    readFromPrimary = false
   }: {
     userId: string;
     tokenVersionId: string;
     accessVersion: number;
+    readFromPrimary?: boolean;
   }) => {
-    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId });
+    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
+      readFromPrimary
+    });
     if (!session) throw new NotFoundError({ name: "Session not found" });
     if (accessVersion !== session.accessVersion) {
       throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
