@@ -296,7 +296,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim().describe(LDAP_AUTH.ATTACH.identityId)
+        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.ATTACH.identityId)
       }),
       body: z.union([
         // Template-based configuration
@@ -503,7 +503,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim().describe(LDAP_AUTH.UPDATE.identityId)
+        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.UPDATE.identityId)
       }),
       body: z
         .object({
@@ -641,7 +641,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim().describe(LDAP_AUTH.RETRIEVE.identityId)
+        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -651,7 +651,6 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             encryptedLdapCaCertificate: true
           }).extend({
             bindDN: z.string(),
-            bindPass: z.string(),
             ldapCaCertificate: z.string().optional(),
             templateId: z.string().optional().nullable()
           })
@@ -700,7 +699,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim().describe(LDAP_AUTH.REVOKE.identityId)
+        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.REVOKE.identityId)
       }),
       response: {
         200: z.object({

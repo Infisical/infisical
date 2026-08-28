@@ -55,19 +55,6 @@ export const IdentityLdapAuthContent = ({
       />
       <IdentityAuthFieldDisplay label="LDAP URL">{data.url}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Bind DN">{data.bindDN}</IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Bind Pass">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xl p-2">
-            <p className="rounded-sm bg-container p-2 break-words">{data.bindPass}</p>
-          </TooltipContent>
-        </Tooltip>
-      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Search Base / DN">
         {data.searchBase}
       </IdentityAuthFieldDisplay>

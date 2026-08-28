@@ -728,7 +728,6 @@ export type IdentityLdapAuth = {
   url?: string;
   bindDN?: string;
   templateId?: string;
-  bindPass?: string;
   searchBase?: string;
   searchFilter: string;
   ldapCaCertificate?: string;

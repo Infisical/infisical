@@ -786,12 +786,11 @@ export const identityLdapAuthServiceFactory = ({
     });
 
     const bindDN = decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedBindDN }).toString();
-    const bindPass = decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedBindPass }).toString();
     const ldapCaCertificate = ldapIdentityAuth.encryptedLdapCaCertificate
       ? decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedLdapCaCertificate }).toString()
       : undefined;
 
-    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, bindPass, ldapCaCertificate };
+    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, ldapCaCertificate };
   };
 
   const revokeIdentityLdapAuth = async ({

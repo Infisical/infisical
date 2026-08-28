@@ -72,7 +72,7 @@ import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
-const buildSchema = (maxAccessTokenTTL: number) =>
+const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean) =>
   z
     .object({
       scope: z.enum(["template", "custom"]),
@@ -177,7 +177,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
             path: ["bindDN"]
           });
         }
-        if (!data.bindPass) {
+        if (!isUpdate && !data.bindPass) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Bind Pass is required when using custom scope",
@@ -250,7 +250,10 @@ export const IdentityLdapAuthForm = ({
     enabled: isUpdate
   });
 
-  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
+  const resolver = useMemo(
+    () => zodResolver(buildSchema(maxAccessTokenTTL, Boolean(isUpdate))),
+    [maxAccessTokenTTL, isUpdate]
+  );
 
   const {
     control,
@@ -342,7 +345,7 @@ export const IdentityLdapAuthForm = ({
         templateId: data.templateId || "",
         url: data.url || "",
         bindDN: data.bindDN || "",
-        bindPass: data.bindPass || "",
+        bindPass: "",
         searchBase: data.searchBase || "",
         searchFilter: data.searchFilter,
         ldapCaCertificate: data.ldapCaCertificate || undefined,
@@ -454,7 +457,7 @@ export const IdentityLdapAuthForm = ({
             ...basePayload,
             url: submissionUrl,
             bindDN: submissionBindDN,
-            bindPass: submissionBindPass,
+            ...(submissionBindPass ? { bindPass: submissionBindPass } : {}),
             searchBase: submissionSearchBase
           };
 
@@ -552,7 +555,7 @@ export const IdentityLdapAuthForm = ({
                           clearErrors("templateId");
                           setValue("url", data?.url || "");
                           setValue("bindDN", data?.bindDN || "");
-                          setValue("bindPass", data?.bindPass || "");
+                          setValue("bindPass", "");
                           setValue("searchBase", data?.searchBase || "");
                           setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
                           return;
@@ -656,6 +659,11 @@ export const IdentityLdapAuthForm = ({
                     disabled={scope === "template"}
                     isError={Boolean(error)}
                   />
+                  {isUpdate && scope !== "template" && (
+                    <FieldDescription>
+                      Leave blank to keep the current password. Type a new value to rotate it.
+                    </FieldDescription>
+                  )}
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}
