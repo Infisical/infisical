@@ -208,6 +208,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/travis-ci",
                       "integrations/app-connections/trigger-dev",
+                      "integrations/app-connections/ultradns",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",

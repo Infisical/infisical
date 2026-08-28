@@ -18,11 +18,13 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
@@ -59,6 +61,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
@@ -262,6 +265,23 @@ const waitForDnsPropagation = async (
     if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
       await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
     }
+  }
+};
+
+const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
+  [AcmeDnsProvider.Route53]: AppConnection.AWS,
+  [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
+  [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
+  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+};
+
+const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
+  const requiredApp = ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider];
+  if (app !== requiredApp) {
+    throw new BadRequestError({
+      message: `App connection with ID '${dnsAppConnectionId}' must be ${APP_CONNECTION_NAME_MAP[requiredApp]} for this DNS provider`
+    });
   }
 };
 
@@ -482,6 +502,15 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.UltraDNS: {
+          await ultraDNSInsertTxtRecord(
+            connection as TUltraDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -536,6 +565,15 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.AzureDNS: {
           await azureDnsDeleteTxtRecord(
             connection as TAzureDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.UltraDNS: {
+          await ultraDNSDeleteTxtRecord(
+            connection as TUltraDNSConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -688,29 +726,7 @@ export const AcmeCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
     }
 
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy && appConnection.app !== AppConnection.DNSMadeEasy) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-      });
-    }
+    validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
@@ -796,35 +812,7 @@ export const AcmeCertificateAuthorityFns = ({
           throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
         }
 
-        if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare &&
-          appConnection.app !== AppConnection.Cloudflare
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy &&
-          appConnection.app !== AppConnection.DNSMadeEasy
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-          });
-        }
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-          });
-        }
+        validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
         if (dnsResolver) {
           validateDnsResolver(dnsResolver);

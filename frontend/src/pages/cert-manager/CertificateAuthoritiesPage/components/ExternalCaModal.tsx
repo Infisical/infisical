@@ -34,6 +34,7 @@ import {
 } from "@app/hooks/api/appConnections/digicert";
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useUltraDNSConnectionListZones } from "@app/hooks/api/appConnections/ultradns";
 import {
   AcmeDnsProvider,
   CaStatus,
@@ -50,7 +51,7 @@ import {
 } from "@app/hooks/api/ca/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { AcmeFields } from "./ExternalCaFields/AcmeFields";
+import { AcmeFields, TAcmeDnsZone } from "./ExternalCaFields/AcmeFields";
 import { AdcsFields } from "./ExternalCaFields/AdcsFields";
 import { AwsAcmPublicCaFields } from "./ExternalCaFields/AwsAcmPublicCaFields";
 import { AwsPcaFields } from "./ExternalCaFields/AwsPcaFields";
@@ -375,6 +376,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableUltraDNSConnections, isPending: isUltraDNSPending } =
+    useListAvailableAppConnections(AppConnection.UltraDNS, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -431,7 +437,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
+      ...(availableAzureDNSConnections || []),
+      ...(availableUltraDNSConnections || [])
     ];
   }, [
     caType,
@@ -439,6 +446,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
+    availableUltraDNSConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -448,7 +456,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   ]);
 
   const isPending =
-    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
+    ((isRoute53Pending ||
+      isCloudflarePending ||
+      isDNSMadeEasyPending ||
+      isAzureDNSPending ||
+      isUltraDNSPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -462,7 +474,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ? configuration.dnsAppConnection
       : { id: "", name: "" };
 
-  const { data: cloudflareZones = [], isPending: isZonesPending } =
+  const { data: cloudflareZones = [], isPending: isCloudflareZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
     });
@@ -476,6 +488,26 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     useAzureDNSConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
     });
+
+  const { data: ultraDNSZones = [], isPending: isUltraDNSZonesPending } =
+    useUltraDNSConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.UltraDNS && !!dnsAppConnection.id
+    });
+
+  const zonesByDnsProvider: Partial<
+    Record<AcmeDnsProvider, { zones: TAcmeDnsZone[]; isPending: boolean }>
+  > = {
+    [AcmeDnsProvider.Cloudflare]: { zones: cloudflareZones, isPending: isCloudflareZonesPending },
+    [AcmeDnsProvider.DNSMadeEasy]: {
+      zones: dnsMadeEasyZones,
+      isPending: isDNSMadeEasyZonesPending
+    },
+    [AcmeDnsProvider.AzureDNS]: { zones: azureDnsZones, isPending: isAzureDNSZonesPending },
+    [AcmeDnsProvider.UltraDNS]: { zones: ultraDNSZones, isPending: isUltraDNSZonesPending }
+  };
+
+  const { zones = [], isPending: isZonesPending = false } =
+    (dnsProvider && zonesByDnsProvider[dnsProvider]) || {};
 
   // Populate form with CA data when editing
   useEffect(() => {
@@ -927,12 +959,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   dnsAppConnection={dnsAppConnection}
                   availableConnections={availableConnections}
                   isPending={isPending}
-                  cloudflareZones={cloudflareZones}
+                  zones={zones}
                   isZonesPending={isZonesPending}
-                  dnsMadeEasyZones={dnsMadeEasyZones}
-                  isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
-                  azureDnsZones={azureDnsZones}
-                  isAzureDNSZonesPending={isAzureDNSZonesPending}
+                  setValue={setValue}
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

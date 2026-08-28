@@ -17,7 +17,7 @@ their **ACME Directory URL** such as:
 - ZeroSSL: `https://acme.zerossl.com/v2/DV90`.
 - SSL.com: `https://acme.ssl.com/sslcom-dv-rsa`.
 
-When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
+When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, UltraDNS, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
 The ACME provider checks for the existence of this TXT record to verify domain control before issuing the certificate back to Infisical.
 
 After validation completes successfully, Infisical automatically removes the TXT record from your DNS provider.
@@ -132,6 +132,19 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
                 For detailed instructions on setting up a DNS Made Easy connection, see the [DNS Made Easy Connection](/integrations/app-connections/dns-made-easy) documentation.
             </Tab>
+            <Tab title="UltraDNS">
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new UltraDNS connection.
+
+                2. Ensure the UltraDNS user can read zones and manage resource records in the zone you want to use for validation. Only primary zones can be used, since secondary zones cannot accept record changes.
+
+                <Note>
+                  For UltraDNS the zone is identified by its fully qualified name, such as `example.com.`, rather than
+                  by an ID. The Infisical UI offers this as a picker, so this only matters if you are creating the CA
+                  through the API or Terraform.
+                </Note>
+
+                For detailed instructions on setting up an UltraDNS connection, see the [UltraDNS Connection](/integrations/app-connections/ultradns) documentation.
+            </Tab>
         </Tabs>
     </Step>
     <Step title="Register an ACME-compatible CA">
@@ -215,7 +228,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 <AccordionGroup>
   <Accordion title="What DNS validation methods are supported?">
-    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, and DNS Made Easy. The DNS-01 challenge method is preferred for ACME integrations because it:
+    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, DNS Made Easy, and UltraDNS. The DNS-01 challenge method is preferred for ACME integrations because it:
 
     - Works with wildcard certificates
     - Doesn't require your servers to be publicly accessible
