@@ -47,15 +47,12 @@ const selfSignedCert = () => {
   return { key: forge.pki.privateKeyToPem(keys.privateKey), cert: forge.pki.certificateToPem(cert) };
 };
 
-const post = (agent: https.Agent, port: number) =>
+const post = (agent: https.Agent, port: number, path = "/apis/authentication.k8s.io/v1/tokenreviews") =>
   new Promise<number>((resolve, reject) => {
-    const req = https.request(
-      { host: "127.0.0.1", port, path: "/apis/authentication.k8s.io/v1/tokenreviews", method: "POST", agent },
-      (res) => {
-        res.resume();
-        res.on("end", () => resolve(res.statusCode ?? 0));
-      }
-    );
+    const req = https.request({ host: "127.0.0.1", port, path, method: "POST", agent }, (res) => {
+      res.resume();
+      res.on("end", () => resolve(res.statusCode ?? 0));
+    });
     req.on("error", reject);
     req.end("{}");
   });
@@ -75,8 +72,13 @@ describe("shared https agent pool (real sockets)", () => {
     server = https.createServer({ key, cert }, (req, res) => {
       handledRequests += 1;
       // Mirror the 401 the fleet was actually getting back from TokenReview.
-      res.writeHead(401, { "content-type": "application/json" });
-      res.end(JSON.stringify({ kind: "Status", code: 401 }));
+      const reply = () => {
+        res.writeHead(401, { "content-type": "application/json" });
+        res.end(JSON.stringify({ kind: "Status", code: 401 }));
+      };
+      // /slow holds the response open so a request can be caught mid-flight.
+      if (req.url?.includes("slow")) setTimeout(reply, 400);
+      else reply();
     });
     // Keep idle connections open the way a real API server / LB does, so a leaked
     // socket stays visibly leaked instead of being tidied up by the server.
@@ -138,6 +140,30 @@ describe("shared https agent pool (real sockets)", () => {
       setTimeout(resolve, 100);
     });
 
+    expect(await openConnections(server)).toBe(0);
+  });
+
+  it("lets an in-flight request finish when its agent is evicted, instead of resetting it", async () => {
+    const busy = getSharedHttpsAgent({ rejectUnauthorized: false, servername: "inflight.test" });
+    const pending = post(busy, port, "/slow");
+    // Let the socket move from the pool into the agent's active set before evicting.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 80);
+    });
+
+    // The pool is process-wide, so this is one caller's traffic evicting another's
+    // agent. Destroying it outright would reset a request that is already on the wire.
+    for (let i = 0; i < 250; i += 1) {
+      getSharedHttpsAgent({ rejectUnauthorized: false, servername: `drain-pressure-${i}.test` });
+    }
+
+    await expect(pending).resolves.toBe(401);
+
+    // Draining must not become a second way to leak: with maxFreeSockets at zero the
+    // socket closes on release instead of returning to a pool nothing can reach.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 150);
+    });
     expect(await openConnections(server)).toBe(0);
   });
 });

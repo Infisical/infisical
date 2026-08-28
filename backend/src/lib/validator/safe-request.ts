@@ -12,6 +12,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
+import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
@@ -177,17 +178,45 @@ const agentCache = new Map<string, http.Agent | https.Agent>();
 // A keepAlive agent's idle sockets keep the agent itself reachable through their
 // own event listeners, so dropping the map entry frees neither: the agent is
 // never collected and each pooled socket holds its fd (and the peer's connection
-// slot) for the life of the process. Every eviction has to destroy the agent.
+// slot) for the life of the process. Every eviction has to release those sockets.
+//
+// destroy() would ECONNRESET in-flight requests on this process-wide pool. Close
+// idle sockets now and set maxFreeSockets to 0 so they close on release instead.
+const releaseEvictedAgent = (agent: http.Agent | https.Agent) => {
+  // eslint-disable-next-line no-param-reassign -- releasing the agent is the whole point
+  agent.maxFreeSockets = 0;
+  Object.values(agent.freeSockets).forEach((sockets) => sockets?.forEach((socket) => socket.destroy()));
+  if (!Object.keys(agent.sockets).length) agent.destroy();
+};
+
+const hostnameFromCacheKey = (key: string) => key.split("|")[1] || "unknown";
+
+const EVICTION_WARN_INTERVAL_MS = 60_000;
+let evictionsSinceLastWarn = 0;
+let lastEvictionWarnAt = 0;
+
 const evictLeastRecentlyUsedAgents = () => {
   while (agentCache.size >= AGENT_CACHE_MAX) {
     const oldest = agentCache.entries().next();
     if (oldest.done) return;
     const [key, agent] = oldest.value;
     agentCache.delete(key);
-    agent.destroy();
-    logger.debug(`safeRequest: evicted least recently used agent [cacheSize=${agentCache.size}]`);
+    releaseEvictedAgent(agent);
+    recordSafeRequestAgentEvictionMetric();
+
+    evictionsSinceLastWarn += 1;
+    const now = Date.now();
+    if (now - lastEvictionWarnAt >= EVICTION_WARN_INTERVAL_MS) {
+      logger.warn(
+        `safeRequest: agent pool at capacity, evicting least recently used [cacheSize=${agentCache.size}] [max=${AGENT_CACHE_MAX}] [evictionsSinceLastWarn=${evictionsSinceLastWarn}] [evictedHostname=${hostnameFromCacheKey(key)}]`
+      );
+      lastEvictionWarnAt = now;
+      evictionsSinceLastWarn = 0;
+    }
   }
 };
+
+export const getAgentPoolStats = () => ({ size: agentCache.size, max: AGENT_CACHE_MAX });
 
 const buildAgentCacheKey = (
   validated: TValidatedHost | undefined,
