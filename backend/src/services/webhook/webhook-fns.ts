@@ -2,6 +2,8 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { haveDisjointLiteralPrefixes } from "@app/lib/casl/glob-subset";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -16,6 +18,16 @@ import { TWebhookDALFactory } from "./webhook-dal";
 import { TWebhookPayloads, WebhookEvents, WebhookType } from "./webhook-types";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
+
+const CHANGE_REQUEST_STATUS_LABEL: Record<string, string> = {
+  [RequestState.Open]: "Open",
+  [RequestState.Closed]: "Closed"
+};
+
+// The stored status is a database enum, not copy. Slack and Teams render it into a channel a
+// whole team reads, so it is mapped here; the general payload keeps the raw column value.
+const formatChangeRequestStatus = (request: { hasMerged: boolean; status: string }) =>
+  request.hasMerged ? "Merged" : (CHANGE_REQUEST_STATUS_LABEL[request.status] ?? request.status);
 
 export const decryptWebhookDetails = (webhook: TWebhooks, decryptor: (value: Buffer) => string) => {
   const { encryptedPassKey, encryptedUrl } = webhook;
@@ -391,6 +403,180 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
+  if (event.type === WebhookEvents.ChangeRequestModified) {
+    const { projectId, projectName, environment, environmentName, secretPath, type, action, request } = event.payload;
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: `A secret change request was ${action}.`,
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                { title: "Project", value: projectName, short: false },
+                { title: "Environment", value: environmentName || environment, short: false },
+                { title: "Secret Path", value: secretPath, short: false },
+                { title: "Policy", value: request.policy.name, short: false },
+                { title: "Status", value: formatChangeRequestStatus(request), short: false },
+                { title: "Requested By", value: request.requestedBy?.name || "Unknown", short: false },
+                { title: "Bypassed", value: request.isBypassed ? "Yes" : "No", short: false }
+              ]
+            }
+          ]
+        };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: `A secret change request was ${action}.`
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environmentName || environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Policy", value: request.policy.name },
+                      { title: "Status", value: formatChangeRequestStatus(request) },
+                      { title: "Requested By", value: request.requestedBy?.name || "Unknown" },
+                      { title: "Bypassed", value: request.isBypassed ? "Yes" : "No" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          action,
+          project: { id: projectId, name: projectName },
+          request: {
+            id: request.id,
+            slug: request.slug,
+            url: request.url,
+            target: {
+              environment: { name: environmentName, slug: environment },
+              secretPath
+            },
+            status: request.status,
+            hasMerged: request.hasMerged,
+            isBypassed: request.isBypassed,
+            policy: request.policy,
+            requestedBy: request.requestedBy,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt
+          }
+        };
+    }
+  }
+
+  if (event.type === WebhookEvents.AccessRequestModified) {
+    const { projectId, projectName, environment, environmentName, secretPath, type, action, request } = event.payload;
+
+    const formattedPermissions = request.requestedAccess.permissions
+      .map(({ subject, actions }) => `${subject} (${actions.join(", ")})`)
+      .join(", ");
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: `An access request was ${action}.`,
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                { title: "Project", value: projectName, short: false },
+                { title: "Environment", value: environmentName || environment, short: false },
+                { title: "Secret Path", value: secretPath, short: false },
+                { title: "Policy", value: request.policy.name, short: false },
+                { title: "Status", value: request.status, short: false },
+                { title: "Requested By", value: request.requestedBy?.name || "Unknown", short: false },
+                { title: "Requested Access", value: formattedPermissions, short: false },
+                { title: "Bypassed", value: request.isBypassed ? "Yes" : "No", short: false }
+              ]
+            }
+          ]
+        };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: `An access request was ${action}.`
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environmentName || environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Policy", value: request.policy.name },
+                      { title: "Status", value: request.status },
+                      { title: "Requested By", value: request.requestedBy?.name || "Unknown" },
+                      { title: "Requested Access", value: formattedPermissions },
+                      { title: "Bypassed", value: request.isBypassed ? "Yes" : "No" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          action,
+          project: { id: projectId, name: projectName },
+          request: {
+            id: request.id,
+            url: request.url,
+            status: request.status,
+            isBypassed: request.isBypassed,
+            policy: request.policy,
+            requestedAccess: {
+              target: {
+                environment: { name: environmentName, slug: environment },
+                secretPath
+              },
+              isTemporary: request.requestedAccess.isTemporary,
+              temporaryRange: request.requestedAccess.temporaryRange,
+              permissions: request.requestedAccess.permissions
+            },
+            requestedBy: request.requestedBy,
+            expiresAt: request.expiresAt,
+            approvedAt: request.approvedAt,
+            revokedAt: request.revokedAt,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt
+          }
+        };
+    }
+  }
+
   if (event.type === WebhookEvents.TestEvent) {
     const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
     return {
@@ -422,6 +608,14 @@ export type TFnTriggerWebhookDTO = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
+// An access request's path is a glob, not a folder, so hook and event are both patterns.
+// haveDisjointLiteralPrefixes only proves disjointness when it is certain, so negating it
+// delivers whenever overlap is possible rather than dropping the event silently.
+export const isWebhookPathSubscribed = (eventType: WebhookEvents, eventPath: string, hookPath: string) =>
+  eventType === WebhookEvents.AccessRequestModified
+    ? !haveDisjointLiteralPrefixes(eventPath, hookPath)
+    : picomatch.isMatch(eventPath, hookPath, { strictSlashes: false });
+
 // this is reusable function
 // used in secret queue to trigger webhook and update status when secrets changes
 export const fnTriggerWebhook = async ({
@@ -439,7 +633,7 @@ export const fnTriggerWebhook = async ({
   const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, filteredEvents }) => {
     const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || filteredEvents.includes(event.type);
 
-    return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
+    return !isDisabled && isWebhookPathSubscribed(event.type, secretPath, hookSecretPath) && isEventSubscribed;
   });
   if (!toBeTriggeredHooks.length) return;
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");

@@ -106,7 +106,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
-  gateway: true,
+  gateway: false,
   gatewayPool: false,
   pamSlackNotifications: false,
   secretScanning: false,
@@ -126,7 +126,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   certManager: null,
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,
-  crossProjectSecretSharing: false
+  crossProjectSecretSharing: false,
+  secretsFolderRbac: false
 });
 
 export const getEnforcedIdentityLimit = (plan: TFeatureSet): number | null => {

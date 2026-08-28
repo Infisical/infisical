@@ -156,9 +156,9 @@ If you are interested in managed Infisical Cloud of self-hosted Enterprise Offer
 
 Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
 
-Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please get in touch via the e-mail address security@infisical.com. In the message, try to provide a description of the issue and ideally a way of reproducing it. The security team will get back to you as soon as possible.
+Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please report it privately through our vulnerability disclosure policy at <https://infisical.com/vulnerability-disclosure>. Scope, safe harbour and disclosure terms are all set out there. See also [SECURITY.md](./SECURITY.md).
 
-Note that this security address should be used only for undisclosed vulnerabilities. Please report any security problems to us before disclosing it publicly.
+Please report any security problems to us before disclosing them publicly. For compliance documentation and security questionnaires, use security@infisical.com instead.
 
 ## Contributing
 

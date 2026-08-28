@@ -897,6 +897,11 @@ export enum EventType {
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
   DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
 
+  // Secret folder access (folder RBAC)
+  CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
+  UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access",
+
   // Alerts
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
@@ -7163,6 +7168,36 @@ interface DeleteProjectFolderGrantEvent {
   };
 }
 
+export interface SecretFolderAccessEventMetadata {
+  folderAccessId: string;
+  folderId: string;
+  environment: string;
+  secretPath: string;
+  permission: string;
+  userId?: string;
+  identityId?: string;
+  isTemporary: boolean;
+  temporaryMode?: string;
+  temporaryRange?: string;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+}
+
+interface CreateSecretFolderAccessEvent {
+  type: EventType.CREATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface UpdateSecretFolderAccessEvent {
+  type: EventType.UPDATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface DeleteSecretFolderAccessEvent {
+  type: EventType.DELETE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
 interface CreateAlertEvent {
   type: EventType.CREATE_ALERT;
   metadata: {
@@ -7845,4 +7880,7 @@ export type Event =
   | UpdateGroupProjectMembershipEvent
   | RemoveGroupFromProjectEvent
   | CreateProjectFolderGrantEvent
-  | DeleteProjectFolderGrantEvent;
+  | DeleteProjectFolderGrantEvent
+  | CreateSecretFolderAccessEvent
+  | UpdateSecretFolderAccessEvent
+  | DeleteSecretFolderAccessEvent;

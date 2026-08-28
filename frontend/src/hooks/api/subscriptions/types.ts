@@ -84,4 +84,5 @@ export type SubscriptionPlan = {
   secretsBrokering: boolean;
   pam?: boolean | null;
   certManager?: boolean | null;
+  secretsFolderRbac: boolean;
 };

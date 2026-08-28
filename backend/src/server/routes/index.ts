@@ -315,6 +315,8 @@ import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commi
 import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderPermissionDALFactory } from "@app/services/folder-permission/folder-permission-dal";
+import { folderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { gitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -759,6 +761,7 @@ export const registerRoutes = async (
   const membershipIdentityDAL = membershipIdentityDALFactory(db);
   const membershipGroupDAL = membershipGroupDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
+  const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const roleDAL = roleDALFactory(db);
@@ -783,7 +786,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     additionalPrivilegeDAL,
-    groupDAL
+    groupDAL,
+    secretFolderDAL: folderDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -917,7 +921,10 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    additionalPrivilegeDAL,
+    identityGroupMembershipDAL,
+    userGroupMembershipDAL
   });
 
   const roleService = roleServiceFactory({
@@ -935,7 +942,17 @@ export const registerRoutes = async (
     membershipDAL,
     orgDAL,
     permissionService,
-    userDAL
+    userDAL,
+    projectDAL
+  });
+
+  const folderPermissionService = folderPermissionServiceFactory({
+    additionalPrivilegeDAL,
+    secretFolderDAL: folderDAL,
+    permissionService,
+    folderPermissionDAL,
+    licenseService,
+    keyStore
   });
 
   const kmsService = kmsServiceFactory({
@@ -1159,6 +1176,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
+    additionalPrivilegeDAL,
     permissionService,
     licenseService,
     oidcConfigDAL,
@@ -1235,6 +1253,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     userGroupMembershipDAL,
+    identityGroupMembershipDAL,
     projectKeyDAL,
     projectBotDAL,
     permissionService,
@@ -1344,6 +1363,7 @@ export const registerRoutes = async (
 
   const samlService = samlConfigServiceFactory({
     identityMetadataDAL,
+    additionalPrivilegeDAL,
     permissionService,
     orgDAL,
     userDAL,
@@ -1368,6 +1388,7 @@ export const registerRoutes = async (
   });
 
   const ldapService = ldapConfigServiceFactory({
+    additionalPrivilegeDAL,
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
@@ -1970,6 +1991,8 @@ export const registerRoutes = async (
     pamAccessRequestService
   });
 
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     pamFolderDAL,
@@ -1977,6 +2000,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     pamSessionDAL,
+    pamDiscoverySourceDAL,
     userDAL,
     permissionService,
     kmsService,
@@ -1988,7 +2012,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
@@ -2278,7 +2301,6 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
-    permissionDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -2327,6 +2349,7 @@ export const registerRoutes = async (
     folderCommitService,
     notificationService,
     telemetryService,
+    queueService,
     secretValidationRuleService
   });
 
@@ -2361,6 +2384,7 @@ export const registerRoutes = async (
 
   const folderService = secretFolderServiceFactory({
     permissionService,
+    additionalPrivilegeDAL,
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
@@ -2429,7 +2453,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     notificationService,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    queueService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -2879,6 +2904,7 @@ export const registerRoutes = async (
   });
 
   const oidcService = oidcConfigServiceFactory({
+    additionalPrivilegeDAL,
     orgDAL,
     userDAL,
     userAliasDAL,
@@ -4142,6 +4168,7 @@ export const registerRoutes = async (
     membershipGroup: membershipGroupService,
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
+    folderPermission: folderPermissionService,
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,

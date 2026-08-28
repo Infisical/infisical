@@ -28,6 +28,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -102,6 +103,7 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -128,6 +130,7 @@ export const ldapConfigServiceFactory = ({
   userGroupMembershipDAL,
   userDAL,
   userAliasDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -721,6 +724,7 @@ export const ldapConfigServiceFactory = ({
               userGroupMembershipDAL,
               membershipGroupDAL,
               projectKeyDAL,
+              additionalPrivilegeDAL,
               usageMeteringService,
               alertChannelRecipientDAL,
               tx

@@ -394,6 +394,16 @@ export enum ResourceMembershipRole {
   Custom = "custom"
 }
 
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
+}
+
 export enum ResourceType {
   CertificateApplication = "certificate-application",
   Signer = "pki-signer",

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import {
   AwsCertificateManagerPkiSyncDestinationSchema,
@@ -32,6 +33,10 @@ import {
   UpdateF5BigIpPkiSyncDestinationSchema
 } from "./f5-big-ip-pki-sync-destination-schema";
 import {
+  GcpCertificateManagerPkiSyncDestinationSchema,
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema
+} from "./gcp-certificate-manager-pki-sync-destination-schema";
+import {
   KempLoadMasterPkiSyncDestinationSchema,
   UpdateKempLoadMasterPkiSyncDestinationSchema
 } from "./kemp-loadmaster-pki-sync-destination-schema";
@@ -59,6 +64,7 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
+  GcpCertificateManagerPkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
   F5BigIpPkiSyncDestinationSchema,
   KempLoadMasterPkiSyncDestinationSchema,
@@ -74,6 +80,7 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
   UpdateF5BigIpPkiSyncDestinationSchema,
   UpdateKempLoadMasterPkiSyncDestinationSchema,
@@ -109,6 +116,18 @@ const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
 };
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
+  if (
+    data.destination === PkiSync.GcpCertificateManager &&
+    data.destinationConfig?.certificateMapBinding &&
+    (data.certificateIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "certificateMapBinding"],
+      message: `Certificate map binding supports up to ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificates, which is the GCP limit for one certificate map entry.`
+    });
+  }
+
   if (
     (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
     data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&

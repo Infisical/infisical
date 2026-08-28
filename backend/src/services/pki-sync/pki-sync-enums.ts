@@ -4,6 +4,7 @@ export enum PkiSync {
   AwsSecretsManager = "aws-secrets-manager",
   AwsElasticLoadBalancer = "aws-elastic-load-balancer",
   Chef = "chef",
+  GcpCertificateManager = "gcp-certificate-manager",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
   F5BigIp = "f5-big-ip",

@@ -26,6 +26,7 @@ export const CreateProjectIdentitySheet = ({ isOpen, onOpenChange }: Props) => {
   // Additional privileges are a Secret Manager concept; the other products grant access per-resource.
   const canGrantPrivileges =
     currentProject.type === ProjectType.SecretManager &&
+    currentProject.isLegacyAdditionalPrivilegesEnabled &&
     permission.can(ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity) &&
     permission.can(
       ProjectPermissionIdentityActions.AssignAdditionalPrivileges,

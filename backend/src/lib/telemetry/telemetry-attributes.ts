@@ -32,6 +32,7 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "email_dispatch.outcome",
   "email_dispatch.dimension",
   "db.pool.state",
+  "pool.max",
   // Closed enums on infisical.legacy_root_key.usage; per-project attribution is in logs, not here.
   "legacy_key.operation",
   "legacy_key.surface",

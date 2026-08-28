@@ -29,10 +29,12 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
+  assertPkiSyncDestinationConfigAllowsCertificateCount,
   enterprisePkiSyncCheck,
   getPkiSyncMaxCertificates,
   getPkiSyncProviderCapabilities,
-  listPkiSyncOptions
+  listPkiSyncOptions,
+  resolvePkiSyncDestinationConfigUpdate
 } from "./pki-sync-fns";
 import {
   applyHealthCheckCommandUpdate,
@@ -87,7 +89,6 @@ type TPkiSyncServiceFactoryDep = {
     | "findCertificateIdsByPkiSyncId"
     | "addCertificates"
     | "removeCertificates"
-    | "removeAllCertificatesFromSync"
     | "findWithDetails"
     | "updateSyncMetadata"
     | "clearSyncMetadataFlag"
@@ -481,6 +482,7 @@ export const pkiSyncServiceFactory = ({
       assertWithinCertificateLimit(destination, certificateIds.length);
       await validateCertificatesForSync(certificateIds, projectId, applicationId);
       assertSyncOptionsAllowCertificateCount(resolvedSyncOptions, certificateIds.length);
+      assertPkiSyncDestinationConfigAllowsCertificateCount(destination, destinationConfig, certificateIds.length);
     }
 
     const encryptedCredentials = credentials?.exportPassword
@@ -536,7 +538,6 @@ export const pkiSyncServiceFactory = ({
       syncOptions,
       subscriberId,
       connectionId,
-      certificateIds,
       credentials
     }: Omit<TUpdatePkiSyncDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
@@ -596,6 +597,18 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
+    // main's per-destination merge hook; a passthrough for every destination except GCP
+    const resolvedDestinationConfig = destinationConfig
+      ? resolvePkiSyncDestinationConfigUpdate(
+          pkiSync.destination as PkiSync,
+          pkiSync.destinationConfig ?? {},
+          destinationConfig
+        )
+      : undefined;
+
+    // Swapping the connection re-runs the App Connection Connect check, as it always has. Editing the
+    // sync's own fields must not: the delivery target is gated by SetTargetHost below, and the sync row
+    // already carries enough of its current connection to validate against.
     let resolvedConnection: Awaited<ReturnType<typeof appConnectionService.connectAppConnectionById>> | undefined;
     const resolveConnection = async () => {
       resolvedConnection ??= await appConnectionService.connectAppConnectionById(
@@ -608,10 +621,12 @@ export const pkiSyncServiceFactory = ({
 
     const isConnectionChanging = Boolean(connectionId && connectionId !== pkiSync.connectionId);
 
+    // Compared structurally, not by JSON text: the stored value comes back from a jsonb column with its
+    // keys reordered, so stringify never matches once the config has more than one key.
     const isDestinationConfigChanging =
-      Boolean(destinationConfig) && !deepEqual(destinationConfig, pkiSync.destinationConfig);
+      Boolean(destinationConfig) && !deepEqual(resolvedDestinationConfig, pkiSync.destinationConfig);
 
-    const nextDestinationConfig = (destinationConfig ?? pkiSync.destinationConfig) as
+    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
       | (Record<string, unknown> & { host?: string })
       | undefined;
 
@@ -621,12 +636,12 @@ export const pkiSyncServiceFactory = ({
         connection: isConnectionChanging
           ? await resolveConnection()
           : { ...pkiSync.connection, app: pkiSync.connection.app as AppConnection },
-        destinationConfig: nextDestinationConfig
+        destinationConfig: effectiveDestinationConfig
       });
     }
 
     await $assertMaySetTargetHost({
-      nextConfig: nextDestinationConfig,
+      nextConfig: effectiveDestinationConfig,
       currentConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined,
       pkiSync,
       subscriberName: currentSubscriber?.name,
@@ -669,23 +684,14 @@ export const pkiSyncServiceFactory = ({
       resolveConnection
     });
 
-    if (certificateIds !== undefined) {
-      if (certificateIds.length > 0) {
-        assertWithinCertificateLimit(pkiSync.destination, certificateIds.length);
-        await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
-        assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, certificateIds.length);
-      }
-
-      await certificateSyncDAL.removeAllCertificatesFromSync(id);
-      if (certificateIds.length > 0) {
-        await certificateSyncDAL.addCertificates(
-          id,
-          certificateIds.map((certId) => ({ certificateId: certId }))
-        );
-      }
-    } else if (syncOptions) {
+    if (syncOptions || destinationConfig) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
       assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, existingCount);
+      assertPkiSyncDestinationConfigAllowsCertificateCount(
+        pkiSync.destination,
+        effectiveDestinationConfig,
+        existingCount
+      );
     }
 
     if (
@@ -705,11 +711,11 @@ export const pkiSyncServiceFactory = ({
       !getHealthCheckCommand(resolvedSyncOptions) &&
       Boolean(getHealthCheckCommand(storedSyncOptions));
 
-    const updatedPkiSync = await pkiSyncDAL.updateById(id, {
+    const update = {
       name,
       description,
       isAutoSyncEnabled,
-      destinationConfig,
+      destinationConfig: resolvedDestinationConfig,
       syncOptions: resolvedSyncOptions,
       subscriberId,
       connectionId,
@@ -717,7 +723,11 @@ export const pkiSyncServiceFactory = ({
       ...(isHealthCheckBeingCleared
         ? { lastHealthCheckRanAt: null, lastHealthCheckStatus: null, lastHealthCheckMessage: null }
         : {})
-    });
+    };
+
+    if (Object.values(update).every((value) => value === undefined)) return pkiSync as TPkiSync;
+
+    const updatedPkiSync = await pkiSyncDAL.updateById(id, update);
 
     return updatedPkiSync as TPkiSync;
   };
@@ -773,7 +783,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const listPkiSyncsByProjectId = async (
-    { projectId, certificateId, applicationId }: TListPkiSyncsByProjectId,
+    { projectId, certificateId, applicationId, destination }: TListPkiSyncsByProjectId,
     actor: OrgServiceActor
   ): Promise<TPkiSync[]> => {
     let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
@@ -812,7 +822,10 @@ export const pkiSyncServiceFactory = ({
       projectId,
       processedRules,
       undefined,
-      applicationId !== undefined ? { applicationId } : undefined
+      {
+        ...(applicationId !== undefined ? { applicationId } : {}),
+        ...(destination ? { destination } : {})
+      }
     );
 
     if (certificateId) {
@@ -1143,6 +1156,11 @@ export const pkiSyncServiceFactory = ({
 
     assertSyncOptionsAllowCertificateCount(
       pkiSync.syncOptions as Record<string, unknown> | undefined,
+      prospectiveCount
+    );
+    assertPkiSyncDestinationConfigAllowsCertificateCount(
+      pkiSync.destination,
+      pkiSync.destinationConfig,
       prospectiveCount
     );
 

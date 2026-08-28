@@ -660,6 +660,9 @@ export const CreateProfileModal = ({
   }, [selectedPolicyData]);
 
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
+  // Only internal CAs sign with a key Infisical holds; an external CA's signing key is its own concern.
+  const caKeyAlgorithm =
+    selectedCa?.type === CaType.INTERNAL ? selectedCa.configuration.keyAlgorithm : undefined;
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
@@ -1139,6 +1142,7 @@ export const CreateProfileModal = ({
                   policyConstraints={policyConstraints}
                   isAwsAcmPublicCa={isAwsAcmPublicCa}
                   isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
+                  caKeyAlgorithm={caKeyAlgorithm}
                 />
               )}
             </div>

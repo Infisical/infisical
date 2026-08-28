@@ -771,6 +771,7 @@ export const CertificateIssuanceModal = ({
                 control={control}
                 availableSignatureAlgorithms={availableSignatureAlgorithms}
                 availableKeyAlgorithms={availableKeyAlgorithms}
+                caKeyAlgorithm={actualSelectedProfile?.certificateAuthority?.keyAlgorithm}
                 hideSignatureAlgorithm={isAdcsProfile}
                 signatureError={
                   (formState.errors as { signatureAlgorithm?: { message?: string } })
