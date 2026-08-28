@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { FolderIcon, InfoIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { FolderIcon, SearchIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  DocumentationLinkBadge,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -18,10 +19,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Skeleton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Skeleton
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
@@ -188,16 +186,7 @@ export const FolderAccessSheet = ({
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               Manage Permissions
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <InfoIcon className="size-3.5 text-muted" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-72">
-                  Permissions granted here apply only to this folder, nested folders do not inherit
-                  these permissions. The folder can still be moved, edited, or deleted by anyone
-                  with folder edit or delete permissions.
-                </TooltipContent>
-              </Tooltip>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
             </SheetTitle>
             <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
               <Badge variant="project" className="shrink-0">

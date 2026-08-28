@@ -32,7 +32,7 @@ export const FOLDER_ROLE_TIERS: TFolderRoleTier[] = [
     value: SecretFolderRole.FullAccess,
     label: "Full Access",
     description:
-      "Everything in Configure, plus deleting the folder and granting or revoking access to it."
+      "Everything in Manage, plus deleting the folder and granting or revoking access to it."
   }
 ];
 
