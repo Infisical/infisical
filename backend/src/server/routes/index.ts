@@ -315,6 +315,8 @@ import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commi
 import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderPermissionDALFactory } from "@app/services/folder-permission/folder-permission-dal";
+import { folderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { gitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -435,6 +437,7 @@ import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/p
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { pkiSyncCleanupQueueServiceFactory } from "@app/services/pki-sync/pki-sync-cleanup-queue";
 import { pkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { pkiSyncHealthCheckQueueFactory } from "@app/services/pki-sync/pki-sync-health-check-queue";
 import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
@@ -758,6 +761,7 @@ export const registerRoutes = async (
   const membershipIdentityDAL = membershipIdentityDALFactory(db);
   const membershipGroupDAL = membershipGroupDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
+  const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const roleDAL = roleDALFactory(db);
@@ -782,7 +786,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     additionalPrivilegeDAL,
-    groupDAL
+    groupDAL,
+    secretFolderDAL: folderDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -916,7 +921,10 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    additionalPrivilegeDAL,
+    identityGroupMembershipDAL,
+    userGroupMembershipDAL
   });
 
   const roleService = roleServiceFactory({
@@ -934,7 +942,17 @@ export const registerRoutes = async (
     membershipDAL,
     orgDAL,
     permissionService,
-    userDAL
+    userDAL,
+    projectDAL
+  });
+
+  const folderPermissionService = folderPermissionServiceFactory({
+    additionalPrivilegeDAL,
+    secretFolderDAL: folderDAL,
+    permissionService,
+    folderPermissionDAL,
+    licenseService,
+    keyStore
   });
 
   const kmsService = kmsServiceFactory({
@@ -1158,6 +1176,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
+    additionalPrivilegeDAL,
     permissionService,
     licenseService,
     oidcConfigDAL,
@@ -1234,6 +1253,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     userGroupMembershipDAL,
+    identityGroupMembershipDAL,
     projectKeyDAL,
     projectBotDAL,
     permissionService,
@@ -1343,6 +1363,7 @@ export const registerRoutes = async (
 
   const samlService = samlConfigServiceFactory({
     identityMetadataDAL,
+    additionalPrivilegeDAL,
     permissionService,
     orgDAL,
     userDAL,
@@ -1367,6 +1388,7 @@ export const registerRoutes = async (
   });
 
   const ldapService = ldapConfigServiceFactory({
+    additionalPrivilegeDAL,
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
@@ -2277,7 +2299,6 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
-    permissionDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -2325,7 +2346,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     folderCommitService,
     notificationService,
-    telemetryService
+    telemetryService,
+    secretValidationRuleService
   });
 
   const secretService = secretServiceFactory({
@@ -2359,6 +2381,7 @@ export const registerRoutes = async (
 
   const folderService = secretFolderServiceFactory({
     permissionService,
+    additionalPrivilegeDAL,
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
@@ -2877,6 +2900,7 @@ export const registerRoutes = async (
   });
 
   const oidcService = oidcConfigServiceFactory({
+    additionalPrivilegeDAL,
     orgDAL,
     userDAL,
     userAliasDAL,
@@ -3220,6 +3244,8 @@ export const registerRoutes = async (
     keyStore,
     pkiSyncDAL,
     auditLogService,
+    notificationService,
+    pkiApplicationDAL,
     projectDAL,
     licenseService,
     certificateDAL,
@@ -3237,6 +3263,27 @@ export const registerRoutes = async (
     cronJob,
     pkiSyncDAL,
     pkiSyncQueue
+  });
+
+  const pkiSyncHealthCheckQueue = pkiSyncHealthCheckQueueFactory({
+    cronJob,
+    queueService,
+    pkiSyncDAL,
+    keyStore,
+    appConnectionDAL,
+    projectDAL,
+    kmsService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateSyncDAL,
+    auditLogService,
+    notificationService,
+    pkiApplicationDAL,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -3690,6 +3737,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     pkiSyncQueue,
+    pkiSyncHealthCheckQueue,
+    auditLogService,
     kmsService
   });
 
@@ -3922,6 +3971,7 @@ export const registerRoutes = async (
   alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
+  pkiSyncHealthCheckQueue.init();
   pamDiscoveryService.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();
@@ -4114,6 +4164,7 @@ export const registerRoutes = async (
     membershipGroup: membershipGroupService,
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
+    folderPermission: folderPermissionService,
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,

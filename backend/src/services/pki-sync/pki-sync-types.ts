@@ -8,7 +8,7 @@ import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-me
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
-import { TPostSyncCommandResult } from "./pki-sync-post-sync-command-fns";
+import { THostCommandResult } from "./pki-sync-host-command-fns";
 
 export type TPkiSync = {
   id: string;
@@ -61,6 +61,24 @@ export type TPkiSync = {
   } | null;
 };
 
+export type THealthCheckTarget = {
+  id: string;
+  destination: PkiSync;
+  destinationConfig: Record<string, unknown>;
+  syncOptions: Record<string, unknown>;
+  connection: {
+    id: string;
+    name: string;
+    app: string;
+    credentials: Record<string, unknown>;
+    method?: string;
+    orgId: string;
+    gatewayId?: string;
+    gatewayPoolId?: string | null;
+  };
+  syncCredentials?: { exportPassword?: string };
+};
+
 export type TPkiSyncWithCredentials = TPkiSync & {
   connection: {
     id: string;
@@ -99,7 +117,8 @@ export type TPkiSyncSyncResult = {
   removed?: number;
   failedRemovals?: number;
   skipped: number;
-  postSyncCommand?: TPostSyncCommandResult;
+  healthCheck?: THostCommandResult;
+  postSyncCommand?: THostCommandResult;
   details?: {
     failedUploads?: Array<{ name: string; error: string }>;
     failedRemovals?: Array<{ name: string; error: string }>;
@@ -246,6 +265,10 @@ export type TQueuePkiSyncSyncCertificatesByIdDTO = {
 export type TQueuePkiSyncImportCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
+};
+
+export type TQueuePkiSyncRunHealthCheckByIdDTO = {
+  syncId: string;
 };
 
 export type TQueuePkiSyncRemoveCertificatesByIdDTO = {

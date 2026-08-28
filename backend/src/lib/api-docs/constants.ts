@@ -58,6 +58,7 @@ export enum ApiDocsTags {
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  FolderAccess = "Folder Access",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
   PkiSyncs = "PKI Syncs",
@@ -1792,6 +1793,84 @@ The permission object for the privilege.
   }
 };
 
+export const FOLDER_ACCESS = {
+  CREATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to grant access on.",
+    userId: "The ID of the user to grant folder access to.",
+    identityId: "The ID of the machine identity to grant folder access to.",
+    permission:
+      "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to update.",
+    identityId: "The ID of the machine identity whose folder access to update.",
+    permission:
+      "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  DELETE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to revoke.",
+    identityId: "The ID of the machine identity whose folder access to revoke."
+  },
+  LIST_USERS: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's users. The page is then split into the users with access and the users without access.",
+    limit: "The number of users to return, counting both lists together.",
+    search: "The text string that user names and email addresses will be filtered by.",
+    users:
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    usersWithoutAccess:
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount: "The number of users of the project that match the search, with and without access together."
+  },
+  LIST_IDENTITIES: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's machine identities. The page is then split into the ones with access and the ones without access.",
+    limit: "The number of machine identities to return, counting both lists together.",
+    search: "The text string that machine identity names will be filtered by.",
+    identities:
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    identitiesWithoutAccess:
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount:
+      "The number of machine identities of the project that match the search, with and without access together."
+  },
+  LIST_USER_GRANTS: {
+    projectId: "The ID of the project to list the user's folder access grants in.",
+    userId: "The ID of the user whose folder access grants to list."
+  },
+  LIST_IDENTITY_GRANTS: {
+    projectId: "The ID of the project to list the machine identity's folder access grants in.",
+    identityId: "The ID of the machine identity whose folder access grants to list."
+  },
+  PERMISSION_AUDIT: {
+    includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
+  }
+};
+
 export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectMembershipId: "Project membership ID of user.",
@@ -2146,7 +2225,9 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
-    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    latestRenewalCertificateId:
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",

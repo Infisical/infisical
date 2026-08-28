@@ -79,6 +79,7 @@ export const GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "infisical-{{certificateId}}",
   forbiddenCharacters: GCP_CERTIFICATE_MANAGER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: GCP_CERTIFICATE_MANAGER_NAMING.ALLOWED_CHARACTER_PATTERN,

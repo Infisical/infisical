@@ -191,6 +191,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
+  [EventType.PKI_SYNC_HEALTH_CHECK]: "PKI Sync health check ran",
+  [EventType.PKI_SYNC_TEST_HEALTH_CHECK]: "PKI Sync health check tested",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
@@ -444,7 +446,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token",
 
   [EventType.CREATE_PROJECT_FOLDER_GRANT]: "Create project grant",
-  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant"
+  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant",
+
+  [EventType.CREATE_SECRET_FOLDER_ACCESS]: "Grant folder access",
+  [EventType.UPDATE_SECRET_FOLDER_ACCESS]: "Update folder access",
+  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

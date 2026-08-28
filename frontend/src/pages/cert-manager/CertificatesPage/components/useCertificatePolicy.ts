@@ -4,6 +4,7 @@ import { UseFormSetValue, UseFormWatch } from "react-hook-form";
 import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -383,6 +384,21 @@ export const useCertificatePolicy = (
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
 
+  const caKeyAlgorithm = selectedProfile?.certificateAuthority?.keyAlgorithm as
+    | string
+    | null
+    | undefined;
+  const selectedSignatureAlgorithm = watch("signatureAlgorithm") as string | undefined;
+
+  // The issuing CA can only sign with its own key family, so a selection carried over from a
+  // previously selected profile has to go rather than fail validation at issuance.
+  useEffect(() => {
+    if (!isModalOpen || !selectedSignatureAlgorithm) return;
+    if (getCaSignatureIncompatibilityReason(selectedSignatureAlgorithm, caKeyAlgorithm)) {
+      setValue("signatureAlgorithm", "");
+    }
+  }, [isModalOpen, selectedSignatureAlgorithm, caKeyAlgorithm, setValue]);
+
   useEffect(() => {
     if (!isModalOpen || !selectedProfile) return;
     const defaults = selectedProfile?.defaults;
@@ -390,7 +406,8 @@ export const useCertificatePolicy = (
 
     if (
       defaults.signatureAlgorithm &&
-      availableSignatureAlgorithms.some((opt) => opt.value === defaults.signatureAlgorithm)
+      availableSignatureAlgorithms.some((opt) => opt.value === defaults.signatureAlgorithm) &&
+      !getCaSignatureIncompatibilityReason(defaults.signatureAlgorithm, caKeyAlgorithm)
     ) {
       setValue("signatureAlgorithm", defaults.signatureAlgorithm);
     }
@@ -405,6 +422,7 @@ export const useCertificatePolicy = (
     selectedProfile,
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
+    caKeyAlgorithm,
     setValue
   ]);
 

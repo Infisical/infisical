@@ -201,6 +201,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
+  PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
@@ -440,5 +442,10 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Secret folder access (folder RBAC)
+  CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
+  UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access"
 }

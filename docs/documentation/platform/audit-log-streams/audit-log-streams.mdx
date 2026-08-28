@@ -293,13 +293,26 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
             <Step title="Create Audit Log Stream on Infisical">
                 On Infisical, create a new audit log stream and select the **Splunk** provider option.
 
-                Input your **Splunk Hostname** and the **Token** obtained from step 1.
+                Input your **Splunk Hostname** and the **Token** obtained from step 1. **Port** defaults to `8088`; change it if your deployment serves the HTTP Event Collector on a different port.
 
         				![splunk details](/images/platform/audit-log-streams/splunk-details.png)
 
                 Once you're finished, click **Create Log Stream**.
             </Step>
         </Steps>
+
+        <Note>
+            **Splunk Cloud serves the HTTP Event Collector on port 443.** The default port `8088` applies to Splunk Enterprise and to Splunk Cloud free trials.
+
+            Splunk Cloud also uses a dedicated collector hostname, which is not the address you use to reach the Splunk web interface:
+
+            | Splunk Cloud region | Hostname |
+            | --- | --- |
+            | AWS | `http-inputs-<stack>.splunkcloud.com` |
+            | GCP and Azure | `http-inputs.<stack>.splunkcloud.com` |
+
+            Replace `<stack>` with your stack name.
+        </Note>
     </Accordion>
     <Accordion title="Palo Alto Networks XSIAM">
         [XSIAM](https://www.paloaltonetworks.com/cortex/cortex-xsiam) accepts log data from external sources via its **Custom HTTP Log Collector**, which exposes a unique HTTPS endpoint secured by an API key. 

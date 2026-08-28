@@ -20,7 +20,8 @@ export const registerGcpCertificateManagerPkiSyncRouter = async (
     updateSchema: UpdateGcpCertificateManagerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

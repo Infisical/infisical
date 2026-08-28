@@ -18,6 +18,7 @@ import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
@@ -26,6 +27,7 @@ import {
   assertFolderMoveAllowed,
   buildFolderPath,
   canActorReadBlock,
+  checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
@@ -70,7 +72,8 @@ import {
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "find">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -121,6 +124,7 @@ export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceF
 export const secretFolderServiceFactory = ({
   folderDAL,
   permissionService,
+  additionalPrivilegeDAL,
   projectEnvDAL,
   folderVersionDAL,
   folderCommitService,
@@ -469,6 +473,7 @@ export const secretFolderServiceFactory = ({
     const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
     return {
       projectId,
       newFolders: result.map((res) => res.newFolder),
@@ -596,6 +601,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await permissionService.invalidateProjectFolderPermissionCache(projectId);
     return {
       folder: { ...newFolder, path: newFolderPath },
       old: { ...folder, path: oldFolderPath }
@@ -817,6 +823,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await permissionService.invalidateProjectFolderPermissionCache(projectId);
     return folder;
   };
 
@@ -1481,6 +1488,8 @@ export const secretFolderServiceFactory = ({
 
     const result = providedTx ? await executeBulkDelete(providedTx) : await folderDAL.transaction(executeBulkDelete);
 
+    await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
+
     return {
       folders: result,
       count: result.length
@@ -1527,7 +1536,8 @@ export const secretFolderServiceFactory = ({
   // destination paths for a governing policy (`destinationBlock`); a folder cannot be moved INTO a path governed
   // by a policy since the move would create its secrets there, bypassing the approval the policy requires. pass
   // `accessScope` to limit reporting to paths the actor may read; omit it (the move path) to always detect a block
-  // and gate only the resulting message.
+  // and gate only the resulting message. pass `checkRbacPolicies` to also report whether the subtree carries
+  // folder-scoped RBAC policies (`hasRbacPolicies`) — a warning, never a block.
   const $getFolderMoveBlocks = async (
     {
       subtree,
@@ -1535,7 +1545,8 @@ export const secretFolderServiceFactory = ({
       sourceEnvironment,
       sourceFolderPath,
       destination,
-      accessScope
+      accessScope,
+      checkRbacPolicies
     }: {
       subtree: { id: string; path: string }[];
       projectId: string;
@@ -1543,6 +1554,7 @@ export const secretFolderServiceFactory = ({
       sourceFolderPath: string;
       destination?: { environment: string; path: string };
       accessScope?: TFolderMoveAccessScope;
+      checkRbacPolicies?: boolean;
     },
     tx: Knex
   ) => {
@@ -1564,7 +1576,11 @@ export const secretFolderServiceFactory = ({
         )
       : null;
 
-    return { sourceBlock, destinationBlock };
+    const hasRbacPolicies = checkRbacPolicies
+      ? await checkFolderHasRbacPolicies({ subtree }, { additionalPrivilegeDAL }, tx)
+      : undefined;
+
+    return { sourceBlock, destinationBlock, hasRbacPolicies };
   };
 
   // checks whether a folder (and its entire recursive subtree) can be moved. when a destination is supplied, it
@@ -1611,7 +1627,7 @@ export const secretFolderServiceFactory = ({
       );
 
     // run every read inside a transaction so it hits the primary database rather than a read replica
-    const { sourceBlock, destinationBlock } = await folderDAL.transaction(async (tx) => {
+    const { sourceBlock, destinationBlock, hasRbacPolicies } = await folderDAL.transaction(async (tx) => {
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
 
@@ -1625,7 +1641,8 @@ export const secretFolderServiceFactory = ({
             destinationEnvironment && canActorAccessDestination
               ? { environment: destinationEnvironment, path: path.join(destinationParentPath, folder.name) }
               : undefined,
-          accessScope
+          accessScope,
+          checkRbacPolicies: true
         },
         tx
       );
@@ -1646,7 +1663,8 @@ export const secretFolderServiceFactory = ({
       blockingPath: sourceBlock?.blockingAbsPath,
       destinationBlocked: destinationEnvironment ? !canActorAccessDestination || Boolean(destinationBlock) : undefined,
       destinationBlockingPath: readableDestinationBlock?.blockingPath,
-      destinationPolicyName: readableDestinationBlock?.policyName
+      destinationPolicyName: readableDestinationBlock?.policyName,
+      hasRbacPolicies
     };
   };
 
@@ -1890,6 +1908,14 @@ export const secretFolderServiceFactory = ({
       }));
       const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
 
+      // folder-scoped additional privileges must follow the move: the source subtree is deleted below
+      // and additional_privileges.folderId cascades on delete, so repoint them at the recreated folders
+      // while both generations still exist.
+      await additionalPrivilegeDAL.remapFolderIds(
+        Array.from(idBySourceFolderId, ([oldFolderId, newFolderId]) => ({ oldFolderId, newFolderId })),
+        tx
+      );
+
       const newParentIdByNewFolderId = new Map<string, string>(
         plan.map((entry) => [entry.newFolderId, entry.newParentId])
       );
@@ -2000,6 +2026,7 @@ export const secretFolderServiceFactory = ({
     );
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await permissionService.invalidateProjectFolderPermissionCache(projectId);
 
     return {
       folderId,
