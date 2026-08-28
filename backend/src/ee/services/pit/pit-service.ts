@@ -370,8 +370,7 @@ export const pitServiceFactory = ({
     commitId,
     folderId,
     deepRollback,
-    message,
-    environment
+    message
   }: {
     actor: ActorType;
     actorId: string;
@@ -382,7 +381,6 @@ export const pitServiceFactory = ({
     folderId: string;
     deepRollback: boolean;
     message?: string;
-    environment: string;
   }) => {
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folderWithPath) {
@@ -402,7 +400,7 @@ export const pitServiceFactory = ({
       ForbiddenError.from(userPermission).throwUnlessCan(
         ProjectPermissionCommitsActions.PerformRollback,
         subject(ProjectPermissionSub.Commits, {
-          environment,
+          environment: folderWithPath.environmentSlug,
           secretPath: folderWithPath.path
         })
       );
@@ -411,7 +409,7 @@ export const pitServiceFactory = ({
       ForbiddenError.from(userPermission).throwUnlessCan(
         ProjectPermissionCommitsActions.PerformRollback,
         subject(ProjectPermissionSub.Commits, {
-          environment,
+          environment: folderWithPath.environmentSlug,
           secretPath: deeperPath
         })
       );
@@ -419,7 +417,7 @@ export const pitServiceFactory = ({
       ForbiddenError.from(userPermission).throwUnlessCan(
         ProjectPermissionCommitsActions.PerformRollback,
         subject(ProjectPermissionSub.Commits, {
-          environment,
+          environment: folderWithPath.environmentSlug,
           secretPath: folderWithPath.path
         })
       );
@@ -451,7 +449,7 @@ export const pitServiceFactory = ({
 
     const env = await projectEnvDAL.findOne({
       projectId,
-      slug: environment
+      slug: folderWithPath.environmentSlug
     });
 
     if (!targetCommit || targetCommit.folderId !== folderId || targetCommit.envId !== env.id) {

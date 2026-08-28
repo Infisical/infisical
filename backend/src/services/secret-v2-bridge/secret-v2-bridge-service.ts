@@ -11,7 +11,6 @@ import {
   TSecretsV2
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -144,8 +143,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -169,14 +167,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "getItem"
-    | "getItemBuffer"
-    | "setExpiry"
-    | "setItemWithExpiry"
-    | "deleteItem"
-    | "pgGetIntItem"
-    | "hashGet"
-    | "hashSet"
+    "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem" | "hashGet" | "hashSet"
   >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
@@ -200,7 +191,6 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   folderDAL,
   permissionService,
-  permissionDAL,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -1061,7 +1051,12 @@ export const secretV2BridgeServiceFactory = ({
         actorOrgId,
         actionProjectType: ActionProjectType.SecretManager
       });
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1108,7 +1103,10 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) return 0;
@@ -1227,7 +1225,12 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     if (!isInternal) {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1280,15 +1283,17 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // Cache the fingerprint for the marker window so repeated polls
-      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
-      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
+      // Cache the fingerprint for the marker window so repeated polls skip the per-request DB query.
+      // Same 10s TTL as getProjectPermission's marker, so no new staleness. This gates only the Etag
+      // cache, the real permission check is still done on the getProjectPermission call. It is the same
+      // fingerprint that validates the permission cache, so folder grants are covered here too — at the
+      // cost of its project-wide folder-version half churning this ETag on any folder change.
       permissionFingerprint = await withCache({
         keyStore,
         key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
         ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
         fetcher: () =>
-          permissionDAL.getPermissionFingerprint({
+          permissionService.getProjectPermissionFingerprint({
             projectId,
             orgId: actorOrgId,
             actorId,
@@ -1346,11 +1351,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
-    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
-    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
-    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
-    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
+
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
       projectId,
       version: secretDalVersion,
@@ -1366,11 +1367,11 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
+    const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets });
+        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
         // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
@@ -1650,7 +1651,7 @@ export const secretV2BridgeServiceFactory = ({
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
       if (stored) {
-        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
+        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
@@ -1742,7 +1743,7 @@ export const secretV2BridgeServiceFactory = ({
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
     if (stored) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
+      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });

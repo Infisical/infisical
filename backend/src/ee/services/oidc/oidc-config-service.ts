@@ -35,6 +35,7 @@ import {
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -99,6 +100,7 @@ type TOidcConfigServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
   userGroupMembershipDAL: Pick<
@@ -129,6 +131,7 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  additionalPrivilegeDAL,
   permissionService,
   tokenService,
   smtpService,
@@ -497,6 +500,7 @@ export const oidcConfigServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
+          additionalPrivilegeDAL,
           usageMeteringService,
           alertChannelRecipientDAL
         });
