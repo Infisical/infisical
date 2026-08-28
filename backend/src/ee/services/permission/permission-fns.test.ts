@@ -2,10 +2,12 @@ import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/abil
 import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   expandLegacyForbidActions,
   handlebarsClient,
+  getProjectPermissionFingerprint,
   interpolatePermissionRules,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "./permission-fns";
@@ -302,6 +304,36 @@ describe("trimSuffix handlebars helper", () => {
 
   test("returns the value unchanged when no pattern is supplied", () => {
     expect(render("{{ trimSuffix identity.auth.kubernetes.namespace }}", "myapp-pr-1")).toBe("myapp-pr-1");
+  });
+});
+describe("getProjectPermissionFingerprint", () => {
+  const dto = {
+    projectId: "project-1",
+    orgId: "org-1",
+    actorId: "user-1",
+    actorType: ActorType.USER as ActorType.USER
+  };
+
+  const deps = (folderVersion?: number) =>
+    ({
+      permissionDAL: { getPermissionFingerprint: async () => "membership-hash" },
+      keyStore: { pgGetIntItem: async () => folderVersion }
+    }) as unknown as Parameters<typeof getProjectPermissionFingerprint>[1];
+
+  test("appends the project's folder permission version to the membership fingerprint", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(7))).toBe("membership-hash:7");
+  });
+
+  test("changes when the folder permission version is bumped", async () => {
+    const [before, after] = await Promise.all([
+      getProjectPermissionFingerprint(dto, deps(7)),
+      getProjectPermissionFingerprint(dto, deps(8))
+    ]);
+    expect(before).not.toBe(after);
+  });
+
+  test("treats a missing version row as zero", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(undefined))).toBe("membership-hash:0");
   });
 });
 

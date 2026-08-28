@@ -2177,7 +2177,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           blockingPath: z.string().optional(),
           destinationBlocked: z.boolean().optional(),
           destinationBlockingPath: z.string().optional(),
-          destinationPolicyName: z.string().optional()
+          destinationPolicyName: z.string().optional(),
+          hasRbacPolicies: z.boolean().optional()
         })
       }
     },

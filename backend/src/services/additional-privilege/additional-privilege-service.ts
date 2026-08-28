@@ -11,6 +11,7 @@ import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission
 
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAdditionalPrivilegeDALFactory } from "./additional-privilege-dal";
 import {
@@ -32,6 +33,7 @@ type TAdditionalPrivilegeServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPrivilegeServiceFactory>;
@@ -41,7 +43,8 @@ export const additionalPrivilegeServiceFactory = ({
   permissionService,
   orgDAL,
   membershipDAL,
-  userDAL
+  userDAL,
+  projectDAL
 }: TAdditionalPrivilegeServiceFactoryDep) => {
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
     [AccessScope.Organization]: newOrgAdditionalPrivilegesFactory({}),
@@ -50,7 +53,8 @@ export const additionalPrivilegeServiceFactory = ({
       membershipDAL,
       orgDAL,
       permissionService,
-      userDAL
+      userDAL,
+      projectDAL
     })
   };
 
@@ -128,7 +132,10 @@ export const additionalPrivilegeServiceFactory = ({
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       [dbActorField]: dto.selector.actorId,
       id: dto.selector.id,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      // folder-scoped grants are managed by the folder-permission service, whose write paths bump
+      // the folder permission cache; mutating them here would leave stale cached access behind
+      folderId: null
     });
     if (!existingPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${dto.selector.id} doesn't exist` });
@@ -191,7 +198,8 @@ export const additionalPrivilegeServiceFactory = ({
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
       [dbActorField]: dto.selector.actorId,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      folderId: null
     });
     if (!existingPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
@@ -215,7 +223,8 @@ export const additionalPrivilegeServiceFactory = ({
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
       [dbActorField]: dto.selector.actorId,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      folderId: null
     });
     if (!additionalPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
@@ -238,7 +247,8 @@ export const additionalPrivilegeServiceFactory = ({
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       name: selector.name,
       [dbActorField]: dto.selector.actorId,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      folderId: null
     });
     if (!additionalPrivilege)
       throw new NotFoundError({ message: `Additional privilege with name ${selector.name} doesn't exist` });
@@ -260,7 +270,8 @@ export const additionalPrivilegeServiceFactory = ({
 
     const additionalPrivileges = await additionalPrivilegeDAL.find({
       [dbActorField]: dto.selector.actorId,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      folderId: null
     });
 
     return {
@@ -280,7 +291,8 @@ export const additionalPrivilegeServiceFactory = ({
 
     const additionalPrivileges = await additionalPrivilegeDAL.findWithAccessApprovalStatus({
       [dbActorField]: dto.selector.actorId,
-      [scope.key]: scope.value
+      [scope.key]: scope.value,
+      folderId: null
     });
 
     return {

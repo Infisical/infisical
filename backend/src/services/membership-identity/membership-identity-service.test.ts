@@ -50,6 +50,7 @@ const createService = ({
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
+    find: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
