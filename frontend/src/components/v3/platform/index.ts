@@ -11,6 +11,7 @@ export * from "./PageLoader";
 export * from "./PasswordGenerator";
 export * from "./PermissionActionSelect";
 export * from "./ProjectPermissionSubjects/ProjectPermissionSubjects";
+export * from "./RootCommandMenu";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
 export * from "./SecretManagerResources/SecretManagerResources";
