@@ -294,7 +294,6 @@
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.8.3",
     "scim2-parse-filter": "^0.2.10",
-    "segfault-handler": "^1.3.0",
     "sjcl": "^1.0.9",
     "smee-client": "^2.0.0",
     "snowflake-sdk": "^2.0.4",
