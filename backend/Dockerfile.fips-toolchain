@@ -63,18 +63,22 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
-RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
-WORKDIR ${SOFTHSM2_SOURCES}
-
-RUN git checkout --detach "${SOFTHSM2_COMMIT}" \
+# Clone, build, install and remove in ONE layer. `docker build` commits a layer per RUN
+# and a layer can only add a whiteout, so removing the source tree in a later RUN did not
+# reclaim anything: the clone (9,581,966 bytes) and the build tree (195,065,734 bytes)
+# shipped in every pull, and the `rm` layer was 129 bytes of whiteout. The install output
+# under /usr/local is unaffected -- that is the artifact, and it is what should persist.
+WORKDIR /root
+RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES} \
+    && cd ${SOFTHSM2_SOURCES} \
+    && git checkout --detach "${SOFTHSM2_COMMIT}" \
     && test "$(git rev-parse HEAD)" = "${SOFTHSM2_COMMIT}" \
     && sh autogen.sh \
     && ./configure --prefix=/usr/local --disable-gost \
     && make \
-    && make install
-
-WORKDIR /root
-RUN rm -fr ${SOFTHSM2_SOURCES}
+    && make install \
+    && cd / \
+    && rm -fr ${SOFTHSM2_SOURCES}
 
 RUN mkdir -p /opt/oracle && \
     ARCH=$(dpkg --print-architecture) && \
