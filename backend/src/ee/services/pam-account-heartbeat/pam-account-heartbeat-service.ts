@@ -288,11 +288,11 @@ export const pamAccountHeartbeatServiceFactory = ({
     try {
       outcome = await probe(account, usedSecrets);
     } catch (err) {
-      logger.warn(err, `PAM heartbeat could not complete [accountId=${account.id}]`);
-      outcome = {
-        status: PamHeartbeatStatus.CannotCheck,
-        message: redactRotationError(err, usedSecrets)
-      };
+      const message = redactRotationError(err, usedSecrets);
+      // Logged as the redacted string, never the error object: a target that echoed the credential back would
+      // otherwise copy it into the application log, which no later redaction reaches.
+      logger.warn(`PAM heartbeat could not complete [accountId=${account.id}]: ${message}`);
+      outcome = { status: PamHeartbeatStatus.CannotCheck, message };
     }
     if (outcome.message) {
       outcome = { ...outcome, message: redactRotationError(new Error(outcome.message), usedSecrets) };
