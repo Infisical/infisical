@@ -4,7 +4,7 @@ description: "Access a PAM-managed database, server, or cloud account from your 
 ---
 
 ```bash
-infisical pam access <path> [flags]
+infisical pam access <path> [flags] [-- <command>]
 ```
 
 ## Description
@@ -12,6 +12,8 @@ infisical pam access <path> [flags]
 Open one PAM-managed account for your own use, brokered through Infisical's [Gateway](/documentation/platform/gateways/overview) so you never handle its credentials. Requires `infisical login`.
 
 This single command handles every account type: the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
+
+SSH accounts connect you directly to a shell on the target. Every other account type starts a local proxy or credential helper that you point your own client at.
 
 <Note>
   To open several accounts at once for an AI agent, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead, which can also authenticate as a [machine identity](/documentation/platform/identities/machine-identities) so an agent can run unattended.
@@ -22,8 +24,20 @@ This single command handles every account type: the CLI adapts its behavior to w
 | Argument | Description |
 |----------|-------------|
 | `<path>` | **Required.** Path to the PAM account in format `folder/account-name` |
+| `<command>` | Optional, after `--`. A command to run on the target instead of opening a shell. SSH accounts only. |
 
 ## Flags
+
+<Accordion title="--proxy">
+  Start a local proxy to point your own client at, instead of connecting you to the target.
+
+  Only SSH accounts connect directly today, so this only changes behavior for them. Use it for SCP, SFTP, rsync, port forwarding, GUI clients, or anything that needs your `~/.ssh/config`.
+
+  ```bash
+  # Example
+  infisical pam access servers/prod-bastion --proxy
+  ```
+</Accordion>
 
 <Accordion title="--duration">
   Session duration. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
@@ -47,6 +61,8 @@ This single command handles every account type: the CLI adapts its behavior to w
 
 <Accordion title="--port">
   Local proxy port. Use `0` for auto-assign.
+
+  For SSH accounts this requires `--proxy`, since a port is only meaningful when a proxy is running.
 
   Default value: `0`
 
@@ -76,7 +92,7 @@ This single command handles every account type: the CLI adapts its behavior to w
 
 ## Account types and behavior
 
-Based on the account's template, the CLI starts the appropriate local proxy or credential helper.
+Based on the account's template, the CLI connects you directly or starts the appropriate local proxy or credential helper. SSH accounts connect directly by default; every other type starts a proxy or credential helper.
 
 <AccordionGroup>
   <Accordion title="Databases (PostgreSQL, MySQL, SQL Server, MongoDB)">
@@ -115,14 +131,32 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
   </Accordion>
 
   <Accordion title="SSH">
-    Starts a local SSH proxy. Use standard SSH/SCP/SFTP/rsync commands to connect.
+    Connects you straight to a shell on the target.
 
     ```bash
-    # Start the proxy
     infisical pam access servers/prod-bastion
     ```
 
-    Then connect using your SSH client:
+    Type `exit` or press `Ctrl+D` to end the session. The remote shell's exit code becomes the command's exit code.
+
+    **Run a single command**
+
+    Put it after `--`. Output streams through, so this composes with pipes and scripts:
+
+    ```bash
+    infisical pam access servers/prod-bastion -- systemctl status nginx
+    infisical pam access servers/prod-bastion -- df -h | grep /var
+    ```
+
+    **Use your own client**
+
+    `--proxy` starts a local SSH proxy instead, for file transfer, port forwarding, `~/.ssh/config`, or a GUI client:
+
+    ```bash
+    infisical pam access servers/prod-bastion --proxy
+    ```
+
+    Then connect to the port it prints:
 
     ```bash
     # SSH
@@ -265,4 +299,3 @@ infisical pam access production/database --reason "Investigating incident INC-12
 | `a reason is required to access this account` | Policy requires reason, no TTY | Pass `--reason` flag |
 | `Gateway does not support '{type}' PAM accounts` | Gateway version too old | Upgrade Infisical Gateway |
 | `PAM response metadata is missing` | API response incomplete | Contact support |
-
