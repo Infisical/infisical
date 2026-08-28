@@ -100,7 +100,7 @@ describe("searchLdap", () => {
     const strict = buildClient((res) => res.emit("error", sizeLimitError), captured);
     await expect(
       searchLdap(strict, { baseDN: "DC=corp", filter: "(cn=*)", attributes: [], timeLimitSeconds: 30 })
-    ).rejects.toThrow(/Size Limit Exceeded/);
+    ).rejects.toThrow("Size Limit Exceeded");
 
     const lenient = buildClient((res) => {
       res.emit("searchEntry", entry([{ type: "cn", values: ["web01"], buffers: [] }]));
@@ -127,7 +127,7 @@ describe("searchLdap", () => {
         timeLimitSeconds: 15,
         acceptSizeLimitExceeded: true
       })
-    ).rejects.toThrow(/Busy/);
+    ).rejects.toThrow("Busy");
   });
 
   test("collects entries and lets a caller map failures into its own error type", async () => {

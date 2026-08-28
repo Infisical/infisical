@@ -26,7 +26,7 @@ describe("assertTargetHostMatchesConnection", () => {
         connection: sshConnection,
         destinationConfig: { destinationPath: "/etc/ssl/certs", host: "server01.corp.example.com" }
       })
-    ).toThrow(/cannot be set when using the 'prod-web-01' connection/);
+    ).toThrow("cannot be set when using the 'prod-web-01' connection");
   });
 
   test("rejects a target host on a WinRM connection", () => {
@@ -36,7 +36,7 @@ describe("assertTargetHostMatchesConnection", () => {
         connection: winrmConnection,
         destinationConfig: { destinationPath: "C:\\certs", host: "server01.corp.example.com" }
       })
-    ).toThrow(/cannot be set when using the 'prod-dc-01' connection/);
+    ).toThrow("cannot be set when using the 'prod-dc-01' connection");
   });
 
   test("rejects an LDAP connection with no target host", () => {
@@ -46,7 +46,7 @@ describe("assertTargetHostMatchesConnection", () => {
         connection: ldapConnection,
         destinationConfig: { destinationPath: "/etc/ssl/certs" }
       })
-    ).toThrow(/A target host is required when using the LDAP connection 'corp-directory'/);
+    ).toThrow("A target host is required when using the LDAP connection 'corp-directory'");
   });
 
   test("rejects an empty-string host on an LDAP connection", () => {
@@ -56,7 +56,7 @@ describe("assertTargetHostMatchesConnection", () => {
         connection: ldapConnection,
         destinationConfig: { destinationPath: "/etc/ssl/certs", host: "" }
       })
-    ).toThrow(/A target host is required/);
+    ).toThrow("A target host is required");
   });
 
   test("accepts an LDAP connection with a target host", () => {
@@ -86,7 +86,7 @@ describe("assertTargetHostMatchesConnection", () => {
         connection: ldapConnectionWithoutGateway,
         destinationConfig: { destinationPath: "C:\\certs", host: "server01.corp.example.com" }
       })
-    ).toThrow(/requires a Gateway/);
+    ).toThrow("requires a Gateway");
   });
 
   test("accepts an LDAP-backed Windows sync reached through a Gateway pool", () => {
@@ -117,7 +117,7 @@ describe("assertTargetHostMatchesConnection", () => {
           connection: { app: AppConnection.WinRM, name: "prod-web-01" },
           destinationConfig: { [field]: field === "port" ? 5986 : false }
         })
-      ).toThrow(new RegExp(`${field} cannot be set when using the 'prod-web-01' connection`));
+      ).toThrow(`${field} cannot be set when using the 'prod-web-01' connection`);
     }
   });
 

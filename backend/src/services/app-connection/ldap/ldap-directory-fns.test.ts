@@ -30,7 +30,7 @@ describe("parseLdapBindIdentity", () => {
   });
 
   test("rejects a DN with no DC components, because the domain cannot be derived", () => {
-    expect(() => parseLdapBindIdentity("CN=svc-certs,OU=Service Accounts")).toThrow(/Unable to determine the domain/);
+    expect(() => parseLdapBindIdentity("CN=svc-certs,OU=Service Accounts")).toThrow("Unable to determine the domain");
   });
 
   test("treats a DN containing @ inside an RDN value as a DN, not a user principal name", () => {
@@ -48,8 +48,8 @@ describe("parseLdapBindIdentity", () => {
   });
 
   test("rejects a value that is neither a user principal name nor a DN with DC components", () => {
-    expect(() => parseLdapBindIdentity("@corp.example.com")).toThrow(/Unable to determine the domain/);
-    expect(() => parseLdapBindIdentity("svc-certs@")).toThrow(/Unable to determine the domain/);
+    expect(() => parseLdapBindIdentity("@corp.example.com")).toThrow("Unable to determine the domain");
+    expect(() => parseLdapBindIdentity("svc-certs@")).toThrow("Unable to determine the domain");
   });
 });
 

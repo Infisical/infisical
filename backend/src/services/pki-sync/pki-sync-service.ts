@@ -944,7 +944,12 @@ export const pkiSyncServiceFactory = ({
         throw new NotFoundError({ message: `PKI sync with id "${args.syncId}" not found` });
       }
 
-      return { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId, name: pkiSync.name };
+      return {
+        projectId: pkiSync.projectId,
+        applicationId: pkiSync.applicationId,
+        name: pkiSync.name,
+        destinationConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined
+      };
     }
 
     if (!args.applicationId) {
@@ -954,7 +959,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    return { projectId: args.projectId, applicationId: args.applicationId, name: "" };
+    return { projectId: args.projectId, applicationId: args.applicationId, name: "", destinationConfig: undefined };
   };
 
   const testPkiSyncHealthCheckCommand = async (
@@ -971,10 +976,12 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor,
     auditLogInfo?: AuditLogInfo
   ) => {
+    const testTarget = await $resolveHealthCheckTestTarget(args);
+
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
       ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
-      await $resolveHealthCheckTestTarget(args),
+      testTarget,
       undefined,
       actor
     );
@@ -998,6 +1005,14 @@ export const pkiSyncServiceFactory = ({
       destination: args.destination,
       connection,
       destinationConfig: args.destinationConfig
+    });
+
+    await $assertMaySetTargetHost({
+      nextConfig: args.destinationConfig,
+      currentConfig: testTarget.destinationConfig,
+      pkiSync: testTarget,
+      subscriberName: undefined,
+      actor
     });
 
     $assertHostCommandsAreSupported(args.destination, args.syncOptions, connection);

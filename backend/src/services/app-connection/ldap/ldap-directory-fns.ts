@@ -91,6 +91,19 @@ const readNetbiosDomainName = async (client: ldap.Client, baseDN: string): Promi
   return entries.length ? getLdapAttribute(entries[0], "nETBIOSName") || null : null;
 };
 
+const readDefaultNamingContext = async (client: ldap.Client): Promise<string | null> => {
+  const entries = await searchDirectory(client, "", {
+    filter: "(objectClass=*)",
+    attributes: ["defaultNamingContext"],
+    scope: "base",
+    sizeLimit: 1
+  });
+
+  return entries.length ? getLdapAttribute(entries[0], "defaultNamingContext") || null : null;
+};
+
+const netbiosFromBaseDN = (baseDN: string): string => baseDN.split(",")[0]?.split("=")[1]?.toUpperCase() || "";
+
 const readAccountName = async (client: ldap.Client, dn: string): Promise<string | null> => {
   const entries = await searchDirectory(client, dn, {
     filter: "(objectClass=*)",
@@ -122,12 +135,18 @@ const resolveHostLoginFromDirectory = async (
   gatewayServices: TLdapGatewayServices
 ): Promise<TLdapHostLogin> => {
   const { domainFqdn, accountName } = parseLdapBindIdentity(config.credentials.dn);
-  const baseDN = buildDomainBaseDN(domainFqdn);
+  const fallbackBaseDN = buildDomainBaseDN(domainFqdn);
 
   const resolved = await executeWithPotentialGateway(
     config,
     gatewayServices.gatewayV2Service,
     async (client) => {
+      const baseDN =
+        (await readDefaultNamingContext(client).catch((err: unknown) => {
+          logger.warn({ err }, `Unable to read the directory's naming context [domain=${domainFqdn}]`);
+          return null;
+        })) ?? fallbackBaseDN;
+
       const [resolvedAccountName, netbiosDomainName] = await Promise.all([
         accountName
           ? readAccountNameByUpn(client, baseDN, config.credentials.dn).catch((err: unknown) => {
@@ -146,7 +165,7 @@ const resolveHostLoginFromDirectory = async (
           return null;
         })
       ]);
-      return { netbiosDomainName, resolvedAccountName };
+      return { netbiosDomainName, resolvedAccountName, baseDN };
     },
     gatewayServices.gatewayPoolService
   );
@@ -160,7 +179,7 @@ const resolveHostLoginFromDirectory = async (
   }
 
   return {
-    username: `${resolved.netbiosDomainName ?? netbiosFromDomainFqdn(domainFqdn)}\\${loginAccountName}`,
+    username: `${resolved.netbiosDomainName ?? netbiosFromBaseDN(resolved.baseDN) ?? netbiosFromDomainFqdn(domainFqdn)}\\${loginAccountName}`,
     isGuessed: !resolved.netbiosDomainName || !resolved.resolvedAccountName
   };
 };
@@ -235,7 +254,7 @@ export const listDirectoryMachines = async (
   gatewayServices: TLdapGatewayServices
 ): Promise<TDirectoryMachine[]> => {
   const { domainFqdn } = parseLdapBindIdentity(config.credentials.dn);
-  const baseDN = buildDomainBaseDN(domainFqdn);
+  const fallbackBaseDN = buildDomainBaseDN(domainFqdn);
   const cappedLimit = Math.min(limit, DIRECTORY_MACHINE_LIST_MAX_LIMIT);
 
   const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
@@ -246,12 +265,19 @@ export const listDirectoryMachines = async (
   const entries = await executeWithPotentialGateway(
     config,
     gatewayServices.gatewayV2Service,
-    (client) =>
-      searchDirectory(client, baseDN, {
+    async (client) => {
+      const baseDN =
+        (await readDefaultNamingContext(client).catch((err: unknown) => {
+          logger.warn({ err }, `Unable to read the directory's naming context [domain=${domainFqdn}]`);
+          return null;
+        })) ?? fallbackBaseDN;
+
+      return searchDirectory(client, baseDN, {
         filter,
         attributes: ["cn", "dNSHostName"],
         sizeLimit: cappedLimit
-      }),
+      });
+    },
     gatewayServices.gatewayPoolService
   );
 
