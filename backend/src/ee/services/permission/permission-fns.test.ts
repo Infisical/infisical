@@ -6,8 +6,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   expandLegacyForbidActions,
-  handlebarsClient,
   getProjectPermissionFingerprint,
+  handlebarsClient,
   interpolatePermissionRules,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "./permission-fns";
