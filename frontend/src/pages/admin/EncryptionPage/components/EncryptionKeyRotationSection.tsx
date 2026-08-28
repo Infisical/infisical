@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangleIcon, CircleCheckIcon, KeyRoundIcon, ShieldAlertIcon } from "lucide-react";
+import { AlertTriangleIcon, CircleCheckIcon, ShieldAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,6 +16,7 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -29,6 +30,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
   Label,
   Pagination,
   Table,
@@ -137,20 +142,30 @@ export const EncryptionKeyRotationSection = () => {
             nothing on its own: the rotation takes effect the first time an instance starts with the
             new value.
           </CardDescription>
+          {!isHsmManaged && (
+            <CardAction className="flex flex-wrap gap-2">
+              {rootKey.staged && (
+                <Button variant="danger" isDisabled={!rootKey.staged.label} onClick={handleDiscard}>
+                  Discard generated key
+                </Button>
+              )}
+              <Button onClick={handleGenerate} isPending={isCreating}>
+                {rootKey.staged ? "Generate a replacement key" : "Generate new key"}
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <KeyRoundIcon className="size-4 text-foreground/60" />
-            <span className="text-foreground/70">Active key</span>
-            <Badge variant="neutral" className="font-mono">
-              {rootKey.active.label ?? "managed by HSM"}
-            </Badge>
-            <span className="text-xs text-foreground/60">
-              in use since {new Date(rootKey.active.activatedAt).toLocaleString()}
-            </span>
-          </div>
+          <Item variant="outline">
+            <ItemContent>
+              <ItemTitle>Active key</ItemTitle>
+              <ItemDescription className="font-mono">
+                {rootKey.active.label ?? "managed by HSM"}
+              </ItemDescription>
+            </ItemContent>
+          </Item>
 
-          {isHsmManaged ? (
+          {isHsmManaged && (
             <Alert variant="warning">
               <AlertTriangleIcon />
               <AlertDescription>
@@ -159,17 +174,6 @@ export const EncryptionKeyRotationSection = () => {
                 software first.
               </AlertDescription>
             </Alert>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleGenerate} isPending={isCreating}>
-                {rootKey.staged ? "Generate a replacement key" : "Generate new key"}
-              </Button>
-              {rootKey.staged && (
-                <Button variant="danger" isDisabled={!rootKey.staged.label} onClick={handleDiscard}>
-                  Discard generated key
-                </Button>
-              )}
-            </div>
           )}
 
           {rootKey.expiring && (
@@ -276,7 +280,7 @@ export const EncryptionKeyRotationSection = () => {
             else closeDeactivateDialog();
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="sm:max-w-xl!">
             <AlertDialogHeader>
               <AlertDialogTitle>Deactivate the previous key</AlertDialogTitle>
               <AlertDialogDescription>
