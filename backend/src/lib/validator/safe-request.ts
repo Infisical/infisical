@@ -16,6 +16,7 @@ import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
+import { AGENT_CACHE_MAX, agentCache } from "./agent-pool";
 
 const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
@@ -168,13 +169,6 @@ const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
   opts.keepAlive !== undefined ||
   opts.checkServerIdentity !== undefined;
 
-// Pool of agents keyed by connection signature for connection reuse across
-// repeated calls. The cache key includes the validated IP set so DNS record
-// changes naturally produce a fresh entry. Insertion order doubles as LRU
-// recency, so eviction at the cap drops the least recently used entry.
-const AGENT_CACHE_MAX = 200;
-const agentCache = new Map<string, http.Agent | https.Agent>();
-
 // A keepAlive agent's idle sockets keep the agent itself reachable through their
 // own event listeners, so dropping the map entry frees neither: the agent is
 // never collected and each pooled socket holds its fd (and the peer's connection
@@ -215,8 +209,6 @@ const evictLeastRecentlyUsedAgents = () => {
     }
   }
 };
-
-export const getAgentPoolStats = () => ({ size: agentCache.size, max: AGENT_CACHE_MAX });
 
 const buildAgentCacheKey = (
   validated: TValidatedHost | undefined,
