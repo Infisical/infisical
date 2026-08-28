@@ -19,6 +19,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -556,11 +557,11 @@ export const GitHubAppSelector = ({
               </>
             )}
           </div>
-          <div className="mt-4 flex items-center justify-end">
+          <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Close</Button>
             </DialogClose>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

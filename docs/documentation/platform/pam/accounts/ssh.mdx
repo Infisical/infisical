@@ -1,14 +1,14 @@
 ---
-title: "SSH Accounts"
+title: "SSH accounts"
 sidebarTitle: "SSH"
 description: "Add and connect to SSH servers."
 ---
 
-SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
+SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or the CLI, which drops you straight into a shell on the server (a local proxy is available with `--proxy` for your own SSH client). Every [session](/documentation/platform/pam/sessions/overview) can be recorded.
 
 SSH accounts support three authentication methods: password, public key, and certificate-based.
 
-## Creating an Account
+## Creating an account
 
 <Steps>
   <Step title="Start adding an account">
@@ -33,7 +33,7 @@ SSH accounts support three authentication methods: password, public key, and cer
   </Step>
 </Steps>
 
-## Authentication Methods
+## Authentication methods
 
 <Tabs>
   <Tab title="Password">
@@ -69,26 +69,35 @@ SSH accounts support three authentication methods: password, public key, and cer
     You get a full shell. To disconnect, type `exit` or close the tab.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your SSH client.
+    The CLI connects you straight to a shell on the server.
 
     ```bash
     infisical pam access prod-servers/web-01
     ```
 
-    The command outputs the local port to connect to. Then use your SSH client:
+    To disconnect, type `exit` or press `Ctrl+D`.
+
+    To run a single command and exit, put it after `--`:
+
     ```bash
-    ssh deploy@localhost -p <port>
+    infisical pam access prod-servers/web-01 -- systemctl status nginx
     ```
 
-    No password or key needed since the proxy handles authentication.
+    For file transfer, port forwarding, or your own SSH client and `~/.ssh/config`, use `--proxy` to
+    get a local port instead:
+
+    ```bash
+    infisical pam access prod-servers/web-01 --proxy
+    ```
 
     **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+    - `--proxy` — start a local proxy instead of connecting you, for SCP, SFTP, rsync and port forwarding
+    - `--port <port>` — use a specific local port (requires `--proxy`)
     - `--reason <reason>` — provide an access reason (if required by template)
   </Tab>
 </Tabs>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="SSH Certificate Auth" icon="key" href="/documentation/platform/pam/guides/ssh-certificate-auth">

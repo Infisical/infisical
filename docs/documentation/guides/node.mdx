@@ -9,7 +9,7 @@ This guide demonstrates how to use Infisical to manage secrets for your Node sta
 - Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
 - The [@infisical/sdk](https://github.com/Infisical/node-sdk-v2) Node.js client SDK to fetch secrets back to your Node application on demand.
 
-## Project Setup
+## Project setup
 
 To begin, we need to set up a project in Infisical and add secrets to an environment in it.
 
@@ -19,7 +19,7 @@ To begin, we need to set up a project in Infisical and add secrets to an environ
 
 2. Add a secret to the development environment of this project so we can pull it back for local development. Select the **Development** environment from the environment selector, then click **Add Secret** and add a secret with the key `NAME` and value `YOUR_NAME`.
 
-### Create a Machine Identity
+### Create a machine identity
 
 Now that we've created a project and added a secret to its development environment, we need to configure an Infisical Machine Identity that our Node application can use to access the secret.
 
@@ -121,7 +121,7 @@ By using Machine Identities scoped to different projects and environments, you c
     <Accordion title="What's the point if I still have to manage a token for the SDK?">
         The token enables the SDK to authenticate with Infisical to fetch back your secrets.
         Although the SDK requires you to pass in a token, it enables greater efficiency and security
-        than if you managed dozens of secrets yourself without it. Here're some benefits:
+        than if you managed dozens of secrets yourself without it. Here are some benefits:
 
         - You always pull in the right secrets because they're fetched on demand from a centralized source that is Infisical.
         - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.

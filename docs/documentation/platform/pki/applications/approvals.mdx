@@ -1,12 +1,12 @@
 ---
-title: "Approval Policies"
+title: "Approval policies"
 sidebarTitle: "Approvals"
 description: "Add human review workflows before certificates are issued."
 ---
 
 Approval workflows add a human review step before certificates are issued. Use them to enforce separation of duties, ensure oversight of sensitive certificates, or meet compliance requirements.
 
-## When to Use Approvals
+## When to use approvals
 
 <CardGroup cols={2}>
   <Card title="Separation of duties" icon="users">
@@ -24,10 +24,10 @@ Approval workflows add a human review step before certificates are issued. Use t
 </CardGroup>
 
 <Note>
-  For fully automated workloads (e.g., using [Infisical Agent](/integrations/platforms/certificate-agent)), enable the **machine identity bypass** option so automated systems can issue certificates without waiting for approval.
+  For fully automated workloads (e.g., using [Infisical Agent](/documentation/platform/pki/reference/infisical-agent)), enable the **machine identity bypass** option so automated systems can issue certificates without waiting for approval.
 </Note>
 
-## How Approval Policies Work
+## How approval policies work
 
 An approval policy defines the workflow that must be completed before certificates are issued. Policies are configured per Application and can be scoped to specific profiles attached to that Application. When a certificate request is made through an enrollment method:
 
@@ -36,7 +36,7 @@ An approval policy defines the workflow that must be completed before certificat
 3. Each approval step must be completed in sequence
 4. Once all steps are approved, the certificate is issued
 
-## Create an Approval Policy
+## Create an approval policy
 
 In your Application, go to the **Settings** tab and find the **Approval Policies** section. Click **Create Policy**.
 
@@ -68,9 +68,9 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
   </Step>
 </Steps>
 
-## Managing Approval Requests
+## Managing approval requests
 
-### View Requests
+### View requests
 
 In the Certificate Manager sidebar, go to **Approval Requests** to see all pending and completed requests:
 
@@ -82,7 +82,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | **Cancelled** | Requester cancelled the request |
 | **Expired** | Request exceeded max TTL |
 
-### Approve a Request
+### Approve a request
 
 <Steps>
   <Step title="Open the request">
@@ -102,7 +102,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 
 Once all required approvals are obtained, the certificate is automatically issued.
 
-### Reject a Request
+### Reject a request
 
 <Steps>
   <Step title="Open the request">

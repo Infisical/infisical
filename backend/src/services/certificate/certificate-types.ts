@@ -14,7 +14,8 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  RENEWED = "renewed"
 }
 
 export enum CertKeyAlgorithm {
@@ -246,4 +247,6 @@ export type TParsedCertificateBody = {
   subject?: TCertificateSubject;
   fingerprints?: TCertificateFingerprints;
   basicConstraints?: TCertificateBasicConstraints;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
 };

@@ -1,5 +1,6 @@
 ---
-title: "Monitoring and Telemetry Setup"
+title: "Monitoring and telemetry setup"
+sidebarTitle: "Monitoring and telemetry"
 description: "Learn how to set up monitoring and telemetry for your self-hosted Infisical instance using Grafana, Prometheus, and OpenTelemetry."
 ---
 
@@ -29,7 +30,7 @@ Both approaches provide the same metrics data in OTEL format, so you can choose 
 
 ## Setup
 
-### Environment Variables
+### Environment variables
 
 Configure the following environment variables in your Infisical backend:
 
@@ -90,7 +91,7 @@ Replace `infisical-backend:9464` with the actual hostname and port where your In
   </Step>
 </Steps>
 
-    ### Deployment Options
+    ### Deployment options
 
     Once you've configured Infisical to expose metrics, you'll need to deploy Prometheus to scrape and store them. Below are examples for different deployment environments. Choose the option that matches your infrastructure.
 
@@ -274,7 +275,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
   </Step>
 </Steps>
 
-    ### Deployment Options
+    ### Deployment options
 
     After configuring Infisical and the OpenTelemetry Collector, you'll need to deploy the collector to receive metrics from Infisical. Below are examples for different deployment environments. Choose the option that matches your infrastructure.
 
@@ -338,16 +339,35 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
   </Tab>
 </Tabs>
 
-## Available Metrics
+## Available metrics
 
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, alert dispatch, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, product analytics aggregation, alert dispatch, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
-To eliminate the in-memory cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. When enabled, the SDK discards all data points from the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
+To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. Infisical then stops recording to the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters altogether, so nothing is measured, stored, exported, or held in memory for them. The instruments still exist in code, so nothing errors. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
+
+<Warning>
+  **With the high-cardinality meters enabled and `OTEL_EXPORT_TYPE=prometheus`, memory use grows with
+  label cardinality for the lifetime of the process.** Labels such as `client.address`,
+  `user_agent.original`, `secret.path`, and `secret.name` have no natural ceiling. On a busy instance
+  this shows up as heap that climbs with uptime and longer garbage collection pauses. Restarting the
+  instance releases the memory.
+
+  Whether that matters depends on churn rather than on how many organizations you have. If your secret
+  paths and names, users, source IP addresses, and client versions are all largely stable, the growth
+  is slow enough to ignore. It keeps going as long as any one of them keeps turning over: secrets
+  created, renamed, or reorganized over time; clients on dynamic or short-lived IP addresses such as CI
+  runners and autoscaled pods; or a fleet that upgrades often. If any of those describe your
+  deployment, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true` and get per-actor detail from audit logs
+  instead.
+
+  This tradeoff applies only to Prometheus export. With `OTEL_EXPORT_TYPE=otlp`, memory for these
+  meters does not accumulate across the process lifetime.
+</Warning>
 
 For per-user / per-identity / per-IP / per-project breakdowns, query the audit log table. It carries `actorId`, `actorType`, `projectId`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who* and *where*.
 
@@ -360,7 +380,7 @@ Every emitted metric carries these resource-level attributes (no per-metric card
 - `git.commit.sha` — the exact commit the build was produced from, when available
 - `deployment.environment` — the environment the instance is running in (e.g. `production`, `staging`, `development`)
 
-### Core API Metrics
+### Core API metrics
 
 These metrics track all HTTP API requests to Infisical, including request counts, latency, and errors. Use these to monitor overall API health, identify performance bottlenecks, and track usage patterns across users and machine identities.
 
@@ -457,7 +477,7 @@ These metrics track all HTTP API requests to Infisical, including request counts
   </Accordion>
 </AccordionGroup>
 
-### Secret Operations Metrics
+### Secret operations metrics
 
 These metrics provide visibility into secret access patterns, helping you understand which secrets are being accessed, by whom, and from where. Essential for security auditing and access pattern analysis.
 
@@ -488,7 +508,7 @@ These metrics provide visibility into secret access patterns, helping you unders
   </Accordion>
 </AccordionGroup>
 
-### Authentication Metrics
+### Authentication metrics
 
 These metrics track authentication attempts and outcomes, enabling you to monitor login success rates, detect potential security threats, and identify authentication issues.
 
@@ -555,7 +575,7 @@ These metrics track authentication attempts and outcomes, enabling you to monito
   window) rather than a snapshot gauge.
 </Note>
 
-### SSO Configuration Metrics (InfisicalCore)
+### SSO configuration metrics (InfisicalCore)
 
 These metrics track changes to SSO configuration, helping you detect unexpected reconfiguration of identity providers.
 
@@ -575,7 +595,7 @@ These metrics track changes to SSO configuration, helping you detect unexpected 
   </Accordion>
 </AccordionGroup>
 
-### SCIM Provisioning Metrics (InfisicalCore)
+### SCIM provisioning metrics (InfisicalCore)
 
 These metrics track SCIM provisioning operations (user and group lifecycle), enabling you to monitor directory-sync throughput and failures.
 
@@ -605,7 +625,7 @@ These metrics track SCIM provisioning operations (user and group lifecycle), ena
   </Accordion>
 </AccordionGroup>
 
-### Database Metrics (InfisicalCore)
+### Database metrics (InfisicalCore)
 
 This metric provides visibility into connection pool health. Query latency is intentionally not emitted, as managed databases (for example, Amazon RDS Performance Insights) already report per-statement latency at the server.
 
@@ -624,7 +644,7 @@ This metric provides visibility into connection pool health. Query latency is in
   </Accordion>
 </AccordionGroup>
 
-### Key Management Interoperability Protocol Metrics
+### Key management interoperability protocol metrics
 
 These metrics track Key Management Interoperability Protocol (KMIP) operations, providing visibility into key management activities including key creation, retrieval, activation, revocation, and destruction.
 
@@ -652,7 +672,7 @@ These metrics track Key Management Interoperability Protocol (KMIP) operations, 
   </Accordion>
 </AccordionGroup>
 
-### Integration & Secret Sync Metrics
+### Integration & secret sync metrics
 
 These metrics monitor secret synchronization operations between Infisical and external systems, helping you track sync health, identify integration failures, and troubleshoot connectivity issues.
 
@@ -686,7 +706,7 @@ These metrics monitor secret synchronization operations between Infisical and ex
   </Accordion>
 </AccordionGroup>
 
-### Job Queue Metrics (InfisicalCore)
+### Job queue metrics (InfisicalCore)
 
 These metrics give per-queue visibility into BullMQ worker health: throughput, latency, contention, failures, and stalls. Use these to detect stuck workers, queue backlog, and which queues are failing.
 
@@ -772,7 +792,7 @@ These metrics give per-queue visibility into BullMQ worker health: throughput, l
   </Accordion>
 </AccordionGroup>
 
-### Audit Log Metrics (InfisicalCore)
+### Audit log metrics (InfisicalCore)
 
 End-to-end audit-log pipeline observability: how many events get enqueued per event type / actor, how long persistence takes, and how many are ultimately dropped.
 
@@ -820,7 +840,7 @@ End-to-end audit-log pipeline observability: how many events get enqueued per ev
   </Accordion>
 </AccordionGroup>
 
-### Audit Log Stream Metrics (InfisicalCore)
+### Audit log stream metrics (InfisicalCore)
 
 Per-provider observability for the audit-log stream feature (Datadog, Splunk, Custom HTTP, Azure, Cribl).
 
@@ -854,7 +874,55 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
   </Accordion>
 </AccordionGroup>
 
-### Alert Dispatch Metrics (InfisicalCore)
+### Product analytics aggregation metrics (InfisicalCore)
+
+High-volume product analytics events (secret pulls, machine identity logins, certificate issuance, and similar) are buffered in Redis and rolled up by a cron every 10 minutes instead of being sent one by one. The buffer is deliberately bounded, so events that the roll-up does not reach in time are discarded. These metrics tell you whether that is happening. They are only emitted when product analytics is enabled (`TELEMETRY_ENABLED`), since the roll-up does not run otherwise.
+
+<AccordionGroup>
+  <Accordion title="Aggregation Published">
+    **Metric Name**: `infisical.product_analytics.published.count`
+
+    **Type**: Counter
+
+    **Unit**: `{event}`
+
+    **Description**: Buffered events drained from Redis and sent upstream. Use it as the denominator for the drop rate below.
+
+    **Attributes**:
+      - `product_analytics.event_type` (string): the buffered event, e.g. `secrets pulled`
+  </Accordion>
+
+  <Accordion title="Aggregation Dropped">
+    **Metric Name**: `infisical.product_analytics.dropped.count`
+
+    **Type**: Counter
+
+    **Unit**: `{event}`
+
+    **Description**: Buffered events discarded before they were sent. `retention` means the event aged past the 30-minute buffer window while the roll-up was behind; `unparseable` means its payload could not be read back and points at a bug rather than at capacity.
+
+    **Attributes**:
+      - `product_analytics.event_type` (string)
+      - `product_analytics.drop_reason` (string): `retention` or `unparseable`
+  </Accordion>
+
+  <Accordion title="Aggregation Shard Backlog">
+    **Metric Name**: `infisical.product_analytics.shard.backlog`
+
+    **Type**: Histogram
+
+    **Unit**: `{entry}`
+
+    **Description**: Entries left in a buffer shard after the roll-up finished with it. Zero on a healthy run.
+
+    **Attributes**:
+      - `product_analytics.event_type` (string)
+  </Accordion>
+</AccordionGroup>
+
+**What to alarm on**: a sustained `retention` drop rate, and any `unparseable` drop at all. Losing a few analytics events occasionally costs nothing, but a rate that does not return to zero means the roll-up is permanently behind the write rate. The backlog histogram is the early warning: it rises before drops start, and a shard sitting near 100,000 entries is also shedding the oldest events on write, invisibly to the drop counter.
+
+### Alert dispatch metrics (InfisicalCore)
 
 Every "notify me when X happens" alert (credential expiry and anything else built on the alert module) is delivered by a dispatch job. This metric records how each job ended, so you can tell a dropped notification apart from a job that had nothing to send.
 
@@ -893,7 +961,7 @@ Every "notify me when X happens" alert (credential expiry and anything else buil
   </Accordion>
 </AccordionGroup>
 
-### Permission Cache Metrics (InfisicalCore)
+### Permission cache metrics (InfisicalCore)
 
 The CASL permission cache uses a fingerprint-based two-tier scheme. These metrics tell you whether the cache is doing its job.
 
@@ -922,7 +990,7 @@ The CASL permission cache uses a fingerprint-based two-tier scheme. These metric
   </Accordion>
 </AccordionGroup>
 
-### Secret Cache Metrics (InfisicalCore)
+### Secret cache metrics (InfisicalCore)
 
 The secret service caches encrypted secret payloads to avoid redundant decryption on repeated reads. These metrics tell you whether the cache is effective and whether entries are being skipped for exceeding the size cap.
 
@@ -961,7 +1029,7 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
   </Accordion>
 </AccordionGroup>
 
-### Rate Limit Metrics (InfisicalCore)
+### Rate limit metrics (InfisicalCore)
 
 <AccordionGroup>
   <Accordion title="Rate Limit Exceeded">
@@ -979,7 +1047,7 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
   </Accordion>
 </AccordionGroup>
 
-### Build Info (InfisicalCore)
+### Build info (InfisicalCore)
 
 <AccordionGroup>
   <Accordion title="Build Info">
@@ -996,11 +1064,11 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
   </Accordion>
 </AccordionGroup>
 
-### Node Runtime Metrics (auto)
+### Node runtime metrics (auto)
 
 Heap usage, GC pause, event loop lag, and other Node runtime metrics are auto-emitted via `@opentelemetry/instrumentation-runtime-node`. Metric names follow the OTel runtime semantic conventions (`nodejs.eventloop.delay.*`, `v8js.heap.size.*`, etc.).
 
-### System Metrics
+### System metrics
 
 These low-level HTTP metrics are automatically collected by OpenTelemetry's instrumentation layer, providing baseline performance data for all HTTP traffic.
 

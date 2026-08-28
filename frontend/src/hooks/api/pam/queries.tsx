@@ -35,6 +35,7 @@ import {
   TPamDiscoverySource,
   TPamDiscoveryTypeOption,
   TPamFolderWithCount,
+  TPamIdentityMember,
   TPamMember,
   TPamMembersData,
   TPamResourceRole,
@@ -449,7 +450,7 @@ export const useListPamProductIdentities = () => {
   return useQuery({
     queryKey: pamKeys.productIdentities(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+      const { data } = await apiRequest.get<{ members: TPamIdentityMember[] }>(
         "/api/v1/pam/memberships/identities"
       );
       return data.members;
@@ -530,7 +531,9 @@ export const useListPamDiscoverySources = (params?: { search?: string }) => {
       );
       return data.sources;
     },
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    refetchInterval: (query) =>
+      query.state.data?.some((source) => source.lastRunStatus === "running") ? 5000 : false
   });
 };
 

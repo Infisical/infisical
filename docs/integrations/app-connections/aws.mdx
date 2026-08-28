@@ -1,5 +1,6 @@
 ---
-title: "AWS Connection"
+title: "AWS connection"
+sidebarTitle: "AWS"
 description: "Learn how to configure an AWS Connection for Infisical."
 ---
 
@@ -340,6 +341,12 @@ Infisical supports two methods for connecting to AWS.
 
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
                                 </Note>
+                                <Note>
+                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
+                                </Note>
                             </Accordion>
                             <Accordion title="AWS ACM Public CA">
                                 Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
@@ -464,7 +471,7 @@ Infisical supports two methods for connecting to AWS.
                                     Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
                                 </Note>
 
-                                #### Bucket CORS Configuration
+                                #### Bucket CORS configuration
 
                                 During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
 
@@ -822,6 +829,12 @@ Infisical supports two methods for connecting to AWS.
 
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
                                 </Note>
+                                <Note>
+                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
+                                </Note>
                             </Accordion>
                             <Accordion title="AWS ACM Public CA">
                                 Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
@@ -946,7 +959,7 @@ Infisical supports two methods for connecting to AWS.
                                     Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
                                 </Note>
 
-                                #### Bucket CORS Configuration
+                                #### Bucket CORS configuration
 
                                 During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
 

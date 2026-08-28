@@ -1,4 +1,4 @@
-import { PAM_PRODUCT_ROLE_OPTIONS } from "./roleOptions";
+import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 
 type Props = {
   value: string;

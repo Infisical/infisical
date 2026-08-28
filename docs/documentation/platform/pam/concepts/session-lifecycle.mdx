@@ -1,19 +1,24 @@
 ---
-title: "Session Lifecycle"
-sidebarTitle: "Session Lifecycle"
+title: "Session lifecycle"
+sidebarTitle: "Session lifecycle"
 description: "What happens when you connect to an account."
 ---
 
 When you connect to an [account](/documentation/platform/pam/accounts/overview) through PAM, a **session** is created. The session tracks who connected, when, for how long, and what they did. Here's what happens at each stage.
 
-## Requesting Access
+An [AI agent](/documentation/platform/pam/ai-agents/overview) goes through the same stages, with the same checks and the same recording.
+
+## Requesting access
 
 When you click **Launch Session** on an account from the **Accounts** page (or run the CLI command), PAM checks:
 
 1. **Do you have permission?** — You need a [membership](/documentation/platform/pam/concepts/access-control) (on the [folder](/documentation/platform/pam/folders/overview) or account) with the Connector or Admin role
 2. **[Template](/documentation/platform/pam/templates/overview) requirements** — If the template requires a reason, you'll be prompted to enter one. If it requires MFA, you'll need to verify your identity.
+3. **Approval, if the account is gated** — A gated account also needs an active [access request](/documentation/platform/pam/access-requests/overview) grant
 
 If everything checks out, the session is approved and you can connect.
+
+An [AI agent](/documentation/platform/pam/ai-agents/overview) cannot be prompted, so it supplies its reason up front, and it cannot use an account that requires MFA yet.
 
 ## Connecting
 
@@ -24,9 +29,9 @@ Once approved, the connection is established through the [Gateway](/documentatio
 3. The Gateway connects to the actual database or server
 4. Traffic flows through the Gateway — you never see the credentials
 
-For **Web Access**, this all happens in the browser. For **CLI Access**, the CLI starts a local proxy and you connect your preferred client to `localhost`.
+For **Web Access**, this all happens in the browser. For **CLI Access**, SSH accounts connect you straight to a shell, while every other type starts a local proxy you point your preferred client at on `localhost`.
 
-## During the Session
+## During the session
 
 While you're connected:
 
@@ -36,7 +41,7 @@ While you're connected:
 
 You can see your active sessions on the **Sessions** page.
 
-## Ending the Session
+## Ending the session
 
 A session ends when:
 
@@ -46,7 +51,7 @@ A session ends when:
 
 Recordings are available in real-time — you can review activity even while the session is still active.
 
-## After the Session
+## After the session
 
 Every session is logged:
 
@@ -55,7 +60,7 @@ Every session is logged:
 
 Admins and Auditors can review sessions from the **Sessions** page. See [Session Recording](/documentation/platform/pam/sessions/session-recording) for details on how recordings work.
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">

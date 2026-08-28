@@ -1,5 +1,6 @@
 ---
-title: "Azure App Configuration Connection"
+title: "Azure App Configuration connection"
+sidebarTitle: "Azure App Configuration"
 description: "Learn how to configure a Azure App Configuration Connection for Infisical."
 ---
 
@@ -15,7 +16,7 @@ Infisical currently only supports two methods for connecting to Azure, which are
 
   <Steps>
     <Step title="Create an application in Azure">
-      Navigate to Azure Active Directory > App registrations to create a new application.
+      Navigate to Entra ID > App registrations to create a new application.
 
       <Info>
         Azure Active Directory is now Microsoft Entra ID.
@@ -93,7 +94,7 @@ Infisical currently only supports two methods for connecting to Azure, which are
   </Steps>
 </Accordion>
 
-## Setup Azure Connection in Infisical
+## Setup Azure connection in Infisical
 
 <Steps>
 	<Step title="Navigate to App Connections">
@@ -111,7 +112,7 @@ Infisical currently only supports two methods for connecting to Azure, which are
 
           Now select the **OAuth** method and click **Connect to Azure**. 
 
-          ![Connect via Azure OAUth](/images/app-connections/azure/app-configuration/create-oauth-method.png)
+          ![Connect via Azure OAuth](/images/app-connections/azure/app-configuration/create-oauth-method.png)
 	      </Step>
 	      <Step title="Grant Access">
 	        You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
@@ -123,7 +124,7 @@ Infisical currently only supports two methods for connecting to Azure, which are
         <Step title="Create Connection">
           Fill in the **Tenant ID**, **Client ID** and **Client Secret** fields with the Directory (Tenant) ID, Application (Client) ID and Client Secret you obtained in the previous step.
 
-          ![Connect via Azure OAUth](/images/app-connections/azure/app-configuration/create-client-secrets-method.png)
+          ![Connect via Azure OAuth](/images/app-connections/azure/app-configuration/create-client-secrets-method.png)
 
           <Tip>
               You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
@@ -137,7 +138,7 @@ Infisical currently only supports two methods for connecting to Azure, which are
 	</Step>
 </Steps>
 
-## Automatic Credential Rotation
+## Automatic credential rotation
 
 When using the **Client Secret** authentication method, Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
 

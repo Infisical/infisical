@@ -1,13 +1,15 @@
 ---
-sidebarTitle: "Overview"
+title: "App connections"
 description: "Learn how to manage and configure third-party app connections with Infisical."
+sidebarTitle: "App connections"
+icon: "plug"
 ---
 
-App Connections enable you to integrate your Infisical projects with third-party services in a secure and versatile way.
+App connections allow you to integrate your Infisical projects with third-party services.
 
-<Note>
-    App connections can also be created and managed independently in projects now.
-</Note>
+<Card title="Explore options" icon="search" href="/integrations/app-connections">
+  Browse and search every available app connection.
+</Card>
 
 ## Concept
 
@@ -44,6 +46,18 @@ that can be used across multiple features. Example use cases include syncing sec
 
 </div>
 
+## Where a connection lives
+
+A connection belongs either to a single project or to the whole organization. Both kinds appear in the same dropdown when you set up a feature, so it is worth deciding which you want before you create one.
+
+Create it at the **organization** level when more than one project will use the same account. You get one credential to rotate, one set of permissions to review, and one place to revoke access.
+
+Create it at the **project** level when the credential belongs to that project alone, or when teams manage their own access and you want a clear boundary between them.
+
+<Warning>
+    Creating a connection from inside a setup form always creates it at the project level. If several teams do this against the same account, you end up storing the same credential several times over. When you expect a connection to be shared, ask an organization admin to create it once at the organization level instead.
+</Warning>
+
 ## Workflow
 
 App Connections require initial setup in both your third-party application and Infisical. Follow these steps to establish a secure connection:
@@ -68,6 +82,10 @@ to limit the access of this entity to the minimal permission set required to per
 
 3. <strong>Create App Connection:</strong> Configure the connection in Infisical using your generated credentials through either the UI or API.
 
+<Tip>
+    You do not have to do this in advance. Secret syncs, secret rotations, certificate syncs, and secret scanning data sources all let you create a connection from inside their setup form without losing your progress.
+</Tip>
+
 <Info>
     Some App Connections can only be created via the UI such as connections using OAuth.
 </Info>
@@ -76,7 +94,7 @@ to limit the access of this entity to the minimal permission set required to per
 in the UI or by passing the associated `connectionId` when generating resources via the API.
 
 
-## Platform Managed Credentials
+## Platform managed credentials
 
 Some App Connections support the ability to have their credentials managed by Infisical. By enabling this option,
 Infisical will modify the credentials to prevent external use of the configured access entity.

@@ -17,12 +17,14 @@ export enum NotificationType {
   PROJECT_ACCESS_REQUEST = "project-access-request",
   PROJECT_INVITATION = "project-invitation",
   SECRET_SYNC_FAILED = "secret-sync-failed",
+  PKI_SYNC_FAILED = "pki-sync-failed",
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
-  AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended"
+  AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
+  NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated"
 }
 
 export interface TCreateUserNotificationDTO {

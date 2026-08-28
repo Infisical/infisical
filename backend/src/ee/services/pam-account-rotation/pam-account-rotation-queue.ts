@@ -1,9 +1,8 @@
-import opentelemetry from "@opentelemetry/api";
-
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -29,7 +28,7 @@ export const pamAccountRotationQueueServiceFactory = async ({
 }: TPamAccountRotationQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const meter = opentelemetry.metrics.getMeter("InfisicalCore");
+  const meter = resolveCoreMeter();
   const pendingGauge = meter.createObservableGauge("infisical.pam_credential_rotation.pending", {
     description: "PAM accounts overdue for rotation (nextRotationAt <= now). Sustained growth = drain can't keep up.",
     unit: "{account}"

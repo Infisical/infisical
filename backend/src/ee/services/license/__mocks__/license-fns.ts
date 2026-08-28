@@ -14,9 +14,7 @@ export const getDefaultOnPremFeatures = () => {
     enterprisePamAccount: null,
     pkiCodeSigning: null,
     memberLimit: null,
-    membersUsed: 0,
     identityLimit: null,
-    identitiesUsed: 0,
     environmentLimit: null,
     environmentsUsed: 0,
     secretVersioning: true,
@@ -47,11 +45,10 @@ export const getDefaultOnPremFeatures = () => {
     honeyTokens: false,
     honeyTokenLimit: 0,
     gatewayPool: false,
-    fips: true
+    fips: true,
+    secretsFolderRbac: true
   };
 };
-
-export const setupLicenseRequestWithStore = () => {};
 
 export const getLicenseKeyConfig = () => {
   return {

@@ -36,6 +36,8 @@ type Props = {
   isError?: boolean;
   noGatewayLabel?: string;
   noGatewayIcon?: LucideIcon;
+  // Hides one gateway from the list, for callers where selecting it would be self-referential.
+  excludeGatewayId?: string;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -53,7 +55,8 @@ export const GatewayPicker = ({
   placeholder,
   isError,
   noGatewayLabel = "Internet Gateway",
-  noGatewayIcon: NoGatewayIcon = GlobeIcon
+  noGatewayIcon: NoGatewayIcon = GlobeIcon,
+  excludeGatewayId
 }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -85,7 +88,7 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => !g.isV1) ?? [];
+  const v2Gateways = gateways?.filter((g) => !g.isV1 && g.id !== excludeGatewayId) ?? [];
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 

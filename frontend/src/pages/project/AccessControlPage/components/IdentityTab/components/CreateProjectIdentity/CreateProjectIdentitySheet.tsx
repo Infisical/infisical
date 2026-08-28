@@ -9,6 +9,11 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CreateProjectIdentityForm } from "./CreateProjectIdentityForm";
 
+const PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "PAM"
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -18,15 +23,17 @@ export const CreateProjectIdentitySheet = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
+  // Additional privileges are a Secret Manager concept; the other products grant access per-resource.
   const canGrantPrivileges =
+    currentProject.type === ProjectType.SecretManager &&
+    currentProject.isLegacyAdditionalPrivilegesEnabled &&
     permission.can(ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity) &&
     permission.can(
       ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
       ProjectPermissionSub.Identity
     );
 
-  const productLabel =
-    currentProject.type === ProjectType.CertificateManager ? "Certificate Manager" : "Project";
+  const productLabel = PRODUCT_LABELS[currentProject.type] ?? "Project";
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -41,6 +48,7 @@ export const CreateProjectIdentitySheet = ({ isOpen, onOpenChange }: Props) => {
           <CreateProjectIdentityForm
             projectId={currentProject.id}
             projectType={currentProject.type}
+            productLabel={productLabel}
             canGrantPrivileges={canGrantPrivileges}
             onClose={() => onOpenChange(false)}
           />

@@ -16,7 +16,7 @@ import {
 } from "../pam-account-rotation/pam-rotation-fns";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
+import { ACCOUNT_TYPE_CONFIGS, accountTypeRequiresCredential } from "./pam-account-schemas";
 
 const ROTATABLE_TYPE_VALUES = ROTATABLE_ACCOUNT_TYPES as readonly string[];
 
@@ -38,6 +38,23 @@ const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [stri
   .map(([type]) => `'${type}'`)
   .join(", ");
 
+// Derived from accountTypeRequiresCredential so this predicate cannot drift from the TypeScript one in
+// getAccountAccessibilityIssues. A type that is reachable without credentials (Redis) has
+// credentialConfigured false on every account, so requiring it here would hide those accounts from every
+// accessible listing while the dashboard still showed them as launchable.
+const credentialExemptAccountTypes = Object.values(PamAccountType)
+  .filter((type) => !accountTypeRequiresCredential(type))
+  .map((type) => `'${type}'`)
+  .join(", ");
+
+// Guarded because an empty exemption list would render as `type in ()`, which is a syntax error rather
+// than a no-op.
+const credentialConfiguredSql = (accountTable: string, templateTable: string): string =>
+  credentialExemptAccountTypes
+    ? `("${templateTable}"."type" in (${credentialExemptAccountTypes})
+      or "${accountTable}"."credentialConfigured" = true)`
+    : `"${accountTable}"."credentialConfigured" = true`;
+
 export const staleAccountExistsSql = (accountTable: string): string =>
   `exists (
     select 1 from "${TableName.PamDiscoveredAccount}"
@@ -50,7 +67,7 @@ export const accountAccessibilitySql = (accountTable: string, templateTable: str
     ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
       or "${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
       or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
-    and "${accountTable}"."credentialConfigured" = true
+    and ${credentialConfiguredSql(accountTable, templateTable)}
     and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
       or (
         "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'

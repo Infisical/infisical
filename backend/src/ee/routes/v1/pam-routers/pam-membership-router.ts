@@ -91,7 +91,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.pamMembership.getAccessCapabilities(actorCtx(req));
     }
@@ -107,7 +107,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
       return { members: all.filter((m) => m.userId) };
@@ -124,7 +124,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
       return { members: all.filter((m) => m.groupId) };
@@ -156,8 +156,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: {
         200: z.object({
           memberships: z.array(MemberResultSchema),
-          skipped: z.array(z.string()),
-          unresolved: z.array(z.string())
+          skipped: z.array(z.string()).describe("Users that were already members of the product")
         })
       }
     },
@@ -331,13 +330,23 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "listPamProductIdentityMembers",
       description: "List identity members of the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      response: { 200: z.object({ members: z.array(MemberSchema) }) }
+      response: {
+        200: z.object({
+          members: z.array(
+            MemberSchema.extend({
+              name: z.string(),
+              identityProjectId: z.string().uuid().nullable().optional(),
+              identityOrgId: z.string().uuid().nullable().optional()
+            })
+          )
+        })
+      }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const all = await server.services.pamMembership.listProductMembers(actorCtx(req));
-      return { members: all.filter((m) => m.identityId) };
+      const members = await server.services.pamMembership.listProductIdentityMembers(actorCtx(req));
+      return { members };
     }
   });
 
@@ -442,7 +451,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listFolderMembers({
         ...actorCtx(req),
@@ -463,7 +472,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listFolderMembers({
         ...actorCtx(req),
@@ -676,7 +685,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listFolderMembers({
         ...actorCtx(req),
@@ -798,7 +807,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listAccountMembers({
         ...actorCtx(req),
@@ -819,7 +828,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listAccountMembers({
         ...actorCtx(req),
@@ -1032,7 +1041,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ members: z.array(MemberSchema) }) }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const all = await server.services.pamMembership.listAccountMembers({
         ...actorCtx(req),

@@ -101,7 +101,7 @@ const RotationAccountPicker = ({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search accounts..." />
+          <CommandInput aria-label="Search accounts" placeholder="Search accounts..." />
           <CommandList>
             {isPending ? (
               <div className="p-2">
@@ -176,10 +176,8 @@ export const RotationTab = ({ accountId, supportsDependencies, onDirtyChange }: 
       await updateRotation.mutateAsync({ accountId, rotationAccountId: data.rotationAccountId });
       createNotification({ type: "success", text: "Rotation account updated" });
       reset(data);
-    } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data
-        ?.message;
-      createNotification({ type: "error", text: message ?? "Failed to update rotation account" });
+    } catch {
+      // A failed update returns a 4xx that the global request handler surfaces as a toast
     }
   };
 

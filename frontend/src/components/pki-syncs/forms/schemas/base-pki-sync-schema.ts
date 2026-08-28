@@ -1,14 +1,11 @@
 import { AnyZodObject, z } from "zod";
 
-export const POST_SYNC_COMMAND_MAX_LENGTH = 2048;
+export const HOST_COMMAND_MAX_LENGTH = 8192;
 
-export const PostSyncCommandSchema = z
+export const HostCommandSchema = z
   .string()
   .trim()
-  .max(
-    POST_SYNC_COMMAND_MAX_LENGTH,
-    `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`
-  )
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullish()
   .transform((command) => command || null);
 

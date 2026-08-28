@@ -2,8 +2,14 @@ import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/abil
 import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/services/auth/auth-type";
 
-import { expandLegacyForbidActions, throwIfMissingSecretReadValueOrDescribePermission } from "./permission-fns";
+import {
+  expandLegacyForbidActions,
+  getProjectPermissionFingerprint,
+  interpolatePermissionRules,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -249,5 +255,70 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
         secretPath: "/"
       })
     ).toThrow();
+  });
+});
+
+describe("getProjectPermissionFingerprint", () => {
+  const dto = {
+    projectId: "project-1",
+    orgId: "org-1",
+    actorId: "user-1",
+    actorType: ActorType.USER as ActorType.USER
+  };
+
+  const deps = (folderVersion?: number) =>
+    ({
+      permissionDAL: { getPermissionFingerprint: async () => "membership-hash" },
+      keyStore: { pgGetIntItem: async () => folderVersion }
+    }) as unknown as Parameters<typeof getProjectPermissionFingerprint>[1];
+
+  test("appends the project's folder permission version to the membership fingerprint", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(7))).toBe("membership-hash:7");
+  });
+
+  test("changes when the folder permission version is bumped", async () => {
+    const [before, after] = await Promise.all([
+      getProjectPermissionFingerprint(dto, deps(7)),
+      getProjectPermissionFingerprint(dto, deps(8))
+    ]);
+    expect(before).not.toBe(after);
+  });
+
+  test("treats a missing version row as zero", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(undefined))).toBe("membership-hash:0");
+  });
+});
+
+describe("interpolatePermissionRules", () => {
+  const templatedRule = (value: string): Rule =>
+    ({
+      action: [ProjectPermissionSecretActions.DescribeSecret],
+      subject: ProjectPermissionSub.Secrets,
+      conditions: { environment: value }
+    }) as Rule;
+
+  test("interpolates identity context when the rules carry a template", () => {
+    const [rule] = interpolatePermissionRules([templatedRule("{{ identity.metadata.env }}")], {
+      identity: { metadata: { env: "prod" } }
+    });
+
+    expect(rule.conditions).toEqual({ environment: "prod" });
+  });
+
+  // Untemplated rules are returned as-is rather than copied, so callers share the module-level built-in
+  // rule sets. This is what makes mutating a rule in place unsafe.
+  test("returns untemplated rules as-is, without copying", () => {
+    const rules = [templatedRule("prod"), templatedRule("staging")];
+
+    expect(interpolatePermissionRules(rules, { identity: { metadata: {} } })).toBe(rules);
+  });
+
+  test("still templates block helpers and comments, which are not bare expressions", () => {
+    const [rule] = interpolatePermissionRules(
+      [templatedRule("{{#if identity.metadata.env}}{{ identity.metadata.env }}{{else}}dev{{/if}}")],
+      { identity: { metadata: {} } }
+    );
+
+    expect(rule.conditions).toEqual({ environment: "dev" });
   });
 });

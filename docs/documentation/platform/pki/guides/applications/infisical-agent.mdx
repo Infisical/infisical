@@ -1,6 +1,6 @@
 ---
-title: "Automate Certificates with Infisical Agent"
-sidebarTitle: "Automate Certificate Renewal"
+title: "Automate certificates with Infisical Agent"
+sidebarTitle: "Automate certificate renewal"
 description: "Set up automatic certificate management using the Infisical Agent."
 ---
 
@@ -25,10 +25,10 @@ Automatically request, persist, and renew certificates on a server using the Inf
     ```
   </Step>
   <Step title="Create Agent Configuration">
-    Create `/etc/infisical/agent-config.yaml`:
+    Save your machine identity's client ID and client secret into files on the target machine, then create `/etc/infisical/agent-config.yaml` pointing at them:
     
     ```yaml
-    version: v1
+    version: v2
 
     infisical:
       address: "https://app.infisical.com"
@@ -36,8 +36,8 @@ Automatically request, persist, and renew certificates on a server using the Inf
     auth:
       type: "universal-auth"
       config:
-        client-id: "<your-client-id>"
-        client-secret: "<your-client-secret>"
+        client-id: "/etc/infisical/client-id" # Path to a file containing the client ID
+        client-secret: "/etc/infisical/client-secret" # Path to a file containing the client secret
 
     certificates:
       - application-name: "my-first-app"
@@ -79,7 +79,7 @@ The agent will:
 - Automatically renew it before expiration
 - Execute post-hooks (like reloading NGINX) after renewal
 
-## Next Steps
+## Next steps
 
-- See the [Infisical Agent Reference](/integrations/platforms/certificate-agent) for all configuration options
+- See the [Infisical Agent reference](/documentation/platform/pki/reference/infisical-agent) for all configuration options
 - Set up [alerting](/documentation/platform/pki/applications/alerting/overview) for expiration notifications

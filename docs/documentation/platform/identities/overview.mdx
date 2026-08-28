@@ -1,34 +1,33 @@
 ---
-title: "User and Machine Identities"
-sidebarTitle: "Overview"
-description: "Learn more about identities to interact with resources in Infisical."
+title: "Identity and access"
+sidebarTitle: "Identity and access"
+icon: "id-card"
+description: "Understand who and what can reach Infisical, how each one proves it, and what they are allowed to do."
 ---
 
-To interact with secrets and resource with Infisical, it is important to understand the concept of identities. 
-Identities can be of two types: 
-- **People** (e.g., developers, platform engineers, administrators)
-- **Machines** (e.g., machine entities for managing secrets in CI/CD pipelines, production applications, and more)
-
-Both people and machines are able to utilize corresponding clients (e.g., Dashboard UI, CLI, SDKs, API, Kubernetes Operator) together with allowed authentication methods (e.g., email & password, SAML SSO, LDAP, OIDC, Universal Auth).
+Everything that reaches Infisical does so as an identity. There are two kinds of identities:
 
 <CardGroup cols={2}>
-  <Card href="./user-identities" title="People (User Identities)" icon="people" >
-    Learn more about the concept on user identities in Infisical. 
+  <Card title="User Identities" icon="user" href="/documentation/platform/identities/user-identities">
+    People who sign in through the dashboard or the CLI.
   </Card>
-  <Card
-    title="Machine Identities"
-    href="./machine-identities"
-    icon="computer"
-  >
-    Understand the concept of machine identities in Infisical. 
+  <Card title="Machine Identities" icon="robot" href="/documentation/platform/identities/machine-identities">
+    Applications, pipelines, and clusters that authenticate with no person present.
   </Card>
 </CardGroup>
 
-## Calculating Identity Counts
+Authenticating and being authorized are two separate steps. Your permissions are decided by the roles and policies you've been given, which are covered under access control:
+
+<Card title="Access Control" icon="shield-halved" href="/documentation/platform/access-controls/overview">
+  Roles, attributes, and approvals that decide what an identity may do.
+</Card>
+
+
+## Calculating identity counts
 
 Understanding how to calculate your identity requirements helps with capacity planning and licensing.
 
-### User Identities
+### User identities
 
 User identity count is straightforward—it equals the number of human users who need access to Infisical. This includes developers, DevOps/platform engineers, security administrators, and any other team members requiring direct Infisical access.
 
@@ -36,7 +35,9 @@ User identity count is straightforward—it equals the number of human users who
   User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
 </Tip>
 
-### Machine Identities
+An agent operated one-to-one by a person, such as a local coding assistant, authenticates as that person and does not add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
+
+### Machine identities
 
 If you're familiar with cloud provider IAM concepts, Infisical machine identities work the same way:
 
@@ -53,7 +54,7 @@ Just as you don't create a new IAM role for every EC2 instance or a new service 
   **Key principle**: If multiple machines require identical permissions to the same secrets, they share a single machine identity—just like multiple EC2 instances can assume the same IAM role.
 </Info>
 
-#### How to Calculate Machine Identities
+#### How to calculate machine identities
 
 Consider these factors when determining your machine identity count:
 
@@ -114,11 +115,77 @@ Consider these factors when determining your machine identity count:
   Group services by their secret access requirements, not by the number of service instances or replicas.
 </Accordion>
 
-## Best Practices
+#### AI agent identities
+
+Agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What decides whether an agent consumes a machine identity is how it authenticates, not that it is an agent or where it runs.
+
+| How the agent authenticates | Counts as |
+|-----------------------------|-----------|
+| **As a person.** An agent started with the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) authenticates as the user who ran `infisical login`, so the agent-to-user ratio is 1:1. | The operator's existing user identity. No machine identity. |
+| **As itself.** An agent that runs perpetually in its own environment, on a schedule, or unattended, plus any agent you deliberately scope to its own identity, authenticates with its own [machine identity](/documentation/platform/identities/machine-identities). | One machine identity per unique permission set. |
+
+<Note>
+  Running a coding agent on your own computer does not consume a machine identity. With the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
+</Note>
+
+<Tip>
+  A scoped machine identity can be narrower than the person operating the agent, which is why PAM recommends [running a sensitive or untrusted agent as its own identity](/documentation/platform/pam/ai-agents/overview#running-unattended) even when someone is watching it. That isolation is a deliberate least-privilege choice, and every identity you create for it counts.
+</Tip>
+
+#### Scoping agent identities
+
+For agents that authenticate as themselves, scope identities by purpose and permission set, not by agent instance, run, container, or VM.
+
+| Grouping | Identities needed |
+|----------|-------------------|
+| Multiple instances or runs of the same agent, with the same access | 1 |
+| Two agents serving different functions, such as recruitment and engineering | 2 |
+| One agent that needs access to two different security tiers | Consider 2, scoped per tier |
+| A [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) in front of those agents | Add 1 for the proxy itself |
+
+<Info>
+  In a Standalone Agent Proxy deployment there are two kinds of identity. Each agent authenticates to the proxy with its own machine identity, which holds only the **Proxy** permission on the services that agent uses. The proxy has a separate identity of its own, and that is the one that fetches the secrets its [proxied services](/documentation/platform/agent-proxy/proxied-services) reference from Infisical. Count the proxy's identity on top of one identity per agent permission set.
+</Info>
+
+<Accordion title="Example 6: Local coding agents">
+  **Scenario**: 40 engineers each run a coding agent on their laptop with `infisical secrets agent-proxy run`.
+
+  **Machine identities needed**: **0**
+
+  Each run authenticates as the engineer who started it, so the access is already accounted for by their 40 user identities. A machine identity is not required here. If you later decide a particular agent should run under its own scoped identity, that identity counts, even though the agent still runs locally.
+</Accordion>
+
+<Accordion title="Example 7: Standalone agents with different purposes">
+  **Scenario**: You run two always-on Slack agents in your own infrastructure:
+  - A recruitment agent scoped to ATS and calendar access
+  - An engineering agent scoped to CI and observability access
+
+  **Machine identities needed**: **2**
+
+  Each agent has a distinct purpose and a distinct permission set. If you later add three more recruitment agents that need the same access, they can all share the recruitment identity, so the count stays at 2.
+</Accordion>
+
+<Accordion title="Example 8: Horizontally scaled agent workers">
+  **Scenario**: An agent that sorts incoming support tickets runs as 25 concurrent workers, each spawning short-lived runs in its own container.
+
+  **Machine identities needed**: **1**
+
+  Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity, the same way 10 VMs with identical access do.
+</Accordion>
+
+<Accordion title="Example 9: Remote agents behind a Standalone Agent Proxy">
+  **Scenario**: Two remote agents with different permission sets run behind one [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+
+  **Machine identities needed**: **3**
+
+  Two for the agents, since each authenticates to the proxy with its own machine identity, plus one for the proxy, which uses a separate identity to fetch secrets back from Infisical.
+</Accordion>
+
+## Best practices
 
 While consolidating machine identities reduces management overhead, **more granular identities provide stronger security** through least-privilege access and reduced blast radius. The right balance depends on your security requirements.
 
-### When to Use Separate Identities
+### When to use separate identities
 
 Create distinct machine identities to enforce security boundaries between:
 
@@ -133,7 +200,7 @@ Create distinct machine identities to enforce security boundaries between:
   **Blast radius consideration**: If a machine identity is compromised, an attacker gains access to everything that identity can access. Design your identity boundaries around "what's the worst case if this credential leaks?"
 </Warning>
 
-### When Consolidation is Acceptable
+### When consolidation is acceptable
 
 Sharing a machine identity across workloads is appropriate when:
 
@@ -141,7 +208,7 @@ Sharing a machine identity across workloads is appropriate when:
 - **Stateless workers** — Horizontally scaled workers performing the same job
 - **Tightly coupled services** — Services that are deployed together and share a security boundary
 
-### Kubernetes Best Practices
+### Kubernetes best practices
 
 For Kubernetes environments, we recommend mapping machine identities at the **namespace level**:
 
@@ -153,7 +220,7 @@ For Kubernetes environments, we recommend mapping machine identities at the **na
     Use [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) to bind machine identities to specific ServiceAccounts and namespaces. This ensures only pods in the authorized namespace can authenticate.
   </Step>
   <Step title="Scope Agent Injector or Operator access">
-    When using the [Infisical Agent Injector](/integrations/platforms/kubernetes/infisical-agent-injector) or [Operator](/integrations/platforms/kubernetes/infisical-operator), configure namespace-scoped access rather than cluster-wide permissions.
+    When using the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) or [Operator](/integrations/platforms/kubernetes/overview), configure namespace-scoped access rather than cluster-wide permissions.
   </Step>
 </Steps>
 
@@ -174,7 +241,7 @@ For Kubernetes environments, we recommend mapping machine identities at the **na
   This ensures that a compromised pod in `team-analytics` cannot access payment processing credentials, even if an attacker gains cluster-level access.
 </Accordion>
 
-### Quick Assessment Questions
+### Quick assessment questions
 
 When planning your machine identity strategy, consider:
 
@@ -185,6 +252,8 @@ When planning your machine identity strategy, consider:
 3. **What are your compliance requirements?** Regulated workloads may require documented isolation from non-regulated systems.
 
 4. **What's your authentication topology?** A single identity can authenticate from multiple sources (Kubernetes + AWS IAM + GCP), so multi-cloud doesn't necessarily mean multiple identities—but multi-tenant does.
+
+5. **How does this agent authenticate?** An agent that authenticates as a person inherits that person's permissions, while an agent that authenticates as itself needs its own identity scoped to its purpose.
 
 <Note>
   **Bottom line**: When in doubt, err on the side of more identities. The operational overhead of additional identities is minimal compared to the security benefits of proper isolation.

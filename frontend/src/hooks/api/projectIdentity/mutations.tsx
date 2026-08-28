@@ -22,9 +22,12 @@ export const useCreateProjectIdentity = () => {
       );
       return data.identity;
     },
-    onSuccess: () => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: projectIdentityQuery.allKey() });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+      });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.all()
       });

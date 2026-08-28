@@ -1,5 +1,6 @@
 ---
 title: "Security"
+sidebarTitle: "Security"
 description: "Infisical's security model includes many considerations and initiatives."
 ---
 
@@ -75,7 +76,7 @@ All symmetric encryption operations in Infisical, with the exception of those pr
 
 Infisical employs a multilayer encryption architecture where keys are organized hierarchically. Each layer encrypts the layer below it, ensuring that accessing any sensitive data requires both server configuration (the root encryption key) and data from the storage backend. This defense-in-depth approach means that compromising the database alone is insufficient to decrypt sensitive data.
 
-### Key Hierarchy
+### Key hierarchy
 
 The following diagram illustrates Infisical's key hierarchy, showing how encryption keys are organized and how they protect data at different levels of the platform.
 
@@ -143,7 +144,7 @@ flowchart LR
     class LAYER1,LAYER2 invisible
 ```
 
-#### Root Encryption Key
+#### Root encryption key
 
 The root encryption key is a 256-bit AES key provided by the operator as an environment variable. This key is the foundation of Infisical's encryption architecture and never leaves the server's memory during operation.
 
@@ -155,7 +156,7 @@ The root encryption key is a 256-bit AES key provided by the operator as an envi
 
 The root encryption key can alternatively be sourced from an external Hardware Security Module (HSM) such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), providing additional security guarantees, and removing the need for the operator to store the root encryption key in an environment variable.
 
-#### Internal KMS Root Key
+#### Internal KMS root key
 
 The Internal KMS Root Key is automatically generated when an Infisical instance starts for the first time. This key serves as an intermediate layer between the operator-provided root key and tenant-specific data keys.
 
@@ -167,7 +168,7 @@ The Internal KMS Root Key is automatically generated when an Infisical instance 
 
 This separation ensures that the operator-provided root key is only used to protect a single key (the Internal KMS Root Key), limiting its exposure during cryptographic operations.
 
-#### Organization & Project Data Keys
+#### Organization & project data keys
 
 Data keys are the encryption keys that directly protect sensitive data within Infisical. Each organization and each project has its own dedicated data key, providing cryptographic isolation between tenants.
 
@@ -191,7 +192,7 @@ Data keys are the encryption keys that directly protect sensitive data within In
 
 Project data keys can optionally be managed by an external KMS instead of the Internal KMS Root Key, allowing organizations to maintain control over their encryption keys. See [External KMS Integration](#external-kms-integration) for more details.
 
-### Encryption Operations
+### Encryption operations
 
 <Tabs>
   <Tab title="Storing Data">
@@ -218,11 +219,11 @@ When a project is configured to use an [External KMS](/documentation/platform/km
 Instead of the Internal KMS Root Key decrypting the project data key, the encrypted data key is sent to the external KMS provider (e.g., AWS KMS, GCP KMS) for decryption. The external KMS performs the key unwrapping operation and returns the plaintext data key, which is then used for the AES-256-GCM encryption/decryption of the actual data. This approach ensures that the project's root of trust lies with the external KMS, giving organizations full control over key access policies and audit logging at the KMS level.
 </Tip>
 
-### Key Generation
+### Key generation
 
 All cryptographic keys in Infisical are generated using Node.js's core cryptographic library, which provides cryptographically secure pseudo-random data. When FIPS mode is enabled, this library is guaranteed to use FIPS-validated cryptographic implementations.
 
-### External KMS Integration
+### External KMS integration
 
 For organizations with specific compliance requirements or those who need to maintain control over their encryption keys, Infisical supports integration with external Key Management Systems. When configured, project data keys can be encrypted by an external KMS instead of the Internal KMS Root Key.
 
@@ -233,7 +234,7 @@ Supported external KMS providers include:
 
 For detailed configuration instructions, see the [KMS Configuration documentation](/documentation/platform/kms-configuration/overview).
 
-### FIPS Compliance
+### FIPS compliance
 
 Infisical can be deployed in a FIPS-compliant configuration, using FIPS 140-3 validated cryptographic modules for all encryption operations within the FIPS boundary. When FIPS mode is enabled:
 
@@ -243,7 +244,7 @@ Infisical can be deployed in a FIPS-compliant configuration, using FIPS 140-3 va
 
 For detailed information on deploying Infisical in FIPS mode, see the [FIPS documentation](/self-hosting/guides/production-hardening#fips-140-3-compliance) _(Enterprise Only)_.
 
-## Infrastructure & High availability (Infisical Cloud)
+## Infrastructure & high availability (Infisical Cloud)
 
 Infisical Cloud uses a number of strategies to keep services running smoothly and ensure data stays available, even during failures; we document these strategies below:
 
@@ -253,7 +254,7 @@ Infisical Cloud uses a number of strategies to keep services running smoothly an
 
 Infisical Cloud utilizes several strategies to ensure high availability, leveraging AWS services to maintain continuous operation and data integrity.
 
-## Cross-Region Replication for Disaster Recovery (Infisical Cloud)
+## Cross-region replication for disaster recovery (Infisical Cloud)
 
 To handle regional failures, Infisical Cloud keeps backups both within AWS and across cloud providers in GCP updated and ready to take over when needed.
 
@@ -268,6 +269,12 @@ Infisical hires external third parties to perform regular security assessment an
 Most recently, Infisical commissioned cybersecurity firm [Cure53](https://cure53.de/) to perform a full-coverage, gray box penetration test against the platform's entire attack surface to identify vulnerabilities according to industry standards (OWASP, ASVS, WSTG, TOP-10, etc.).
 
 Please email security@infisical.com to request any reports including a letter of attestation for the conducted penetration test.
+
+## Reporting a vulnerability
+
+Infisical runs a public vulnerability disclosure program. If you have found a security issue in an Infisical product or service, report it privately through [infisical.com/vulnerability-disclosure](https://infisical.com/vulnerability-disclosure), where scope, safe harbour and coordinated disclosure terms are set out.
+
+Please do not open a public GitHub issue for a security problem. Infisical's paid bug bounty is a separate private, invitation-only program and is not open to public submissions.
 
 ## Employee data access
 

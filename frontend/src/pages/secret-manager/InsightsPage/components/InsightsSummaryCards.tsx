@@ -64,7 +64,7 @@ const StatCard = ({
   const [open, setOpen] = useState(false);
 
   return (
-    <Card className="flex-1">
+    <Card className="h-full flex-1">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardAction>

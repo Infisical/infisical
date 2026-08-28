@@ -18,14 +18,22 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import {
-  buildPostSyncCommandPlan,
-  POST_SYNC_COMMAND_TIMEOUT_MS,
-  renderPostSyncCommand,
-  runPostSyncCommand,
-  toPosixShellLiteral,
-  TPostSyncCommandPlan
-} from "../pki-sync-post-sync-command-fns";
-import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
+  buildHealthCheckCommandFailureMessage,
+  buildHealthCheckCommandPlan,
+  buildHealthCheckFailureSyncResult,
+  didHealthCheckFail,
+  runHealthCheckCommand,
+  THealthCheckCommandResult
+} from "../pki-sync-health-check-command-fns";
+import {
+  HOST_COMMAND_TIMEOUT_MS,
+  HostCommandKind,
+  renderHostCommandContext,
+  THostCommandContext,
+  toPosixShellLiteral
+} from "../pki-sync-host-command-fns";
+import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
 type TLinuxServerPkiSyncFactoryDeps = {
@@ -48,10 +56,11 @@ type TLinuxServerSyncOptions = {
   privateKeyFileMode?: string;
   owner?: string;
   group?: string;
+  healthCheckCommand?: string;
   postSyncCommand?: string;
 };
 
-const buildSshConfig = (pkiSync: TPkiSyncWithCredentials): TSshConnectionConfig => {
+const buildSshConfig = (pkiSync: THealthCheckTarget): TSshConnectionConfig => {
   const { connection } = pkiSync;
   const credentials = connection.credentials as { privateKey?: string };
 
@@ -225,6 +234,56 @@ const reconcileLinuxServerRemovals = async (args: {
   return { removed, failedRemovals };
 };
 
+const resolveLinuxExportOptions = (options: TLinuxServerSyncOptions) => ({
+  format: options.exportFormat ?? PkiSyncExportFormat.Pem,
+  includePrivateKey: options.includePrivateKey ?? true,
+  pemCertificateExtension: options.pemCertificateExtension,
+  combineCertificateChain: options.combineCertificateChain
+});
+
+const executeLinuxServerHostCommand = (
+  kind: HostCommandKind,
+  plan: { command: string; context: THostCommandContext },
+  sshConfig: TSshConnectionConfig,
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">
+) =>
+  executeSshCommandViaGateway(sshConfig, gatewayServices, {
+    command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
+    timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
+  });
+
+const runLinuxServerHealthCheckCommand = ({
+  pkiSync,
+  certificateMap,
+  gatewayServices
+}: {
+  pkiSync: THealthCheckTarget;
+  certificateMap: TCertificateMap;
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+}): Promise<THealthCheckCommandResult> | undefined => {
+  const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
+  const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+  const exportOptions = resolveLinuxExportOptions(options);
+
+  const plan = buildHealthCheckCommandPlan({
+    command: options.healthCheckCommand,
+    destinationDirectory: config.destinationPath,
+    certificateMap,
+    exportOptions,
+    joinPath: (directory, fileName) => path.posix.join(directory, fileName),
+    pkcs12Password:
+      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+  });
+  if (!plan) return undefined;
+
+  return runHealthCheckCommand({
+    syncId: pkiSync.id,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: () =>
+      executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, buildSshConfig(pkiSync), gatewayServices)
+  });
+};
+
 const runLinuxServerPostSyncCommand = ({
   syncId,
   plan,
@@ -239,11 +298,7 @@ const runLinuxServerPostSyncCommand = ({
   runPostSyncCommand({
     syncId,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () =>
-      executeSshCommandViaGateway(sshConfig, gatewayServices, {
-        command: renderPostSyncCommand(plan.command, plan.context, toPosixShellLiteral),
-        timeoutMs: POST_SYNC_COMMAND_TIMEOUT_MS
-      })
+    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices)
   });
 
 export const linuxServerPkiSyncFactory = ({
@@ -257,8 +312,8 @@ export const linuxServerPkiSyncFactory = ({
   ): Promise<TPkiSyncSyncResult> => {
     const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
     const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
-    const format = options.exportFormat ?? PkiSyncExportFormat.Pem;
-    const includePrivateKey = options.includePrivateKey ?? true;
+    const exportOptions = resolveLinuxExportOptions(options);
+    const { format, includePrivateKey } = exportOptions;
     const canRemoveCertificates = options.canRemoveCertificates ?? false;
     const privateKeyMode = parseFileMode(options.privateKeyFileMode, PRIVATE_KEY_FILE_MODE);
     const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
@@ -270,11 +325,23 @@ export const linuxServerPkiSyncFactory = ({
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
-    const deliveredCertificates: Array<{ path: string; commonName?: string }> = [];
+    const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
     let uploaded = 0;
     let removed = 0;
 
     const sshConfig = buildSshConfig(pkiSync);
+
+    const healthCheck = await runLinuxServerHealthCheckCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+    if (healthCheck && didHealthCheckFail(healthCheck)) {
+      logger.info(
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: health check failed, delivered nothing (${buildHealthCheckCommandFailureMessage(healthCheck)})`
+      );
+      return buildHealthCheckFailureSyncResult(certificateMap, healthCheck);
+    }
 
     await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
       const sftp = await openSftp(client);
@@ -304,15 +371,12 @@ export const linuxServerPkiSyncFactory = ({
 
         try {
           const files = await exportCertificateForSync({
-            format,
+            ...exportOptions,
             certificate: cert,
             certificateChain,
             privateKey,
-            includePrivateKey,
             password: exportPassword,
-            alias: baseName,
-            pemCertificateExtension: options.pemCertificateExtension,
-            combineCertificateChain: options.combineCertificateChain
+            alias: baseName
           });
 
           const writtenPaths: string[] = [];
@@ -335,7 +399,7 @@ export const linuxServerPkiSyncFactory = ({
           }
 
           const primaryPath = writtenPaths[0];
-          deliveredCertificates.push({ path: primaryPath, commonName: certData.commonName ?? undefined });
+          deliveredCertificates.push({ paths: writtenPaths, commonName: certData.commonName ?? undefined });
           if (typeof certificateId === "string") {
             let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
             if (!record) {
@@ -399,6 +463,7 @@ export const linuxServerPkiSyncFactory = ({
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
+      healthCheck,
       postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
@@ -455,5 +520,12 @@ export const linuxServerPkiSyncFactory = ({
     }
   };
 
-  return { syncCertificates, removeCertificates };
+  const runHealthCheck = (pkiSync: THealthCheckTarget, certificateMap: TCertificateMap) =>
+    runLinuxServerHealthCheckCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+
+  return { syncCertificates, removeCertificates, runHealthCheck };
 };

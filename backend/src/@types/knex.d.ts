@@ -296,12 +296,18 @@ import {
   TKmipServers,
   TKmipServersInsert,
   TKmipServersUpdate,
+  TKmsKekHistory,
+  TKmsKekHistoryInsert,
+  TKmsKekHistoryUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
   TKmsKeyVersions,
   TKmsKeyVersionsInsert,
   TKmsKeyVersionsUpdate,
+  TKmsLegacyEncryptionKeys,
+  TKmsLegacyEncryptionKeysInsert,
+  TKmsLegacyEncryptionKeysUpdate,
   TKmsRootConfig,
   TKmsRootConfigInsert,
   TKmsRootConfigUpdate,
@@ -500,6 +506,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
+  TResourceKubernetesAuths,
+  TResourceKubernetesAuthsInsert,
+  TResourceKubernetesAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1416,6 +1425,16 @@ declare module "knex/types/tables" {
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
     >;
+    [TableName.KmsLegacyEncryptionKey]: KnexOriginal.CompositeTableType<
+      TKmsLegacyEncryptionKeys,
+      TKmsLegacyEncryptionKeysInsert,
+      TKmsLegacyEncryptionKeysUpdate
+    >;
+    [TableName.KmsKekHistory]: KnexOriginal.CompositeTableType<
+      TKmsKekHistory,
+      TKmsKekHistoryInsert,
+      TKmsKekHistoryUpdate
+    >;
     [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
     [TableName.InternalKmsKeyVersion]: KnexOriginal.CompositeTableType<
       TInternalKmsKeyVersion,
@@ -1700,6 +1719,11 @@ declare module "knex/types/tables" {
       TResourceAwsAuths,
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
+    >;
+    [TableName.ResourceKubernetesAuth]: KnexOriginal.CompositeTableType<
+      TResourceKubernetesAuths,
+      TResourceKubernetesAuthsInsert,
+      TResourceKubernetesAuthsUpdate
     >;
     [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
     [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<

@@ -8,7 +8,6 @@ import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
-import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
@@ -183,25 +182,6 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
     queryKey: projectKeys.getProjectMemberships(orgId),
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
-  });
-
-const fetchWorkspaceAuthorization = async (projectId: string) => {
-  const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
-    `/api/v1/projects/${projectId}/authorizations`
-  );
-
-  return data.authorizations;
-};
-
-export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
-  projectId: string,
-  select?: (data: IntegrationAuth[]) => TData
-) =>
-  useQuery({
-    queryKey: projectKeys.getProjectAuthorization(projectId),
-    queryFn: () => fetchWorkspaceAuthorization(projectId),
-    enabled: Boolean(projectId),
-    select
   });
 
 export const fetchWorkspaceIntegrations = async (projectId: string) => {
@@ -438,28 +418,48 @@ export const useGetWorkspaceUserDetails = (
   });
 };
 
-export const useGetMembershipPermissionAudit = (projectId: string, membershipId: string) =>
+export const useGetMembershipPermissionAudit = (
+  projectId: string,
+  membershipId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId),
+    queryKey: projectKeys.getMembershipPermissionAudit(
+      projectId,
+      membershipId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetMembershipPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && membershipId)
+    enabled: Boolean(projectId && membershipId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
-export const useGetIdentityPermissionAudit = (projectId: string, identityId: string) =>
+export const useGetIdentityPermissionAudit = (
+  projectId: string,
+  identityId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId),
+    queryKey: projectKeys.getIdentityPermissionAudit(
+      projectId,
+      identityId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetIdentityPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && identityId)
+    enabled: Boolean(projectId && identityId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
 export const useDeleteUserFromWorkspace = () => {

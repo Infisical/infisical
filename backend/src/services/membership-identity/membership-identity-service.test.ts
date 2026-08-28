@@ -50,6 +50,7 @@ const createService = ({
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
+    find: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
@@ -81,7 +82,7 @@ const createService = ({
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: { findById: vi.fn() } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {

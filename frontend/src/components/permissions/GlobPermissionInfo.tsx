@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import picomatch from "picomatch";
 
-import { FormControl } from "../v2/FormControl";
-import { Input } from "../v2/Input";
+import { Field, FieldDescription, FieldLabel, Input } from "../v3";
 
 export const GlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
@@ -39,14 +38,19 @@ export const BashGlobPatternTooltip = () => (
 );
 
 export const GlobPermissionInfo = () => {
+  const id = useId();
   const [pattern, setPattern] = useState("");
   const [text, setText] = useState("");
 
+  const hasInput = Boolean(pattern && text);
+  // Must stay in sync with the backend's $glob evaluation (backend/src/lib/casl/index.ts)
+  const isMatch = hasInput && picomatch.isMatch(text, pattern, { strictSlashes: false });
+
   return (
-    <div>
-      <div className="mt-2 space-y-1">
+    <div className="space-y-4 text-xs">
+      <div className="space-y-2">
         <p>A glob pattern uses special wildcard characters to match resources or paths:</p>
-        <ul className="list-disc pl-4 text-xs text-mineshaft-300">
+        <ul className="list-disc space-y-0.5 pl-4 text-accent">
           <li>
             <code>*</code> — matches any characters except <code>/</code> (e.g., <code>dev-*</code>{" "}
             matches <code>dev-api</code>)
@@ -62,27 +66,40 @@ export const GlobPermissionInfo = () => {
             <code>{"{a,b}"}</code> — matches either alternative
           </li>
         </ul>
+        <p className="text-accent">
+          A trailing <code>{"/*"}</code> matches a folder&apos;s direct children only, not the
+          folder itself: <code>/app/*</code> does not match secrets directly in <code>/app</code>.
+          Use <code>/app/**</code> to match a folder and everything under it.
+        </p>
       </div>
-      <div>
-        <FormControl
-          label="Glob pattern"
-          helperText="Examples: dev-*, /services/**, config-?, {dev,staging}-*"
-        >
-          <Input value={pattern} onChange={(e) => setPattern(e.target.value)} />
-        </FormControl>
-      </div>
-      <div>
-        <FormControl
-          label="Test string"
-          helperText="Type a value to test glob match"
-          isError={
-            pattern && text ? !picomatch.isMatch(text, pattern, { strictSlashes: false }) : false
-          }
-          errorText="Invalid"
-        >
-          <Input value={text} onChange={(e) => setText(e.target.value)} />
-        </FormControl>
-      </div>
+      <Field>
+        <FieldLabel htmlFor={`${id}-pattern`}>Glob Pattern</FieldLabel>
+        <Input
+          id={`${id}-pattern`}
+          value={pattern}
+          onChange={(e) => setPattern(e.target.value)}
+          placeholder="/app/**"
+        />
+        <FieldDescription>
+          Examples: dev-*, /services/**, config-?, {"{dev,staging}"}-*
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${id}-test`}>Test String</FieldLabel>
+        <Input
+          id={`${id}-test`}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="/app/config"
+        />
+        {hasInput ? (
+          <p className={isMatch ? "text-success" : "text-danger"}>
+            {isMatch ? "Matches the pattern" : "Does not match the pattern"}
+          </p>
+        ) : (
+          <FieldDescription>Type a value to test the pattern against</FieldDescription>
+        )}
+      </Field>
     </div>
   );
 };

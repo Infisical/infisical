@@ -33,6 +33,7 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import SecurityClient from "../utilities/SecurityClient";
+import Telemetry from "../utilities/telemetry/Telemetry";
 import { AuthPagePanel } from "./AuthPagePanel";
 
 const createUserInfoFormSchema = (isInvite: boolean, passwordPolicy: TPasswordPolicy) =>
@@ -108,6 +109,8 @@ export default function UserInfoStep({
   const submitLabel = isInvite ? String(t("signup.signup")) : "Continue";
 
   const onSubmit = async (formData: UserInfoFormData) => {
+    const telemetry = new Telemetry().getInstance();
+
     const latestBreachStatus = await validatePassword(formData.password);
     if (latestBreachStatus === "breached") {
       setError("password", {
@@ -129,6 +132,11 @@ export default function UserInfoStep({
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
+
+    // The distinct id has to match the one the backend captures signup events with, which is
+    // user.username: the lowercased email.
+    const signupEmail = email.toLowerCase();
+    telemetry.identify(signupEmail, signupEmail);
 
     if (isInfisicalCloud()) {
       window.dataLayer = window.dataLayer || [];
@@ -152,14 +160,17 @@ export default function UserInfoStep({
           <CardTitle
             role="heading"
             aria-level={1}
-            className="ml-0.5 font-alliance text-2xl font-normal break-words"
+            className="ml-0.5 min-w-0 flex-nowrap font-alliance text-2xl font-normal break-words"
           >
             {isInvite ? (
               <>
-                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                <span className="shrink-0 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
-                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                <span
+                  className="min-w-0 truncate bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent"
+                  title={inviteOrganizationLabel}
+                >
                   {inviteOrganizationLabel}
                 </span>
               </>
@@ -210,6 +221,14 @@ export default function UserInfoStep({
               ) : null}
             </Field>
           </div>
+          {isInvite && (
+            <Field>
+              <FieldLabel className="sr-only" htmlFor="signup-email">
+                Email
+              </FieldLabel>
+              <Input variant="outlined" id="signup-email" type="email" value={email} disabled />
+            </Field>
+          )}
           {!isInvite && (
             <Field data-invalid={showOrganizationNameError}>
               <FieldLabel className="sr-only" htmlFor="signup-organization-name">

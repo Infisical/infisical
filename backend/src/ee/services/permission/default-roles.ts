@@ -32,6 +32,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -57,7 +58,6 @@ const buildAdminPermissionRules = () => {
 
   // Admins get full access to everything
   [
-    ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.Role,
     ProjectPermissionSub.Integrations,
@@ -81,6 +81,17 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  // Folder read is implied for all, so admins only need write actions on folders
+  can(
+    [
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretFolderActions.ManageAccess
+    ],
+    ProjectPermissionSub.SecretFolders
+  );
 
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
@@ -219,7 +230,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
       ProjectPermissionIdentityActions.DeleteToken,
-      ProjectPermissionIdentityActions.RevokeAuth
+      ProjectPermissionIdentityActions.RevokeAuth,
+      ProjectPermissionIdentityActions.EditAuth
     ],
     ProjectPermissionSub.Identity
   );
@@ -289,7 +301,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.SyncCertificates,
       ProjectPermissionPkiSyncActions.ImportCertificates,
       ProjectPermissionPkiSyncActions.RemoveCertificates,
-      ProjectPermissionPkiSyncActions.SetPostSyncCommand
+      ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+      ProjectPermissionPkiSyncActions.SetHealthCheckCommand
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -471,12 +484,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Secrets
   );
   can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
+    [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretFolders
   );
   can(
@@ -680,7 +688,6 @@ const buildViewerPermissionRules = () => {
     [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
     ProjectPermissionSub.Secrets
   );
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
@@ -749,6 +756,24 @@ const buildViewerPermissionRules = () => {
 
 const buildNoAccessProjectPermission = () => {
   const { rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  return rules;
+};
+
+// PAM product membership is stored as plain project membership (PamProductRole.Admin/Member are the
+// `admin`/`member` project role slugs), so these two sets are what those slugs mean inside a PAM
+// project. The split exists to constrain members, not admins: everything a product member is entitled
+// to comes from their resource-level (folder/account) memberships, which PAM resolves separately and
+// which are not project role rules at all. Their project ability is directory visibility and nothing
+// more. Managing identities, users and groups is a product admin responsibility — a member who inherited
+// the generic Member identity rules could attach an auth method to a product admin identity and log in
+// with its PAM access.
+const buildPamProjectMemberPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can([ProjectPermissionMemberActions.Read], ProjectPermissionSub.Member);
+  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
+  can([ProjectPermissionIdentityActions.Read], ProjectPermissionSub.Identity);
+
   return rules;
 };
 
@@ -845,7 +870,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.SyncCertificates,
       ResourcePermissionPkiSyncActions.ImportCertificates,
       ResourcePermissionPkiSyncActions.RemoveCertificates,
-      ResourcePermissionPkiSyncActions.SetPostSyncCommand
+      ResourcePermissionPkiSyncActions.SetPostSyncCommand,
+      ResourcePermissionPkiSyncActions.SetHealthCheckCommand
     ],
     ResourcePermissionSub.PkiSyncs
   );
@@ -1123,6 +1149,9 @@ const buildPamResourceAuditorPermissionRules = () => {
   return rules;
 };
 
+// The product admin owns the PAM project, so it keeps the full project Admin ability it has always had.
+export const pamProjectAdminPermissions = projectAdminPermissions;
+export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
 export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();
 export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();

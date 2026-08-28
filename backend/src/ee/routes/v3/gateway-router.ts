@@ -3,7 +3,16 @@ import z from "zod";
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import {
+  validateAllowedNames,
+  validateAllowedNamespaces,
+  validateKubernetesHost
+} from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
+import {
+  KubernetesTokenReviewMode,
+  ResourceAuthMethodType
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -27,28 +36,6 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
 }).extend({
   canRevoke: z.boolean()
 });
-
-const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
-  stsEndpoint: z.string(),
-  allowedPrincipalArns: z.string(),
-  allowedAccountIds: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
-const TokenAuthMethodConfigSchema = z.object({});
-
-const IdentityAuthMethodConfigSchema = z.object({
-  identityId: z.string(),
-  identityName: z.string().nullable()
-});
-
-const AuthMethodViewSchema = z.discriminatedUnion("method", [
-  z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
-]);
 
 const GatewayWithAuthMethodSchema = SanitizedGatewayV2Schema.extend({
   authMethod: AuthMethodViewSchema
@@ -74,12 +61,128 @@ const AwsAuthMethodInputSchema = z
     path: ["allowedPrincipalArns"]
   });
 
+const KubernetesAuthMethodInputSchema = z
+  .object({
+    method: z.literal(ResourceAuthMethodType.Kubernetes),
+    kubernetesHost: validateKubernetesHost.optional().describe(GATEWAYS.AUTH_METHOD.kubernetesHost),
+    caCertificate: z.string().trim().max(10240).optional().describe(GATEWAYS.AUTH_METHOD.caCertificate),
+    tokenReviewerJwt: z.string().trim().max(8192).optional().describe(GATEWAYS.AUTH_METHOD.tokenReviewerJwt),
+    tokenReviewMode: z
+      .nativeEnum(KubernetesTokenReviewMode)
+      .default(KubernetesTokenReviewMode.Api)
+      .describe(GATEWAYS.AUTH_METHOD.tokenReviewMode),
+    gatewayId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayId),
+    gatewayPoolId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayPoolId),
+    allowedNamespaces: validateAllowedNamespaces.describe(GATEWAYS.AUTH_METHOD.allowedNamespaces),
+    allowedNames: validateAllowedNames.describe(GATEWAYS.AUTH_METHOD.allowedNames),
+    allowedAudience: z.string().trim().max(255).default("").describe(GATEWAYS.AUTH_METHOD.allowedAudience),
+    verifyTlsCertificate: z.boolean().default(true).describe(GATEWAYS.AUTH_METHOD.verifyTlsCertificate)
+  })
+  .refine((data) => data.allowedNamespaces.trim().length > 0 || data.allowedNames.trim().length > 0, {
+    message: "At least one of allowedNamespaces or allowedNames must be set",
+    path: ["allowedNamespaces"]
+  })
+  .refine((data) => !(data.gatewayId && data.gatewayPoolId), {
+    message: "Select either a gateway or a gateway pool to review tokens, not both",
+    path: ["gatewayPoolId"]
+  })
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || Boolean(data.gatewayId), {
+    message: "Gateway review mode requires a specific gateway to perform the review",
+    path: ["gatewayId"]
+  })
+  // In this mode the selected gateway supplies the TokenReview verdict, so it is the attestor for
+  // every login. Pool membership can change afterwards under a different permission, which would
+  // let a pool editor add a gateway they control and have it authenticate as this one.
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || !data.gatewayPoolId, {
+    message:
+      "A gateway pool cannot perform the review, because its membership can change after this is saved. Select a specific gateway.",
+    path: ["gatewayPoolId"]
+  })
+  // The gateway calls its own API server in gateway review mode, so a host there is not merely
+  // unnecessary, it is unused: accepting one lets a host be parked and picked up by a later
+  // switch back to API mode.
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || !data.kubernetesHost, {
+    message: "A Kubernetes host does not apply when the gateway performs the review. Remove it.",
+    path: ["kubernetesHost"]
+  })
+  // Only gateway review mode can go without a host, because there the gateway calls its own
+  // API server rather than an address we supply.
+  .refine((data) => data.tokenReviewMode === KubernetesTokenReviewMode.Gateway || Boolean(data.kubernetesHost), {
+    message: "A Kubernetes host is required unless the review mode is Gateway as Reviewer",
+    path: ["kubernetesHost"]
+  });
+
 const TokenAuthMethodInputSchema = z.object({
   method: z.literal(ResourceAuthMethodType.Token)
 });
 
 // Settable methods only — `identity` is read-only and never accepted as input.
-const SettableAuthMethodInputSchema = z.union([AwsAuthMethodInputSchema, TokenAuthMethodInputSchema]);
+const SettableAuthMethodInputSchema = z.union([
+  AwsAuthMethodInputSchema,
+  KubernetesAuthMethodInputSchema,
+  TokenAuthMethodInputSchema
+]);
+
+type TSettableAuthMethodInput = z.infer<typeof SettableAuthMethodInputSchema>;
+
+// createGateway takes { method, config }; setMethod takes the config flattened onto the method.
+const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
+  if (input.method === ResourceAuthMethodType.Aws) {
+    return {
+      method: ResourceAuthMethodType.Aws,
+      config: {
+        stsEndpoint: input.stsEndpoint,
+        allowedPrincipalArns: input.allowedPrincipalArns,
+        allowedAccountIds: input.allowedAccountIds
+      }
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Kubernetes) {
+    return {
+      method: ResourceAuthMethodType.Kubernetes,
+      config: {
+        kubernetesHost: input.kubernetesHost,
+        caCertificate: input.caCertificate,
+        tokenReviewerJwt: input.tokenReviewerJwt,
+        tokenReviewMode: input.tokenReviewMode,
+        gatewayV2Id: input.gatewayId,
+        gatewayPoolId: input.gatewayPoolId,
+        allowedNamespaces: input.allowedNamespaces,
+        allowedNames: input.allowedNames,
+        allowedAudience: input.allowedAudience,
+        verifyTlsCertificate: input.verifyTlsCertificate
+      }
+    } as const;
+  }
+  return { method: ResourceAuthMethodType.Token } as const;
+};
+
+const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
+  if (input.method === ResourceAuthMethodType.Aws) {
+    return {
+      method: ResourceAuthMethodType.Aws,
+      stsEndpoint: input.stsEndpoint,
+      allowedPrincipalArns: input.allowedPrincipalArns,
+      allowedAccountIds: input.allowedAccountIds
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Kubernetes) {
+    return {
+      method: ResourceAuthMethodType.Kubernetes,
+      kubernetesHost: input.kubernetesHost,
+      caCertificate: input.caCertificate,
+      tokenReviewerJwt: input.tokenReviewerJwt,
+      tokenReviewMode: input.tokenReviewMode,
+      gatewayV2Id: input.gatewayId,
+      gatewayPoolId: input.gatewayPoolId,
+      allowedNamespaces: input.allowedNamespaces,
+      allowedNames: input.allowedNames,
+      allowedAudience: input.allowedAudience,
+      verifyTlsCertificate: input.verifyTlsCertificate
+    } as const;
+  }
+  return { method: ResourceAuthMethodType.Token } as const;
+};
 
 export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   // ─── POST / ──────────────────────────────────────────────────────────────
@@ -102,17 +205,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const authMethodArg =
-        req.body.authMethod.method === ResourceAuthMethodType.Aws
-          ? {
-              method: ResourceAuthMethodType.Aws,
-              config: {
-                stsEndpoint: req.body.authMethod.stsEndpoint,
-                allowedPrincipalArns: req.body.authMethod.allowedPrincipalArns,
-                allowedAccountIds: req.body.authMethod.allowedAccountIds
-              }
-            }
-          : { method: ResourceAuthMethodType.Token };
+      const authMethodArg = toCreateAuthMethodArg(req.body.authMethod);
 
       const gateway = await server.services.gatewayV2.createGateway({
         orgId: req.permission.orgId,
@@ -153,7 +246,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
@@ -183,15 +276,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.body.authMethod) {
-        const setInput =
-          req.body.authMethod.method === ResourceAuthMethodType.Aws
-            ? {
-                method: ResourceAuthMethodType.Aws,
-                stsEndpoint: req.body.authMethod.stsEndpoint,
-                allowedPrincipalArns: req.body.authMethod.allowedPrincipalArns,
-                allowedAccountIds: req.body.authMethod.allowedAccountIds
-              }
-            : { method: ResourceAuthMethodType.Token };
+        const setInput = toSetAuthMethodArg(req.body.authMethod);
 
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
@@ -207,13 +292,24 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             metadata: {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              method: result.method as "aws" | "token",
-              methodConfigId: result.method === ResourceAuthMethodType.Aws ? result.config.id : req.params.gatewayId,
+              method: result.method as "aws" | "kubernetes" | "token",
+              methodConfigId:
+                result.method === ResourceAuthMethodType.Aws || result.method === ResourceAuthMethodType.Kubernetes
+                  ? result.config.id
+                  : req.params.gatewayId,
               ...(result.method === ResourceAuthMethodType.Aws
                 ? {
                     stsEndpoint: result.config.stsEndpoint,
                     allowedPrincipalArns: result.config.allowedPrincipalArns,
                     allowedAccountIds: result.config.allowedAccountIds
+                  }
+                : {}),
+              ...(result.method === ResourceAuthMethodType.Kubernetes
+                ? {
+                    kubernetesHost: result.config.kubernetesHost,
+                    allowedNamespaces: result.config.allowedNamespaces,
+                    allowedNames: result.config.allowedNames,
+                    allowedAudience: result.config.allowedAudience
                   }
                 : {})
             }
@@ -229,7 +325,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: result.method as "aws" | "token"
+              method: result.method as "aws" | "kubernetes" | "token"
             }
           })
           .catch((err) => {
@@ -296,7 +392,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: {
         200: z.object({
-          method: z.enum(["aws", "token"])
+          method: z.enum(["aws", "kubernetes", "token"])
         })
       }
     },
@@ -326,7 +422,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /login ─────────────────────────────────────────────────────────
-  // Gateway login. Discriminated body covers both methods. Single rate limit (10/min).
+  // Gateway login. Discriminated body covers every method. Single rate limit (10/min).
   server.route({
     method: "POST",
     url: "/login",
@@ -334,7 +430,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "loginGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      description: "Gateway login. Body discriminates on `method` for AWS or token authentication.",
+      description: "Gateway login. Body discriminates on `method` for AWS, Kubernetes, or token authentication.",
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
@@ -342,6 +438,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS.LOGIN.iamHttpRequestMethod),
           iamRequestBody: z.string().describe(GATEWAYS.LOGIN.iamRequestBody),
           iamRequestHeaders: z.string().describe(GATEWAYS.LOGIN.iamRequestHeaders)
+        }),
+        z.object({
+          method: z.literal(ResourceAuthMethodType.Kubernetes),
+          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          jwt: z.string().trim().min(1).max(8192).describe(GATEWAYS.LOGIN.jwt)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Token),
@@ -424,6 +525,83 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                     message: error.message,
                     principalArn: error.detail.principalArn as string | undefined,
                     accountId: error.detail.accountId as string | undefined
+                  }
+                },
+                ipAddress: req.ip,
+                userAgent: req.headers["user-agent"] ?? "",
+                userAgentType: UserAgentType.OTHER
+              })
+              .catch(() => {});
+          }
+          throw error;
+        }
+      }
+
+      if (req.body.method === ResourceAuthMethodType.Kubernetes) {
+        try {
+          const result = await server.services.resourceAuthMethod.loginWithKubernetes({
+            resource: { type: "gateway", id: req.body.gatewayId },
+            jwt: req.body.jwt
+          });
+
+          await server.services.auditLog
+            .createAuditLog({
+              orgId: result.orgId,
+              actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
+              event: {
+                type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
+                metadata: {
+                  resourceType: "gateway",
+                  resourceId: result.resourceId,
+                  method: ResourceAuthMethodType.Kubernetes,
+                  methodConfigId: result.configId,
+                  kubernetesNamespace: result.namespace,
+                  kubernetesServiceAccountName: result.serviceAccountName
+                }
+              },
+              ipAddress: req.ip,
+              userAgent: req.headers["user-agent"] ?? "",
+              userAgentType: UserAgentType.OTHER
+            })
+            .catch(() => {});
+
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.ResourceAuthMethodLogin,
+              distinctId: `gateway-${result.resourceId}`,
+              organizationId: result.orgId,
+              properties: {
+                resourceType: "gateway",
+                resourceId: result.resourceId,
+                orgId: result.orgId,
+                method: ResourceAuthMethodType.Kubernetes
+              }
+            })
+            .catch((err) => {
+              logger.error(err, `Failed to send telemetry [gatewayId=${result.resourceId}]`);
+            });
+
+          return {
+            accessToken: result.accessToken,
+            gatewayId: result.resourceId,
+            tokenType: "Bearer" as const
+          };
+        } catch (error) {
+          if (error instanceof UnauthorizedError && error.detail?.resourceId) {
+            await server.services.auditLog
+              .createAuditLog({
+                orgId: error.detail.orgId as string,
+                actor: { type: ActorType.GATEWAY, metadata: { gatewayId: error.detail.resourceId as string } },
+                event: {
+                  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED,
+                  metadata: {
+                    resourceType: "gateway",
+                    resourceId: error.detail.resourceId as string,
+                    method: ResourceAuthMethodType.Kubernetes,
+                    reasonCode: error.detail.reasonCode as string,
+                    message: error.message,
+                    kubernetesNamespace: error.detail.namespace as string | undefined,
+                    kubernetesServiceAccountName: error.detail.serviceAccountName as string | undefined
                   }
                 },
                 ipAddress: req.ip,

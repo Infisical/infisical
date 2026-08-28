@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { MAX_UA_CLIENT_SECRET_TTL_SECONDS } from "@app/services/identity-ua/identity-ua-types";
 
 export type TIdentityCredentialAlertDALFactory = ReturnType<typeof identityCredentialAlertDALFactory>;
 
@@ -35,7 +36,8 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TExpiringUaClientSecret[]> => {
     try {
-      const expiresAtSql = `${TableName.IdentityUaClientSecret}."createdAt" + (${TableName.IdentityUaClientSecret}."clientSecretTTL" * interval '1 second')`;
+      // The clamp has to live in the expression, not in a `clientSecretTTL > 0` style guard to avoid overflow
+      const expiresAtSql = `${TableName.IdentityUaClientSecret}."createdAt" + make_interval(secs => LEAST(GREATEST(${TableName.IdentityUaClientSecret}."clientSecretTTL", 0), ${MAX_UA_CLIENT_SECRET_TTL_SECONDS}))`;
 
       const query = (tx || db.replicaNode())(TableName.IdentityUaClientSecret)
         .join(

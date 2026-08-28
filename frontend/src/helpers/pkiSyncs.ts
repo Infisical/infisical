@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
-import { PkiSync } from "@app/hooks/api/pkiSyncs";
+import { HostCommandVariable, PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -39,6 +39,12 @@ export const PKI_SYNC_MAP: Record<
     image: "Chef.png",
     category: "Infrastructure",
     description: "Sync certificates to a Chef data bag."
+  },
+  [PkiSync.GcpCertificateManager]: {
+    name: "GCP Certificate Manager",
+    image: "Google Cloud Platform.png",
+    category: "GCP",
+    description: "Sync certificates to GCP Certificate Manager."
   },
   [PkiSync.CloudflareCustomCertificate]: {
     name: "Cloudflare Custom SSL",
@@ -117,6 +123,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef,
+  [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
@@ -139,6 +146,21 @@ export const BOOLEAN_SYNC_OPTION_FIELDS = [
   { key: "includePrivateKey", label: "Include Private Key" }
 ] as const;
 
+export const KEY_VALUE_SYNC_OPTION_FIELDS = [{ key: "labels", label: "Labels" }] as const;
+
+export const PRESERVE_ARN_DESTINATIONS: PkiSync[] = [
+  PkiSync.AwsCertificateManager,
+  PkiSync.AwsElasticLoadBalancer
+];
+
+export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
+  PkiSync.Chef,
+  PkiSync.F5BigIp,
+  PkiSync.GcpCertificateManager,
+  PkiSync.KempLoadMaster,
+  PkiSync.NetScaler
+];
+
 export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },
   { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
@@ -149,3 +171,49 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "owner", label: "Owner" },
   { key: "group", label: "Group" }
 ] as const;
+
+export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
+  [HostCommandVariable.CertificatePath]: "Full path of the certificate file delivered this run",
+  [HostCommandVariable.CertificateDirectory]: "The destination directory",
+  [HostCommandVariable.CertificateFiles]: "Every path written this run, one per line",
+  [HostCommandVariable.CommonName]: "The certificate's common name",
+  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+};
+
+export const HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
+  [HostCommandVariable.CertificatePath]: "Full path of the certificate file this run will write",
+  [HostCommandVariable.CertificateDirectory]: "The directory the sync is about to write to",
+  [HostCommandVariable.CertificateFiles]: "Every path this run will write, one per line",
+  [HostCommandVariable.CommonName]: "The certificate's common name",
+  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+};
+
+const SINGLE_CERTIFICATE_HOST_COMMAND_VARIABLES = [
+  HostCommandVariable.CertificatePath,
+  HostCommandVariable.CommonName
+];
+
+export const buildHostCommandTooltipDescriptions = (
+  descriptions: Record<HostCommandVariable, string>
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.values(HostCommandVariable).map((variable) => [
+      variable,
+      SINGLE_CERTIFICATE_HOST_COMMAND_VARIABLES.includes(variable)
+        ? `${descriptions[variable]}. Single-certificate syncs only`
+        : descriptions[variable]
+    ])
+  );
+
+export const getPkiSyncFailureMessage = (
+  status: PkiSyncStatus | null | undefined,
+  message: string | null | undefined
+): string | null => {
+  if (status !== PkiSyncStatus.Failed || !message) return null;
+
+  try {
+    return JSON.stringify(JSON.parse(message), null, 2);
+  } catch {
+    return message;
+  }
+};

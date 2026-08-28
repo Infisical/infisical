@@ -1,9 +1,10 @@
 import ConnectionString from "mongodb-connection-string-url";
 
-import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
-  generateAwsIamSessionCredentials
+  generateAwsIamSessionCredentials,
+  generateRdsAuthToken
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
@@ -12,6 +13,7 @@ import { extractGatewayTarget, isCredentialConfigured, qualifyUsernameWithDomain
 export enum TestConnectionMode {
   SQL = "sql",
   MongoDB = "mongodb",
+  Redis = "redis",
   LDAP = "ldap",
   Kubernetes = "kubernetes",
   SSH = "ssh",
@@ -35,6 +37,14 @@ export type TestConnectionRequest =
       username: string;
       password?: string;
       authSource: string;
+      sslEnabled?: boolean;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
+  | {
+      mode: TestConnectionMode.Redis;
+      username?: string;
+      password?: string;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
@@ -72,7 +82,8 @@ const tcp = (host: string, port: number) => ({ host, port, request: { mode: Test
 export const buildGatewayConnectionTest = async (
   accountType: PamAccountType,
   connectionDetails: Record<string, unknown>,
-  credentials: Record<string, unknown> | null
+  credentials: Record<string, unknown> | null,
+  orgId: string
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
@@ -96,8 +107,27 @@ export const buildGatewayConnectionTest = async (
         sslRejectUnauthorized?: boolean;
         sslCertificate?: string;
       };
-      const c = creds as { authMethod?: string; username: string; password?: string } | null;
+      const c = creds as {
+        authMethod?: string;
+        username: string;
+        password?: string;
+        awsRegion?: string;
+        roleArn?: string;
+      } | null;
       if (!c || (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login")) return tcp(host, port);
+      // An IAM login's password is a token Infisical mints per connection, so the test mints its own
+      const password =
+        c.authMethod === PamPostgresAuthMethod.AwsIam
+          ? await generateRdsAuthToken({
+              roleArn: c.roleArn!,
+              externalId: orgId,
+              roleSessionName: "infisical-pam-connection-test",
+              region: c.awsRegion!,
+              host,
+              port,
+              username: c.username
+            })
+          : c.password;
       return {
         host,
         port,
@@ -105,7 +135,7 @@ export const buildGatewayConnectionTest = async (
           mode: TestConnectionMode.SQL,
           dialect: SQL_DIALECTS[accountType],
           username: c.username,
-          password: c.password,
+          password,
           database: cd.database,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
@@ -132,6 +162,27 @@ export const buildGatewayConnectionTest = async (
           username: c.username,
           password: c.password,
           authSource,
+          sslEnabled: cd.sslEnabled,
+          sslRejectUnauthorized: cd.sslRejectUnauthorized,
+          sslCertificate: cd.sslCertificate
+        }
+      };
+    }
+    case PamAccountType.Redis: {
+      const cd = connectionDetails as {
+        sslEnabled?: boolean;
+        sslRejectUnauthorized?: boolean;
+        sslCertificate?: string;
+      };
+      const c = creds as { username?: string; password?: string } | null;
+      if (!c) return tcp(host, port);
+      return {
+        host,
+        port,
+        request: {
+          mode: TestConnectionMode.Redis,
+          username: c.username,
+          password: c.password,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate

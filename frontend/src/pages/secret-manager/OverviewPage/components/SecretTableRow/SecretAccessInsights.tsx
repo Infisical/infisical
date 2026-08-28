@@ -325,7 +325,7 @@ function AddMemberPopover({
       </PopoverTrigger>
       <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg p-0">
         <Command>
-          <CommandInput placeholder="Search users..." />
+          <CommandInput aria-label="Search users" placeholder="Search users..." />
           <CommandList>
             <CommandEmpty>No users available to add.</CommandEmpty>
             {availableOrgUsers.length > 0 && (
@@ -501,6 +501,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           },
           isSelf: user.name === currentUser.username,
           canEdit:
+            currentProject.isLegacyAdditionalPrivilegesEnabled &&
             user.name !== currentUser.username &&
             permission.can(
               ProjectPermissionMemberActions.AssignAdditionalPrivileges,
@@ -528,10 +529,12 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             projectId: currentProject.id,
             identityId: identity.id
           },
-          canEdit: permission.can(
-            ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
-            subject(ProjectPermissionSub.Identity, { identityId: identity.id })
-          ),
+          canEdit:
+            currentProject.isLegacyAdditionalPrivilegesEnabled &&
+            permission.can(
+              ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+              subject(ProjectPermissionSub.Identity, { identityId: identity.id })
+            ),
           onEdit: () =>
             setEditingPrivilege({
               type: "identity",

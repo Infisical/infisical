@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";
 
 import {
@@ -9,6 +10,7 @@ import {
   VerificationCodeHeader,
   VerificationCodeResend
 } from "@app/components/v3";
+import { envConfig } from "@app/config/env";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
 import SecurityClient from "../utilities/SecurityClient";
@@ -45,6 +47,10 @@ export default function CodeInputStep({
   const [isCompletingVerification, setIsCompletingVerification] = useState(false);
   const [verificationError, setVerificationError] = useState<unknown>();
   const [triesLeft, setTriesLeft] = useState(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
+  const [isCaptchaVisible, setIsCaptchaVisible] = useState(false);
+
+  const captchaRef = useRef<HCaptcha>(null);
+  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
 
   const [, forceRender] = useState(0);
 
@@ -90,22 +96,40 @@ export default function CodeInputStep({
     }
   };
 
+  const sendCode = async (captchaToken?: string) => {
+    try {
+      const { cooldownSeconds } = await resendEmail({ email, captchaToken });
+      onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
+      setIsCaptchaVisible(false);
+    } catch (err) {
+      const remaining = axios.isAxiosError(err)
+        ? err.response?.data?.details?.cooldownSeconds
+        : undefined;
+
+      if (typeof remaining === "number") {
+        onResendCooldownChange(Date.now() + remaining * 1000);
+        setIsCaptchaVisible(false);
+        return;
+      }
+
+      captchaRef.current?.resetCaptcha();
+    }
+  };
+
   const handleResend = async () => {
     setVerificationError(undefined);
     setTriesLeft(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
     resetVerificationCode();
 
-    try {
-      const { cooldownSeconds } = await resendEmail({ email });
-      onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const remaining = err.response?.data?.details?.cooldownSeconds;
-        if (typeof remaining === "number") {
-          onResendCooldownChange(Date.now() + remaining * 1000);
-        }
-      }
+    // The send only fires once hCaptcha hands back a token, so the widget is revealed here
+    // rather than occupying the code screen for everyone who never resends.
+    if (requiresCaptcha) {
+      captchaRef.current?.resetCaptcha();
+      setIsCaptchaVisible(true);
+      return;
     }
+
+    await sendCode();
   };
 
   return (
@@ -134,6 +158,22 @@ export default function CodeInputStep({
             isPending={isVerifying || isCompletingVerification}
             error={verificationError ? verificationErrorMessage : undefined}
           >
+            {isCaptchaVisible && envConfig.CAPTCHA_SITE_KEY && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-label">Complete the captcha to resend your code.</p>
+                <div className="flex justify-center [&>div]:!w-full">
+                  <HCaptcha
+                    theme="dark"
+                    sitekey={envConfig.CAPTCHA_SITE_KEY}
+                    onVerify={(token) => sendCode(token)}
+                    onError={() => setIsCaptchaVisible(false)}
+                    onChalExpired={() => setIsCaptchaVisible(false)}
+                    onExpire={() => captchaRef.current?.resetCaptcha()}
+                    ref={captchaRef}
+                  />
+                </div>
+              </div>
+            )}
             <VerificationCodeResend
               isResending={isResending}
               remainingSeconds={remainingCooldown}

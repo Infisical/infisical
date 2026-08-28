@@ -1,5 +1,5 @@
 ---
-title: "Access Requests"
+title: "Access requests"
 description: "Learn how to request and manage access to sensitive resources in Infisical."
 ---
 
@@ -16,11 +16,11 @@ In certain situations, developers need to expand their access to a certain new p
 
 Access Requests allow users to request temporary or permanent access to secrets in specific environments and folders. Administrators can define policies that control who can approve requests, set time limits, and configure expiration rules.
 
-## Creating Access Policies
+## Creating access policies
 
 Before users can submit access requests, a project administrator must create an **Access Policy** that defines the approval workflow.
 
-### Setting Up an Access Policy
+### Setting up an access policy
 
 1. In a Secrets Management project, navigate to the **Approvals** tab and then the **Policies** menu in the sidebar.
 2. Click **Create Policy** and select **Access Policy** as the policy type.
@@ -28,7 +28,7 @@ Before users can submit access requests, a project administrator must create an 
 ![Policies Tab](/images/platform/access-controls/access-request/policies-tab.png)
 ![Access Policy Modal](/images/platform/access-controls/access-request/access-policy-modal.png)
 
-### Policy Configuration Options
+### Policy configuration options
 
 | Option | Description |
 |--------|-------------|
@@ -38,7 +38,7 @@ Before users can submit access requests, a project administrator must create an 
 | **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). |
 | **Environments** | One or more environments this policy applies to (e.g., Production, Staging). |
 
-### Multi-Step Approval Workflows
+### Multi-step approval workflows
 
 Access policies support sequential multi-step approval workflows where approvals must follow a designated chain.
 
@@ -50,13 +50,13 @@ Each step can have:
 
 Approvals must be completed in order — Step 2 approvers cannot review until Step 1 requirements are met.
 
-### Self-Approval Settings
+### Self-approval settings
 
 The **Self Approvals** toggle controls whether designated approvers can approve their own access requests. Disable it to require a different approver.
 
 When disabled, approvers can only grant themselves access through the **Bypass Approvals** break-glass flow, and only if they are explicitly listed as bypass users or groups.
 
-### Break-Glass (Bypass) Settings
+### Break-glass (bypass) settings
 
 The **Bypass Approvals** option enables emergency access in break-glass situations:
 
@@ -73,11 +73,11 @@ The **Bypass Approvals** option enables emergency access in break-glass situatio
   When **Self Approvals** is disabled, approvers cannot approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they are explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
 </Warning>
 
-## Submitting Access Requests
+## Submitting access requests
 
 Once access policies are configured, users can request access to resources covered by those policies.
 
-### Creating a Request
+### Creating a request
 
 1. Navigate to the **Access Requests** menu in the sidebar.
 2. Click **Request Access**.
@@ -96,11 +96,11 @@ Once access policies are configured, users can request access to resources cover
 </Note>
 
 
-## Reviewing Access Requests
+## Reviewing access requests
 
 Eligible approvers receive email notifications when access requests are submitted. They can review and act on requests from the dashboard.
 
-### Pending vs. Closed Requests
+### Pending vs. closed requests
 
 The access requests dashboard shows two tabs:
 
@@ -110,23 +110,23 @@ The access requests dashboard shows two tabs:
 ![Pending Access Requests](/images/platform/access-controls/access-request/pending-access-requests.png)
 ![Closed Access Requests](/images/platform/access-controls/access-request/closed-access-requests.png)
 
-### Reviewing a Request
+### Reviewing a request
 
 Click on any request to open the review modal with full details:
 
 ![Review Request Modal](/images/platform/access-controls/access-request/review-request-modal.png)
 
-### Editing Access Duration
+### Editing access duration
 
 Approvers can modify the access duration before approving a request by clicking the **Edit** icon next to the duration field. This allows shortening the requested timeframe when appropriate.
 
 ![Edit Access Duration Modal](/images/platform/access-controls/access-request/edit-access-duration-modal.png)
 
-## Revoking an Approved Request
+## Revoking an approved request
 
 Approvers can revoke a previously approved access request at any time. Revoking an access request immediately deletes the associated privilege, removing the user's access.
 
-### How to Revoke
+### How to revoke
 
 1. Navigate to the **Access Requests** menu in the sidebar and open the **Closed** tab.
 2. Click on an approved request to open the review modal.

@@ -1,4 +1,3 @@
-import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
@@ -36,7 +35,8 @@ import {
   queueJobDurationHistogram,
   queueJobFailureCounter,
   queueJobWaitHistogram,
-  queueStalledCounter
+  queueStalledCounter,
+  resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
@@ -50,6 +50,7 @@ import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
+  TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
@@ -89,6 +90,7 @@ export enum QueueName {
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   PkiSync = "pki-sync",
+  PkiSyncHealthCheck = "pki-sync-health-check",
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
@@ -116,7 +118,8 @@ export enum QueueName {
   ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event"
+  UsageEvent = "usage-event",
+  IntegrationDeprecationNotice = "integration-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -152,6 +155,7 @@ export enum QueueJobs {
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
+  PkiSyncRunHealthCheck = "pki-sync-run-health-check",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
@@ -196,7 +200,8 @@ export enum QueueJobs {
   ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event-job"
+  UsageEvent = "usage-event-job",
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
 }
 
 export enum JobState {
@@ -352,6 +357,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
       };
+  [QueueName.PkiSyncHealthCheck]: {
+    name: QueueJobs.PkiSyncRunHealthCheck;
+    payload: TQueuePkiSyncRunHealthCheckByIdDTO;
+  };
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
@@ -470,6 +479,7 @@ export type TQueueJobTypes = {
       country?: string;
       state?: string;
       locality?: string;
+      basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
     };
   };
   [QueueName.PkiSubscriber]: {
@@ -566,6 +576,11 @@ export type TQueueJobTypes = {
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
+  };
+  [QueueName.IntegrationDeprecationNotice]: {
+    name: QueueJobs.SendIntegrationDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
   };
 };
 
@@ -676,12 +691,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
   // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
   const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
-  const queueDepthGauge = opentelemetry.metrics
-    .getMeter("InfisicalCore")
-    .createObservableGauge("infisical.queue.depth", {
-      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
-      unit: "{job}"
-    });
+  const queueDepthGauge = resolveCoreMeter().createObservableGauge("infisical.queue.depth", {
+    description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
+    unit: "{job}"
+  });
 
   queueDepthGauge.addCallback(async (observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;

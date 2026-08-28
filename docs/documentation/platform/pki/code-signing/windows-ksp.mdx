@@ -123,6 +123,10 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.token_ttl_seconds` | No | `300` | How long to reuse a login token before logging in again. |
 | `cache.cert_ttl_seconds` | No | `3600` | How long to reuse a downloaded certificate. |
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
+| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver does not eat into it. |
+| `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
+| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the provider opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `ip_address`, `data_hash`. An unknown name is rejected at startup. |
+| `approval.ip_address` | No | None | Pin the requests the provider opens to this address instead of the one Infisical sees them arrive from, which is what it uses when this is unset. It does not have to be this machine's, so you can name a build agent's egress address. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
 
@@ -178,11 +182,99 @@ signtool verify /pa /v MyApp.exe
   If your certificate comes from your own private CA (instead of one Windows already trusts), `signtool verify` shows the warning `A certificate chain could not be built to a trusted root authority` (`0x800B010A`). The signature is still valid; Windows just does not recognize who issued the certificate. To clear the warning, add your CA to the computer's Trusted Root store.
 </Note>
 
+## Automatic signing access requests
+
+When a Signer has an approval policy, `signtool` fails until someone has active signing access. The provider can open that request for you on the first denied signing attempt. Add an `approval` block to `%ProgramData%\Infisical\config.json`:
+
+```json
+{
+  "server_url": "https://app.infisical.com",
+  "approval": {
+    "signing_duration": "8h",
+    "signing_count": 10
+  }
+}
+```
+
+- **`signing_duration`** asks for an access window of this length (`30m`, `8h`, `2d`).
+- **`signing_count`** asks for access good for this many signing operations.
+
+Set one or both, depending on what the Signer's policy expects. Both are capped by the policy's own limits.
+
+The request is [scoped](/documentation/platform/pki/code-signing/approvals#scoping-an-approval) to what the provider saw: the command, the host process, the machine, the Windows account, and the artifact. Approvers review the real signing situation, and the approval only covers that situation.
+
+<Warning>
+  Values following credential flags (`/p`, `-storepass`, `-keypass`, `-pass`, `--password`, and MSBuild's `/p:Password=`) are redacted before the command line leaves the machine, because it is stored on the approval record where approvers and auditors can read it. Everything else in the command line is sent as-is, so review your commands if they carry other sensitive arguments.
+</Warning>
+
+<Note>
+  The first signing attempt **still fails**, because an approver has to act on the request. Once approved, run the same command again and it succeeds.
+
+  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. A request's parameters are fixed once it is open, so when they are wrong the request is rejected and reopened rather than edited. To have one approval cover a batch, leave the parameters that vary out of the request from the start.
+</Note>
+
+### Leaving parameters out of a request
+
+Every parameter on a request has to match at signing time, so a request that names the artifact hash covers exactly one artifact. To have one approval cover a series of builds, name the parameters that vary in `approval.exclude_scope_fields` and the provider leaves them off every request it opens:
+
+```json
+{
+  "approval": {
+    "signing_duration": "8h",
+    "signing_count": 10,
+    "exclude_scope_fields": ["data_hash"]
+  }
+}
+```
+
+`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username` and `ip_address`.
+
+Leave out only what genuinely varies, and be aware that dropping a parameter widens the approval further than the machine you configured it on. An approval belongs to the identity that asked for it, not to a host, so once `hostname` is excluded the same approval covers that identity signing from anywhere its credentials are installed.
+
+<Warning>
+  Excluding every parameter leaves the request with no scope at all. The resulting approval permits any command, on any machine, against any artifact, for the whole of its window and signature count, which is the same access you would have with no scoping at all. Excluding `data_hash` alone is almost always what a build pipeline needs.
+</Warning>
+
+An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact hash behind every signature stay available to auditors even when they no longer constrain the approval.
+
+### Scoping by address
+
+The address is the one parameter the provider cannot observe, because what counts is the address Infisical receives the sign call from, after any NAT or proxy in between. Infisical fills it in from the request itself, the same value it records in the audit log, so requests are scoped by address without any configuration.
+
+Two settings change that:
+
+```json
+{
+  "approval": {
+    "ip_address": "203.0.113.10",
+    "exclude_scope_fields": ["ip_address"]
+  }
+}
+```
+
+`ip_address` pins a different address than the request came from, which is how you tie an approval to a build agent's egress address from elsewhere. Excluding `ip_address` leaves signing unrestricted by address, which is what a fleet behind a rotating NAT pool needs, since a pinned address would stop matching between runs. Setting both leaves the address unscoped, because excluding wins.
+
+Infisical always compares against the address it sees, never one a caller reports, so neither setting can widen access beyond what the approval already allows.
+
+### Example CI workflow
+
+1. The pipeline runs `signtool sign ... /csp "Infisical Key Storage Provider" /kc <signer>`.
+2. No active access exists, so Infisical returns 403.
+3. The provider sees the `approval` block and opens a scoped signing request.
+4. This run fails.
+5. A reviewer approves the request in Infisical.
+6. The pipeline is rerun and signing succeeds under the freshly issued access.
+
+For fully unattended CI, have an Administrator [pre-approve signing](/documentation/platform/pki/code-signing/approvals#approval-paths) before the pipeline runs.
+
 ## Troubleshooting
 
 The plug-in writes a log to `%ProgramData%\Infisical\ksp.log`. `signtool` itself only shows a short error code, so this log is the best place to see what actually went wrong and how to fix it. For more detail, set `log_level` to `debug`.
 
 <AccordionGroup>
+  <Accordion title="signtool fails immediately and the log you configured is empty">
+    The config file could not be read, so the log path named inside it is unknown too. The reason is written to the default log at `%ProgramData%\Infisical\ksp.log` instead, and it names the setting at fault: an `exclude_scope_fields` entry that is not a signing parameter, an `ip_address` that is not an address, or invalid JSON. A UTF-8 byte order mark counts as invalid JSON, so write the file with `[IO.File]::WriteAllText` rather than `Set-Content -Encoding utf8`.
+  </Accordion>
   <Accordion title="signtool says 'Invalid provider specified' right after setup">
     Windows has not picked up the new plug-in yet. **Restart the computer once** and try again.
   </Accordion>

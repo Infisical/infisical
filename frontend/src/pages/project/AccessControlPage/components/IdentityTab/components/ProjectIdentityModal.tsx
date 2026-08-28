@@ -81,15 +81,8 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to update machine identity";
-
-      createNotification({
-        text,
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 

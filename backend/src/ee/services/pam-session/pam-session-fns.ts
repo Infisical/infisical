@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -9,20 +10,22 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
+import { TPamSessionDALFactory } from "./pam-session-dal";
 
 export const resolvePamSessionDistinctId = async ({
   session,
   userDAL
 }: {
-  session: { actorEmail: string; userId?: string | null };
+  session: { actorEmail: string; actorName?: string | null; userId?: string | null };
   userDAL: Pick<TUserDALFactory, "findById">;
 }) => {
   if (session.userId) {
     const user = await userDAL.findById(session.userId);
     if (user?.username) return user.username;
   }
-  return session.actorEmail;
+  // Machine identity sessions have no email; fall back to the identity name
+  return session.actorEmail || session.actorName || "unknown";
 };
 
 export const reportPamSessionEnded = async ({
@@ -72,12 +75,13 @@ export const reportPamSessionEnded = async ({
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent
 // best-effort (fire-and-forget) so callers don't block on the gateway round-trip, and shared by every
-// termination path (manual terminate, grant revocation) so they can't drift.
+// termination path (manual terminate, grant revocation, expiry) so they can't drift.
 export const sendPamSessionCancellationSignal = ({
   sessionId,
   gatewayId,
   accountType,
   actorId,
+  actorType = ActorType.USER,
   actorEmail,
   gatewayV2Service
 }: {
@@ -85,6 +89,7 @@ export const sendPamSessionCancellationSignal = ({
   gatewayId: string;
   accountType: string;
   actorId: string;
+  actorType?: ActorType.USER | ActorType.IDENTITY;
   actorEmail: string;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
@@ -97,7 +102,7 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: ActorType.USER, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
       });
       if (!certs) {
         logger.error(
@@ -124,4 +129,53 @@ export const sendPamSessionCancellationSignal = ({
       relayConn?.destroy();
     }
   })();
+};
+
+// Flips a set of session rows to terminated and returns the callback that cuts their live tunnels. The
+// two halves are deliberately separate: the row update is undone by a rollback, the ALPN signal is not.
+// A caller inside a transaction that can still fail (account deletion, which can be blocked by the
+// rotationAccountId FK guard) must pass `tx` and invoke the returned callback only after COMMIT, or a
+// failed operation kills privileged tunnels it then claims never to have touched. Callers with no
+// transaction can invoke it immediately.
+export const terminatePamSessions = async ({
+  sessions,
+  actorId,
+  actorEmail,
+  pamSessionDAL,
+  gatewayV2Service,
+  tx
+}: {
+  sessions: { id: string; gatewayId?: string | null; accountType: string }[];
+  actorId: string;
+  actorEmail: string;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  tx?: Knex;
+}) => {
+  // One statement rather than one per session: callers run this inside a transaction, holding a connection.
+  await pamSessionDAL.update(
+    {
+      $in: {
+        id: sessions.map((session) => session.id),
+        status: [PamSessionStatus.Active, PamSessionStatus.Starting]
+      }
+    },
+    { status: PamSessionStatus.Terminated, endedAt: new Date() },
+    tx
+  );
+
+  return () => {
+    for (const session of sessions) {
+      if (session.gatewayId) {
+        sendPamSessionCancellationSignal({
+          sessionId: session.id,
+          gatewayId: session.gatewayId,
+          accountType: session.accountType,
+          actorId,
+          actorEmail,
+          gatewayV2Service
+        });
+      }
+    }
+  };
 };

@@ -1,10 +1,10 @@
 ---
-title: "Gateway Pools"
-sidebarTitle: "Gateway Pools"
-description: "High availability and automatic failover for gateways"
+title: "Gateway pools"
+sidebarTitle: "Gateway pools"
+description: "Load balancing, high availability, and automatic failover for gateways"
 ---
 
-Gateway Pools provide high availability for your gateway infrastructure. A pool is a named collection of gateways that all have connectivity to the same private network. When the platform needs to reach a resource through a pool, it automatically routes through a healthy gateway, providing failover if any individual gateway goes down.
+Gateway Pools spread work across your gateway infrastructure and keep it available when a gateway fails. A pool is a named collection of gateways that all have connectivity to the same private network. When the platform needs to reach a resource through a pool, it sends the work to whichever gateway is least busy, and retries on another gateway if the chosen one cannot be reached.
 
 <Info>
   Gateway Pools is an enterprise feature. Self-hosted users can contact
@@ -12,16 +12,17 @@ Gateway Pools provide high availability for your gateway infrastructure. A pool 
   license.
 </Info>
 
-## How It Works
+## How it works
 
 1. You create a Gateway Pool and add multiple gateways that share network access to the same resources.
 2. When configuring a consumer (e.g., Kubernetes Auth), you select the pool instead of an individual gateway.
-3. At request time, the platform picks a random healthy gateway from the pool and routes through it.
-4. If a gateway goes down, subsequent requests automatically route through the remaining healthy gateways.
+3. At request time, the platform sends the work to whichever healthy gateway in the pool is handling the fewest connections.
+4. If that gateway cannot be reached, the request is retried on another member and the failed gateway is skipped for the next minute.
+5. If a gateway goes down, subsequent requests route through the remaining healthy gateways.
 
 A gateway is considered healthy if it has sent a successful heartbeat within its TTL window.
 
-## Creating a Gateway Pool
+## Creating a Gateway pool
 
 1. Navigate to **Organization Settings > Networking > Gateways**.
 2. Click the **Gateway Pools** tab.
@@ -36,7 +37,7 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 
 ![Create Gateway Pool](../../../images/platform/gateways/gateway-pools-create.png)
 
-## Adding Gateways to a Pool
+## Adding gateways to a pool
 
 1. In the **Gateway Pools** tab, click on a pool to open its detail view.
 
@@ -50,17 +51,33 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 
 A gateway can belong to multiple pools if it has connectivity to resources served by each pool. Pool membership can be changed at any time without restarting the gateway.
 
-## Using a Pool in a Consumer Config
+## Using a pool in a consumer config
 
 Anywhere you configure a gateway, the gateway picker dropdown shows both individual gateways and gateway pools. Pools are listed under the "Gateway Pools" section with an **HA** (high availability) badge and health status.
 
 When you select a pool, the platform validates connectivity through one of its healthy gateways before saving.
 
-## Gateway Selection
+## Gateway selection
 
-When a request is routed through a pool, the platform picks a gateway at random from the pool's healthy gateways. There is no round-robin or weighted selection.
+Each gateway reports how many connections it is currently handling. When a request is routed through a pool, the platform picks the healthy member handling the fewest, so a gateway holding several long-lived sessions stops attracting new work until the others catch up.
 
-## Pool Health
+Members handling the same amount are chosen between at random. On an idle pool every member is equal, so traffic spreads evenly.
+
+Because the count comes from the gateway itself, it includes work the platform does not proxy, such as a PAM session opened from the CLI.
+
+<Warning>
+  Load balancing requires gateways running a CLI version that reports connection counts. A gateway
+  on an older version does not report, and a pool containing any non-reporting member falls back to
+  choosing at random. Upgrade every gateway in a pool to get load balancing for that pool.
+</Warning>
+
+## Failover
+
+If the platform cannot establish a connection to the gateway it chose, it retries the request on another member of the pool, then marks the failed gateway as suspect and skips it for the next minute. This covers the window where a gateway has stopped responding but its last heartbeat is still recent enough to look healthy.
+
+Only failures that occur *before* the platform reaches your resource are retried. If the connection succeeds and the resource itself rejects the request, for example bad credentials, that error is returned to you as-is and is never retried on another gateway. This is deliberate: an operation that changes something on the target, such as rotating a password, must not run twice.
+
+## Pool health
 
 Each pool displays an aggregate health status based on its gateways:
 

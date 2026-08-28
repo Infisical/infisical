@@ -12,9 +12,11 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
+import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
+import { AGENT_CACHE_MAX, agentCache } from "./agent-pool";
 
 const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
@@ -167,12 +169,46 @@ const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
   opts.keepAlive !== undefined ||
   opts.checkServerIdentity !== undefined;
 
-// Pool of agents keyed by connection signature for connection reuse across
-// repeated calls. The cache key includes the validated IP set so DNS record
-// changes naturally produce a fresh entry. The hard cap is cleared wholesale
-// when exceeded — misses just rebuild.
-const AGENT_CACHE_MAX = 200;
-const agentCache = new Map<string, http.Agent | https.Agent>();
+// A keepAlive agent's idle sockets keep the agent itself reachable through their
+// own event listeners, so dropping the map entry frees neither: the agent is
+// never collected and each pooled socket holds its fd (and the peer's connection
+// slot) for the life of the process. Every eviction has to release those sockets.
+//
+// destroy() would ECONNRESET in-flight requests on this process-wide pool. Close
+// idle sockets now and set maxFreeSockets to 0 so they close on release instead.
+const releaseEvictedAgent = (agent: http.Agent | https.Agent) => {
+  // eslint-disable-next-line no-param-reassign -- releasing the agent is the whole point
+  agent.maxFreeSockets = 0;
+  Object.values(agent.freeSockets).forEach((sockets) => sockets?.forEach((socket) => socket.destroy()));
+  if (!Object.keys(agent.sockets).length) agent.destroy();
+};
+
+const hostnameFromCacheKey = (key: string) => key.split("|")[1] || "unknown";
+
+const EVICTION_WARN_INTERVAL_MS = 60_000;
+let evictionsSinceLastWarn = 0;
+let lastEvictionWarnAt = 0;
+
+const evictLeastRecentlyUsedAgents = () => {
+  while (agentCache.size >= AGENT_CACHE_MAX) {
+    const oldest = agentCache.entries().next();
+    if (oldest.done) return;
+    const [key, agent] = oldest.value;
+    agentCache.delete(key);
+    releaseEvictedAgent(agent);
+    recordSafeRequestAgentEvictionMetric();
+
+    evictionsSinceLastWarn += 1;
+    const now = Date.now();
+    if (now - lastEvictionWarnAt >= EVICTION_WARN_INTERVAL_MS) {
+      logger.warn(
+        `safeRequest: agent pool at capacity, evicting least recently used [cacheSize=${agentCache.size}] [max=${AGENT_CACHE_MAX}] [evictionsSinceLastWarn=${evictionsSinceLastWarn}] [evictedHostname=${hostnameFromCacheKey(key)}]`
+      );
+      lastEvictionWarnAt = now;
+      evictionsSinceLastWarn = 0;
+    }
+  }
+};
 
 const buildAgentCacheKey = (
   validated: TValidatedHost | undefined,
@@ -249,14 +285,14 @@ const buildPinnedAgent = (
   const cacheKey = buildAgentCacheKey(validated, protocol, opts);
   const cached = agentCache.get(cacheKey);
   if (cached) {
+    // Re-insert so the map's insertion order tracks recency of use.
+    agentCache.delete(cacheKey);
+    agentCache.set(cacheKey, cached);
     logger.debug(`safeRequest: pinned agent cache hit [hostname=${validated?.hostname ?? "n/a"}]`);
     return cached;
   }
 
-  if (agentCache.size >= AGENT_CACHE_MAX) {
-    logger.info(`safeRequest: pinned agent cache full, clearing [size=${agentCache.size}]`);
-    agentCache.clear();
-  }
+  evictLeastRecentlyUsedAgents();
 
   const agent = constructAgent(validated, protocol, opts);
   agentCache.set(cacheKey, agent);
@@ -297,6 +333,21 @@ export const buildSsrfSafeAgent = async (
     checkServerIdentity
   });
 };
+
+type TSharedHttpsAgentOptions = {
+  ca?: string;
+  rejectUnauthorized: boolean;
+  servername?: string;
+};
+
+// A pooled https.Agent for callers that customize TLS (custom CA, SNI, verification
+// toggle) but cannot go through `safeRequest` (gateway paths, for example)
+//
+// The point of pooling here is that building one per request re-parses the CA into a
+// fresh OpenSSL trust store and forces a full TLS handshake every time, with no session
+// reuse: an agent's TLS session cache is per-agent.
+export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Agent =>
+  buildPinnedAgent(undefined, "https:", options) as https.Agent;
 
 type TSafeRequestExtras = {
   allowPrivateIps?: boolean;

@@ -60,10 +60,10 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions"
+    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions" | "updateById"
   >;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
@@ -193,7 +193,9 @@ export const pamWebAccessServiceFactory = ({
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
-        userId: actor.id,
+        // Web access is JWT-only, so the actor is always a user
+        actorId: actor.id,
+        actor: ActorType.USER,
         accountId,
         accountFolderId: account.folderId,
         projectId
@@ -430,7 +432,8 @@ export const pamWebAccessServiceFactory = ({
       let sessionDurationCapMs = policyDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
       if (requiresApproval) {
         const grant = await pamAccessRequestService.checkGrant({
-          userId,
+          actorId: userId,
+          actor: ActorType.USER,
           accountId,
           accountFolderId: account.folderId,
           projectId
@@ -504,22 +507,62 @@ export const pamWebAccessServiceFactory = ({
         selectedHost: targetHost
       });
 
-      const certs = await gatewayV2Service.getPAMConnectionDetails({
-        gatewayId: effectiveGatewayId,
-        sessionId: session.id,
-        accountType: handlerEntry.gatewayAccountType,
-        host: targetHost,
-        port: gatewayTarget.port,
-        duration: sessionDurationMs,
-        actorMetadata: {
-          id: userId,
-          type: ActorType.USER,
-          name: user?.email ?? ""
-        }
-      });
+      const createdSession = session;
+      const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
 
-      if (!certs) {
-        throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
+      // Certs are minted per gateway, so each attempt has to re-mint. `eager` opens the tunnel
+      // during setup, so an unreachable gateway fails here where another member can still be tried.
+      const attempt = await gatewayPoolService.runWithPoolFailover(
+        {
+          gatewayId: account.gatewayId ?? account.templateGatewayId,
+          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+        },
+        async (gatewayId) => {
+          const attemptCerts = await gatewayV2Service.getPAMConnectionDetails({
+            gatewayId,
+            sessionId: createdSession.id,
+            accountType: handlerEntry.gatewayAccountType,
+            host: targetHost,
+            port: gatewayTarget.port,
+            duration: sessionDurationMs,
+            actorMetadata: {
+              id: userId,
+              type: ActorType.USER,
+              name: user?.email ?? ""
+            }
+          });
+
+          if (!attemptCerts) {
+            throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
+          }
+
+          return {
+            certs: attemptCerts,
+            server: await setupRelayServer({
+              protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
+              ...attemptCerts,
+              longLived: true,
+              eager: true
+            })
+          };
+        }
+      );
+
+      const { certs } = attempt.result;
+      relayServer = attempt.result.server;
+
+      // The tunnel is open from here rather than from whenever the session handler first dials, so
+      // a socket that closed during setup has to be caught: its "close" fired before the listener
+      // further down was attached, and nothing else would release the channel until session expiry.
+      if (socket.readyState !== socket.OPEN) {
+        await cleanup();
+        return;
+      }
+
+      // The row was written against the first pick. Cancellation and credential fetch look the
+      // session up by gateway, so it has to name the one that actually answered.
+      if (attempt.gatewayId !== effectiveGatewayId) {
+        await pamSessionDAL.updateById(createdSession.id, { gatewayId: attempt.gatewayId });
       }
 
       relayCerts = {
@@ -527,16 +570,6 @@ export const pamWebAccessServiceFactory = ({
         relay: certs.relay,
         gateway: certs.gateway
       };
-
-      const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
-
-      relayServer = await setupRelayServer({
-        protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
-        relayHost: certs.relayHost,
-        relay: certs.relay,
-        gateway: certs.gateway,
-        longLived: true
-      });
 
       const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 

@@ -41,7 +41,7 @@ export const registerAzureDnsConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const zones = await server.services.appConnection.azureDns.listZones(connectionId, req.permission);

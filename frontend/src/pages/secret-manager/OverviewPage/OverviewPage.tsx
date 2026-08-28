@@ -21,7 +21,8 @@ import {
   LayersIcon,
   LockIcon,
   SettingsIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -47,6 +48,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
@@ -81,6 +83,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Pagination,
   Sheet,
   SheetContent,
@@ -103,6 +106,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
@@ -111,6 +115,7 @@ import {
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -234,6 +239,7 @@ import {
   DynamicSecretTableRow,
   EmptyResourceDisplay,
   EnvironmentSelect,
+  FolderAccessSheet,
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
@@ -247,6 +253,16 @@ import {
   SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
+import {
+  hasOverviewScopeChanged,
+  hasSensitiveOverviewSearchState,
+  normalizeOverviewEnvironments,
+  parseOverviewTags,
+  resolveOverviewEnvironmentSlugs,
+  serializeOverviewResourceFilter,
+  stripSensitiveOverviewSearchState,
+  updateOverviewSecretPath
+} from "./overviewSearchState";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -271,10 +287,6 @@ export enum RowType {
   HoneyToken = "honeyToken",
   ProxiedService = "proxiedService"
 }
-
-type Filter = {
-  [key in RowType]: boolean;
-};
 
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
@@ -305,6 +317,7 @@ const OverviewPageContent = () => {
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
+      tags: el.tags,
       filterBy: el.filterBy
     })
   });
@@ -331,7 +344,8 @@ const OverviewPageContent = () => {
     ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
-  const [searchFilter, setSearchFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState(routerSearch.search);
+  const [tagFilter, setTagFilter] = useState(() => parseOverviewTags(routerSearch.tags));
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -358,11 +372,21 @@ const OverviewPageContent = () => {
   //   }
   // };
 
-  const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
-  const [tagFilter, setTagFilter] = useState<Record<string, boolean>>({});
-  const [filterHistory, setFilterHistory] = useState<
-    Map<string, { filter: Filter; searchFilter: string }>
-  >(new Map());
+  const filter = useMemo(() => {
+    const nextFilter = { ...DEFAULT_FILTER_STATE };
+
+    routerSearch.filterBy
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
+      .forEach((rowType) => {
+        nextFilter[rowType] = true;
+      });
+
+    if (Object.keys(tagFilter).length > 0) nextFilter[RowType.Secret] = true;
+
+    return nextFilter;
+  }, [routerSearch.filterBy, tagFilter]);
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -406,8 +430,13 @@ const OverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    const onRouteChangeStart = () => {
-      resetSelectedEntries();
+    const onRouteChangeStart = (event: {
+      fromLocation: { pathname: string; search: unknown };
+      toLocation: { pathname: string; search: unknown };
+    }) => {
+      if (hasOverviewScopeChanged(event.fromLocation, event.toLocation)) {
+        resetSelectedEntries();
+      }
     };
 
     const unsubscribeRouterEvent = router.subscribe("onLoad", onRouteChangeStart);
@@ -421,102 +450,72 @@ const OverviewPageContent = () => {
   const isMoreEnvironmentsAllowed = subscription?.environmentLimit
     ? userAvailableEnvs.length < subscription.environmentLimit
     : true;
-  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionDynamicSecretActions.CreateRootCredential,
-      subject(ProjectPermissionSub.DynamicSecrets, {
-        environment: env.slug,
-        secretPath,
-        metadata: ["*"]
-      })
-    )
-  );
-  const userAvailableSecretRotationEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-  const userAvailableSecretImportEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretImports, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
-  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
-  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
-  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
-  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
-  // matters most for `environments`: re-selecting the same environment from the reference tree
-  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
-  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
-  // updates the params without remounting.
+  const selectedEnvironmentSlugs = useMemo(
+    () =>
+      resolveOverviewEnvironmentSlugs(routerSearch.environments, storedEnvIds, userAvailableEnvs),
+    [routerSearch.environments, storedEnvIds, userAvailableEnvs]
+  );
+
   useEffect(() => {
-    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
-    const hasEnvLink = Boolean(envSlugs?.length);
+    if (routerSearch.search) setSearchFilter(routerSearch.search);
+    if (routerSearch.tags !== undefined) setTagFilter(parseOverviewTags(routerSearch.tags));
+  }, [routerSearch.search, routerSearch.tags]);
 
-    if (!search && !filterBy && !hasEnvLink) return;
-    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
-    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+  useEffect(() => {
+    const requestedSlugs = normalizeOverviewEnvironments(
+      routerSearch.environments,
+      userAvailableEnvs.map((env) => env.slug)
+    );
+    const isCanonical =
+      requestedSlugs.length === routerSearch.environments.length &&
+      requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
+    const shouldNormalizeEnvironments = userAvailableEnvs.length > 0 && !isCanonical;
+    const shouldStripSensitiveState = hasSensitiveOverviewSearchState(routerSearch);
+    const normalizedEnvironments = selectedEnvironmentSlugs.length
+      ? selectedEnvironmentSlugs
+      : undefined;
 
-    if (envSlugs && envSlugs.length > 0) {
-      const envIds = userAvailableEnvs
-        .filter((env) => envSlugs.includes(env.slug))
-        .map((env) => env.id);
-      if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
-      }
-    }
+    if (!shouldNormalizeEnvironments && !shouldStripSensitiveState) return;
 
-    if (search || filterBy) {
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
-      }
-      setFilter(initialFilter);
+    navigate({
+      search: (prev) => {
+        const nextSearch = shouldStripSensitiveState
+          ? stripSensitiveOverviewSearchState(prev)
+          : prev;
 
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
+        return {
+          ...nextSearch,
+          environments: shouldNormalizeEnvironments
+            ? normalizedEnvironments
+            : nextSearch.environments
+        };
+      },
+      replace: true
+    });
+  }, [navigate, routerSearch, selectedEnvironmentSlugs, userAvailableEnvs]);
 
-    navigate({ search: query, replace: true });
-  }, [
-    routerSearch.search,
-    routerSearch.filterBy,
-    routerSearch.environments?.join(","),
-    userAvailableEnvs.length
-  ]);
-
-  const filteredEnvs = useMemo(() => {
-    if (!storedEnvIds.length) return [];
-    return userAvailableEnvs.filter((env) => storedEnvIds.includes(env.id));
-  }, [storedEnvIds, userAvailableEnvs]);
+  const filteredEnvs = useMemo(
+    () => userAvailableEnvs.filter((env) => selectedEnvironmentSlugs.includes(env.slug)),
+    [selectedEnvironmentSlugs, userAvailableEnvs]
+  );
 
   const setFilteredEnvs = useCallback(
     (value: SetStateAction<ProjectEnv[]>) => {
-      setStoredEnvIds((prev) => {
-        const prevEnvs = userAvailableEnvs.filter((env) => prev.includes(env.id));
-        const next = typeof value === "function" ? value(prevEnvs) : value;
-        return next.map((env) => env.id);
+      const next = typeof value === "function" ? value(filteredEnvs) : value;
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          environments: next.length > 0 ? next.map((env) => env.slug) : undefined
+        })
       });
+      setStoredEnvIds(next.map((env) => env.id));
     },
-    [setStoredEnvIds, userAvailableEnvs]
+    [filteredEnvs, navigate, setStoredEnvIds]
   );
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
@@ -542,9 +541,8 @@ const OverviewPageContent = () => {
   }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
-    data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
-      count: 0,
-      folderId: ""
+    data: { count: singleEnvCommitCount } = {
+      count: 0
     },
     isPending: isSingleEnvCommitCountPending,
     isFetching: isSingleEnvCommitCountFetching
@@ -565,6 +563,32 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
+  const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
+  const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.slug,
+        secretPath,
+        metadata: ["*"]
+      })
+    )
+  );
+  const visibleSecretRotationEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionSecretRotationActions.Create,
+      subject(ProjectPermissionSub.SecretRotation, {
+        environment: env.slug,
+        secretPath
+      })
+    )
+  );
+  const visibleSecretImportEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
+    )
+  );
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -574,32 +598,73 @@ const OverviewPageContent = () => {
     setIsSingleEnvSecretsVisible.off();
   }, [singleVisibleEnv?.slug]);
 
-  const secretSubject = subject(ProjectPermissionSub.Secrets, {
-    environment: singleEnvSlug,
-    secretPath,
-    secretName: "*",
-    secretTags: ["*"]
-  });
+  // folder-scoped grants condition every rule on environment + secretPath, and CASL ignores
+  // conditions when the check is against a bare subject type, so each gate below must evaluate a
+  // concrete entity per environment in view
+  const canSecretActionInVisibleEnv = (action: ProjectPermissionSecretActions) =>
+    visibleEnvs.some((env) =>
+      permission.can(
+        action,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: env.slug,
+          secretPath,
+          secretName: "*",
+          secretTags: ["*"]
+        })
+      )
+    );
 
-  const canReadSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject) ||
-      permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject)
-    : true;
+  const canFolderActionInVisibleEnv = (action: ProjectPermissionActions) =>
+    visibleEnvs.some((env) =>
+      permission.can(
+        action,
+        subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
+      )
+    );
 
-  const canEditSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Edit, secretSubject)
-    : true;
+  const canReadSecrets =
+    canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeSecret) ||
+    canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeAndReadValue);
 
-  const canDeleteSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Delete, secretSubject)
-    : true;
+  const canEditSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Edit);
 
-  const canCreateSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
-    : true;
+  const canDeleteSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Delete);
+
+  const canCreateSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Create);
+
+  const canCreateFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Create);
+
+  const canEditFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Edit);
+
+  const canDeleteFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Delete);
+
+  const canCreateHoneyTokens = visibleEnvs.some((env) =>
+    permission.can(
+      ProjectPermissionHoneyTokenActions.Create,
+      subject(ProjectPermissionSub.HoneyTokens, { environment: env.slug, secretPath })
+    )
+  );
+
+  const appConnectionImportEnv =
+    visibleEnvs.find((env) =>
+      permission.can(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: env.slug,
+          secretPath,
+          secretName: "*",
+          secretTags: ["*"]
+        })
+      )
+    ) ?? visibleEnvs[0];
 
   const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
-    singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
+    subject(ProjectPermissionSub.Secrets, {
+      environment: appConnectionImportEnv?.slug ?? "",
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
   );
 
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
@@ -742,6 +807,33 @@ const OverviewPageContent = () => {
   const { folderNamesAndDescriptions, getFolderByNameAndEnv, isFolderPresentInEnv } =
     useFolderOverview(folders);
 
+  const [folderAccessTarget, setFolderAccessTarget] = useState<{
+    folderPath: string;
+  } | null>(null);
+  const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
+
+  const canManageFolderAccessAt = useCallback(
+    (environment: string, folderPath: string) =>
+      permission.can(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: folderPath })
+      ),
+    [permission]
+  );
+  // the backend authorizes a grant against the target folder's own path, so a child row is checked
+  // at its own path while the toolbar button is checked at the folder the user is currently inside
+  const childFolderPath = useCallback(
+    (folderName: string) => `${secretPath === "/" ? "" : secretPath}/${folderName}`,
+    [secretPath]
+  );
+  const canManageFolderAccessInRow = useCallback(
+    (folderName: string) =>
+      isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, childFolderPath(folderName)),
+    [isSingleEnvView, singleEnvSlug, canManageFolderAccessAt, childFolderPath]
+  );
+  const canManageCurrentFolderAccess =
+    isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, secretPath);
+
   const {
     dynamicSecretNames,
     isDynamicSecretPresentInEnv,
@@ -832,6 +924,7 @@ const OverviewPageContent = () => {
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
+    shouldBlockNavigation: ({ current, next }) => hasOverviewScopeChanged(current, next),
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {
@@ -918,6 +1011,9 @@ const OverviewPageContent = () => {
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
+    null
+  );
 
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
@@ -937,7 +1033,7 @@ const OverviewPageContent = () => {
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
-  const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
+  const handleViewCommitHistory = (envSlug: string) => {
     if (!subscription?.pitRecovery) {
       handlePopUpOpen("upgradePlan", {
         text: "You can use point-in-time recovery if you upgrade your Infisical plan."
@@ -947,26 +1043,34 @@ const OverviewPageContent = () => {
 
     if (!canReadCommits) return;
 
-    let targetFolderId = preloadedFolderId;
-    if (!targetFolderId) {
-      try {
-        const res = await apiRequest.get<{ count: number; folderId: string }>(
-          "/api/v1/pit/commits/count",
-          { params: { environment: envSlug, path: secretPath, projectId } }
-        );
-        targetFolderId = res.data.folderId;
-      } catch {
-        createNotification({ type: "error", text: "Failed to load commit history" });
-        return;
-      }
-    }
-
-    navigate({
-      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      params: { orgId, projectId, folderId: targetFolderId, environment: envSlug },
-      search: (query: Record<string, string | string[]>) => ({ ...query, secretPath })
-    });
+    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
+
+  const ensureFolderRbacPlan = useCallback(() => {
+    if (subscription?.secretsFolderRbac) return true;
+    handlePopUpOpen("upgradePlan", {
+      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
+    });
+    return false;
+  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
+
+  const handleFolderAccessOpen = useCallback(
+    (folderName: string) => {
+      if (!ensureFolderRbacPlan()) return;
+      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+      if (!folder) return;
+      setFolderAccessTarget({
+        folderPath: childFolderPath(folderName)
+      });
+    },
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+  );
+
+  const handleCurrentFolderAccessOpen = useCallback(() => {
+    if (!ensureFolderRbacPlan()) return;
+    setIsCurrentFolderAccessOpen(true);
+  }, [ensureFolderRbacPlan]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2193,62 +2297,67 @@ const OverviewPageContent = () => {
     handlePopUpClose("confirmDisableBatchMode");
   }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
-  const handleResetSearch = (path: string) => {
-    const restore = filterHistory.get(path);
-    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
-    const el = restore?.searchFilter ?? "";
-    setSearchFilter(el);
-  };
-
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
 
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
-
+    setSearchFilter("");
     navigate({
       search: (prev) => ({
-        ...prev,
-        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        ...updateOverviewSecretPath(
+          prev,
+          `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        )
       })
-    }).then(() => {
-      setFilter(DEFAULT_FILTER_STATE);
-      setSearchFilter("");
     });
   };
+
+  const handleSearchChange = useCallback((search: string) => setSearchFilter(search), []);
 
   const handleClearTags = useCallback(() => {
     setTagFilter({});
   }, []);
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
-      setFilter((state) => {
-        const newValue = !state[rowType];
-        if (rowType === RowType.Secret && !newValue) {
-          setTagFilter({});
-        }
-        return {
-          ...state,
-          [rowType]: newValue
-        };
-      }),
-    []
+    (rowType: RowType) => {
+      const nextFilter = { ...filter, [rowType]: !filter[rowType] };
+      if (rowType === RowType.Secret && filter[rowType]) setTagFilter({});
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType))
+        }),
+        replace: true
+      });
+    },
+    [filter, navigate]
   );
 
-  const handleToggleTag = useCallback((tagSlug: string) => {
-    setTagFilter((state) => {
-      const isActivating = !state[tagSlug];
-      if (isActivating) {
-        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+  const handleToggleTag = useCallback(
+    (tagSlug: string) => {
+      const isEnabling = !tagFilter[tagSlug];
+      setTagFilter((prev) => {
+        const next = { ...prev };
+        if (next[tagSlug]) delete next[tagSlug];
+        else next[tagSlug] = true;
+        return next;
+      });
+
+      if (isEnabling && !filter[RowType.Secret]) {
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            filterBy: [
+              ...Object.values(RowType).filter((type) => filter[type]),
+              RowType.Secret
+            ].join(",")
+          }),
+          replace: true
+        });
       }
-      return { ...state, [tagSlug]: isActivating };
-    });
-  }, []);
+    },
+    [filter, navigate, tagFilter]
+  );
 
   const allRowsSelectedOnPage = useMemo(() => {
     if (
@@ -2551,11 +2660,7 @@ const OverviewPageContent = () => {
     if (userAvailableEnvs.length === 0) return "no-environments" as const;
     if (isTagFilterEmpty) return "tag-filter-empty" as const;
     if (isTableEmpty) {
-      const cannotCreate = permission.cannot(
-        ProjectPermissionSecretActions.Create,
-        ProjectPermissionSub.Secrets
-      );
-      if (isTableFiltered || searchFilter || cannotCreate) return "filter-empty" as const;
+      if (isTableFiltered || searchFilter || !canCreateSecrets) return "filter-empty" as const;
       return "add-first-secret" as const;
     }
     return "table" as const;
@@ -2642,16 +2747,35 @@ const OverviewPageContent = () => {
           <CardHeader>
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
-                <EnvironmentSelect
-                  selectedEnvs={filteredEnvs}
-                  setSelectedEnvs={setFilteredEnvs}
-                  isDisabled={
-                    isBatchModeActive &&
-                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                  }
-                />
-                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
+                <div className="flex shrink-0 items-center gap-2">
+                  {canManageCurrentFolderAccess && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="Manage Access"
+                          className="relative"
+                          size="md"
+                          variant="outline"
+                          onClick={handleCurrentFolderAccessOpen}
+                        >
+                          <UsersIcon />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Manage Access</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <EnvironmentSelect
+                    selectedEnvs={filteredEnvs}
+                    setSelectedEnvs={setFilteredEnvs}
+                    isDisabled={
+                      isBatchModeActive &&
+                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                    }
+                  />
+                </div>
+                <FolderBreadcrumb secretPath={secretPath} />
               </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (
                   <DownloadEnvButton
@@ -2671,10 +2795,20 @@ const OverviewPageContent = () => {
                   />
                 )}
                 <ResourceSearchInput
-                  key={secretPath}
                   value={searchFilter}
                   tags={tags}
-                  onChange={setSearchFilter}
+                  onChange={handleSearchChange}
+                  onSelectResult={({ search, tags: selectedTags }) => {
+                    setSearchFilter(search);
+                    if (selectedTags !== undefined) {
+                      setTagFilter(
+                        selectedTags.reduce<Record<string, boolean>>((acc, tag) => {
+                          acc[tag] = true;
+                          return acc;
+                        }, {})
+                      );
+                    }
+                  }}
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />
@@ -2746,15 +2880,18 @@ const OverviewPageContent = () => {
                       });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
-                    isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
-                    isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isDyanmicSecretAvailable={visibleDynamicSecretEnvs.length > 0}
+                    isSecretRotationAvailable={visibleSecretRotationEnvs.length > 0}
                     isHoneyTokenAvailable
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
-                    isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
+                    isSecretImportAvailable={visibleSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
                     hasDopplerConnection={hasDopplerConnection}
+                    canCreateSecrets={canCreateSecrets}
+                    canCreateFolders={canCreateFolders}
+                    canCreateHoneyTokens={canCreateHoneyTokens}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                     onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
@@ -2882,7 +3019,7 @@ const OverviewPageContent = () => {
                         type="button"
                         onClick={() => {
                           if (singleVisibleEnv) {
-                            handleViewCommitHistory(singleVisibleEnv.slug, singleEnvFolderId);
+                            handleViewCommitHistory(singleVisibleEnv.slug);
                           }
                         }}
                       >
@@ -2925,6 +3062,7 @@ const OverviewPageContent = () => {
                     handlePopUpOpen("importSecrets");
                   }}
                   onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                  canCreateSecrets={canCreateSecrets}
                 />
               </div>
             )}
@@ -3125,10 +3263,7 @@ const OverviewPageContent = () => {
                                     type="button"
                                     onClick={() => {
                                       if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
+                                        handleViewCommitHistory(singleVisibleEnv.slug);
                                       }
                                     }}
                                   >
@@ -3275,6 +3410,10 @@ const OverviewPageContent = () => {
                                 onToggleFolderDelete={(name: string) =>
                                   handlePopUpOpen("deleteFolder", { name })
                                 }
+                                onToggleFolderAccess={handleFolderAccessOpen}
+                                canManageFolderAccess={canManageFolderAccessInRow(folderName)}
+                                canEditFolder={canEditFolders}
+                                canDeleteFolder={canDeleteFolders}
                                 pendingAction={folderPendingAction}
                                 onBatchRevert={handleBatchFolderRevert}
                                 isSelectionDisabled={hasPendingBatchChanges}
@@ -3473,7 +3612,6 @@ const OverviewPageContent = () => {
         </Card>
       </div>
       <Sheet
-        modal={false}
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
@@ -3549,7 +3687,7 @@ const OverviewPageContent = () => {
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environments={userAvailableDynamicSecretEnvs}
+        environments={visibleDynamicSecretEnvs}
         secretPath={secretPath}
       />
       <Modal
@@ -3702,7 +3840,7 @@ const OverviewPageContent = () => {
       />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
-        environments={userAvailableSecretRotationEnvs}
+        environments={visibleSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
@@ -3783,6 +3921,18 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
+      {commitHistoryEnv && (
+        <CommitHistorySheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCommitHistoryEnv(null);
+          }}
+          projectId={projectId}
+          environment={commitHistoryEnv.slug}
+          environmentName={commitHistoryEnv.name}
+          secretPath={secretPath}
+        />
+      )}
       <HoneyTokenDetailsDrawer
         projectId={projectId}
         honeyTokenId={detailsDrawerHoneyTokenId}
@@ -3934,6 +4084,28 @@ const OverviewPageContent = () => {
         }
         onComplete={() => handlePopUpClose("moveFolder")}
       />
+      {folderAccessTarget && (
+        <FolderAccessSheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setFolderAccessTarget(null);
+          }}
+          projectId={projectId}
+          environmentSlug={singleEnvSlug}
+          folderPath={folderAccessTarget.folderPath}
+          environmentName={singleEnvName}
+        />
+      )}
+      {isCurrentFolderAccessOpen && (
+        <FolderAccessSheet
+          isOpen
+          onOpenChange={setIsCurrentFolderAccessOpen}
+          projectId={projectId}
+          environmentSlug={singleEnvSlug}
+          folderPath={secretPath}
+          environmentName={singleEnvName}
+        />
+      )}
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

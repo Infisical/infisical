@@ -6,7 +6,7 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { BaseHealthCheckTestSchema, HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
 
@@ -76,7 +76,8 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
     )
     .max(20)
     .optional(),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -148,4 +149,9 @@ export const WindowsServerPkiSyncListItemSchema = z.object({
   destination: z.literal(PkiSync.WindowsServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const WindowsServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
+  destinationConfig: WindowsServerPkiSyncConfigSchema,
+  syncOptions: WindowsServerPkiSyncOptionsSchema.partial()
 });

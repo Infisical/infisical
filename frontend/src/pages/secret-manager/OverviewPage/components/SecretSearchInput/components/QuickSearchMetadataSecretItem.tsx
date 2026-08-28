@@ -11,31 +11,40 @@ import {
 } from "@app/components/v3";
 import { TMetadataMatchedSecret } from "@app/hooks/api/dashboard/types";
 
+import { QuickSearchSelection } from "./quickSearchTypes";
+
 type Props = {
   secret: TMetadataMatchedSecret;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
+  onSelectResult: (selection: QuickSearchSelection) => void;
 };
 
 const MAX_VISIBLE_BADGES = 3;
 
-export const QuickSearchMetadataSecretItem = ({ secret, envSlug, onClose }: Props) => {
+export const QuickSearchMetadataSecretItem = ({
+  secret,
+  envSlug,
+  onClose,
+  onSelectResult
+}: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
 
   const handleNavigate = () => {
+    onSelectResult({ search: secret.secretKey, tags: [] });
     navigate({
       search: (prev) => ({
         ...prev,
         secretPath: secret.secretPath,
-        search: secret.secretKey,
+        search: undefined,
         filterBy: "secret",
         environments: [envSlug],
         tags: undefined
       })
     });
-    onClose();
+    onClose(false);
   };
 
   const visibleMetadata = secret.metadata.slice(0, MAX_VISIBLE_BADGES);

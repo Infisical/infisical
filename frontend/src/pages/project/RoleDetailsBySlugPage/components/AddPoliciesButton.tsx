@@ -54,7 +54,7 @@ const VaultImportControls = ({ projectId, isDisabled, onOpenModal }: VaultImport
 
   return (
     <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
-      <TooltipTrigger className="block w-full">
+      <TooltipTrigger asChild>
         <DropdownMenuItem onClick={() => onOpenModal(vaultAppConnections)} isDisabled={isDisabled}>
           <DownloadIcon />
           Add from HashiCorp Vault
@@ -110,7 +110,7 @@ export const AddPoliciesButton = ({
           onOpenChange={(isOpen) => handlePopUpToggle("addPolicyOptions", isOpen)}
         >
           <DropdownMenuTrigger asChild>
-            <IconButton type="button" variant="outline">
+            <IconButton type="button" variant="outline" aria-label="Open policy options">
               <ChevronDownIcon />
             </IconButton>
           </DropdownMenuTrigger>

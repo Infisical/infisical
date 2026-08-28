@@ -1,4 +1,6 @@
 import { getChefDataBagItem, updateChefDataBagItem } from "@app/ee/services/app-connections/chef";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -11,22 +13,35 @@ import {
   TGetChefSecrets
 } from "./chef-sync-types";
 
-const getChefSecretsRaw = async ({
-  serverUrl,
-  userName,
-  privateKey,
-  orgName,
-  dataBagName,
-  dataBagItemName
-}: TGetChefSecrets): Promise<TChefDataBagItemContent> => {
-  const dataBagItem = await getChefDataBagItem({
-    serverUrl,
-    userName,
-    privateKey,
-    orgName,
-    dataBagName,
-    dataBagItemName
+type TChefSyncGatewayV2Service = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+type TChefSyncGatewayPoolService = Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+
+const resolveGatewayId = async (
+  secretSync: TChefSyncWithCredentials,
+  gatewayPoolService: TChefSyncGatewayPoolService
+) => {
+  return gatewayPoolService.resolveEffectiveGatewayId({
+    gatewayId: secretSync.connection.gatewayId,
+    gatewayPoolId: secretSync.connection.gatewayPoolId
   });
+};
+
+const getChefSecretsRaw = async (
+  { serverUrl, userName, privateKey, orgName, dataBagName, dataBagItemName, gatewayId }: TGetChefSecrets,
+  gatewayV2Service: TChefSyncGatewayV2Service
+): Promise<TChefDataBagItemContent> => {
+  const dataBagItem = await getChefDataBagItem(
+    {
+      serverUrl,
+      userName,
+      privateKey,
+      orgName,
+      dataBagName,
+      dataBagItemName,
+      gatewayId
+    },
+    gatewayV2Service
+  );
 
   // Ensure the data bag item has an id field
   if (!dataBagItem.id) {
@@ -36,7 +51,11 @@ const getChefSecretsRaw = async ({
   return dataBagItem;
 };
 
-const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<TChefSecrets> => {
+const getChefSecrets = async (
+  secretSync: TChefSyncWithCredentials,
+  gatewayId: string | null,
+  gatewayV2Service: TChefSyncGatewayV2Service
+): Promise<TChefSecrets> => {
   const {
     connection,
     destinationConfig: { dataBagName, dataBagItemName }
@@ -44,14 +63,18 @@ const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<TCh
 
   const { serverUrl, userName, privateKey, orgName } = connection.credentials;
 
-  const dataBagItem = await getChefSecretsRaw({
-    serverUrl,
-    orgName,
-    userName,
-    privateKey,
-    dataBagName,
-    dataBagItemName
-  });
+  const dataBagItem = await getChefSecretsRaw(
+    {
+      serverUrl,
+      orgName,
+      userName,
+      privateKey,
+      dataBagName,
+      dataBagItemName,
+      gatewayId
+    },
+    gatewayV2Service
+  );
 
   const { id, ...existingSecrets } = dataBagItem;
 
@@ -69,7 +92,9 @@ const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<TCh
 const updateChefSecrets = async (
   secretSync: TChefSyncWithCredentials,
   id: string,
-  secrets: Record<string, TChefSecret>
+  secrets: Record<string, TChefSecret>,
+  gatewayId: string | null,
+  gatewayV2Service: TChefSyncGatewayV2Service
 ) => {
   const {
     connection,
@@ -84,25 +109,36 @@ const updateChefSecrets = async (
     ...secrets
   };
 
-  await updateChefDataBagItem({
-    serverUrl,
-    orgName,
-    userName,
-    privateKey,
-    dataBagName,
-    dataBagItemName,
-    data: dataBagItemContent
-  });
+  await updateChefDataBagItem(
+    {
+      serverUrl,
+      orgName,
+      userName,
+      privateKey,
+      dataBagName,
+      dataBagItemName,
+      data: dataBagItemContent,
+      gatewayId
+    },
+    gatewayV2Service
+  );
 };
 
 export const ChefSyncFns = {
-  async syncSecrets(secretSync: TChefSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(
+    secretSync: TChefSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayV2Service: TChefSyncGatewayV2Service,
+    gatewayPoolService: TChefSyncGatewayPoolService
+  ) {
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
 
-    const { id, secrets } = await getChefSecrets(secretSync);
+    const gatewayId = await resolveGatewayId(secretSync, gatewayPoolService);
+
+    const { id, secrets } = await getChefSecrets(secretSync, gatewayId, gatewayV2Service);
 
     // Create a map of the existing secrets
     const updatedSecretsMap = new Map(secrets.map((secret) => [secret.key, secret.value]));
@@ -126,17 +162,30 @@ export const ChefSyncFns = {
     // Convert map to object for Chef API
     const updatedSecrets = Object.fromEntries(updatedSecretsMap.entries());
 
-    await updateChefSecrets(secretSync, id, updatedSecrets);
+    await updateChefSecrets(secretSync, id, updatedSecrets, gatewayId, gatewayV2Service);
   },
 
-  async getSecrets(secretSync: TChefSyncWithCredentials): Promise<TSecretMap> {
-    const { secrets } = await getChefSecrets(secretSync);
+  async getSecrets(
+    secretSync: TChefSyncWithCredentials,
+    gatewayV2Service: TChefSyncGatewayV2Service,
+    gatewayPoolService: TChefSyncGatewayPoolService
+  ): Promise<TSecretMap> {
+    const gatewayId = await resolveGatewayId(secretSync, gatewayPoolService);
+
+    const { secrets } = await getChefSecrets(secretSync, gatewayId, gatewayV2Service);
 
     return Object.fromEntries(secrets.map((secret) => [secret.key, { value: secret.value }]));
   },
 
-  async removeSecrets(secretSync: TChefSyncWithCredentials, secretMap: TSecretMap) {
-    const { id, secrets: existingSecrets } = await getChefSecrets(secretSync);
+  async removeSecrets(
+    secretSync: TChefSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayV2Service: TChefSyncGatewayV2Service,
+    gatewayPoolService: TChefSyncGatewayPoolService
+  ) {
+    const gatewayId = await resolveGatewayId(secretSync, gatewayPoolService);
+
+    const { id, secrets: existingSecrets } = await getChefSecrets(secretSync, gatewayId, gatewayV2Service);
 
     const newSecrets = existingSecrets.filter((secret) => !Object.hasOwn(secretMap, secret.key));
 
@@ -146,6 +195,6 @@ export const ChefSyncFns = {
 
     const updatedSecrets = Object.fromEntries(newSecrets.map((secret) => [secret.key, secret.value]));
 
-    await updateChefSecrets(secretSync, id, updatedSecrets);
+    await updateChefSecrets(secretSync, id, updatedSecrets, gatewayId, gatewayV2Service);
   }
 };

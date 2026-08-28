@@ -1,5 +1,5 @@
 ---
-title: "ACME Enrollment"
+title: "ACME enrollment"
 sidebarTitle: "ACME"
 description: "Issue certificates using the ACME protocol with Certbot, cert-manager, and other ACME clients."
 ---
@@ -14,11 +14,11 @@ Use the ACME enrollment method to request and renew certificates automatically u
   ACME enrollment is configured on profiles attached to your [Application](/documentation/platform/pki/applications/overview). Product Admins attach [profiles](/documentation/platform/pki/settings/profiles), and Application Admins configure enrollment methods on those profiles.
 </Info>
 
-## When to Use ACME Enrollment
+## When to use ACME enrollment
 
 <CardGroup cols={2}>
   <Card title="Web Servers" icon="server">
-    Nginx, Apache, Tomcat, and other web servers with Certbot.
+    NGINX, Apache, Tomcat, and other web servers with Certbot.
   </Card>
   <Card title="Kubernetes" icon="dharmachakra">
     Use cert-manager to issue certificates for workloads.
@@ -35,7 +35,7 @@ Use the ACME enrollment method to request and renew certificates automatically u
 
 Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your server. The client handles domain validation challenges and certificate renewal.
 
-## Configure ACME Enrollment
+## Configure ACME enrollment
 
 <Steps>
   <Step title="Navigate to your Application">
@@ -82,7 +82,7 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
   </Step>
 </Steps>
 
-## Issue a Certificate
+## Issue a certificate
 
 Configure your ACME client with the credentials from the previous step.
 
@@ -109,7 +109,7 @@ Configure your ACME client with the credentials from the previous step.
     - `chain.pem` — CA chain only
     
     For web server integration, see the guides:
-    - [Nginx with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
+    - [NGINX with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
     - [Apache with Certbot](/documentation/platform/pki/guides/applications/apache-certbot)
     - [Tomcat with Certbot](/documentation/platform/pki/guides/applications/tomcat-certbot)
   </Tab>
@@ -159,7 +159,7 @@ Configure your ACME client with the credentials from the previous step.
   </Tab>
 </Tabs>
 
-## Automatic Renewal
+## Automatic renewal
 
 ACME clients handle renewal automatically. Most clients (like Certbot) install a cron job or systemd timer that checks for expiring certificates and renews them.
 
@@ -173,11 +173,11 @@ sudo certbot renew --force-renewal
 
 For Kubernetes, cert-manager monitors Certificate resources and renews them automatically before expiration.
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up HTTPS on Nginx with Certbot.
+  <Card title="NGINX Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up HTTPS on NGINX with Certbot.
   </Card>
   <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
     Issue certificates for Kubernetes workloads.

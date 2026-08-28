@@ -2,13 +2,13 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
-import { PkiSync } from "./pki-sync-enums";
-import { POST_SYNC_COMMAND_MAX_LENGTH } from "./pki-sync-post-sync-command-fns";
+import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
 
-export const PostSyncCommandSchema = z
+export const HostCommandSchema = z
   .string()
   .trim()
-  .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullable()
   .optional();
 
@@ -18,7 +18,8 @@ export const BasePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema
 });
 
 // Builds a destination's certificateNameSchema validator. The compiled name must match the
@@ -99,5 +100,15 @@ export const PkiSyncSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),
-  lastSyncedAt: z.date().nullable().optional()
+  lastSyncedAt: z.date().nullable().optional(),
+  lastHealthCheckRanAt: z.date().nullable().optional(),
+  lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
+  lastHealthCheckMessage: z.string().nullable().optional()
+});
+
+export const BaseHealthCheckTestSchema = z.object({
+  connectionId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
+  syncId: z.string().uuid().optional(),
+  certificateIds: z.array(z.string().uuid()).max(100).optional()
 });
