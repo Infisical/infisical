@@ -29,11 +29,15 @@ By default, webhooks trigger on every supported event. You can narrow this down 
 
 Supported events:
 
-- **Secret Modified** (`secrets.modified`) — triggered when secrets in the configured scope are created, updated, or deleted.
-- **Secret Rotation Failed** (`secrets.rotation-failed`) — triggered when a secret rotation in the configured scope fails.
-- **Honey Token Triggered** (`honey-token.triggered`) — triggered when a honey token is activated.
+- **Secret Modified** (`secrets.modified`): triggered when secrets in the configured scope are created, updated, or deleted.
+- **Secret Rotation Failed** (`secrets.rotation-failed`): triggered when a secret rotation in the configured scope fails.
+- **Honey Token Triggered** (`honey-token.triggered`): triggered when a honey token is activated.
+- **Change Request Modified** (`secrets.change-request.modified`): triggered when a secret change request in the configured scope is created, reviewed, closed, reopened, or merged.
+- **Access Request Modified** (`secrets.access-request.modified`): triggered when an access request is created, edited, reviewed, or revoked.
 
 ### Webhook payload format
+
+Every payload has a top-level `timestamp` field, in epoch milliseconds, set to when Infisical sent the webhook.
 
 ```json
 {
@@ -46,7 +50,7 @@ Supported events:
 		"changedBy": "Actor that changed the secret",
 		"changedByActorType": "The actor type that triggered the change. Possible values: `service`, `user`, `identity`."
 	},
-	"timestamp": ""
+	"timestamp": 1787222520000
 }
 ```
 
@@ -64,7 +68,7 @@ Supported events:
 		"errorMessage": "error details",
 		"triggeredManually": false
 	},
-	"timestamp": ""
+	"timestamp": 1787222520000
 }
 ```
 
@@ -83,6 +87,97 @@ Supported events:
 		"eventName": "the AWS event that triggered the honey token",
 		"sourceIp": "IP address of the caller",
 		"awsRegion": "AWS region where the event occurred"
-	}
+	},
+	"timestamp": 1787222520000
+}
+```
+
+```json
+{
+	"event": "secrets.change-request.modified",
+	"action": "merged",
+	"project": {
+		"id": "b4f1e2a0-6c3d-4f2b-9a1e-7d8c6b5a4f3e",
+		"name": "Payments Platform"
+	},
+	"request": {
+		"id": "2a7c9e10-4b3d-4f5a-8c6b-1d2e3f4a5b6c",
+		"slug": "k3Bq7ZxP1r",
+		"url": "https://app.infisical.com/organizations/<org-id>/projects/secret-management/<project-id>/approval?requestId=<request-id>",
+		"target": {
+			"environment": {
+				"name": "Production",
+				"slug": "prod"
+			},
+			"secretPath": "/backend"
+		},
+		"status": "close",
+		"hasMerged": true,
+		"isBypassed": false,
+		"policy": {
+			"id": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+			"name": "Production secrets",
+			"enforcementLevel": "hard"
+		},
+		"requestedBy": {
+			"type": "user",
+			"id": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+			"name": "Priya Natarajan",
+			"email": "priya@example.com"
+		},
+		"createdAt": "2026-08-20T10:00:00.000Z",
+		"updatedAt": "2026-08-20T10:42:00.000Z"
+	},
+	"timestamp": 1787222520000
+}
+```
+
+```json
+{
+	"event": "secrets.access-request.modified",
+	"action": "reviewed",
+	"project": {
+		"id": "b4f1e2a0-6c3d-4f2b-9a1e-7d8c6b5a4f3e",
+		"name": "Payments Platform"
+	},
+	"request": {
+		"id": "f3e2d1c0-9b8a-4c7d-8e6f-5a4b3c2d1e0f",
+		"url": "https://app.infisical.com/organizations/<org-id>/projects/secret-management/<project-id>/approval?selectedTab=resource-requests&requestId=<request-id>",
+		"status": "approved",
+		"isBypassed": false,
+		"policy": {
+			"id": "a9b8c7d6-e5f4-4a3b-8c2d-1e0f9a8b7c6d",
+			"name": "Production access",
+			"enforcementLevel": "soft",
+			"hasSequencedApprovers": true
+		},
+		"requestedAccess": {
+			"target": {
+				"environment": {
+					"name": "Production",
+					"slug": "prod"
+				},
+				"secretPath": "/services/*"
+			},
+			"isTemporary": true,
+			"temporaryRange": "1h",
+			"permissions": [
+				{ "subject": "secrets", "actions": ["read", "edit"] },
+				{ "subject": "secret-folders", "actions": ["create"] }
+			]
+		},
+		"requestedBy": {
+			"type": "user",
+			"id": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+			"name": "Priya Natarajan",
+			"email": "priya@example.com"
+		},
+		"expiresAt": "2026-08-21T10:00:00.000Z",
+		"approvedAt": "2026-08-20T10:42:00.000Z",
+		"revokedAt": null,
+		"createdAt": "2026-08-20T10:00:00.000Z",
+		"updatedAt": "2026-08-20T10:42:00.000Z"
+	},
+	"timestamp": 1787222520000
 }
 ```

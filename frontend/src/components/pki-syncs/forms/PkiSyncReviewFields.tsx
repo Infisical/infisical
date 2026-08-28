@@ -18,6 +18,7 @@ import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
   getCertificateDisplayName,
+  KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
   truncateCertificateSerialNumber,
   VALUE_SYNC_OPTION_FIELDS
@@ -27,8 +28,8 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const ReviewFieldLabel = ({ label, children }: { label: string; children?: ReactNode }) => (
-  <div className="flex h-full min-w-0 flex-col justify-between gap-1">
-    <p className="text-xs font-medium text-muted">{label}</p>
+  <div className="row-span-2 grid min-w-0 grid-rows-subgrid pb-2">
+    <p className="mb-1 text-xs font-medium text-muted">{label}</p>
     {children ? (
       <div className="text-sm break-words text-foreground">{children}</div>
     ) : (
@@ -140,7 +141,7 @@ export const PkiSyncReviewFields = () => {
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Destination</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Connection">{connection?.name}</ReviewFieldLabel>
           <ReviewFieldLabel label="Service">{destinationName}</ReviewFieldLabel>
           {destinationConfig && "vaultBaseUrl" in destinationConfig && (
@@ -152,7 +153,7 @@ export const PkiSyncReviewFields = () => {
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Sync Options</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Auto-Sync">
             <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
               {isAutoSyncEnabled ? "Enabled" : "Disabled"}
@@ -166,6 +167,22 @@ export const PkiSyncReviewFields = () => {
                 <Badge variant={optionValue ? "success" : "danger"}>
                   {optionValue ? "Enabled" : "Disabled"}
                 </Badge>
+              </ReviewFieldLabel>
+            );
+          })}
+          {KEY_VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
+            if (!Array.isArray(optionValue) || !optionValue.length) return null;
+            const pairs = optionValue as { key: string; value?: string }[];
+            return (
+              <ReviewFieldLabel key={key} label={label}>
+                <div className="flex flex-wrap gap-1">
+                  {pairs.map((pair) => (
+                    <Badge key={pair.key} variant="neutral" isTruncatable>
+                      <span>{pair.value ? `${pair.key}: ${pair.value}` : pair.key}</span>
+                    </Badge>
+                  ))}
+                </div>
               </ReviewFieldLabel>
             );
           })}
@@ -201,7 +218,7 @@ export const PkiSyncReviewFields = () => {
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Details</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-8">
           <ReviewFieldLabel label="Name">{name}</ReviewFieldLabel>
           <ReviewFieldLabel label="Description">{description}</ReviewFieldLabel>
         </div>

@@ -7,6 +7,11 @@ import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
+import {
+  GcpCertificateManagerScope,
+  TGcpCertificateManagerPkiSync,
+  TGcpLabel
+} from "./gcp-certificate-manager-sync";
 import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
 import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
@@ -36,6 +41,7 @@ export type TPkiSync =
   | TAwsElasticLoadBalancerPkiSync
   | TChefPkiSync
   | TCloudflareCustomCertificatePkiSync
+  | TGcpCertificateManagerPkiSync
   | TNetScalerPkiSync
   | TF5BigIpPkiSync
   | TKempLoadMasterPkiSync
@@ -71,6 +77,7 @@ type TCreatePkiSyncDTOBase = {
       certificateChain: string;
       caCertificate: string;
     };
+    labels?: TGcpLabel[];
   };
   credentials?: {
     exportPassword?: string;
@@ -105,10 +112,17 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     clusterId?: string;
     clusterName?: string;
     destinationPath?: string;
+    gcpProjectId?: string;
+    location?: string;
+    scope?: GcpCertificateManagerScope;
+    certificateMapBinding?: {
+      certificateMap: string;
+      hostname?: string;
+    };
   };
 };
 
-export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
+export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId" | "certificateIds">> & {
   syncId: string;
   projectId: string;
 };
@@ -145,6 +159,7 @@ export * from "./chef-sync";
 export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
+export * from "./gcp-certificate-manager-sync";
 export * from "./kemp-loadmaster-sync";
 export * from "./linux-server-sync";
 export * from "./netscaler-sync";

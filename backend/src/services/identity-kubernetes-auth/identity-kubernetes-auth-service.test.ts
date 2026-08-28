@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 
 import { identityKubernetesAuthServiceFactory } from "./identity-kubernetes-auth-service";
 import { IdentityKubernetesAuthTokenReviewMode } from "./identity-kubernetes-auth-types";
@@ -50,6 +51,10 @@ const createService = ({
   },
   templateGatewayColumns = NO_GATEWAY,
   identityAuthMethods = [] as string[]
+}: {
+  templateBlobFields?: TKubernetesTemplateFields;
+  templateGatewayColumns?: typeof NO_GATEWAY;
+  identityAuthMethods?: string[];
 } = {}) => {
   const templateRow = {
     id: TEMPLATE_ID,

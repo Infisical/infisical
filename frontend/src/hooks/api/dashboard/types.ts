@@ -259,6 +259,8 @@ export type FolderMoveEligibilityResponse = {
   // the destination policy's path/name are disclosed only when the actor may read that path
   destinationBlockingPath?: string;
   destinationPolicyName?: string;
+  // warning, never a block: the subtree carries folder-scoped access policies that will follow the move
+  hasRbacPolicies?: boolean;
 };
 
 export type TFolderMoveDestinationCheck = {

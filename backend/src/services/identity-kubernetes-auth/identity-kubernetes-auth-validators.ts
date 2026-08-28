@@ -1,16 +1,20 @@
 import { AxiosError, AxiosResponse } from "axios";
-import https from "https";
 import { z } from "zod";
 
 import { TEMPLATE_VALIDATION_MESSAGES } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator/safe-request";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 import { handleAxiosError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
+import { getKubernetesServerName, withKubernetesHostScheme } from "./identity-kubernetes-auth-fns";
 import { IdentityKubernetesAuthTokenReviewMode } from "./identity-kubernetes-auth-types";
+
+const VALIDATION_TIMEOUT_MS = 10_000;
+// The /version and TokenReview responses are a few KB. Bounded so an operator-supplied host
+// cannot make us buffer an arbitrary body.
+const VALIDATION_MAX_RESPONSE_BYTES = 64 * 1024;
 
 export const kubernetesHostSchema = z
   .string()
@@ -151,17 +155,13 @@ export const validateKubernetesHostConnectivity = async ({
         });
       }
 
-      const httpsAgent = new https.Agent({
+      response = await safeRequest.get(`${withKubernetesHostScheme(kubernetesHost)}/version`, {
         ca: caCert || undefined,
-        rejectUnauthorized: verifyTlsCertificate ?? false
-      });
-
-      await blockLocalAndPrivateIpAddresses(kubernetesHost);
-
-      response = await request.get(`${kubernetesHost}/version`, {
-        httpsAgent,
-        timeout: 10000,
-        signal: AbortSignal.timeout(10000),
+        rejectUnauthorized: verifyTlsCertificate ?? true,
+        servername: getKubernetesServerName(kubernetesHost),
+        timeout: VALIDATION_TIMEOUT_MS,
+        signal: AbortSignal.timeout(VALIDATION_TIMEOUT_MS),
+        maxContentLength: VALIDATION_MAX_RESPONSE_BYTES,
         validateStatus: () => true
       });
     }
@@ -256,23 +256,23 @@ export const validateTokenReviewerPermissions = async ({
         });
       }
 
-      const httpsAgent = new https.Agent({
-        ca: caCert || undefined,
-        rejectUnauthorized: verifyTlsCertificate ?? false
-      });
-
-      await blockLocalAndPrivateIpAddresses(kubernetesHost);
-
-      response = await request.post(`${kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`, tokenReviewBody, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${tokenReviewerJwt}`
-        },
-        httpsAgent,
-        timeout: 10000,
-        signal: AbortSignal.timeout(10000),
-        validateStatus: () => true
-      });
+      response = await safeRequest.post(
+        `${withKubernetesHostScheme(kubernetesHost)}/apis/authentication.k8s.io/v1/tokenreviews`,
+        tokenReviewBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenReviewerJwt}`
+          },
+          ca: caCert || undefined,
+          rejectUnauthorized: verifyTlsCertificate ?? true,
+          servername: getKubernetesServerName(kubernetesHost),
+          timeout: VALIDATION_TIMEOUT_MS,
+          signal: AbortSignal.timeout(VALIDATION_TIMEOUT_MS),
+          maxContentLength: VALIDATION_MAX_RESPONSE_BYTES,
+          validateStatus: () => true
+        }
+      );
     }
 
     if (response.status === 401) {

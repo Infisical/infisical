@@ -1,8 +1,7 @@
-import https from "node:https";
-
 import { request as httpRequest } from "@app/lib/config/request";
 import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { getSharedHttpsAgent } from "@app/lib/validator/safe-request";
 
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
 import { TKubernetesRequestExecutor } from "./kubernetes-auth-fns";
@@ -52,7 +51,7 @@ export const buildGatewayKubernetesExecutor = ({
   // no TLS session for us to configure here.
   const httpsAgent = isGatewayReviewer
     ? undefined
-    : new https.Agent({
+    : getSharedHttpsAgent({
         ca: caCertificate || undefined,
         rejectUnauthorized: verifyTlsCertificate ?? true,
         servername: targetHost

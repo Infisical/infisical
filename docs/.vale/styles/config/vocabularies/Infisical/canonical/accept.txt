@@ -170,6 +170,7 @@ signtool
 DevOps
 BigQuery
 Cloud SQL
+Cloud Run
 Cloud 66
 
 # --- Git, CI/CD, PaaS, SaaS ---

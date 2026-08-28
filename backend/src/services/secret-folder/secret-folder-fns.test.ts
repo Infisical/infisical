@@ -1,9 +1,14 @@
+import { Knex } from "knex";
+import { vi } from "vitest";
+
 import { TSecretFolders } from "@app/db/schemas";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import {
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
+  checkFolderHasRbacPolicies,
   resolveClosestFolder,
   resolvePathToFolder
 } from "./secret-folder-fns";
@@ -337,5 +342,43 @@ describe("edge cases", () => {
     expect(resolveClosestFolder(childrenMap, [])?.id).toBe("custom-root");
     expect(resolveClosestFolder(childrenMap, ["folder-a"])?.id).toBe("child-1");
     expect(resolveClosestFolder(childrenMap, ["nonexistent"])?.id).toBe("custom-root");
+  });
+});
+
+describe("checkFolderHasRbacPolicies", () => {
+  const tx = {} as Knex;
+  const subtree = [{ id: "root-id" }, { id: "a-id" }, { id: "b-id" }];
+
+  const makeDAL = (rows: { id: string }[]) => {
+    const find = vi.fn().mockResolvedValue(rows);
+    return { dal: { find } as unknown as Pick<TAdditionalPrivilegeDALFactory, "find">, find };
+  };
+
+  test("returns true when a folder-scoped privilege exists in the subtree", async () => {
+    const { dal } = makeDAL([{ id: "privilege-1" }]);
+
+    await expect(checkFolderHasRbacPolicies({ subtree }, { additionalPrivilegeDAL: dal }, tx)).resolves.toBe(true);
+  });
+
+  test("returns false when no folder-scoped privilege exists", async () => {
+    const { dal } = makeDAL([]);
+
+    await expect(checkFolderHasRbacPolicies({ subtree }, { additionalPrivilegeDAL: dal }, tx)).resolves.toBe(false);
+  });
+
+  test("returns false without querying for an empty subtree", async () => {
+    const { dal, find } = makeDAL([{ id: "privilege-1" }]);
+
+    await expect(checkFolderHasRbacPolicies({ subtree: [] }, { additionalPrivilegeDAL: dal }, tx)).resolves.toBe(false);
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  test("queries once with every subtree folder id, limit 1 and the provided transaction", async () => {
+    const { dal, find } = makeDAL([]);
+
+    await checkFolderHasRbacPolicies({ subtree }, { additionalPrivilegeDAL: dal }, tx);
+
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(find).toHaveBeenCalledWith({ $in: { folderId: ["root-id", "a-id", "b-id"] } }, { limit: 1, tx });
   });
 });
