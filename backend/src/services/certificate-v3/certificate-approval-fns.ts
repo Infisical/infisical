@@ -648,6 +648,7 @@ export const certificateApprovalServiceFactory = (
       caType !== CaType.AZURE_AD_CS &&
       caType !== CaType.ADCS &&
       caType !== CaType.AWS_PCA &&
+      caType !== CaType.DIGICERT &&
       caType !== CaType.AWS_ACM_PUBLIC_CA &&
       caType !== CaType.VENAFI_TPP &&
       caType !== CaType.GODADDY
