@@ -121,3 +121,26 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
     </Tab>
 </Tabs>
 
+## Database credential rotations
+
+Providers differ in whether Infisical can create credentials for you. For most, including Redis and API key providers such as AWS and Cloudflare, Infisical issues a new credential on each rotation and removes the old one once it has been replaced. The connection is the only thing you set up in advance.
+
+Database rotations work differently. Infisical never creates or drops users in [PostgreSQL](/documentation/platform/secret-rotation/postgres-credentials), [MySQL](/documentation/platform/secret-rotation/mysql-credentials), [Microsoft SQL Server](/documentation/platform/secret-rotation/mssql-credentials), [Oracle Database](/documentation/platform/secret-rotation/oracledb-credentials), or [MongoDB](/documentation/platform/secret-rotation/mongodb-credentials). Doing so would require broader privileges than rotation needs, and a new user would not inherit the grants your applications depend on. Instead, you create two users up front and name them in the rotation.
+
+### Why two users?
+
+Each cycle, Infisical generates a new password for whichever of the two users is not currently active and maps it to your secrets. The other user's password stays valid as a grace-period credential until the following cycle replaces it, which is what gives the rotation its overlap.
+
+Infisical changes passwords in place, so with a single user it would overwrite the credential currently in use and lock out every client still holding the old password. The cycle never needs more than two users, which is why the configuration form has fixed **Database Username 1** and **Database Username 2** fields.
+
+### Who connects as the two users?
+
+Your applications do. The pair backs one rotating credential: Infisical maps the active username and password to the secrets you choose, and your application connects as whichever user is currently active by reading those secrets.
+
+Grant both users the same privileges, since either one may be the active credential at any time, and let Infisical be the only thing that sets their passwords. The one user you cannot name is the one your [app connection](/integrations/app-connections/overview) authenticates with, because rotating its password would break the connection that performs the rotation.
+
+### Rotating several credentials
+
+Create a separate rotation for each credential you need, each with its own pair of users. A rotation produces a single active credential, so a database serving three applications that need independent credentials needs three rotations and six users. Two rotations must not share a pair of users, as each would overwrite the other's passwords.
+
+If you want credentials issued per identity and revoked after a short lease, rather than one shared credential that changes on a schedule, use a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead.
