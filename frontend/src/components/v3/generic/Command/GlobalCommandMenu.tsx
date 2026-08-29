@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CornerDownLeftIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { Kbd } from "../DataGrid/ui/kbd";
+import { Kbd } from "../Kbd";
 import {
   CommandDialog,
   CommandEmpty,
