@@ -1,5 +1,7 @@
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -43,10 +45,14 @@ export const RevokeHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
       <AlertDialogContent className="sm:max-w-xl!">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will revoke the AWS IAM credentials and remove the associated decoy secrets from
-            this environment. The honey token record and its events will be preserved for audit
-            purposes.
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This will revoke the AWS IAM credentials and remove the associated decoy secrets
+                from this environment. The honey token record and its events will be preserved for
+                audit purposes.
+              </AlertDescription>
+            </Alert>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogConfirmationField

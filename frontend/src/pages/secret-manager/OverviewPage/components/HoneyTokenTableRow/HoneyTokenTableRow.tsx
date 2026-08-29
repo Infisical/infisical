@@ -1,12 +1,5 @@
 import { subject } from "@casl/ability";
-import {
-  BanIcon,
-  ChevronDownIcon,
-  EditIcon,
-  ExternalLinkIcon,
-  HexagonIcon,
-  InfoIcon
-} from "lucide-react";
+import { BanIcon, ChevronDownIcon, EditIcon, EyeIcon, HexagonIcon, InfoIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -110,7 +103,7 @@ export const HoneyTokenTableRow = ({
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
-              <ExternalLinkIcon />
+              <EyeIcon />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent>View details</TooltipContent>
