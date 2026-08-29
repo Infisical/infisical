@@ -23,7 +23,6 @@ type Props = {
   onComplete: () => void;
   type: HoneyTokenType;
   onCancel: () => void;
-  layout?: "dialog" | "sheet";
   secretPath: string;
   environment?: string;
   environments?: ProjectEnv[];
@@ -36,7 +35,6 @@ type FormTab = {
   shortDescription: string;
   title: string;
   subtitle: string;
-  rightDescription: string;
   fields: (keyof THoneyTokenForm)[];
 };
 
@@ -47,8 +45,6 @@ const FORM_TABS: FormTab[] = [
     shortDescription: "Environment",
     title: "Choose where to plant it",
     subtitle: "Select the environment where Infisical should store the decoy credentials.",
-    rightDescription:
-      "The selected environment determines where the generated honey token credentials are stored.",
     fields: ["environment"]
   },
   {
@@ -57,8 +53,6 @@ const FORM_TABS: FormTab[] = [
     shortDescription: "Secret keys",
     title: "Map the generated credentials",
     subtitle: "Choose the secret keys that will receive each decoy credential field.",
-    rightDescription:
-      "Each generated credential field is written to the mapped secret key in the selected environment.",
     fields: ["secretsMapping"]
   },
   {
@@ -67,7 +61,6 @@ const FORM_TABS: FormTab[] = [
     shortDescription: "Name and description",
     title: "Add honey token details",
     subtitle: "Give this honey token a clear name and an optional description.",
-    rightDescription: "Use a name that makes the decoy easy to identify when it triggers an alert.",
     fields: ["name", "description"]
   }
 ];
@@ -76,7 +69,6 @@ export const HoneyTokenForm = ({
   type,
   onComplete,
   onCancel,
-  layout = "dialog",
   environment: envSlug,
   secretPath,
   environments,
@@ -275,123 +267,71 @@ export const HoneyTokenForm = ({
     </>
   );
 
-  if (layout === "sheet") {
-    const displayedStepNumber = selectedTabIndex + 1;
-    const totalSteps = formTabs.length;
-
-    return (
-      <FormProvider {...formMethods}>
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => event.preventDefault()}>
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="hidden w-60 shrink-0 flex-col border-r border-border px-5 py-6 md:flex">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                Setup steps
-              </p>
-              <Stepper
-                activeStep={selectedTabIndex}
-                orientation="vertical"
-                onStepChange={handleStepChange}
-                nonLinear
-              >
-                <StepperList aria-label="Honey token setup progress">
-                  {formTabs.map((tab, index) => (
-                    <StepperStep
-                      key={tab.key}
-                      index={index}
-                      title={tab.name}
-                      description={tab.shortDescription}
-                      disabled={isSubmitting || isValidating}
-                    />
-                  ))}
-                </StepperList>
-              </Stepper>
-            </aside>
-
-            <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-              <div className="border-b border-border px-4 py-4 md:hidden">
-                <p className="text-xs font-medium text-muted">
-                  Step {displayedStepNumber} of {totalSteps}: {currentStep.name}
-                </p>
-              </div>
-              <div className="flex w-full max-w-3xl flex-col gap-y-2 px-4 py-6 md:px-8">
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
-                  <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
-                </div>
-                {formFields}
-              </div>
-            </div>
-
-            <aside className="hidden w-80 shrink-0 flex-col border-l border-border px-6 py-6 xl:flex">
-              <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                Step {displayedStepNumber} · {currentStep.name}
-              </p>
-              <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentStep.rightDescription}
-              </p>
-            </aside>
-          </div>
-        </form>
-        <SheetFooter className="flex-col items-stretch border-t sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-xs text-muted">
-            Step {displayedStepNumber} of {totalSteps}
-          </span>
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
-            <Button className="w-full sm:w-fit" onClick={handlePrev} variant="outline">
-              Back
-            </Button>
-            <Button
-              onClick={handleNext}
-              isPending={isSubmitting || isValidating}
-              isDisabled={isSubmitting || isValidating}
-              className="w-full sm:w-fit"
-              variant={isFinalStep ? "org" : "outline"}
-            >
-              {isFinalStep ? "Create Honey Token" : "Next"}
-            </Button>
-          </div>
-        </SheetFooter>
-      </FormProvider>
-    );
-  }
+  const displayedStepNumber = selectedTabIndex + 1;
+  const totalSteps = formTabs.length;
 
   return (
     <FormProvider {...formMethods}>
-      <form className="flex max-h-[75vh] flex-col">
-        <div className="min-h-0 flex-1 p-4">
-          <Stepper
-            activeStep={selectedTabIndex}
-            orientation="horizontal"
-            onStepChange={handleStepChange}
-            nonLinear
-          >
-            <StepperList aria-label="Honey token setup progress">
-              {formTabs.map((tab, index) => (
-                <StepperStep
-                  key={tab.key}
-                  index={index}
-                  title={tab.name}
-                  disabled={isSubmitting || isValidating}
-                />
-              ))}
-            </StepperList>
-          </Stepper>
-          <div className="mt-6">{formFields}</div>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => event.preventDefault()}>
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <aside className="hidden w-60 shrink-0 flex-col border-r border-border px-5 py-6 md:flex">
+            <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+              Setup steps
+            </p>
+            <Stepper
+              activeStep={selectedTabIndex}
+              orientation="vertical"
+              onStepChange={handleStepChange}
+              nonLinear
+            >
+              <StepperList aria-label="Honey token setup progress">
+                {formTabs.map((tab, index) => (
+                  <StepperStep
+                    key={tab.key}
+                    index={index}
+                    title={tab.name}
+                    description={tab.shortDescription}
+                    disabled={isSubmitting || isValidating}
+                  />
+                ))}
+              </StepperList>
+            </Stepper>
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+            <div className="border-b border-border px-4 py-4 md:hidden">
+              <p className="text-xs font-medium text-muted">
+                Step {displayedStepNumber} of {totalSteps}: {currentStep.name}
+              </p>
+            </div>
+            <div className="flex w-full max-w-3xl flex-col gap-y-2 px-4 py-6 md:px-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+              </div>
+              {formFields}
+            </div>
+          </div>
         </div>
       </form>
-      <SheetFooter>
-        <Button onClick={handlePrev} variant="outline">
-          Back
-        </Button>
-        <Button
-          onClick={handleNext}
-          isPending={isSubmitting || isValidating}
-          isDisabled={isSubmitting || isValidating}
-          variant={isFinalStep ? "org" : "outline"}
-        >
-          {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
-        </Button>
+      <SheetFooter className="flex-col items-stretch border-t sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs text-muted">
+          Step {displayedStepNumber} of {totalSteps}
+        </span>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+          <Button className="w-full sm:w-fit" onClick={handlePrev} variant="outline">
+            Back
+          </Button>
+          <Button
+            onClick={handleNext}
+            isPending={isSubmitting || isValidating}
+            isDisabled={isSubmitting || isValidating}
+            className="w-full sm:w-fit"
+            variant={isFinalStep ? "org" : "outline"}
+          >
+            {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
+          </Button>
+        </div>
       </SheetFooter>
     </FormProvider>
   );

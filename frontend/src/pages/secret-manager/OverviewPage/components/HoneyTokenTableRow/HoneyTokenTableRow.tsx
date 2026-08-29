@@ -1,6 +1,5 @@
 import { subject } from "@casl/ability";
 import {
-  AsteriskIcon,
   BanIcon,
   ChevronDownIcon,
   EditIcon,
@@ -42,6 +41,9 @@ const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Revoked]: "neutral"
 };
 
+const ACTION_BUTTON_CLASS_NAME =
+  "overflow-hidden border-0 transition-all duration-300 motion-reduce:transition-none [@media(hover:hover)]:w-0 [@media(hover:hover)]:group-hover:w-7 [@media(hover:hover)]:group-focus-within:w-7";
+
 type Props = {
   honeyTokenName: string;
   environments: { name: string; slug: string }[];
@@ -50,7 +52,6 @@ type Props = {
   tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
-  onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
   isSelected: boolean;
   onToggleHoneyTokenSelect: (honeyTokenName: string) => void;
@@ -64,7 +65,6 @@ export const HoneyTokenTableRow = ({
   tableWidth,
   onEdit,
   onRevoke,
-  onViewCredentials,
   onViewDetails,
   isSelected,
   onToggleHoneyTokenSelect
@@ -93,12 +93,20 @@ export const HoneyTokenTableRow = ({
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
 
     return (
-      <div className="flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5">
+      <div
+        className={twMerge(
+          "pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5 opacity-100 transition-all duration-300 motion-reduce:transition-none",
+          "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:gap-0 [@media(hover:hover)]:opacity-0",
+          "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:gap-1 [@media(hover:hover)]:group-hover:opacity-100",
+          "[@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:gap-1 [@media(hover:hover)]:group-focus-within:opacity-100"
+        )}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <IconButton
               variant="ghost"
-              size="sm"
+              size="xs"
+              className={ACTION_BUTTON_CLASS_NAME}
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
@@ -107,30 +115,6 @@ export const HoneyTokenTableRow = ({
           </TooltipTrigger>
           <TooltipContent>View details</TooltipContent>
         </Tooltip>
-        <ProjectPermissionCan
-          I={ProjectPermissionHoneyTokenActions.ReadCredentials}
-          a={subject(ProjectPermissionSub.HoneyTokens, {
-            environment: honeyToken.environment.slug,
-            secretPath: honeyToken.folder.path
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`View credentials for ${honeyToken.name}`}
-                  isDisabled={!isAllowed || isRevoked}
-                  onClick={() => onViewCredentials(honeyToken)}
-                >
-                  <AsteriskIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>View credentials</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionHoneyTokenActions.Edit}
           a={subject(ProjectPermissionSub.HoneyTokens, {
@@ -145,7 +129,8 @@ export const HoneyTokenTableRow = ({
               <TooltipTrigger asChild>
                 <IconButton
                   variant="ghost"
-                  size="sm"
+                  size="xs"
+                  className={ACTION_BUTTON_CLASS_NAME}
                   aria-label={`Edit ${honeyToken.name}`}
                   isDisabled={!isAllowed || isRevoked}
                   onClick={() => onEdit(honeyToken)}
@@ -170,8 +155,8 @@ export const HoneyTokenTableRow = ({
                 <TooltipTrigger asChild>
                   <IconButton
                     variant="ghost"
-                    size="sm"
-                    className="hover:text-danger"
+                    size="xs"
+                    className={twMerge(ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                     aria-label={`Revoke ${honeyToken.name}`}
                     onClick={() => onRevoke(honeyToken)}
                     isDisabled={!isAllowed}
@@ -277,8 +262,8 @@ export const HoneyTokenTableRow = ({
               {renderHoneyTokenInlineDetails(singleEnvToken)}
               <div
                 className={twMerge(
-                  "ml-auto flex items-center transition-[margin] duration-300",
-                  "mr-36"
+                  "mr-24 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
+                  "[@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
@@ -356,8 +341,8 @@ export const HoneyTokenTableRow = ({
                               {renderHoneyTokenInlineDetails(honeyToken)}
                               <div
                                 className={twMerge(
-                                  "ml-auto flex items-center transition-[margin] duration-300",
-                                  "mr-36"
+                                  "mr-24 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
+                                  "[@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}

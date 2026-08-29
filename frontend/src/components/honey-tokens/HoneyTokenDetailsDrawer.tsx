@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -7,7 +7,6 @@ import {
   CalendarIcon,
   ClockIcon,
   HexagonIcon,
-  KeyIcon,
   MapPinIcon,
   RotateCcw
 } from "lucide-react";
@@ -23,6 +22,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -31,13 +31,10 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input,
   PageLoader,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Skeleton,
@@ -78,11 +75,10 @@ const DrawerContent = ({
   });
 
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
-  const { mutateAsync: revokeHoneyToken } = useRevokeHoneyToken();
+  const { mutateAsync: revokeHoneyToken, isPending: isRevoking } = useRevokeHoneyToken();
   const { permission } = useProjectPermission();
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
-  const [revokeInput, setRevokeInput] = useState("");
   const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
     environment: honeyToken?.environment?.slug ?? "",
     secretPath: honeyToken?.folder?.path ?? ""
@@ -98,20 +94,28 @@ const DrawerContent = ({
     enabled: Boolean(honeyTokenId && projectId && canReadCredentials)
   });
 
-  useEffect(() => {
-    setRevokeInput("");
-  }, [isRevokeOpen]);
-
   if (isPending) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-8">
-        <PageLoader />
-      </div>
+      <>
+        <SheetHeader className="sr-only">
+          <SheetTitle>Honey token details</SheetTitle>
+        </SheetHeader>
+        <div className="flex h-full w-full items-center justify-center p-8">
+          <PageLoader />
+        </div>
+      </>
     );
   }
 
   if (!honeyToken) {
-    return <div className="p-4 text-center text-sm text-muted">Could not find honey token.</div>;
+    return (
+      <>
+        <SheetHeader className="sr-only">
+          <SheetTitle>Honey token details</SheetTitle>
+        </SheetHeader>
+        <div className="p-4 text-center text-sm text-muted">Could not find honey token.</div>
+      </>
+    );
   }
 
   const isTriggered = honeyToken.status === HoneyTokenStatus.Triggered;
@@ -142,12 +146,13 @@ const DrawerContent = ({
       text: `Successfully revoked honey token "${honeyToken.name}"`,
       type: "success"
     });
+    setIsRevokeOpen(false);
   };
 
   return (
     <>
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex items-start justify-between">
+      <SheetHeader className="gap-4">
+        <div className="flex items-start justify-between pr-8">
           <div className="flex items-center gap-3">
             {tokenInfo && (
               <img
@@ -158,7 +163,7 @@ const DrawerContent = ({
             )}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate font-medium">{honeyToken.name}</p>
+                <SheetTitle className="truncate">{honeyToken.name}</SheetTitle>
                 <Badge variant={statusBadgeVariant}>
                   {isTriggered && <AlertTriangle size={12} className="mr-1" />}
                   {statusLabel}
@@ -188,28 +193,10 @@ const DrawerContent = ({
                 )}
               </ProjectPermissionCan>
             )}
-            {!isRevoked && (
-              <ProjectPermissionCan
-                I={ProjectPermissionHoneyTokenActions.Revoke}
-                a={honeyTokenSubject}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="danger"
-                    size="xs"
-                    onClick={() => setIsRevokeOpen(true)}
-                    isDisabled={!isAllowed}
-                  >
-                    <BanIcon size={14} />
-                    Revoke
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted">
+        <div className="flex flex-wrap items-center gap-4 rounded-md bg-container p-2 text-xs text-muted">
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5">
@@ -245,7 +232,9 @@ const DrawerContent = ({
             <span>Active for {formatDistanceToNow(new Date(honeyToken.createdAt))}</span>
           </div>
         </div>
+      </SheetHeader>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         {!isRevoked && (
           <ProjectPermissionCan
             I={ProjectPermissionHoneyTokenActions.ReadCredentials}
@@ -253,11 +242,7 @@ const DrawerContent = ({
           >
             {(isAllowed) =>
               isAllowed && (
-                <div className="border-t border-border pt-4">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
-                    <KeyIcon size={13} />
-                    <span>Credentials</span>
-                  </div>
+                <div>
                   {isCredentialsPending && (
                     <div className="flex flex-col gap-2 py-2">
                       <Skeleton className="h-8 w-full rounded-md" />
@@ -346,6 +331,23 @@ const DrawerContent = ({
         <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
       </div>
 
+      {!isRevoked && (
+        <SheetFooter className="shrink-0 justify-end border-t">
+          <ProjectPermissionCan I={ProjectPermissionHoneyTokenActions.Revoke} a={honeyTokenSubject}>
+            {(isAllowed) => (
+              <Button
+                variant="danger"
+                onClick={() => setIsRevokeOpen(true)}
+                isDisabled={!isAllowed}
+              >
+                <BanIcon />
+                Revoke
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </SheetFooter>
+      )}
+
       <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -371,12 +373,13 @@ const DrawerContent = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isRevokeOpen} onOpenChange={setIsRevokeOpen}>
+      <AlertDialog
+        open={isRevokeOpen}
+        confirmationValue={honeyToken.name}
+        onOpenChange={setIsRevokeOpen}
+      >
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <BanIcon />
-            </AlertDialogMedia>
             <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will revoke the AWS IAM credentials and remove the associated decoy secrets from
@@ -384,31 +387,20 @@ const DrawerContent = ({
               purposes.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (revokeInput === honeyToken.name) handleRevoke();
+          <AlertDialogConfirmationField
+            onConfirm={() => {
+              if (!isRevoking) handleRevoke().catch(() => undefined);
             }}
-          >
-            <Field>
-              <FieldLabel>
-                Type <span className="font-bold">{honeyToken.name}</span> to confirm
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  value={revokeInput}
-                  onChange={(e) => setRevokeInput(e.target.value)}
-                  placeholder={`Type ${honeyToken.name} here`}
-                />
-              </FieldContent>
-            </Field>
-          </form>
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              onClick={handleRevoke}
-              disabled={revokeInput !== honeyToken.name}
+              isPending={isRevoking}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!isRevoking) handleRevoke().catch(() => undefined);
+              }}
             >
               Revoke
             </AlertDialogAction>
@@ -429,10 +421,7 @@ export const HoneyTokenDetailsDrawer = ({ projectId, honeyTokenId, onClose }: Pr
         if (!open) onClose();
       }}
     >
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-3xl">
-        <SheetHeader className="border-b">
-          <SheetTitle>Honey Token Details</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-hidden sm:max-w-3xl">
         {isOpen && honeyTokenId && (
           <DrawerContent honeyTokenId={honeyTokenId} projectId={projectId} />
         )}

@@ -37,7 +37,7 @@ const DEFAULT_HONEY_TOKEN_TYPE = HONEY_TOKEN_TYPES.length === 1 ? HONEY_TOKEN_TY
 
 const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentProps) => {
   if (selectedType) {
-    return <HoneyTokenForm layout="sheet" onCancel={onCancel} type={selectedType} {...props} />;
+    return <HoneyTokenForm onCancel={onCancel} type={selectedType} {...props} />;
   }
 
   return <HoneyTokenSelect onSelect={setSelectedType} />;

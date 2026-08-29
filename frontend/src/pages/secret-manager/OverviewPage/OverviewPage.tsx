@@ -30,8 +30,7 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
-  RevokeHoneyTokenModal,
-  ViewHoneyTokenCredentialsModal
+  RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -931,7 +930,6 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials",
     "createEnvironment"
   ] as const);
 
@@ -3374,9 +3372,6 @@ const OverviewPageContent = () => {
                               onRevoke={(honeyToken) =>
                                 handlePopUpOpen("revokeHoneyToken", honeyToken)
                               }
-                              onViewCredentials={(honeyToken) =>
-                                handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
-                              }
                               onViewDetails={(honeyToken) =>
                                 setDetailsDrawerHoneyTokenId(honeyToken.id)
                               }
@@ -3777,12 +3772,6 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
-      />
-      <ViewHoneyTokenCredentialsModal
-        isOpen={popUp.viewHoneyTokenCredentials.isOpen}
-        honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
-        projectId={projectId}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet
