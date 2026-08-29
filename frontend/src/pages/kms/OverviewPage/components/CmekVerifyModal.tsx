@@ -59,17 +59,22 @@ const VerifyForm = ({ cmek }: FormProps) => {
     register,
     watch,
     control,
+    setValue,
     formState: { isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       signingAlgorithm: getDefaultSigningAlgorithm(cmek),
-      isBase64Encoded: false
+      isBase64Encoded: getDefaultSigningAlgorithm(cmek) === SigningAlgorithm.ED25519_PH_SHA_512
     }
   });
 
   const handleVerifyData = async (formData: FormData) => {
-    const result = await cmekVerify.mutateAsync({ ...formData, keyId: cmek.id });
+    const result = await cmekVerify.mutateAsync({
+      ...formData,
+      keyId: cmek.id,
+      isDigest: formData.signingAlgorithm === SigningAlgorithm.ED25519_PH_SHA_512
+    });
 
     if (result.signatureValid) {
       createNotification({
@@ -125,7 +130,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
+            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>
@@ -156,17 +161,26 @@ const VerifyForm = ({ cmek }: FormProps) => {
             <Controller
               control={control}
               name="signingAlgorithm"
-              render={({ field: { onChange, value } }) => (
-                <FormControl label="Signing Algorithm">
-                  <Select onValueChange={onChange} value={value} className="w-full">
-                    {allowedSigningAlgorithms.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
+              render={({ field: { onChange, value } }) => {
+                const handleAlgorithmChange = (algorithm: string) => {
+                  onChange(algorithm);
+                  if (algorithm === SigningAlgorithm.ED25519_PH_SHA_512) {
+                    setValue("isBase64Encoded", true);
+                  }
+                };
+
+                return (
+                  <FormControl label="Signing Algorithm">
+                    <Select onValueChange={handleAlgorithmChange} value={value} className="w-full">
+                      {allowedSigningAlgorithms.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          {a.replaceAll("_", " ")}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }}
             />
 
             <Controller

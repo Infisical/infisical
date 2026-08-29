@@ -39,11 +39,12 @@ export type TRotateCmek = KeyRef & ProjectRef;
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };
 
-export type TCmekSign = KeyRef & { data: string; signingAlgorithm: SigningAlgorithm };
+export type TCmekSign = KeyRef & { data: string; signingAlgorithm: SigningAlgorithm , isDigest : boolean};
 export type TCmekVerify = KeyRef & {
   data: string;
   signature: string;
   signingAlgorithm: SigningAlgorithm;
+  isDigest: boolean;
 };
 
 export type TCmekGenerateMac = KeyRef & { data: string };

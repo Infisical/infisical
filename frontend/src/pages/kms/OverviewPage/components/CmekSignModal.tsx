@@ -45,12 +45,13 @@ const SignForm = ({ cmek }: FormProps) => {
     handleSubmit,
     register,
     control,
+    setValue,
     formState: { isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       signingAlgorithm: getDefaultSigningAlgorithm(cmek),
-      isBase64Encoded: false
+      isBase64Encoded: getDefaultSigningAlgorithm(cmek) === SigningAlgorithm.ED25519_PH_SHA_512
     }
   });
 
@@ -59,7 +60,11 @@ const SignForm = ({ cmek }: FormProps) => {
   });
 
   const handleSignData = async (formData: FormData) => {
-    await cmekSign.mutateAsync({ ...formData, keyId: cmek.id });
+    await cmekSign.mutateAsync({
+      ...formData,
+      keyId: cmek.id,
+      isDigest: formData.signingAlgorithm === SigningAlgorithm.ED25519_PH_SHA_512
+    });
     createNotification({
       text: "Successfully signed data",
       type: "success"
@@ -99,17 +104,26 @@ const SignForm = ({ cmek }: FormProps) => {
             <Controller
               control={control}
               name="signingAlgorithm"
-              render={({ field: { onChange, value } }) => (
-                <FormControl label="Signing Algorithm">
-                  <Select onValueChange={onChange} value={value} className="w-full">
-                    {allowedSigningAlgorithms.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
+              render={({ field: { onChange, value } }) => {
+                const handleAlgorithmChange = (algorithm: string) => {
+                  onChange(algorithm);
+                  if (algorithm === SigningAlgorithm.ED25519_PH_SHA_512) {
+                    setValue("isBase64Encoded", true);
+                  }
+                };
+
+                return (
+                  <FormControl label="Signing Algorithm">
+                    <Select onValueChange={handleAlgorithmChange} value={value} className="w-full">
+                      {allowedSigningAlgorithms.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          {a.replaceAll("_", " ")}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }}
             />
 
             <Controller
