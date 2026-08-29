@@ -62,6 +62,11 @@ type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultiplePro
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
 const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
 
+// Geometry and typography shared by every popup row, so the select-all action cannot
+// drift from the option rows it sits above.
+const COMBOBOX_ROW_CLASS =
+  "flex min-h-8 cursor-default items-center gap-2 rounded-sm py-1.5 text-sm text-foreground outline-hidden select-none";
+
 const normalizeSearchText = (value: string) =>
   value
     .normalize("NFD")
@@ -140,7 +145,8 @@ const ComboboxList = <TOption,>({
             value={option}
             disabled={isOptionDisabled?.(option)}
             className={cn(
-              "relative flex min-h-8 cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm text-foreground outline-hidden select-none",
+              COMBOBOX_ROW_CLASS,
+              "relative pr-8 pl-2",
               "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
             )}
           >
@@ -177,12 +183,13 @@ const ComboboxSelectAll = ({ areAllSelected, optionCount, onToggle }: ComboboxSe
       onMouseDown={(event) => event.preventDefault()}
       onClick={onToggle}
       className={cn(
-        "flex min-h-8 w-full cursor-default items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground outline-hidden select-none",
+        COMBOBOX_ROW_CLASS,
+        "w-full justify-between px-2",
         "hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
       <span className="truncate">
-        {areAllSelected ? "Clear selection" : `Select all (${optionCount})`}
+        {areAllSelected ? "Clear Selection" : `Select All (${optionCount})`}
       </span>
       {areAllSelected && <CheckIcon className="size-4 shrink-0" />}
     </button>
