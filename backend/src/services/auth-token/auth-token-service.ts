@@ -355,14 +355,22 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { newRefreshToken, updatedSession };
   };
 
-  // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
-    const session = await tokenDAL.findOneTokenSession({
-      id: token.tokenVersionId,
-      userId: token.userId
+  const validateUserSessionFreshness = async ({
+    userId,
+    tokenVersionId,
+    accessVersion,
+    readFromPrimary = false
+  }: {
+    userId: string;
+    tokenVersionId: string;
+    accessVersion: number;
+    readFromPrimary?: boolean;
+  }) => {
+    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
+      readFromPrimary
     });
     if (!session) throw new NotFoundError({ name: "Session not found" });
-    if (token.accessVersion !== session.accessVersion) {
+    if (accessVersion !== session.accessVersion) {
       throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
     }
 
@@ -374,6 +382,17 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
       throw new UnauthorizedError({ message: "Account is locked" });
     }
+
+    return { user };
+  };
+
+  // to parse jwt identity in inject identity plugin
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
+    const { user } = await validateUserSessionFreshness({
+      userId: token.userId,
+      tokenVersionId: token.tokenVersionId,
+      accessVersion: token.accessVersion
+    });
 
     let orgId = "";
     let orgName = "";
@@ -527,6 +546,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
+    validateUserSessionFreshness,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
     createEmailSignupToken,

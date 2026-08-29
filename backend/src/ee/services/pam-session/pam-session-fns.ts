@@ -13,6 +13,15 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 
+export const LIVE_PAM_SESSION_STATUSES = [PamSessionStatus.Active, PamSessionStatus.Starting];
+
+export const isPamSessionLive = (session: { status: string; expiresAt: Date }) =>
+  LIVE_PAM_SESSION_STATUSES.includes(session.status as PamSessionStatus) &&
+  new Date(session.expiresAt).getTime() > Date.now();
+
+export const pamSessionRemainingSeconds = (session: { expiresAt: Date }) =>
+  Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
+
 export const resolvePamSessionDistinctId = async ({
   session,
   userDAL
@@ -157,7 +166,7 @@ export const terminatePamSessions = async ({
     {
       $in: {
         id: sessions.map((session) => session.id),
-        status: [PamSessionStatus.Active, PamSessionStatus.Starting]
+        status: LIVE_PAM_SESSION_STATUSES
       }
     },
     { status: PamSessionStatus.Terminated, endedAt: new Date() },
