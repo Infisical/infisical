@@ -6,6 +6,7 @@ import {
   GetIdentityAuthTemplatesDTO,
   GetTemplateUsagesDTO,
   IdentityAuthTemplate,
+  IdentityAuthTemplateForMethod,
   MachineAuthTemplateUsage,
   MachineIdentityAuthMethod
 } from "./types";
@@ -59,16 +60,24 @@ export const useGetIdentityAuthTemplate = (templateId: string, organizationId: s
   });
 };
 
-export const useGetAvailableTemplates = (authMethod: MachineIdentityAuthMethod) => {
+export const useGetAvailableTemplates = <T extends MachineIdentityAuthMethod>(
+  authMethod: T,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: identityAuthTemplatesKeys.getAvailableTemplates(authMethod),
     queryFn: async () => {
-      const { data } = await apiRequest.get<IdentityAuthTemplate[]>("/api/v1/identity-templates", {
-        params: { authMethod }
-      });
+      const { data } = await apiRequest.get<IdentityAuthTemplateForMethod<T>[]>(
+        "/api/v1/identity-templates",
+        {
+          params: { authMethod }
+        }
+      );
       return data;
     },
-    enabled: Boolean(authMethod)
+    // the endpoint requires the attach-template permission and an enterprise plan; callers
+    // gate the query so users without either do not fire a guaranteed 4xx on every mount
+    enabled: Boolean(authMethod) && (options?.enabled ?? true)
   });
 };
 
