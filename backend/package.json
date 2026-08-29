@@ -95,6 +95,7 @@
     "protobufjs": "^7.5.6"
   },
   "devDependencies": {
+    "@aws-sdk/credential-providers": "^3.1111.0",
     "@babel/cli": "^7.18.10",
     "@babel/core": "^7.18.10",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
@@ -304,5 +305,28 @@
     "uuid": "^11.1.1",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5"
+  },
+  "allowScripts": {
+    "@datadog/native-appsec@8.4.0": true,
+    "@datadog/native-iast-taint-tracking@3.3.0": true,
+    "@datadog/native-metrics@3.1.0": true,
+    "@datadog/pprof@5.5.1": true,
+    "esbuild@0.27.3": true,
+    "esbuild@0.25.11": true,
+    "esbuild@0.27.7": true,
+    "argon2@0.31.2": true,
+    "bcrypt@5.1.1": true,
+    "core-js@3.49.0": true,
+    "core-js-pure@3.49.0": true,
+    "cpu-features@0.0.10": true,
+    "dd-trace@5.40.0": true,
+    "msgpackr-extract@3.0.3": true,
+    "odbc@2.4.9": true,
+    "oracledb@6.4.0": true,
+    "pkcs11js@2.1.6": true,
+    "protobufjs@7.5.6": true,
+    "re2@1.24.0": true,
+    "sharp@0.34.5": true,
+    "ssh2@1.17.0": true
   }
 }

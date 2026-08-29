@@ -11,6 +11,7 @@ import {
   FileSignatureIcon,
   ImportIcon,
   InfoIcon,
+  KeyRoundIcon,
   LockIcon,
   PencilIcon,
   PlusIcon,
@@ -91,6 +92,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CmekBulkImportModal } from "./CmekBulkImportModal";
 import { CmekDecryptModal } from "./CmekDecryptModal";
+import { CmekDeriveSharedSecretModal } from "./CmekDeriveSharedSecretModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekExportKeyModal } from "./CmekExportKeyModal";
 import { CmekGenerateMacModal } from "./CmekGenerateMacModal";
@@ -178,6 +180,7 @@ export const CmekTable = () => {
     "verifyData",
     "generateMac",
     "verifyMac",
+    "deriveSharedSecret",
     "exportKey",
     "importKeys"
   ] as const);
@@ -255,6 +258,10 @@ export const CmekTable = () => {
   );
   const cannotVerifyMac = permission.cannot(
     ProjectPermissionCmekActions.VerifyMac,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotDeriveSharedSecret = permission.cannot(
+    ProjectPermissionCmekActions.DeriveSharedSecret,
     ProjectPermissionSub.Cmek
   );
   const cannotRotateKey = permission.cannot(
@@ -662,6 +669,15 @@ export const CmekTable = () => {
                                     </DropdownMenuItem>
                                   </>
                                 )}
+                                {keyUsage === KmsKeyUsage.KEY_AGREEMENT && (
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("deriveSharedSecret", cmek)}
+                                    isDisabled={cannotDeriveSharedSecret || isDisabled}
+                                  >
+                                    <KeyRoundIcon className="mr-2 size-4" />
+                                    Derive Shared Secret
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
                                   isDisabled={cannotExportKey || isDisabled}
@@ -788,6 +804,11 @@ export const CmekTable = () => {
         isOpen={popUp.verifyMac.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("verifyMac", isOpen)}
         cmek={popUp.verifyMac.data as TCmek}
+      />
+      <CmekDeriveSharedSecretModal
+        isOpen={popUp.deriveSharedSecret.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deriveSharedSecret", isOpen)}
+        cmek={popUp.deriveSharedSecret.data as TCmek}
       />
       <CmekExportKeyModal
         isOpen={popUp.exportKey.isOpen}

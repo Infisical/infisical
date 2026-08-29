@@ -67,7 +67,8 @@ export enum ProjectPermissionCmekActions {
   GenerateMac = "generate-mac",
   VerifyMac = "verify-mac",
   Rotate = "rotate",
-  ExportPrivateKey = "export-private-key"
+  ExportPrivateKey = "export-private-key",
+  DeriveSharedSecret = "derive-shared-secret"
 }
 
 export enum ProjectPermissionDynamicSecretActions {

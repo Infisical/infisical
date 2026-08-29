@@ -2572,6 +2572,12 @@ export const KMS = {
     ciphertext: "The ciphertext to be decrypted (base64 encoded)."
   },
 
+  DERIVE_SHARED_SECRET: {
+    keyId: "The ID of the key to derive the shared secret with. The key must be for key agreement.",
+    publicKey:
+      "The peer's public key to derive the shared secret with (base64 encoded, DER-encoded SubjectPublicKeyInfo)."
+  },
+
   LIST_SIGNING_ALGORITHMS: {
     keyId: "The ID of the key to list the signing algorithms for. The key must be for signing and verifying."
   },

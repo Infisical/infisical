@@ -6,6 +6,7 @@ import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
+import { EccNistKeyAlgorithm } from "@app/lib/crypto/key-agreement/types";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -67,6 +68,8 @@ const base64Schema = createBase64Schema("data", MAX_KMS_PAYLOAD_BYTES);
 const ciphertextBase64Schema = createBase64Schema("ciphertext", MAX_KMS_CIPHERTEXT_BYTES);
 const signatureBase64Schema = createBase64Schema("signature", MAX_KMS_SIGNATURE_BYTES);
 const macBase64Schema = createBase64Schema("mac", 1024);
+// DER-encoded SPKI public keys for the supported NIST curves (P-256/P-384/P-521) top out well under 1KB.
+const publicKeyBase64Schema = createBase64Schema("publicKey", 1024);
 
 export const registerCmekRouter = async (server: FastifyZodProvider) => {
   // create encryption key
@@ -129,6 +132,17 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
               code: z.ZodIssueCode.custom,
               message: `algorithm must be a valid HMAC algorithm. Valid options are: ${Object.values(
                 HmacAlgorithm
+              ).join(", ")}`
+            });
+          }
+          if (
+            data.keyUsage === KmsKeyUsage.KEY_AGREEMENT &&
+            !Object.values(EccNistKeyAlgorithm).includes(algorithm as EccNistKeyAlgorithm)
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `algorithm must be a valid key agreement algorithm. Valid options are: ${Object.values(
+                EccNistKeyAlgorithm
               ).join(", ")}`
             });
           }
@@ -1138,6 +1152,65 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         .catch(() => {});
 
       return { plaintext };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    bodyLimit: KMS_PAYLOAD_BODY_LIMIT_BYTES,
+    url: "/keys/:keyId/derive-shared-secret",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "deriveSharedSecretWithKmsKey",
+      tags: [ApiDocsTags.KmsEncryption],
+      description: "Derive a shared secret with a KMS key. This endpoint is only available for key agreement keys.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.DERIVE_SHARED_SECRET.keyId)
+      }),
+      body: z.object({
+        publicKey: publicKeyBase64Schema.describe(KMS.DERIVE_SHARED_SECRET.publicKey)
+      }),
+      response: {
+        200: z.object({
+          secret: z.string(),
+          keyId: z.string().uuid()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body: { publicKey },
+        permission
+      } = req;
+
+      const { secret, projectId } = await server.services.cmek.cmekDeriveSharedSecret({ keyId, publicKey }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_DERIVE_SHARED_SECRET,
+          metadata: {
+            keyId
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.CmekDeriveSharedSecret,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: permission.orgId,
+          properties: { keyId, projectId }
+        })
+        .catch(() => {});
+
+      return { secret, keyId };
     }
   });
 };
