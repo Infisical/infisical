@@ -27,7 +27,7 @@ export const CHART_COLORS_HEX = [
 
 export const MAX_DONUT_SEGMENTS = 6;
 
-export const CHART_OTHER_COLOR_HEX = "#8c8f96";
+export const CHART_OTHER_COLOR = "var(--color-muted)";
 
 export const formatShare = (count: number, total: number) => {
   if (total <= 0) return "0%";

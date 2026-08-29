@@ -19,7 +19,7 @@ import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants
 
 import {
   CHART_COLORS_HEX,
-  CHART_OTHER_COLOR_HEX,
+  CHART_OTHER_COLOR,
   formatShare,
   MAX_DONUT_SEGMENTS
 } from "./chart-theme";
@@ -49,8 +49,12 @@ const foldTail = (data: TDashboardDistribution[]): Segment[] => {
   ];
 };
 
+const OTHER_KEY = "__other__";
+
+const segmentKey = (segment: Segment) => (segment.groupedCount ? OTHER_KEY : segment.label);
+
 const colorAt = (segment: Segment, idx: number) =>
-  segment.groupedCount ? CHART_OTHER_COLOR_HEX : CHART_COLORS_HEX[idx % CHART_COLORS_HEX.length];
+  segment.groupedCount ? CHART_OTHER_COLOR : CHART_COLORS_HEX[idx % CHART_COLORS_HEX.length];
 
 const DonutChart = ({
   title,
@@ -101,7 +105,7 @@ const DonutChart = ({
                       const hex = colorAt(entry, idx);
                       return (
                         <linearGradient
-                          key={`grad-${entry.label}`}
+                          key={`grad-${segmentKey(entry)}`}
                           id={`grad-${chartId}-${idx}`}
                           x1="0"
                           y1="0"
@@ -131,7 +135,7 @@ const DonutChart = ({
                     }}
                   >
                     {nonZeroData.map((entry, idx) => (
-                      <Cell key={entry.label} fill={`url(#grad-${chartId}-${idx})`} />
+                      <Cell key={segmentKey(entry)} fill={`url(#grad-${chartId}-${idx})`} />
                     ))}
                   </Pie>
                   <RechartsTooltip
@@ -152,7 +156,7 @@ const DonutChart = ({
                   const isOther = Boolean(entry.groupedCount);
                   return (
                     <button
-                      key={entry.label}
+                      key={segmentKey(entry)}
                       type="button"
                       className={twMerge(
                         "flex w-full items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors",
