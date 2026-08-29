@@ -350,7 +350,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
               </span>
             )}
             {allIdentitiesForTable.length > 0 ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Identity</TableHead>

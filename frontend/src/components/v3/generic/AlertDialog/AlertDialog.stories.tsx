@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
+import { Alert, AlertDescription } from "../Alert";
 import { Button } from "../Button";
 import {
   AlertDialog,
@@ -106,6 +107,44 @@ export const DestructiveAction: Story = {
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction variant="danger">Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+};
+
+export const WithAlertDescription: Story = {
+  name: "Example: Alert as Description",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `AlertDialogDescription asChild` to present the dialog description as an Alert while keeping it programmatically associated with the dialog. This is useful when the consequence needs stronger visual emphasis than supporting text alone."
+      }
+    }
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="danger">
+          <TrashIcon />
+          Remove privilege
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove additional privilege?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This policy will no longer grant additional access to this user.
+              </AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="danger">Remove privilege</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

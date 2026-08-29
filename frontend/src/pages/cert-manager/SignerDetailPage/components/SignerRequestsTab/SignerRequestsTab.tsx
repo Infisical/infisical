@@ -48,8 +48,8 @@ import {
   useListSignerRequests
 } from "@app/hooks/api/signers";
 
-import { PreApproveSigningModal } from "../PreApproveSigningModal";
-import { RequestToSignModal } from "../RequestToSignModal";
+import { PreApproveSigningSheet } from "../PreApproveSigningSheet";
+import { RequestToSignSheet } from "../RequestToSignSheet";
 import { ExpiresCell } from "./ExpiresCell";
 import { KindIcon } from "./KindIcon";
 import { RevokeRequestDialog } from "./RevokeRequestDialog";
@@ -361,12 +361,12 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
         </CardContent>
       </Card>
 
-      <RequestToSignModal
+      <RequestToSignSheet
         isOpen={isRequestOpen}
         onOpenChange={setIsRequestOpen}
         signerId={signerId}
       />
-      <PreApproveSigningModal
+      <PreApproveSigningSheet
         isOpen={isPreApproveOpen}
         onOpenChange={setIsPreApproveOpen}
         signerId={signerId}

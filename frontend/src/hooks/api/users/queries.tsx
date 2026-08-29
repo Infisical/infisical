@@ -275,22 +275,6 @@ export const useDeleteOrgMembershipBatch = () => {
   });
 };
 
-export const useDeactivateOrgMembership = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, DeleteOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) => {
-      return apiRequest.post(
-        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
-      );
-    },
-    onSuccess: (_, { orgId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgMembership(orgId, membershipId) });
-    }
-  });
-};
-
 export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 

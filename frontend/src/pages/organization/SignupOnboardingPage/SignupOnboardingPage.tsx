@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
+import { OnboardingProgress } from "@app/components/auth/OnboardingPageLayout";
 import OrgNameStep from "@app/components/auth/OrgNameStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
@@ -140,9 +141,7 @@ export const SignupOnboardingPage = () => {
   const totalSteps = serverDetails?.emailConfigured ? 3 : 2;
   const stepNumber = STEP_NUMBERS[section];
   const stepIndicator = stepNumber ? (
-    <span className="rounded-sm border border-border bg-container/50 px-2.5 py-0.5 font-jetbrains-mono text-[10px] tracking-widest text-muted uppercase">
-      Step {stepNumber} of {totalSteps}
-    </span>
+    <OnboardingProgress currentStep={stepNumber} totalSteps={totalSteps} />
   ) : undefined;
 
   const completeAsideDescription = (() => {

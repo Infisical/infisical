@@ -3,6 +3,7 @@ export * from "./DownloadEnvButton";
 export * from "./DynamicSecretTableRow";
 export * from "./EmptyResourceDisplay";
 export * from "./EnvironmentSelect";
+export * from "./FolderAccessSheet";
 export * from "./FolderBreadcrumb";
 export * from "./FolderTableRow";
 export * from "./HoneyTokenTableRow";

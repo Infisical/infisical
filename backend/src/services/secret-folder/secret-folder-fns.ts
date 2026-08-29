@@ -16,6 +16,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TFolderMoveBlockingType } from "./secret-folder-types";
 
@@ -48,8 +49,8 @@ export const buildFolderIdMap = (folders: TSecretFolders[]): Record<string, TSec
   return map;
 };
 
-export const buildChildrenMap = (folders: TSecretFolders[]): Record<string, TSecretFolders[]> => {
-  const map: Record<string, TSecretFolders[]> = {};
+export const buildChildrenMap = <T extends TSecretFolders>(folders: T[]): Record<string, T[]> => {
+  const map: Record<string, T[]> = {};
   for (const folder of folders) {
     const key = folder.parentId || "null";
     if (!map[key]) {
@@ -162,7 +163,7 @@ export const canActorReadBlock = (
 
 // absolute path of a subtree folder, re-rooted at `rootFolderPath`; the moved folder itself is "/". when the
 // root is "/", its prefix is dropped so child paths stay "/child" rather than "//child".
-const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
+export const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
   if (folderPath === "/") return rootFolderPath;
   const prefix = rootFolderPath === "/" ? "" : rootFolderPath;
   return `${prefix}${folderPath}`;
@@ -262,7 +263,8 @@ export const checkFolderMovePolicyBlock = async (
     environment: string;
     rootFolderPath: string;
   },
-  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps
+  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
+  tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
 
@@ -271,7 +273,8 @@ export const checkFolderMovePolicyBlock = async (
   const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
     projectId,
     environment,
-    subtreeAbsPaths
+    subtreeAbsPaths,
+    tx
   );
 
   // report the first blocked path in subtree order, matching the previous per-folder behavior.
@@ -288,6 +291,22 @@ export const checkFolderMovePolicyBlock = async (
   }
 
   return null;
+};
+
+type TCheckFolderRbacPoliciesDeps = {
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+};
+
+export const checkFolderHasRbacPolicies = async (
+  { subtree }: { subtree: { id: string }[] },
+  { additionalPrivilegeDAL }: TCheckFolderRbacPoliciesDeps,
+  tx: Knex
+): Promise<boolean> => {
+  const folderIds = subtree.map((f) => f.id);
+  if (!folderIds.length) return false;
+
+  const [privilege] = await additionalPrivilegeDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
+  return Boolean(privilege);
 };
 
 // throws the appropriate BadRequestError for a detected move block. the full subtree is always scanned to

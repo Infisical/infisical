@@ -56,7 +56,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
   return (
     <div>
       <TableContainer>
-        <Table className="w-full table-fixed">
+        <Table className="w-full">
           <THead>
             <Tr>
               <Th>Name</Th>

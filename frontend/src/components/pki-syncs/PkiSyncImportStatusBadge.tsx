@@ -1,11 +1,11 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
 import { CheckIcon, DownloadIcon, LucideIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getPkiSyncFailureMessage, PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -26,19 +26,7 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, mini }: Props) => {
     }
   }, [importStatus]);
 
-  const failureMessage = useMemo(() => {
-    if (importStatus === PkiSyncStatus.Failed) {
-      if (lastImportMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastImportMessage), null, 2);
-        } catch {
-          return lastImportMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [importStatus, lastImportMessage]);
+  const failureMessage = getPkiSyncFailureMessage(importStatus, lastImportMessage);
 
   if (!importStatus || hide) return null;
 
@@ -60,19 +48,17 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, mini }: Props) => {
       variant = "danger";
       label = "Failed to Import Certificates";
       Icon = TriangleAlertIcon;
-      tooltipContent = (
+      tooltipContent = failureMessage && (
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
-          {failureMessage && (
-            <div>
-              <div className="mb-2 flex self-start text-danger">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
-                <div className="text-xs">
-                  {mini ? "Failed to Import Certificates" : "Failure Reason"}
-                </div>
+          <div>
+            <div className="mb-2 flex self-start text-danger">
+              <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="text-xs">
+                {mini ? "Failed to Import Certificates" : "Failure Reason"}
               </div>
-              <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
             </div>
-          )}
+            <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
+          </div>
         </div>
       );
 
@@ -86,6 +72,17 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, mini }: Props) => {
       variant = "success";
       label = "Certificates Imported";
       Icon = CheckIcon;
+  }
+
+  if (!tooltipContent) {
+    return (
+      <span className="inline-block">
+        <Badge isSquare={mini} variant={variant}>
+          <Icon />
+          {!mini && label}
+        </Badge>
+      </span>
+    );
   }
 
   return (

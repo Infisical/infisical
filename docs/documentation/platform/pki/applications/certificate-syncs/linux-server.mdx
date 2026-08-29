@@ -4,7 +4,8 @@ sidebarTitle: "Linux Server"
 description: "Deploy certificates to Linux servers over SSH."
 ---
 
-import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
+import CommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/command-variables.mdx";
+import HealthCheckFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/health-check-flow.mdx";
 import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
 
 Deploy certificates from Infisical to a directory on a Linux server over SSH. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
@@ -18,7 +19,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
 - An [SSH Connection](/integrations/app-connections/ssh) with access to the target server
 - The destination directory must already exist on the server and the connection user must be able to write to it
 - The server must be reachable from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
-- A Gateway is required to use a [post-sync command](#post-sync-commands), because the Gateway is what executes it. It must be running Infisical CLI v0.43.120 or later
+- A Gateway is required to use a [health check](#health-check) or a [post-sync command](#post-sync-command), because the Gateway is what executes them. It must be running Infisical CLI v0.43.120 or later
 
 ## Create a Linux Server sync
 
@@ -45,8 +46,9 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Post-Sync Command**, or leave it empty:
-            - **Command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
+        5. Configure the **Commands**, or leave them empty:
+            - **Health check**: A command run on the server before any certificate is written, to confirm the host is ready, for example `test -w /etc/ssl/certs`. A non-zero exit stops the sync, so nothing is delivered. See [health check](#health-check).
+            - **Post-sync command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. See [post-sync command](#post-sync-command).
 
         6. Configure the **Details**:
             - **Name**: The name of your sync.
@@ -77,6 +79,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
                 "includePrivateKey": true,
                 "canRemoveCertificates": true,
                 "certificateNameSchema": "{{commonName}}",
+                "healthCheckCommand": "test -w /etc/ssl/certs",
                 "postSyncCommand": "sudo systemctl reload nginx"
             },
             "destinationConfig": {
@@ -111,27 +114,94 @@ PKCS#12
 
 When syncing certificates, Infisical opens an SSH session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
 
-## Post-sync commands
+## Commands
 
-Delivering a certificate file does not make the service use it. Nginx keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
+A sync can run two optional commands on the target server, in that server's own shell:
 
-Set one command on the sync. It runs on the target server, in that server's own shell, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+- A **health check** runs before any certificate is written and gates the delivery, for example `test -w /etc/ssl/certs`.
+- A **post-sync command** runs after the delivery has finished, so the service that uses the certificate picks up the new file, for example `sudo systemctl reload nginx`.
 
-The field accepts a whole script, so several steps can run in one go: put each on its own line, or chain them with `&&`.
+Set each on the sync's **Commands** step. Leaving a field empty means nothing runs, so neither has a separate toggle. Both accept a whole script, so several steps can run in one go: put each on its own line, or chain them with `&&`.
 
 <Note>
-  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the command, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
+  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs both commands, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
 
   The Gateway must be running Infisical CLI **v0.43.120 or later**. Earlier Gateways either cannot run the command at all or cannot unlock an SSH Connection's passphrase-protected private key, so the command fails. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>
 
-<PostSyncCommandFlow />
+### Available variables
 
-### Setting a command
+<CommandVariables />
+
+### Length limit
+
+Each command is limited to 8192 characters, counted as you write it, before variables are substituted. For anything longer, put the logic in a script on the server and have the command call that script.
+
+### Least privilege
+
+Both commands run as the account the SSH Connection authenticates with, so constraining that account bounds what either can do. A service reload does not need root. Grant the connection user a `sudoers` rule for that one command instead:
+
+```text
+svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+```
+
+Only Application Admins can set either command, so treat that role as access to the target server.
+
+<Warning>
+  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
+</Warning>
+
+### Health check
+
+A sync can only tell you the host was not ready once it has already tried. If the destination directory was renamed or the service that owns it is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+
+A health check moves that discovery earlier. It runs on the target server before any certificate is written. If it exits non-zero, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs.
+
+The same check also runs on its own once a day, so a host that stops being ready between syncs is reported when it happens rather than at the next renewal.
+
+Write a check that answers a question rather than one that changes something. `test -w /etc/ssl/certs` and `systemctl is-active nginx` are good checks. Creating the directory or starting the service is work for the post-sync command.
+
+<HealthCheckFlow />
 
 <Steps>
-  <Step title="Open the sync's Post-Sync Command step">
-    Edit the sync and select **Post-Sync Command**.
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
+  </Step>
+  <Step title="Write the check">
+    Anything that exits non-zero when the host is not ready works. The variables resolve to the files
+    this run is about to write, so a check can look at where a certificate is going:
+
+    ```bash
+    set -e
+    test -w {{certificateDirectory}}
+    test ! -e {{certificatePath}} || test -w {{certificatePath}}
+    systemctl is-active --quiet nginx
+    ```
+
+    To check every certificate the run would write instead of one, loop over `{{certificateFiles}}`:
+
+    ```bash
+    echo {{certificateFiles}} | while read -r file; do test -w "$(dirname "$file")"; done
+    ```
+  </Step>
+  <Step title="Test it, then save the sync">
+    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{pkcs12Password}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
+
+    Save the sync once the check passes. On a real run, a failing check fails the sync without delivering anything, and the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Post-sync command
+
+Delivering a certificate file does not make the service use it. NGINX keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
+
+It runs once per sync run that delivers at least one file. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+
+<PostSyncCommandFlow />
+
+<Steps>
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
   </Step>
   <Step title="Write the command">
     Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
@@ -145,27 +215,23 @@ The field accepts a whole script, so several steps can run in one go: put each o
   </Step>
 </Steps>
 
-### Available variables
-
-<PostSyncCommandVariables />
-
-### Length limit
-
-A command is limited to 2048 characters, counted after the variables are substituted. For anything longer, put the logic in a script on the server and call that script.
-
-### Post-sync command FAQ
+### Command FAQ
 
 <AccordionGroup>
-  <Accordion title="When exactly does the command run?">
-    After every file in the run has been delivered and after any removals, so the server is in its final state before the service reloads. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
+  <Accordion title="When exactly does each command run?">
+    The health check runs before anything else in a sync run, including before Infisical opens the SFTP session it would write with. It also runs once a day on its own, whether or not a sync is due.
+
+    The post-sync command runs after every file in the run has been delivered and after any removals, so the server is in its final state before the service reloads. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
   </Accordion>
-  <Accordion title="What happens if the command fails?">
-    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran. A command that fails is reported, not repeated.
+  <Accordion title="What happens when a command fails?">
+    Either way the sync is marked failed and the reason appears as the sync's last error. A command that fails is reported, not repeated.
+
+    What is left on the host differs. When the **health check** fails, every certificate in the run is reported as skipped with that same reason, so it is clear nothing reached the host, and files already on the server from an earlier run are left exactly as they are, because the sync never wrote or deleted anything. When the **post-sync command** fails, the delivered files stay in place, because they were written before the command ran.
   </Accordion>
   <Accordion title="Can I run several commands, and what happens if one of them fails?">
-    Yes. Write one per line, or chain them with `&&`.
+    Yes, in either field. Write one per line, or chain them with `&&`.
 
-    By default the shell only reports the **last** line's exit status, so an earlier line that fails is not noticed and the sync still reports success. Start the script with `set -e` so the first failure stops it and fails the sync:
+    By default the shell only reports the **last** line's exit status, so an earlier line that fails is not noticed and the command counts as having succeeded. Start the script with `set -e` so the first failure stops it and fails the sync:
 
     ```bash
     set -e
@@ -174,27 +240,24 @@ A command is limited to 2048 characters, counted after the variables are substit
     systemctl reload nginx
     ```
   </Accordion>
-  <Accordion title="Can the command run twice for the same certificate?">
-    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and the command runs as part of that attempt. Prefer a command that is safe to run more than once. A service reload or restart is.
-  </Accordion>
   <Accordion title="Is there a time limit?">
-    Yes, 30 seconds, enforced by the gateway. A command that needs longer should start the work in the background or live in a script on the server.
+    Yes, and it differs by command: 15 seconds for the health check, 30 seconds for the post-sync command. Both are enforced by the Gateway, and running out of time counts as a failure.
+
+    The check's limit is deliberately much shorter, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer, and give a post-sync command that needs longer than thirty seconds a script on the server that starts the work in the background.
+  </Accordion>
+  <Accordion title="Can a command run twice for the same certificate?">
+    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service reload or restart is.
+  </Accordion>
+  <Accordion title="Does a failed health check get retried?">
+    Not within the run. A host that is not ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
+  </Accordion>
+  <Accordion title="Where do I see the result of the daily health check?">
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+  </Accordion>
+  <Accordion title="Can I use the health check to prepare the host instead of just checking it?">
+    You can, since it is a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
   </Accordion>
 </AccordionGroup>
-
-### Least privilege
-
-The command runs as the account the SSH Connection authenticates with, so constraining that account bounds what any command can do. A service reload does not need root. Grant the connection user a `sudoers` rule for that one command instead:
-
-```text
-svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
-```
-
-Anyone who can edit the sync can change the command, so treat edit access to these syncs as access to the target server.
-
-<Warning>
-  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
-</Warning>
 
 ## Removing certificates
 

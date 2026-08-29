@@ -36,7 +36,7 @@ Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + r
 
 - **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
 - **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
-- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader` and scope icons). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist.
+- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader`, scope icons, `ProjectPermissionSubjects`, and `SecretManagerResources`). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist. Policy group tiles look up `getProjectPermissionSubjectPresentation`. Secret Manager overview resources (name/slug/icon/color) come from `SecretManagerResources`, which points at that subject catalog.
 - **`src/components/v2/`** — Legacy shared UI components built on Radix UI primitives + Tailwind. Uses `cva` (class-variance-authority) for variants and `tailwind-merge` for class conflict resolution. Being superseded by v3 — do not use for new features if a v3 alternative exists.
 
 ### API Layer (React Query + Axios)
@@ -87,3 +87,4 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
 - Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.
 - Toasts: call `createNotification({ title?, text, type, callToAction?, copyActions? })` from `@app/components/notifications`. Backed by **sonner** (the v3 `Toaster` in `components/v3/generic/Toast`), mounted once via `NotificationContainer` in `pages/root.tsx`. `react-toastify` has been removed, so do not reintroduce it.
+- Unsaved changes: use `useDiscardChangesGuard` with `DiscardChangesAlertDialog` when dismissing an overlay editor would remove unsaved form changes. Wire dismiss/close to `requestDiscard`. Do not use `window.confirm`. Do not use `useNavigationBlocker` — that hook is secrets batch-mode only.

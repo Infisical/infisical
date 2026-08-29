@@ -21,6 +21,8 @@ import {
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
+  PamPostgresAuthMethod,
+  PamProductRole,
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
@@ -61,7 +63,8 @@ import {
   AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
-  generateAwsIamSessionCredentials
+  generateAwsIamSessionCredentials,
+  generateRdsAuthToken
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -140,6 +143,25 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
 
+  const checkSession = async (
+    session: { accountId?: string | null; projectId: string },
+    action: ResourcePermissionPamResourceActions,
+    ctx: TActorContext
+  ) => {
+    if (session.accountId) {
+      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+      await checkAccount(session.accountId, account?.folderId, session.projectId, action, ctx);
+      return;
+    }
+
+    const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
+    if (!hasRole(PamProductRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only a project admin can access a session whose account has been deleted"
+      });
+    }
+  };
+
   const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
     const issues = getAccountAccessibilityIssues(account);
     if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
@@ -154,7 +176,7 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext,
     pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -167,28 +189,22 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
+      includeOrphaned: hasRole(PamProductRole.Admin),
       ...pagination
     });
   };
 
   const getSessionById = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
-    if (!session || !session.accountId) return null;
+    if (!session) return null;
 
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
 
     return session;
   };
 
   // Called by the gateway
-  const getSessionCredentials = async (sessionId: string, gatewayId: string) => {
+  const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
@@ -244,6 +260,21 @@ export const pamSessionServiceFactory = ({
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
+      const { host, port } = connectionDetails as { host: string; port: number };
+      credentials.password = await generateRdsAuthToken({
+        roleArn: credentials.roleArn as string,
+        externalId: orgId,
+        roleSessionName: `infisical-pam-${sessionId}`,
+        region: credentials.awsRegion as string,
+        host,
+        port,
+        username: credentials.username as string
+      });
+      delete credentials.awsRegion;
+      delete credentials.roleArn;
     }
 
     if (account.accountType === PamAccountType.AzureCli) {
@@ -736,18 +767,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session is not active" });
     }
 
-    if (!session.accountId) {
-      throw new BadRequestError({ message: "Session has no linked account" });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.TerminateSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.TerminateSessions, ctx);
 
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {

@@ -10,7 +10,7 @@ import { QuickSearchModal, QuickSearchModalProps } from "./components";
 
 type ModalProps = Omit<
   QuickSearchModalProps,
-  "isOpen" | "onClose" | "onOpenChange" | "initialValue"
+  "isOpen" | "onClose" | "onOpenChange" | "initialValue" | "onSelectResult"
 > & {
   value: string;
   onChange: (search: string) => void;
@@ -109,9 +109,10 @@ export const SecretSearchInput = ({
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         initialValue={value}
-        onClose={() => {
+        onSelectResult={({ search }) => onChange(search)}
+        onClose={(clearSearch = true) => {
           setIsOpen(false);
-          onChange("");
+          if (clearSearch) onChange("");
         }}
         {...props}
       />

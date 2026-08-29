@@ -231,7 +231,8 @@ export const ApprovalPolicyStep = ({
             <div className="min-w-0">
               <div className="text-sm font-medium text-foreground">Signing window</div>
               <p className="text-xs text-muted">
-                After approval is granted, how long signing is allowed before it expires.
+                The longest signing window a request can ask for. The window runs from the moment
+                the request is approved.
               </p>
             </div>
           </div>

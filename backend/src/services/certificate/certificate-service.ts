@@ -46,6 +46,7 @@ import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-a
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   CertificateThumbprintAlgorithm,
+  extractCertificateAlgorithms,
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
@@ -86,6 +87,7 @@ type TCertificateServiceFactoryDep = {
     | "create"
     | "findById"
     | "findWithFullDetails"
+    | "findLatestRenewalOf"
     | "updateById"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -270,6 +272,34 @@ export const certificateServiceFactory = ({
       }
     }
 
+    const resolvedRenewalId = await certificateDAL.findLatestRenewalOf(cert);
+    let latestRenewalCertificateId: string | null = null;
+
+    if (resolvedRenewalId) {
+      const renewal = await certificateDAL.findById(resolvedRenewalId);
+
+      if (renewal) {
+        const renewalMetadataRows = await resourceMetadataDAL.find({ certificateId: renewal.id });
+        const renewalReadSubject = subject(ProjectPermissionSub.Certificates, {
+          commonName: renewal.commonName,
+          altNames: renewal.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: renewal.serialNumber,
+          metadata: renewalMetadataRows.map(({ key, value }) => ({ key, value: value || "" }))
+        });
+
+        const canReadRenewal =
+          permission.can(ProjectPermissionCertificateActions.Read, renewalReadSubject) ||
+          (await $canActOnCertViaApplication(renewal, ResourcePermissionCertificateActions.Read, {
+            type: actor,
+            id: actorId,
+            authMethod: actorAuthMethod,
+            orgId: actorOrgId
+          }));
+
+        if (canReadRenewal) latestRenewalCertificateId = renewal.id;
+      }
+    }
+
     return {
       cert: {
         ...cert,
@@ -279,6 +309,7 @@ export const certificateServiceFactory = ({
         caName,
         profileName,
         applicationName,
+        latestRenewalCertificateId,
         metadata: certMetadata
       }
     };
@@ -390,7 +421,25 @@ export const certificateServiceFactory = ({
 
     let deletedCert;
     try {
-      deletedCert = await certificateDAL.deleteById(cert.id);
+      deletedCert = await certificateDAL.transaction(async (tx) => {
+        const successors = await certificateDAL.find({ renewedFromCertificateId: cert.id }, { tx });
+
+        await certificateDAL.update(
+          { renewedFromCertificateId: cert.id },
+          { renewedFromCertificateId: cert.renewedFromCertificateId ?? null },
+          tx
+        );
+
+        if (cert.renewedFromCertificateId && successors.length > 0) {
+          await certificateDAL.updateById(
+            cert.renewedFromCertificateId,
+            { renewedByCertificateId: successors[0].id },
+            tx
+          );
+        }
+
+        return certificateDAL.deleteById(cert.id, tx);
+      });
     } catch (err) {
       const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;
       if (innerError?.code === "23503") {
@@ -899,7 +948,8 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
         // Extract certificate fields for storage
-        const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+        const certificateBuffer = Buffer.from(certificatePem);
+        const parsedFields = extractCertificateFields(certificateBuffer);
 
         const txCert = await certificateDAL.create(
           {
@@ -914,7 +964,10 @@ export const certificateServiceFactory = ({
             applicationId: applicationId ?? null,
             keyUsages,
             extendedKeyUsages,
-            ...parsedFields
+            ...parsedFields,
+            // Issuance records these from what it was asked to produce. An imported certificate has
+            // no such request, so they come from the certificate itself.
+            ...extractCertificateAlgorithms(certificateBuffer)
           },
           tx
         );
@@ -953,7 +1006,7 @@ export const certificateServiceFactory = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({ message: "Certificate serial already exists in your project" });
+          throw new BadRequestError({ message: "A certificate with this serial number already exists" });
         }
         throw error;
       }

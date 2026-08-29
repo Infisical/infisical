@@ -1,11 +1,27 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Skeleton
+} from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -39,10 +55,13 @@ const Content = ({ role, onClose }: ContentProps) => {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     defaultValues: {
-      name: `${role.name} Duplicate`
+      name: `${role.name} Duplicate`,
+      description: "",
+      slug: slugify(`${role.name} Duplicate`, { lowercase: true })
     },
     resolver: zodResolver(schema)
   });
@@ -60,15 +79,13 @@ const Content = ({ role, onClose }: ContentProps) => {
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
-    if (subscription && !subscription?.rbac) {
+    if (subscription && !subscription.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
     }
 
     const sanitizedPermission = role.permissions.map((permission) => {
       if (
-        // if contains new secret action the legacy one can be stripped off
-        // mainly done for duplicating predefined roles
         permission.subject === ProjectPermissionSub.Secrets &&
         (permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) ||
           permission.action.includes(ProjectPermissionSecretActions.ReadValue))
@@ -91,7 +108,7 @@ const Content = ({ role, onClose }: ContentProps) => {
 
     createNotification({
       type: "success",
-      text: "Role duplicated successfully"
+      text: `Project role "${form.name}" duplicated`
     });
 
     navigate({
@@ -108,65 +125,95 @@ const Content = ({ role, onClose }: ContentProps) => {
 
   return (
     <>
-      <form onSubmit={handleSubmit(handleDuplicateRole)}>
-        <Controller
-          control={control}
-          defaultValue=""
-          name="name"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Name"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              isRequired
-            >
-              <Input {...field} placeholder="Billing Team" />
-            </FormControl>
-          )}
-        />
-        <Controller
-          control={control}
-          defaultValue=""
-          name="slug"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Slug"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              isRequired
-            >
-              <Input {...field} placeholder="billing" />
-            </FormControl>
-          )}
-        />
-        <Controller
-          control={control}
-          defaultValue=""
-          name="description"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
-              <Input {...field} placeholder="To manage billing" />
-            </FormControl>
-          )}
-        />
-        <div className="flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
+      <form
+        onSubmit={handleSubmit(handleDuplicateRole)}
+        autoComplete="off"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <SheetHeader>
+          <SheetTitle>Duplicate Role</SheetTitle>
+          <SheetDescription>
+            Create a new role with the same permissions as {role.name}.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="duplicate-project-role-name">Name</FieldLabel>
+                  <Input
+                    {...field}
+                    id="duplicate-project-role-name"
+                    placeholder="Billing Team"
+                    autoComplete="off"
+                    data-1p-ignore
+                    isError={Boolean(error)}
+                    onChange={(e) => {
+                      onChange(e);
+                      setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                        shouldValidate: true
+                      });
+                    }}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="slug"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="duplicate-project-role-slug">Slug</FieldLabel>
+                  <Input
+                    {...field}
+                    id="duplicate-project-role-slug"
+                    placeholder="billing"
+                    autoComplete="off"
+                    data-1p-ignore
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="duplicate-project-role-description">Description</FieldLabel>
+                  <Input
+                    {...field}
+                    id="duplicate-project-role-description"
+                    placeholder="Manage billing settings"
+                    autoComplete="off"
+                    data-1p-ignore
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </div>
+        <SheetFooter className="border-t">
+          <SheetClose asChild>
+            <Button variant="ghost" isDisabled={isSubmitting}>
+              Cancel
+            </Button>
+          </SheetClose>
+          <Button type="submit" variant="project" isPending={isSubmitting}>
             Duplicate Role
           </Button>
-          <Button colorSchema="secondary" variant="plain" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
+        </SheetFooter>
       </form>
       <UpgradePlanModal
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
         text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature
       />
@@ -176,31 +223,47 @@ const Content = ({ role, onClose }: ContentProps) => {
 
 export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) => {
   const { currentProject } = useProject();
-
   const { data: role, isPending } = useGetProjectRoleBySlug(currentProject.id, roleSlug ?? "");
 
   if (!roleSlug) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Duplicate Role"
-        subTitle="Duplicate this role to create a new role with the same permissions."
-      >
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent>
         {/* eslint-disable-next-line no-nested-ternary */}
         {isPending ? (
-          <div className="flex h-full flex-col items-center justify-center py-2.5">
-            <Spinner size="lg" className="text-muted" />
-            <p className="mt-4 text-sm text-muted">Loading Role...</p>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <SheetHeader>
+              <SheetTitle>Duplicate Role</SheetTitle>
+              <SheetDescription>
+                Create a new role with the same permissions as the selected role.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-4 p-4" aria-label="Loading role" aria-busy="true">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
           </div>
         ) : role ? (
-          <Content role={role!} onClose={() => onOpenChange(false)} />
+          <Content role={role} onClose={() => onOpenChange(false)} />
         ) : (
-          <p className="w-full text-center text-danger">
-            Error: could not find role with slug &#34;{roleSlug}&#34;
-          </p>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <SheetHeader>
+              <SheetTitle>Duplicate Role</SheetTitle>
+              <SheetDescription>We could not load the selected role.</SheetDescription>
+            </SheetHeader>
+            <p className="p-4 text-sm text-danger">
+              Could not find a role with the slug &quot;{roleSlug}&quot;.
+            </p>
+            <SheetFooter className="border-t">
+              <SheetClose asChild>
+                <Button variant="ghost">Close</Button>
+              </SheetClose>
+            </SheetFooter>
+          </div>
         )}
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

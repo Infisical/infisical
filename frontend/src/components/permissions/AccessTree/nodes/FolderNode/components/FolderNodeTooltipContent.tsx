@@ -1,7 +1,6 @@
 import { ReactElement } from "react";
-import { faCheckCircle, faCircleMinus, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { NodeToolbar, Position } from "@xyflow/react";
+import { CircleCheckIcon, CircleMinusIcon, CircleXIcon } from "lucide-react";
 
 import {
   formatedConditionsOperatorNames,
@@ -27,10 +26,10 @@ const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps)
   return (
     <li>
       <span className="font-medium text-foreground capitalize">{camelCaseToSpaces(key)}</span>{" "}
-      <span className="text-foreground">
+      <span className="text-accent">
         {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
       </span>{" "}
-      <span className="rounded-sm bg-foreground/10 p-0.5 font-mono">
+      <span className="rounded-sm bg-container px-1 py-0.5 font-mono text-foreground">
         {typeof value === "string" ? value : value.join(", ")}
       </span>
       .
@@ -46,10 +45,10 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
       component = (
         <>
           <div className="flex items-center gap-1.5 text-success capitalize">
-            <FontAwesomeIcon icon={faCheckCircle} size="xs" />
+            <CircleCheckIcon className="size-3.5" />
             <span>Full {formatActionName(action)} Permissions</span>
           </div>
-          <p className="text-foreground">
+          <p className="text-accent">
             Policy grants unconditional{" "}
             <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
@@ -63,10 +62,10 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
       component = (
         <>
           <div className="flex items-center gap-1.5 text-warning capitalize">
-            <FontAwesomeIcon icon={faCircleMinus} className="text-warning" size="xs" />
+            <CircleMinusIcon className="size-3.5" />
             <span>Conditional {formatActionName(action)} Permissions</span>
           </div>
-          <p className="mb-1 text-foreground">
+          <p className="mb-1 text-accent">
             Policy conditionally allows{" "}
             <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
@@ -138,10 +137,10 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
       component = (
         <>
           <div className="flex items-center gap-1.5 text-danger capitalize">
-            <FontAwesomeIcon icon={faCircleXmark} size="xs" />
+            <CircleXIcon className="size-3.5" />
             <span>No {formatActionName(action)} Permissions</span>
           </div>
-          <p className="text-foreground">
+          <p className="text-accent">
             Policy always forbids{" "}
             <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
@@ -157,7 +156,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
 
   return (
     <NodeToolbar
-      className="rounded-md border border-border bg-container px-4 py-2 text-sm font-light text-foreground"
+      className="max-w-sm rounded-md border border-border bg-popover px-4 py-2 text-sm text-foreground shadow-lg"
       isVisible
       position={Position.Bottom}
     >

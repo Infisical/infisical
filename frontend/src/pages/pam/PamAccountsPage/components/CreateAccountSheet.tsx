@@ -78,10 +78,18 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   defaultFolderId?: string;
+  // Set when the caller is scoped to one folder, so the account can't be filed somewhere else.
+  isFolderLocked?: boolean;
   onCreated?: (accountId: string) => void;
 };
 
-export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCreated }: Props) => {
+export const CreateAccountSheet = ({
+  isOpen,
+  onOpenChange,
+  defaultFolderId,
+  isFolderLocked = false,
+  onCreated
+}: Props) => {
   const createAccount = useCreatePamAccount();
 
   const { currentOrg } = useOrganization();
@@ -193,11 +201,13 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
     clearErrors();
     const missingConnection = getMissingRequiredFields(
       selectedMetadata.connectionFields,
-      values.connectionDetails
+      "connectionDetails",
+      values
     );
     const missingCredentials = getMissingRequiredFields(
       selectedMetadata.credentialFields,
-      values.credentials
+      "credentials",
+      values
     );
     const gatewayMissing = needsGateway && !gateway.gatewayId && !gateway.gatewayPoolId;
     setGatewayError(gatewayMissing);
@@ -280,61 +290,63 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
           {step === 1 ? (
             <>
               <div className="flex min-h-0 flex-1 flex-col gap-5 p-4">
-                <Controller
-                  control={control}
-                  name="folderId"
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>
-                        Folder<span className="text-product-pam">*</span>
-                      </FieldLabel>
-                      <FieldContent>
-                        <Select
-                          value={field.value}
-                          onValueChange={(val) => {
-                            if (val === CREATE_FOLDER_VALUE) {
-                              setCreateFolderOpen(true);
-                              return;
-                            }
-                            field.onChange(val);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select folder" />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {folders.map((folder) => (
-                              <SelectItem key={folder.id} value={folder.id}>
-                                {folder.name}
-                              </SelectItem>
-                            ))}
-                            {folders.length > 0 && <SelectSeparator />}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div>
-                                  <SelectItem
-                                    value={CREATE_FOLDER_VALUE}
-                                    disabled={!isProductAdmin}
-                                  >
-                                    <span className="flex items-center gap-1.5 text-muted">
-                                      <Plus className="size-4" />
-                                      Create folder
-                                    </span>
-                                  </SelectItem>
-                                </div>
-                              </TooltipTrigger>
-                              {!isProductAdmin && (
-                                <TooltipContent side="left">
-                                  Only product admins can create folders
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </SelectContent>
-                        </Select>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                {!isFolderLocked && (
+                  <Controller
+                    control={control}
+                    name="folderId"
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>
+                          Folder<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={field.value}
+                            onValueChange={(val) => {
+                              if (val === CREATE_FOLDER_VALUE) {
+                                setCreateFolderOpen(true);
+                                return;
+                              }
+                              field.onChange(val);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select folder" />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {folders.map((folder) => (
+                                <SelectItem key={folder.id} value={folder.id}>
+                                  {folder.name}
+                                </SelectItem>
+                              ))}
+                              {folders.length > 0 && <SelectSeparator />}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <SelectItem
+                                      value={CREATE_FOLDER_VALUE}
+                                      disabled={!isProductAdmin}
+                                    >
+                                      <span className="flex items-center gap-1.5 text-muted">
+                                        <Plus className="size-4" />
+                                        Create folder
+                                      </span>
+                                    </SelectItem>
+                                  </div>
+                                </TooltipTrigger>
+                                {!isProductAdmin && (
+                                  <TooltipContent side="left">
+                                    Only product admins can create folders
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                )}
 
                 <Controller
                   control={control}
@@ -548,7 +560,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                   <div className="mt-2">
                     <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
                     <div className="flex flex-col gap-4">
-                      <CredentialsForm control={control} />
+                      <CredentialsForm control={control} setValue={setValue} />
                       <SshCaSetupCallout
                         accountType={watch("accountType")}
                         authMethod={watch("credentials")?.authMethod as string | undefined}

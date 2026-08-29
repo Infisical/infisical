@@ -1,9 +1,15 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import {
+  LookingForOrgPageLink,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -19,7 +25,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
@@ -69,16 +75,7 @@ const Page = () => {
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }
         >
-          <Link
-            to="/organizations/$orgId/access-management"
-            params={{
-              orgId: currentOrg.id
-            }}
-            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-          >
-            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization access
-            control?
-          </Link>
+          <LookingForOrgPageLink page="accessControl" />
         </PageHeader>
         {hasTabs ? (
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>

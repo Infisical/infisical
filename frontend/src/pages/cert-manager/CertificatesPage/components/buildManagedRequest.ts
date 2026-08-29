@@ -4,7 +4,7 @@ import { TUnifiedCertificateIssuanceDTO } from "@app/hooks/api/certificates/type
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { FormData } from "./CertificateIssuanceModal";
-import { filterUsages, formatSubjectAltNames } from "./certificateUtils";
+import { filterUsages, formatSubjectAltNames, SUBJECT_ATTR_MAP } from "./certificateUtils";
 import type { TemplateConstraints } from "./useCertificatePolicy";
 
 type ManagedFormData = Extract<FormData, { requestMethod: "managed" }>;
@@ -14,23 +14,6 @@ type ManagedIssuanceRequest = Omit<TUnifiedCertificateIssuanceDTO, "attributes">
     basicConstraints?: { isCA: boolean; pathLength?: number };
   };
 };
-
-type SubjectAttrKey =
-  | "commonName"
-  | "organization"
-  | "organizationalUnit"
-  | "country"
-  | "state"
-  | "locality";
-
-const SUBJECT_ATTR_MAP: { attrType: CertSubjectAttributeType; requestKey: SubjectAttrKey }[] = [
-  { attrType: CertSubjectAttributeType.COMMON_NAME, requestKey: "commonName" },
-  { attrType: CertSubjectAttributeType.ORGANIZATION, requestKey: "organization" },
-  { attrType: CertSubjectAttributeType.ORGANIZATIONAL_UNIT, requestKey: "organizationalUnit" },
-  { attrType: CertSubjectAttributeType.COUNTRY, requestKey: "country" },
-  { attrType: CertSubjectAttributeType.STATE, requestKey: "state" },
-  { attrType: CertSubjectAttributeType.LOCALITY, requestKey: "locality" }
-];
 
 type BuildManagedRequestParams = {
   formData: ManagedFormData;
@@ -81,8 +64,9 @@ export const buildManagedRequest = ({
     if (subjectAttributes && subjectAttributes.length > 0) {
       SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {
         const attr = subjectAttributes.find((a) => a.type === attrType);
-        if (attr?.value) {
-          request.attributes[requestKey] = attr.value;
+        const value = attr?.value?.trim();
+        if (value) {
+          request.attributes[requestKey] = value;
         } else if (defaults?.[requestKey]) {
           request.attributes[requestKey] = null;
         }

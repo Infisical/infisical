@@ -1,5 +1,6 @@
 ---
 title: "Linux (HA)"
+sidebarTitle: "High availability"
 description: "Infisical High Availability Deployment architecture for Linux"
 ---
 
@@ -73,6 +74,8 @@ advertise-client-urls: http://52.1.0.3:2379
 
 For production deployments, you have two options for highly available PostgreSQL:
 
+{/* vale Infisical.SentenceCaseHeadings = NO */}
+
 #### Option A: Managed PostgreSQL service (recommended for most users)
 
 Use cloud provider managed services:
@@ -83,6 +86,8 @@ Use cloud provider managed services:
 These services handle replication, failover, and maintenance automatically.
 
 #### Option B: Self-managed PostgreSQL cluster
+
+{/* vale Infisical.SentenceCaseHeadings = YES */}
 
 Full HA installation guide of PostgreSQL is beyond the scope of this document. However, we have provided an overview of resources and code snippets below to guide your deployment.
 
@@ -160,6 +165,8 @@ bootstrap:
 
 Similar to PostgreSQL, a full HA Redis setup guide is beyond the scope of this document. Below are the key resources and considerations for your deployment.
 
+{/* vale Infisical.SentenceCaseHeadings = NO */}
+
 #### Option A: Managed Redis service (recommended for most users)
 
 Use cloud provider managed Redis services:
@@ -173,6 +180,8 @@ Follow your cloud provider's documentation:
 - [Azure Redis Cache Documentation](https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/)
 
 #### Option B: Self-managed Redis cluster
+
+{/* vale Infisical.SentenceCaseHeadings = YES */}
 
 Setting up a production Redis HA cluster requires understanding several components. Refer to these linked resources:
 
@@ -360,7 +369,7 @@ infisical_core['PORT'] = 8080
 
 To generate `ENCRYPTION_KEY` and `AUTH_SECRET` view the [following configurations documentation here](/self-hosting/configuration/envars).
 
-If you are using managed services for either Postgres or Redis, please replace the values of the secrets accordingly.
+If you are using managed services for either PostgreSQL or Redis, please replace the values of the secrets accordingly.
 
 
 Lastly, start and verify each node running infisical-core:

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
+import { VaultKubernetesImportModal } from "@app/components/external-migrations";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -38,7 +39,6 @@ import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
-import { VaultKubernetesImportModal } from "./VaultKubernetesImportModal";
 
 enum RoleType {
   ClusterRole = "cluster-role",

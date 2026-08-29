@@ -34,7 +34,7 @@ From the certificate details page, use the **Options** menu:
 |--------|-------------|
 | **Export** | Download as PEM (individual files) or PKCS12 (single encrypted bundle) |
 | **Enable Auto-Renewal** | Infisical renews automatically before expiration |
-| **Renew Now** | Manually trigger renewal |
+| **Renew Now** | [Renew the certificate](/documentation/platform/pki/applications/certificate-renewal), optionally changing its subject, names, validity, or key pair |
 | **Manage Syncs** | Push to cloud destinations (ACM, Key Vault, etc.) |
 | **Revoke** | Revoke with a reason code; certificate appears in CRL |
 | **Delete** | Remove from inventory |
@@ -54,20 +54,29 @@ For automated issuance, configure an [enrollment method](/documentation/platform
 - [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
 - [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
 
+## Importing certificates
+
+Click **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.
+
+A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
+
 ## Renewal
 
 | Type | How It Works |
 |------|--------------|
 | **Client-driven** | The client (Certbot, cert-manager, Infisical Agent) monitors expiration and requests renewal |
 | **Server-driven** | Infisical automatically renews before expiration and pushes to [syncs](/documentation/platform/pki/applications/certificate-syncs/overview) |
+| **Manual** | You renew on demand from the certificate, and can change its properties as part of the renewal |
 
 Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with Infisical-managed keys. Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
+
+Both automatic types reissue the certificate exactly as it is. To change the subject, the names it covers, its validity, or how its key pair is handled, [renew it manually](/documentation/platform/pki/applications/certificate-renewal).
 
 ## Export formats
 
 | Format | Use Case |
 |--------|----------|
-| **PEM** | Nginx, Apache, Docker, load balancers — separate files for cert, chain, and key |
+| **PEM** | NGINX, Apache, Docker, load balancers — separate files for cert, chain, and key |
 | **PKCS12** | Java apps, Windows IIS, mobile apps — single encrypted file with password |
 
 ## Revocation
@@ -83,6 +92,9 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ## What's next?
 
 <CardGroup cols={2}>
+  <Card title="Renewal" icon="rotate" href="/documentation/platform/pki/applications/certificate-renewal">
+    Renew a certificate and change its properties at the same time.
+  </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to AWS ACM, Azure Key Vault, and other destinations.
   </Card>

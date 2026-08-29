@@ -347,7 +347,7 @@ const SkeletonRow = () => (
     <TableCell>
       <Skeleton className="h-4 w-20" />
     </TableCell>
-    <TableCell>
+    <TableCell variant="action">
       <Skeleton className="h-4 w-4" />
     </TableCell>
   </TableRow>
@@ -422,7 +422,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
       <TableCell>
         <LastUsedCell lastLoginAuthMethod={lastLoginAuthMethod} lastLoginTime={lastLoginTime} />
       </TableCell>
-      <TableCell>
+      <TableCell variant="action">
         <div className="flex items-center justify-end gap-2">
           {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
             <Tooltip>
@@ -645,7 +645,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   direction={orderDirection}
                   onSort={handleSort}
                 />
-                <TableHead className="w-5" />
+                <TableHead variant="action" />
               </TableRow>
             </TableHeader>
             <TableBody>

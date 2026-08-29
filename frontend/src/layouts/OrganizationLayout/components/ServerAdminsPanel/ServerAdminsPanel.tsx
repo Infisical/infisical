@@ -49,7 +49,7 @@ export const ServerAdminsPanel = () => {
       </div>
       <div className="flex-1 px-2">
         <TableContainer className="flex max-h-[30vh] flex-col overflow-auto">
-          <Table className="w-full table-fixed">
+          <Table className="w-full">
             <THead className="sticky top-0 bg-background">
               <Tr>
                 <Th className="w-1/2">Name</Th>

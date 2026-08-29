@@ -22,8 +22,8 @@ import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { EmailServiceSetupModal } from "../v2";
 import { AuthPagePanel } from "./AuthPagePanel";
+import { EmailServiceSetupModal } from "./EmailServiceSetupModal";
 
 interface TeamInviteStepProps {
   productName?: string;

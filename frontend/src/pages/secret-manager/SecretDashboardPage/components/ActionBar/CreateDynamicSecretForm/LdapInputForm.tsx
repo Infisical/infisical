@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
+import { VaultLdapImportModal } from "@app/components/external-migrations";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -30,7 +31,6 @@ import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
-import { VaultLdapImportModal } from "./VaultLdapImportModal";
 
 enum CredentialType {
   Dynamic = "dynamic",

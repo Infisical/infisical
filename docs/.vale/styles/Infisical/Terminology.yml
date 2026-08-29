@@ -1,0 +1,65 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+level: error
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#use-consistent-terminology
+ignorecase: false
+# Vocabulary terms are exceptions by default, which would suppress any swap
+# whose matched text contains an accepted term ("Azure" in "Azure AD").
+vocab: false
+# Boundaries are written out per swap so they compose with the lookarounds
+# below instead of being wrapped a second time.
+nonword: true
+# Contextual allowances are lookarounds on the swap keys, not `exceptions:`
+# entries. An exception that only *contains* the match ("formerly known as
+# Azure AD" around "Azure AD") is honored from Vale 3.15 onwards; the Mintlify
+# CI runner is older, so the whole block was inert there while passing locally.
+# Do not convert these back until that runner is known to be 3.15 or newer.
+swap:
+  # --- Product naming ---
+  # Secret Manager / Secrets Management live in SecretsManager.yml, which GCP
+  # pages switch off.
+  # Microsoft renamed this. A retired name stands where the text is explicitly
+  # saying it is retired. "Azure AD CS" is Certificate Services, not the
+  # identity product, so it is excluded under both of its spellings.
+  '(?<!formerly |known as |previously )\bAzure Active Directory\b(?! is now)': Entra ID
+  '(?<!formerly |known as |previously )\bAzure AD\b(?! CS| Certificate Services)': Entra ID
+  '\bEntra Id\b': Entra ID
+  '\bPostgres\b': PostgreSQL
+  # Only the mixed-case form. The binary, package, and config file are
+  # genuinely lowercase `nginx`.
+  '\bNginx\b': NGINX
+  '\bMongo Atlas\b': MongoDB Atlas
+  '\bMongo DB\b': MongoDB
+  '\bDigital Ocean\b': DigitalOcean
+  '\bSDK''s\b': SDKs
+  # "+ New Sub-Organization" and "Create Sub-Organization" are UI labels quoted
+  # verbatim; the product capitalizes those.
+  '(?<!\+ New |Create )\bSub-Organization\b': Sub-organization
+  '\bSub-Organizations\b': Sub-organizations
+
+  # --- Vendor casing ---
+  # Only forms that are always wrong are listed. The lowercase spellings are
+  # left alone: they are how these names appear in package names, binaries,
+  # API groups, and identifiers.
+  '\b(?:Github|GitHUB|GITHUB)\b': GitHub
+  '\bGitHub app\b': GitHub App
+  '\b(?:Gitlab|GITLAB)\b': GitLab
+  '\bHashicorp\b': HashiCorp
+  '\b(?:MacOS|MacOs|MACOS)\b': macOS
+  '\bCentOs\b': CentOS
+  '\b(?:OAUth|Oauth|OAUTH)\b': OAuth
+  '\bMemoryStore\b': Memorystore
+  '\bAzure [Dd]evops\b': Azure DevOps
+  '\bDevops\b': DevOps
+  '\bAzure key vault\b': Azure Key Vault
+  '\bTerraform cloud\b': Terraform Cloud
+  '\bActive directory\b': Active Directory
+  '\bMicrosoft SQL server\b': Microsoft SQL Server
+  '\bAB Initio\b': Ab Initio
+  '\bTypescript\b': TypeScript
+  '\bPowershell\b': PowerShell
+  '\bUNIX\b': Unix
+  '\bAws\b': AWS
+  '\bWinget\b': winget
+  '\bWin-acme\b': win-acme
+  '\bCert-manager\b': cert-manager

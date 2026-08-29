@@ -1,5 +1,6 @@
 export enum IdentityAuthTemplateMethod {
-  LDAP = "ldap"
+  LDAP = "ldap",
+  KUBERNETES = "kubernetes"
 }
 
 export const TEMPLATE_VALIDATION_MESSAGES = {
@@ -12,6 +13,15 @@ export const TEMPLATE_VALIDATION_MESSAGES = {
     BIND_DN_REQUIRED: "Bind DN is required",
     BIND_PASSWORD_REQUIRED: "Bind password is required",
     SEARCH_BASE_REQUIRED: "Search base is required"
+  },
+  KUBERNETES: {
+    HOST_REQUIRED: "When token review mode is set to API, a Kubernetes host must be provided",
+    GATEWAY_REQUIRED: "When token review mode is set to Gateway, a gateway or gateway pool must be selected",
+    GATEWAY_CONFLICT: "Cannot specify both a gateway and a gateway pool",
+    CA_CERT_REQUIRED:
+      "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification.",
+    TLS_VERIFICATION_CONFLICT:
+      "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
   }
 } as const;
 
@@ -20,3 +30,10 @@ export const TEMPLATE_SUCCESS_MESSAGES = {
   UPDATED: "Template updated successfully",
   DELETED: "Template deleted successfully"
 } as const;
+
+// credentials stored inside templateFields that must never leave the backend; every
+// template read path strips them, and the edit UI treats them as write-only
+export const TEMPLATE_SECRET_FIELDS_BY_METHOD: Record<IdentityAuthTemplateMethod, readonly string[]> = {
+  [IdentityAuthTemplateMethod.LDAP]: ["bindPass"],
+  [IdentityAuthTemplateMethod.KUBERNETES]: ["tokenReviewerJwt"]
+};

@@ -244,10 +244,13 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 #### Atoms & domain
 
-| Component                                                                                                         | Reach for this when…                                                                   |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                           |
-| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope.  |
+| Component                                                                                                         | Reach for this when…                                                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
+| [`AccessRestrictedBanner`](frontend/src/components/v3/platform/AccessRestrictedBanner.tsx)                       | Dedicated full-surface state for content blocked by the user's current permissions.  |
+| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
+| [`SecretManagerResources`](frontend/src/components/v3/platform/SecretManagerResources/SecretManagerResources.ts) | Canonical Secret Manager resource catalog (icon, color classes, name, slug, permission subject). |
+| [`ProjectPermissionSubjects`](frontend/src/components/v3/platform/ProjectPermissionSubjects/ProjectPermissionSubjects.ts) | Icon and tile color for every project policy subject (`ProjectPermissionSub`). |
 | [`PageHeader`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx)                                     | Canonical full-width page heading with scope semantics, description, and page actions. |
 | [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                      |
 
@@ -400,6 +403,13 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > Use `AlertDialog`. Title: "Delete `<resource-name>`". Description: one
 > sentence naming the consequence, ending with "This cannot be undone."
 > Confirm button is variant `danger`. Cancel button is variant `outline`.
+
+**Unsaved changes:**
+
+> Use `DiscardChangesAlertDialog` with `useDiscardChangesGuard`. Title:
+> "Discard Changes?". Description names what will be lost. Confirm is
+> Discard (`danger`); cancel is Keep Editing. Overlay editors intercept
+> close with `requestDiscard`. Do not use `window.confirm`.
 
 **A documentation link in a section:**
 

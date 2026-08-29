@@ -22,7 +22,7 @@ function Spinner({ className, label = "Loading", size = "md", ...props }: Spinne
       role="status"
       aria-label={label}
       data-slot="spinner"
-      className={cn("m-1 animate-spin fill-primary text-muted/25", sizeStyles[size], className)}
+      className={cn("m-1 animate-spin fill-project text-muted/25", sizeStyles[size], className)}
       viewBox="0 0 100 101"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

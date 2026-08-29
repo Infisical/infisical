@@ -33,6 +33,10 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         "aria-invalid:border-danger aria-invalid:ring-danger/40",
         "hover:border-foreground/30",
         "data-[state=checked]:border-project data-[state=checked]:bg-project",
+        "in-data-[slot=button]:border-(--control-variant-border-color) in-data-[slot=button]:hover:border-(--control-variant-border-color)",
+        "in-data-[slot=button]:data-[state=checked]:border-(--control-variant-color) in-data-[slot=button]:data-[state=checked]:bg-(--control-variant-color)",
+        "in-data-[slot=field-label]:border-(--control-variant-border-color) in-data-[slot=field-label]:hover:border-(--control-variant-border-color)",
+        "in-data-[slot=field-label]:data-[state=checked]:border-(--control-variant-color) in-data-[slot=field-label]:data-[state=checked]:bg-(--control-variant-color)",
         className
       )}
       {...props}

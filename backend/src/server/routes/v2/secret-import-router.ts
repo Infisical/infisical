@@ -51,7 +51,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
         actorId: req.permission.id,
@@ -141,7 +147,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
         actorId: req.permission.id,
@@ -217,7 +229,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
         actorId: req.permission.id,
@@ -286,7 +304,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { message } = await server.services.secretImport.resyncSecretImportReplication({
         actorId: req.permission.id,
@@ -340,7 +358,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
         actorId: req.permission.id,
@@ -402,7 +426,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.getImportById({
         actorId: req.permission.id,
@@ -461,7 +491,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,

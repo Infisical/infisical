@@ -319,6 +319,7 @@ const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
 // scott: ideally this would be derived from a utilized map like the above
 const PKI_APP_CONNECTIONS = [
   AppConnection.AWS,
+  AppConnection.GCP,
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
   AppConnection.ADCS,

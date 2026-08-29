@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { SearchIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  IconButton,
+  SecretPathInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 
 type AccessTreeSecretPathInputProps = {
   placeholder: string;
@@ -21,7 +24,6 @@ export const AccessTreeSecretPathInput = ({
 }: AccessTreeSecretPathInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
 
   const handleFocus = () => {
@@ -48,74 +50,58 @@ export const AccessTreeSecretPathInput = ({
     }
   };
 
-  const toggleSearch = () => {
-    setIsExpanded(!isExpanded);
-    if (!isExpanded) {
-      const timeout: NodeJS.Timeout = setTimeout(focusInput, 300);
-      return () => clearTimeout(timeout);
-    }
-    return () => {};
-  };
+  const toggleSearch = () => setIsExpanded((expanded) => !expanded);
+
+  useEffect(() => {
+    if (!isExpanded) return undefined;
+    const timeout = setTimeout(focusInput, 0);
+    return () => clearTimeout(timeout);
+  }, [isExpanded]);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div className="relative">
       <div
-        className={twMerge(
-          "flex items-center overflow-hidden rounded-sm transition-all duration-300 ease-in-out",
-          isFocused ? "bg-container shadow-md" : "bg-container-hover",
-          isExpanded ? "w-64" : "h-10 w-10"
-        )}
+        className={`flex h-9 items-center overflow-hidden rounded-md transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+          isExpanded ? "w-64 border border-border bg-card" : "w-9"
+        } ${isFocused ? "ring-2 ring-ring" : ""}`}
       >
         {isExpanded ? (
-          <div
-            className="flex h-10 w-10 cursor-pointer items-center justify-center text-label hover:text-foreground"
+          <IconButton
+            variant="ghost-muted"
+            size="sm"
+            className="rounded-r-none"
             onClick={toggleSearch}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                toggleSearch();
-              }
-            }}
+            aria-label="Close path search"
           >
-            <FontAwesomeIcon icon={faSearch} />
-          </div>
+            <SearchIcon />
+          </IconButton>
         ) : (
-          <Tooltip position="bottom" content="Search Paths">
-            <div
-              className="flex h-10 w-10 cursor-pointer items-center justify-center text-label hover:text-foreground"
-              onClick={toggleSearch}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  toggleSearch();
-                }
-              }}
-            >
-              <FontAwesomeIcon icon={faSearch} />
-            </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton variant="outline" onClick={toggleSearch} aria-label="Search paths">
+                <SearchIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Search paths</TooltipContent>
           </Tooltip>
         )}
 
         <div
           ref={inputRef}
-          className={twMerge(
-            "flex-1 transition-opacity duration-300",
-            isExpanded ? "opacity-100" : "hidden"
-          )}
+          className={`min-w-0 flex-1 transition-opacity duration-150 motion-reduce:transition-none ${
+            isExpanded ? "opacity-100" : "hidden opacity-0"
+          }`}
           onFocus={handleFocus}
           onBlur={handleBlur}
           role="search"
         >
-          <div className="custom-input-wrapper">
-            <SecretPathInput
-              placeholder={placeholder}
-              environment={environment}
-              value={value}
-              onChange={onChange}
-            />
-          </div>
+          <SecretPathInput
+            placeholder={placeholder}
+            environment={environment}
+            value={value}
+            onChange={onChange}
+            containerClassName="rounded-l-none border-0 bg-transparent focus-visible:ring-0"
+          />
         </div>
       </div>
     </div>

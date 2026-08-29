@@ -128,6 +128,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     mfaMethod: MfaMethod,
     isRecoveryCodeFlow: boolean
   ) => {
+    setTriesLeft(undefined);
     SecurityClient.setMfaToken("");
     SecurityClient.setToken(sessionToken);
 

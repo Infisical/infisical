@@ -102,19 +102,19 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table className="min-w-[52rem] table-fixed">
+        <Table className="min-w-[52rem]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-80 min-w-80">
+              <TableHead>
                 <TableHeadLabel>Name</TableHeadLabel>
               </TableHead>
-              <TableHead className="w-36">
+              <TableHead>
                 <TableHeadLabel>Connected</TableHeadLabel>
               </TableHead>
-              <TableHead className="w-40">
+              <TableHead>
                 <TableHeadLabel>Health</TableHeadLabel>
               </TableHead>
-              <TableHead className="w-12" />
+              <TableHead variant="action" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,7 +130,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               ))}
             {filteredPools?.map((pool) => (
               <TableRow key={pool.id} onClick={() => setSelectedPoolId(pool.id)}>
-                <TableCell className="min-w-80 font-medium">
+                <TableCell className="font-medium">
                   <span className="block truncate">{pool.name}</span>
                 </TableCell>
                 <TableCell>
@@ -153,7 +153,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                 <TableCell>
                   <PoolHealthBadge pool={pool} />
                 </TableCell>
-                <TableCell className="w-12">
+                <TableCell variant="action">
                   <div
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}

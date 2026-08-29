@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { format } from "date-fns";
 import {
   AlertTriangleIcon,
@@ -17,6 +16,7 @@ import {
   HoverCardTrigger,
   TBadgeProps
 } from "@app/components/v3";
+import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -54,19 +54,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
       break;
   }
 
-  const failureMessage = useMemo(() => {
-    if (status === PkiSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [status, lastSyncMessage]);
+  const failureMessage = getPkiSyncFailureMessage(status, lastSyncMessage);
 
   const badge = (
     <Badge variant={variant}>

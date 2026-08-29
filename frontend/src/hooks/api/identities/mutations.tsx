@@ -1417,6 +1417,7 @@ export const useAddIdentityKubernetesAuth = () => {
   return useMutation<IdentityKubernetesAuth, object, AddIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       kubernetesHost,
       tokenReviewerJwt,
       allowedNames,
@@ -1429,13 +1430,15 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenTrustedIps,
       gatewayId,
       gatewayPoolId,
-      tokenReviewMode
+      tokenReviewMode,
+      verifyTlsCertificate
     }) => {
       const {
         data: { identityKubernetesAuth }
       } = await apiRequest.post<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
         `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
         {
+          templateId,
           kubernetesHost,
           tokenReviewerJwt,
           allowedNames,
@@ -1448,7 +1451,8 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenTrustedIps,
           gatewayId,
           gatewayPoolId,
-          tokenReviewMode
+          tokenReviewMode,
+          verifyTlsCertificate
         }
       );
 
@@ -1561,6 +1565,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
   return useMutation<IdentityKubernetesAuth, object, UpdateIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       kubernetesHost,
       tokenReviewerJwt,
       allowedNamespaces,
@@ -1573,13 +1578,16 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenTrustedIps,
       gatewayId,
       gatewayPoolId,
-      tokenReviewMode
+      tokenReviewMode,
+      verifyTlsCertificate
     }) => {
       const {
         data: { identityKubernetesAuth }
       } = await apiRequest.patch<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
         `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
         {
+          // tri-state: undefined keeps the current template link, null unlinks, uuid links
+          templateId,
           kubernetesHost,
           tokenReviewerJwt,
           allowedNames,
@@ -1592,7 +1600,8 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenTrustedIps,
           gatewayId,
           gatewayPoolId,
-          tokenReviewMode
+          tokenReviewMode,
+          verifyTlsCertificate
         }
       );
 

@@ -1,5 +1,4 @@
-import { faCheckCircle, faTimesCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { PolicyBlock, PolicyLine } from "./VaultPolicyAnalyzer.utils";
@@ -10,11 +9,10 @@ type Props = {
 };
 
 export const VaultPolicyPreview = ({ blocks, lines }: Props) => {
-  // Create a map of block IDs to blocks for quick lookup
   const blockMap = new Map(blocks.map((block) => [block.id, block]));
 
   return (
-    <div className="flex h-[30rem] flex-col rounded-md border border-border bg-card">
+    <div className="flex h-80 flex-col rounded-md border border-border bg-container xl:h-[30rem]">
       <div className="flex-1 overflow-auto font-mono text-xs">
         {lines.map((line) => {
           const block = line.belongsToBlock ? blockMap.get(line.belongsToBlock) : null;
@@ -24,7 +22,7 @@ export const VaultPolicyPreview = ({ blocks, lines }: Props) => {
 
           let bgColorClass = "";
           let borderColorClass = "";
-          let textColorClass = "text-label";
+          let textColorClass = "text-accent";
           let showIndicator = false;
           let indicator: JSX.Element | null = null;
 
@@ -33,11 +31,11 @@ export const VaultPolicyPreview = ({ blocks, lines }: Props) => {
             if (block.canTranslate) {
               bgColorClass = "bg-success/10";
               borderColorClass = "border-l-2 border-success/50";
-              textColorClass = "text-success";
+              textColorClass = "text-foreground";
               if (showIndicator) {
                 indicator = (
                   <div className="flex items-center gap-2 text-success">
-                    <FontAwesomeIcon icon={faCheckCircle} className="h-3 w-3" />
+                    <CircleCheckIcon className="size-3" />
                     <span className="text-xs">Can translate</span>
                   </div>
                 );
@@ -45,11 +43,11 @@ export const VaultPolicyPreview = ({ blocks, lines }: Props) => {
             } else {
               bgColorClass = "bg-danger/10";
               borderColorClass = "border-l-2 border-danger/50";
-              textColorClass = "text-danger";
+              textColorClass = "text-foreground";
               if (showIndicator) {
                 indicator = (
                   <div className="flex items-center gap-2 text-danger">
-                    <FontAwesomeIcon icon={faTimesCircle} className="h-3 w-3" />
+                    <CircleXIcon className="size-3" />
                     <span className="text-xs">{block.reason || "Cannot translate"}</span>
                   </div>
                 );

@@ -1,10 +1,20 @@
 import { Dispatch, SetStateAction, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Panel } from "@xyflow/react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
-import { Button, FormLabel, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldLabel,
+  IconButton,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
@@ -44,19 +54,9 @@ export const PermissionSimulation = ({
   if (viewMode !== ViewMode.Modal)
     return (
       <Panel position="top-left">
-        <Button
-          size="xs"
-          className="mr-1 rounded-sm"
-          colorSchema="secondary"
-          onClick={handlePermissionSimulation}
-          rightIcon={
-            <FontAwesomeIcon
-              className="pl-1 text-sm text-label hover:text-project hover:opacity-80"
-              icon={faChevronDown}
-            />
-          }
-        >
+        <Button size="xs" className="mr-1" variant="outline" onClick={handlePermissionSimulation}>
           Permission Simulation
+          <ChevronDownIcon />
         </Button>
       </Panel>
     );
@@ -67,23 +67,26 @@ export const PermissionSimulation = ({
       position="top-left"
       className={`group flex flex-col gap-2 pr-4 pb-4 ${expand ? "" : "cursor-pointer"}`}
     >
-      <div className="flex w-[20rem] flex-col gap-1.5 rounded-sm border border-border bg-container p-2 font-inter text-foreground">
+      <div className="flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-3 rounded-md border border-border bg-popover p-3 text-foreground shadow-lg">
         <div>
           <div className="flex w-full items-center justify-between">
             <span className="text-sm">Permission Simulation</span>
             <IconButton
-              variant="plain"
-              ariaLabel={expand ? "Collapse" : "Expand"}
+              variant="ghost-muted"
+              size="xs"
+              aria-label={
+                expand ? "Collapse permission simulation" : "Expand permission simulation"
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 setExpand((prev) => !prev);
               }}
             >
-              <FontAwesomeIcon icon={expand ? faChevronUp : faChevronDown} />
+              {expand ? <ChevronUpIcon /> : <ChevronDownIcon />}
             </IconButton>
           </div>
           {expand && (
-            <p className="mt-1 mb-2 text-xs text-muted">
+            <p className="text-xs text-muted">
               Evaluate conditional policies to see what permissions will be granted given a secret
               name or tags
             </p>
@@ -91,56 +94,57 @@ export const PermissionSimulation = ({
         </div>
         {expand && (
           <>
-            <div>
-              <FormLabel label="Subject" />
+            <Field>
+              <FieldLabel htmlFor="access-tree-simulation-subject">Subject</FieldLabel>
               <Select
                 value={subject}
                 onValueChange={(value) => setSubject(value as ProjectPermissionSub)}
-                className="w-full border border-border capitalize"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
               >
-                {[
-                  ProjectPermissionSub.Secrets,
-                  ProjectPermissionSub.SecretFolders,
-                  ProjectPermissionSub.DynamicSecrets,
-                  ProjectPermissionSub.SecretImports
-                ].map((sub) => {
-                  return (
+                <SelectTrigger id="access-tree-simulation-subject" className="w-full capitalize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {[
+                    ProjectPermissionSub.Secrets,
+                    ProjectPermissionSub.SecretFolders,
+                    ProjectPermissionSub.DynamicSecrets,
+                    ProjectPermissionSub.SecretImports
+                  ].map((sub) => (
                     <SelectItem className="capitalize" value={sub} key={sub}>
                       {sub.replace("-", " ")}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </div>
-            <div>
-              <FormLabel label="Environment" />
-              <Select
-                value={environment}
-                onValueChange={setEnvironment}
-                className="w-full border border-border capitalize"
-                position="popper"
-                dropdownContainerClassName="max-w-76"
-              >
-                {environments.map(({ name, slug }) => {
-                  return (
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="access-tree-simulation-environment">Environment</FieldLabel>
+              <Select value={environment} onValueChange={setEnvironment}>
+                <SelectTrigger
+                  id="access-tree-simulation-environment"
+                  className="w-full capitalize"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-w-76">
+                  {environments.map(({ name, slug }) => (
                     <SelectItem value={slug} key={slug}>
                       {name}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </div>
+            </Field>
             {subject === ProjectPermissionSub.Secrets && (
-              <div>
-                <FormLabel label="Secret Name" />
+              <Field>
+                <FieldLabel htmlFor="access-tree-simulation-secret-name">Secret Name</FieldLabel>
                 <Input
+                  id="access-tree-simulation-secret-name"
                   placeholder="*"
                   value={secretName}
                   onChange={(e) => setSecretName(e.target.value)}
                 />
-              </div>
+              </Field>
             )}
             {subject === ProjectPermissionSub.DynamicSecrets && (
               <div>

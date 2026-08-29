@@ -74,9 +74,8 @@ import {
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { ExportSignerCertModal } from "./components/ExportSignerCertModal";
-import { SignerApprovalPolicyTab } from "./components/SignerApprovalPolicyTab";
+import { SignerApprovalsSection } from "./components/SignerApprovalsSection";
 import { SignerMembersTab } from "./components/SignerMembersTab";
-import { SignerRequestsTab } from "./components/SignerRequestsTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
 type Tab = "activity" | "approvals" | "members";
@@ -299,21 +298,15 @@ export const SignerDetailPage = () => {
                 />
               </TabsContent>
               <TabsContent value="approvals" className="pt-2">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">
-                  <SignerApprovalPolicyTab signerId={signerId} />
-                  <SignerRequestsTab
-                    signerId={signerId}
-                    canPreApprove={Boolean(
-                      permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
-                    )}
-                    canRequestSign={Boolean(
-                      permission.can(
-                        SignerPermissionActions.RequestSign,
-                        SignerPermissionSub.Signer
-                      )
-                    )}
-                  />
-                </div>
+                <SignerApprovalsSection
+                  signerId={signerId}
+                  canPreApprove={Boolean(
+                    permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
+                  )}
+                  canRequestSign={Boolean(
+                    permission.can(SignerPermissionActions.RequestSign, SignerPermissionSub.Signer)
+                  )}
+                />
               </TabsContent>
               <TabsContent value="members" className="pt-2">
                 <SignerMembersTab signerId={signerId} />

@@ -51,6 +51,7 @@ import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
 import { ApplicationSettingsTab } from "./components/ApplicationSettingsTab";
 import { ApplicationSyncsTab } from "./components/ApplicationSyncsTab";
+import { ApplicationTab } from "./application-tabs";
 
 type PermissionedTabProps = {
   value: string;
@@ -260,7 +261,7 @@ export const ApplicationDetailsByIDPage = () => {
                     applicationName: application.name
                   },
                   search: {
-                    selectedTab: v as "certificates" | "requests" | "syncs" | "members" | "settings"
+                    selectedTab: v as ApplicationTab
                   }
                 })
               }

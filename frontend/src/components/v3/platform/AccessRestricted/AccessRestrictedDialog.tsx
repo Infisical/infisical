@@ -123,7 +123,7 @@ export const AccessRestrictedDialog = ({
             </h2>
             <p className="text-sm leading-relaxed text-accent">{description}</p>
           </div>
-          <div className="flex flex-col gap-1.5 rounded-md border border-border bg-bunker-800/50 px-4 py-3">
+          <div className="flex flex-col gap-1.5 rounded-md border border-border bg-background/50 px-4 py-3">
             {monoRows.map(([key, value]) => (
               <div key={key} className="flex gap-4 font-mono text-xs">
                 <span className="w-16 shrink-0 text-muted">{key}</span>

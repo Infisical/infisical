@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
+import { VaultSqlDatabaseImportModal } from "@app/components/external-migrations";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -47,7 +48,6 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
 import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
-import { VaultSqlDatabaseImportModal } from "./VaultSqlDatabaseImportModal";
 
 const passwordRequirementsSchema = z
   .object({

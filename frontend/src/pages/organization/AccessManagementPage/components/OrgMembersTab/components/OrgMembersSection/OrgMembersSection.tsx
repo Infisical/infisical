@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 
+import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmailServiceSetupModal, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -23,11 +24,9 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
   useUser
 } from "@app/context";
 import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { useDeleteOrgMembershipBatch } from "@app/hooks/api/users/queries";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -37,7 +36,6 @@ import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const navigate = useNavigate();
   const orgId = currentOrg?.id ?? "";
@@ -80,20 +78,7 @@ export const OrgMembersSection = () => {
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
-  const isMoreIdentitiesAllowed = subscription?.identityLimit
-    ? subscription.identitiesUsed < subscription.identityLimit
-    : true;
-
-  const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
-
   const handleAddMemberModal = () => {
-    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."
-      });
-      return;
-    }
-
     handlePopUpOpen("addMember");
   };
 
