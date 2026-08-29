@@ -16,7 +16,7 @@ import {
 } from "@app/components/v3";
 import type { TExpirationBucket } from "@app/hooks/api/certificates";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import { CHART_COLORS, CHART_COLORS_HEX, formatShare } from "./chart-theme";
 
 type Props = {
   buckets: TExpirationBucket[];
@@ -64,7 +64,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   const total = chartData.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <Card className="flex h-auto min-w-[250px] flex-1 flex-col">
+    <Card className="flex h-auto min-w-0 flex-col">
       <CardHeader className="pb-0">
         <CardTitle className="text-base font-semibold">Expiration Timeline</CardTitle>
         <CardDescription className="text-xs">Certificates by time to expiry</CardDescription>
@@ -133,7 +133,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
             <div className="min-w-0 flex-1">
               <div className="space-y-1.5">
                 {chartData.map((item, idx) => {
-                  const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                  const pct = formatShare(item.count, total);
                   return (
                     <button
                       key={item.label}
@@ -155,7 +155,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
                         </TooltipTrigger>
                         <TooltipContent side="top">{item.label}</TooltipContent>
                       </Tooltip>
-                      <span className="shrink-0 text-right text-muted">{pct}%</span>
+                      <span className="shrink-0 text-right text-muted">{pct}</span>
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {item.count}
                       </span>

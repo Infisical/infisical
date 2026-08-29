@@ -25,6 +25,17 @@ export const CHART_COLORS_HEX = [
   "#b8a060" // olive gold
 ];
 
+export const MAX_DONUT_SEGMENTS = 6;
+
+export const CHART_OTHER_COLOR_HEX = "#8c8f96";
+
+export const formatShare = (count: number, total: number) => {
+  if (total <= 0) return "0%";
+  const share = (count / total) * 100;
+  if (share > 0 && share < 1) return "<1%";
+  return `${Math.round(share)}%`;
+};
+
 export const TREND_COLORS = {
   issued: "var(--color-org)",
   expired: "var(--color-danger)",

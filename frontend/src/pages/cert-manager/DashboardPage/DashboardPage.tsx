@@ -81,7 +81,7 @@ export const DashboardPage = () => {
               ) : (
                 <div className="flex flex-col gap-6">
                   <KpiCards stats={stats} onNavigate={navigateToInventory} />
-                  <div className="flex flex-wrap gap-4">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
                     <ExpirationTimeline
                       buckets={stats.expirationBuckets}
