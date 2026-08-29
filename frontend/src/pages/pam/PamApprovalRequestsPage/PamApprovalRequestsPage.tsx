@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
+import { FolderOpen, KeyRound, SearchIcon, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
@@ -36,7 +36,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useListPamPendingMyApproval } from "@app/hooks/api/pam";
+import { PamAccessType, useListPamPendingMyApproval } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -70,6 +70,12 @@ const RequestRow = ({
             <AccountPlatformIcon accountType={request.accountType} size={16} />
           )}
           {request.accountName ?? "-"}
+          {request.accessType === PamAccessType.Credential && (
+            <Badge variant="warning">
+              <KeyRound className="mr-1 size-3" />
+              Credentials
+            </Badge>
+          )}
         </div>
       </TableCell>
       <TableCell className="text-sm">{request.folderName ?? "-"}</TableCell>

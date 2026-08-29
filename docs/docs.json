@@ -746,6 +746,7 @@
                     "group": "Accounts",
                     "pages": [
                       "documentation/platform/pam/accounts/overview",
+                      "documentation/platform/pam/accounts/viewing-credentials",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",

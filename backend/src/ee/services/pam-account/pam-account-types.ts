@@ -43,6 +43,14 @@ export type TGetPamAccountDTO = {
   projectId: string;
 };
 
+export type TGetPamAccountCredentialsDTO = {
+  accountId: string;
+  projectId: string;
+  actorEmail: string;
+  reason?: string;
+  mfaSessionId?: string;
+};
+
 export type TListPamAccountsDTO = {
   projectId: string;
   folderId?: string;

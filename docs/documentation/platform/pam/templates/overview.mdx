@@ -34,10 +34,16 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   <Step title="Configure policies">
     | Option | What it does |
     |--------|--------------|
+    | **Require Approval** | Users must request and receive approval before launching a session |
+    | **Require Approval for Credentials** | Users must request and receive approval before [viewing the account's credentials](/documentation/platform/pam/accounts/viewing-credentials) |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
+
+    <Note>
+      The two approval options are separate gates. Turning on **Require Approval** does not gate the credential, and an approved session request does not reveal it. Gate both if a session and the raw password should each need sign-off.
+    </Note>
 
     <Note>
       **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.

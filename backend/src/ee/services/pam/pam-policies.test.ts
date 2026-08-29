@@ -88,6 +88,7 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
+    requiresCredentialApproval: false,
     requireReason: false,
     requireMfa: false,
     maxSessionDurationSeconds: null
@@ -111,7 +112,7 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.RequireMfa]: true,
         [PamPolicyType.MaxSessionDuration]: 3600
       })
-    ).toEqual({ requiresApproval: false, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
+    ).toEqual({ ...DEFAULTS, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
   });
 
   test("resolves each policy independently of the others", () => {

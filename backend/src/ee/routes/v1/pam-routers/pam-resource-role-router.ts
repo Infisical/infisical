@@ -14,6 +14,12 @@ const DEFAULT_RESOURCE_ROLES = [
     description: "Full control of accounts, folders, sessions, and memberships"
   },
   {
+    slug: PamResourceRole.Operator,
+    name: "Operator",
+    isDefault: true,
+    description: "Launch sessions and view account credentials; cannot approve requests or change configuration"
+  },
+  {
     slug: PamResourceRole.Connector,
     name: "Connector",
     isDefault: true,

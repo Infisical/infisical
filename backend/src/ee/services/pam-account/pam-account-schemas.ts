@@ -1330,3 +1330,9 @@ export const isCredentialConfigured = (
     return typeof value === "string" && value.trim().length > 0;
   });
 };
+
+export const hasRetrievableCredentials = (accountType: PamAccountType): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+  return fieldsFromSchema(config.credentials, config.ui).some((field) => field.secret);
+};

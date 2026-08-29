@@ -56,7 +56,13 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
-import { PamAccessStatus, PamNotificationEvent, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PamAccessStatus,
+  PamAccessType,
+  PamNotificationEvent,
+  PamProductRole,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import {
   checkAccountAccess,
@@ -374,7 +380,8 @@ export const pamAccessRequestServiceFactory = ({
         ...r,
         accountName: account?.name ?? null,
         accountType: account?.templateId ? (templateTypeMap.get(account.templateId) ?? null) : null,
-        folderName: folder?.name ?? null
+        folderName: folder?.name ?? null,
+        accessType: data?.requestData?.accessType ?? PamAccessType.Session
       };
     });
   };
@@ -620,7 +627,16 @@ export const pamAccessRequestServiceFactory = ({
     return { policyId: newPolicy.id, folderId, stepCount: steps.length, notificationConfigCount };
   };
 
-  const createRequest = async ({ accountId, path, projectId, reason, duration, ...ctx }: TCreateAccessRequestDTO) => {
+  const createRequest = async ({
+    accountId,
+    path,
+    projectId,
+    reason,
+    duration,
+    accessType = PamAccessType.Session,
+    ...ctx
+  }: TCreateAccessRequestDTO) => {
+    const isCredentialRequest = accessType === PamAccessType.Credential;
     const trimmedReason = reason?.trim() || undefined;
     await verifyProductMembership(permissionService, projectId, ctx);
 
@@ -636,26 +652,37 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Account not found" });
     }
 
-    // Approval is a layer on top of standing access: only users who could launch sessions on this
-    // account may request the temporary grant that unlocks the gated launch.
+    // Approval is a layer on top of standing access: only users who already hold the underlying
+    // permission may request the temporary grant that unlocks it.
     await checkAccountAccess(
       permissionService,
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
+      isCredentialRequest
+        ? ResourcePermissionPamResourceActions.ViewCredentials
+        : ResourcePermissionPamResourceActions.LaunchSessions,
       ctx
     );
 
     const accessControls = resolveAccessControls(account.templatePolicies);
-    if (!accessControls.requiresApproval) {
-      throw new BadRequestError({ message: "This account does not require approval" });
+    const gateEnabled = isCredentialRequest
+      ? accessControls.requiresCredentialApproval
+      : accessControls.requiresApproval;
+    if (!gateEnabled) {
+      throw new BadRequestError({
+        message: isCredentialRequest
+          ? "This account does not require approval to view its credentials"
+          : "This account does not require approval"
+      });
     }
 
     if (accessControls.requireReason && !trimmedReason) {
       throw new BadRequestError({
         name: "PAM_REASON_REQUIRED",
-        message: "A reason is required to request access to this account"
+        message: isCredentialRequest
+          ? "A reason is required to request credential access to this account"
+          : "A reason is required to request access to this account"
       });
     }
 
@@ -690,11 +717,18 @@ export const pamAccessRequestServiceFactory = ({
 
     const hasPendingForAccount = existingPending.some((r) => {
       const data = r.requestData as { version: number; requestData: TPamAccessRequestData } | null;
-      return data?.requestData?.accountId === account.id;
+      return (
+        data?.requestData?.accountId === account.id &&
+        (data?.requestData?.accessType ?? PamAccessType.Session) === accessType
+      );
     });
 
     if (hasPendingForAccount) {
-      throw new BadRequestError({ message: "You already have a pending request for this account" });
+      throw new BadRequestError({
+        message: isCredentialRequest
+          ? "You already have a pending credential request for this account"
+          : "You already have a pending request for this account"
+      });
     }
 
     const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
@@ -716,13 +750,15 @@ export const pamAccessRequestServiceFactory = ({
     }));
 
     const isIdentityActor = ctx.actor === ActorType.IDENTITY;
+    const accessTypeLabel = isCredentialRequest ? "credential access" : "access";
     const { name: requesterName, email: requesterEmail } = await resolveRequesterDisplay(ctx);
 
     const requestData = {
       accountId: account.id,
       folderId: account.folderId,
       reason: trimmedReason,
-      duration
+      duration,
+      accessType
     } as unknown as TApprovalRequestData;
 
     const request = await createApprovalRequestWithSteps(
@@ -778,7 +814,7 @@ export const pamAccessRequestServiceFactory = ({
         if (recipients.length > 0) {
           await smtpService.sendMail({
             recipients,
-            subjectLine: "PAM Access Request",
+            subjectLine: isCredentialRequest ? "PAM Credential Access Request" : "PAM Access Request",
             template: SmtpTemplates.AccessPamRequest,
             substitutions: {
               requesterFullName: requesterName,
@@ -787,6 +823,7 @@ export const pamAccessRequestServiceFactory = ({
               accountName: account.name,
               folderName: account.folderName ?? undefined,
               accessDuration: formatDuration(duration),
+              accessTypeLabel,
               reason: trimmedReason,
               approvalUrl
             }
@@ -809,13 +846,20 @@ export const pamAccessRequestServiceFactory = ({
           accountName: account.name,
           folderName: account.folderName ?? "",
           accessDuration: formatDuration(duration),
+          accessTypeLabel,
           reason: trimmedReason,
           approvalUrl
         }
       }
     });
 
-    return { request, accountId: account.id, folderId: account.folderId, accountType: account.accountType };
+    return {
+      request,
+      accountId: account.id,
+      folderId: account.folderId,
+      accountType: account.accountType,
+      accessType
+    };
   };
 
   const listRequests = async ({ projectId, folderId, status, offset, limit, ...ctx }: TListAccessRequestsDTO) => {
@@ -1199,7 +1243,8 @@ export const pamAccessRequestServiceFactory = ({
                 type: ApprovalPolicyType.PamAccess,
                 attributes: {
                   accountId: requestData.requestData.accountId,
-                  folderId: requestData.requestData.folderId
+                  folderId: requestData.requestData.folderId,
+                  accessType: requestData.requestData.accessType ?? PamAccessType.Session
                 },
                 expiresAt
               },
@@ -1287,8 +1332,10 @@ export const pamAccessRequestServiceFactory = ({
     if (grant.granteeMachineIdentityId) granteeFilter = { identityId: grant.granteeMachineIdentityId };
     else if (grant.granteeUserId) granteeFilter = { userId: grant.granteeUserId };
 
-    const attrs = grant.attributes as { accountId?: string } | null;
+    const attrs = grant.attributes as { accountId?: string; accessType?: PamAccessType } | null;
     if (!attrs?.accountId || !granteeFilter) return noSignals;
+
+    if ((attrs.accessType ?? PamAccessType.Session) === PamAccessType.Credential) return noSignals;
 
     // Cover both active and starting sessions; a session mid-handshake would otherwise slip past
     // revocation and go live. terminateSessionById flips the row, and the ALPN signal cuts the live
@@ -1443,6 +1490,7 @@ export const pamAccessRequestServiceFactory = ({
     accountId,
     accountFolderId,
     projectId,
+    accessType = PamAccessType.Session,
     ...actorCtx
   }: TCheckGrantDTO): Promise<TApprovalRequestGrants | null> => {
     const grants = await approvalRequestGrantsDAL.find({
@@ -1457,8 +1505,16 @@ export const pamAccessRequestServiceFactory = ({
     // the account lived in another folder must not authorize launch after the account is moved into a
     // different (gated) folder whose approvers never reviewed it.
     const forAccount = grants.filter((g) => {
-      const attrs = g.attributes as { accountId?: string; folderId?: string | null } | null;
-      return attrs?.accountId === accountId && (attrs?.folderId ?? null) === (accountFolderId ?? null);
+      const attrs = g.attributes as {
+        accountId?: string;
+        folderId?: string | null;
+        accessType?: PamAccessType;
+      } | null;
+      return (
+        attrs?.accountId === accountId &&
+        (attrs?.folderId ?? null) === (accountFolderId ?? null) &&
+        (attrs?.accessType ?? PamAccessType.Session) === accessType
+      );
     });
     // Prefer a still-valid grant; otherwise return an expired one (rather than null) so the caller can
     // distinguish "grant expired" from "no grant" and signal PAM_GRANT_EXPIRED vs PAM_APPROVAL_REQUIRED.
@@ -1469,7 +1525,8 @@ export const pamAccessRequestServiceFactory = ({
   const getAccessStatusBatch = async (
     actorCtx: TAccessRequestActor,
     accountIds: string[],
-    projectId: string
+    projectId: string,
+    accessType: PamAccessType = PamAccessType.Session
   ): Promise<Map<string, { accessStatus: PamAccessStatus; grantExpiresAt: Date | null }>> => {
     const result = new Map<string, { accessStatus: PamAccessStatus; grantExpiresAt: Date | null }>();
     if (accountIds.length === 0) return result;
@@ -1485,8 +1542,9 @@ export const pamAccessRequestServiceFactory = ({
 
     for (const grant of activeGrants) {
       const isExpired = Boolean(grant.expiresAt && new Date(grant.expiresAt) <= now);
-      const attrs = grant.attributes as { accountId?: string } | null;
-      if (!isExpired && attrs?.accountId && accountIds.includes(attrs.accountId)) {
+      const attrs = grant.attributes as { accountId?: string; accessType?: PamAccessType } | null;
+      const grantAccessType = attrs?.accessType ?? PamAccessType.Session;
+      if (!isExpired && grantAccessType === accessType && attrs?.accountId && accountIds.includes(attrs.accountId)) {
         result.set(attrs.accountId, {
           accessStatus: PamAccessStatus.Granted,
           grantExpiresAt: grant.expiresAt ? new Date(grant.expiresAt) : null
@@ -1504,7 +1562,8 @@ export const pamAccessRequestServiceFactory = ({
     for (const request of pendingRequests) {
       const data = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
       const acctId = data?.requestData?.accountId;
-      if (acctId && accountIds.includes(acctId) && !result.has(acctId)) {
+      const requestAccessType = data?.requestData?.accessType ?? PamAccessType.Session;
+      if (requestAccessType === accessType && acctId && accountIds.includes(acctId) && !result.has(acctId)) {
         result.set(acctId, { accessStatus: PamAccessStatus.Pending, grantExpiresAt: null });
       }
     }
@@ -1524,9 +1583,14 @@ export const pamAccessRequestServiceFactory = ({
     return new Set(scopeIds);
   };
 
-  // Requesters need to know who to ping for approval, so this is gated on LaunchSessions (the
-  // request-access permission) rather than the policy-management check used for the full config.
-  const getAccountApprovers = async ({ accountId, projectId, ...ctx }: TGetAccountApproversDTO) => {
+  // Requesters need to know who to ping for approval, so this is gated on the permission the
+  // request itself needs rather than the policy-management check used for the full config.
+  const getAccountApprovers = async ({
+    accountId,
+    projectId,
+    accessType = PamAccessType.Session,
+    ...ctx
+  }: TGetAccountApproversDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
@@ -1539,7 +1603,9 @@ export const pamAccessRequestServiceFactory = ({
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
+      accessType === PamAccessType.Credential
+        ? ResourcePermissionPamResourceActions.ViewCredentials
+        : ResourcePermissionPamResourceActions.LaunchSessions,
       ctx
     );
 
@@ -1563,7 +1629,10 @@ export const pamAccessRequestServiceFactory = ({
     });
     const pendingForAccount = pendingRequests.find((r) => {
       const data = r.requestData as { version: number; requestData: TPamAccessRequestData } | null;
-      return data?.requestData?.accountId === account.id;
+      return (
+        data?.requestData?.accountId === account.id &&
+        (data?.requestData?.accessType ?? PamAccessType.Session) === accessType
+      );
     });
 
     if (pendingForAccount) {

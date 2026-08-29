@@ -64,6 +64,7 @@ export const formatRotationInterval = (seconds: number | null | undefined): stri
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  RequiresCredentialApproval = "requires-credential-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -115,6 +116,11 @@ export enum PamResourcePermissionActions {
   ManageRotation = "manage-rotation",
   ManageMembers = "manage-members",
   ViewAuditLogs = "view-audit-logs"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow

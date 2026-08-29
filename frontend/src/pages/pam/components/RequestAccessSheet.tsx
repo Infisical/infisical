@@ -29,6 +29,7 @@ import {
 } from "@app/components/v3";
 import {
   PamAccessStatus,
+  PamAccessType,
   PamAccountType,
   PamApproverType,
   TAccessiblePamAccount,
@@ -66,6 +67,7 @@ type Props = {
   account: TAccessiblePamAccount | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  accessType?: PamAccessType;
 };
 
 const ApproverChip = ({
@@ -85,8 +87,16 @@ const ApproverChip = ({
   );
 };
 
-const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPending: boolean }) => {
-  const { data: steps } = useGetPamAccountApprovers(accountId);
+const ApprovalWorkflow = ({
+  accountId,
+  isPending,
+  accessType
+}: {
+  accountId?: string;
+  isPending: boolean;
+  accessType: PamAccessType;
+}) => {
+  const { data: steps } = useGetPamAccountApprovers(accountId, accessType);
   if (!steps?.length) return null;
 
   return (
@@ -137,10 +147,18 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
   );
 };
 
-export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => {
+export const RequestAccessSheet = ({
+  account,
+  isOpen,
+  onOpenChange,
+  accessType = PamAccessType.Session
+}: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
-  const isPending = account?.accessStatus === PamAccessStatus.Pending;
+  const isCredentialRequest = accessType === PamAccessType.Credential;
+  const isPending =
+    (isCredentialRequest ? account?.credentialAccessStatus : account?.accessStatus) ===
+    PamAccessStatus.Pending;
   const requireReason = Boolean(account?.requireReason);
   const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
 
@@ -165,11 +183,17 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       {
         accountId: account.id,
         duration: data.duration,
-        reason: data.reason || undefined
+        reason: data.reason || undefined,
+        accessType
       },
       {
         onSuccess: () => {
-          createNotification({ text: "Access request submitted", type: "success" });
+          createNotification({
+            text: isCredentialRequest
+              ? "Credential access request submitted"
+              : "Access request submitted",
+            type: "success"
+          });
           reset();
           onOpenChange(false);
         }
@@ -194,9 +218,13 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
           <div className="flex flex-1 flex-col gap-6">
             <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
               <Clock className="size-4 shrink-0 text-warning" />
-              <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
+              <p className="text-sm text-foreground">
+                {isCredentialRequest
+                  ? "Your credential request is awaiting approval."
+                  : "Your access request is awaiting approval."}
+              </p>
             </div>
-            <ApprovalWorkflow accountId={account?.id} isPending />
+            <ApprovalWorkflow accountId={account?.id} isPending accessType={accessType} />
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
@@ -213,7 +241,11 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                       <TextArea
                         {...field}
                         rows={4}
-                        placeholder="What are you working on?"
+                        placeholder={
+                          isCredentialRequest
+                            ? "Why do you need this account's credentials?"
+                            : "What are you working on?"
+                        }
                         isError={!!fieldState.error}
                       />
                       <FieldDescription>
@@ -247,7 +279,7 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                   </Field>
                 )}
               />
-              <ApprovalWorkflow accountId={account?.id} isPending={false} />
+              <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>

@@ -1,4 +1,4 @@
-import { Clock, KeyRound, MoreHorizontal, Rocket, Settings, Trash2 } from "lucide-react";
+import { Clock, Eye, KeyRound, MoreHorizontal, Rocket, Settings, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -27,8 +27,13 @@ type Props = {
   isAccessible: boolean;
   requiresApproval: boolean;
   accessStatus: PamAccessStatus;
+  requiresCredentialApproval: boolean;
+  supportsCredentialReveal: boolean;
+  credentialAccessStatus: PamAccessStatus;
   onLaunch: () => void;
   onRequestAccess: () => void;
+  onViewCredentials: () => void;
+  onRequestCredentialAccess: () => void;
   onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
 };
@@ -39,13 +44,20 @@ export const AccountActionsMenu = ({
   isAccessible,
   requiresApproval,
   accessStatus,
+  requiresCredentialApproval,
+  supportsCredentialReveal,
+  credentialAccessStatus,
   onLaunch,
   onRequestAccess,
+  onViewCredentials,
+  onRequestCredentialAccess,
   onOpenTab,
   onDelete
 }: Props) => {
   const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
+  const canViewCredentials =
+    supportsCredentialReveal && can(PamResourcePermissionActions.ViewCredentials);
   const isRotatable = isRotatablePamAccountType(accountType);
 
   const isGranted = accessStatus === PamAccessStatus.Granted;
@@ -57,6 +69,10 @@ export const AccountActionsMenu = ({
 
   // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
   const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);
+
+  const isCredentialPending = credentialAccessStatus === PamAccessStatus.Pending;
+  const needsCredentialApproval =
+    requiresCredentialApproval && credentialAccessStatus !== PamAccessStatus.Granted;
 
   const availableTabs = PAM_ACCOUNT_TABS.filter(
     (tab) => (tab.value !== PamSheetTab.Rotation || isRotatable) && (!tab.action || can(tab.action))
@@ -114,6 +130,34 @@ export const AccountActionsMenu = ({
             {!canLaunchNow && <TooltipContent side="left">{launchDisabledReason}</TooltipContent>}
           </Tooltip>
         )}
+        {canViewCredentials &&
+          (needsCredentialApproval ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <DropdownMenuItem
+                    isDisabled={isCredentialPending}
+                    onClick={onRequestCredentialAccess}
+                  >
+                    {isCredentialPending ? (
+                      <Clock className="size-4" />
+                    ) : (
+                      <KeyRound className="size-4" />
+                    )}
+                    {isCredentialPending ? "Credential Request Pending" : "Request Credentials"}
+                  </DropdownMenuItem>
+                </div>
+              </TooltipTrigger>
+              {isCredentialPending && (
+                <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
+              )}
+            </Tooltip>
+          ) : (
+            <DropdownMenuItem onClick={onViewCredentials}>
+              <Eye className="size-4" />
+              View Credentials
+            </DropdownMenuItem>
+          ))}
         <DropdownMenuSeparator />
         <Tooltip>
           <TooltipTrigger asChild>

@@ -23,9 +23,11 @@ import {
   TDeletePamAccountTemplateDTO,
   TDeletePamDiscoverySourceDTO,
   TDeletePamFolderDTO,
+  TGetPamAccountCredentialsDTO,
   TImportPamDiscoveredAccountResult,
   TImportPamDiscoveredAccountsDTO,
   TPamAccessResponse,
+  TPamAccountCredentials,
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
@@ -775,6 +777,18 @@ export const useCreatePamAccessRequest = () => {
       // Refresh every account list variant (accessible + list) so the row's access status
       // and its icon flip to pending as soon as the request is submitted.
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
+export const usePamAccountCredentials = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, reason, mfaSessionId }: TGetPamAccountCredentialsDTO) => {
+      const { data } = await apiRequest.post<TPamAccountCredentials>(
+        `/api/v1/pam/accounts/${accountId}/credentials`,
+        { reason, mfaSessionId }
+      );
+      return data;
     }
   });
 };
