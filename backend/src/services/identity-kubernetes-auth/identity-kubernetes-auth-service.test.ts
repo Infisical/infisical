@@ -203,6 +203,23 @@ describe("identityKubernetesAuthServiceFactory template attach validation", () =
     expect(identityKubernetesAuthDAL.create).not.toHaveBeenCalled();
   });
 
+  it("rejects a scheme-less private host (block sees the same URL the dial sites use)", async () => {
+    // the stored host may legally omit a scheme; without normalization new URL() inside
+    // the block throws a TypeError instead of validating the host
+    const { service, identityKubernetesAuthDAL } = createService({
+      templateBlobFields: {
+        kubernetesHost: "10.0.0.1:6443",
+        tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
+        tokenReviewerJwt: "reviewer-jwt",
+        allowedAudience: ""
+      },
+      templateGatewayColumns: NO_GATEWAY
+    });
+
+    await expect(attachWithTemplate(service)).rejects.toThrow("Local IPs not allowed as URL");
+    expect(identityKubernetesAuthDAL.create).not.toHaveBeenCalled();
+  });
+
   it("attaches a healthy direct-dial template", async () => {
     const { service, identityKubernetesAuthDAL } = createService();
 

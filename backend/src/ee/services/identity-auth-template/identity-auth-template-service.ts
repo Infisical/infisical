@@ -20,6 +20,7 @@ import { TOrgPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
+import { withKubernetesHostScheme } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
@@ -307,7 +308,9 @@ export const identityAuthTemplateServiceFactory = ({
         !normalizedFields.gatewayId &&
         !normalizedFields.gatewayPoolId
       ) {
-        await blockLocalAndPrivateIpAddresses(normalizedFields.kubernetesHost);
+        // the stored host may omit a scheme; normalize the same way the dial sites do, or
+        // new URL() inside the block throws on legal hosts instead of validating them
+        await blockLocalAndPrivateIpAddresses(withKubernetesHostScheme(normalizedFields.kubernetesHost));
       }
       if (normalizedFields.gatewayId || normalizedFields.gatewayPoolId) {
         $authorizeKubernetesTemplateGateway({
@@ -462,7 +465,7 @@ export const identityAuthTemplateServiceFactory = ({
         !merged.gatewayId &&
         !merged.gatewayPoolId
       ) {
-        await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
+        await blockLocalAndPrivateIpAddresses(withKubernetesHostScheme(merged.kubernetesHost));
       }
       kubernetesPropagationData = {
         kubernetesHost: merged.kubernetesHost ?? null,

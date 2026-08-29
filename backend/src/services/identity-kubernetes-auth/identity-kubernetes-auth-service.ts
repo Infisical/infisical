@@ -322,7 +322,7 @@ export const identityKubernetesAuthServiceFactory = ({
       !fields.gatewayId &&
       !fields.gatewayPoolId
     ) {
-      await blockLocalAndPrivateIpAddresses(fields.kubernetesHost);
+      await blockLocalAndPrivateIpAddresses(withKubernetesHostScheme(fields.kubernetesHost));
     }
   };
 

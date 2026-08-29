@@ -124,6 +124,17 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     expect(identityKubernetesAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
   });
 
+  it("blocks a scheme-less private host (block sees the same URL the dial sites use)", async () => {
+    // the stored host may legally omit a scheme; without normalization new URL() inside
+    // the block throws a TypeError instead of validating the host
+    const { service, identityKubernetesAuthDAL } = createService({ gatewayColumns: NO_GATEWAY });
+
+    await expect(patchTemplate(service, { kubernetesHost: "10.0.0.1:6443" })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
+    expect(identityKubernetesAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
   it("allows a private host while the template's gateway column is set", async () => {
     const { service, identityKubernetesAuthDAL } = createService();
 
