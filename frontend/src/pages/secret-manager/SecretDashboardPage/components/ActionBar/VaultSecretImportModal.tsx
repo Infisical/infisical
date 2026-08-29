@@ -204,6 +204,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
           <Combobox
             id="vault-secret-import-paths"
             multiple
+            isSelectAll
             value={selectedPathOptions}
             onValueChange={(options) =>
               dispatch({ type: "selection", value: options.map(({ path }) => path) })

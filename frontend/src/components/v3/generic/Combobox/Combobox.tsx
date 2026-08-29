@@ -51,6 +51,7 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
   > & {
     multiple: true;
     singleLine?: boolean;
+    isSelectAll?: boolean;
     value?: readonly TOption[];
     onValueChange: (options: TOption[]) => void;
     onClear?: () => void;
@@ -160,6 +161,32 @@ const ComboboxList = <TOption,>({
       {isLoading ? loadingMessage : emptyMessage}
     </ComboboxPrimitive.Empty>
   </>
+);
+
+type ComboboxSelectAllProps = {
+  areAllSelected: boolean;
+  optionCount: number;
+  onToggle: () => void;
+};
+
+const ComboboxSelectAll = ({ areAllSelected, optionCount, onToggle }: ComboboxSelectAllProps) => (
+  <div className="border-b border-border p-1">
+    <button
+      type="button"
+      // Keep focus on the search input so the popup stays open after toggling.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onToggle}
+      className={cn(
+        "flex min-h-8 w-full cursor-default items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground outline-hidden select-none",
+        "hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
+      <span className="truncate">
+        {areAllSelected ? "Clear selection" : `Select all (${optionCount})`}
+      </span>
+      {areAllSelected && <CheckIcon className="size-4 shrink-0" />}
+    </button>
+  </div>
 );
 
 type ComboboxPopupProps = {
@@ -384,6 +411,7 @@ const MultipleCombobox = <TOption,>({
   onClear,
   clearAriaLabel = "Clear all selections",
   singleLine = false,
+  isSelectAll = false,
   placeholder = "Select options...",
   searchPlaceholder = "Search...",
   searchAriaLabel = searchPlaceholder,
@@ -414,6 +442,31 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
+  // Select all only covers the options matching the current search, so a filtered
+  // list toggles what is on screen instead of the entire option set.
+  const selectAllOptions = React.useMemo(
+    () =>
+      isSelectAll
+        ? items.filter((option) => !isOptionDisabled?.(option) && filter(option, search))
+        : [],
+    [filter, isOptionDisabled, isSelectAll, items, search]
+  );
+  const areAllOptionsSelected =
+    selectAllOptions.length > 0 &&
+    selectAllOptions.every((option) => selectedValues.has(getOptionValue(option)));
+
+  const handleSelectAllToggle = () => {
+    const selectAllValues = new Set(selectAllOptions.map(getOptionValue));
+
+    onValueChange(
+      areAllOptionsSelected
+        ? selectedOptions.filter((option) => !selectAllValues.has(getOptionValue(option)))
+        : [
+            ...selectedOptions,
+            ...selectAllOptions.filter((option) => !selectedValues.has(getOptionValue(option)))
+          ]
+    );
+  };
 
   return (
     <ComboboxPrimitive.Root<TOption, true>
@@ -547,6 +600,13 @@ const MultipleCombobox = <TOption,>({
         className={contentClassName}
         portalContainer={portalContainerProp}
       >
+        {selectAllOptions.length > 0 && (
+          <ComboboxSelectAll
+            areAllSelected={areAllOptionsSelected}
+            optionCount={selectAllOptions.length}
+            onToggle={handleSelectAllToggle}
+          />
+        )}
         <ComboboxList
           emptyMessage={emptyMessage}
           loadingMessage={loadingMessage}
