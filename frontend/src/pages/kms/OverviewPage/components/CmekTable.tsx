@@ -499,9 +499,7 @@ export const CmekTable = () => {
                     const isSelected = selectedKeyIds.includes(id);
                     const isPendingImport = status === KmsKeyStatus.PendingImport;
                     const hasNoUnrolledVersions = importOnly && totalVersions - version <= 0;
-                    const canGetImportParams =
-                      keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
-                      (status === KmsKeyStatus.Enabled || isPendingImport);
+                    const canGetImportParams = status === KmsKeyStatus.Enabled || isPendingImport;
 
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
                       algorithm as AsymmetricKeyAlgorithm
