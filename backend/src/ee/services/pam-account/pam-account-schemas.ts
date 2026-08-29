@@ -1331,8 +1331,23 @@ export const isCredentialConfigured = (
   });
 };
 
-export const hasRetrievableCredentials = (accountType: PamAccountType): boolean => {
+export const noRevealableCredentialMessage = (accountName: string) =>
+  `Account '${accountName}' has no stored credential to reveal. Its authentication method brokers access per session instead.`;
+
+export const hasRevealableCredential = (
+  accountType: PamAccountType,
+  rawCredentials?: Record<string, unknown>
+): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
   if (!config) return false;
-  return fieldsFromSchema(config.credentials, config.ui).some((field) => field.secret);
+
+  const secretFields = fieldsFromSchema(config.credentials, config.ui).filter((field) => field.secret);
+  if (!rawCredentials) return secretFields.length > 0;
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return secretFields.some((field) => {
+    if (field.showWhen && credentials[field.showWhen.field] !== field.showWhen.equals) return false;
+    const value = credentials[field.key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
 };

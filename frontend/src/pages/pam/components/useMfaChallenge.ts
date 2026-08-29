@@ -22,15 +22,19 @@ export const extractMfaSessionId = (err: unknown): string | undefined => {
   return data?.error === "SESSION_MFA_REQUIRED" ? data.details?.mfaSessionId : undefined;
 };
 
-// Opens the verification page in a popup and resolves once the session goes active, false otherwise
+export type TMfaChallengeOutcome = "verified" | "blocked" | "failed";
+
+// Opens the verification page in a popup and resolves once the session goes active
 export const useMfaChallenge = () => {
   const popupRef = useRef<Window | null>(null);
 
-  return useCallback(async (mfaSessionId: string) => {
+  return useCallback(async (mfaSessionId: string): Promise<TMfaChallengeOutcome> => {
     popupRef.current = window.open(
       `${window.location.origin}/mfa-session/${mfaSessionId}`,
       "_blank"
     );
+    if (!popupRef.current) return "blocked";
+
     const startTime = Date.now();
 
     const verified = await new Promise<boolean>((resolve) => {
@@ -55,7 +59,7 @@ export const useMfaChallenge = () => {
       }, MFA_POLL_INTERVAL);
     });
 
-    if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
-    return verified;
+    if (!popupRef.current.closed) popupRef.current.close();
+    return verified ? "verified" : "failed";
   }, []);
 };

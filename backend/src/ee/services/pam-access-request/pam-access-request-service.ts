@@ -45,6 +45,7 @@ import {
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -59,6 +60,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import {
   PamAccessStatus,
   PamAccessType,
+  PamAccountType,
   PamNotificationEvent,
   PamProductRole,
   PamSessionStatus
@@ -72,6 +74,11 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  hasRevealableCredential,
+  noRevealableCredentialMessage,
+  normalizeCredentialAuthMethod
+} from "../pam-account/pam-account-schemas";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
@@ -675,6 +682,23 @@ export const pamAccessRequestServiceFactory = ({
           ? "This account does not require approval to view its credentials"
           : "This account does not require approval"
       });
+    }
+
+    if (isCredentialRequest) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const credentials = normalizeCredentialAuthMethod(
+        account.accountType as PamAccountType,
+        JSON.parse(decryptor({ cipherTextBlob: account.encryptedCredentials }).toString("utf-8")) as Record<
+          string,
+          unknown
+        >
+      );
+      if (!hasRevealableCredential(account.accountType as PamAccountType, credentials)) {
+        throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
+      }
     }
 
     if (accessControls.requireReason && !trimmedReason) {

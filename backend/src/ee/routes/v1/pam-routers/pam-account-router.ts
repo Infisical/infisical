@@ -805,6 +805,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             accountName: result.accountName,
             accountType: result.accountType,
             folderId: result.folderId,
+            folderName: result.folderName,
             reason: result.reason,
             grantExpiresAt: result.grantExpiresAt?.toISOString() ?? null
           }

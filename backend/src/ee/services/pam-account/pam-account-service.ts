@@ -58,8 +58,9 @@ import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   applyForcedFields,
   getAccountAccessibilityIssues,
-  hasRetrievableCredentials,
+  hasRevealableCredential,
   isCredentialConfigured,
+  noRevealableCredentialMessage,
   normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
@@ -299,7 +300,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isStale: a.isStale,
         requiresApproval,
         requiresCredentialApproval,
-        supportsCredentialReveal: hasRetrievableCredentials(a.accountType as PamAccountType),
+        supportsCredentialReveal: hasRevealableCredential(a.accountType as PamAccountType),
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
@@ -384,12 +385,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     const accountType = account.accountType as PamAccountType;
-    if (!hasRetrievableCredentials(accountType)) {
-      throw new BadRequestError({
-        message: `Account '${account.name}' mints a short-lived credential per session and stores nothing to reveal`
-      });
-    }
-
     const policy = resolveAccessControls(account.templatePolicies);
     const trimmedReason = reason?.trim() || null;
 
@@ -445,10 +440,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       accountType,
       await decrypt(projectId, account.encryptedCredentials)
     );
+    if (!hasRevealableCredential(accountType, credentials)) {
+      throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
+    }
 
     return {
       accountId: account.id,
       accountName: account.name,
+      folderName: account.folderName,
       accountType,
       folderId: account.folderId,
       credentials,

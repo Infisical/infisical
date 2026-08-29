@@ -6067,6 +6067,7 @@ interface PamAccountCredentialsViewEvent {
     accountName: string;
     accountType: string;
     folderId?: string | null;
+    folderName?: string | null;
     reason?: string | null;
     grantExpiresAt?: string | null;
   };

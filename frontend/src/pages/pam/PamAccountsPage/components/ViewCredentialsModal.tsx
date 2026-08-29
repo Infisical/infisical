@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { ClipboardCheck, Copy, Eye, EyeOff, ShieldCheck } from "lucide-react";
 
 import {
@@ -42,6 +42,12 @@ type Props = {
 const errorMessageOf = (err: unknown) =>
   (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
   "Failed to reveal credentials. Please try again.";
+
+const MFA_FAILURE_MESSAGE = {
+  blocked:
+    "Your browser blocked the MFA verification window. Allow popups for this site, then try again.",
+  failed: "MFA verification timed out or failed. Please try again."
+} as const;
 
 const CredentialField = ({
   label,
@@ -110,28 +116,34 @@ export const ViewCredentialsModal = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
 
+  const openAccountId = useRef(accountId);
+
   useEffect(() => {
+    openAccountId.current = accountId;
     if (!isOpen) {
       setReason("");
       setCredentials(undefined);
       setErrorMessage("");
       setIsVerifyingMfa(false);
     }
-  }, [isOpen]);
+  }, [isOpen, accountId]);
 
+  // Recurses at most once: a retry already carrying an MFA session never re-enters the challenge
   const reveal = async (mfaSessionId?: string) => {
     if (!accountId) return;
+    const isStale = () => openAccountId.current !== accountId;
     setErrorMessage("");
 
     try {
-      setCredentials(
-        await fetchCredentials.mutateAsync({
-          accountId,
-          reason: reason.trim() || undefined,
-          mfaSessionId
-        })
-      );
+      const revealed = await fetchCredentials.mutateAsync({
+        accountId,
+        reason: reason.trim() || undefined,
+        mfaSessionId
+      });
+      if (!isStale()) setCredentials(revealed);
     } catch (err) {
+      if (isStale()) return;
+
       const challengeId = mfaSessionId ? undefined : extractMfaSessionId(err);
       if (!challengeId) {
         setErrorMessage(errorMessageOf(err));
@@ -139,10 +151,12 @@ export const ViewCredentialsModal = ({
       }
 
       setIsVerifyingMfa(true);
-      const verified = await runMfaChallenge(challengeId);
+      const outcome = await runMfaChallenge(challengeId);
+      if (isStale()) return;
+
       setIsVerifyingMfa(false);
-      if (verified) await reveal(challengeId);
-      else setErrorMessage("MFA verification timed out or failed. Please try again.");
+      if (outcome === "verified") await reveal(challengeId);
+      else setErrorMessage(MFA_FAILURE_MESSAGE[outcome]);
     }
   };
 
