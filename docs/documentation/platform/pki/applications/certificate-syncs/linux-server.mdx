@@ -108,6 +108,10 @@ This works because an Active Directory service account is a single identity. On 
 
 The **Target Host** field offers machines read from the directory. The list is not closed, because the name a domain controller advertises is not always the address you can reach, so you can enter a host that is not listed. The value must be a host name or an IPv4 address.
 
+<Note>
+    The sync authenticates to the Target Host with the connection's credential. Application Admins can set it, so give the service account only the access it needs to deliver certificates.
+</Note>
+
 ### The host must accept the `DOMAIN\user` login form
 
 Infisical logs in to the server as `DOMAIN\user`, for example `CORP\svc-certs`. Whether a Linux host

@@ -34,6 +34,9 @@ Depending on how you intend to use your LDAP connection, there may be additional
             - Windows Server syncs must have a Gateway assigned to this connection, and that Gateway must reach both the domain controller and the target servers
             - Each target host must accept the binding account in `DOMAIN\user` form, which Infisical derives from the directory
         </Note>
+        <Note>
+            A sync authenticates to its **Target Host** with this connection's credential. Application Admins can set it, so give the binding account only the access it needs to deliver certificates.
+        </Note>
     </Tab>
 </Tabs>
 

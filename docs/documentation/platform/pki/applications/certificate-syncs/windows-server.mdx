@@ -121,6 +121,10 @@ Infisical derives that logon name rather than asking for it twice. It reads the 
 
 The **Target Host** field offers servers read from the directory. The list is not closed, because the name a domain controller advertises is not always the address you can reach, so you can enter a host that is not listed. The value must be a host name or an IPv4 address.
 
+<Note>
+    The sync authenticates to the Target Host with the connection's credential. Application Admins can set it, so give the service account only the access it needs to deliver certificates.
+</Note>
+
 ### Preparing the service account
 
 The service account needs permission to open a WinRM session on each target server. Add it to the **Remote Management Users** group on the server:

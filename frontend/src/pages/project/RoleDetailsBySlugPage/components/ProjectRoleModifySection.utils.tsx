@@ -2947,7 +2947,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Set Target Host",
         value: ProjectPermissionPkiSyncActions.SetTargetHost,
-        description: "Choose which host a sync delivers to when using an LDAP connection"
+        description:
+          "Choose which host a sync delivers to when using an LDAP connection. The sync authenticates to that host with the connection's credential"
       }
     ]
   },
