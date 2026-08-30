@@ -1313,7 +1313,6 @@
                       "cli/commands/gateway",
                       "cli/commands/kmip",
                       "cli/commands/relay",
-                      "cli/commands/ssh",
                       "cli/commands/bootstrap",
                       "cli/commands/export",
                       "cli/commands/token",

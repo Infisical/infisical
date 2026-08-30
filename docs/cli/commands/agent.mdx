@@ -9,7 +9,7 @@ infisical agent --config=agent-config.yaml
 
 ## Description
 
-`infisical agent` launches a client daemon that keeps secrets available on a machine without your application calling the Infisical API directly. The daemon authenticates to Infisical (typically as a machine identity), watches the secrets and certificates defined in its configuration, and renders them to the destinations you specify.
+`infisical agent` launches a client daemon that keeps secrets available on a machine without your application calling the Infisical API directly. The daemon authenticates to Infisical (typically as a machine identity), watches the secrets defined in its configuration, and renders them to the destinations you specify.
 
 Everything the agent does is driven by a YAML configuration file (default `agent-config.yaml`, set via `--config`). The same file can be supplied base64-encoded through the `INFISICAL_AGENT_CONFIG_BASE64` environment variable, which is useful for containerized deployments where you don't want to mount a config file.
 
@@ -32,30 +32,28 @@ cache:
     type: file
     path: /var/lib/infisical-agent
 templates: []
-certificates: []
 ```
 
-| Key           | Description                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| `version`     | Config file version                                                                                      |
-| `infisical`   | Connection settings: `address`, `exit-after-auth`, `revoke-credentials-on-shutdown`, `retry-strategy`     |
-| `auth`        | How the agent authenticates (e.g. machine identity auth via `client-id`/`client-secret`, LDAP, and other methods) |
-| `sinks`       | Where credentials/secrets are delivered, such as a `file` sink writing to a `path`                        |
-| `cache`       | Optional persistent cache (`file` or `kubernetes` backed) so leases survive agent restarts                |
-| `templates`   | Optional template definitions for rendering secrets into files                                            |
-| `certificates`| Optional certificate definitions for certificate lifecycle management                                     |
+| Key         | Description                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| `version`   | Config file version                                                                                    |
+| `infisical` | Connection settings: `address`, `exit-after-auth`, `revoke-credentials-on-shutdown`, `retry-strategy`   |
+| `auth`      | How the agent authenticates (e.g. machine identity auth via `client-id`/`client-secret`, LDAP, and other methods) |
+| `sinks`     | Where credentials/secrets are delivered, such as a `file` sink writing to a `path`                      |
+| `cache`     | Optional persistent cache (`file` or `kubernetes` backed) so leases survive agent restarts               |
+| `templates` | Optional template definitions for rendering secrets into files                                          |
 
-The agent retries failed operations with exponential backoff (`max-retries`, `base-delay`, `max-delay` under `retry-strategy`). Certificates issued by the agent are renewed automatically before expiry.
+The agent retries failed operations with exponential backoff (`max-retries`, `base-delay`, `max-delay` under `retry-strategy`).
 
-## Related: `infisical cert-manager agent`
+## Related: certificate management mode
 
-Certificate-only lifecycle automation (issuance and renewal without secret rendering) runs through the separate top-level command:
+Certificate lifecycle automation (issuance and renewal) runs through the separate top-level command and a `version: v2` configuration:
 
 ```bash
 infisical cert-manager agent --config=certificate-agent-config.yaml
 ```
 
-It reads a config file focused on the `certificates` section and supports `--verbose` (`-v`) for debug logging.
+It supports `--verbose` (`-v`) for debug logging. See the [Infisical Agent reference](/documentation/platform/pki/reference/infisical-agent) for the certificate management configuration.
 
 ## Options
 
