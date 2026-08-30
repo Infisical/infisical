@@ -1301,6 +1301,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
@@ -1312,6 +1313,7 @@
                       "cli/commands/gateway",
                       "cli/commands/kmip",
                       "cli/commands/relay",
+                      "cli/commands/ssh",
                       "cli/commands/bootstrap",
                       "cli/commands/export",
                       "cli/commands/token",
