@@ -516,7 +516,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .array(z.string())
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
-        pitVersionLimit: z.number().min(1).max(100).optional()
+        pitVersionLimit: z.number().min(1).max(100).optional(),
+        auditLogsRetentionDays: z.number().int().min(0).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -541,7 +542,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
           pitVersionLimit: req.body.pitVersionLimit,
-          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata,
+          auditLogsRetentionDays: req.body.auditLogsRetentionDays
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,

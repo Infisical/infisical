@@ -920,6 +920,8 @@ export const projectServiceFactory = ({
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    const appCfg = getConfig();
+    const plan = await licenseService.getPlan(project.orgId);
 
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -943,6 +945,33 @@ export const projectServiceFactory = ({
       });
     }
 
+    if (update.auditLogsRetentionDays !== undefined) {
+      if (!hasRole(ProjectMembershipRole.Admin)) {
+        throw new ForbiddenRequestError({
+          message: "Only project admins can update the audit logs retention period"
+        });
+      }
+
+      if (appCfg.isCloud) {
+        throw new BadRequestError({
+          message: "The audit logs retention period can not be updated on Infisical Cloud instances."
+        });
+      }
+
+      if (!plan.auditLogs) {
+        throw new BadRequestError({
+          message:
+            "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
+        });
+      }
+
+      if (update.auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+        throw new BadRequestError({
+          message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
+        });
+      }
+    }
+
     try {
       const updatedProject = await projectDAL.updateById(project.id, {
         name: update.name,
@@ -956,7 +985,8 @@ export const projectServiceFactory = ({
         showSnapshotsLegacy: update.showSnapshotsLegacy,
         secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
         pitVersionLimit: update.pitVersionLimit,
-        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata
+        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata,
+        auditLogsRetentionDays: update.auditLogsRetentionDays
       });
 
       return updatedProject;
