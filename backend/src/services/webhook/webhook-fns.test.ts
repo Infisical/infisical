@@ -54,6 +54,53 @@ describe("getWebhookPayload: secrets.modified", () => {
   });
 });
 
+describe("getWebhookPayload: test", () => {
+  test("general payload keeps the documented shape", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.TestEvent,
+      payload: { ...projectFields, type: WebhookType.GENERAL }
+    });
+
+    expect(result).toEqual({
+      event: "test",
+      project: {
+        workspaceId: "proj-1",
+        projectId: "proj-1",
+        projectName: "Secrets management",
+        environment: "prod",
+        environmentName: "Production",
+        secretPath: "/api"
+      }
+    });
+  });
+
+  test("slack payload carries a text line so incoming webhooks accept it", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.TestEvent,
+      payload: { ...projectFields, type: WebhookType.SLACK }
+    }) as { text: string; attachments: { fields: { title: string }[] }[] };
+
+    expect(result.text).toBe("Infisical webhook test successful.");
+    expect(result.attachments).toHaveLength(1);
+    expect(result.attachments[0].fields.map((f) => f.title)).toEqual([
+      "Project",
+      "Environment",
+      "Environment Name",
+      "Secret Path"
+    ]);
+  });
+
+  test("teams payload is an adaptive card with a fact set", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.TestEvent,
+      payload: { ...projectFields, type: WebhookType.MICROSOFT_TEAMS }
+    }) as { type: string; attachments: { content: { body: { type: string }[] } }[] };
+
+    expect(result.type).toBe("message");
+    expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);
+  });
+});
+
 describe("getWebhookPayload: secrets.rotation-failed", () => {
   test("general payload nests rotation detail under project", () => {
     const result = getWebhookPayload({

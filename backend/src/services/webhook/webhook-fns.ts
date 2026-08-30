@@ -578,7 +578,76 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
   }
 
   if (event.type === WebhookEvents.TestEvent) {
-    const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
+    const { projectName, projectId, environment, environmentName, secretPath, type } = event.payload;
+
+    // Slack incoming webhooks reject bodies without text/blocks/attachments, and
+    // Teams Workflows expect an adaptive card - mirror the real-event payloads so
+    // the test button exercises the same format the consumer will receive.
+    if (type === WebhookType.SLACK) {
+      return {
+        text: "Infisical webhook test successful.",
+        attachments: [
+          {
+            color: "#E7F256",
+            fields: [
+              {
+                title: "Project",
+                value: projectName || "",
+                short: false
+              },
+              {
+                title: "Environment",
+                value: environment,
+                short: false
+              },
+              {
+                title: "Environment Name",
+                value: environmentName || "",
+                short: false
+              },
+              {
+                title: "Secret Path",
+                value: secretPath || "",
+                short: false
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    if (type === WebhookType.MICROSOFT_TEAMS) {
+      return {
+        type: "message",
+        attachments: [
+          {
+            contentType: "application/vnd.microsoft.card.adaptive",
+            content: {
+              type: "AdaptiveCard",
+              version: "1.2",
+              body: [
+                {
+                  type: "TextBlock",
+                  size: "Medium",
+                  weight: "Bolder",
+                  text: "Infisical webhook test successful."
+                },
+                {
+                  type: "FactSet",
+                  facts: [
+                    { title: "Project", value: projectName || "" },
+                    { title: "Environment", value: environment },
+                    { title: "Environment Name", value: environmentName || "" },
+                    { title: "Secret Path", value: secretPath || "" }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      };
+    }
+
     return {
       event: event.type,
       project: {
