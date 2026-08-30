@@ -921,7 +921,6 @@ export const projectServiceFactory = ({
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const appCfg = getConfig();
-    const plan = await licenseService.getPlan(project.orgId);
 
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -957,6 +956,8 @@ export const projectServiceFactory = ({
           message: "The audit logs retention period can not be updated on Infisical Cloud instances."
         });
       }
+
+      const plan = await licenseService.getPlan(project.orgId);
 
       if (!plan.auditLogs) {
         throw new BadRequestError({
