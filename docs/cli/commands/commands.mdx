@@ -5,18 +5,39 @@ description: "Infisical CLI command overview"
 
 ## Commands
 
-| Command | Description                                                          |
-| ------- | -------------------------------------------------------------------- |
-| `login` | Used to authenticate and set the logged in user.                     |
-| `init`  | Used to link a local project to the platform.                        |
-| `run`   | Used to inject envars from the platform into an application process. |
-| `vault` | Used to manage where your login credentials are stored at rest       |
+| Command                                    | Description                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------------- |
+| [`login`](./login`)                       | Login into your Infisical account.                                              |
+| [`init`](./init`)                         | Used to connect your local project with Infisical project.                      |
+| [`run`](./run`)                           | Used to inject environments variables into your application process.            |
+| [`secrets`](./secrets`)                   | Used to create, read, update and delete secrets.                                |
+| [`export`](./export`)                     | Used to export environment variables to a file.                                 |
+| [`agent-proxy`](./agent-proxy`)           | Run the Infisical Agent Proxy and connect agents to it.                         |
+| [`bootstrap`](./bootstrap`)               | Used to bootstrap your Infisical instance.                                      |
+| [`dynamic-secrets`](./dynamic-secrets`)   | Used to list dynamic secrets.                                                   |
+| [`gateway`](./gateway`)                   | Run the Infisical gateway or manage its systemd service.                        |
+| [`kmip`](./kmip`)                         | Used to manage KMIP servers.                                                    |
+| [`pam`](./pam`)                           | Access a PAM-managed database, server, or cloud account from your terminal.     |
+| [`pam agentic`](./pam-agentic`)           | Run an AI agent against your PAM accounts through local, brokered connections.  |
+| [`relay`](./relay`)                       | Deploy relays that route encrypted traffic between Infisical and your gateways. |
+| [`reset`](./reset`)                       | Used to delete all Infisical related data on your machine.                      |
+| [`scan`](./scan`)                         | Scan for leaked secrets in git history, directories, and files.                 |
+| [`scan git-changes`](./scan-git-changes) | Scan for secrets in your uncommitted code.                                      |
+| [`scan install`](./scan-install`)         | Add secret scanning tools to your development lifecycle.                        |
+| [`service-token`](./service-token`)       | Manage service tokens.                                                          |
+| [`token`](./token`)                       | Manage your access tokens.                                                      |
+| [`user`](./user`)                         | Used to manage local user credentials.                                          |
+| [`vault`](./vault`)                       | Used to manage where your Infisical login token is saved on your machine.       |
 
 ## Global options
 
-| Option            | Description                                     |
-| ----------------- | ----------------------------------------------- |
-| `--help`, `-h`    | List help for any command                       |
-| `--debug`, `-d`   | Enable verbose logging                          |
-| `--domain`        | Use to direct Infisical to a self-hosted domain |
-| `--version`, `-v` | Print version information and quit              |
+| Option              | Description                                                            |
+| ------------------- | ---------------------------------------------------------------------- |
+| `--help`, `-h`      | List help for any command                                              |
+| `--version`, `-v`   | Print version information and quit                                     |
+| `--log-level`, `-l` | Set the log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal) |
+| `--log-format`      | Set the log output format (`console`, `plain`, `json`)                 |
+| `--log-destination` | Set the log output destination (`stderr`, `stdout`)                    |
+| `--domain`          | Use to direct Infisical to a self-hosted domain                        |
+| `--silent`          | Disable output of tip/info messages, useful in scripts and CI          |
+| `--telemetry`       | Enable or disable anonymous usage telemetry                            |
