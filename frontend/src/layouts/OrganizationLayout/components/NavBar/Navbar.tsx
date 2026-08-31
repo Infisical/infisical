@@ -8,6 +8,7 @@ import {
   Check,
   ChevronLeft,
   CircleHelp,
+  CircleSlash,
   Clipboard,
   ExternalLink,
   Github,
@@ -573,6 +574,12 @@ export const Navbar = () => {
                               }}
                             >
                               <span className="truncate">{org.name}</span>
+                              {org.isActive === false && (
+                                <Badge variant="neutral" className="ml-auto">
+                                  <CircleSlash />
+                                  Inactive
+                                </Badge>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>

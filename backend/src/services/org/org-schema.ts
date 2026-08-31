@@ -41,11 +41,13 @@ export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
   // derived from the active SAML/OIDC config, not a column
   orgAuthMethod: z.string(),
   userJoinedAt: z.date().optional().nullable(),
+  // the actor's membership state, not an org column: a deactivated membership still lists the org
+  isActive: z.boolean(),
   subOrganizations: OrganizationsSchema.pick({
     id: true,
     name: true,
     slug: true
   })
-    .extend({ userJoinedAt: z.date().optional().nullable() })
+    .extend({ userJoinedAt: z.date().optional().nullable(), isActive: z.boolean() })
     .array()
 });

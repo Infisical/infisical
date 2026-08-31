@@ -278,6 +278,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.Organization),
           db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.ref("isActive").withSchema(TableName.Membership),
           db.raw(`
             CASE
               WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
@@ -285,7 +286,7 @@ export const orgDALFactory = (db: TDbClient) => {
               ELSE ''
             END as "orgAuthMethod"
         `)
-        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null })[];
+        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null; isActive: boolean })[];
 
       if (rootOrgs.length === 0) return [];
 
@@ -314,10 +315,18 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Organization),
           db.ref("slug").withSchema(TableName.Organization),
           db.ref("rootOrgId").withSchema(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.ref("isActive").withSchema(TableName.Membership),
+          db.ref("actorUserId").withSchema(TableName.Membership)
         );
 
-      const uniqueSubOrgs = unique(subOrgs, (s) => s.id);
+      // The join above can match both a direct membership and a group one for the same sub-org.
+      // Order direct first so the row kept here is the one findEffectiveOrgMembership gates on,
+      // otherwise isActive and userJoinedAt come from whichever row Postgres returned first.
+      const uniqueSubOrgs = unique(
+        [...subOrgs].sort((a, b) => Number(Boolean(b.actorUserId)) - Number(Boolean(a.actorUserId))),
+        (s) => s.id
+      );
       const subOrgsByRootId = groupBy(uniqueSubOrgs, (s) => s.rootOrgId as string);
 
       return rootOrgs.map((org) => ({
@@ -327,7 +336,8 @@ export const orgDALFactory = (db: TDbClient) => {
           id: s.id,
           name: s.name,
           slug: s.slug,
-          userJoinedAt: s.userJoinedAt ?? null
+          userJoinedAt: s.userJoinedAt ?? null,
+          isActive: s.isActive
         }))
       }));
     } catch (error) {
@@ -415,7 +425,13 @@ export const orgDALFactory = (db: TDbClient) => {
   const findAllOrgsByUserId = async (
     userId: string
   ): Promise<
-    (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
+    (TOrganizations & {
+      orgAuthMethod: string;
+      userRole: string;
+      userStatus: string;
+      userJoinedAt: Date;
+      isActive: boolean;
+    })[]
   > => {
     try {
       const org = (await db
@@ -444,6 +460,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(db.ref("role").withSchema(TableName.MembershipRole).as("userRole"))
         .select(db.ref("status").withSchema(TableName.Membership).as("userStatus"))
         .select(db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"))
+        .select(db.ref("isActive").withSchema(TableName.Membership))
         .select(
           db.raw(`
             CASE
@@ -457,6 +474,7 @@ export const orgDALFactory = (db: TDbClient) => {
         userRole: string;
         userStatus: string;
         userJoinedAt: Date;
+        isActive: boolean;
       })[];
 
       return org;

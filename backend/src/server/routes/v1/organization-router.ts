@@ -39,7 +39,10 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .extend({
               orgAuthMethod: z.string(),
               userRole: z.string(),
-              userJoinedAt: z.date()
+              userJoinedAt: z.date(),
+              // the caller's membership state, not an org column: a deactivated membership still
+              // lists the org, and select-organization then refuses it
+              isActive: z.boolean()
             })
             .array()
         })
