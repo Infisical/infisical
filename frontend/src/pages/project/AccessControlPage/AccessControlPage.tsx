@@ -67,6 +67,7 @@ const Page = () => {
     <div className="mx-auto flex flex-col justify-between text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
+          className={hasTabs ? "mb-6" : undefined}
           scope={currentProject.type}
           title={isCertManager ? "Access Control" : "Project Access Control"}
           description={

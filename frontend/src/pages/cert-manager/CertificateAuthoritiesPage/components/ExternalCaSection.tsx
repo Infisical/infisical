@@ -71,7 +71,7 @@ export const ExternalCaSection = () => {
   };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
         <CardTitle>
           External Certificate Authorities
