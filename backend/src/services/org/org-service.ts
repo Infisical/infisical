@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, MongoAbility } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -25,7 +25,7 @@ import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertPermissionBoundary, assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -55,6 +55,7 @@ import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manag
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
+import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
@@ -1177,6 +1178,33 @@ export const orgServiceFactory = ({
     return membership;
   };
 
+  const $assertMembershipRemovalBoundary = async ({
+    membershipIds,
+    orgId,
+    permission
+  }: {
+    membershipIds: string[];
+    orgId: string;
+    permission: MongoAbility;
+  }) => {
+    const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
+    if (!targetRoles.length) return;
+
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+      orgDAL.findById(orgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionActions.Delete,
+      opSubject: OrgPermissionSubjects.Member,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged member from the organization"
+    });
+  };
+
   const deleteOrgMembership = async ({
     orgId,
     actor,
@@ -1202,6 +1230,8 @@ export const orgServiceFactory = ({
     });
     if (!membershipToDelete?.actorUserId)
       throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
+
+    await $assertMembershipRemovalBoundary({ membershipIds: [membershipId], orgId, permission });
 
     const [deletedMembership] = await deleteOrgMembershipsFn({
       orgMembershipIds: [membershipId],
@@ -1255,6 +1285,8 @@ export const orgServiceFactory = ({
       throw new NotFoundError({
         message: `Organization membership with ID '${missingMembershipIds.join("', '")}' not found`
       });
+
+    await $assertMembershipRemovalBoundary({ membershipIds, orgId, permission });
 
     const deletedMemberships = await deleteOrgMembershipsFn({
       orgMembershipIds: membershipIds,

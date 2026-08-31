@@ -12,6 +12,10 @@
  * Prerequisites (handled by vitest-environment-knex.ts): testServer, jwtAuthToken, testDb.
  */
 
+import crypto from "node:crypto";
+
+import { packRules } from "@casl/ability/extra";
+
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
@@ -234,5 +238,228 @@ describe("Privilege boundary on the deprecated v1 add-user-to-project route", ()
     // is downstream of the boundary, so reaching it proves the boundary let an admin through.
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toContain("already part of project");
+  });
+});
+
+/**
+ * A custom role holding only the removal action. This is the actor shape the boundary is about: a
+ * principal that legitimately holds `member:delete` yet is weaker than the member it is removing.
+ * The built-in org and project Member roles do not hold `member:delete` at all, so they would be
+ * rejected by the plain permission check and never reach the boundary.
+ *
+ * The role is written straight to the table because the e2e license mock reports `rbac: false`, so
+ * the custom-role routes refuse to create one. That gate is not what these tests are about, and the
+ * boundary resolves roles out of these same columns however they were written.
+ */
+const insertMemberRemoverRole = async (slug: string, scope: { orgId: string } | { projectId: string }) => {
+  const [role] = await testDb(TableName.Role)
+    .insert({
+      name: slug,
+      slug,
+      permissions: JSON.stringify(packRules([{ subject: "member", action: ["read", "delete"] }])),
+      ...scope
+    })
+    .returning("id");
+
+  return (role as { id: string }).id;
+};
+
+/** Repoint an existing membership at a custom role, replacing the built-in role it was created with. */
+const useCustomRole = async (membershipId: string, customRoleId: string) => {
+  await testDb(TableName.MembershipRole).where({ membershipId }).delete();
+  await testDb(TableName.MembershipRole).insert({ membershipId, role: "custom", customRoleId });
+};
+
+const findIdentityMembershipId = async (identityId: string, projectId?: string) => {
+  const row = await testDb(TableName.Membership)
+    .where({
+      actorIdentityId: identityId,
+      scopeOrgId: seedData1.organization.id,
+      scope: projectId ? AccessScope.Project : AccessScope.Organization,
+      ...(projectId ? { scopeProjectId: projectId } : {})
+    })
+    .first();
+  expect(row).toBeDefined();
+
+  return (row as { id: string }).id;
+};
+
+/**
+ * The seed carries exactly one user, and every removal path here targets a *user* membership. The
+ * routes only need a non-ghost Users row joined to a Membership, never a login, so the target is
+ * inserted directly rather than driven through the signup and SRP flow.
+ */
+const createTargetUser = async (label: string) => {
+  const username = `${label}-${crypto.randomUUID()}@localhost.local`;
+  const [user] = await testDb(TableName.Users)
+    .insert({ username, email: username, firstName: label, isAccepted: true, isGhost: false })
+    .returning("id");
+
+  return { userId: (user as { id: string }).id, username };
+};
+
+const giveUserMembership = async ({
+  userId,
+  role,
+  projectId
+}: {
+  userId: string;
+  role: OrgMembershipRole | ProjectMembershipRole;
+  projectId?: string;
+}) => {
+  const [membership] = await testDb(TableName.Membership)
+    .insert({
+      scope: projectId ? AccessScope.Project : AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      scopeProjectId: projectId ?? null,
+      actorUserId: userId
+    })
+    .returning("id");
+
+  const membershipId = (membership as { id: string }).id;
+  await testDb(TableName.MembershipRole).insert({ membershipId, role });
+  return membershipId;
+};
+
+const dropUser = async (userId: string) => {
+  await testDb(TableName.Membership).where({ actorUserId: userId }).delete();
+  await testDb(TableName.Users).where({ id: userId }).delete();
+};
+
+describe("Privilege boundary on org membership removal", () => {
+  // These are the v2 organization routes, which remove a member through org-service rather than
+  // through the scoped membership factory. They carry the same reach as the scoped delete and so
+  // need the same boundary; without it they are a way around it.
+  let actor: { identityId: string; token: string };
+  let adminTarget: { userId: string; membershipId: string };
+
+  const deleteOrgMembership = (membershipId: string, headers: Record<string, string>) =>
+    testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${membershipId}`,
+      headers
+    });
+
+  const bulkDeleteOrgMemberships = (membershipIds: string[], headers: Record<string, string>) =>
+    testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/organizations/${seedData1.organization.id}/memberships`,
+      headers,
+      body: { membershipIds }
+    });
+
+  beforeAll(async () => {
+    const roleId = await insertMemberRemoverRole("e2e-pb-org-member-remover", {
+      orgId: seedData1.organization.id
+    });
+    actor = await createActorIdentity("e2e-pb-org-actor");
+    await useCustomRole(await findIdentityMembershipId(actor.identityId), roleId);
+
+    const target = await createTargetUser("e2e-pb-org-target");
+    adminTarget = {
+      userId: target.userId,
+      membershipId: await giveUserMembership({ userId: target.userId, role: OrgMembershipRole.Admin })
+    };
+  });
+
+  afterAll(async () => {
+    await deleteIdentity(actor.identityId);
+    await dropUser(adminTarget.userId);
+    await testDb(TableName.Role).where({ slug: "e2e-pb-org-member-remover" }).delete();
+  });
+
+  describe("on the legacy privilege system", () => {
+    beforeAll(() => setNewPrivilegeSystem(false));
+    afterAll(() => setNewPrivilegeSystem(true));
+
+    test("a member:delete-only role cannot remove an org Admin", async () => {
+      const res = await deleteOrgMembership(adminTarget.membershipId, asIdentity(actor.token));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged member");
+    });
+
+    test("the bulk route is bounded too, so it is not a way around the single-member route", async () => {
+      const res = await bulkDeleteOrgMemberships([adminTarget.membershipId], asIdentity(actor.token));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged member");
+    });
+
+    test("an admin can still remove an org Admin", async () => {
+      const res = await deleteOrgMembership(adminTarget.membershipId, adminHeaders());
+      expect(res.statusCode).toBe(200);
+
+      adminTarget.membershipId = await giveUserMembership({
+        userId: adminTarget.userId,
+        role: OrgMembershipRole.Admin
+      });
+    });
+  });
+});
+
+describe("Privilege boundary on the bulk project member removal route", () => {
+  // DELETE /api/v1/projects/:projectId/memberships removes members by username through
+  // project-membership-service, bypassing the scoped membership factory's delete guard.
+  let project: { id: string };
+  let actor: { identityId: string; token: string };
+  let adminTarget: { userId: string; username: string };
+
+  const removeMembers = (usernames: string[], headers: Record<string, string>) =>
+    testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/projects/${project.id}/memberships`,
+      headers,
+      body: { usernames }
+    });
+
+  beforeAll(async () => {
+    const createProjectRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: adminHeaders(),
+      body: { projectName: "e2e-privilege-boundary-bulk-remove" }
+    });
+    expect(createProjectRes.statusCode).toBe(200);
+    project = createProjectRes.json().project;
+
+    const roleId = await insertMemberRemoverRole("e2e-pb-project-member-remover", { projectId: project.id });
+    actor = await createActorIdentity("e2e-pb-bulk-actor");
+    await addIdentityToProject(project.id, actor.identityId, ProjectMembershipRole.Member);
+    await useCustomRole(await findIdentityMembershipId(actor.identityId, project.id), roleId);
+
+    const target = await createTargetUser("e2e-pb-bulk-target");
+    adminTarget = target;
+    await giveUserMembership({ userId: target.userId, role: OrgMembershipRole.Member });
+    await giveUserMembership({
+      userId: target.userId,
+      role: ProjectMembershipRole.Admin,
+      projectId: project.id
+    });
+  });
+
+  afterAll(async () => {
+    await deleteIdentity(actor.identityId);
+    await dropUser(adminTarget.userId);
+    await testDb(TableName.Role).where({ slug: "e2e-pb-project-member-remover" }).delete();
+    await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/projects/${project.id}`,
+      headers: adminHeaders()
+    });
+  });
+
+  describe("on the legacy privilege system", () => {
+    beforeAll(() => setNewPrivilegeSystem(false));
+    afterAll(() => setNewPrivilegeSystem(true));
+
+    test("a member:delete-only role cannot remove a project Admin", async () => {
+      const res = await removeMembers([adminTarget.username], asIdentity(actor.token));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged member");
+    });
+
+    test("an admin can still remove a project Admin", async () => {
+      const res = await removeMembers([adminTarget.username], adminHeaders());
+      expect(res.statusCode).toBe(200);
+    });
   });
 });

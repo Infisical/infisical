@@ -31,6 +31,34 @@ describe("resolveMembershipRoleSlugs", () => {
     ).toEqual(["admin"]);
   });
 
+  test("deduplicates a slug repeated within one membership", () => {
+    // The uniqueness key on membership roles spans isTemporary, so one membership can hold the same
+    // custom role permanently and temporarily. Passing the slug twice makes getOrgPermissionByRoles
+    // report it as missing, because it compares the requested count against the rows it finds.
+    expect(
+      resolveMembershipRoleSlugs([
+        { role: "custom", customRoleSlug: "release-manager" },
+        {
+          role: "custom",
+          customRoleSlug: "release-manager",
+          isTemporary: true,
+          temporaryAccessEndTime: new Date(Date.now() + 60_000)
+        }
+      ])
+    ).toEqual(["release-manager"]);
+  });
+
+  test("deduplicates slugs shared across memberships in a bulk removal", () => {
+    expect(
+      resolveMembershipRoleSlugs([
+        { role: "member" },
+        { role: "member" },
+        { role: "custom", customRoleSlug: "auditor" },
+        { role: "custom", customRoleSlug: "auditor" }
+      ])
+    ).toEqual(["member", "auditor"]);
+  });
+
   test("returns an empty list when every role filters out", () => {
     expect(
       resolveMembershipRoleSlugs([

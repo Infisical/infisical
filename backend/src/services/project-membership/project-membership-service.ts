@@ -25,6 +25,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -52,7 +53,7 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -404,6 +405,25 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({
         message: "Cannot remove yourself from project",
         name: "Delete project membership"
+      });
+    }
+
+    const targetRoles = resolveMembershipRoleSlugs(
+      await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id))
+    );
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, projectId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+        orgDAL.findById(actorOrgId)
+      );
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionMemberActions.Delete,
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged member from the project"
       });
     }
 

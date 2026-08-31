@@ -53,9 +53,12 @@ type TMembershipRole = {
   temporaryAccessEndTime?: Date | null;
 };
 
-// Resolves a membership's roles into the slug list that get{Org,Project}PermissionByRoles expects.
-export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) =>
-  roles
-    .filter(isActiveRole)
-    .map((role) => role.customRoleSlug || role.role)
-    .filter((slug) => slug !== OrgMembershipRole.NoAccess && slug !== ProjectMembershipRole.NoAccess);
+// Resolves membership roles into the slug list that get{Org,Project}PermissionByRoles expects.
+export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
+  ...new Set(
+    roles
+      .filter(isActiveRole)
+      .map((role) => role.customRoleSlug || role.role)
+      .filter((slug) => slug !== OrgMembershipRole.NoAccess && slug !== ProjectMembershipRole.NoAccess)
+  )
+];
