@@ -1,4 +1,5 @@
 import {
+  Fragment,
   SetStateAction,
   useCallback,
   useEffect,
@@ -15,7 +16,7 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, Range, useVirtualizer } from "@tanstack/react-virtual";
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
@@ -308,6 +309,14 @@ const DEFAULT_FILTER_STATE = {
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 
+// Every overview row type is rendered into the same TableBody, so their React keys share one
+// namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
+// proxied service named "foo" and a secret named "ps-foo" both produce "overview-ps-foo". Encoding
+// the row type and the name as a JSON array instead is injective, because JSON.stringify escapes
+// the separators and quotes it emits, so two rows collide only when their type and name are equal.
+const overviewRowKey = (rowType: string, ...parts: (string | number)[]) =>
+  JSON.stringify([rowType, ...parts]);
+
 const OverviewPageContent = () => {
   const { t } = useTranslation();
 
@@ -437,20 +446,26 @@ const OverviewPageContent = () => {
     });
   }, []);
 
-  const [expandedSecretRows, setExpandedSecretRows] = useState<Record<string, boolean>>({});
-  const [visibleSecretRows, setVisibleSecretRows] = useState<Record<string, boolean>>({});
+  // These are keyed by secret key, which is arbitrary user input, so they must not be plain
+  // objects: a secret named "toString"/"constructor"/"__proto__" would otherwise read back a
+  // truthy value inherited from Object.prototype and render a row as expanded/revealed before
+  // the user asked for it. Set/Map have no such inherited entries.
+  const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(() => new Set());
+  // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
+  // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
+  const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
 
   const toggleSecretRowExpand = useCallback((key: string) => {
-    setExpandedSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
-  const toggleSecretRowVisible = useCallback((key: string) => {
-    setVisibleSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
+    setExpandedSecretRows((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   }, []);
 
   const resetSecretRowStates = useCallback(() => {
-    setExpandedSecretRows({});
-    setVisibleSecretRows({});
+    setExpandedSecretRows(new Set());
+    setVisibleSecretRows(new Map());
   }, []);
 
   useEffect(() => {
@@ -890,6 +905,53 @@ const OverviewPageContent = () => {
       return sec;
     },
     [secrets]
+  );
+
+  // A row aggregates one secret per environment, so there is no single secret id to key reveal
+  // state by. Fingerprint the ids behind a row instead, and honour a reveal only while that
+  // fingerprint still matches the one captured when the user clicked reveal, so deleting and
+  // recreating a secret under the same name falls back to hidden rather than silently showing a
+  // different secret's value. Comparing rather than pruning means a fingerprint that is only
+  // transiently absent re-matches once the data returns. Changing the visible environments also
+  // changes the fingerprint and re-hides the row, which is the cheap direction to fail in.
+  const secretRowIdentities = useMemo(() => {
+    const idsByKey = new Map<string, string[]>();
+    secrets?.forEach((secret) => {
+      const ids = idsByKey.get(secret.key);
+      const secretIds = secret.idOverride ? [secret.id, secret.idOverride] : [secret.id];
+      if (ids) ids.push(...secretIds);
+      else idsByKey.set(secret.key, secretIds);
+    });
+
+    const identities = new Map<string, string>();
+    idsByKey.forEach((ids, key) => identities.set(key, ids.sort().join(",")));
+    return identities;
+  }, [secrets]);
+
+  // Never returns undefined, so a key with no entry cannot compare equal to a missing reveal.
+  const getSecretRowIdentity = useCallback(
+    (key: string) => secretRowIdentities.get(key) ?? "",
+    [secretRowIdentities]
+  );
+
+  const isSecretRowVisible = useCallback(
+    (key: string) => visibleSecretRows.get(key) === getSecretRowIdentity(key),
+    [visibleSecretRows, getSecretRowIdentity]
+  );
+
+  const toggleSecretRowVisible = useCallback(
+    (key: string) => {
+      const identity = getSecretRowIdentity(key);
+      setVisibleSecretRows((prev) => {
+        const next = new Map(prev);
+        // Compare against the current identity rather than mere presence, so revealing a row whose
+        // stale entry is being ignored re-reveals it instead of clearing the stale entry.
+        if (next.get(key) === identity) next.delete(key);
+        else next.set(key, identity);
+        return next;
+      });
+    },
+    [getSecretRowIdentity]
   );
 
   const { data: tags } = useGetWsTags(
@@ -2686,6 +2748,46 @@ const OverviewPageContent = () => {
 
   const [secretRowsScrollMargin, setSecretRowsScrollMargin] = useState(0);
 
+  // A row's unsaved value or name edit lives in that row's own form until it is saved or, in batch
+  // mode, until its debounce hands it to the batch store. Unmounting the row would throw it away,
+  // so rows that report unsaved edits stay in the rendered set no matter where they scroll to.
+  // Keyed by secret key, which is arbitrary user input, so a Set rather than a plain object: a
+  // secret named "toString" or "constructor" would read back truthy from Object.prototype and pin
+  // its row for the life of the page.
+  const [unsavedRows, setUnsavedRows] = useState<Set<string>>(() => new Set());
+
+  const handleSecretRowUnsavedChange = useCallback((key: string, hasUnsavedChanges: boolean) => {
+    setUnsavedRows((prev) => {
+      if (prev.has(key) === hasUnsavedChanges) return prev;
+
+      const next = new Set(prev);
+      if (hasUnsavedChanges) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const pinnedSecretRowIndices = useMemo(() => {
+    if (!unsavedRows.size) return [] as number[];
+
+    const indices: number[] = [];
+    mergedSecKeys.forEach((key, index) => {
+      if (unsavedRows.has(key)) indices.push(index);
+    });
+    return indices;
+  }, [unsavedRows, mergedSecKeys]);
+
+  const secretRowsRangeExtractor = useCallback(
+    (range: Range) => {
+      if (!pinnedSecretRowIndices.length) return defaultRangeExtractor(range);
+
+      const indices = new Set(defaultRangeExtractor(range));
+      pinnedSecretRowIndices.forEach((index) => indices.add(index));
+      return Array.from(indices).sort((a, b) => a - b);
+    },
+    [pinnedSecretRowIndices]
+  );
+
   const measureSecretRowGroup = useCallback((element: Element) => {
     // One logical secret row is its main <tr> plus any following override or expanded
     // sibling <tr> carrying the same data-index, so sum the group's height.
@@ -2706,6 +2808,7 @@ const OverviewPageContent = () => {
     overscan: 8,
     scrollMargin: secretRowsScrollMargin,
     measureElement: measureSecretRowGroup,
+    rangeExtractor: secretRowsRangeExtractor,
     getItemKey: (index) => mergedSecKeys[index]
   });
 
@@ -2735,13 +2838,26 @@ const OverviewPageContent = () => {
   const secretVirtualItems = secretRowVirtualizer.getVirtualItems();
   const secretRowsTotalSize = secretRowVirtualizer.getTotalSize();
   const secretRowsSpacerCols = visibleEnvs.length + 2;
-  const secretRowsTopSpacer = secretVirtualItems.length
-    ? secretVirtualItems[0].start - secretRowsScrollMargin
-    : 0;
-  const secretRowsBottomSpacer = secretVirtualItems.length
-    ? secretRowsTotalSize -
-      (secretVirtualItems[secretVirtualItems.length - 1].end - secretRowsScrollMargin)
-    : 0;
+
+  // A pinned row sits outside the scrolled window, so the rendered indices are not always one
+  // contiguous run. Pad ahead of every item that does not start where the previous one ended,
+  // which keeps each row on its own offset and the table's height equal to the virtual total.
+  const { rows: secretRowsRenderPlan, bottomSpacer: secretRowsBottomSpacer } = (() => {
+    const rows: { index: number; key: string; spacerBefore: number }[] = [];
+    let cursor = 0;
+
+    secretVirtualItems.forEach((virtualItem) => {
+      const start = virtualItem.start - secretRowsScrollMargin;
+      rows.push({
+        index: virtualItem.index,
+        key: mergedSecKeys[virtualItem.index],
+        spacerBefore: Math.max(0, start - cursor)
+      });
+      cursor = Math.max(cursor, virtualItem.end - secretRowsScrollMargin);
+    });
+
+    return { rows, bottomSpacer: rows.length ? Math.max(0, secretRowsTotalSize - cursor) : 0 };
+  })();
 
   if (!isProjectV3)
     return (
@@ -3424,7 +3540,7 @@ const OverviewPageContent = () => {
                           {isSingleEnvView &&
                             sortableImportItems.map((imp, idx) => (
                               <SecretImportTableRow
-                                key={`overview-import-${imp.id}`}
+                                key={overviewRowKey("import", imp.id)}
                                 index={idx}
                                 secretImport={imp}
                                 importEnvSlug={imp.importEnv.slug}
@@ -3447,7 +3563,7 @@ const OverviewPageContent = () => {
                             secretImportNames.map(
                               ({ importEnvSlug, importEnvName, importPath }, index) => (
                                 <SecretImportTableRow
-                                  key={`overview-import-${importEnvSlug}:${importPath}`}
+                                  key={overviewRowKey("import", importEnvSlug, importPath)}
                                   index={index}
                                   importEnvSlug={importEnvSlug}
                                   importEnvName={importEnvName}
@@ -3484,7 +3600,7 @@ const OverviewPageContent = () => {
                                     toggleSelectedEntry(EntryType.FOLDER, folderName);
                                 }}
                                 environments={visibleEnvs}
-                                key={`overview-${folderName}-${index + 1}`}
+                                key={overviewRowKey("folder", folderName, index)}
                                 onClick={handleFolderClick}
                                 onToggleFolderEdit={(name: string) =>
                                   handlePopUpOpen("updateFolder", { name, description })
@@ -3512,7 +3628,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               tableWidth={tableWidth}
                               secretPath={secretPath}
-                              key={`overview-${dynamicSecretName}`}
+                              key={overviewRowKey("dynamic-secret", dynamicSecretName)}
                               onEdit={(dynamicSecret) =>
                                 handlePopUpOpen("editDynamicSecret", dynamicSecret)
                               }
@@ -3540,7 +3656,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               getSecretRotationByName={getSecretRotationByName}
                               getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                              key={`overview-${secretRotationName}`}
+                              key={overviewRowKey("secret-rotation", secretRotationName)}
                               tableWidth={tableWidth}
                               isSelected={Boolean(
                                 selectedEntries.secretRotation[secretRotationName]
@@ -3586,7 +3702,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
-                              key={`overview-ht-${honeyTokenName}`}
+                              key={overviewRowKey("honey-token", honeyTokenName)}
                               isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
                               onToggleHoneyTokenSelect={() =>
                                 toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
@@ -3605,7 +3721,7 @@ const OverviewPageContent = () => {
                           ))}
                           {proxiedServiceNames.map((proxiedServiceName) => (
                             <ProxiedServiceTableRow
-                              key={`overview-ps-${proxiedServiceName}`}
+                              key={overviewRowKey("proxied-service", proxiedServiceName)}
                               proxiedServiceName={proxiedServiceName}
                               environments={visibleEnvs}
                               isProxiedServiceInEnv={isProxiedServicePresentInEnv}
@@ -3625,17 +3741,16 @@ const OverviewPageContent = () => {
                               style={{ height: 0, padding: 0, border: 0 }}
                             />
                           </tr>
-                          {secretRowsTopSpacer > 0 && (
-                            <tr aria-hidden>
-                              <td
-                                colSpan={secretRowsSpacerCols}
-                                style={{ height: secretRowsTopSpacer, padding: 0, border: 0 }}
-                              />
-                            </tr>
-                          )}
-                          {secretVirtualItems.map((virtualItem) => {
-                            const key = mergedSecKeys[virtualItem.index];
-                            return (
+                          {secretRowsRenderPlan.map(({ index, key, spacerBefore }) => (
+                            <Fragment key={overviewRowKey("secret", key)}>
+                              {spacerBefore > 0 && (
+                                <tr aria-hidden>
+                                  <td
+                                    colSpan={secretRowsSpacerCols}
+                                    style={{ height: spacerBefore, padding: 0, border: 0 }}
+                                  />
+                                </tr>
+                              )}
                               <SecretTableRow
                                 isSelected={
                                   !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
@@ -3644,9 +3759,9 @@ const OverviewPageContent = () => {
                                   if (!hasPendingBatchChanges)
                                     toggleSelectedEntry(EntryType.SECRET, key);
                                 }}
-                                isExpanded={Boolean(expandedSecretRows[key])}
+                                isExpanded={expandedSecretRows.has(key)}
                                 onToggleExpand={toggleSecretRowExpand}
-                                isSecretVisible={Boolean(visibleSecretRows[key])}
+                                isSecretVisible={isSecretRowVisible(key)}
                                 onToggleSecretVisible={toggleSecretRowVisible}
                                 secretPath={secretPath}
                                 getImportedSecretByKey={getImportedSecretByKey}
@@ -3654,9 +3769,9 @@ const OverviewPageContent = () => {
                                 onSecretCreate={handleSecretCreate}
                                 onSecretDelete={handleSecretDelete}
                                 onSecretUpdate={handleSecretUpdate}
-                                key={`overview-${key}`}
-                                virtualIndex={virtualItem.index}
+                                virtualIndex={index}
                                 measureElement={secretRowVirtualizer.measureElement}
+                                onUnsavedChange={handleSecretRowUnsavedChange}
                                 environments={visibleEnvs}
                                 secretKey={key}
                                 getSecretByKey={getSecretByKeyWithPending}
@@ -3667,8 +3782,8 @@ const OverviewPageContent = () => {
                                 onBatchRevert={handleBatchRevert}
                                 isSelectionDisabled={hasPendingBatchChanges}
                               />
-                            );
-                          })}
+                            </Fragment>
+                          ))}
                           {secretRowsBottomSpacer > 0 && (
                             <tr aria-hidden>
                               <td
