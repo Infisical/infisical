@@ -72,6 +72,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
     ```
 
     <img src="/images/platform/access-controls/abac-policy-k8s-format.png" />
+
   </Tab>
   <Tab title="AWS Attributes">
     For identities authenticated using AWS Auth, several attributes can be accessed. On top of the 3 base attributes, there's 4 derived from the ARN. The example below includes comments showing how each derived attribute looks like based on this ARN: `arn:aws:iam::123456789012:user/example-user`
@@ -89,6 +90,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
     ```
 
     <img src="/images/platform/access-controls/abac-policy-aws-format.png" />
+
   </Tab>
   <Tab title="Other Authentication Method Attributes">
     At the moment we only support OIDC claims, Kubernetes attributes, and AWS attributes. Payloads on other authentication methods are not yet accessible.
@@ -108,48 +110,41 @@ Removes a prefix from the beginning of a string. If the string does not start wi
 Given `identity.auth.kubernetes.namespace` = `production-us-east`:
 
 ```handlebars
-{{ stripPrefix identity.auth.kubernetes.namespace 'production-' }}  ->  us-east
+{{stripPrefix identity.auth.kubernetes.namespace "production-"}} -> us-east
 ```
 
 Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
 
 ```handlebars
-{{ stripPrefix identity.auth.aws.arn 'arn:aws:iam::123456789012:' }}  ->  user/example-user
+{{stripPrefix identity.auth.aws.arn "arn:aws:iam::123456789012:"}}
+-> user/example-user
 ```
 
 **trimSuffix**
 
-Removes a suffix from the end of a string. The suffix is a glob pattern, using the same syntax as
-the **Glob Match** condition operator, so it can match a part of the value that varies. The
-shortest matching suffix is removed. If nothing at the end of the string matches the pattern, the
-string is returned unchanged.
+Removes a suffix from a string. The suffix can be a whole word or a glob pattern. If the
+end of the string does not match the pattern, the string is returned unchanged.
 
-This is useful when a namespace or resource name carries a generated trailing segment. For
-example, an ArgoCD ApplicationSet using the pull request generator creates one namespace per open
-pull request, such as `myapp-pr-1` and `myapp-pr-42`. Trimming the generated segment lets every one
-of those namespaces resolve to the same secret path as the base namespace, without writing a
-condition for each pull request.
-
-A pattern can contain at most five `*` or `?` wildcards. A pattern with more than that trims
-nothing, and the string is returned unchanged.
+A glob pattern can contain at most five `*` or `?` wildcards. A pattern with more
+wildcards trims nothing.
 
 **Examples:**
 
 Given `identity.auth.kubernetes.namespace` = `myapp-pr-42`:
 
 ```handlebars
-{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
+{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}} -> myapp
 ```
 
 Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the pattern):
 
 ```handlebars
-{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
+{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}} -> myapp
 ```
 
 You can combine this with a secret path condition so both the base namespace and its pull request
 namespaces read from one path:
 
 ```handlebars
-/{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}/**
+/{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}}/**
 ```
