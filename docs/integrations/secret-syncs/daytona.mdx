@@ -13,6 +13,12 @@ description: "Learn how to configure a Daytona sync for Infisical."
     The key schema itself is checked against the same rule when you create or update the sync, so a schema containing a slash is rejected up front rather than failing on every run.
 </Note>
 
+<Note>
+    Infisical does not set the **allowed hosts** list on the secrets it creates, so they are unrestricted in the same way as a secret created in Daytona without one. Daytona substitutes the real value for its placeholder on requests to any host.
+
+    To restrict a secret, set its allowed hosts in Daytona. This sync only ever writes the value, so a list you set there is preserved on later syncs.
+</Note>
+
 <Tabs>
     <Tab title="Infisical UI">
         <Steps>
