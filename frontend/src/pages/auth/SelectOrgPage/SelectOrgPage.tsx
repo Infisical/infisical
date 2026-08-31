@@ -38,7 +38,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { evictOrgOnAccessRevoked } from "@app/helpers/organization";
+import { refreshOrgListsOnAccessRevoked } from "@app/helpers/organization";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -254,7 +254,7 @@ export const SelectOrgPage = () => {
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
     } catch (error: any) {
-      evictOrgOnAccessRevoked(queryClient, error);
+      await refreshOrgListsOnAccessRevoked(queryClient, error);
 
       if (error?.response?.data?.error === "SmtpError") {
         // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
@@ -263,6 +263,9 @@ export const SelectOrgPage = () => {
       }
       const message = error?.response?.data?.message || "Failed to select organization.";
       createNotification({ text: message, type: "error" });
+      // The route's beforeLoad owns the empty-list rule (redirect to /organizations/none), and the
+      // refresh above can leave the user with no organizations at all, so let it run again
+      await router.invalidate();
       return;
     }
 

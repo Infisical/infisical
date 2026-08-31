@@ -54,7 +54,10 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrgPermission, useUser } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
-import { evictOrgOnAccessRevoked, notifyOrgSelectionFailed } from "@app/helpers/organization";
+import {
+  notifyOrgSelectionFailed,
+  refreshOrgListsOnAccessRevoked
+} from "@app/helpers/organization";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -184,7 +187,7 @@ export const OrgSubOrgsTab = () => {
       await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
       await navigateUserToOrg({ navigate, organizationId: subOrgId });
     } catch (error) {
-      evictOrgOnAccessRevoked(queryClient, error);
+      refreshOrgListsOnAccessRevoked(queryClient, error);
       notifyOrgSelectionFailed(
         error,
         paginatedSubOrgs.find((subOrg) => subOrg.id === subOrgId)?.name

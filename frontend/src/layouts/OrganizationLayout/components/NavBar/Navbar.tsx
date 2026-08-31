@@ -66,7 +66,10 @@ import {
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
-import { evictOrgOnAccessRevoked, notifyOrgSelectionFailed } from "@app/helpers/organization";
+import {
+  notifyOrgSelectionFailed,
+  refreshOrgListsOnAccessRevoked
+} from "@app/helpers/organization";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -236,7 +239,7 @@ export const Navbar = () => {
         await onSuccess();
       }
     } catch (error) {
-      evictOrgOnAccessRevoked(queryClient, error);
+      refreshOrgListsOnAccessRevoked(queryClient, error);
       notifyOrgSelectionFailed(
         error,
         orgs?.find((org) => org.id === organizationId)?.name ??
