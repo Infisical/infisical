@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { AlertTriangleIcon, CircleCheckIcon, ShieldAlertIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CircleCheckIcon,
+  CircleDashedIcon,
+  CircleSlashIcon,
+  ClockIcon,
+  InfoIcon,
+  PlusIcon,
+  ShieldAlertIcon,
+  ShieldOffIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -30,10 +41,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
   Label,
   Pagination,
   Table,
@@ -41,7 +48,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   useCreateEncryptionKeyRotation,
@@ -58,7 +68,7 @@ import {
 export const EncryptionKeyRotationSection = () => {
   const { data: rootKey, isPending, isError } = useGetEncryptionRootKey();
   const { mutateAsync: createRotation, isPending: isCreating } = useCreateEncryptionKeyRotation();
-  const { mutateAsync: deleteStagedKey } = useDeleteStagedEncryptionKey();
+  const { mutateAsync: deleteStagedKey, isPending: isDiscarding } = useDeleteStagedEncryptionKey();
   const { mutateAsync: deleteExpiringKey, isPending: isRemoving } =
     useDeleteExpiringEncryptionKey();
 
@@ -122,10 +132,7 @@ export const EncryptionKeyRotationSection = () => {
         force: overrideStraggler
       });
     } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to deactivate the previous encryption key."
-      });
+      // Reported globally by MutationCache.onError; keep the dialog open so the operator can retry.
       return;
     }
     closeDeactivateDialog();
@@ -136,35 +143,21 @@ export const EncryptionKeyRotationSection = () => {
     <>
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Root encryption key</CardTitle>
+          <CardTitle>Root encryption keys</CardTitle>
           <CardDescription>
-            Rotate the key that protects every secret in this instance. Generating a key changes
-            nothing on its own: the rotation takes effect the first time an instance starts with the
-            new value.
+            Rotate the key that protects every secret in this instance. Every key is kept here after
+            it is removed, so you can tell which archived key a restored backup needs.
           </CardDescription>
           {!isHsmManaged && (
-            <CardAction className="flex flex-wrap gap-2">
-              {rootKey.staged && (
-                <Button variant="danger" isDisabled={!rootKey.staged.label} onClick={handleDiscard}>
-                  Discard generated key
-                </Button>
-              )}
-              <Button onClick={handleGenerate} isPending={isCreating}>
-                {rootKey.staged ? "Generate a replacement key" : "Generate new key"}
+            <CardAction>
+              <Button size="lg" onClick={handleGenerate} isPending={isCreating}>
+                <PlusIcon />
+                Generate new key
               </Button>
             </CardAction>
           )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Item variant="outline">
-            <ItemContent>
-              <ItemTitle>Active key</ItemTitle>
-              <ItemDescription className="font-mono">
-                {rootKey.active.label ?? "managed by HSM"}
-              </ItemDescription>
-            </ItemContent>
-          </Item>
-
           {isHsmManaged && (
             <Alert variant="warning">
               <AlertTriangleIcon />
@@ -179,44 +172,38 @@ export const EncryptionKeyRotationSection = () => {
           {rootKey.expiring && (
             <Alert variant="warning">
               <ShieldAlertIcon />
-              <AlertTitle>The previous key is still active</AlertTitle>
+              <AlertTitle>Root encryption key rotation in progress</AlertTitle>
               <AlertDescription>
                 <p>
-                  Until it is deactivated, the old key still opens this database, so the rotation
-                  has not reduced exposure yet. It also means an instance that has not restarted
-                  onto the new key can still start.
+                  The old key still opens this database, the rotation has not reduced exposure yet.
+                  Deactivating it is safe and causes no service interruption, as long as every
+                  instance has restarted onto the new key.
                 </p>
                 <p className="mt-2">
-                  This key will be removed automatically on{" "}
+                  It is removed automatically on{" "}
                   {new Date(rootKey.expiring.expiresAt).toLocaleString()}, or later if an instance
-                  starts with it again.
+                  starts with it again.{" "}
+                  <button
+                    type="button"
+                    className="cursor-pointer underline underline-offset-4 hover:text-foreground"
+                    onClick={() => setIsDeactivateOpen(true)}
+                  >
+                    Deactivate old key
+                  </button>
                 </p>
-                <Button
-                  className="mt-3"
-                  variant="warning"
-                  size="sm"
-                  isDisabled={!rootKey.expiring.label}
-                  onClick={() => setIsDeactivateOpen(true)}
-                >
-                  Deactivate key
-                </Button>
               </AlertDescription>
             </Alert>
           )}
 
           {(rootKey.staged || (rotationsPage?.rotations.length ?? 0) > 0) && (
             <div>
-              <p className="mb-2 text-sm font-medium">Key history</p>
-              <p className="mb-2 text-xs text-foreground/60">
-                Kept after a key is removed. Use the label to work out which archived key a restored
-                backup needs.
-              </p>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Label</TableHead>
                     <TableHead>Active from</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead variant="action" className="pr-3" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -231,7 +218,31 @@ export const EncryptionKeyRotationSection = () => {
                         generated {new Date(rootKey.staged.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="info">Staged, not applied</Badge>
+                        <Badge variant="info">
+                          <CircleDashedIcon />
+                          Staged, not applied
+                        </Badge>
+                      </TableCell>
+                      <TableCell variant="action" className="pr-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              className="min-w-25 justify-start text-foreground/70 hover:border-danger/25 hover:bg-danger/10 hover:text-danger"
+                              size="xs"
+                              variant="ghost"
+                              isDisabled={!rootKey.staged.label}
+                              isPending={isDiscarding}
+                              onClick={handleDiscard}
+                            >
+                              <Trash2Icon />
+                              <span className="flex-1 text-center">Discard</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            Delete this generated key. It has never encrypted anything, so nothing
+                            is lost.
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   )}
@@ -240,15 +251,52 @@ export const EncryptionKeyRotationSection = () => {
                       <TableCell className="font-mono text-xs">{entry.label}</TableCell>
                       <TableCell>{new Date(entry.activatedAt).toLocaleString()}</TableCell>
                       <TableCell>
-                        {!entry.supersededAt && <Badge variant="success">Active</Badge>}
-                        {entry.supersededAt && !entry.retiredAt && (
-                          <Badge variant="neutral">
-                            {rootKey.expiring?.label === entry.label
-                              ? `Expires ${new Date(rootKey.expiring.expiresAt).toLocaleDateString()}`
-                              : "Expiring"}
+                        {!entry.supersededAt && (
+                          <Badge variant="success">
+                            <CircleCheckIcon />
+                            Active
                           </Badge>
                         )}
-                        {entry.retiredAt && <Badge variant="neutral">Removed</Badge>}
+                        {entry.supersededAt &&
+                          !entry.retiredAt &&
+                          (rootKey.expiring?.label === entry.label ? (
+                            <Badge variant="warning">
+                              <ClockIcon />
+                              Expires {new Date(rootKey.expiring.expiresAt).toLocaleDateString()}
+                            </Badge>
+                          ) : (
+                            <Badge variant="neutral">
+                              <ClockIcon />
+                              Expiring
+                            </Badge>
+                          ))}
+                        {entry.retiredAt && (
+                          <Badge variant="neutral">
+                            <CircleSlashIcon />
+                            Removed
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell variant="action" className="pr-3">
+                        {rootKey.expiring?.label === entry.label && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                className="min-w-25 justify-start text-foreground/70 hover:border-warning/25 hover:bg-warning/10 hover:text-warning"
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => setIsDeactivateOpen(true)}
+                              >
+                                <ShieldOffIcon />
+                                <span className="flex-1 text-center">Deactivate</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Stop this key from opening the database. Backups taken before the
+                              rotation will still need it.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -298,11 +346,12 @@ export const EncryptionKeyRotationSection = () => {
             {rootKey.expiring.lastResolvedAt ? (
               <Alert variant="warning">
                 <AlertTriangleIcon />
-                <AlertTitle>An instance is still running on this key</AlertTitle>
+                <AlertTitle>An instance may still be running on this key</AlertTitle>
                 <AlertDescription>
-                  It last started on it {new Date(rootKey.expiring.lastResolvedAt).toLocaleString()}
-                  . Deactivating now means that instance fails its next restart until it is given
-                  the new key.
+                  One last started on it{" "}
+                  {new Date(rootKey.expiring.lastResolvedAt).toLocaleString()}. That is the last
+                  time the key was used. Check your fleet before continuing: an instance that never
+                  restarted onto the new key fails its next restart.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -326,7 +375,9 @@ export const EncryptionKeyRotationSection = () => {
                     onCheckedChange={(value) => setOverrideStraggler(value === true)}
                   />
                   <Label htmlFor="override-straggler" className="text-xs font-normal text-label">
-                    Deactivate it anyway, and let that instance fail until it is given the new key.
+                    I have verified that no Infisical instance is still running with the old key,
+                    and I understand that any instance that has not been given the new key will fail
+                    its next restart.
                   </Label>
                 </div>
               )}
@@ -366,7 +417,7 @@ export const EncryptionKeyRotationSection = () => {
       )}
 
       <Dialog open={Boolean(generatedKey)} onOpenChange={(open) => !open && setGeneratedKey(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Copy your new encryption key</DialogTitle>
             <DialogDescription>
@@ -388,7 +439,10 @@ export const EncryptionKeyRotationSection = () => {
 
             <div>
               <p className="mb-1.5 text-sm font-medium">Label</p>
-              <p className="font-mono text-xs text-foreground/70">{generatedKey?.label}</p>
+              <div className="flex items-center gap-1">
+                <p className="font-mono text-xs text-foreground/70">{generatedKey?.label}</p>
+                <CopyButton value={generatedKey?.label ?? ""} ariaLabel="Copy key label" />
+              </div>
               <p className="mt-1 text-xs text-foreground/60">
                 Store this alongside the key. It is how you identify which key a database backup
                 needs.
@@ -415,6 +469,7 @@ export const EncryptionKeyRotationSection = () => {
             )}
 
             <Alert variant="info">
+              <InfoIcon />
               <AlertDescription>
                 Nothing has changed yet. Deploy this value, and the rotation takes effect when the
                 first instance starts with it.
