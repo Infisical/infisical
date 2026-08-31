@@ -7,11 +7,11 @@ vocab: false
 nonword: true
 swap:
 
-  '(?<!\b(?:in|on|at|around|inside|behind|within|under|underneath|above|below|beyond|from|with|for|by|near|through|alongside|beside)\s)\bit is\b(?! not)(?!\.)': "it's"
-  '\byou will\b(?! not)': "you'll"
-  '\byou are\b(?! not)': "you're"
-  '\bwe are\b(?! not)': "we're"
-  '\bthey are\b(?!\.)': "they're"
+  '(?<!\b(?:in|on|at|around|inside|behind|within|under|underneath|above|below|beyond|from|with|for|by|near|through|alongside|beside)\s)\bit is\b(?! not)(?!\.)(?![,;)])(?!\s*$)': "it's"
+  '\byou will\b(?! not)(?![,;)])(?!\s*$)': "you'll"
+  '\byou are\b(?! not)(?![,;)])(?!\s*$)': "you're"
+  '\bwe are\b(?! not)(?![,;)])(?!\s*$)': "we're"
+  '\bthey are\b(?!\.)(?![,;)])(?!\s*$)': "they're"
   '\bcannot\b': "can't"
   '\bdo not\b': "don't"
   '\bdoes not\b': "doesn't"
