@@ -67,7 +67,12 @@
     "sha.js": "2.4.12",
     "jws": "^4.0.1",
     "qs": "$qs",
-    "glob": "^10.5.0",
+    "glob": {
+      ".": "^10.5.0",
+      "minimatch": {
+        "brace-expansion": "^2.1.2"
+      }
+    },
     "cross-spawn": "^7.0.6",
     "validator": "^13.15.22",
     "react-email": {
@@ -93,6 +98,7 @@
     "fast-xml-parser": "^5.7.0",
     "path-to-regexp": "^8.4.0",
     "protobufjs": "^7.5.6",
+    "form-data": "^4.0.6",
     "shell-quote": "^1.9.0",
     "websocket-driver": "^0.7.5"
   },
@@ -291,8 +297,8 @@
     "qs": "^6.14.2",
     "randexp": "^0.5.3",
     "re2": "^1.21.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "19.1.4",
+    "react-dom": "19.1.4",
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.9.1",
     "scim2-parse-filter": "^0.2.10",
