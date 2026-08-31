@@ -81,6 +81,7 @@ export const useSecretManagerCommandSearch = (project: Project) => {
               params: { orgId: project.orgId, projectId: project.id },
               search: {
                 search: match.search,
+                clearSearch: match.resourceType === "folder" ? true : undefined,
                 secretPath: match.path,
                 environments: [match.environmentSlug],
                 filterBy: match.filterBy

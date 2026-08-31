@@ -254,13 +254,14 @@ import {
   SecretTableRow
 } from "./components";
 import {
+  hasOneShotOverviewSearchState,
   hasOverviewScopeChanged,
-  hasSensitiveOverviewSearchState,
   normalizeOverviewEnvironments,
   parseOverviewTags,
   resolveOverviewEnvironmentSlugs,
+  resolveOverviewSearchFilter,
   serializeOverviewResourceFilter,
-  stripSensitiveOverviewSearchState,
+  stripOneShotOverviewSearchState,
   updateOverviewSecretPath
 } from "./overviewSearchState";
 
@@ -314,6 +315,7 @@ const OverviewPageContent = () => {
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search,
+      clearSearch: el.clearSearch,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
@@ -462,9 +464,9 @@ const OverviewPageContent = () => {
   );
 
   useEffect(() => {
-    if (routerSearch.search) setSearchFilter(routerSearch.search);
+    setSearchFilter((currentSearch) => resolveOverviewSearchFilter(currentSearch, routerSearch));
     if (routerSearch.tags !== undefined) setTagFilter(parseOverviewTags(routerSearch.tags));
-  }, [routerSearch.search, routerSearch.tags]);
+  }, [routerSearch.clearSearch, routerSearch.search, routerSearch.tags]);
 
   useEffect(() => {
     const requestedSlugs = normalizeOverviewEnvironments(
@@ -475,18 +477,16 @@ const OverviewPageContent = () => {
       requestedSlugs.length === routerSearch.environments.length &&
       requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
     const shouldNormalizeEnvironments = userAvailableEnvs.length > 0 && !isCanonical;
-    const shouldStripSensitiveState = hasSensitiveOverviewSearchState(routerSearch);
+    const shouldStripOneShotState = hasOneShotOverviewSearchState(routerSearch);
     const normalizedEnvironments = selectedEnvironmentSlugs.length
       ? selectedEnvironmentSlugs
       : undefined;
 
-    if (!shouldNormalizeEnvironments && !shouldStripSensitiveState) return;
+    if (!shouldNormalizeEnvironments && !shouldStripOneShotState) return;
 
     navigate({
       search: (prev) => {
-        const nextSearch = shouldStripSensitiveState
-          ? stripSensitiveOverviewSearchState(prev)
-          : prev;
+        const nextSearch = shouldStripOneShotState ? stripOneShotOverviewSearchState(prev) : prev;
 
         return {
           ...nextSearch,

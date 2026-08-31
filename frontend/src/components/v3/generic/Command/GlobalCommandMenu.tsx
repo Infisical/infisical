@@ -281,7 +281,6 @@ export const GlobalCommandMenu = ({
     >
       <CommandInput
         aria-label={activeDrilldown ? `${activeDrilldown.label}: ${inputPlaceholder}` : title}
-        className="h-14"
         placeholder={inputPlaceholder}
         value={search}
         onValueChange={updateSearch}
@@ -298,45 +297,40 @@ export const GlobalCommandMenu = ({
           ) : undefined
         }
       />
-      <CommandList
-        key={`${activeDrilldown?.id ?? "root"}-${mode}`}
-        className="max-h-[min(420px,60vh)] p-1"
-      >
+      <CommandList key={`${activeDrilldown?.id ?? "root"}-${mode}`}>
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {liveStatus}
         </div>
         {resultCount === 0 && !isSearching && !searchError && (
-          <CommandEmpty className="flex min-h-12 items-center justify-center">
-            {emptyMessage}
-          </CommandEmpty>
+          <CommandEmpty>{emptyMessage}</CommandEmpty>
         )}
-        {resultCount > 0 && (
-          <CommandGroup>
-            {visibleItems.map((item) => (
-              <CommandItem
-                key={item.id}
-                value={item.id}
-                keywords={[item.label, item.breadcrumb, ...(item.keywords ?? [])]}
-                disabled={item.isDisabled}
-                className="min-h-14"
-                onSelect={() => {
-                  if (item.children) {
-                    updateSearch("");
-                    setDrilldown((current) => [...current, item]);
-                    return;
-                  }
+        {resultCount > 0 &&
+          visibleGroups.map((group) => (
+            <CommandGroup key={group.heading ?? "commands"} heading={group.heading}>
+              {group.items.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={item.id}
+                  keywords={[item.label, item.breadcrumb, ...(item.keywords ?? [])]}
+                  disabled={item.isDisabled}
+                  onSelect={() => {
+                    if (item.children) {
+                      updateSearch("");
+                      setDrilldown((current) => [...current, item]);
+                      return;
+                    }
 
-                  setOpen(false);
-                  item.onSelect?.();
-                }}
-              >
-                <CommandResult item={item} />
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+                    setOpen(false);
+                    item.onSelect?.();
+                  }}
+                >
+                  <CommandResult item={item} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
         {isSearching && (
-          <div className="flex min-h-12 items-center justify-center gap-2 px-3 py-2 text-sm text-muted">
+          <div className="flex items-center justify-center gap-2 py-2.5 text-sm text-muted">
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             <span>{searchStatus.message ?? "Searching resources…"}</span>
           </div>
@@ -344,14 +338,14 @@ export const GlobalCommandMenu = ({
         {searchError && (
           <div
             role="alert"
-            className="flex min-h-12 items-center justify-center gap-2 px-3 py-2 text-sm text-danger"
+            className="flex items-center justify-center gap-2 py-2.5 text-sm text-danger"
           >
             <CircleAlertIcon aria-hidden="true" className="size-4" />
             <span>{searchError}</span>
           </div>
         )}
       </CommandList>
-      <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2 text-[11px] text-muted">
+      <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2 text-xs text-muted">
         {activeDrilldown && (
           <div className="flex items-center gap-1.5">
             <Kbd>
