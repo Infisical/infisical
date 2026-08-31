@@ -3,13 +3,11 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.Certificate, "extendedKeyUsages")) {
-    await knex(TableName.Certificate)
-      .whereRaw(`array_position("extendedKeyUsages", NULL::text) IS NOT NULL`)
-      .update({
-        extendedKeyUsages: knex.raw(`array_remove("extendedKeyUsages", NULL::text)`)
-      });
-  }
+  if (!(await knex.schema.hasColumn(TableName.Certificate, "extendedKeyUsages"))) return;
+
+  await knex.raw(
+    `UPDATE "${TableName.Certificate}" SET "extendedKeyUsages" = array_remove("extendedKeyUsages", NULL::text) WHERE array_position("extendedKeyUsages", NULL::text) IS NOT NULL`
+  );
 }
 
 export async function down(): Promise<void> {
