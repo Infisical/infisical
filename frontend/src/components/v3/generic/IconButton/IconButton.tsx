@@ -103,6 +103,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {children}
         {isPending && (
           <Loader
+            aria-hidden
             variant={variant === "default" ? "inverse" : "default"}
             size="xs"
             className={twMerge(
@@ -124,6 +125,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
+        aria-busy={isPending || undefined}
         disabled={isPending || disabled || isDisabled}
         {...props}
       >

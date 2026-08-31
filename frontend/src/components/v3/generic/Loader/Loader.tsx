@@ -40,14 +40,12 @@ function Loader({
       role="status"
       aria-label={label}
       data-slot="loader"
-      data-variant={variant}
-      data-size={size}
       className={cn(sizeStyles[size], className)}
       {...props}
     >
-      {/* Deliberately no hover play/stop: `v2/Lottie` wires those handlers because it
-          drives hover-to-play *icons*, where stopping on mouseout is the point. An
-          indeterminate loader must keep running while the wait lasts. */}
+      {/* No hover play/stop: an indeterminate loader must keep running for as long as
+          the wait lasts. Stopping on mouseout is hover-to-play *icon* behavior; on a
+          loader it parks the mark on a static frame that reads as a hung page. */}
       <DotLottieReact src={animationSources[variant]} loop autoplay className="h-full w-full" />
     </div>
   );

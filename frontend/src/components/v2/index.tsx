@@ -21,7 +21,6 @@ export * from "./GenericFieldLabel";
 export * from "./HoverCardv2";
 export * from "./IconButton";
 export * from "./Input";
-export * from "./Lottie";
 export * from "./Menu";
 export * from "./Modal";
 export * from "./NoticeBanner";

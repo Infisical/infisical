@@ -188,10 +188,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           })
         )}
         disabled={isDisabled}
+        aria-busy={isLoading || undefined}
         {...props}
       >
         {isLoading && (
           <Loader
+            aria-hidden
             variant={variant === "solid" && colorSchema === "primary" ? "inverse" : "brand"}
             size="sm"
             className="absolute rounded-xl opacity-80 shadow-xs"

@@ -240,6 +240,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx)                 | Transient post-action feedback. Replaces `alert()`.              |
 | [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx)                 | Zero-state placeholder — pair with Table, list, or empty filter. |
 | [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx)        | Shimmer placeholder while data is loading.                       |
+| [`Spinner`](frontend/src/components/v3/generic/Spinner/Spinner.tsx)           | Neutral circle for compact inline refreshes.                     |
 | [`Loader`](frontend/src/components/v3/generic/Loader/Loader.tsx)              | Branded loading animation — pending controls and page waits.     |
 | [`PageLoader`](frontend/src/components/v3/platform/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
 

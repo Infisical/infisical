@@ -103,7 +103,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) : (
       <>
         {_children}
-        {isPending && <Loader size="sm" className="absolute rounded-xl" />}
+        {isPending && <Loader aria-hidden size="sm" className="absolute rounded-xl" />}
       </>
     );
 
@@ -114,6 +114,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-variant={variant}
         data-size={size}
         type={type}
+        aria-busy={isPending || undefined}
         disabled={isDisabled || isPending}
         className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
         {...props}

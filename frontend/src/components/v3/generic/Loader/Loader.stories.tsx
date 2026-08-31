@@ -147,7 +147,7 @@ export const ExamplePendingButton: Story = {
     docs: {
       description: {
         story:
-          "`Button` composes `Loader` itself: set `isPending` and the label goes transparent while the `sm` mark draws over the control. Never render a `Loader` as a Button child by hand — `isPending` also disables the control, which is what stops the double submit."
+          "`Button` composes `Loader` itself: set `isPending` and the label goes transparent while the `sm` mark draws over the control. Prefer `isPending` over rendering a `Loader` as a Button child — it also disables the control, which is what stops the double submit. `LDAPModal`'s Test Connection button is the one legacy exception: it swaps its label for an inline mark instead of overlaying one."
       }
     }
   },
