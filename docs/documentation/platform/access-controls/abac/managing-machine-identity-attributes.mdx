@@ -122,8 +122,9 @@ Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
 
 **trimSuffix**
 
-Removes a suffix from a string. The suffix can be a whole word or a glob pattern. If the
-end of the string does not match the pattern, the string is returned unchanged.
+Removes a suffix from a string. The suffix can be a whole word or a glob pattern. When a
+glob pattern could match more than one suffix, the shortest match is removed. If the end of
+the string does not match the pattern, the string is returned unchanged.
 
 A glob pattern can contain at most five `*` or `?` wildcards. A pattern with more
 wildcards trims nothing.
@@ -140,6 +141,13 @@ Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the patter
 
 ```handlebars
 {{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}} -> myapp
+```
+
+Given `identity.auth.kubernetes.namespace` = `myapp-pr-1`, where `-*` matches both `-pr-1`
+and `-1`, the shorter suffix is removed:
+
+```handlebars
+{{trimSuffix identity.auth.kubernetes.namespace "-*"}} -> myapp-pr
 ```
 
 You can combine this with a secret path condition so both the base namespace and its pull request
