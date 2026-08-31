@@ -429,6 +429,22 @@ const OverviewPageContent = () => {
     });
   }, []);
 
+  const [expandedSecretRows, setExpandedSecretRows] = useState<Record<string, boolean>>({});
+  const [visibleSecretRows, setVisibleSecretRows] = useState<Record<string, boolean>>({});
+
+  const toggleSecretRowExpand = useCallback((key: string) => {
+    setExpandedSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const toggleSecretRowVisible = useCallback((key: string) => {
+    setVisibleSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const resetSecretRowStates = useCallback(() => {
+    setExpandedSecretRows({});
+    setVisibleSecretRows({});
+  }, []);
+
   useEffect(() => {
     const onRouteChangeStart = (event: {
       fromLocation: { pathname: string; search: unknown };
@@ -436,6 +452,7 @@ const OverviewPageContent = () => {
     }) => {
       if (hasOverviewScopeChanged(event.fromLocation, event.toLocation)) {
         resetSelectedEntries();
+        resetSecretRowStates();
       }
     };
 
@@ -3364,7 +3381,7 @@ const OverviewPageContent = () => {
                             secretImportNames.map(
                               ({ importEnvSlug, importEnvName, importPath }, index) => (
                                 <SecretImportTableRow
-                                  key={`overview-import-${importEnvSlug}-${importPath}-${index + 1}`}
+                                  key={`overview-import-${importEnvSlug}:${importPath}`}
                                   index={index}
                                   importEnvSlug={importEnvSlug}
                                   importEnvName={importEnvName}
@@ -3420,7 +3437,7 @@ const OverviewPageContent = () => {
                               />
                             )
                           )}
-                          {dynamicSecretNames.map((dynamicSecretName, index) => (
+                          {dynamicSecretNames.map((dynamicSecretName) => (
                             <DynamicSecretTableRow
                               dynamicSecretName={dynamicSecretName}
                               isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
@@ -3429,7 +3446,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               tableWidth={tableWidth}
                               secretPath={secretPath}
-                              key={`overview-${dynamicSecretName}-${index + 1}`}
+                              key={`overview-${dynamicSecretName}`}
                               onEdit={(dynamicSecret) =>
                                 handlePopUpOpen("editDynamicSecret", dynamicSecret)
                               }
@@ -3450,14 +3467,14 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
-                          {secretRotationNames.map((secretRotationName, index) => (
+                          {secretRotationNames.map((secretRotationName) => (
                             <SecretRotationTableRow
                               secretRotationName={secretRotationName}
                               isSecretRotationInEnv={isSecretRotationPresentInEnv}
                               environments={visibleEnvs}
                               getSecretRotationByName={getSecretRotationByName}
                               getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                              key={`overview-${secretRotationName}-${index + 1}`}
+                              key={`overview-${secretRotationName}`}
                               tableWidth={tableWidth}
                               isSelected={Boolean(
                                 selectedEntries.secretRotation[secretRotationName]
@@ -3496,14 +3513,14 @@ const OverviewPageContent = () => {
                               }}
                             />
                           ))}
-                          {honeyTokenNames.map((honeyTokenName, index) => (
+                          {honeyTokenNames.map((honeyTokenName) => (
                             <HoneyTokenTableRow
                               honeyTokenName={honeyTokenName}
                               isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                               environments={visibleEnvs}
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
-                              key={`overview-ht-${honeyTokenName}-${index + 1}`}
+                              key={`overview-ht-${honeyTokenName}`}
                               isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
                               onToggleHoneyTokenSelect={() =>
                                 toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
@@ -3520,9 +3537,9 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
-                          {proxiedServiceNames.map((proxiedServiceName, index) => (
+                          {proxiedServiceNames.map((proxiedServiceName) => (
                             <ProxiedServiceTableRow
-                              key={`overview-ps-${proxiedServiceName}-${index + 1}`}
+                              key={`overview-ps-${proxiedServiceName}`}
                               proxiedServiceName={proxiedServiceName}
                               environments={visibleEnvs}
                               isProxiedServiceInEnv={isProxiedServicePresentInEnv}
@@ -3536,7 +3553,7 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
-                          {mergedSecKeys.map((key, index) => (
+                          {mergedSecKeys.map((key) => (
                             <SecretTableRow
                               isSelected={
                                 !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
@@ -3545,13 +3562,17 @@ const OverviewPageContent = () => {
                                 if (!hasPendingBatchChanges)
                                   toggleSelectedEntry(EntryType.SECRET, key);
                               }}
+                              isExpanded={Boolean(expandedSecretRows[key])}
+                              onToggleExpand={toggleSecretRowExpand}
+                              isSecretVisible={Boolean(visibleSecretRows[key])}
+                              onToggleSecretVisible={toggleSecretRowVisible}
                               secretPath={secretPath}
                               getImportedSecretByKey={getImportedSecretByKey}
                               isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                               onSecretCreate={handleSecretCreate}
                               onSecretDelete={handleSecretDelete}
                               onSecretUpdate={handleSecretUpdate}
-                              key={`overview-${key}-${index + 1}`}
+                              key={`overview-${key}`}
                               environments={visibleEnvs}
                               secretKey={key}
                               getSecretByKey={getSecretByKeyWithPending}
