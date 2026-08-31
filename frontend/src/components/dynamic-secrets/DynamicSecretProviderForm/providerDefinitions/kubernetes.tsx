@@ -5,6 +5,9 @@ import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Field,
   FieldContent,
@@ -70,7 +73,12 @@ const authMethodField = [
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const clusterUrlField = [
-  { name: "inputs.url", type: "text", label: "Cluster URL" }
+  {
+    name: "inputs.url",
+    type: "text",
+    label: "Cluster URL",
+    placeholder: "https://kubernetes.example.com:6443"
+  }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const clusterTokenField = [
@@ -78,6 +86,7 @@ const clusterTokenField = [
     name: "inputs.clusterToken",
     type: "secret",
     label: "Cluster Token",
+    placeholder: "Enter service account token",
     autoComplete: "new-password"
   }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
@@ -101,6 +110,7 @@ const serviceAccountField = [
     name: "inputs.serviceAccountName",
     type: "text",
     label: "Service Account Name",
+    placeholder: "infisical-dynamic-secrets",
     autoComplete: "new-password",
     layout: "half"
   }
@@ -122,6 +132,7 @@ const namespaceField = (isStatic: boolean) =>
       name: "inputs.namespace",
       type: "text",
       label: isStatic ? "Namespace" : "Allowed Namespace(s)",
+      placeholder: isStatic ? "default" : "default,production",
       layout: "half"
     }
   ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
@@ -137,7 +148,13 @@ const roleFields = [
       { label: "Role", value: KubernetesRoleType.Role }
     ]
   },
-  { name: "inputs.role", type: "text", label: "Role", layout: "half" }
+  {
+    name: "inputs.role",
+    type: "text",
+    label: "Role",
+    placeholder: "view",
+    layout: "half"
+  }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
 const KubernetesVaultImport = ({ onImport }: { onImport: (role: VaultKubernetesRole) => void }) => {
@@ -156,16 +173,18 @@ const KubernetesVaultImport = ({ onImport }: { onImport: (role: VaultKubernetesR
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-md border border-info/20 bg-info/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-foreground">
-          <InfoIcon className="size-4 text-info" />
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertDescription>
           <span>Load values from HashiCorp Vault.</span>
-        </div>
-        <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
-          <img src="/images/integrations/Vault.png" alt="" className="size-4" />
-          Load from Vault
-        </Button>
-      </div>
+          <AlertAction>
+            <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
+              <img src="/images/integrations/Vault.png" alt="" className="size-4" />
+              Load from Vault
+            </Button>
+          </AlertAction>
+        </AlertDescription>
+      </Alert>
       <VaultKubernetesImportModal
         isOpen={isOpen}
         onOpenChange={setIsOpen}
