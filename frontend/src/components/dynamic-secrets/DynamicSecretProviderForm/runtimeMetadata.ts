@@ -1,8 +1,8 @@
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 export type TDynamicSecretProviderPresentation = {
-  brand: string;
-  image?: string;
+  providerFamily: string;
+  logoFileName?: string;
 };
 
 export type TDynamicSecretLeaseOutputField = {
@@ -31,7 +31,7 @@ export type TDynamicSecretLeaseCapabilities = {
 
 export type TDynamicSecretProviderRuntimeMetadata = {
   presentation: TDynamicSecretProviderPresentation;
-  lease: TDynamicSecretLeaseCapabilities;
+  leaseCapabilities: TDynamicSecretLeaseCapabilities;
 };
 
 const oneTimeFields = (
@@ -49,7 +49,9 @@ const credentials = oneTimeFields([
   { key: "DB_PASSWORD", label: "Password" }
 ]);
 
-const defaultLease = (output: TDynamicSecretLeaseOutput): TDynamicSecretLeaseCapabilities => ({
+const createDefaultLeaseCapabilities = (
+  output: TDynamicSecretLeaseOutput
+): TDynamicSecretLeaseCapabilities => ({
   provisioner: "default",
   output,
   supportsRenewal: true
@@ -57,16 +59,16 @@ const defaultLease = (output: TDynamicSecretLeaseOutput): TDynamicSecretLeaseCap
 
 const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
   [DynamicSecretProviders.SqlDatabase]: {
-    presentation: { brand: "SQL", image: "Postgres.png" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "SQL", logoFileName: "Postgres.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Cassandra]: {
-    presentation: { brand: "Cassandra", image: "Cassandra.png" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "Cassandra", logoFileName: "Cassandra.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Redis]: {
-    presentation: { brand: "Redis", image: "Redis.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "Redis", logoFileName: "Redis.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "DB_USERNAME", label: "Redis Username" },
         { key: "DB_PASSWORD", label: "Redis Password" }
@@ -74,8 +76,8 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.AwsElastiCache]: {
-    presentation: { brand: "AWS", image: "Amazon Web Services.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "AWS", logoFileName: "Amazon Web Services.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields(
         [
           { key: "DB_USERNAME", label: "Cluster Username" },
@@ -86,8 +88,8 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.AwsMemoryDb]: {
-    presentation: { brand: "AWS", image: "Amazon Web Services.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "AWS", logoFileName: "Amazon Web Services.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields(
         [
           { key: "DB_USERNAME", label: "Cluster Username" },
@@ -98,8 +100,8 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.AwsIam]: {
-    presentation: { brand: "AWS", image: "Amazon Web Services.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "AWS", logoFileName: "Amazon Web Services.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "USERNAME", label: "AWS IAM Username", isOptional: true },
         { key: "ACCESS_KEY", label: "AWS IAM Access Key" },
@@ -109,24 +111,24 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.MongoAtlas]: {
-    presentation: { brand: "MongoDB", image: "MongoDB.png" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "MongoDB", logoFileName: "MongoDB.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.MongoDB]: {
-    presentation: { brand: "MongoDB", image: "MongoDB.png" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "MongoDB", logoFileName: "MongoDB.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.ElasticSearch]: {
-    presentation: { brand: "Elastic", image: "Elastic.png" },
-    lease: defaultLease(credentials)
+    presentation: { providerFamily: "Elastic", logoFileName: "Elastic.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.RabbitMq]: {
-    presentation: { brand: "RabbitMQ" },
-    lease: defaultLease(credentials)
+    presentation: { providerFamily: "RabbitMQ" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.AzureEntraId]: {
-    presentation: { brand: "Azure", image: "Microsoft Azure.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "Azure", logoFileName: "Microsoft Azure.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "email", label: "Email" },
         { key: "password", label: "Password" }
@@ -134,12 +136,12 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.AzureSqlDatabase]: {
-    presentation: { brand: "Azure", image: "Microsoft Azure.png" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "Azure", logoFileName: "Microsoft Azure.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Ldap]: {
-    presentation: { brand: "LDAP", image: "LDAP.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "LDAP", logoFileName: "LDAP.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "USERNAME", label: "Username" },
         { key: "PASSWORD", label: "Password" },
@@ -148,36 +150,39 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.SapHana]: {
-    presentation: { brand: "SAP" },
-    lease: defaultLease(credentials)
+    presentation: { providerFamily: "SAP" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.SapAse]: {
-    presentation: { brand: "SAP" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "SAP" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Snowflake]: {
-    presentation: { brand: "Snowflake", image: "Snowflake.png" },
-    lease: defaultLease(credentials)
+    presentation: { providerFamily: "Snowflake", logoFileName: "Snowflake.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.Totp]: {
-    presentation: { brand: "TOTP" },
-    lease: { ...defaultLease({ type: "totp" }), autoGenerate: true }
+    presentation: { providerFamily: "TOTP" },
+    leaseCapabilities: {
+      ...createDefaultLeaseCapabilities({ type: "totp" }),
+      autoGenerate: true
+    }
   },
   [DynamicSecretProviders.Vertica]: {
-    presentation: { brand: "Vertica" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "Vertica" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Kubernetes]: {
-    presentation: { brand: "Kubernetes", image: "Kubernetes.png" },
-    lease: {
+    presentation: { providerFamily: "Kubernetes", logoFileName: "Kubernetes.png" },
+    leaseCapabilities: {
       provisioner: "kubernetes",
       output: oneTimeFields([{ key: "TOKEN", label: "Service Account JWT" }]),
       supportsRenewal: true
     }
   },
   [DynamicSecretProviders.GcpIam]: {
-    presentation: { brand: "Google Cloud", image: "Google Cloud Platform.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "Google Cloud", logoFileName: "Google Cloud Platform.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "SERVICE_ACCOUNT_EMAIL", label: "Service Account Email" },
         { key: "TOKEN", label: "Token" }
@@ -185,16 +190,16 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.Github]: {
-    presentation: { brand: "GitHub", image: "GitHub.png" },
-    lease: {
-      ...defaultLease(oneTimeFields([{ key: "TOKEN", label: "Token" }])),
+    presentation: { providerFamily: "GitHub", logoFileName: "GitHub.png" },
+    leaseCapabilities: {
+      ...createDefaultLeaseCapabilities(oneTimeFields([{ key: "TOKEN", label: "Token" }])),
       fixedTtl: "1h",
       supportsRenewal: false
     }
   },
   [DynamicSecretProviders.Couchbase]: {
-    presentation: { brand: "Couchbase" },
-    lease: defaultLease(
+    presentation: { providerFamily: "Couchbase" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "username", label: "Username" },
         { key: "password", label: "Password" }
@@ -202,24 +207,24 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.Milvus]: {
-    presentation: { brand: "Milvus" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "Milvus" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Clickhouse]: {
-    presentation: { brand: "ClickHouse" },
-    lease: defaultLease(databaseCredentials)
+    presentation: { providerFamily: "ClickHouse" },
+    leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Ssh]: {
-    presentation: { brand: "SSH", image: "SSH.png" },
-    lease: {
+    presentation: { providerFamily: "SSH", logoFileName: "SSH.png" },
+    leaseCapabilities: {
       provisioner: "ssh",
       output: { type: "ssh" },
       supportsRenewal: false
     }
   },
   [DynamicSecretProviders.IbmApiConnect]: {
-    presentation: { brand: "IBM", image: "IBM.png" },
-    lease: defaultLease(
+    presentation: { providerFamily: "IBM", logoFileName: "IBM.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "CLIENT_ID", label: "Client ID" },
         { key: "CLIENT_SECRET", label: "Client Secret" }
@@ -227,8 +232,8 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.Tailscale]: {
-    presentation: { brand: "Tailscale" },
-    lease: {
+    presentation: { providerFamily: "Tailscale" },
+    leaseCapabilities: {
       provisioner: "default",
       output: oneTimeFields([
         { key: "KEY_ID", label: "Key ID", isOptional: true },

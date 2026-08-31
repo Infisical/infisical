@@ -22,7 +22,8 @@ const ProviderCard = ({
   onSelect: () => void;
 }) => {
   const definition = dynamicSecretProviderRegistry.requireDefinition(provider);
-  const { brand, image } = dynamicSecretProviderRegistry.requirePresentation(provider);
+  const { providerFamily, logoFileName } =
+    dynamicSecretProviderRegistry.requirePresentation(provider);
 
   return (
     <button
@@ -32,17 +33,17 @@ const ProviderCard = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex size-9 items-center justify-center rounded-md bg-container">
-          {image ? (
+          {logoFileName ? (
             <img
-              src={`/images/integrations/${image}`}
-              alt={`${brand} logo`}
+              src={`/images/integrations/${logoFileName}`}
+              alt={`${providerFamily} logo`}
               className="size-6 object-contain"
             />
           ) : (
             <KeyRoundIcon className="size-5 text-muted" aria-hidden="true" />
           )}
         </div>
-        <span className="text-xs font-medium text-muted">{brand}</span>
+        <span className="text-xs font-medium text-muted">{providerFamily}</span>
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{definition.label}</p>
@@ -66,8 +67,8 @@ export const DynamicSecretProviderSelect = ({
 
     return dynamicSecretProviderRegistry.providers.filter((provider) => {
       const definition = dynamicSecretProviderRegistry.requireDefinition(provider);
-      const { brand } = dynamicSecretProviderRegistry.requirePresentation(provider);
-      return [definition.label, brand, provider].some((value) =>
+      const { providerFamily } = dynamicSecretProviderRegistry.requirePresentation(provider);
+      return [definition.label, providerFamily, provider].some((value) =>
         value.toLowerCase().includes(query)
       );
     });

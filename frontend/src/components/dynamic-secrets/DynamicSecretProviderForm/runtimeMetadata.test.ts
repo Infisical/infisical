@@ -10,15 +10,15 @@ describe("dynamic-secret provider runtime metadata", () => {
     Object.values(DynamicSecretProviders).forEach((provider) => {
       const metadata = getDynamicSecretProviderRuntimeMetadata(provider);
 
-      assert.ok(metadata.presentation.brand);
-      assert.ok(metadata.lease.provisioner);
-      assert.ok(metadata.lease.output.type);
+      assert.ok(metadata.presentation.providerFamily);
+      assert.ok(metadata.leaseCapabilities.provisioner);
+      assert.ok(metadata.leaseCapabilities.output.type);
 
-      if (metadata.lease.output.type === "fields") {
-        assert.ok(metadata.lease.output.fields.length > 0);
+      if (metadata.leaseCapabilities.output.type === "fields") {
+        assert.ok(metadata.leaseCapabilities.output.fields.length > 0);
         assert.equal(
-          new Set(metadata.lease.output.fields.map(({ key }) => key)).size,
-          metadata.lease.output.fields.length
+          new Set(metadata.leaseCapabilities.output.fields.map(({ key }) => key)).size,
+          metadata.leaseCapabilities.output.fields.length
         );
       }
     });
@@ -26,19 +26,23 @@ describe("dynamic-secret provider runtime metadata", () => {
 
   it("keeps special provisioning and renewal capabilities explicit", () => {
     assert.equal(
-      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Kubernetes).lease.provisioner,
+      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Kubernetes).leaseCapabilities
+        .provisioner,
       "kubernetes"
     );
     assert.equal(
-      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Ssh).lease.provisioner,
+      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Ssh).leaseCapabilities
+        .provisioner,
       "ssh"
     );
     assert.equal(
-      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Totp).lease.autoGenerate,
+      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Totp).leaseCapabilities
+        .autoGenerate,
       true
     );
     assert.equal(
-      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Github).lease.fixedTtl,
+      getDynamicSecretProviderRuntimeMetadata(DynamicSecretProviders.Github).leaseCapabilities
+        .fixedTtl,
       "1h"
     );
 
@@ -47,7 +51,10 @@ describe("dynamic-secret provider runtime metadata", () => {
       DynamicSecretProviders.Ssh,
       DynamicSecretProviders.Tailscale
     ].forEach((provider) => {
-      assert.equal(getDynamicSecretProviderRuntimeMetadata(provider).lease.supportsRenewal, false);
+      assert.equal(
+        getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities.supportsRenewal,
+        false
+      );
     });
   });
 });

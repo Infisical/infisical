@@ -119,13 +119,13 @@ export const createDynamicSecretProviderRegistry = (
     },
     getLeaseCapabilities: (provider: DynamicSecretProviders) =>
       definitions.has(provider)
-        ? getDynamicSecretProviderRuntimeMetadata(provider).lease
+        ? getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities
         : undefined,
     requireLeaseCapabilities: (provider: DynamicSecretProviders) => {
       if (!definitions.has(provider)) {
         throw new Error(`Dynamic-secret provider "${provider}" is not registered.`);
       }
-      return getDynamicSecretProviderRuntimeMetadata(provider).lease;
+      return getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities;
     },
     getDocsSlug: (provider: DynamicSecretProviders) =>
       DYNAMIC_SECRET_PROVIDER_DOCS_SLUG[provider] ?? provider
