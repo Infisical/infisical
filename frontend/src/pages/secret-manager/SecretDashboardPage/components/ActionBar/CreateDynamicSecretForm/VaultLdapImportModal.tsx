@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
 import {
   defaultVaultConnectionId,
@@ -15,6 +14,7 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
+import { Alert, AlertDescription } from "@app/components/v3";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultLdapRoles, useGetVaultMounts } from "@app/hooks/api/migration/queries";
 import { VaultLdapRole } from "@app/hooks/api/migration/types";
@@ -121,17 +121,13 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
-        <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
-          <div className="space-y-1.5 text-xs leading-relaxed">
-            <p>
-              Select an LDAP secrets engine role from Vault to pre-fill the form with its
-              configuration including connection details, LDIF statements, TTL settings, etc.
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert variant="info" className="mb-4">
+        <InfoIcon />
+        <AlertDescription>
+          Select an LDAP secrets engine role from Vault to pre-fill the form with its configuration
+          including connection details, LDIF statements, TTL settings, etc.
+        </AlertDescription>
+      </Alert>
 
       <VaultConnectionAndNamespaceFields
         appConnections={appConnections}

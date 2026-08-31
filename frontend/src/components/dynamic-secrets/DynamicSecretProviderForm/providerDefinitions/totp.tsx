@@ -103,6 +103,7 @@ const TotpFields = () => {
                   id="totp-secret"
                   type="password"
                   autoComplete="new-password"
+                  placeholder="Enter Base32 secret key"
                   isError={Boolean(error)}
                   aria-describedby={error ? "totp-secret-error" : undefined}
                 />
