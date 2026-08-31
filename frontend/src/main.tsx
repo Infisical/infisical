@@ -5,7 +5,7 @@ import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
-import { Lottie } from "./components/v2";
+import { Loader } from "./components/v3/generic/Loader";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -69,7 +69,7 @@ const router = createRouter({
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
     <div className="flex h-full w-full items-center justify-center bg-bunker-800 [#root>&]:h-screen">
-      <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
+      <Loader variant="brand" size="lg" className="h-32" />
     </div>
   ),
   defaultNotFoundComponent: NotFoundPage,
