@@ -271,15 +271,27 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "importVaultSecretsV3",
       body: z.object({
         projectId: z.string(),
-        environment: z.string(),
-        secretPath: z.string(),
-        vaultNamespace: z.string(),
-        vaultSecretPaths: z.array(z.string()).min(1),
-        connectionId: z.string().uuid()
+        environment: z.string().max(64),
+        secretPath: z.string().max(1024),
+        vaultNamespace: z.string().max(256),
+        vaultSecretPaths: z.array(z.string().max(1024)).min(1).max(500),
+        connectionId: z.string().uuid(),
+        keepVaultStructure: z
+          .boolean()
+          .default(false)
+          .describe("Recreate the Vault paths as Infisical folders instead of flattening them into one path.")
       }),
       response: {
         200: z.object({
-          status: z.nativeEnum(ExternalMigrationImportStatus)
+          status: z.nativeEnum(ExternalMigrationImportStatus),
+          importedPaths: z
+            .array(z.string())
+            .optional()
+            .describe("The Infisical folder paths the secrets were written to."),
+          approvalRequiredPaths: z
+            .array(z.string())
+            .optional()
+            .describe("The Infisical folder paths whose secrets are pending approval.")
         })
       }
     },
@@ -290,6 +302,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         auditLogInfo: req.auditLogInfo,
         ...req.body
       });
+
+      // TODO: add audit log
 
       return result;
     }

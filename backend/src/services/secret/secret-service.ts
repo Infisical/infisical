@@ -1,6 +1,7 @@
 /* eslint-disable no-unreachable-loop */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -2182,8 +2183,10 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     secretPath,
-    secrets: inputSecrets = []
-  }: TCreateManySecretRawDTO) => {
+    secrets: inputSecrets = [],
+    tx,
+    skipPostProcessing
+  }: TCreateManySecretRawDTO & { tx?: Knex; skipPostProcessing?: boolean }) => {
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({ message: "Must provide either project slug or projectId" });
 
@@ -2197,6 +2200,13 @@ export const secretServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
+
+    if (tx && !shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message:
+          "This operation requires an upgraded project. Upgrade the project from Project Settings before retrying."
+      });
+    }
 
     if (shouldUseSecretV2Bridge) {
       const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
@@ -2226,6 +2236,7 @@ export const secretServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
+          trx: tx,
           data: {
             [SecretOperations.Create]: inputSecrets.map((el) => ({
               tagIds: el.tagIds,
@@ -2248,7 +2259,9 @@ export const secretServiceFactory = ({
         actorOrgId,
         actor,
         actorId,
-        secrets: inputSecrets
+        secrets: inputSecrets,
+        tx,
+        skipPostProcessing
       });
       return { secrets, type: SecretProtectionType.Direct as const };
     }

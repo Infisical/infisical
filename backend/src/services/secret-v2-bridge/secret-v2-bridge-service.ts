@@ -99,6 +99,7 @@ import {
   TCreateSecretDTO,
   TDeleteManySecretDTO,
   TDeleteSecretDTO,
+  TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
   TGetAccessibleSecretsDTO,
   TGetASecretDTO,
@@ -2093,6 +2094,36 @@ export const secretV2BridgeServiceFactory = ({
     );
   };
 
+  const dispatchSecretCreateSideEffects = async ({
+    projectId,
+    orgId,
+    actor,
+    actorId,
+    environmentSlug,
+    environmentName,
+    secretPath,
+    secretKeys
+  }: TDispatchSecretCreateSideEffectsDTO) => {
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath,
+      projectId,
+      orgId,
+      environmentSlug,
+      environmentName,
+      events: [
+        {
+          type: ProjectEvents.SecretCreate,
+          secretKeys,
+          secretPath,
+          environment: environmentSlug,
+          projectId
+        }
+      ]
+    });
+  };
+
   const createManySecret = async ({
     secretPath,
     actor,
@@ -2135,7 +2166,9 @@ export const secretV2BridgeServiceFactory = ({
     }
     const deduplicatedSecrets = Array.from(seen.values());
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    // the lookup has to go through a caller-supplied transaction: the folder may have been created in it
+    // and not yet committed, and reading outside it would check out a second connection while it is open.
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
@@ -2270,7 +2303,7 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkInsert);
 
     if (!skipPostProcessing) {
-      await secretQueueService.syncSecrets({
+      await dispatchSecretCreateSideEffects({
         actor,
         actorId,
         secretPath,
@@ -2278,15 +2311,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
         environmentName: folder.environment.name,
-        events: [
-          {
-            type: ProjectEvents.SecretCreate,
-            secretKeys: newSecrets.map((el) => el.key),
-            secretPath,
-            environment: folder.environment.slug,
-            projectId
-          }
-        ]
+        secretKeys: newSecrets.map((el) => el.key)
       });
     }
 
@@ -3939,6 +3964,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
+    dispatchSecretCreateSideEffects,
     dispatchSecretMoveSideEffects,
     getSecretsCount,
     getSecretsCountMultiEnv,

@@ -1998,7 +1998,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx);
     if (!folder)
       throw new NotFoundError({
         message: `Folder not found for the environment slug '${environment}' & secret path '${secretPath}'`,

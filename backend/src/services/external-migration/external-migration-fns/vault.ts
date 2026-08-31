@@ -9,8 +9,9 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, isValidFolderName } from "@app/lib/validator";
 
+import { convertVaultValueToString, JsonValue } from "../../app-connection/hc-vault";
 import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
 type VaultData = {
@@ -601,4 +602,97 @@ export const importVaultDataFn = async (
   });
 
   return transformFn(vaultData, mappingType);
+};
+
+export type TVaultFolderImportUnit = {
+  folderPath: string;
+  vaultSecretPath: string;
+  secrets: { secretKey: string; secretValue: string }[];
+};
+
+type TVaultMappedPath = {
+  vaultSecretPath: string;
+  secrets: Record<string, JsonValue>;
+  relativeSegments: string[];
+};
+
+const validateVaultFolderImportPaths = (
+  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[]
+): TVaultMappedPath[] => {
+  // the secrets engine is the leading segment and is dropped from the folder tree, so paths from two of them
+  // would silently merge into one folder
+  const secretsEngines = new Set(
+    secretsPerPath.map(({ vaultSecretPath }) => vaultSecretPath.split("/").filter(Boolean)[0]).filter(Boolean)
+  );
+
+  if (secretsEngines.size > 1) {
+    throw new BadRequestError({
+      message: `Cannot import: preserving the Vault structure requires every selected path to come from a single vault secrets engine, but paths from ${
+        secretsEngines.size
+      } were selected (${[...secretsEngines]
+        .map((secretsEngine) => `'${secretsEngine}'`)
+        .join(", ")}). Import one secrets engine at a time.`
+    });
+  }
+
+  const mountOnlyPaths: string[] = [];
+  const pathsWithInvalidFolderNames: string[] = [];
+  const mappedPaths: TVaultMappedPath[] = [];
+
+  for (const { vaultSecretPath, secrets } of secretsPerPath) {
+    // vault paths arrive as "{mount}/{path}"; the mount is dropped so the folder tree mirrors the path only
+    const [, ...relativeSegments] = vaultSecretPath.split("/").filter(Boolean);
+
+    if (!relativeSegments.length) {
+      mountOnlyPaths.push(vaultSecretPath);
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    if (relativeSegments.some((segment) => !isValidFolderName(segment))) {
+      pathsWithInvalidFolderNames.push(vaultSecretPath);
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    mappedPaths.push({ vaultSecretPath, secrets, relativeSegments });
+  }
+
+  if (mountOnlyPaths.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths contain only a mount and no path to turn into a folder: ${mountOnlyPaths
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Select the secret paths inside the mount instead.`
+    });
+  }
+
+  if (pathsWithInvalidFolderNames.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths cannot be recreated as Infisical folders because they contain characters other than letters, numbers, dashes and underscores: ${pathsWithInvalidFolderNames
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Rename them in Vault, or import without preserving the Vault structure.`
+    });
+  }
+
+  return mappedPaths;
+};
+
+export const buildVaultFolderImportPlan = ({
+  secretPath,
+  secretsPerPath
+}: {
+  secretPath: string;
+  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[];
+}): TVaultFolderImportUnit[] => {
+  const infisicalBasePath = secretPath.split("/").filter(Boolean);
+  const mappedPaths = validateVaultFolderImportPaths(secretsPerPath);
+
+  return mappedPaths.map(({ vaultSecretPath, secrets, relativeSegments }) => ({
+    folderPath: `/${[...infisicalBasePath, ...relativeSegments].join("/")}`,
+    vaultSecretPath,
+    secrets: Object.entries(secrets).map(([secretKey, secretValue]) => ({
+      secretKey,
+      secretValue: convertVaultValueToString(secretValue)
+    }))
+  }));
 };

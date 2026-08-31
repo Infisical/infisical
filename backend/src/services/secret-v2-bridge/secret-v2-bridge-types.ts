@@ -333,6 +333,17 @@ export type TDispatchSecretMoveSideEffectsDTO = {
   actorId: string;
 } & TFnSecretMoveResult;
 
+export type TDispatchSecretCreateSideEffectsDTO = {
+  projectId: string;
+  orgId: string;
+  actor: ActorType;
+  actorId: string;
+  environmentSlug: string;
+  environmentName: string;
+  secretPath: string;
+  secretKeys: string[];
+};
+
 export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;
   oldSecret: TPartialSecret;
