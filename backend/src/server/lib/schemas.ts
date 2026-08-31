@@ -26,6 +26,29 @@ export const slugSchema = ({ min = 1, max = 64, field = "Slug" }: SlugSchemaInpu
     });
 };
 
+export const projectSlugSchema = ({ min = 1, max = 64, field = "Project slug" }: SlugSchemaInputs = {}) => {
+  return z
+    .string()
+    .trim()
+    .min(min, {
+      message: `${field} field must be at least ${min} lowercase character${min === 1 ? "" : "s"}`
+    })
+    .max(max, {
+      message: `${field} field must be at most ${max} lowercase character${max === 1 ? "" : "s"}`
+    })
+    .refine(
+      (value) => {
+        const normalized = value.replaceAll("_", "-");
+        return slugify(normalized, { lowercase: true }) === normalized;
+      },
+      {
+        message:
+          `${field} can only contain lowercase letters and numbers, with optional single hyphens (-) or ` +
+          "underscores (_) between words. It cannot start or end with a hyphen or underscore"
+      }
+    );
+};
+
 export const GenericResourceNameSchema = z
   .string()
   .trim()
