@@ -1,8 +1,9 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError } from "axios";
+import { HttpStatusCode, isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
+import { retryOnRateLimit } from "@app/lib/retry";
 import { getDaytonaAuthHeaders } from "@app/services/app-connection/daytona";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -16,27 +17,7 @@ const DAYTONA_SECRET_NAME_RULE =
   "Daytona secret names must start with a letter or underscore and contain only letters, digits, hyphens and underscores.";
 
 const DAYTONA_PAGE_SIZE = 100;
-const DAYTONA_MAX_PAGES = 100;
-
-const DAYTONA_MAX_RETRIES = 3;
-const DAYTONA_BASE_RETRY_DELAY_MS = 500;
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-const withDaytonaRetry = async <T>(fn: () => Promise<T>): Promise<T> => {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      return await fn();
-    } catch (error) {
-      const isRateLimited = error instanceof AxiosError && error.response?.status === 429;
-      if (!isRateLimited || attempt >= DAYTONA_MAX_RETRIES) throw error;
-      await sleep(DAYTONA_BASE_RETRY_DELAY_MS * 2 ** attempt);
-    }
-  }
-};
+const DAYTONA_MAX_PAGES = 10;
 
 const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => {
   const secrets: TDaytonaSecret[] = [];
@@ -45,7 +26,7 @@ const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => 
   for (let page = 0; page < DAYTONA_MAX_PAGES; page += 1) {
     const currentCursor = cursor;
 
-    const { data } = await withDaytonaRetry(() =>
+    const { data } = await retryOnRateLimit(() =>
       request.get<TDaytonaListSecretsResponse>(`${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`, {
         params: { limit: DAYTONA_PAGE_SIZE, ...(currentCursor ? { cursor: currentCursor } : {}) },
         headers: getDaytonaAuthHeaders(apiKey)
@@ -66,7 +47,7 @@ const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => 
 };
 
 const createDaytonaSecret = (apiKey: string, name: string, value: string) =>
-  withDaytonaRetry(() =>
+  retryOnRateLimit(() =>
     request.post(
       `${IntegrationUrls.DAYTONA_API_URL}/secret`,
       { name, value },
@@ -75,7 +56,7 @@ const createDaytonaSecret = (apiKey: string, name: string, value: string) =>
   );
 
 const updateDaytonaSecretValue = (apiKey: string, secretId: string, value: string) =>
-  withDaytonaRetry(() =>
+  retryOnRateLimit(() =>
     request.patch(
       `${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`,
       { value },
@@ -84,7 +65,7 @@ const updateDaytonaSecretValue = (apiKey: string, secretId: string, value: strin
   );
 
 const deleteDaytonaSecret = (apiKey: string, secretId: string) =>
-  withDaytonaRetry(() =>
+  retryOnRateLimit(() =>
     request.delete(`${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`, {
       headers: getDaytonaAuthHeaders(apiKey)
     })
@@ -127,7 +108,7 @@ export const DaytonaSyncFns = {
           await createDaytonaSecret(apiKey, key, value);
         }
       } catch (error) {
-        if (error instanceof AxiosError && error.response?.status === 409) {
+        if (isAxiosError(error) && error.response?.status === HttpStatusCode.Conflict) {
           throw new SecretSyncError({
             error,
             secretKey: key,

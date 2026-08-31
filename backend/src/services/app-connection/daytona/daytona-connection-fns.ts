@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { HttpStatusCode, isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -38,14 +38,14 @@ export const validateDaytonaConnectionCredentials = async (config: TDaytonaConne
   } catch (error: unknown) {
     logger.error({ error }, "Failed to validate Daytona connection");
 
-    if (error instanceof AxiosError) {
-      if (error.response?.status === 401) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === HttpStatusCode.Unauthorized) {
         throw new BadRequestError({
           message: "Unable to validate connection: the Daytona API key was rejected. Verify the key and try again."
         });
       }
 
-      if (error.response?.status === 403) {
+      if (error.response?.status === HttpStatusCode.Forbidden) {
         throw new BadRequestError({
           message: `Unable to validate connection: the Daytona API key is missing the '${DAYTONA_MANAGE_SECRETS_PERMISSION}' permission. Grant it to the key in Daytona under Settings > API Keys.`
         });
