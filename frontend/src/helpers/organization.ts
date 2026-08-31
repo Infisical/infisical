@@ -16,7 +16,7 @@ export const refreshOrgListsOnAccessRevoked = async (queryClient: QueryClient, e
   if (!isOrgAccessRevokedError(error)) return;
 
   await Promise.all([
-    // exact: the ["organization"] prefix also matches getOrgById, which is unrelated here
+    // the ["organization"] prefix also matches getOrgById
     queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations, exact: true }),
     queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizationsWithSubOrgs }),
     queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() })

@@ -263,10 +263,6 @@ export const SelectOrgPage = () => {
       }
       const message = error?.response?.data?.message || "Failed to select organization.";
       createNotification({ text: message, type: "error" });
-      // The route's beforeLoad owns the empty-list rule (redirect to /organizations/none), and the
-      // refresh above can leave the user with no organizations at all, so let it run again. Gated
-      // on the same condition as the refresh: beforeLoad re-runs its auto-select, which would
-      // repeat a merely transient failure against an unchanged list.
       if (isOrgAccessRevokedError(error)) {
         await router.invalidate();
       }
