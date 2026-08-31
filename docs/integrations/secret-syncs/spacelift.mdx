@@ -85,7 +85,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
       Spacelift offers only **Overwrite Spacelift**. Spacelift doesn't expose the values of secrets once they're written, so Infisical can't import the secrets that already exist in a context.
 
       <Note>
-        Because the first run overwrites the context, secrets that exist in Spacelift but not in Infisical are removed. Set a [key schema](/integrations/secret-syncs/overview#key-schemas) or leave **Disable secret deletion** enabled on the next step to protect them.
+        If **Disable secret deletion** is turned off, the first run removes secrets that exist in Spacelift but not in Infisical. Leave deletion protection enabled or set a [key schema](/integrations/secret-syncs/overview#key-schemas) to protect them.
       </Note>
     </Step>
     <Step title="Sync Options" titleSize="h3">
