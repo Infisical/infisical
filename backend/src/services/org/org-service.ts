@@ -227,7 +227,7 @@ export const orgServiceFactory = ({
    * Get all organization a user part of
    * */
   const findAllOrganizationOfUser = async (userId: string) => {
-    const orgs = await orgDAL.findAllOrgsByUserId(userId, { activeMembershipsOnly: true });
+    const orgs = await orgDAL.findAllOrgsByUserId(userId);
 
     // Filter out orgs where the membership object is an invitation
     return orgs.filter((org) => org.userStatus !== "invited");

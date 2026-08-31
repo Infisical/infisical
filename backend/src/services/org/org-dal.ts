@@ -202,7 +202,6 @@ export const orgDALFactory = (db: TDbClient) => {
 
           const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
             .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .where(`${TableName.Membership}.isActive`, true)
             .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
             .andWhere((qb) => {
               if (dto.actorType === ActorType.USER) {
@@ -259,7 +258,6 @@ export const orgDALFactory = (db: TDbClient) => {
           void qb
             .on(`${TableName.Membership}.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
             .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]))
-            .andOn(`${TableName.Membership}.isActive`, db.raw("true"))
             .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
         })
         .whereNull(`${TableName.Organization}.rootOrgId`)
@@ -303,8 +301,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Membership, (qb) => {
           void qb
             .on(`${TableName.Membership}.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
-            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]))
-            .andOn(`${TableName.Membership}.isActive`, db.raw("true"));
+            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]));
         })
         .whereIn(`${TableName.Organization}.rootOrgId`, rootOrgIds)
         .andWhere((qb) => {
@@ -416,10 +413,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   // special query
   const findAllOrgsByUserId = async (
-    userId: string,
-    // The login-method lockout bypasses read this list to find any org the user administers, and must
-    // keep seeing deactivated memberships or a deactivated admin loses login to their other orgs
-    { activeMembershipsOnly }: { activeMembershipsOnly?: boolean } = {}
+    userId: string
   ): Promise<
     (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
   > => {
@@ -429,9 +423,6 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.actorUserId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
-        .modify((qb) => {
-          if (activeMembershipsOnly) void qb.where(`${TableName.Membership}.isActive`, true);
-        })
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .whereNull(`${TableName.Organization}.rootOrgId`)
