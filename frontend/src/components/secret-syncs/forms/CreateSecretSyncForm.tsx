@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -36,6 +37,7 @@ import {
   useDuplicateDestinationCheck,
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
@@ -52,6 +54,7 @@ type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   destination: SecretSync;
   onCancel: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initialFormData?: Partial<TSecretSyncForm>;
 };
 
@@ -145,6 +148,7 @@ export const CreateSecretSyncForm = ({
   destination,
   onComplete,
   onCancel,
+  onDirtyChange,
   initialFormData
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
@@ -154,7 +158,6 @@ export const CreateSecretSyncForm = ({
   const formTabs = getFormTabs(destination, destinationName);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmBackToProvidersOpen, setConfirmBackToProvidersOpen] = useState(false);
 
   // scoot: right now we only do this when creating a connection so we know index 1
   const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
@@ -178,6 +181,18 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
+  const hasUnsavedChanges = formState.isDirty || Boolean(initialFormData);
+  const {
+    confirmDiscard,
+    isDiscardDialogOpen,
+    requestDiscard: requestCancel,
+    setIsDiscardDialogOpen
+  } = useDiscardChangesGuard({ isDirty: hasUnsavedChanges, onDiscard: onCancel });
+
+  useEffect(() => {
+    onDirtyChange(hasUnsavedChanges);
+    return () => onDirtyChange(false);
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
     try {
@@ -200,11 +215,7 @@ export const CreateSecretSyncForm = ({
 
   const handlePrev = () => {
     if (selectedTabIndex === 0) {
-      if (formState.isDirty) {
-        setConfirmBackToProvidersOpen(true);
-        return;
-      }
-      onCancel();
+      requestCancel();
       return;
     }
 
@@ -250,11 +261,7 @@ export const CreateSecretSyncForm = ({
     // Provider step (index 0) jumps directly back to the provider selection screen,
     // regardless of which form tab the user is currently on.
     if (stepperIndex === 0) {
-      if (formState.isDirty) {
-        setConfirmBackToProvidersOpen(true);
-        return;
-      }
-      onCancel();
+      requestCancel();
       return;
     }
 
@@ -382,7 +389,7 @@ export const CreateSecretSyncForm = ({
         </div>
 
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-          <span className="text-xs text-muted">{formState.isDirty ? "Unsaved changes" : ""}</span>
+          <span className="text-xs text-muted">{hasUnsavedChanges ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted">
               Step {displayedStepNumber} of {totalSteps}
@@ -435,25 +442,13 @@ export const CreateSecretSyncForm = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={confirmBackToProvidersOpen} onOpenChange={setConfirmBackToProvidersOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard Sync Setup?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your progress configuring this sync will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onCancel}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Sync Setup?"
+        description="Your progress configuring this sync will be lost."
+      />
     </FormProvider>
   );
 };
