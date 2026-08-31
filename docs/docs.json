@@ -112,7 +112,8 @@
                     "pages": [
                       "documentation/platform/secret-validation-rules",
                       "documentation/platform/pr-workflows",
-                      "documentation/platform/access-controls/access-requests"
+                      "documentation/platform/access-controls/access-requests",
+                      "documentation/platform/access-controls/folder-rbac"
                     ]
                   },
                   {
@@ -4507,7 +4508,7 @@
           },
           {
             "label": "Forum",
-            "href": "https://questions.infisical.com/"
+            "href": "https://infisical.com/slack"
           }
         ]
       },

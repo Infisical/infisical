@@ -19,6 +19,7 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -643,15 +644,7 @@ export const certificateApprovalServiceFactory = (
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    if (
-      caType !== CaType.ACME &&
-      caType !== CaType.AZURE_AD_CS &&
-      caType !== CaType.ADCS &&
-      caType !== CaType.AWS_PCA &&
-      caType !== CaType.AWS_ACM_PUBLIC_CA &&
-      caType !== CaType.VENAFI_TPP &&
-      caType !== CaType.GODADDY
-    ) {
+    if (!caUsesExternalIssuanceQueue(caType)) {
       return null;
     }
 

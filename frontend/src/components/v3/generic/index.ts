@@ -19,6 +19,7 @@ export * from "./DataGrid";
 export * from "./Detail";
 export * from "./Dialog";
 export * from "./Dropdown";
+export * from "./DurationInput";
 export * from "./Empty";
 export * from "./Field";
 export * from "./FileDropzone";

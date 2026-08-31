@@ -60,32 +60,61 @@ const AwsIamFields = () => {
     },
     ...(method === DynamicSecretAwsIamAuth.AccessKey
       ? [
-          { name: "inputs.accessKey", type: "text", label: "Access Key", layout: "half" } as const,
+          {
+            name: "inputs.accessKey",
+            type: "text",
+            label: "Access Key",
+            placeholder: "AKIA...",
+            layout: "half"
+          } as const,
           {
             name: "inputs.secretAccessKey",
             type: "secret",
             label: "Secret Access Key",
+            placeholder: "Enter secret access key",
             layout: "half",
             autoComplete: "new-password"
           } as const
         ]
       : []),
     ...(method === DynamicSecretAwsIamAuth.AssumeRole
-      ? [{ name: "inputs.roleArn", type: "text", label: "Role ARN" } as const]
+      ? [
+          {
+            name: "inputs.roleArn",
+            type: "text",
+            label: "Role ARN",
+            placeholder: "arn:aws:iam::123456789012:role/example-role"
+          } as const
+        ]
       : []),
     ...(!isIamUser
       ? []
-      : [{ name: "inputs.awsPath", type: "text", label: "AWS Path", isOptional: true } as const]),
-    { name: "inputs.region", type: "text", label: "Region" },
+      : [
+          {
+            name: "inputs.awsPath",
+            type: "text",
+            label: "AWS Path",
+            placeholder: "/service-accounts/",
+            isOptional: true
+          } as const
+        ]),
+    { name: "inputs.region", type: "text", label: "Region", placeholder: "us-east-1" },
     {
       name: "inputs.permissionBoundaryPolicyArn",
       type: "text",
       label: "Permission Boundary Policy ARN",
+      placeholder: "arn:aws:iam::123456789012:policy/example-policy",
       isOptional: true
     },
     ...(isIamUser
       ? ([
-          { name: "inputs.userGroups", type: "text", label: "AWS IAM Groups", isOptional: true },
+          {
+            name: "inputs.userGroups",
+            type: "text",
+            label: "AWS IAM Groups",
+            placeholder: "developers,operators",
+            isOptional: true
+          },
           {
             name: "inputs.policyArns",
             type: "textarea",

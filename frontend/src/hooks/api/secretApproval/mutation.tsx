@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
+import { ApiErrorTypes } from "../types";
 import { secretApprovalKeys } from "./queries";
 import { TCreateSecretPolicyDTO, TDeleteSecretPolicyDTO, TUpdateSecretPolicyDTO } from "./types";
 
@@ -10,6 +11,7 @@ export const useCreateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateSecretPolicyDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       environments,
       projectId,
@@ -57,6 +59,7 @@ export const useUpdateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateSecretPolicyDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       id,
       approvers,

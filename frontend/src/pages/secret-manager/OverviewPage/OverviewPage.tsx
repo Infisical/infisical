@@ -49,12 +49,13 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
-import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -69,6 +70,7 @@ import {
   CardHeader,
   Checkbox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -1647,25 +1649,18 @@ const OverviewPageContent = () => {
       environment: string;
       isForced?: boolean;
     };
-    try {
-      await deleteDynamicSecret.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        name,
-        isForced
-      });
-      handlePopUpClose("deleteDynamicSecret");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to delete dynamic secret"
-      });
-    }
+    await deleteDynamicSecret.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      name,
+      isForced
+    });
+    handlePopUpClose("deleteDynamicSecret");
+    createNotification({
+      type: "success",
+      text: "Dynamic secret deleted"
+    });
   };
 
   const handleSecretImportDelete = async () => {
@@ -2674,6 +2669,12 @@ const OverviewPageContent = () => {
 
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
     | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretLeaseCreateData = popUp.createDynamicSecretLease?.data as
+    | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretDeleteData = popUp.deleteDynamicSecret?.data as
+    | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
 
   return (
@@ -3689,20 +3690,22 @@ const OverviewPageContent = () => {
         environments={visibleDynamicSecretEnvs}
         secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp.dynamicSecretLeases.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+      <Dialog
+        open={popUp.dynamicSecretLeases.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("dynamicSecretLeases", isOpen)}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center space-x-2">
-              <p>Dynamic secret leases</p>
-              <Badge variant="neutral">{dynamicSecretLeaseData?.name}</Badge>
-            </div>
-          }
-          subTitle="Revoke or renew your secret leases"
-          className="max-w-3xl"
-        >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex min-w-0 items-center gap-2 pr-6">
+              <span>Dynamic Secret Leases</span>
+              {dynamicSecretLeaseData?.name && (
+                <Badge variant="neutral" isTruncatable>
+                  {dynamicSecretLeaseData.name}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Revoke or renew active leases.</DialogDescription>
+          </DialogHeader>
           {dynamicSecretLeaseData && (
             <DynamicSecretLease
               dynamicSecret={dynamicSecretLeaseData}
@@ -3717,64 +3720,94 @@ const OverviewPageContent = () => {
               environment={dynamicSecretLeaseData.environment}
             />
           )}
-        </ModalContent>
-      </Modal>
-      <Modal
+        </DialogContent>
+      </Dialog>
+      <EditDynamicSecretForm
         isOpen={popUp.editDynamicSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}
-      >
-        <ModalContent title="Edit dynamic secret" className="max-w-3xl">
-          <EditDynamicSecretForm
-            onClose={() => handlePopUpClose("editDynamicSecret")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={popUp.createDynamicSecretLease.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}
-      >
-        <ModalContent title="Provision lease">
-          <CreateDynamicSecretLease
-            provider={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.type
-            }
-            onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
-        isOpen={popUp.deleteDynamicSecret.isOpen}
-        deleteKey={
-          (popUp.deleteDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        onToggle={(state) => handlePopUpToggle("editDynamicSecret", state)}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
         }
-        title={
-          (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
-            ? "Do you want to force delete this dynamic secret?"
-            : "Do you want to delete this dynamic secret?"
+        secretPath={secretPath}
+        environment={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.environment
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
-        onDeleteApproved={handleDynamicSecretDelete}
       />
+      <Dialog
+        open={popUp.createDynamicSecretLease.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createDynamicSecretLease", isOpen)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Provision Lease</DialogTitle>
+            <DialogDescription>
+              Generate temporary credentials from this dynamic secret.
+            </DialogDescription>
+          </DialogHeader>
+          {dynamicSecretLeaseCreateData && (
+            <DialogBody className="flex flex-col overflow-visible">
+              <CreateDynamicSecretLease
+                provider={dynamicSecretLeaseCreateData.type}
+                onClose={() => handlePopUpClose("createDynamicSecretLease")}
+                projectSlug={projectSlug}
+                dynamicSecretName={dynamicSecretLeaseCreateData.name}
+                secretPath={secretPath}
+                environment={dynamicSecretLeaseCreateData.environment}
+              />
+            </DialogBody>
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={popUp.deleteDynamicSecret.isOpen}
+        confirmationValue={dynamicSecretDeleteData?.name}
+        onOpenChange={(isOpen) => {
+          if (!deleteDynamicSecret.isPending) handlePopUpToggle("deleteDynamicSecret", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {dynamicSecretDeleteData?.isForced
+                ? `Force Delete ${dynamicSecretDeleteData.name}?`
+                : `Delete ${dynamicSecretDeleteData?.name ?? "Dynamic Secret"}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dynamicSecretDeleteData?.isForced
+                ? "This removes the dynamic secret and its leases from Infisical without revoking them in the external provider. This cannot be undone."
+                : "This deletes the dynamic secret configuration and revokes its active leases. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{
+              disabled: deleteDynamicSecret.isPending,
+              placeholder: `Type ${dynamicSecretDeleteData?.name ?? "the dynamic secret name"} here`
+            }}
+            onConfirm={() => {
+              if (!deleteDynamicSecret.isPending) {
+                handleDynamicSecretDelete().catch(() => undefined);
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deleteDynamicSecret.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deleteDynamicSecret.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDynamicSecretDelete().catch(() => undefined);
+              }}
+            >
+              {dynamicSecretDeleteData?.isForced ? "Force Delete" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={popUp.deleteSecretImport.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
@@ -4028,8 +4061,6 @@ const OverviewPageContent = () => {
       <VaultSecretImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
-        environment={singleEnvSlug}
-        secretPath={secretPath}
         appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
