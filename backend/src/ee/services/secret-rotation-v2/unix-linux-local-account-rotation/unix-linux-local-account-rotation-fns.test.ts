@@ -7,9 +7,11 @@ import {
   TInteractiveShellStream
 } from "./unix-linux-local-account-rotation-fns";
 
-const OLD_PASSWORD = "0ld-P@ssw0rd";
-const NEW_PASSWORD = "n3w-P@ssw0rd";
-const APP_CONNECTION_PASSWORD = "svc-P@ssw0rd";
+// Deliberately not credential-shaped: the handlers only ever echo these back, and the tests need
+// three strings they can tell apart in the write log and look for in an error message.
+const CURRENT_SENTINEL = "unit-test-sentinel-current";
+const ROTATED_SENTINEL = "unit-test-sentinel-rotated";
+const SUDO_SENTINEL = "unit-test-sentinel-sudo";
 
 type TFakeStream = {
   stream: TInteractiveShellStream;
@@ -60,7 +62,7 @@ const LINUX_SELF_TRANSCRIPT =
 
 const driveManagedChange = (chunks: string[]) => {
   const fake = createFakeStream();
-  const result = runManagedPasswordChange(fake.stream, NEW_PASSWORD, APP_CONNECTION_PASSWORD);
+  const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL, SUDO_SENTINEL);
   chunks.forEach((chunk) => fake.feed(chunk));
   fake.close();
   return { writes: fake.writes, result };
@@ -68,7 +70,7 @@ const driveManagedChange = (chunks: string[]) => {
 
 const driveSelfChange = (chunks: string[]) => {
   const fake = createFakeStream();
-  const result = runSelfPasswordChange(fake.stream, OLD_PASSWORD, NEW_PASSWORD);
+  const result = runSelfPasswordChange(fake.stream, CURRENT_SENTINEL, ROTATED_SENTINEL);
   chunks.forEach((chunk) => fake.feed(chunk));
   fake.close();
   return { writes: fake.writes, result };
@@ -83,9 +85,9 @@ const everySplitOf = (transcript: string) => {
 };
 
 const MANAGED_TRANSCRIPTS: [string, string, string[]][] = [
-  ["Linux passwd", LINUX_MANAGED_TRANSCRIPT, [`${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`]],
-  ["AIX 7.2 passwd", AIX_MANAGED_TRANSCRIPT, [`${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`]],
-  ["sudo passwd", SUDO_MANAGED_TRANSCRIPT, [`${APP_CONNECTION_PASSWORD}\n`, `${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`]]
+  ["Linux passwd", LINUX_MANAGED_TRANSCRIPT, [`${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]],
+  ["AIX 7.2 passwd", AIX_MANAGED_TRANSCRIPT, [`${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]],
+  ["sudo passwd", SUDO_MANAGED_TRANSCRIPT, [`${SUDO_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]]
 ];
 
 describe("runManagedPasswordChange", () => {
@@ -126,13 +128,13 @@ describe("runManagedPasswordChange", () => {
     await Promise.all(runs.map(({ result }) => expect(result).resolves.toBeUndefined()));
 
     runs.forEach(({ writes }) => {
-      expect(writes.filter((write) => write === `${NEW_PASSWORD}\n`)).toHaveLength(2);
+      expect(writes.filter((write) => write === `${ROTATED_SENTINEL}\n`)).toHaveLength(2);
     });
   });
 
   test("rejects when the host floods the channel without a recognized prompt", async () => {
     const fake = createFakeStream();
-    const result = runManagedPasswordChange(fake.stream, NEW_PASSWORD);
+    const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL);
 
     fake.feed("motd line\r\n".repeat(7_000));
 
@@ -147,27 +149,28 @@ describe("runManagedPasswordChange", () => {
     ]);
 
     await expect(result).rejects.toThrow(/passwd: password unchanged/);
-    expect(writes).toEqual([`${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`]);
+    expect(writes).toEqual([`${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]);
   });
 
   test("reassembles a multi-byte character split across two data events", async () => {
     const fake = createFakeStream();
-    const result = runManagedPasswordChange(fake.stream, NEW_PASSWORD);
+    const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL);
     const banner = Buffer.from("motd: caf\u00e9\r\n", "utf8");
 
     fake.feedBytes(banner.subarray(0, 10));
     fake.feedBytes(banner.subarray(10));
     fake.close();
 
-    const error = await result.catch((err: unknown) => err as Error);
+    const error = await result.catch((err: unknown) => err);
 
-    expect(error.message).toContain("motd: caf\u00e9");
-    expect(error.message).not.toContain("\ufffd");
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("motd: caf\u00e9");
+    expect((error as Error).message).not.toContain("\ufffd");
   });
 
   test("rejects with sudoers guidance when sudo asks for a password we do not have", async () => {
     const fake = createFakeStream();
-    const result = runManagedPasswordChange(fake.stream, NEW_PASSWORD);
+    const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL);
 
     fake.feed(SUDO_MANAGED_TRANSCRIPT);
 
@@ -178,7 +181,7 @@ describe("runManagedPasswordChange", () => {
 
 describe("runSelfPasswordChange", () => {
   test("answers every prompt identically however the transcript is split", async () => {
-    const expectedWrites = [`${OLD_PASSWORD}\n`, `${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`];
+    const expectedWrites = [`${CURRENT_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`];
     const runs = everySplitOf(LINUX_SELF_TRANSCRIPT).map(({ offset, chunks }) => ({
       offset,
       ...driveSelfChange(chunks)
@@ -198,33 +201,33 @@ describe("runSelfPasswordChange", () => {
     ]);
 
     await expect(result).rejects.toThrow(/passwd: password unchanged/);
-    expect(writes).toEqual([`${OLD_PASSWORD}\n`, `${NEW_PASSWORD}\n`, `${NEW_PASSWORD}\n`]);
+    expect(writes).toEqual([`${CURRENT_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]);
   });
 
   test("keeps passwords out of the rejection message when the tty echoes them", async () => {
     const fake = createFakeStream();
-    const result = runSelfPasswordChange(fake.stream, OLD_PASSWORD, NEW_PASSWORD);
+    const result = runSelfPasswordChange(fake.stream, CURRENT_SENTINEL, ROTATED_SENTINEL);
 
     // Echo is still on until passwd disables it, so a password written at the wrong moment comes
     // straight back and would otherwise be persisted as the rotation's last error.
     fake.feed("Current password: ");
-    fake.feed(`${OLD_PASSWORD}\r\nNew password: `);
-    fake.feed(`${NEW_PASSWORD}\r\n`);
+    fake.feed(`${CURRENT_SENTINEL}\r\nNew password: `);
+    fake.feed(`${ROTATED_SENTINEL}\r\n`);
     fake.close();
 
-    const error = await result.catch((err: unknown) => err as Error);
+    const error = await result.catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).not.toContain(OLD_PASSWORD);
-    expect(error.message).not.toContain(NEW_PASSWORD);
-    expect(error.message).toContain("***");
+    expect((error as Error).message).not.toContain(CURRENT_SENTINEL);
+    expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
+    expect((error as Error).message).toContain("***");
   });
 });
 
 describe("runSuLoginVerification", () => {
   test("answers a password prompt split across data events", async () => {
     const fake = createFakeStream();
-    const result = runSuLoginVerification(fake.stream, "root", NEW_PASSWORD);
+    const result = runSuLoginVerification(fake.stream, "root", ROTATED_SENTINEL);
 
     fake.feed("Pass");
     fake.feed("word: ");
@@ -233,19 +236,20 @@ describe("runSuLoginVerification", () => {
     fake.close();
 
     await expect(result).resolves.toBeUndefined();
-    expect(fake.writes).toEqual([`${NEW_PASSWORD}\n`, "whoami\n", "exit\n"]);
+    expect(fake.writes).toEqual([`${ROTATED_SENTINEL}\n`, "whoami\n", "exit\n"]);
   });
 
   test("rejects on an authentication failure without leaking the password", async () => {
     const fake = createFakeStream();
-    const result = runSuLoginVerification(fake.stream, "root", NEW_PASSWORD);
+    const result = runSuLoginVerification(fake.stream, "root", ROTATED_SENTINEL);
 
     fake.feed("Password: ");
-    fake.feed(`${NEW_PASSWORD}\r\nsu: Authentication failure\r\n`);
+    fake.feed(`${ROTATED_SENTINEL}\r\nsu: Authentication failure\r\n`);
 
-    const error = await result.catch((err: unknown) => err as Error);
+    const error = await result.catch((err: unknown) => err);
 
-    expect(error.message).toMatch(/su authentication failed for user root/);
-    expect(error.message).not.toContain(NEW_PASSWORD);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/su authentication failed for user root/);
+    expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
   });
 });
