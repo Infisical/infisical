@@ -8,6 +8,9 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { BadRequestError } from "@app/lib/errors";
+
+// eslint-disable-next-line import/first
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 
 describe("verifyRequestedPermissions", () => {
@@ -269,6 +272,18 @@ describe("verifyRequestedPermissions input hardening", () => {
   test("rejects an over-long secretPath", () => {
     const permissions = packRules([makeRule("dev", `/${"a".repeat(600)}`)]);
     expect(() => verifyRequestedPermissions({ permissions })).toThrow();
+  });
+
+  test("rejects an unterminated expression as a bad request, not a parse crash", () => {
+    // handlebars.parse throws a plain Error here, which would surface as a 500 unless translated.
+    const permissions = packRules([makeRule("dev", "/apps/{{")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(BadRequestError);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(/malformed template expression/);
+  });
+
+  test("rejects a block expression as a bad request, not a parse crash", () => {
+    const permissions = packRules([makeRule("dev", "/apps/{{#each x}}")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(BadRequestError);
   });
 
   test("still accepts an ordinary glob path", () => {

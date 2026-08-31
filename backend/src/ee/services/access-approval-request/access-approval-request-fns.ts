@@ -148,11 +148,16 @@ const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessAppro
   });
 
 export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) => {
-  validateHandlebarTemplate("Access Request Permissions", JSON.stringify(permissions ?? []), {
-    allowedExpressions: () => false,
-    allowedHelpers: [],
-    rejectUnescaped: true
-  });
+  try {
+    validateHandlebarTemplate("Access Request Permissions", JSON.stringify(permissions ?? []), {
+      allowedExpressions: () => false,
+      allowedHelpers: [],
+      rejectUnescaped: true
+    });
+  } catch (error) {
+    if (error instanceof BadRequestError) throw error;
+    throw new BadRequestError({ message: "Requested permissions contain a malformed template expression" });
+  }
 
   const permission = unpackRules(permissions as PackRule<TUnpackedAccessApprovalRequestRule>[]);
 

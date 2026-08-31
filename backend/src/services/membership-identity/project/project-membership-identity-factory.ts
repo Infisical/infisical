@@ -181,6 +181,25 @@ export const newProjectMembershipIdentityFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: dto.scopeData,
+      identityId: dto.selector.identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        opSubject: ProjectPermissionSub.Identity,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged identity",
+        subjectFields: { identityId: dto.selector.identityId }
+      });
+    }
+
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value

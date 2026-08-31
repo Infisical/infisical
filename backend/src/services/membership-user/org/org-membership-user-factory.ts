@@ -350,8 +350,6 @@ export const newOrgMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    if (!("selector" in dto)) return;
-
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
       userId: dto.selector.userId

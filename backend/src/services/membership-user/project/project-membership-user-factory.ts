@@ -234,6 +234,24 @@ export const newProjectMembershipUserFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipUserDAL.getUserById({
+      scopeData: dto.scopeData,
+      userId: dto.selector.userId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged member"
+      });
+    }
+
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value
@@ -276,8 +294,6 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
-
-    if (!("selector" in dto)) return;
 
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
