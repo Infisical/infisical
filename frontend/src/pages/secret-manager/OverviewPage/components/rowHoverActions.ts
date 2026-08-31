@@ -17,10 +17,15 @@ type TRowHoverActions = {
    * bar mounts: a freshly inserted element that already matches `group-hover:*` has no previous
    * computed style to interpolate from, so the reveal would pop instead of fade. Applying `group`
    * a frame later gives the browser the hidden state first and the transition runs as before.
+   *
+   * Action bars key their reveal off `group-focus-within:*` as well as `group-hover:*`, so a bar
+   * mounted by keyboard focus fades in the same way one mounted by the pointer does, and a bar
+   * holding focus stays visible when the pointer wanders off the row.
    */
   groupClassName: string;
   /** Spread onto the row element that carries `groupClassName`. */
   rowHoverProps: {
+    tabIndex?: number;
     onMouseEnter: () => void;
     onMouseLeave: () => void;
     onFocus: () => void;
@@ -28,7 +33,25 @@ type TRowHoverActions = {
   };
 };
 
-export const useRowHoverActions = (): TRowHoverActions => {
+type TRowHoverActionsOptions = {
+  /**
+   * Whether the row element should be a tab stop of its own.
+   *
+   * `onFocus` can only mount the action bar for a row that is able to receive focus. A row whose
+   * cells hold nothing focusable, such as a folder row or a single-environment resource row that
+   * is just a name and a few badges, never fires it, which would leave its actions reachable by
+   * pointer and by nothing else. Rows that already contain a focusable control bootstrap the bar
+   * through that control, so they pass `false` rather than gain a second tab stop in front of it.
+   *
+   * `tabIndex` does not change the implicit `row` role of a `<tr>`, so a focusable row is still
+   * announced as a row.
+   */
+  needsRowTabStop?: boolean;
+};
+
+export const useRowHoverActions = ({
+  needsRowTabStop = true
+}: TRowHoverActionsOptions = {}): TRowHoverActions => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFocusWithin, setIsFocusWithin] = useState(false);
   const [shouldRenderActions, setShouldRenderActions] = useState(false);
@@ -66,6 +89,7 @@ export const useRowHoverActions = (): TRowHoverActions => {
 
   const rowHoverProps = useMemo(
     () => ({
+      tabIndex: needsRowTabStop ? 0 : undefined,
       onMouseEnter: () => setIsHovered(true),
       onMouseLeave: () => setIsHovered(false),
       onFocus: () => setIsFocusWithin(true),
@@ -75,7 +99,7 @@ export const useRowHoverActions = (): TRowHoverActions => {
         setIsFocusWithin(false);
       }
     }),
-    []
+    [needsRowTabStop]
   );
 
   return {

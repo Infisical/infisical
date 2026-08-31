@@ -1069,7 +1069,7 @@ export const SecretEditTableRow = ({
           />
         </div>
         {!isDirtyState && !isFieldActive && (
-          <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-hover:pointer-events-none group-hover:opacity-0">
+          <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-focus-within:pointer-events-none group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:opacity-0">
             <div className="flex items-center gap-1">
               {comment && !isImportedSecret && (
                 <Tooltip>
@@ -1130,7 +1130,8 @@ export const SecretEditTableRow = ({
           <div
             className={twMerge(
               "ml-auto flex shrink-0 items-center",
-              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView &&
+                "transition-[margin] duration-300 group-focus-within:mr-16 group-hover:mr-16",
               isSingleEnvView && isFieldActive && "mr-8"
             )}
           >
@@ -1218,11 +1219,11 @@ export const SecretEditTableRow = ({
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:opacity-100",
+            "group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100",
             shouldStayExpanded && "pointer-events-auto opacity-100",
             isFieldActive &&
               !showMenuWhileFocused &&
-              "group-hover:pointer-events-none group-hover:opacity-0",
+              "group-focus-within:pointer-events-none group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:opacity-0",
             isFieldActive && showMenuWhileFocused && "pointer-events-auto opacity-100",
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}

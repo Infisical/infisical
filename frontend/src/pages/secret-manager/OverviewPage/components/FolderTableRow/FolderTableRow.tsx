@@ -65,6 +65,7 @@ export const FolderTableRow = ({
   isSelectionDisabled
 }: Props) => {
   const [isClicking, setIsClicking] = useState(false);
+  // A folder row holds nothing focusable in either view, so it keeps the default tab stop.
   const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   const handleClick = () => {
@@ -145,7 +146,7 @@ export const FolderTableRow = ({
               "absolute z-20",
               "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
               "pointer-events-none opacity-0 transition-all duration-300",
-              "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+              "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
               isSingleEnvView
                 ? "top-1/2 right-[2px] -translate-y-1/2"
                 : "top-1/2 right-[3px] -translate-y-1/2"
@@ -158,7 +159,7 @@ export const FolderTableRow = ({
                     aria-label="Move folder"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                     isDisabled={!canEditFolder}
                     onClick={(e) => {
                       onToggleFolderMove(folderName);
@@ -180,7 +181,7 @@ export const FolderTableRow = ({
                     aria-label="Edit folder"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                     isDisabled={!canEditFolder}
                     onClick={(e) => {
                       onToggleFolderEdit(folderName);
@@ -203,7 +204,7 @@ export const FolderTableRow = ({
                     <IconButton
                       variant="ghost"
                       size="xs"
-                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                       onClick={(e) => {
                         onToggleFolderAccess(folderName);
                         e.stopPropagation();
@@ -221,7 +222,7 @@ export const FolderTableRow = ({
                   <IconButton
                     aria-label="Discard pending folder changes"
                     variant="ghost"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
                     size="xs"
                     onClick={(e) => {
                       onBatchRevert?.(folderName);
@@ -240,7 +241,7 @@ export const FolderTableRow = ({
                     aria-label="Delete folder"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
                     isDisabled={!canDeleteFolder}
                     onClick={(e) => {
                       onToggleFolderDelete(folderName);

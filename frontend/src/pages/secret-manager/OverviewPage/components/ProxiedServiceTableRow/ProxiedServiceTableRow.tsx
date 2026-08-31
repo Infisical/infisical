@@ -63,9 +63,13 @@ export const ProxiedServiceTableRow = ({
   onDelete
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
-
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
+
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -78,7 +82,7 @@ export const ProxiedServiceTableRow = ({
       className={twMerge(
         "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
         "pointer-events-none opacity-0 transition-all duration-300",
-        "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
       )}
     >
       <ProjectPermissionCan
@@ -96,7 +100,7 @@ export const ProxiedServiceTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                 isDisabled={!isAllowed}
                 onClick={() => onEdit(proxiedService)}
               >
@@ -122,7 +126,7 @@ export const ProxiedServiceTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
                 isDisabled={!isAllowed}
                 onClick={() => onDelete(proxiedService)}
               >
@@ -150,7 +154,7 @@ export const ProxiedServiceTableRow = ({
         <div
           className={twMerge(
             "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
-            "group-hover:mr-24"
+            "group-focus-within:mr-24 group-hover:mr-24"
           )}
         >
           {!proxiedService.isEnabled && (

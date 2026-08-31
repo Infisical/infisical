@@ -295,11 +295,11 @@ export const SecretOverrideRow = ({
             "absolute z-20",
             "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+            "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
             isDeleteDialogOpen && "pointer-events-auto gap-1 opacity-100",
             isOverrideFieldFocused &&
               !showMenuWhileFocused &&
-              "group-hover:pointer-events-none group-hover:gap-0 group-hover:opacity-0",
+              "group-focus-within:pointer-events-none group-focus-within:gap-0 group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:gap-0 group-hover:opacity-0",
             isOverrideFieldFocused &&
               showMenuWhileFocused &&
               "pointer-events-auto gap-1 opacity-100",
@@ -315,7 +315,7 @@ export const SecretOverrideRow = ({
                 variant="ghost"
                 size="xs"
                 className={twMerge(
-                  "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                  "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7",
                   isDeleteDialogOpen && "w-7"
                 )}
               >
@@ -333,7 +333,7 @@ export const SecretOverrideRow = ({
                   variant="ghost"
                   size="xs"
                   className={twMerge(
-                    "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                    "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7",
                     isDeleteDialogOpen && "w-7"
                   )}
                 >
@@ -377,7 +377,7 @@ export const SecretOverrideRow = ({
                 variant="ghost"
                 size="xs"
                 className={twMerge(
-                  "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger",
+                  "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger",
                   isDeleteDialogOpen && "w-7"
                 )}
               >

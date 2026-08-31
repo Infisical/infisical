@@ -71,9 +71,13 @@ export const HoneyTokenTableRow = ({
   onToggleHoneyTokenSelect
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
-
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
+
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -99,7 +103,7 @@ export const HoneyTokenTableRow = ({
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
           "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
         )}
       >
         <Tooltip>
@@ -107,7 +111,7 @@ export const HoneyTokenTableRow = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
               onClick={() => onViewDetails(honeyToken)}
             >
               <ExternalLinkIcon />
@@ -128,7 +132,7 @@ export const HoneyTokenTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoked}
                   onClick={() => onViewCredentials(honeyToken)}
                 >
@@ -154,7 +158,7 @@ export const HoneyTokenTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoked}
                   onClick={() => onEdit(honeyToken)}
                 >
@@ -179,7 +183,7 @@ export const HoneyTokenTableRow = ({
                   <IconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
                     onClick={() => onRevoke(honeyToken)}
                     isDisabled={!isAllowed}
                   >
@@ -289,7 +293,7 @@ export const HoneyTokenTableRow = ({
               <div
                 className={twMerge(
                   "ml-auto flex items-center transition-[margin] duration-300",
-                  "group-hover:mr-32"
+                  "group-focus-within:mr-32 group-hover:mr-32"
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
@@ -354,7 +358,7 @@ export const HoneyTokenTableRow = ({
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300",
-                                  "group-hover:mr-32"
+                                  "group-focus-within:mr-32 group-hover:mr-32"
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}

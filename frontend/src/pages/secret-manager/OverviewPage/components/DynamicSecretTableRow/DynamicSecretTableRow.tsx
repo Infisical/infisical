@@ -68,9 +68,13 @@ export const DynamicSecretTableRow = ({
   onForceDelete
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
-
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
+
   const totalCols = environments.length + 2;
 
   const statuses = getDynamicSecretStatusesByName(dynamicSecretName);

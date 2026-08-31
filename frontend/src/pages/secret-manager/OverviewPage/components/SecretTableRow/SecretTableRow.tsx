@@ -155,14 +155,19 @@ export const SecretTableRow = ({
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
 
-  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
+  const isSingleEnvView = environments.length === 1;
+  // The single-environment row renders the secret's name and value inputs, which mount the bar on
+  // focus; only the multi-environment row, which is labels and status cells, needs a tab stop.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: !isSingleEnvView
+  });
+  // The override row always renders its own value input.
   const {
     shouldRenderActions: shouldRenderOverrideActions,
     groupClassName: overrideGroupClassName,
     rowHoverProps: overrideRowHoverProps
-  } = useRowHoverActions();
+  } = useRowHoverActions({ needsRowTabStop: false });
 
-  const isSingleEnvView = environments.length === 1;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -410,7 +415,7 @@ export const SecretTableRow = ({
                   "absolute z-20",
                   "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
                   "pointer-events-none opacity-0 transition-all duration-300",
-                  "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+                  "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
                   "top-1/2 right-[3px] -translate-y-1/2"
                 )}
               >
@@ -424,7 +429,7 @@ export const SecretTableRow = ({
                         e.stopPropagation();
                         copyTokenToClipboard();
                       }}
-                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                     >
                       {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
                     </IconButton>
@@ -440,7 +445,7 @@ export const SecretTableRow = ({
                         setIsEditSecretNameOpen(true);
                         e.stopPropagation();
                       }}
-                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                     >
                       <EditIcon />
                     </IconButton>
