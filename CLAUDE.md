@@ -78,7 +78,7 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 
 ### Documentation
 
-**Use the `docs-style` skill for any work under `docs/`** (`.claude/skills/docs-style/`). It carries the procedure for the [Documentation Style Guide](docs/STYLE_GUIDE.md): what belongs on a page, and the sentence-level review pass Vale cannot check.
+**Use the `docs-style` skill for any work under `docs/`** (`.agents/skills/docs-style/`). It carries the procedure for the [Documentation Style Guide](docs/STYLE_GUIDE.md): what belongs on a page, and the sentence-level review pass Vale cannot check.
 
 If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
 

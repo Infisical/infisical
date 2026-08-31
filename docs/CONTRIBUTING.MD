@@ -14,7 +14,7 @@
 
 Vale checks roughly a third of the style guide. The rest needs a reviewer.
 
-The `docs-style` skill in `.claude/skills/docs-style/` is that reviewer. Claude loads it on its
+The `docs-style` skill in `.agents/skills/docs-style/` is that reviewer. Claude loads it on its
 own for any work under `docs/`, or you can invoke it explicitly with `/docs-style`. It runs the linter,
 checks the page structure, then goes sentence by sentence and reports each finding as
 `file:line` with a rewrite before changing anything.
