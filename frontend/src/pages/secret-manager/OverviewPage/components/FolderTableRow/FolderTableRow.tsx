@@ -119,7 +119,9 @@ export const FolderTableRow = ({
         }
       >
         <span
+          title={folderName}
           className={twMerge(
+            "block min-w-0 truncate",
             pendingAction === PendingAction.Delete && "text-danger/75 line-through"
           )}
         >

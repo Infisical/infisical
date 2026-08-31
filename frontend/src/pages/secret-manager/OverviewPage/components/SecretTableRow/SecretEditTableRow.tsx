@@ -941,6 +941,7 @@ export const SecretEditTableRow = ({
           autoComplete="off"
           readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
           placeholder={error?.message || "Secret name"}
+          title={field.value ?? secretName}
           isError={Boolean(error)}
           {...field}
           value={field.value ?? ""}
@@ -1957,6 +1958,7 @@ export const SecretEditTableRow = ({
     return (
       <>
         <TableCell
+          isTruncatable
           className={twMerge(
             "border-r",
             isOverride && "border-l border-b-border/50 border-l-override"

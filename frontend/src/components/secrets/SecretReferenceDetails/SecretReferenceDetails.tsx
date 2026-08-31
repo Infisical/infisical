@@ -301,7 +301,11 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
               minZoom={0.1}
               proOptions={{ hideAttribution: false }}
             >
-              <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
+              <Background
+                color="var(--color-border)"
+                bgColor="var(--color-container)"
+                variant={BackgroundVariant.Dots}
+              />
               <Controls position="bottom-left" showInteractive={false} />
             </ReactFlow>
           </ReactFlowProvider>

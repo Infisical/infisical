@@ -22,8 +22,7 @@ import {
   InfoIcon,
   LayersIcon,
   LockIcon,
-  TrashIcon,
-  UsersIcon
+  TrashIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -79,7 +78,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
   PageHeader,
   Pagination,
   Sheet,
@@ -217,6 +215,7 @@ import { EditDynamicSecretForm } from "../SecretDashboardPage/components/Dynamic
 import {
   PendingChanges,
   PendingFolderUpdate,
+  PendingSecretCreate,
   StoreProvider,
   useBatchMode,
   useBatchModeActions
@@ -755,7 +754,10 @@ const OverviewPageContent = () => {
   const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
     resetKey: JSON.stringify(overviewQueryParams)
   });
-  const showOverviewSkeleton = isOverviewLoading || showDelayedOverviewSkeleton;
+  const showOverviewSkeleton =
+    isOverviewLoading ||
+    (isPlaceholderData && !overview?.totalCount) ||
+    showDelayedOverviewSkeleton;
 
   const {
     secrets,
@@ -1852,32 +1854,22 @@ const OverviewPageContent = () => {
       if (!existingSecret) {
         // Secret might be a pending create — find it in pending changes
         const pendingCreate = pendingChanges.secrets.find(
-          (c) => c.type === PendingAction.Create && c.secretKey === key
+          (c): c is PendingSecretCreate => c.type === PendingAction.Create && c.secretKey === key
         );
         if (!pendingCreate) return;
 
-        // Send as an Update so the store merges it into the existing Create
         addPendingChange(
           {
-            id: pendingCreate.id,
-            resourceType: "secret",
-            type: PendingAction.Update,
-            secretKey: key,
-            newSecretName,
-            originalValue: "",
-            secretValue: batchSecretValue,
-            originalComment: "",
-            secretComment,
-            originalSkipMultilineEncoding: false,
+            ...pendingCreate,
+            secretKey: newSecretName || pendingCreate.secretKey,
+            secretValue: batchSecretValue ?? pendingCreate.secretValue,
+            secretComment: secretComment ?? pendingCreate.secretComment,
             skipMultilineEncoding:
               updatedSkipMultilineEncoding !== undefined
                 ? (updatedSkipMultilineEncoding ?? false)
-                : undefined,
-            originalTags: [],
-            tags: updatedTags,
-            originalSecretMetadata: [],
-            secretMetadata: updatedMetadata,
-            existingSecret: undefined as unknown as SecretV3RawSanitized, // scott: using "update" to update a pending create
+                : pendingCreate.skipMultilineEncoding,
+            tags: updatedTags ?? pendingCreate.tags,
+            secretMetadata: updatedMetadata ?? pendingCreate.secretMetadata,
             timestamp: Date.now()
           },
           { projectId, environment: env, secretPath }
@@ -2833,23 +2825,12 @@ const OverviewPageContent = () => {
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex min-w-0 items-center overflow-hidden px-2 whitespace-nowrap">
-              {canManageCurrentFolderAccess && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <IconButton
-                      aria-label="Manage Access"
-                      className="mr-2 shrink-0"
-                      size="xs"
-                      variant="outline"
-                      onClick={handleCurrentFolderAccessOpen}
-                    >
-                      <UsersIcon />
-                    </IconButton>
-                  </TooltipTrigger>
-                  <TooltipContent>Manage Access</TooltipContent>
-                </Tooltip>
-              )}
-              <FolderBreadcrumb secretPath={secretPath} />
+              <FolderBreadcrumb
+                secretPath={secretPath}
+                onManageFolderAccess={
+                  canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
+                }
+              />
             </div>
             <div className="flex min-w-0 flex-col items-stretch gap-2 @4xl/card-header:flex-row @4xl/card-header:items-center">
               <ResourceSearchInput
@@ -3023,7 +3004,7 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
+                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container lg:w-96 lg:max-w-96 lg:min-w-96"
                         )}
                         onClick={() =>
                           setOrderDirection((prev) =>
@@ -3045,16 +3026,15 @@ const OverviewPageContent = () => {
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="w-40 max-w-40 border-r p-0 text-center last:border-r-0"
-                              isTruncatable
+                              className="w-max min-w-40 border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
                                 <Tooltip>
                                   <TooltipTrigger className="h-full">
                                     <DropdownMenuTrigger asChild>
-                                      <div className="flex h-full w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
-                                        <span className="truncate">{name}</span>
+                                      <div className="flex h-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
+                                        <span className="whitespace-nowrap">{name}</span>
                                         <EllipsisIcon className="size-3.5 shrink-0" />
                                       </div>
                                     </DropdownMenuTrigger>
@@ -3513,6 +3493,7 @@ const OverviewPageContent = () => {
                           canCreateSecretsInAllVisibleEnvs &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              autoQueueOnBlur={isBatchModeActive}
                               environments={visibleEnvs.map((env) => env.slug)}
                               existingSecretKeys={mergedSecKeys}
                               saveLabel={quickAddSaveLabel}
@@ -3566,23 +3547,25 @@ const OverviewPageContent = () => {
                   {null}
                 </DragOverlay>
               </DragDropProvider>
-              <Pagination
-                startAdornment={
-                  <ResourceCount
-                    dynamicSecretCount={totalDynamicSecretCount}
-                    secretCount={totalSecretCount}
-                    folderCount={totalFolderCount}
-                    importCount={totalImportCount}
-                    secretRotationCount={totalSecretRotationCount}
-                    proxiedServiceCount={totalProxiedServiceCount}
-                  />
-                }
-                count={totalCount}
-                page={page}
-                perPage={perPage}
-                onChangePage={(newPage) => setPage(newPage)}
-                onChangePerPage={handlePerPageChange}
-              />
+              {totalCount > 0 && (
+                <Pagination
+                  startAdornment={
+                    <ResourceCount
+                      dynamicSecretCount={totalDynamicSecretCount}
+                      secretCount={totalSecretCount}
+                      folderCount={totalFolderCount}
+                      importCount={totalImportCount}
+                      secretRotationCount={totalSecretRotationCount}
+                      proxiedServiceCount={totalProxiedServiceCount}
+                    />
+                  }
+                  count={totalCount}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={(newPage) => setPage(newPage)}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
             </>
           )}
         </CardContent>

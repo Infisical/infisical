@@ -383,9 +383,11 @@ export const SecretTableRow = ({
               isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
             )}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <span
+                title={secretKey}
                 className={twMerge(
+                  "min-w-0 truncate",
                   singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
                 )}
               >

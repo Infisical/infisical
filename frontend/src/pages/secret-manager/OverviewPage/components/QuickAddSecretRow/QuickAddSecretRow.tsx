@@ -22,6 +22,7 @@ import { useProject } from "@app/context";
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
 type Props = {
+  autoQueueOnBlur?: boolean;
   environments: string[];
   existingSecretKeys: string[];
   onCreateSecret: (
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export const QuickAddSecretRow = ({
+  autoQueueOnBlur = false,
   environments,
   existingSecretKeys,
   onCreateSecret,
@@ -46,6 +48,7 @@ export const QuickAddSecretRow = ({
   secretPath
 }: Props) => {
   const { currentProject } = useProject();
+  const rowRef = useRef<HTMLTableRowElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
   const valueInputRef = useRef<HTMLTextAreaElement>(null);
@@ -87,18 +90,18 @@ export const QuickAddSecretRow = ({
     return () => resizeObserver.disconnect();
   }, [isMultiEnvironmentView]);
 
-  const submitDraft = async () => {
+  const submitDraft = async ({ refocus = true }: { refocus?: boolean } = {}) => {
     const normalizedKey = key.trim();
 
     if (!normalizedKey) {
       setError("Secret name is required");
-      keyInputRef.current?.focus();
+      if (refocus) keyInputRef.current?.focus();
       return;
     }
 
     if (existingSecretKeys.includes(normalizedKey)) {
       setError("A secret with this name already exists");
-      keyInputRef.current?.focus();
+      if (refocus) keyInputRef.current?.focus();
       return;
     }
 
@@ -118,7 +121,7 @@ export const QuickAddSecretRow = ({
       setIsSubmitting(false);
     }
 
-    setTimeout(() => keyInputRef.current?.focus(), 0);
+    if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -169,7 +172,23 @@ export const QuickAddSecretRow = ({
     onUndo: resetDraft
   });
   return (
-    <TableRow className="group">
+    <TableRow
+      ref={rowRef}
+      className="group"
+      onBlurCapture={(event) => {
+        if (
+          !autoQueueOnBlur ||
+          !isDraftActive ||
+          isSubmitting ||
+          !key.trim() ||
+          event.currentTarget.contains(event.relatedTarget as Node | null)
+        ) {
+          return;
+        }
+
+        submitDraft({ refocus: false }).catch(() => undefined);
+      }}
+    >
       <TableCell
         className={
           isMultiEnvironmentView
@@ -182,8 +201,8 @@ export const QuickAddSecretRow = ({
       <TableCell
         className={
           isMultiEnvironmentView
-            ? "sticky left-10 z-10 max-w-60 min-w-60 border-r bg-container group-hover:bg-container-hover lg:max-w-none lg:min-w-96"
-            : "max-w-60 min-w-60 border-r lg:max-w-none lg:min-w-96"
+            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
+            : "w-60 max-w-60 min-w-60 border-r lg:w-96 lg:max-w-96 lg:min-w-96"
         }
       >
         <form ref={formRef} id="quick-add-secret-form" onSubmit={handleSubmit}>

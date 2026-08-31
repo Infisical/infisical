@@ -137,8 +137,11 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           </TooltipTrigger>
           <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
         </Tooltip>
-        <PopoverContent align="start" className="p-0">
-          <Command>
+        <PopoverContent
+          align="start"
+          className="w-80 max-w-[var(--radix-popover-content-available-width)] overflow-hidden p-0"
+        >
+          <Command className="min-w-0">
             <CommandInput
               aria-label="Filter environments"
               value={inputValue}
@@ -166,6 +169,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
               <CommandGroup>
                 {projectEnvs.map((env) => (
                   <CommandItem
+                    className="min-w-0"
                     key={env.id}
                     value={env.id}
                     onSelect={handleSwitchEnv}
@@ -173,7 +177,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                   >
                     <Tooltip delayDuration={500} disableHoverableContent>
                       <TooltipTrigger asChild>
-                        <span className="truncate">{env.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="max-w-2xl break-all">
                         {env.name}
@@ -181,7 +185,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="ml-auto inline-flex">
+                        <span className="ml-auto inline-flex shrink-0">
                           <Checkbox
                             variant="project"
                             aria-label={`Select ${env.name}`}

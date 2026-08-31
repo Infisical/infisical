@@ -1,5 +1,5 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardCheckIcon,
@@ -527,7 +527,12 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   }, [secretsBeingRenamed, referenceQueries]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
   const isBusy = isCommitting || isSubmitting;
+
+  useEffect(() => {
+    setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
+  }, []);
 
   if (!isBatchMode) {
     return null;
@@ -557,6 +562,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   return (
     <>
       <SelectedActionBar
+        portalContainer={layoutContainer}
+        positionerClassName={layoutContainer ? "absolute bottom-4" : undefined}
         selectedCount={isModalOpen ? 0 : totalChangesCount}
         onClearSelection={() => clearAllPendingChanges({ projectId, environment, secretPath })}
         selectionLabel={`${totalChangesCount} pending change${totalChangesCount !== 1 ? "s" : ""}`}

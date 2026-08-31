@@ -564,7 +564,12 @@ export const CreateSecretForm = ({
                 )}
               />
 
-              <Accordion type="single" collapsible variant="ghost">
+              <Accordion
+                type="single"
+                collapsible
+                variant="ghost"
+                className="border-t border-border/70 pt-2"
+              >
                 <AccordionItem value="advanced" className="border-b-0">
                   <AccordionTrigger>Advanced Options</AccordionTrigger>
                   <AccordionContent>
