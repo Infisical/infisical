@@ -1,5 +1,5 @@
-import { type ComponentProps, useRef } from "react";
-import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
+import type { ComponentProps } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 import { cn } from "../../utils";
 
@@ -35,8 +35,6 @@ function Loader({
   variant = "default",
   ...props
 }: LoaderProps) {
-  const animationRef = useRef<DotLottie | null>(null);
-
   return (
     <div
       role="status"
@@ -44,22 +42,13 @@ function Loader({
       data-slot="loader"
       data-variant={variant}
       data-size={size}
-      // Hover play/stop belongs to the shared Lottie wrapper every branded loader
-      // was built on; kept so pointer behavior is unchanged for existing usages.
-      onMouseEnter={() => animationRef.current?.play()}
-      onMouseLeave={() => animationRef.current?.stop()}
       className={cn(sizeStyles[size], className)}
       {...props}
     >
-      <DotLottieReact
-        dotLottieRefCallback={(instance) => {
-          animationRef.current = instance;
-        }}
-        src={animationSources[variant]}
-        loop
-        autoplay
-        className="h-full w-full"
-      />
+      {/* Deliberately no hover play/stop: `v2/Lottie` wires those handlers because it
+          drives hover-to-play *icons*, where stopping on mouseout is the point. An
+          indeterminate loader must keep running while the wait lasts. */}
+      <DotLottieReact src={animationSources[variant]} loop autoplay className="h-full w-full" />
     </div>
   );
 }
