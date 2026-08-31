@@ -213,6 +213,35 @@ const DrawerContent = ({
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {isRevoked && (
+          <Alert variant="info">
+            <BanIcon />
+            <AlertTitle>Honey token revoked</AlertTitle>
+            <AlertDescription>
+              The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
+              token record and its events are preserved for audit purposes.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isTriggered && (
+          <Alert variant="warning">
+            <AlertTriangle />
+            <AlertTitle>What to do now?</AlertTitle>
+            <AlertDescription className="gap-2">
+              <p>
+                If this is a false alarm, reset the honey token to return it to active status and
+                hide past events.
+              </p>
+              <p>
+                If this activity is suspicious, follow your company&apos;s incident response plan,
+                rotate any real secrets stored alongside the honey token, then revoke and replace
+                the honey token.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {!isRevoked && (
           <ProjectPermissionCan
             I={ProjectPermissionHoneyTokenActions.ReadCredentials}
@@ -250,35 +279,6 @@ const DrawerContent = ({
         )}
 
         <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
-
-        {isRevoked && (
-          <Alert variant="info">
-            <BanIcon />
-            <AlertTitle>Honey token revoked</AlertTitle>
-            <AlertDescription>
-              The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
-              token record and its events are preserved for audit purposes.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isTriggered && (
-          <Alert variant="warning">
-            <AlertTriangle />
-            <AlertTitle>What to do now?</AlertTitle>
-            <AlertDescription className="gap-2">
-              <p>
-                If this is a false alarm, reset the honey token to return it to active status and
-                hide past events.
-              </p>
-              <p>
-                If this activity is suspicious, follow your company&apos;s incident response plan,
-                rotate any real secrets stored alongside the honey token, then revoke and replace
-                the honey token.
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
       </div>
 
       {!isRevoked && (
