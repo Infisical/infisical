@@ -34,8 +34,8 @@ export const notifyOrgSelectionFailed = (error: unknown, organizationName?: stri
   if (isOrgAccessRevokedError(error)) {
     createNotification({
       text: organizationName
-        ? `You no longer have access to "${organizationName}". Ask an organization admin to restore it.`
-        : "You no longer have access to this organization. Ask an organization admin to restore it.",
+        ? `You no longer have access to "${organizationName}". Ask an organization admin to restore your access.`
+        : "You no longer have access to this organization. Ask an organization admin to restore your access.",
       type: "error"
     });
     return;
