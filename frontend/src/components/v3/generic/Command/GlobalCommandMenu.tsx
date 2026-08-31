@@ -30,6 +30,7 @@ export type GlobalCommandMenuItem = {
   label: string;
   breadcrumb: string;
   icon?: LucideIcon;
+  iconClassName?: string;
   keywords?: string[];
   shortcut?: React.ReactNode;
   priority?: number;
@@ -138,7 +139,7 @@ const CommandResult = ({ item }: { item: GlobalCommandMenuItem }) => {
     <>
       {Icon && (
         <div className="flex aspect-square size-8 shrink-0 items-center justify-center">
-          <Icon aria-hidden="true" className="size-4" />
+          <Icon aria-hidden="true" className={cn("size-4", item.iconClassName)} />
         </div>
       )}
       <span className="min-w-0 flex-1">

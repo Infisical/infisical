@@ -26,7 +26,7 @@ import {
   type GlobalCommandMenuItem,
   type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
-import { OrgIcon, ProjectIcon } from "@app/components/v3/platform/ScopeIcons";
+import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3/platform/ScopeIcons";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -55,10 +55,16 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectTitle } from "@app/helpers/project";
-import { useGetOrganizationGroups, useGetOrganizations, useGetUserProjects } from "@app/hooks/api";
+import {
+  useGetOrganizationGroups,
+  useGetOrganizationsWithSubOrgs,
+  useGetUserProjects
+} from "@app/hooks/api";
 import type { Project } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetUserOrgPermissions } from "@app/hooks/api/roles";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
+import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useSecretManagerCommandSearch } from "./useSecretManagerCommandSearch";
 
@@ -73,6 +79,14 @@ type AsyncCommandSearch = {
   groups: GlobalCommandMenuGroup[];
   searchStatus: GlobalCommandMenuSearchStatus;
   onSearchChange: (search: string) => void;
+};
+
+const projectIconClassNames: Record<ProjectType, string> = {
+  [ProjectType.SecretManager]: "text-product-sm",
+  [ProjectType.CertificateManager]: "text-product-pki",
+  [ProjectType.KMS]: "text-product-kms",
+  [ProjectType.SecretScanning]: "text-product-ss",
+  [ProjectType.PAM]: "text-product-pam"
 };
 
 const NavigationCommandMenu = ({
@@ -136,7 +150,7 @@ const useEntityCommandGroups = ({
 }) => {
   const navigate = useNavigate();
   const { data: projects = [] } = useGetUserProjects();
-  const { data: organizations = [] } = useGetOrganizations();
+  const { data: rootOrganizations = [] } = useGetOrganizationsWithSubOrgs();
   const { data: orgPermissionData } = useGetUserOrgPermissions({
     orgId: currentOrganizationId ?? ""
   });
@@ -146,15 +160,22 @@ const useEntityCommandGroups = ({
   const { data: teams = [] } = useGetOrganizationGroups(
     canReadTeams ? (currentOrganizationId ?? "") : ""
   );
-  const organizationNames = new Map(
-    organizations.map((organization) => [organization.id, organization.name])
-  );
+  const organizations = rootOrganizations.flatMap((organization) => [
+    { ...organization, rootOrganizationName: undefined, isSubOrganization: false },
+    ...organization.subOrganizations.map((subOrganization) => ({
+      ...subOrganization,
+      rootOrganizationName: organization.name,
+      isSubOrganization: true
+    }))
+  ]);
+  const organizationNames = new Map(organizations.map(({ id, name }) => [id, name]));
 
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => ({
     id: `entity-project-${project.id}`,
     label: project.name,
     breadcrumb: `${organizationNames.get(project.orgId) ?? "Organization"} / ${getProjectTitle(project.type)}`,
     icon: ProjectIcon,
+    iconClassName: projectIconClassNames[project.type],
     keywords: [project.slug, project.type, getProjectTitle(project.type), "project"],
     priority: project.orgId === currentOrganizationId ? 20 : 0,
     onSelect: () => navigateToProject(navigate, project)
@@ -163,9 +184,17 @@ const useEntityCommandGroups = ({
   const organizationItems: GlobalCommandMenuItem[] = organizations.map((organization) => ({
     id: `entity-organization-${organization.id}`,
     label: organization.name,
-    breadcrumb: "Organization",
-    icon: OrgIcon,
-    keywords: [organization.slug, "organization", "workspace"],
+    breadcrumb: organization.isSubOrganization
+      ? `${organization.rootOrganizationName} / Sub-Organization`
+      : "Organization",
+    icon: organization.isSubOrganization ? SubOrgIcon : OrgIcon,
+    iconClassName: organization.isSubOrganization ? "text-sub-org" : "text-org",
+    keywords: [
+      organization.slug,
+      "organization",
+      "workspace",
+      ...(organization.isSubOrganization ? ["sub", "sub-org", "sub-organization"] : [])
+    ],
     priority: organization.id === currentOrganizationId ? 20 : 0,
     onSelect: () =>
       navigate({
@@ -179,6 +208,7 @@ const useEntityCommandGroups = ({
     label: team.name,
     breadcrumb: `${currentOrganizationName ?? "Organization"} / Team`,
     icon: UsersIcon,
+    iconClassName: "text-org",
     keywords: [team.slug, "team", "group"],
     priority: 15,
     onSelect: () =>
@@ -360,8 +390,11 @@ const getOrganizationItems = ({
   organizationName,
   isRootOrganization,
   canReadAccessControl,
+  canReadMachineIdentities,
+  canReadRoles,
   canReadAuditLogs,
   canReadBilling,
+  canReadAppConnections,
   canReadIntegrations,
   canReadSettings
 }: {
@@ -370,8 +403,11 @@ const getOrganizationItems = ({
   organizationName: string;
   isRootOrganization: boolean;
   canReadAccessControl: boolean;
+  canReadMachineIdentities: boolean;
+  canReadRoles: boolean;
   canReadAuditLogs: boolean;
   canReadBilling: boolean;
+  canReadAppConnections: boolean;
   canReadIntegrations: boolean;
   canReadSettings: boolean;
 }): GlobalCommandMenuItem[] => [
@@ -379,7 +415,8 @@ const getOrganizationItems = ({
     id: `organization-${organizationId}-home`,
     label: "Organization Home",
     breadcrumb: organizationName,
-    icon: OrgIcon,
+    icon: isRootOrganization ? OrgIcon : SubOrgIcon,
+    iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
     keywords: ["projects", "home"],
     priority: 25,
     onSelect: () =>
@@ -392,6 +429,7 @@ const getOrganizationItems = ({
           label: "Integrations",
           breadcrumb: `${organizationName} / Organization`,
           icon: BlocksIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
           keywords: ["connections"],
           priority: 25,
           onSelect: () =>
@@ -399,7 +437,26 @@ const getOrganizationItems = ({
               to: "/organizations/$orgId/integrations",
               params: { orgId: organizationId }
             })
-        }
+        },
+        ...(canReadAppConnections
+          ? [
+              {
+                id: `organization-${organizationId}-app-connections`,
+                label: "App Connections",
+                breadcrumb: `${organizationName} / Integrations`,
+                icon: BlocksIcon,
+                iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
+                keywords: ["integrations", "connections"],
+                priority: 25,
+                onSelect: () =>
+                  navigate({
+                    to: "/organizations/$orgId/integrations",
+                    params: { orgId: organizationId },
+                    search: { selectedTab: IntegrationsListPageTabs.AppConnections }
+                  })
+              }
+            ]
+          : [])
       ]
     : []),
   ...(canReadAccessControl
@@ -409,12 +466,51 @@ const getOrganizationItems = ({
           label: "Access Control",
           breadcrumb: `${organizationName} / Organization`,
           icon: ShieldIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
           keywords: ["users", "groups", "teams", "roles", "machine identities"],
           priority: 25,
           onSelect: () =>
             navigate({
               to: "/organizations/$orgId/access-management",
               params: { orgId: organizationId }
+            })
+        }
+      ]
+    : []),
+  ...(canReadMachineIdentities
+    ? [
+        {
+          id: `organization-${organizationId}-machine-identities`,
+          label: "Machine Identities",
+          breadcrumb: `${organizationName} / Access Control`,
+          icon: UserIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
+          keywords: ["identities", "identity", "access control"],
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/access-management",
+              params: { orgId: organizationId },
+              search: { selectedTab: OrgAccessControlTabSections.Identities }
+            })
+        }
+      ]
+    : []),
+  ...(canReadRoles
+    ? [
+        {
+          id: `organization-${organizationId}-roles`,
+          label: "Roles",
+          breadcrumb: `${organizationName} / Access Control`,
+          icon: ShieldCheckIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
+          keywords: ["organization roles", "permissions", "access control"],
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/access-management",
+              params: { orgId: organizationId },
+              search: { selectedTab: OrgAccessControlTabSections.Roles }
             })
         }
       ]
@@ -426,6 +522,7 @@ const getOrganizationItems = ({
           label: "Usage & Billing",
           breadcrumb: `${organizationName} / Organization Settings`,
           icon: CreditCardIcon,
+          iconClassName: "text-org",
           keywords: ["subscription", "plan"],
           priority: 25,
           onSelect: () =>
@@ -440,6 +537,7 @@ const getOrganizationItems = ({
           label: "Audit Logs",
           breadcrumb: `${organizationName} / Organization`,
           icon: FileTextIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
           priority: 25,
           onSelect: () =>
             navigate({
@@ -456,6 +554,7 @@ const getOrganizationItems = ({
           label: "Settings",
           breadcrumb: `${organizationName} / Organization`,
           icon: SettingsIcon,
+          iconClassName: isRootOrganization ? "text-org" : "text-sub-org",
           keywords: ["general", "organization settings"],
           priority: 25,
           onSelect: () =>
@@ -488,6 +587,7 @@ const getProjectLandingItem = ({
       label: "Approval Requests",
       breadcrumb,
       icon: InboxIcon,
+      iconClassName: projectIconClassNames[project.type],
       keywords: [project.name, "certificate manager", "requests"],
       priority: 40,
       onSelect: () =>
@@ -512,6 +612,7 @@ const getProjectLandingItem = ({
     label: presentation[project.type].label,
     breadcrumb,
     icon: presentation[project.type].icon,
+    iconClassName: projectIconClassNames[project.type],
     keywords: [project.name, project.type, getProjectTitle(project.type)],
     priority: 40,
     onSelect: () => navigateToProject(navigate, project)
@@ -544,6 +645,7 @@ const getProjectPageItems = ({
     label,
     breadcrumb,
     icon,
+    iconClassName: projectIconClassNames[project.type],
     keywords: [project.name, getProjectTitle(project.type), ...(keywords ?? [])],
     priority: pathname.includes(`/${pathSuffix}`) ? 50 : 35,
     onSelect
@@ -868,11 +970,20 @@ const OrganizationCommandMenu = () => {
       permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) ||
       permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups) ||
       permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
+    canReadMachineIdentities: permission.can(
+      OrgPermissionIdentityActions.Read,
+      OrgPermissionSubjects.Identity
+    ),
+    canReadRoles: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
     canReadAuditLogs: permission.can(
       OrgPermissionAuditLogsActions.Read,
       OrgPermissionSubjects.AuditLogs
     ),
     canReadBilling: permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing),
+    canReadAppConnections: permission.can(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    ),
     canReadIntegrations:
       permission.can(
         OrgPermissionAppConnectionActions.Read,
