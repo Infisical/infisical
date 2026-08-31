@@ -201,3 +201,28 @@ describe("verifyRequestedPermissions", () => {
     );
   });
 });
+
+describe("verifyRequestedPermissions: requestedPermissions", () => {
+  test("returns subject and action identifiers alongside the humanized list", () => {
+    const permissions = packRules([
+      {
+        action: ["read", "edit"],
+        subject: "secrets",
+        conditions: { environment: "prod", secretPath: { $glob: "/api/*" } }
+      },
+      {
+        action: ["create"],
+        subject: "secret-folders",
+        conditions: { environment: "prod", secretPath: { $glob: "/api/*" } }
+      }
+    ]);
+
+    const result = verifyRequestedPermissions({ permissions });
+
+    expect(result.requestedPermissions).toEqual([
+      { subject: "secrets", actions: ["read", "edit"] },
+      { subject: "secret-folders", actions: ["create"] }
+    ]);
+    expect(result.accessTypes).toEqual(["Secrets (Read, Edit)", "Secret Folders (Create)"]);
+  });
+});

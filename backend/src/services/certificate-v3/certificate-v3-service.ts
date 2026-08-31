@@ -37,6 +37,7 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -281,6 +282,28 @@ const validateProfileAndPermissions = async ({
 
   return profile;
 };
+
+// Builds the certificate permission subject from a persisted certificate record so the private-key
+// read permission is evaluated against the same fields the certificate read paths use. Includes every
+// field the certificate permission conditions support, so attribute-scoped grants match consistently.
+const buildCertificateReadPrivateKeySubject = (
+  certRecord: {
+    commonName?: string | null;
+    altNames?: string | null;
+    serialNumber?: string | null;
+    friendlyName?: string | null;
+    status?: string | null;
+  },
+  metadata?: { key: string; value: string }[]
+) =>
+  subject(ProjectPermissionSub.Certificates, {
+    commonName: certRecord.commonName ?? undefined,
+    altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
+    serialNumber: certRecord.serialNumber ?? undefined,
+    friendlyName: certRecord.friendlyName ?? undefined,
+    status: certRecord.status ?? undefined,
+    metadata
+  });
 
 export const certificateV3ServiceFactory = ({
   certificateDAL,
@@ -593,6 +616,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             commonName: certificateRequestWithDefaults.commonName || null,
             altNames: certificateRequestWithDefaults.altNames
@@ -901,7 +925,7 @@ export const certificateV3ServiceFactory = ({
       } else {
         canReadPrivateKey = permission.can(
           ProjectPermissionCertificateActions.ReadPrivateKey,
-          ProjectPermissionSub.Certificates
+          buildCertificateReadPrivateKeySubject(certificateData, metadata)
         );
       }
 
@@ -1135,7 +1159,7 @@ export const certificateV3ServiceFactory = ({
     } else {
       canReadPrivateKey = permission.can(
         ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
+        buildCertificateReadPrivateKeySubject(cert, metadata)
       );
     }
 
@@ -1326,6 +1350,7 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             csr,
             commonName: mappedCertificateRequest.commonName || null,
@@ -1781,16 +1806,21 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             csr: certificateOrder.csr || null,
-            commonName: certificateOrder.commonName || null,
-            altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || null,
+            // Subject and algorithms come from `certificateRequest`, not the raw order: with a BYO CSR
+            // the request body carries none of them, and issuance after approval reads this row.
+            commonName: certificateRequest.commonName || null,
+            altNames: certificateRequest.subjectAlternativeNames
+              ? JSON.stringify(certificateRequest.subjectAlternativeNames)
+              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
             notBefore: certificateOrder.notBefore || null,
             notAfter: certificateOrder.notAfter || null,
-            keyAlgorithm: certificateOrder.keyAlgorithm || null,
-            signatureAlgorithm: certificateOrder.signatureAlgorithm || null,
+            keyAlgorithm: extractedKeyAlgorithm || certificateRequest.keyAlgorithm || null,
+            signatureAlgorithm: extractedSignatureAlgorithm || certificateRequest.signatureAlgorithm || null,
             ttl: certificateOrder.validity?.ttl || null,
             metadata: certificateOrder.template ? JSON.stringify({ template: certificateOrder.template }) : null,
             organization: certificateRequest.organization || null,
@@ -1825,22 +1855,24 @@ export const certificateV3ServiceFactory = ({
         const requestData: TCertRequestRequestData = {
           profileId,
           profileName: profile.slug,
+          // What the approver reviews has to be what gets issued, so this reads the same resolved
+          // request the row above persists rather than the raw order.
           certificateRequest: {
-            commonName: certificateOrder.commonName,
+            commonName: certificateRequest.commonName,
             organization: certificateRequest.organization,
             organizationalUnit: certificateRequest.organizationalUnit,
             country: certificateRequest.country,
             state: certificateRequest.state,
             locality: certificateRequest.locality,
             domainComponents: certificateRequest.domainComponents,
-            keyUsages: certificateOrder.keyUsages as string[] | undefined,
-            extendedKeyUsages: certificateOrder.extendedKeyUsages as string[] | undefined,
-            altNames: certificateOrder.altNames,
+            keyUsages: certificateRequest.keyUsages as string[] | undefined,
+            extendedKeyUsages: certificateRequest.extendedKeyUsages as string[] | undefined,
+            altNames: certificateRequest.subjectAlternativeNames,
             validity: certificateOrder.validity,
             notBefore: certificateOrder.notBefore?.toISOString(),
             notAfter: certificateOrder.notAfter?.toISOString(),
-            signatureAlgorithm: certificateOrder.signatureAlgorithm,
-            keyAlgorithm: certificateOrder.keyAlgorithm,
+            signatureAlgorithm: extractedSignatureAlgorithm || certificateRequest.signatureAlgorithm,
+            keyAlgorithm: extractedKeyAlgorithm || certificateRequest.keyAlgorithm,
             basicConstraints: certificateRequest.basicConstraints
           },
           certificateRequestId: certRequest.id
@@ -1914,16 +1946,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    if (
-      caType === CaType.ACME ||
-      caType === CaType.AZURE_AD_CS ||
-      caType === CaType.ADCS ||
-      caType === CaType.AWS_PCA ||
-      caType === CaType.DIGICERT ||
-      caType === CaType.AWS_ACM_PUBLIC_CA ||
-      caType === CaType.VENAFI_TPP ||
-      caType === CaType.GODADDY
-    ) {
+    if (caUsesExternalIssuanceQueue(caType)) {
       // Pre-flight validation for ACM — reject bad inputs synchronously so the user
       // gets a 400 on submit rather than a FAILED request row after the job runs.
       if (caType === CaType.AWS_ACM_PUBLIC_CA) {

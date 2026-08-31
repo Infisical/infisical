@@ -1991,6 +1991,8 @@ export const registerRoutes = async (
     pamAccessRequestService
   });
 
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     pamFolderDAL,
@@ -1998,6 +2000,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     pamSessionDAL,
+    pamDiscoverySourceDAL,
     userDAL,
     permissionService,
     kmsService,
@@ -2009,7 +2012,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
@@ -2347,6 +2349,7 @@ export const registerRoutes = async (
     folderCommitService,
     notificationService,
     telemetryService,
+    queueService,
     secretValidationRuleService
   });
 
@@ -2450,7 +2453,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     notificationService,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    queueService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -2556,6 +2560,10 @@ export const registerRoutes = async (
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
+    identityKubernetesAuthDAL,
+    gatewayDAL,
+    gatewayV2DAL,
+    gatewayPoolDAL,
     permissionService,
     kmsService,
     licenseService,
@@ -2588,6 +2596,7 @@ export const registerRoutes = async (
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
     identityDAL,
     identityKubernetesAuthDAL,
+    identityAuthTemplateDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,

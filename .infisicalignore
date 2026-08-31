@@ -69,3 +69,4 @@ docs/integrations/app-connections/qovery.mdx:generic-api-key:96
 backend/src/services/pki-sync/gcp-certificate-manager/gcp-certificate-manager-pki-sync-reconcile.test.ts:private-key:38
 backend/src/services/certificate-v3/certificate-renewal-fns.test.ts:private-key:167
 backend/e2e-test/routes/v1/oauth-token-exchange.spec.ts:generic-api-key:216
+backend/src/ee/services/audit-log-stream/splunk/splunk-provider-schemas.test.ts:generic-api-key:7

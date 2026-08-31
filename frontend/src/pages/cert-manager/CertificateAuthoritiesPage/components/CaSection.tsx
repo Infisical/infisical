@@ -82,7 +82,7 @@ export const CaSection = () => {
   };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
         <CardTitle>
           Internal Certificate Authorities
