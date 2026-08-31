@@ -517,7 +517,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
         pitVersionLimit: z.number().min(1).max(100).optional(),
-        auditLogsRetentionDays: z.number().min(0).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
+        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
