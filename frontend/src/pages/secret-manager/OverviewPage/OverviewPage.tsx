@@ -1,4 +1,5 @@
 import {
+  Fragment,
   SetStateAction,
   useCallback,
   useEffect,
@@ -15,7 +16,7 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, Range, useVirtualizer } from "@tanstack/react-virtual";
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
@@ -2686,6 +2687,46 @@ const OverviewPageContent = () => {
 
   const [secretRowsScrollMargin, setSecretRowsScrollMargin] = useState(0);
 
+  // A row's unsaved value or name edit lives in that row's own form until it is saved or, in batch
+  // mode, until its debounce hands it to the batch store. Unmounting the row would throw it away,
+  // so rows that report unsaved edits stay in the rendered set no matter where they scroll to.
+  // Keyed by secret key, which is arbitrary user input, so a Set rather than a plain object: a
+  // secret named "toString" or "constructor" would read back truthy from Object.prototype and pin
+  // its row for the life of the page.
+  const [unsavedRows, setUnsavedRows] = useState<Set<string>>(() => new Set());
+
+  const handleSecretRowUnsavedChange = useCallback((key: string, hasUnsavedChanges: boolean) => {
+    setUnsavedRows((prev) => {
+      if (prev.has(key) === hasUnsavedChanges) return prev;
+
+      const next = new Set(prev);
+      if (hasUnsavedChanges) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const pinnedSecretRowIndices = useMemo(() => {
+    if (!unsavedRows.size) return [] as number[];
+
+    const indices: number[] = [];
+    mergedSecKeys.forEach((key, index) => {
+      if (unsavedRows.has(key)) indices.push(index);
+    });
+    return indices;
+  }, [unsavedRows, mergedSecKeys]);
+
+  const secretRowsRangeExtractor = useCallback(
+    (range: Range) => {
+      if (!pinnedSecretRowIndices.length) return defaultRangeExtractor(range);
+
+      const indices = new Set(defaultRangeExtractor(range));
+      pinnedSecretRowIndices.forEach((index) => indices.add(index));
+      return Array.from(indices).sort((a, b) => a - b);
+    },
+    [pinnedSecretRowIndices]
+  );
+
   const measureSecretRowGroup = useCallback((element: Element) => {
     // One logical secret row is its main <tr> plus any following override or expanded
     // sibling <tr> carrying the same data-index, so sum the group's height.
@@ -2706,6 +2747,7 @@ const OverviewPageContent = () => {
     overscan: 8,
     scrollMargin: secretRowsScrollMargin,
     measureElement: measureSecretRowGroup,
+    rangeExtractor: secretRowsRangeExtractor,
     getItemKey: (index) => mergedSecKeys[index]
   });
 
@@ -2735,13 +2777,26 @@ const OverviewPageContent = () => {
   const secretVirtualItems = secretRowVirtualizer.getVirtualItems();
   const secretRowsTotalSize = secretRowVirtualizer.getTotalSize();
   const secretRowsSpacerCols = visibleEnvs.length + 2;
-  const secretRowsTopSpacer = secretVirtualItems.length
-    ? secretVirtualItems[0].start - secretRowsScrollMargin
-    : 0;
-  const secretRowsBottomSpacer = secretVirtualItems.length
-    ? secretRowsTotalSize -
-      (secretVirtualItems[secretVirtualItems.length - 1].end - secretRowsScrollMargin)
-    : 0;
+
+  // A pinned row sits outside the scrolled window, so the rendered indices are not always one
+  // contiguous run. Pad ahead of every item that does not start where the previous one ended,
+  // which keeps each row on its own offset and the table's height equal to the virtual total.
+  const { rows: secretRowsRenderPlan, bottomSpacer: secretRowsBottomSpacer } = (() => {
+    const rows: { index: number; key: string; spacerBefore: number }[] = [];
+    let cursor = 0;
+
+    secretVirtualItems.forEach((virtualItem) => {
+      const start = virtualItem.start - secretRowsScrollMargin;
+      rows.push({
+        index: virtualItem.index,
+        key: mergedSecKeys[virtualItem.index],
+        spacerBefore: Math.max(0, start - cursor)
+      });
+      cursor = Math.max(cursor, virtualItem.end - secretRowsScrollMargin);
+    });
+
+    return { rows, bottomSpacer: rows.length ? Math.max(0, secretRowsTotalSize - cursor) : 0 };
+  })();
 
   if (!isProjectV3)
     return (
@@ -3625,17 +3680,16 @@ const OverviewPageContent = () => {
                               style={{ height: 0, padding: 0, border: 0 }}
                             />
                           </tr>
-                          {secretRowsTopSpacer > 0 && (
-                            <tr aria-hidden>
-                              <td
-                                colSpan={secretRowsSpacerCols}
-                                style={{ height: secretRowsTopSpacer, padding: 0, border: 0 }}
-                              />
-                            </tr>
-                          )}
-                          {secretVirtualItems.map((virtualItem) => {
-                            const key = mergedSecKeys[virtualItem.index];
-                            return (
+                          {secretRowsRenderPlan.map(({ index, key, spacerBefore }) => (
+                            <Fragment key={`overview-${key}`}>
+                              {spacerBefore > 0 && (
+                                <tr aria-hidden>
+                                  <td
+                                    colSpan={secretRowsSpacerCols}
+                                    style={{ height: spacerBefore, padding: 0, border: 0 }}
+                                  />
+                                </tr>
+                              )}
                               <SecretTableRow
                                 isSelected={
                                   !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
@@ -3654,9 +3708,9 @@ const OverviewPageContent = () => {
                                 onSecretCreate={handleSecretCreate}
                                 onSecretDelete={handleSecretDelete}
                                 onSecretUpdate={handleSecretUpdate}
-                                key={`overview-${key}`}
-                                virtualIndex={virtualItem.index}
+                                virtualIndex={index}
                                 measureElement={secretRowVirtualizer.measureElement}
+                                onUnsavedChange={handleSecretRowUnsavedChange}
                                 environments={visibleEnvs}
                                 secretKey={key}
                                 getSecretByKey={getSecretByKeyWithPending}
@@ -3667,8 +3721,8 @@ const OverviewPageContent = () => {
                                 onBatchRevert={handleBatchRevert}
                                 isSelectionDisabled={hasPendingBatchChanges}
                               />
-                            );
-                          })}
+                            </Fragment>
+                          ))}
                           {secretRowsBottomSpacer > 0 && (
                             <tr aria-hidden>
                               <td

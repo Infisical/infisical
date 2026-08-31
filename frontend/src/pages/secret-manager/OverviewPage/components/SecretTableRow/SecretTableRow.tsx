@@ -106,6 +106,7 @@ type Props = {
   isSelectionDisabled?: boolean;
   virtualIndex: number;
   measureElement: (node: Element | null) => void;
+  onUnsavedChange?: (secretKey: string, hasUnsavedChanges: boolean) => void;
 };
 
 export const SecretTableRow = ({
@@ -131,7 +132,8 @@ export const SecretTableRow = ({
   onBatchRevert,
   isSelectionDisabled,
   virtualIndex,
-  measureElement
+  measureElement,
+  onUnsavedChange
 }: Props) => {
   const totalCols = environments.length + 2; // secret key row + icon
   const rowRef = useRef<HTMLTableRowElement | null>(null);
@@ -216,6 +218,36 @@ export const SecretTableRow = ({
       });
     }
   }, [creatingOverrideEnvs, getSecretByKey, secretKey]);
+
+  // A row can hold more than one editor (one per environment in the expanded multi-env view, plus
+  // override editors), so collapse them to a single answer for the virtualized parent.
+  const unsavedEditorIdsRef = useRef(new Set<string>());
+  const hasOverrideDraftRef = useRef(false);
+
+  const reportUnsavedChanges = useCallback(() => {
+    onUnsavedChange?.(
+      secretKey,
+      unsavedEditorIdsRef.current.size > 0 || hasOverrideDraftRef.current
+    );
+  }, [onUnsavedChange, secretKey]);
+
+  const handleEditorUnsavedChange = useCallback(
+    (id: string, hasUnsavedChanges: boolean) => {
+      if (hasUnsavedChanges) unsavedEditorIdsRef.current.add(id);
+      else unsavedEditorIdsRef.current.delete(id);
+      reportUnsavedChanges();
+    },
+    [reportUnsavedChanges]
+  );
+
+  // A freshly opened override row has an empty, clean form, so it reports nothing unsaved; the row
+  // still has to stay mounted or the draft row vanishes when the user scrolls past it.
+  useEffect(() => {
+    hasOverrideDraftRef.current = creatingOverrideEnvs.size > 0;
+    reportUnsavedChanges();
+  }, [creatingOverrideEnvs, reportUnsavedChanges]);
+
+  useEffect(() => () => onUnsavedChange?.(secretKey, false), [onUnsavedChange, secretKey]);
 
   const copyTokenToClipboard = () => {
     navigator.clipboard.writeText(secretKey);
@@ -320,6 +352,8 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
+            unsavedChangeId={singleEnvSlug}
+            onUnsavedChange={handleEditorUnsavedChange}
             isBatchMode={isBatchMode}
             onBatchRevert={onBatchRevert}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -479,6 +513,8 @@ export const SecretTableRow = ({
           <TableCell>
             <SecretOverrideRow
               isSingleEnvView
+              unsavedChangeId={`${singleEnvSlug}-override`}
+              onUnsavedChange={handleEditorUnsavedChange}
               secretName={secretKey}
               environment={singleEnvSlug}
               secretPath={secretPath}
@@ -617,6 +653,8 @@ export const SecretTableRow = ({
                             className={twMerge("col-span-2", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
+                              unsavedChangeId={slug}
+                              onUnsavedChange={handleEditorUnsavedChange}
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
@@ -657,6 +695,8 @@ export const SecretTableRow = ({
                             <TableCell />
                             <TableCell>
                               <SecretOverrideRow
+                                unsavedChangeId={`${slug}-override`}
+                                onUnsavedChange={handleEditorUnsavedChange}
                                 secretName={secretKey}
                                 environment={slug}
                                 secretPath={secretPath}
