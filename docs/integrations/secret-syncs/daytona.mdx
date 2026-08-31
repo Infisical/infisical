@@ -9,6 +9,8 @@ description: "Learn how to configure a Daytona sync for Infisical."
 
 <Note>
     Daytona secret names must start with a letter or an underscore, and can contain only letters, digits, hyphens, and underscores. A sync that includes a key Daytona rejects fails and names the offending key, so no secrets are written. Use a **key schema** to reshape names that do not fit.
+
+    The key schema itself is checked against the same rule when you create or update the sync, so a schema containing a slash is rejected up front rather than failing on every run.
 </Note>
 
 <Tabs>
@@ -84,10 +86,9 @@ description: "Learn how to configure a Daytona sync for Infisical."
                     "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                     "environment": "dev",
                     "secretPath": "/my-secrets",
-                    "isEnabled": true,
+                    "isAutoSyncEnabled": true,
                     "syncOptions": {
                         "initialSyncBehavior": "overwrite-destination",
-                        "autoSyncEnabled": true,
                         "disableSecretDeletion": false
                     },
                     "destinationConfig": {
@@ -104,7 +105,7 @@ description: "Learn how to configure a Daytona sync for Infisical."
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "name": "my-daytona-sync",
                 "description": "an example sync",
-                "isEnabled": true,
+                "isAutoSyncEnabled": true,
                 "version": 1,
                 "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
@@ -124,7 +125,6 @@ description: "Learn how to configure a Daytona sync for Infisical."
                 "lastRemovedAt": null,
                 "syncOptions": {
                     "initialSyncBehavior": "overwrite-destination",
-                    "autoSyncEnabled": true,
                     "disableSecretDeletion": false
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",

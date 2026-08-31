@@ -2,7 +2,6 @@ import { HttpStatusCode, isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -36,8 +35,9 @@ export const validateDaytonaConnectionCredentials = async (config: TDaytonaConne
       headers: getDaytonaAuthHeaders(apiKey)
     });
   } catch (error: unknown) {
-    logger.error({ error }, "Failed to validate Daytona connection");
-
+    // The raw Axios error is deliberately not logged: it carries the API key at
+    // config.headers.Authorization, which sits past the logger's depth-3 redaction and under a key
+    // name the redaction list does not cover.
     if (isAxiosError(error)) {
       if (error.response?.status === HttpStatusCode.Unauthorized) {
         throw new BadRequestError({

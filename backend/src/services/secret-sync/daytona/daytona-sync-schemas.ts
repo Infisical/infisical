@@ -11,6 +11,25 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+export const DAYTONA_SECRET_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+export const DAYTONA_SECRET_NAME_RULE =
+  "Daytona secret names must start with a letter or underscore and contain only letters, digits, hyphens and underscores.";
+
+// A key schema is applied to every synced key, so literal characters Daytona rejects (a slash, a
+// leading digit) would produce a sync that saves cleanly and then fails on every run. Placeholders
+// are substituted with a token that is itself valid so only the schema's literals are under test;
+// the resolved names are checked again at sync time.
+const isDaytonaCompatibleKeySchema = (keySchema?: string) =>
+  !keySchema || DAYTONA_SECRET_NAME_PATTERN.test(keySchema.replace(/\{\{secretKey\}\}|\{\{environment\}\}/g, "A"));
+
+const hasDaytonaCompatibleKeySchema = (val: { syncOptions?: { keySchema?: string } }) =>
+  isDaytonaCompatibleKeySchema(val.syncOptions?.keySchema);
+
+const DAYTONA_KEY_SCHEMA_ERROR = {
+  message: `Key schema produces names Daytona rejects. ${DAYTONA_SECRET_NAME_RULE}`,
+  path: ["syncOptions", "keySchema"]
+};
+
 const DaytonaSyncDestinationConfigSchema = z.object({
   organizationName: z
     .string()
@@ -29,19 +48,17 @@ export const DaytonaSyncSchema = BaseSecretSyncSchema(SecretSync.Daytona, Dayton
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Daytona] }));
 
-export const CreateDaytonaSyncSchema = GenericCreateSecretSyncFieldsSchema(
-  SecretSync.Daytona,
-  DaytonaSyncOptionsConfig
-).extend({
-  destinationConfig: DaytonaSyncDestinationConfigSchema
-});
+export const CreateDaytonaSyncSchema = GenericCreateSecretSyncFieldsSchema(SecretSync.Daytona, DaytonaSyncOptionsConfig)
+  .extend({
+    destinationConfig: DaytonaSyncDestinationConfigSchema
+  })
+  .refine(hasDaytonaCompatibleKeySchema, DAYTONA_KEY_SCHEMA_ERROR);
 
-export const UpdateDaytonaSyncSchema = GenericUpdateSecretSyncFieldsSchema(
-  SecretSync.Daytona,
-  DaytonaSyncOptionsConfig
-).extend({
-  destinationConfig: DaytonaSyncDestinationConfigSchema.optional()
-});
+export const UpdateDaytonaSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSync.Daytona, DaytonaSyncOptionsConfig)
+  .extend({
+    destinationConfig: DaytonaSyncDestinationConfigSchema.optional()
+  })
+  .refine(hasDaytonaCompatibleKeySchema, DAYTONA_KEY_SCHEMA_ERROR);
 
 export const DaytonaSyncListItemSchema = z
   .object({

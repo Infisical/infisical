@@ -2,7 +2,6 @@
 import { HttpStatusCode, isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { logger } from "@app/lib/logger";
 import { retryOnRateLimit } from "@app/lib/retry";
 import { getDaytonaAuthHeaders } from "@app/services/app-connection/daytona";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -10,11 +9,8 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { DAYTONA_SECRET_NAME_PATTERN, DAYTONA_SECRET_NAME_RULE } from "./daytona-sync-schemas";
 import { TDaytonaListSecretsResponse, TDaytonaSecret, TDaytonaSyncWithCredentials } from "./daytona-sync-types";
-
-const DAYTONA_SECRET_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
-const DAYTONA_SECRET_NAME_RULE =
-  "Daytona secret names must start with a letter or underscore and contain only letters, digits, hyphens and underscores.";
 
 const DAYTONA_PAGE_SIZE = 100;
 const DAYTONA_MAX_PAGES = 10;
@@ -39,11 +35,11 @@ const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => 
     if (!cursor) return secrets;
   }
 
-  logger.warn(
-    `Daytona secret listing stopped at the ${DAYTONA_MAX_PAGES} page cap; the destination may hold more secrets than were read`
+  // Returning here would hand reconciliation a partial snapshot: keys past the cap would look
+  // absent, so the sync would recreate them and skip deletions it owed.
+  throw new Error(
+    `Daytona returned more than ${DAYTONA_MAX_PAGES * DAYTONA_PAGE_SIZE} secrets, which exceeds the ${DAYTONA_MAX_PAGES} page listing cap. Refusing to sync from an incomplete view of the destination.`
   );
-
-  return secrets;
 };
 
 const createDaytonaSecret = (apiKey: string, name: string, value: string) =>
