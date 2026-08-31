@@ -535,6 +535,12 @@ export const Navbar = () => {
                                   }
                                 />
                                 <span className="truncate">{subOrg.name}</span>
+                                {subOrg.isActive === false && (
+                                  <Badge variant="neutral" className="ml-auto">
+                                    <CircleSlash />
+                                    Inactive
+                                  </Badge>
+                                )}
                               </CommandItem>
                             ))}
                             <OrgPermissionCan

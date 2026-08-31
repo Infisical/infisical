@@ -116,7 +116,13 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organizations: sanitizedSubOrganizationSchema.array(),
+          organizations: sanitizedSubOrganizationSchema
+            .extend({
+              // the caller's membership state, not an org column: null when the caller has no
+              // membership at all, which isAccessible=false permits
+              isActive: z.boolean().nullable()
+            })
+            .array(),
           totalCount: z.number()
         })
       }
