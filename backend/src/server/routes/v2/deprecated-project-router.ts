@@ -11,7 +11,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { projectCreationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { projectSlugSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -106,7 +106,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.CREATE.projectDescription),
-        slug: slugSchema({ min: 5, max: 64 }).optional().describe(PROJECTS.CREATE.slug),
+        slug: projectSlugSchema({ min: 5, max: 64 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
@@ -185,7 +185,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to delete.")
+        slug: projectSlugSchema({ min: 5, max: 64 }).describe("The slug of the project to delete.")
       }),
       response: {
         200: SanitizedProjectSchema
@@ -238,7 +238,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
+        slug: projectSlugSchema({ max: 64 }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
@@ -271,7 +271,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       params: z.object({
-        slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
+        slug: projectSlugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
       }),
       body: z.object({
         name: z
@@ -337,7 +337,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CAS.slug)
+        slug: projectSlugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CAS.slug)
       }),
       querystring: z.object({
         status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
@@ -382,7 +382,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       hide: true,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
+        slug: projectSlugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
       querystring: z.object({
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
