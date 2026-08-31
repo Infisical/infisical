@@ -75,14 +75,14 @@ export const AwsSecretsManagerSyncFields = () => {
                     <p>Specify how Infisical should map secrets to AWS Secrets Manager:</p>
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       <li>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">One-To-One</span>: Each
+                        <p className="text-label">
+                          <span className="font-medium text-foreground">One-To-One</span>: Each
                           Infisical secret will be mapped to a separate AWS Secrets Manager secret.
                         </p>
                       </li>
                       <li>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">Many-To-One</span>: All
+                        <p className="text-label">
+                          <span className="font-medium text-foreground">Many-To-One</span>: All
                           Infisical secrets will be mapped to a single AWS Secrets Manager secret.
                         </p>
                       </li>

@@ -47,11 +47,11 @@ export const DuplicateDestinationConfirmationModal = ({
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <p className="text-xs text-mineshaft-400">
+        <p className="text-xs text-muted">
           {duplicateProjectId ? (
             <>
               Duplicate found in project ID:{" "}
-              <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
+              <code className="rounded-sm bg-ring px-1 py-0.5 text-foreground/80">
                 {duplicateProjectId}
               </code>
             </>

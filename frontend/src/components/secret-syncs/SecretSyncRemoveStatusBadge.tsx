@@ -1,8 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
-import { AlertTriangleIcon, CheckIcon, EraserIcon, LucideIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, EraserIcon, LucideIcon, XIcon } from "lucide-react";
 
 import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -64,13 +62,13 @@ export const SecretSyncRemoveStatusBadge = ({ secretSync, mini }: Props) => {
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
             <div>
-              <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="mb-2 flex self-start text-danger">
+                <XIcon className="mr-1.5 ml-1 size-4" />
                 <div className="text-xs">
                   {mini ? "Failed to Remove Secrets" : "Failure Reason"}
                 </div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+              <div className="rounded-sm bg-ring p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>

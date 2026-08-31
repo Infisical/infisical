@@ -189,19 +189,19 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                         <p>
                           To configure a KMS key, ensure the following permissions are present on
                           the selected IAM role:{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                          <span className="rounded-sm bg-ring text-label">
                             &#34;kms:ListAliases&#34;
                           </span>
                           ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                          <span className="rounded-sm bg-ring text-label">
                             &#34;kms:DescribeKey&#34;
                           </span>
                           ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                          <span className="rounded-sm bg-ring text-label">
                             &#34;kms:Encrypt&#34;
                           </span>
                           ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                          <span className="rounded-sm bg-ring text-label">
                             &#34;kms:Decrypt&#34;
                           </span>
                           .

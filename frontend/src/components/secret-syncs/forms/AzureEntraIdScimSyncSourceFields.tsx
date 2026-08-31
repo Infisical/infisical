@@ -86,7 +86,7 @@ export const AzureEntraIdScimSyncSourceFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="mb-4 text-sm text-label">
         Specify the environment and path where you would like to sync secrets from.
       </p>
 
