@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -37,6 +38,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { evictOrgOnAccessRevoked } from "@app/helpers/organization";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -124,6 +126,7 @@ export const SelectOrgPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
   const { autoSelectErrorMessage } = useRouteContext({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
 
@@ -251,6 +254,8 @@ export const SelectOrgPage = () => {
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
     } catch (error: any) {
+      evictOrgOnAccessRevoked(queryClient, error);
+
       if (error?.response?.data?.error === "SmtpError") {
         // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
         await handleLogout();

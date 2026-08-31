@@ -66,6 +66,7 @@ import {
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
+import { evictOrgOnAccessRevoked, notifyOrgSelectionFailed } from "@app/helpers/organization";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -204,34 +205,43 @@ export const Navbar = () => {
 
     if (organizationId === currentOrg.id) return;
 
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
+    try {
+      const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
-    if (isMfaEnabled) {
-      SecurityClient.setMfaToken(token);
-      if (mfaMethod) {
-        setRequiredMfaMethod(mfaMethod);
+      if (isMfaEnabled) {
+        SecurityClient.setMfaToken(token);
+        if (mfaMethod) {
+          setRequiredMfaMethod(mfaMethod);
+        }
+        toggleShowMfa.on();
+        setMfaSuccessCallback(() => async () => {
+          await handleOrgSelection({ organizationId, onSuccess });
+        });
+        return;
       }
-      toggleShowMfa.on();
-      setMfaSuccessCallback(() => async () => {
-        await handleOrgSelection({ organizationId, onSuccess });
-      });
-      return;
-    }
 
-    SecurityClient.setToken(token);
-    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
-    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
+      SecurityClient.setToken(token);
+      queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+      queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+      queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+      queryClient.removeQueries({ queryKey: appConnectionKeys.all });
 
-    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
+      await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+      await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
-    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
+      await navigateUserToOrg({ navigate, organizationId, navigateTo });
+      queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
-    if (onSuccess) {
-      await onSuccess();
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (error) {
+      evictOrgOnAccessRevoked(queryClient, error);
+      notifyOrgSelectionFailed(
+        error,
+        orgs?.find((org) => org.id === organizationId)?.name ??
+          subOrganizations.find((subOrg) => subOrg.id === organizationId)?.name
+      );
     }
   };
 
