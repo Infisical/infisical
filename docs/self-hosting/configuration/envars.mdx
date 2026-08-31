@@ -76,7 +76,7 @@ Example values:
   **direct egress** path.
 
   For reaching private resources, prefer the [Gateway](/documentation/platform/gateways/overview),
-  which tunnels traffic through an agent inside your network and does not require
+  which tunnels traffic through an agent inside your network and doesn't require
   opening any internal IP range on the Infisical instance. Use this flag (or the
   more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP`
   flags) only for the features that egress directly, without a Gateway.
@@ -125,7 +125,7 @@ Example values:
   <Note>
     Enable this only if your instance does **not** rely on an outbound
     `HTTP_PROXY` / `HTTPS_PROXY` for egress. When a proxy is in use, the IP pin
-    cannot extend past the proxy (the proxy resolves the target itself), so
+    can't extend past the proxy (the proxy resolves the target itself), so
     leaving this off is the correct choice for proxied deployments.
   </Note>
 </ParamField>
@@ -155,7 +155,7 @@ Example values:
   When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility with existing self-hosted deployments).
 
   <Warning>
-    If your deployment sits behind a reverse proxy (e.g. NGINX, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
+    If your deployment sits behind a reverse proxy (e.g. NGINX, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical isn't reachable directly from the internet.
   </Warning>
 </ParamField>
 
@@ -267,10 +267,10 @@ easy to miss:
   maximum replica count, not today's.
 
 Aim to keep the peak comfortably under `max_connections`, leaving headroom for migrations, admin tools, and
-your own `psql` sessions. If you are close to the limit, **lower `DB_POOL_MAX`** rather than raising
+your own `psql` sessions. If you're close to the limit, **lower `DB_POOL_MAX`** rather than raising
 `max_connections`: each PostgreSQL connection costs memory on the server, and a large number of mostly-idle
 connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
-and raising it is the right move.
+and raising it's the right move.
 
 <Tip>
   Prefer scaling reads with `DB_READ_REPLICAS` over enlarging the primary pool. A connection pooler such as
@@ -349,7 +349,7 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 ### Audit log behavior
 
 <ParamField query="DISABLE_POSTGRES_AUDIT_LOG_STORAGE" type="string" default="false">
-  Disable storing audit logs in PostgreSQL. When set to `true`, audit logs are not written to PostgreSQL but are still sent to ClickHouse (if configured) and any configured [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams).
+  Disable storing audit logs in PostgreSQL. When set to `true`, audit logs aren't written to PostgreSQL but are still sent to ClickHouse (if configured) and any configured [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams).
 </ParamField>
 
 <ParamField query="AUDIT_LOG_STREAMS_ENABLED" type="string" default="true">
@@ -372,11 +372,11 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 
 Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
-Redis is required: the instance will not start unless one of `REDIS_URL`, `REDIS_SENTINEL_HOSTS`, or
+Redis is required: the instance won't start unless one of `REDIS_URL`, `REDIS_SENTINEL_HOSTS`, or
 `REDIS_CLUSTER_HOSTS` is set.
 
 <Info>
-An **active-passive** setup is recommended for Redis. Infisical has not been tested with an **active-active** Redis setup, which may result in undocumented behavior.
+An **active-passive** setup is recommended for Redis. Infisical hasn't been tested with an **active-active** Redis setup, which may result in undocumented behavior.
 </Info>
 
 <Tabs>
@@ -438,7 +438,7 @@ An **active-passive** setup is recommended for Redis. Infisical has not been tes
       Enable Redis TLS encryption on connection.
     </ParamField>
     <ParamField query="REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE" type="boolean" default="false">
-      Enable this if you are using in-transit encryption for an AWS ElastiCache cluster. For more information, refer to the [ioredis documentation](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
+      Enable this if you're using in-transit encryption for an AWS ElastiCache cluster. For more information, refer to the [ioredis documentation](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
     </ParamField>
     <ParamField query="REDIS_USERNAME" type="string" default="none">
       Authentication username for Redis Node
@@ -515,14 +515,14 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 </ParamField>
 
 <ParamField query="SMTP_IGNORE_TLS" type="bool" default="false" optional>
-  If this is `true` and `SMTP_PORT` is not 465 then TLS is not used even if the
+  If this is `true` and `SMTP_PORT` isn't 465 then TLS isn't used even if the
   server supports STARTTLS extension.
 </ParamField>
 
 <ParamField query="SMTP_REQUIRE_TLS" type="bool" default="true" optional>
-  If this is `true` and `SMTP_PORT` is not 465 then Infisical tries to use
-  STARTTLS even if the server does not advertise support for it. If the
-  connection cannot be encrypted, then the message is not sent.
+  If this is `true` and `SMTP_PORT` isn't 465 then Infisical tries to use
+  STARTTLS even if the server doesn't advertise support for it. If the
+  connection can't be encrypted, then the message isn't sent.
 </ParamField>
 
 <ParamField
@@ -554,7 +554,7 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 
 1. Create an account and configure [SendGrid](https://sendgrid.com) to send emails.
 2. Create a SendGrid API Key under Settings > [API Keys](https://app.sendgrid.com/settings/api_keys)
-3. Set a name for your API Key, we recommend using "Infisical," and select the "Restricted Key" option. You will need to enable the "Mail Send" permission as shown below:
+3. Set a name for your API Key, we recommend using "Infisical," and select the "Restricted Key" option. You'll need to enable the "Mail Send" permission as shown below:
 
 ![creating sendgrid api key](../../images/self-hosting/configuration/email/email-sendgrid-create-key.png)
 
@@ -572,7 +572,7 @@ SMTP_FROM_NAME=Infisical
 ```
 
   <Info>
-    Remember that you will need to restart Infisical for this to work properly.
+    Remember that you'll need to restart Infisical for this to work properly.
   </Info>
 </Accordion>
 
@@ -598,10 +598,10 @@ SMTP_FROM_NAME=Infisical
 <Accordion title="AWS SES">
   <Steps>
     <Step title="Create a verified identity">
-      This will be used to verify the email you are sending from.
+      This will be used to verify the email you're sending from.
       ![Create SES identity](../../images/self-hosting/configuration/email/ses-create-identity.png)
       <Info>
-        If AWS SES is in sandbox mode, you will only be able to send emails to verified identities.
+        If AWS SES is in sandbox mode, you'll only be able to send emails to verified identities.
       </Info>
     </Step>
     <Step title="Create an account and configure AWS SES">

@@ -24,7 +24,7 @@ Infisical KMS currently supports two encryption strategies:
 Using a hardware security module comes with the added benefit of having a secure and tamper-proof device to store your encryption keys. This ensures that your data is protected from unauthorized access.
 
 <Warning>
-  All encryption keys used for cryptographic operations are stored within the HSM. This means that if the HSM is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most providers offer recovery options for HSM devices, which you should consider when setting up an HSM device.
+  All encryption keys used for cryptographic operations are stored within the HSM. This means that if the HSM is lost or destroyed, you'll no longer be able to decrypt your data stored within Infisical. Most providers offer recovery options for HSM devices, which you should consider when setting up an HSM device.
 </Warning>
 
 Enabling HSM encryption has a set of key benefits:
@@ -33,7 +33,7 @@ Enabling HSM encryption has a set of key benefits:
 
 #### Caveats
 - **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
-- **Key Recovery**: If the HSM device is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
+- **Key Recovery**: If the HSM device is lost or destroyed, you'll no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
 
 ## Requirements
 - An HSM device _(PKCS#11 compatible library)_ from a compatible provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
@@ -52,7 +52,7 @@ HSM_KEY_LABEL=infisical-key
 HSM_PIN=your:pin
 ```
 
-- `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and macOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you are using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
+- `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and macOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you're using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
 - `HSM_PIN`: The PKCS#11 PIN to use for authentication with the HSM device.
 - `HSM_SLOT`: The slot number to use for the HSM device. This is typically between `0` and `5` for most HSM devices.
 - `HSM_KEY_LABEL`: The label of the key to use for encryption. **Please note that if no key is found with the provided label, the HSM will create a new key with the provided label.**
@@ -77,7 +77,7 @@ Below you'll find a list of the attributes each key will be created with.
   * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
 
   <Warning>
-    Note that for security reasons it is highly recommended to create an AES key with the full set of key attributes seen below if you're going to bring your own key.
+    Note that for security reasons it's highly recommended to create an AES key with the full set of key attributes seen below if you're going to bring your own key.
   </Warning>
 </Accordion>
 
@@ -88,7 +88,7 @@ Below you'll find a list of the attributes each key will be created with.
 * `CKA_ENCRYPT`: `true` — Encryption capabilities enabled.
 * `CKA_DECRYPT`: `true` — Decryption capabilities enabled.
 * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
-* `CKA_EXTRACTABLE`: `false` — The key material is not extractable from the HSM.
+* `CKA_EXTRACTABLE`: `false` — The key material isn't extractable from the HSM.
 * `CKA_SENSITIVE`: `true` — The key material is marked as sensitive.
 * `CKA_PRIVATE`: `true` — The key material is marked as private to the slot and can't be accessed from other slots.
 
@@ -105,7 +105,7 @@ Below you'll find a list of the attributes each key will be created with.
   * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
 
   <Warning>
-    Note that for security reasons it is highly recommended to create an HMAC key with the full set of key attributes seen below if you're going to bring your own key.
+    Note that for security reasons it's highly recommended to create an HMAC key with the full set of key attributes seen below if you're going to bring your own key.
   </Warning>
 </Accordion>
 
@@ -116,7 +116,7 @@ Below you'll find a list of the attributes each key will be created with.
 * `CKA_SIGN`: `true` — Signing capabilities enabled
 * `CKA_VERIFY`: `true` — Verifying capabilities enabled.
 * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
-* `CKA_EXTRACTABLE`: `false` — The key material is not extractable from the HSM.
+* `CKA_EXTRACTABLE`: `false` — The key material isn't extractable from the HSM.
 * `CKA_SENSITIVE`: `true` — The key material is marked as sensitive.
 * `CKA_PRIVATE`: `true` — The key material is marked as private to the slot and can't be accessed from other slots.
 
@@ -590,7 +590,7 @@ Below you'll find a list of the attributes each key will be created with.
     </Tabs>
   </Tab>
   <Tab title="Kubernetes">
-    When you are deploying Infisical with the [Kubernetes self-hosting option](/self-hosting/deployment-options/kubernetes-helm), you can still use HSM encryption, but you need to ensure that the HSM client files are present in the container.
+    When you're deploying Infisical with the [Kubernetes self-hosting option](/self-hosting/deployment-options/kubernetes-helm), you can still use HSM encryption, but you need to ensure that the HSM client files are present in the container.
 
     <Tabs>
       <Tab title="Thales Luna Cloud HSM">
@@ -1564,5 +1564,5 @@ Below you'll find a list of the attributes each key will be created with.
 To disable HSM encryption, navigate to Infisical's Server Admin Console and set the KMS encryption strategy to `Software-based Encryption`. This will revert the encryption strategy back to the default software-based encryption.
 
 <Note>
-  In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you will not be able to disable HSM encryption.
+  In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you won't be able to disable HSM encryption.
 </Note>

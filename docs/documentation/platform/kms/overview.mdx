@@ -11,10 +11,10 @@ Infisical can be used as a Key Management System (KMS), referred to as Infisical
 
 By default your Infisical data such as projects and the data within them are encrypted at rest using Infisical's own KMS. This ensures that your data is secure and protected from unauthorized access.
 
-If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/self-hosting/guides/hsm-integration). 
+If you're on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/self-hosting/guides/hsm-integration). 
 
 <Note>
-  Keys managed in KMS are not extractable from the platform. Additionally, data
+  Keys managed in KMS aren't extractable from the platform. Additionally, data
   is never stored when performing cryptographic operations.
 </Note>
 
@@ -41,7 +41,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Creating a KMS key">
-                Navigate to Project > Key Management and tap on the **Add Key** button.
+                Navigate to Project > Key Management and select on the **Add Key** button.
                 ![kms add key button](/images/platform/kms/infisical-kms/kms-add-key.png)
 
                 Specify your key details. Here's some guidance on each field:
@@ -209,7 +209,7 @@ In the following steps, we explore how to generate a key and use it to sign data
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Creating a KMS key">
-                Navigate to Project > Key Management and tap on the **Add Key** button.
+                Navigate to Project > Key Management and select on the **Add Key** button.
                 ![kms add key button](/images/platform/kms/infisical-kms/kms-add-key.png)
 
                 Specify your key details. Here's some guidance on each field:
@@ -380,7 +380,7 @@ In the following steps, we explore how to generate a key and use it to produce a
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Creating a KMS key">
-                Navigate to Project > Key Management and tap on the **Add Key** button.
+                Navigate to Project > Key Management and select on the **Add Key** button.
                 ![kms add key button](/images/platform/kms/infisical-kms/kms-add-key.png)
 
                 Specify your key details. Here's some guidance on each field:
@@ -450,7 +450,7 @@ In the following steps, we explore how to verify a MAC using an existing key in 
                 you want to verify.
             </Step>
             <Step title="Verifying a MAC with the KMS key">
-                Select verify MAC, paste your MAC and data into the text areas, and tap on the Verify MAC button.
+                Select verify MAC, paste your MAC and data into the text areas, and select on the Verify MAC button.
 
                 Your verification result will be displayed. If the MAC is invalid, the "MAC Status" field will be `Invalid`.
             </Step>
@@ -491,13 +491,13 @@ In the following steps, we explore how to verify a MAC using an existing key in 
 
 ## Key rotation
 
-Every KMS key tracks a version, starting at 1. Rotating a key generates new cryptographic key material for it and increments the version. The key keeps the same ID and name, so applications referencing the key do not need any changes.
+Every KMS key tracks a version, starting at 1. Rotating a key generates new cryptographic key material for it and increments the version. The key keeps the same ID and name, so applications referencing the key don't need any changes.
 
 How rotation behaves:
 
 - New encrypt operations use the latest key material.
 - All previous key material versions are retained inside Infisical, and decrypt operations automatically use the version that encrypted the ciphertext. Existing ciphertexts remain decryptable through Infisical without re-encryption.
-- Rotation does not re-encrypt data that was already encrypted with the key. If you need ciphertexts to use the new material, decrypt and re-encrypt them.
+- Rotation doesn't re-encrypt data that was already encrypted with the key. If you need ciphertexts to use the new material, decrypt and re-encrypt them.
 
 To rotate a key:
 
@@ -516,9 +516,9 @@ Keys can also be rotated programmatically via the [rotate key API endpoint](/api
 <Warning>
   Previous key material versions are retained only inside the Infisical instance where the key lives, and decrypt operations that resolve old versions automatically work only through Infisical's encrypt/decrypt API. Two workflows take key material outside of Infisical and only ever receive the current version, so rotation affects them:
 
-  - **Exported or imported key material.** [Bulk export](#bulk-export) and the private-key export endpoints return only the current key material, and [bulk import](#bulk-import) creates a key at version 1. A key exported before rotation, or imported into another instance, will not carry its earlier versions, so ciphertexts encrypted under those earlier versions cannot be decrypted from the exported material alone. If you rely on exported material for escrow or disaster recovery, re-export after each rotation and keep every exported version.
+  - **Exported or imported key material.** [Bulk export](#bulk-export) and the private-key export endpoints return only the current key material, and [bulk import](#bulk-import) creates a key at version 1. A key exported before rotation, or imported into another instance, won't carry its earlier versions, so ciphertexts encrypted under those earlier versions can't be decrypted from the exported material alone. If you rely on exported material for escrow or disaster recovery, re-export after each rotation and keep every exported version.
 
-  - **KMIP-managed keys.** A KMIP client retrieves raw key material and encrypts data itself. If you rotate a key that is used over KMIP, the client will retrieve different material on its next fetch and will no longer be able to decrypt data it encrypted with the previous material. Do not rotate a key that is in use by a KMIP client; provision a new key instead.
+  - **KMIP-managed keys.** A KMIP client retrieves raw key material and encrypts data itself. If you rotate a key that is used over KMIP, the client will retrieve different material on its next fetch and will no longer be able to decrypt data it encrypted with the previous material. Don't rotate a key that is in use by a KMIP client; provision a new key instead.
 </Warning>
 
 ## Bulk export & import
@@ -529,7 +529,7 @@ Infisical KMS supports bulk export and bulk import of key material, allowing you
 
 1. Navigate to **Project > Key Management**.
 2. Use the checkboxes to select the keys you want to export (up to 100 at a time).
-3. Click the **Export** button that appears in the action bar above the table.
+3. Select the **Export** button that appears in the action bar above the table.
 ![kms bulk export](/images/platform/kms/infisical-kms/kms-bulk-export.png)
 4. A `.json` file is downloaded containing the key metadata and key material.
 
@@ -563,34 +563,34 @@ The exported file is a JSON array where each entry is one of the following shape
 ```
 
 <Warning>
-  The exported file contains sensitive cryptographic key material. Store it securely and do not share it.
+  The exported file contains sensitive cryptographic key material. Store it securely and don't share it.
 </Warning>
 
 <Note>
-  Keys created with **Allow Export** disabled are non-exportable. They cannot be selected for export,
+  Keys created with **Allow Export** disabled are non-exportable. They can't be selected for export,
   and any export request for them (including over KMIP) is rejected, regardless of the caller's permissions.
 </Note>
 
 ### Bulk import
 
 1. Navigate to **Project > Key Management**.
-2. In the top-right of the keys table, click the dropdown arrow next to **Add Key** and select **Import Keys**.
-3. Upload a `.json` file matching the export format described above (drag and drop, or click to browse).
+2. In the top-right of the keys table, select the dropdown arrow next to **Add Key** and select **Import Keys**.
+3. Upload a `.json` file matching the export format described above (drag and drop, or select to browse).
    Each entry may also include an optional `"isExportable": false` field to import the key as non-exportable.
 ![kms import modal](/images/platform/kms/infisical-kms/kms-import-modal.png)
 4. A preview of the keys to be imported is shown, along with any validation errors.
 ![kms import preview](/images/platform/kms/infisical-kms/kms-import-preview.png)
-5. Click **Import** to create the keys in the project.
+5. Select **Import** to create the keys in the project.
 
 <Note>
-  Importing creates new key entries. It does not overwrite existing keys with the same name.
+  Importing creates new key entries. It doesn't overwrite existing keys with the same name.
 </Note>
 
 ## FAQ
 
 <AccordionGroup>
   <Accordion title="Is my data stored in Infisical KMS?">
-    No. Infisical's KMS only provides cryptographic services and does not store
+    No. Infisical's KMS only provides cryptographic services and doesn't store
     any encrypted or decrypted data.
   </Accordion>
   <Accordion title="Can key material be accessed outside of Infisical KMS?">
@@ -624,9 +624,9 @@ The exported file is a JSON array where each entry is one of the following shape
   </Accordion>
   <Accordion title="How do I sign and verify a digest using the Infisical KMS?">
     To sign and verify a digest using the Infisical KMS, you can use the `Sign` and `Verify` endpoints respectively.
-    You will need to pass `"isDigest": true` in the request body to indicate that you are signing or verifying a digest.
-    The data you are signing or verifying will need to be a base64 encoded digest of the data you wish to sign or verify.
-    It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you are using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
+    You'll need to pass `"isDigest": true` in the request body to indicate that you're signing or verifying a digest.
+    The data you're signing or verifying will need to be a base64 encoded digest of the data you wish to sign or verify.
+    It's important that the digest is created using the same hashing algorithm as the signing algorithm. As an example, you would create the digest with `SHA512` if you're using the `RSASSA_PKCS1_V1_5_SHA_512` signing algorithm.
 
     To create a SHA512 digest of your data, you can use the following command with OpenSSL:
     ```bash

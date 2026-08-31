@@ -9,7 +9,7 @@ The Infisical GitHub dynamic secret allows you to generate short-lived tokens fo
 
 <Steps>
     <Step title="Create an application on GitHub">
-        Navigate to [GitHub App settings](https://github.com/settings/apps) and click **New GitHub App**.
+        Navigate to [GitHub App settings](https://github.com/settings/apps) and select **New GitHub App**.
 
         ![integrations github app create](/images/integrations/github/app/self-hosted-github-app-create.png)
 
@@ -72,12 +72,12 @@ The Infisical GitHub dynamic secret allows you to generate short-lived tokens fo
     	</ParamField>
   </Step>
   <Step title="Click `Submit`">
-      After submitting the form, you will see a dynamic secret created in the dashboard.
+      After submitting the form, you'll see a dynamic secret created in the dashboard.
   </Step>
 
   <Step title="Generate dynamic secrets">
     	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-    	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+    	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
     	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -95,18 +95,18 @@ The Infisical GitHub dynamic secret allows you to generate short-lived tokens fo
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 
 This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
 
 ![Lease Data](/images/platform/dynamic-secrets/lease-data.png)
 
 <Warning>
-    GitHub App tokens cannot be revoked. As such, revoking a token on Infisical does not invalidate the GitHub token; it remains active until it expires.
+    GitHub App tokens can't be revoked. As such, revoking a token on Infisical doesn't invalidate the GitHub token; it remains active until it expires.
 </Warning>
 
 ## Renew leases
 
 <Note>
-    GitHub App tokens cannot be renewed because they are fixed to a lifetime of 1 hour.
+    GitHub App tokens can't be renewed because they're fixed to a lifetime of 1 hour.
 </Note>

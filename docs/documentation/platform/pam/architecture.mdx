@@ -20,7 +20,7 @@ PAM uses a proxy-based architecture. Nothing connects directly to your databases
 
 When an actor connects to an [account](/documentation/platform/pam/accounts/overview):
 
-1. **Access is requested** — a user clicks Launch in the browser, or the CLI command runs
+1. **Access is requested** — a user selects Launch in the browser, or the CLI command runs
 2. **Infisical checks permissions** — verifies the actor has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
 3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, session duration
 4. **Approval is checked** — a gated account also needs an approved [access request](/documentation/platform/pam/access-requests/overview)
@@ -52,7 +52,7 @@ All connections are encrypted:
 - **Gateway to Infisical** — TLS
 - **Session recordings** — encrypted before upload
 
-The Relay server (which routes traffic between clients and Gateways) cannot decrypt or inspect the traffic passing through it.
+The Relay server (which routes traffic between clients and Gateways) can't decrypt or inspect the traffic passing through it.
 
 ## Recording architecture
 

@@ -4,9 +4,9 @@ sidebarTitle: "Local proxy"
 description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
 ---
 
-With a local proxy, everything happens on the computer you are already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
+With a local proxy, everything happens on the computer you're already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
 
-Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent cannot read your keyring or your credential files, and its only route to the network is the proxy.
+Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent can't read your keyring or your credential files, and its only route to the network is the proxy.
 
 ```text
   +- your computer ------------------------+
@@ -23,9 +23,9 @@ By the end of this page an agent on your machine makes authenticated GitHub call
 - [Set up credentials](/documentation/platform/agent-proxy/quickstart/credentials) finished, so you have a `GITHUB_PAT` secret and a `github` proxied service in `/coding-agent`.
 - The [Infisical CLI](/cli/overview) installed.
 - macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed.
-- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this is not required.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this isn't required.
 
-The sandbox comes from the operating system, so what you install depends on which one you are on:
+The sandbox comes from the operating system, so what you install depends on which one you're on:
 
 <Tabs>
   <Tab title="macOS">
@@ -77,7 +77,7 @@ Everything after `--` is your agent's own command. Run it from the directory you
 infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
-This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it cannot read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
+This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it can't read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
 
 <Note>
   In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
@@ -119,7 +119,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged. Confirm you have **Read Value** on `GITHUB_PAT`, since `run` brokers as you, and that the host pattern matches `api.github.com`. Add `--log-file=/tmp/broker.log` and `tail -f` it to see the decision for each request.
+  Getting a `401`? The proxy couldn't apply the credential and forwarded the placeholder unchanged. Confirm you have **Read Value** on `GITHUB_PAT`, since `run` brokers as you, and that the host pattern matches `api.github.com`. Add `--log-file=/tmp/broker.log` and `tail -f` it to see the decision for each request.
 </Note>
 
 For more depth, the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) reference covers what the sandbox allows and denies, how certificates work, and every flag `run` takes.

@@ -6,7 +6,7 @@ description: "Register a Hardware Security Module that Infisical reaches through
 
 An **HSM Connector** is the resource you create in Infisical to register a slot on your Hardware Security Module. It holds the slot's credentials (slot label, PIN) and a reference to a [Gateway](/documentation/platform/gateways/overview) running inside your network that can talk to the HSM. Infisical features that support HSM-backed keys reference the Connector when they need to perform PKCS#11 operations on your HSM.
 
-The Connector itself stores no key material. It is a credentials and routing record. Infisical never talks to the HSM directly. Instead, a Gateway acts as the bridge, loading your HSM vendor's PKCS#11 driver in the network where the HSM lives.
+The Connector itself stores no key material. It's a credentials and routing record. Infisical never talks to the HSM directly. Instead, a Gateway acts as the bridge, loading your HSM vendor's PKCS#11 driver in the network where the HSM lives.
 
 ## Before you start
 
@@ -48,13 +48,13 @@ Three pieces have to be in place for an HSM Connector to be usable:
 
 ## Run a Gateway with PKCS#11 enabled
 
-The Gateway is the agent Infisical talks to when it needs your HSM. You install it once on a host inside your network, start it with your HSM's PKCS#11 driver path, and Infisical routes every HSM operation through it. A Gateway started without the PKCS#11 driver path is not eligible for HSM Connectors and is skipped automatically.
+The Gateway is the agent Infisical talks to when it needs your HSM. You install it once on a host inside your network, start it with your HSM's PKCS#11 driver path, and Infisical routes every HSM operation through it. A Gateway started without the PKCS#11 driver path isn't eligible for HSM Connectors and is skipped automatically.
 
 If you have never deployed a Gateway before, read [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) first for the general install and auth flow, then return here for the HSM-specific flag.
 
 <Steps>
   <Step title="Install your HSM's PKCS#11 driver on the Gateway host">
-    Install the PKCS#11 library shipped by your HSM vendor on the Linux machine where the Gateway will run. Note the absolute path to the `.so`. You will pass it to the Gateway in the next step.
+    Install the PKCS#11 library shipped by your HSM vendor on the Linux machine where the Gateway will run. Note the absolute path to the `.so`. You'll pass it to the Gateway in the next step.
 
     For example, the Fortanix DSM PKCS#11 driver is commonly placed at `/opt/fortanix/pkcs11/fortanix_pkcs11.so` by Fortanix's installer, though you can put it anywhere the Gateway process can read.
 
@@ -62,7 +62,7 @@ If you have never deployed a Gateway before, read [Gateway Deployment](/document
   </Step>
 
   <Step title="Create the Gateway in the Infisical UI">
-    Go to **Organization Settings > Networking > Gateways**, click **Create Gateway**, name it, and pick an auth method. Then click **Show deploy command** and copy the install command for your platform. See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for full setup detail (relay, firewall, AWS or token auth).
+    Go to **Organization Settings > Networking > Gateways**, select **Create Gateway**, name it, and pick an auth method. Then select **Show deploy command** and copy the install command for your platform. See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for full setup detail (relay, firewall, AWS or token auth).
   </Step>
 
   <Step title="Start the Gateway with --pkcs11-module">
@@ -108,7 +108,7 @@ PKCS#11 driver libraries are vendor-specific binaries. Make sure the file is rea
 
 Once you have a PKCS#11-enabled Gateway running, create the Connector in Cert Manager.
 
-In **Certificate Manager > Settings > HSM Connectors**, click **Add HSM Connector**. The wizard walks you through three steps.
+In **Certificate Manager > Settings > HSM Connectors**, select **Add HSM Connector**. The wizard walks you through three steps.
 
 <Steps>
   <Step title="Basics">

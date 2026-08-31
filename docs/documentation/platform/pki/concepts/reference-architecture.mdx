@@ -9,11 +9,11 @@ description: "A reference layout for running your PKI on Infisical across multip
   you create your first Certificate Authority.
 </Info>
 
-This page is a reference layout for a PKI that serves multiple teams. It splits everything along one **issuance boundary**: each side of the boundary gets its own Certificate Authority, Certificate Policy, and Certificate Profile, plus one Application per service, so a certificate for one side cannot be issued from the other.
+This page is a reference layout for a PKI that serves multiple teams. It splits everything along one **issuance boundary**: each side of the boundary gets its own Certificate Authority, Certificate Policy, and Certificate Profile, plus one Application per service, so a certificate for one side can't be issued from the other.
 
 The page draws the boundary between environments (development, staging, and production), since that is the most common choice. Region, tenant, and business unit work the same way: wherever the page says environment, read your own boundary. [Choosing your boundary](#choosing-your-boundary) covers the variations, including starting with a single environment.
 
-It works with private CAs, external providers such as Let's Encrypt or Microsoft ADCS, or both, whether you are starting from scratch or bringing a PKI you already run.
+It works with private CAs, external providers such as Let's Encrypt or Microsoft ADCS, or both, whether you're starting from scratch or bringing a PKI you already run.
 
 ## The layout
 
@@ -65,7 +65,7 @@ graph LR
 - **Policies** decide what a certificate may contain.
 - **Applications** decide who can get one.
 - **Product Admins** own the Certificate Authorities, policies, and profiles, and create each Application.
-- **Teams** operate the Applications they are assigned to.
+- **Teams** operate the Applications they're assigned to.
 
 The rest of the page walks down the tree, one decision at a time.
 
@@ -106,7 +106,7 @@ A profile binds a policy to the CA that signs it. This is what teams request fro
 | `staging-tls-server` | Staging CA | `staging-tls-rules` |
 | `dev-tls-server` | Development CA | `dev-tls-rules` |
 
-Give a policy and its profile different names. They are separate objects that appear side by side in tables, requests, and audit events, so distinct names keep it clear which one a sentence means. Naming both after the environment, as above, also tells anyone attaching a profile which environment they are wiring up.
+Give a policy and its profile different names. They're separate objects that appear side by side in tables, requests, and audit events, so distinct names keep it clear which one a sentence means. Naming both after the environment, as above, also tells anyone attaching a profile which environment they're wiring up.
 
 ## One application per service and environment
 
@@ -136,7 +136,7 @@ Two different roles share the word admin. **Product Admin** is an organization-l
 | CI pipeline identity | Product Member | Operator on the Applications it issues for |
 | Compliance reviewer | Product Member | Auditor across the Applications in scope |
 
-Application members need the Product Member role to reach the Applications they are assigned to. Product Admins control every Certificate Authority in the organization, private and external, so keep that set small and deliberate.
+Application members need the Product Member role to reach the Applications they're assigned to. Product Admins control every Certificate Authority in the organization, private and external, so keep that set small and deliberate.
 
 ## Where your current setup fits
 
@@ -160,8 +160,8 @@ Environment is the most common boundary, but the structure holds along whichever
 | Runs one environment, or is early | Start with one CA, one policy per certificate type, and one Application per service. Add environments later by adding a CA and a policy. |
 | Separates by region or tenant rather than environment | Keep the same structure and write policies along that boundary instead. |
 | Has one team operating every environment | Use one Application per service, with all the environment profiles attached. Split by environment when the operators differ. |
-| Uses private CAs and cannot share a trust anchor across environments | Create a separate root per environment instead of a shared root. Expect to distribute several anchors and run several root ceremonies. |
-| Needs environments that cannot share administration | Put each one in its own sub-organization, described below. |
+| Uses private CAs and can't share a trust anchor across environments | Create a separate root per environment instead of a shared root. Expect to distribute several anchors and run several root ceremonies. |
+| Needs environments that can't share administration | Put each one in its own sub-organization, described below. |
 
 ### When you need full separation
 

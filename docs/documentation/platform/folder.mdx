@@ -5,7 +5,7 @@ description: "Learn how to organize secrets with folders."
 
 Infisical Folders enable users to organize secrets using custom structures dependent on the intended use case (also known as **path-based secret storage**).
 
-It is great for organizing secrets around hierarchies with multiple services or types of secrets involved at large quantities.
+It's great for organizing secrets around hierarchies with multiple services or types of secrets involved at large quantities.
 Infisical Folders can be infinitely nested to mirror your application architecture – whether it's microservices, monorepos,
 or any logical grouping that best suits your needs.
 
@@ -43,7 +43,7 @@ To delete a folder, hover over it and press the **X** button that appears on the
 ### Comparing folders
 
 It's possible to compare the contents of folders across environments in the **Secrets Overview** page.
-When you click on a folder, the table will display the items within it across environments.
+When you select a folder, the table will display the items within it across environments.
 
 In the image below, you can see that the **Development** environment is the only one that contains items
 in the `/users` folder, being other folders `/user-a`, `/user-b`, ... `/user-f`.
@@ -60,12 +60,12 @@ If you want to copy secrets or folders from one path to another, you can utilize
 
 First, select the **Source Environment** and the **Source Root Path** you want to copy secrets *from*. In the example provided, we select `/dev-folder` as the source root path from the Development environment. This means any secrets within `/dev-folder` from Development will be replicated. By default, these secrets are copied into the *currently active* folder/path in your target environment (e.g., the root folder of your Staging environment in this scenario).
 
-As a final step, you can select the specific secrets you wish to copy and then click **Replicate Secrets**.
+As a final step, you can select the specific secrets you wish to copy and then select **Replicate Secrets**.
 
 ![replicate secrets modal](../../images/platform/folder/replicate-secrets-result.png)
 
 The result shows two secrets successfully copied from the `/dev-folder` in the Development environment into the root folder of the Staging environment.
 
 <Info>
-    If you do not select a **Source Root Path**, the replication will consider the contents of the *entire root* of the **Source Environment** (e.g., the Development environment). In this example that would mean copying the `/dev-folder` itself rather than just its contents.
+    If you don't select a **Source Root Path**, the replication will consider the contents of the *entire root* of the **Source Environment** (e.g., the Development environment). In this example that would mean copying the `/dev-folder` itself rather than just its contents.
 </Info>

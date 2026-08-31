@@ -22,7 +22,7 @@ Infisical’s (the software) threat model spans communication, storage, response
 - Unrecognized suspicious activities: Infisical monitors for any anomalous activities such as authentication attempts from previously unseen sources.
 - Unidentified system vulnerabilities: Infisical undergoes penetration tests and vulnerability assessments twice a year; we act on findings to bolster the system’s defense mechanisms.
 
-Infisical (the software) does not consider the following as part of its threat model:
+Infisical (the software) doesn't consider the following as part of its threat model:
 
 - Uncontrolled access to the storage mechanism: An attacker with unfettered access to the storage system can manipulate data in unpredictable ways, including erasing or tampering with stored secrets. Furthermore, the attacker could potentially implement state rollbacks to favor their objectives.
 - Disclosure of secret presence: If an adversary gains read access to the storage backend, they might discern the existence of certain secrets, even if the actual contents remain encrypted and concealed.
@@ -52,11 +52,11 @@ When accessing Infisical via web browser, JWT tokens are stored in browser memor
 
 To mitigate abuse and enhance system stability, the server enforces configurable rate limiting on read, write, and secrets operations. This prevents excessive API requests from impacting system performance while ensuring fair usage across clients.
 
-Once traffic enters the server, any sensitive data (e.g. secrets, certificates entering the server), where applicable, is encrypted using a 256-bit [Advanced Encryption Standard (AES)](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) cipher in the [Galois Counter Mode (GCM)](https://en.wikipedia.org/wiki/Galois/Counter_Mode) with 96-bit nonces prior to being persisted in the storage backend. Encryption is an integral part of Infisical’s platform-wide cryptographic architecture, which also supports seal-wrapping with external KMS and HSMs. Before responding to a client request, the server securely retrieves and decrypts requested data from the storage backend. Each decryption operation includes integrity verification to ensure data has not been altered or tampered with.
+Once traffic enters the server, any sensitive data (e.g. secrets, certificates entering the server), where applicable, is encrypted using a 256-bit [Advanced Encryption Standard (AES)](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) cipher in the [Galois Counter Mode (GCM)](https://en.wikipedia.org/wiki/Galois/Counter_Mode) with 96-bit nonces prior to being persisted in the storage backend. Encryption is an integral part of Infisical’s platform-wide cryptographic architecture, which also supports seal-wrapping with external KMS and HSMs. Before responding to a client request, the server securely retrieves and decrypts requested data from the storage backend. Each decryption operation includes integrity verification to ensure data hasn't been altered or tampered with.
 
 ## Internal threat overview
 
-Within Infisical, an internal threat and critical security concern is an attacker gaining access to sensitive data that they are not permitted to, especially if they are able to authenticate with some degree of access to the system.
+Within Infisical, an internal threat and critical security concern is an attacker gaining access to sensitive data that they're not permitted to, especially if they're able to authenticate with some degree of access to the system.
 
 Before a client can perform any actions on the platform, it must authenticate with the server using a supported authentication method such as username-password, SAML, SSO, LDAP, AWS/GCP/Azure, OIDC, or Kubernetes authentication. A successful authentication results in the issuance of a client (JWT) token containing a reference to the user or machine identity bound to it.
 
@@ -274,7 +274,7 @@ Please email security@infisical.com to request any reports including a letter of
 
 Infisical runs a public vulnerability disclosure program. If you have found a security issue in an Infisical product or service, report it privately through [infisical.com/vulnerability-disclosure](https://infisical.com/vulnerability-disclosure), where scope, safe harbour and coordinated disclosure terms are set out.
 
-Please do not open a public GitHub issue for a security problem. Infisical's paid bug bounty is a separate private, invitation-only program and is not open to public submissions.
+Please don't open a public GitHub issue for a security problem. Infisical's paid bug bounty is a separate private, invitation-only program and isn't open to public submissions.
 
 ## Employee data access
 
@@ -283,6 +283,6 @@ Whether or not Infisical or your employees can access data in the Infisical inst
 - Infisical Self-Hosted: Self-hosting Infisical is common amongst organizations that prefer to keep data on their own infrastructure usually to adhere to strict regulatory and compliance requirements. In this option, organizations retain full control over their data and therefore govern the data access policy of their Infisical instance and storage backend.
 - Infisical Cloud: Using Infisical's managed service, [Infisical Cloud](https://app.infisical.com) means delegating data oversight and management to Infisical. Under our policy controls, employees are only granted access to parts of infrastructure according to principle of least privilege; this is especially relevant to customer data can only be accessed currently by executive management of Infisical. Moreover, any changes to sensitive customer data is prohibited without explicit customer approval.
 
-It should be noted that, even on Infisical Cloud, it is physically impossible for employees of Infisical to view the values of secrets if users have not explicitly granted Infisical access to their project (i.e. opted out of zero-knowledge).
+It should be noted that, even on Infisical Cloud, it's physically impossible for employees of Infisical to view the values of secrets if users haven't explicitly granted Infisical access to their project (i.e. opted out of zero-knowledge).
 
 Please email security@infisical.com if you have any specific inquiries about employee data and security policies.

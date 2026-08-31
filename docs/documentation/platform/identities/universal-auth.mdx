@@ -179,19 +179,19 @@ using the Universal Auth authentication method.
 
 ## Solving secret zero with periodic tokens
 
-In many automated, cloud-native, or ephemeral environments (such as VMs, containers, or serverless functions), it is often unsafe or impractical to hard-code long-lived credentials for bootstrapping access to secrets management systems. The "secret zero" problem refers to the challenge of securely providing a workload with its initial credential, without manual intervention or static secrets that could be leaked or reused. Periodic tokens in Universal Auth are designed to solve this problem by enabling secure, automated bootstrapping and ongoing access renewal, even in dynamic or short-lived environments.
+In many automated, cloud-native, or ephemeral environments (such as VMs, containers, or serverless functions), it's often unsafe or impractical to hard-code long-lived credentials for bootstrapping access to secrets management systems. The "secret zero" problem refers to the challenge of securely providing a workload with its initial credential, without manual intervention or static secrets that could be leaked or reused. Periodic tokens in Universal Auth are designed to solve this problem by enabling secure, automated bootstrapping and ongoing access renewal, even in dynamic or short-lived environments.
 
 **Periodic tokens** in Universal Auth solve this by allowing you to issue an access token that can be continuously renewed by your workload before it expires (i.e., a client-initiated rotation mechanism):
 
 - When you set the **Access Token Period** in the Universal Auth configuration, the issued access token can be renewed by your workload for the specified period (in seconds).
 - The token can be renewed any number of times, each time for the same period, with no maximum lifetime (unless you set a use limit).
-- As long as the token is renewed before its period expires, it remains valid, so you do not need to re-issue static credentials.
+- As long as the token is renewed before its period expires, it remains valid, so you don't need to re-issue static credentials.
 - TTL and Max TTL are ignored when Access Token Period is set.
 
 ### Example: Bootstrapping with a periodic token
 
 1. Configure Universal Auth for your identity and set **Access Token Period** (e.g., `3600` for 1 hour).
-2. For improved security, configure the Client Secret with a low number of uses (e.g., `1`) or a short TTL. This ensures that after the initial login, the Client Secret cannot be reused, and any disruption in token renewal will require manual intervention.
+2. For improved security, configure the Client Secret with a low number of uses (e.g., `1`) or a short TTL. This ensures that after the initial login, the Client Secret can't be reused, and any disruption in token renewal will require manual intervention.
 3. Deploy your workload with the **Client Secret** and **Client ID**.
 4. The workload authenticates with Infisical using the Client Secret and Client ID to obtain the initial access token (JWT).
 5. The workload uses the access token to authenticate and continuously renews it before expiration:
@@ -221,7 +221,7 @@ This approach allows your workload to securely bootstrap and maintain access to 
     Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
   </Accordion>
   <Accordion title="How do I reset a lockout?">
-      You can reset (remove) all lockouts for an identity auth method by clicking into the auth method and pressing **Reset All Lockouts**.
+      You can reset (remove) all lockouts for an identity auth method by opening the auth method and pressing **Reset All Lockouts**.
 
       ![ua reset lockouts](/images/platform/identities/ua-reset-lockouts.png)
   </Accordion>
