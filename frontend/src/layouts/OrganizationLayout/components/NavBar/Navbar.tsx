@@ -66,6 +66,7 @@ import {
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
+import { verifyOrgStillAccessible } from "@app/helpers/organization";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -312,6 +313,15 @@ export const Navbar = () => {
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
+
+    // the SSO branches below destroy the session before the server is ever asked about this org, so
+    // a stale cache entry for one the user was removed from would sign them out of a working session
+    if (
+      (org.authEnforced || org.googleSsoAuthEnforced) &&
+      !(await verifyOrgStillAccessible(queryClient, org))
+    ) {
+      return;
+    }
 
     if (org.authEnforced) {
       // org has an org-level auth method enabled (e.g. SAML)
