@@ -23,6 +23,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 type Props = {
   folderName: string;
@@ -64,6 +65,8 @@ export const FolderTableRow = ({
   isSelectionDisabled
 }: Props) => {
   const [isClicking, setIsClicking] = useState(false);
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
+
   const handleClick = () => {
     if (isClicking) return;
 
@@ -76,8 +79,9 @@ export const FolderTableRow = ({
 
   return (
     <TableRow
-      className={twMerge("group hover:z-10", pendingActionRowClass(pendingAction))}
+      className={twMerge(groupClassName, "hover:z-10", pendingActionRowClass(pendingAction))}
       onClick={handleClick}
+      {...rowHoverProps}
     >
       <TableCell
         className={twMerge(
@@ -135,118 +139,124 @@ export const FolderTableRow = ({
             <TooltipContent className="max-w-sm">{description}</TooltipContent>
           </Tooltip>
         )}
-        <div
-          className={twMerge(
-            "absolute z-20",
-            "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
-            isSingleEnvView
-              ? "top-1/2 right-[2px] -translate-y-1/2"
-              : "top-1/2 right-[3px] -translate-y-1/2"
-          )}
-        >
-          {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Move folder"
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!canEditFolder}
-                  onClick={(e) => {
-                    onToggleFolderMove(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <FolderInputIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>{canEditFolder ? "Move Folder" : "Access Restricted"}</TooltipContent>
-            </Tooltip>
-          )}
-          {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Edit folder"
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!canEditFolder}
-                  onClick={(e) => {
-                    onToggleFolderEdit(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>{canEditFolder ? "Edit Folder" : "Access Restricted"}</TooltipContent>
-            </Tooltip>
-          )}
-          {onToggleFolderAccess &&
-            canManageFolderAccess &&
-            pendingAction !== PendingAction.Delete && (
+        {shouldRenderActions && (
+          <div
+            className={twMerge(
+              "absolute z-20",
+              "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+              "pointer-events-none opacity-0 transition-all duration-300",
+              "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+              isSingleEnvView
+                ? "top-1/2 right-[2px] -translate-y-1/2"
+                : "top-1/2 right-[3px] -translate-y-1/2"
+            )}
+          >
+            {pendingAction !== PendingAction.Delete && (
               <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Move folder"
                     variant="ghost"
                     size="xs"
                     className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    isDisabled={!canEditFolder}
                     onClick={(e) => {
-                      onToggleFolderAccess(folderName);
+                      onToggleFolderMove(folderName);
                       e.stopPropagation();
                     }}
                   >
-                    <UsersIcon />
+                    <FolderInputIcon />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>Manage Access</TooltipContent>
+                <TooltipContent>
+                  {canEditFolder ? "Move Folder" : "Access Restricted"}
+                </TooltipContent>
               </Tooltip>
             )}
-          {pendingAction ? (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Discard pending folder changes"
-                  variant="ghost"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
-                  size="xs"
-                  onClick={(e) => {
-                    onBatchRevert?.(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <Undo2Icon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Discard pending changes</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Tooltip disableHoverableContent>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Delete folder"
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
-                  isDisabled={!canDeleteFolder}
-                  onClick={(e) => {
-                    onToggleFolderDelete(folderName);
-                    e.stopPropagation();
-                  }}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canDeleteFolder ? "Delete Folder" : "Access Restricted"}
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+            {pendingAction !== PendingAction.Delete && (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Edit folder"
+                    variant="ghost"
+                    size="xs"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    isDisabled={!canEditFolder}
+                    onClick={(e) => {
+                      onToggleFolderEdit(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canEditFolder ? "Edit Folder" : "Access Restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onToggleFolderAccess &&
+              canManageFolderAccess &&
+              pendingAction !== PendingAction.Delete && (
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                      onClick={(e) => {
+                        onToggleFolderAccess(folderName);
+                        e.stopPropagation();
+                      }}
+                    >
+                      <UsersIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Manage Access</TooltipContent>
+                </Tooltip>
+              )}
+            {pendingAction ? (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Discard pending folder changes"
+                    variant="ghost"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    size="xs"
+                    onClick={(e) => {
+                      onBatchRevert?.(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <Undo2Icon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Discard pending changes</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    aria-label="Delete folder"
+                    variant="ghost"
+                    size="xs"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    isDisabled={!canDeleteFolder}
+                    onClick={(e) => {
+                      onToggleFolderDelete(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canDeleteFolder ? "Delete Folder" : "Access Restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        )}
       </TableCell>
       {!isSingleEnvView &&
         environments.map(({ slug }, i) => {

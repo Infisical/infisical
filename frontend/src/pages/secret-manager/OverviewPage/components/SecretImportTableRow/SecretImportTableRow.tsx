@@ -50,6 +50,7 @@ import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
 
 type ImportedSecretData = {
@@ -100,6 +101,7 @@ export const SecretImportTableRow = ({
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
   const { currentProject } = useProject();
   const resyncSecretReplication = useResyncSecretReplication();
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -674,7 +676,8 @@ export const SecretImportTableRow = ({
       <TableRow
         ref={isSingleEnvView ? (sortableRef as React.Ref<HTMLTableRowElement>) : undefined}
         onClick={handleRowClick}
-        className={twMerge("group hover:z-10", isDragging && "opacity-50")}
+        className={twMerge(groupClassName, "hover:z-10", isDragging && "opacity-50")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -784,7 +787,8 @@ export const SecretImportTableRow = ({
               )}
             {isSingleEnvView && (
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderSingleEnvActions()}
+                {(shouldRenderActions || resyncSecretReplication.isPending) &&
+                  renderSingleEnvActions()}
               </div>
             )}
           </div>

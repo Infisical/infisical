@@ -35,6 +35,7 @@ import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enu
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Active]: "success",
@@ -70,6 +71,7 @@ export const HoneyTokenTableRow = ({
   onToggleHoneyTokenSelect
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -233,7 +235,8 @@ export const HoneyTokenTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -292,7 +295,7 @@ export const HoneyTokenTableRow = ({
                 {renderStatusBadge(singleEnvToken)}
               </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvToken)}
+                {shouldRenderActions && renderActionButtons(singleEnvToken)}
               </div>
             </div>
           ) : (

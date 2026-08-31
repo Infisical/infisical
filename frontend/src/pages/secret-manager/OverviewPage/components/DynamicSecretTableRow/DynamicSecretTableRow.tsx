@@ -32,6 +32,7 @@ import { useToggle } from "@app/hooks";
 import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 type DynamicSecretWithEnv = TDynamicSecret & { environment: string };
 
@@ -67,6 +68,7 @@ export const DynamicSecretTableRow = ({
   onForceDelete
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -261,7 +263,8 @@ export const DynamicSecretTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -304,7 +307,7 @@ export const DynamicSecretTableRow = ({
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvDynamicSecret)}
+                {shouldRenderActions && renderActionButtons(singleEnvDynamicSecret)}
               </div>
             </div>
           ) : (

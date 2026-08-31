@@ -32,6 +32,7 @@ import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 // Returns null (renders nothing) for a never-used service rather than "Never".
 const formatLastUsed = (lastUsedAt?: string | null) => {
@@ -62,6 +63,7 @@ export const ProxiedServiceTableRow = ({
   onDelete
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -178,7 +180,8 @@ export const ProxiedServiceTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -207,7 +210,7 @@ export const ProxiedServiceTableRow = ({
               <span className="truncate">{proxiedServiceName}</span>
               {renderInlineDetails(singleEnvService)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvService)}
+                {shouldRenderActions && renderActionButtons(singleEnvService)}
               </div>
             </div>
           ) : (

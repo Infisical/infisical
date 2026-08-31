@@ -46,6 +46,7 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 type Props = {
   secretRotationName: string;
@@ -90,6 +91,7 @@ export const SecretRotationTableRow = ({
   onCheckActiveCredentials
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions();
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
 
   const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
@@ -310,7 +312,8 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -386,7 +389,7 @@ export const SecretRotationTableRow = ({
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
                   </div>
                   <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                    {renderActionButtons(singleEnvRotation)}
+                    {shouldRenderActions && renderActionButtons(singleEnvRotation)}
                   </div>
                 </>
               )}

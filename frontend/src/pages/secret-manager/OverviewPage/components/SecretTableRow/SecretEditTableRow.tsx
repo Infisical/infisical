@@ -170,6 +170,8 @@ type Props = {
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
+  /** False while the owning row is idle, which keeps the hover action bar out of the DOM. */
+  shouldRenderHoverActions?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -207,7 +209,8 @@ export const SecretEditTableRow = ({
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
-  revokedProjectFolderGrant
+  revokedProjectFolderGrant,
+  shouldRenderHoverActions = true
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -901,6 +904,9 @@ export const SecretEditTableRow = ({
 
   const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
   const showMenuWhileFocused = isHoveringActionZone || shouldStayExpanded;
+  // Hover is not the only thing that opens the bar, so keep it mounted whenever a popover, the
+  // dropdown or the focused-field affordance is holding it open.
+  const shouldMountActionBar = shouldRenderHoverActions || showMenuWhileFocused;
 
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
@@ -1204,12 +1210,7 @@ export const SecretEditTableRow = ({
             <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
           </div>
         )}
-      {!(
-        isDirty &&
-        (dirtyFields.key || dirtyFields.value) &&
-        !isImportedSecret &&
-        !isBatchMode
-      ) && (
+      {shouldMountActionBar && !isDirtyState && (
         <div
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}

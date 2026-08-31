@@ -63,6 +63,8 @@ type Props = {
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isSingleEnvView?: boolean;
+  /** False while the owning row is idle, which keeps the hover action bar out of the DOM. */
+  shouldRenderHoverActions?: boolean;
 };
 
 export const SecretOverrideRow = ({
@@ -78,7 +80,8 @@ export const SecretOverrideRow = ({
   onSecretCreate,
   onSecretUpdate,
   onSecretDelete,
-  isSingleEnvView
+  isSingleEnvView,
+  shouldRenderHoverActions = true
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -92,6 +95,9 @@ export const SecretOverrideRow = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
   const showMenuWhileFocused = isHoveringActionZone || isDeleteDialogOpen;
+  // Hover is not the only thing that opens the bar, so keep it mounted while the delete dialog or
+  // the focused-field affordance is holding it open.
+  const shouldMountActionBar = shouldRenderHoverActions || showMenuWhileFocused;
 
   const fetchOverrideValueParams = {
     environment,
@@ -281,7 +287,7 @@ export const SecretOverrideRow = ({
           <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
         </div>
       )}
-      {!isDirty && (
+      {shouldMountActionBar && !isDirty && (
         <div
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}
