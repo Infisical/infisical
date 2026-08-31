@@ -1,17 +1,16 @@
 import { useId, useReducer } from "react";
-import { CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import {
+  CopyButton,
   Field,
   FieldContent,
   FieldLabel,
-  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 
 type Props = {
   label: string;
@@ -20,7 +19,6 @@ type Props = {
 
 export const CredentialField = ({ label, value }: Props) => {
   const [showCredential, toggleShowCredential] = useReducer((prev) => !prev, false);
-  const [, isCopied, setCopied] = useTimedReset<boolean>({ initialState: false });
   const inputId = useId();
 
   if (!value) return null;
@@ -47,17 +45,7 @@ export const CredentialField = ({ label, value }: Props) => {
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
-          <IconButton
-            aria-label={`Copy ${label}`}
-            variant="outline"
-            size="md"
-            onClick={() => {
-              navigator.clipboard.writeText(value);
-              setCopied(true);
-            }}
-          >
-            <CopyIcon className={isCopied ? "text-success" : ""} />
-          </IconButton>
+          <CopyButton value={value} ariaLabel={`Copy ${label}`} variant="outline" size="md" />
         </div>
       </FieldContent>
     </Field>

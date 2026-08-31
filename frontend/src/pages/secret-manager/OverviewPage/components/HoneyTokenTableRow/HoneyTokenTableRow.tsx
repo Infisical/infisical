@@ -1,5 +1,5 @@
 import { subject } from "@casl/ability";
-import { BanIcon, ChevronDownIcon, EditIcon, EyeIcon, HexagonIcon, InfoIcon } from "lucide-react";
+import { BanIcon, ChevronDownIcon, EditIcon, HexagonIcon, InfoIcon, ListIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -103,7 +103,7 @@ export const HoneyTokenTableRow = ({
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
-              <EyeIcon />
+              <ListIcon />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent>View details</TooltipContent>
@@ -204,11 +204,19 @@ export const HoneyTokenTableRow = ({
 
   return (
     <>
-      <TableRow className="group hover:z-10">
+      <TableRow
+        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        className={twMerge(
+          "group hover:z-10",
+          isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10",
+          !isSingleEnvView && "cursor-pointer"
+        )}
+      >
         <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
@@ -244,6 +252,7 @@ export const HoneyTokenTableRow = ({
           className={twMerge(
             !isSingleEnvView && "sticky left-10 z-10 border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
@@ -255,8 +264,10 @@ export const HoneyTokenTableRow = ({
               {renderHoneyTokenInlineDetails(singleEnvToken)}
               <div
                 className={twMerge(
-                  "mr-24 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
-                  "[@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
+                  "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
+                  singleEnvToken.status === HoneyTokenStatus.Revoked
+                    ? "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                    : "mr-24 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
@@ -266,21 +277,7 @@ export const HoneyTokenTableRow = ({
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-sm text-left font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/60"
-              aria-expanded={isExpanded}
-              onClick={setIsExpanded.toggle}
-            >
-              {honeyTokenName}
-              <ChevronDownIcon
-                aria-hidden="true"
-                className={twMerge(
-                  "size-3.5 shrink-0 transition-transform",
-                  !isExpanded && "-rotate-90"
-                )}
-              />
-            </button>
+            honeyTokenName
           )}
         </TableCell>
         {environments.length > 1 &&
@@ -327,15 +324,24 @@ export const HoneyTokenTableRow = ({
                       const honeyToken = getHoneyTokenByName(slug, honeyTokenName)!;
 
                       return (
-                        <TableRow key={slug} className="group relative hover:z-10">
+                        <TableRow
+                          key={slug}
+                          className={twMerge(
+                            "group relative hover:z-10",
+                            honeyToken.status === HoneyTokenStatus.Triggered &&
+                              "bg-danger/5 hover:bg-danger/10"
+                          )}
+                        >
                           <TableCell colSpan={2}>
                             <div className="relative flex w-full items-center">
                               <span>{envName}</span>
                               {renderHoneyTokenInlineDetails(honeyToken)}
                               <div
                                 className={twMerge(
-                                  "mr-24 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
-                                  "[@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
+                                  "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
+                                  honeyToken.status === HoneyTokenStatus.Revoked
+                                    ? "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                                    : "mr-24 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}

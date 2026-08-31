@@ -118,8 +118,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
-  honeyTokens: false,
-  honeyTokenLimit: 0,
+  honeyTokens: true,
+  honeyTokenLimit: 100,
   secretsBrokering: true,
   // product gating
   pam: null,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
-import { ActivityIcon, AlertCircleIcon, Check, ClipboardCopy } from "lucide-react";
+import { ActivityIcon, AlertCircleIcon } from "lucide-react";
 
 import {
   Alert,
@@ -8,10 +8,10 @@ import {
   AlertTitle,
   Badge,
   Button,
+  CopyButton,
   Empty,
   EmptyHeader,
   EmptyTitle,
-  IconButton,
   PageLoader,
   Pagination,
   Table,
@@ -24,7 +24,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 import { useGetHoneyTokenEvents } from "@app/hooks/api/honeyTokens/queries";
 
 type Props = {
@@ -35,26 +34,18 @@ type Props = {
 const DEFAULT_PER_PAGE = 25;
 
 const UserAgentCell = ({ userAgent }: { userAgent?: string }) => {
-  const [, isCopied, setCopied] = useTimedReset<string>({ initialState: "" });
-
   if (!userAgent) return <TableCell>—</TableCell>;
 
   return (
     <TableCell className="max-w-[150px]" isTruncatable>
       <div className="flex items-center gap-1">
         <span className="block truncate">{userAgent}</span>
-        <IconButton
-          variant="ghost"
-          size="xs"
-          className="shrink-0"
-          onClick={() => {
-            setCopied(userAgent);
-            navigator.clipboard.writeText(userAgent);
-          }}
-          aria-label="Copy user agent"
-        >
-          {isCopied ? <Check className="size-3" /> : <ClipboardCopy className="size-3" />}
-        </IconButton>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <CopyButton value={userAgent} ariaLabel="Copy user agent" className="shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent>Copy user agent</TooltipContent>
+        </Tooltip>
       </div>
     </TableCell>
   );

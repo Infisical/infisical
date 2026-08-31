@@ -14,10 +14,6 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Alert,
   AlertDescription,
   AlertDialog,
@@ -30,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   PageLoader,
@@ -153,7 +150,7 @@ const DrawerContent = ({
   return (
     <>
       <SheetHeader className="gap-4">
-        <div className="flex items-start justify-between pr-8">
+        <div className="flex items-start pr-8">
           <div className="flex items-center gap-3">
             {tokenInfo && (
               <img
@@ -162,7 +159,7 @@ const DrawerContent = ({
                 alt={`${tokenInfo.name} logo`}
               />
             )}
-            <div className="min-w-0">
+            <div className="flex min-w-0 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <SheetTitle className="truncate">{honeyToken.name}</SheetTitle>
                 <Badge variant={statusBadgeVariant}>
@@ -174,26 +171,6 @@ const DrawerContent = ({
                 {honeyToken.description || `${tokenInfo?.name ?? "Honey"} Token`}
               </p>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {isTriggered && (
-              <ProjectPermissionCan
-                I={ProjectPermissionHoneyTokenActions.Reset}
-                a={honeyTokenSubject}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setIsResetOpen(true)}
-                    isDisabled={!isAllowed}
-                  >
-                    <RotateCcw size={14} />
-                    Reset
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            )}
           </div>
         </div>
 
@@ -272,71 +249,61 @@ const DrawerContent = ({
           </ProjectPermissionCan>
         )}
 
+        <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
+
         {isRevoked && (
-          <div className="rounded-md border border-border bg-container p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <BanIcon size={16} className="text-muted" />
-              <p className="text-sm font-medium text-muted">Honey token revoked</p>
-            </div>
-            <p className="text-xs text-foreground/85">
+          <Alert variant="info">
+            <BanIcon />
+            <AlertTitle>Honey token revoked</AlertTitle>
+            <AlertDescription>
               The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
               token record and its events are preserved for audit purposes.
-            </p>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
 
         {isTriggered && (
-          <Accordion
-            type="single"
-            collapsible
-            variant="ghost"
-            className="border-t border-border pt-2"
-          >
-            <AccordionItem value="response-guidance">
-              <AccordionTrigger className="text-sm font-medium">
-                How should I respond?
-              </AccordionTrigger>
-              <AccordionContent>
-                <Alert variant="info" className="flex flex-col gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-foreground">1. False alarm confirmed?</p>
-                    <p className="text-xs text-accent">
-                      You might want to <strong>reset the honey token</strong>. This will revert its
-                      status to active and hide the past events, so that the honey token can be
-                      triggered again.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-foreground">
-                      2. Malicious activity confirmed?
-                    </p>
-                    <p className="text-xs text-accent">
-                      1. Take immediate steps as per your company Incident Response Plan.
-                      <br />
-                      2. <strong>Rotate any real secrets</strong> that were stored alongside the
-                      honey token, as they may also be compromised.
-                      <br />
-                      3. <strong>Revoke the honey token</strong>. This will prevent any new
-                      connections while we keep the compromised key in our records.
-                      <br />
-                      4. Don&apos;t forget to recreate a new honey token to replace it in the same
-                      location.
-                    </p>
-                  </div>
-                </Alert>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <Alert variant="warning">
+            <AlertTriangle />
+            <AlertTitle>What to do now?</AlertTitle>
+            <AlertDescription className="gap-2">
+              <p>
+                If this is a false alarm, reset the honey token to return it to active status and
+                hide past events.
+              </p>
+              <p>
+                If this activity is suspicious, follow your company&apos;s incident response plan,
+                rotate any real secrets stored alongside the honey token, then revoke and replace
+                the honey token.
+              </p>
+            </AlertDescription>
+          </Alert>
         )}
-
-        <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
       </div>
 
       {!isRevoked && (
-        <SheetFooter className="shrink-0 justify-end border-t">
+        <SheetFooter className="shrink-0 items-center border-t">
+          {isTriggered && (
+            <ProjectPermissionCan
+              I={ProjectPermissionHoneyTokenActions.Reset}
+              a={honeyTokenSubject}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsResetOpen(true)}
+                  isDisabled={!isAllowed}
+                >
+                  <RotateCcw />
+                  Reset
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          )}
           <ProjectPermissionCan I={ProjectPermissionHoneyTokenActions.Revoke} a={honeyTokenSubject}>
             {(isAllowed) => (
               <Button
+                className="ml-auto"
                 variant="danger"
                 onClick={() => setIsRevokeOpen(true)}
                 isDisabled={!isAllowed}
@@ -358,7 +325,8 @@ const DrawerContent = ({
             <AlertDialogTitle>Reset {honeyToken.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will revert the honey token status to active and hide past events. The honey
-              token will be able to trigger again on new activity.
+              token will be able to trigger again on new activity. Its credentials will remain
+              unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

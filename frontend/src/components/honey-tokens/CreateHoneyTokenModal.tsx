@@ -75,12 +75,10 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
 
   return (
     <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-5xl">
         <SheetHeader className="border-b">
           {selectedType ? (
-            <SheetTitle>
-              <HoneyTokenModalHeader type={selectedType} />
-            </SheetTitle>
+            <HoneyTokenModalHeader type={selectedType} />
           ) : (
             <SheetTitle>
               <div className="flex items-center gap-x-2">
