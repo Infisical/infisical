@@ -174,9 +174,15 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
         .join(", ")})`
   );
 
+  const requestedPermissions = Array.from(actionsBySubject.entries()).map(([subject, actions]) => ({
+    subject,
+    actions: Array.from(actions)
+  }));
+
   return {
     envSlug: permissionEnv,
     secretPath: permissionSecretPath,
-    accessTypes
+    accessTypes,
+    requestedPermissions
   };
 };

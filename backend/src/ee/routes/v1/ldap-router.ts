@@ -337,7 +337,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
         configId: z.string().trim()

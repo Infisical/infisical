@@ -58,6 +58,7 @@ export enum ApiDocsTags {
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  FolderAccess = "Folder Access",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
   PkiSyncs = "PKI Syncs",
@@ -613,6 +614,8 @@ export const KUBERNETES_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
+    templateId:
+      "The ID of the Kubernetes auth template to source connection settings from. When provided, the host, CA certificate, token reviewer JWT, token review mode, gateway, and allowed audience are taken from the template and cannot be set individually.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; explicitly setting the toggle to false in the same request is rejected.",
@@ -621,7 +624,7 @@ export const KUBERNETES_AUTH = {
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
-      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. Defaults to 'api' when omitted. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -635,6 +638,8 @@ export const KUBERNETES_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
+    templateId:
+      "The ID of the Kubernetes auth template to link. While linked, connection settings are managed by the template and cannot be set individually. Pass null to unlink the template; the settings copied from it are kept.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; the update is rejected if the resulting effective state would store a CA together with verifyTlsCertificate=false.",
@@ -1093,7 +1098,8 @@ export const PROJECTS = {
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
-    status: "Filter by certificate status.",
+    status:
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -1518,6 +1524,10 @@ export const DASHBOARD = {
     includeSecretRotations: "Whether to include secret rotations in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 
@@ -1784,6 +1794,84 @@ The permission object for the privilege.
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the machine identity to list.",
     unpacked: "Whether the system should send the permissions as unpacked."
+  }
+};
+
+export const FOLDER_ACCESS = {
+  CREATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to grant access on.",
+    userId: "The ID of the user to grant folder access to.",
+    identityId: "The ID of the machine identity to grant folder access to.",
+    permission:
+      "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to update.",
+    identityId: "The ID of the machine identity whose folder access to update.",
+    permission:
+      "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  DELETE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to revoke.",
+    identityId: "The ID of the machine identity whose folder access to revoke."
+  },
+  LIST_USERS: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's users. The page is then split into the users with access and the users without access.",
+    limit: "The number of users to return, counting both lists together.",
+    search: "The text string that user names and email addresses will be filtered by.",
+    users:
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    usersWithoutAccess:
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount: "The number of users of the project that match the search, with and without access together."
+  },
+  LIST_IDENTITIES: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's machine identities. The page is then split into the ones with access and the ones without access.",
+    limit: "The number of machine identities to return, counting both lists together.",
+    search: "The text string that machine identity names will be filtered by.",
+    identities:
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    identitiesWithoutAccess:
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount:
+      "The number of machine identities of the project that match the search, with and without access together."
+  },
+  LIST_USER_GRANTS: {
+    projectId: "The ID of the project to list the user's folder access grants in.",
+    userId: "The ID of the user whose folder access grants to list."
+  },
+  LIST_IDENTITY_GRANTS: {
+    projectId: "The ID of the project to list the machine identity's folder access grants in.",
+    identityId: "The ID of the machine identity whose folder access grants to list."
+  },
+  PERMISSION_AUDIT: {
+    includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
   }
 };
 
@@ -2140,7 +2228,19 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    latestRenewalCertificateId:
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2436,13 +2536,15 @@ export const KMS = {
     encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
-      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
+    hasDeleteProtection: "Prevents deletion of the key when enabled."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
-    isDisabled: "The flag to enable or disable this key."
+    isDisabled: "The flag to enable or disable this key.",
+    hasDeleteProtection: "Enable or disable delete protection for this key."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -3857,6 +3959,11 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  METRICS_REPORT: {
+    activeChannels:
+      "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
+    gatewayId: "ID of the gateway the report was recorded against."
+  },
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
@@ -3969,3 +4076,68 @@ export const SECRET_VALIDATION_RULES = {
     ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;
+
+export const ENCRYPTION_KEY_ROTATION = {
+  ROOT_KEY: {
+    description:
+      "Report the state of the instance encryption key: which key is active, whether a replacement is staged, and whether the key it replaced is still accepted.",
+    encryptionStrategy: "How the root key is wrapped. A key wrapped by an HSM has no environment variable to rotate.",
+    active: {
+      label:
+        "Non-reversible label of the key this instance is running with. Record it next to the archived key so a backup can be matched later.",
+      activatedAt: "When this key took effect, which is the first time an instance started with it."
+    },
+    staged: {
+      description:
+        "A generated key that has not been applied yet. Null until you generate one. Nothing changes until an instance starts with it.",
+      label: "Label of the staged key, so you can confirm the value you are about to deploy is the one you copied.",
+      createdAt: "When this key was generated."
+    },
+    expiring: {
+      description:
+        "The key this instance used before the current one. Null if none is still accepted. It still starts an instance so a fleet can finish rolling over, and is removed automatically once the retention window passes.",
+      label: "Label of the previous key. Pass it when you remove that key.",
+      supersededAt: "When the current key took effect.",
+      expiresAt:
+        "When this key becomes eligible for automatic removal. An instance starting on it restarts this clock, since that is evidence one still needs it. The weekly cleanup removes the key on its first run after this time, so the key may outlive it by a few days.",
+      lastResolvedAt:
+        "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists."
+    }
+  },
+  ROTATIONS: {
+    description:
+      "List the rotations that have taken effect, newest first. A staged key appears here only once an instance has started with it. Kept after a key is removed, so a restored backup can be matched to an archived key.",
+    offset: "How many rotations to skip before the first returned.",
+    limit: "How many rotations to return.",
+    label: "A non-reversible label derived from the key. Match it to the label you stored with an archived key.",
+    activatedAt: "When this key took effect.",
+    supersededAt: "When the next key took effect. Null on the key currently in use.",
+    retiredAt: "When this key stopped being accepted and was removed. Null while it still starts an instance.",
+    totalCount: "How many rotations this instance has recorded in total."
+  },
+  CREATE: {
+    description:
+      "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
+    replaceStaged:
+      "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
+    label:
+      "A non-reversible label derived from the new key. Record it alongside the key so a backup can be matched to it later.",
+    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
+    removesExpiringKey:
+      "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
+  },
+  DELETE_STAGED: {
+    description:
+      "Discard a generated key that has not been applied. Use this immediately if the key may have been exposed.",
+    label:
+      "Label of the staged key, which must match the key currently staged. It is a precondition, not an identifier: it fails the request rather than discarding a key another administrator staged after you loaded this page."
+  },
+  DELETE_EXPIRING: {
+    description:
+      "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
+    label:
+      "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
+    force:
+      "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};

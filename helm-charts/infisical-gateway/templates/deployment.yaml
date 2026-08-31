@@ -151,6 +151,9 @@ spec:
           args:
             - gateway
             - start
+            {{- if .Values.gateway.name }}
+            - {{ .Values.gateway.name | quote }}
+            {{- end }}
             - --pam-session-recording-path={{ $sessionPath }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}

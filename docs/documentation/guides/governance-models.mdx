@@ -9,7 +9,7 @@ Organizations adopt different approaches to secrets management governance based 
 This guide covers how to configure Infisical for different governance approaches and what tradeoffs to consider.
 
 <Note>
-Infisical spans several products—[Secrets Management](/documentation/platform/secrets-mgmt/overview), [Certificate Manager](/documentation/platform/pki/overview), [KMS](/documentation/platform/kms/overview), [Secret Scanning](/documentation/platform/secret-scanning/overview), and [Privileged Access Manager](/documentation/platform/pam/overview). This guide focuses on Secrets Management, but the same governance foundations—organization structure, authentication and identity, access control, approval workflows, and audit—apply across all of them.
+Infisical spans several products: [Secrets Management](/documentation/platform/secrets-mgmt/overview), [Certificate Manager](/documentation/platform/pki/overview), [KMS](/documentation/platform/kms/overview), [Secret Scanning](/documentation/platform/secret-scanning/overview), and [Privileged Access Management](/documentation/platform/pam/overview). This guide focuses on Secrets Management, but the same governance foundations apply across all of them: organization structure, authentication and identity, access control, approval workflows, and audit.
 </Note>
 
 ## Understanding the spectrum
@@ -94,7 +94,7 @@ How you manage identity—both for users and machines—significantly affects yo
 
 Infisical supports multiple authentication methods that can be configured based on your requirements:
 
-- [SAML SSO](/documentation/platform/sso/overview) with providers like Okta, Azure AD, Google Workspace, and JumpCloud
+- [SAML SSO](/documentation/platform/sso/overview) with providers like Okta, Entra ID, Google Workspace, and JumpCloud
 - [OIDC SSO](/documentation/platform/sso/general-oidc) for standards-based authentication
 - [LDAP](/documentation/platform/ldap/overview) for directory-based authentication
 
@@ -496,7 +496,7 @@ Here's a quick reference for how key Infisical features map to each governance m
 
 | Feature | Centralized Use | Self-Service Use |
 |---------|-----------------|------------------|
-| [Sub-Organizations](/documentation/platform/sub-organizations) | Segment business units with delegated admins | Rarely needed; use project boundaries |
+| [Sub-organizations](/documentation/platform/sub-organizations) | Segment business units with delegated admins | Rarely needed; use project boundaries |
 | [Project Templates](/documentation/platform/project-templates) | Enforce standards | Provide starting points |
 | [SCIM](/documentation/platform/scim/overview) | Automate user lifecycle | Supplement direct invitations |
 | [Groups](/documentation/platform/groups) | IdP-synced membership | Local team management |

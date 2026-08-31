@@ -41,7 +41,8 @@ const formSchema = z.object({
   description: z.string().max(500).optional(),
   algorithm: z.enum(AllowedEncryptionKeyAlgorithms),
   keyUsage: z.nativeEnum(KmsKeyUsage),
-  isExportable: z.boolean()
+  isExportable: z.boolean(),
+  hasDeleteProtection: z.boolean()
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -75,10 +76,11 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: cmek?.name,
-      description: cmek?.description,
+      description: cmek?.description ?? undefined,
       algorithm: SymmetricKeyAlgorithm.AES_GCM_256,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
-      isExportable: cmek?.isExportable ?? true
+      isExportable: cmek?.isExportable ?? true,
+      hasDeleteProtection: cmek?.hasDeleteProtection ?? false
     }
   });
 
@@ -87,17 +89,25 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     name,
     description,
     keyUsage,
-    isExportable
+    isExportable,
+    hasDeleteProtection
   }: FormData) => {
     const mutation = isUpdate
-      ? updateCmek.mutateAsync({ keyId: cmek.id, projectId, name, description })
+      ? updateCmek.mutateAsync({
+          keyId: cmek.id,
+          projectId,
+          name,
+          description,
+          hasDeleteProtection
+        })
       : createCmek.mutateAsync({
           projectId,
           name,
           description,
           keyUsage,
           algorithm: algorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm,
-          isExportable
+          isExportable,
+          hasDeleteProtection
         });
 
     await mutation;
@@ -264,6 +274,26 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           )}
         />
       )}
+      <Controller
+        control={control}
+        name="hasDeleteProtection"
+        render={({ field: { onChange, value } }) => (
+          <Field orientation="horizontal" className="mb-6">
+            <FieldContent>
+              <FieldTitle>Delete Protection</FieldTitle>
+              <FieldDescription>
+                Prevents this key from being deleted while enabled.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id="has-delete-protection"
+              variant="project"
+              checked={value}
+              onCheckedChange={onChange}
+            />
+          </Field>
+        )}
+      />
       <div className="flex items-center">
         <Button
           className="mr-4"

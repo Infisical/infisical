@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
-  ChevronsUpDownIcon,
+  ChevronDownIcon,
   ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
@@ -18,19 +18,12 @@ import {
 
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
+  Combobox,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +38,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Skeleton,
   Table,
   TableBody,
@@ -55,6 +45,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -82,7 +73,9 @@ import {
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { SecretApprovalRequestOrderBy } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
 import {
@@ -90,102 +83,12 @@ import {
   SecretApprovalRequestChanges
 } from "./components/SecretApprovalRequestChanges";
 
-type FilterMenuProps = {
-  className?: string;
-  searchPlaceholder: string;
-  allLabel: string;
-  options: { value: string; label: string }[];
-  value?: string;
-  onChange: (value?: string) => void;
-};
-
-const FilterMenu = ({
-  className,
-  searchPlaceholder,
-  allLabel,
-  options,
-  value,
-  onChange
-}: FilterMenuProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-
-  const selectedOption = options.find((option) => option.value === value);
-
-  return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) setInputValue("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          className={cn("justify-between", className)}
-        >
-          <span className="truncate">{selectedOption ? selectedOption.label : allLabel}</span>
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] p-0">
-        <Command>
-          <CommandInput
-            aria-label={searchPlaceholder}
-            value={inputValue}
-            onValueChange={setInputValue}
-            placeholder={searchPlaceholder}
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {!inputValue && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    forceMount
-                    keywords={[]}
-                    onSelect={() => {
-                      onChange(undefined);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <CheckIcon className={cn("size-4", !value ? "opacity-100" : "opacity-0")} />
-                    {allLabel}
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  keywords={[option.label]}
-                  onSelect={() => {
-                    onChange(value === option.value ? undefined : option.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      "size-4 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+enum ChangeRequestOrderBy {
+  Environment = SecretApprovalRequestOrderBy.Environment,
+  SecretPath = SecretApprovalRequestOrderBy.SecretPath,
+  Author = SecretApprovalRequestOrderBy.Author,
+  OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
+}
 
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
@@ -199,6 +102,10 @@ export const SecretApprovalRequest = () => {
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
+  const [sort, setSort] = useState<{
+    column: ChangeRequestOrderBy;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>(null);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -230,7 +137,9 @@ export const SecretApprovalRequest = () => {
     committer: committerFilter,
     search: debouncedSearchFilter,
     limit,
-    offset
+    offset,
+    orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
+    orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
 
   const totalApprovalCount = data?.totalCount ?? 0;
@@ -249,7 +158,7 @@ export const SecretApprovalRequest = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
   const { requestId } = search;
   const handleCloseRequestDetail = () => {
     navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
@@ -259,9 +168,61 @@ export const SecretApprovalRequest = () => {
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
   const isFiltered = Boolean(searchFilter || envFilter || committerFilter);
 
-  const environmentNamesBySlug = (currentProject?.environments ?? []).reduce<
-    Record<string, string>
-  >((prev, curr) => ({ ...prev, [curr.slug]: curr.name }), {});
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
+  );
+  const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const authorOptions = (members ?? []).map(({ user }) => ({
+    value: user.id,
+    label: user.username
+  }));
+
+  const getSortDirection = (column: ChangeRequestOrderBy): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSort = (column: ChangeRequestOrderBy, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+    setPage(1);
+  };
+
+  const getSortIconClassName = (column: ChangeRequestOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
+
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      committerFilter &&
+      !areMembersPending &&
+      members &&
+      !members.some(({ user }) => user.id === committerFilter)
+    ) {
+      setCommitterFilter(undefined);
+    }
+  }, [areMembersPending, committerFilter, members]);
 
   return (
     <>
@@ -273,8 +234,18 @@ export const SecretApprovalRequest = () => {
           </CardTitle>
           <CardDescription>Review pending and closed change requests</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col">
-          <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
+        <CardContent className="@container flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+            <InputGroup className="min-w-48 flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search by author, environment, path or secret..."
+              />
+            </InputGroup>
             <Tabs
               value={statusFilter}
               onValueChange={(value) => {
@@ -295,50 +266,48 @@ export const SecretApprovalRequest = () => {
             >
               <TabsList variant="filled">
                 <TabsTrigger value="open">
-                  <GitPullRequestIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.open ?? 0} Open
+                  <GitPullRequestIcon className="size-3.5" />
+                  Open {secretApprovalRequestCount?.open ?? 0}
                 </TabsTrigger>
                 <TabsTrigger value="close">
-                  <CheckIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.closed ?? 0} Closed
+                  <CheckIcon className="size-3.5" />
+                  Closed {secretApprovalRequestCount?.closed ?? 0}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="flex flex-wrap items-center gap-2 2xl:mr-auto 2xl:flex-nowrap">
-              <InputGroup className="xl:w-[26rem]">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder="Search by author, environment, path or secret..."
-                />
-              </InputGroup>
-            </div>
-            <FilterMenu
-              className="w-[200px]"
-              searchPlaceholder="Filter environments"
-              allLabel="All Environments"
-              value={envFilter}
-              onChange={setEnvFilter}
-              options={(currentProject?.environments ?? []).map((env) => ({
-                value: env.slug,
-                label: env.name
-              }))}
-            />
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-              <FilterMenu
-                className="w-[220px]"
-                searchPlaceholder="Filter authors"
-                allLabel="All Authors"
-                value={committerFilter}
-                onChange={setCommitterFilter}
-                options={(members ?? []).map(({ user }) => ({
-                  value: user.id,
-                  label: user.username
-                }))}
+            <div className="w-42 shrink-0">
+              <Combobox
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
+                placeholder="All Environments"
               />
+            </div>
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <div className="w-42 shrink-0">
+                <Combobox
+                  aria-label="Filter authors"
+                  className="w-full"
+                  options={authorOptions}
+                  value={authorOptions.find((option) => option.value === committerFilter) ?? null}
+                  onValueChange={(option) => setCommitterFilter(option.value)}
+                  onClear={() => setCommitterFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear author filter"
+                  searchPlaceholder="Filter authors"
+                  searchAriaLabel="Filter authors"
+                  placeholder="All Authors"
+                />
+              </div>
             )}
           </div>
           {isRequestListEmpty && !isFiltered && (
@@ -370,12 +339,50 @@ export const SecretApprovalRequest = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Change</TableHead>
-                  <TableHead>Environment</TableHead>
-                  <TableHead>Secret Path</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Opened</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Environment)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.Environment, direction)
+                    }
+                  >
+                    Environment
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Environment)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.SecretPath)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.SecretPath, direction)
+                    }
+                  >
+                    Secret Path
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.SecretPath)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Author)}
+                    onSortChange={(direction) => handleSort(ChangeRequestOrderBy.Author, direction)}
+                  >
+                    Author
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Author)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.OpenedAt)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.OpenedAt, direction)
+                    }
+                  >
+                    Opened
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.OpenedAt)}
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -401,7 +408,7 @@ export const SecretApprovalRequest = () => {
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
@@ -415,11 +422,11 @@ export const SecretApprovalRequest = () => {
                     status,
                     committerUser,
                     committerUserId,
+                    committerIdentity,
                     hasMerged,
                     updatedAt,
                     policy,
                     environment,
-                    slug,
                     isReplicated
                   } = secretApproval;
 
@@ -436,7 +443,7 @@ export const SecretApprovalRequest = () => {
                   const committerName = committerUser
                     ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
                       committerUser.email
-                    : null;
+                    : (committerIdentity?.name ?? null);
 
                   let statusDisplay: {
                     label: string;
@@ -492,28 +499,17 @@ export const SecretApprovalRequest = () => {
                           navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
                       }}
                     >
+                      <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
+                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <GitPullRequestIcon className="size-3.5 shrink-0 text-muted" />
-                          <span className="text-foreground">
-                            {generateCommitText(commits, isReplicated)}
-                          </span>
-                          <span className="text-xs text-muted">#{slug}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        {environmentDisplayName}
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        <p className="truncate text-foreground">{policy.secretPath}</p>
-                      </TableCell>
-                      <TableCell>
-                        {committerUser ? (
+                        {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">
                             <span className="text-foreground">{committerName}</span>
-                            {committerUserId === userSession.id && (
+                            {committerUser && committerUserId === userSession.id && (
                               <Badge variant="neutral">You</Badge>
                             )}
+                            {committerIdentity && <Badge variant="neutral">Machine</Badge>}
                           </div>
                         ) : (
                           <span className="text-muted">Deleted User</span>
@@ -548,6 +544,7 @@ export const SecretApprovalRequest = () => {
                         )}
                       </TableCell>
                       <TableCell
+                        variant="action"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >

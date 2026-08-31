@@ -126,6 +126,7 @@ export enum EventType {
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
+  EXPORT_CERT_PKCS12 = "export-cert-pkcs12",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
@@ -200,8 +201,11 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
+  PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -303,6 +307,9 @@ export enum EventType {
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -435,5 +442,10 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Secret folder access (folder RBAC)
+  CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
+  UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access"
 }

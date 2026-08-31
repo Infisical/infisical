@@ -31,28 +31,25 @@ import {
 import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Checkbox,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DurationInput,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
-  Input,
+  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   SheetFooter,
   TextArea,
   Tooltip,
@@ -76,7 +73,7 @@ import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { getAccessDurationLabel, parseAccessDurationMs } from "../AccessApprovalRequest.utils";
 
-const INVALID_DURATION_MESSAGE = "Invalid duration. Use formats like 30m, 2h, 1d.";
+const INVALID_DURATION_MESSAGE = "Enter a duration greater than 0.";
 const policyMaxDurationMessage = (maxTimePeriod: string) =>
   `Requested access duration is limited to ${maxTimePeriod} by policy`;
 
@@ -362,7 +359,7 @@ const DurationField = ({
   const duration = useWatch({ control: form.control, name: "duration" });
   const { errors } = useFormState({ control: form.control, name: "duration" });
 
-  const handleGrantTemporaryAccess = () => {
+  const handleApplyDuration = () => {
     const rangeMs = parseAccessDurationMs(form.getValues("duration.temporaryRange"));
     if (!rangeMs) {
       form.setError(
@@ -381,22 +378,28 @@ const DurationField = ({
       return;
     }
     form.clearErrors("duration.temporaryRange");
-    form.setValue("duration.isTemporary", true, { shouldDirty: true });
     setIsPopoverOpen(false);
   };
 
-  const handleCancelTemporaryAccess = () => {
+  const handleExpirationChange = (isTemporary: boolean) => {
     form.clearErrors("duration.temporaryRange");
-    form.setValue("duration.isTemporary", false, { shouldDirty: true });
-    setIsPopoverOpen(false);
+    form.setValue("duration.isTemporary", isTemporary, { shouldDirty: true });
+    if (!isTemporary) setIsPopoverOpen(false);
   };
 
   return (
     <Field>
       <FieldLabel>Duration</FieldLabel>
-      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <Popover
+        open={isPopoverOpen}
+        onOpenChange={(nextOpen) => duration.isTemporary && setIsPopoverOpen(nextOpen)}
+      >
         <PopoverTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
+          <Button
+            variant="outline"
+            className="w-full justify-between"
+            isDisabled={!duration.isTemporary}
+          >
             <span className="flex items-center gap-2">
               {duration.isTemporary && <ClockIcon className="size-3.5" />}
               {getAccessDurationLabel(duration.isTemporary, duration.temporaryRange)}
@@ -411,27 +414,40 @@ const DurationField = ({
             name="duration.temporaryRange"
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel htmlFor="temporaryRange">
-                  <TtlFormLabel label="Validity" />
-                </FieldLabel>
-                <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+                <FieldLabel htmlFor="temporaryRange">Duration</FieldLabel>
+                <DurationInput
+                  id="temporaryRange"
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  isError={Boolean(error?.message)}
+                />
                 <FieldError errors={[error]} />
               </Field>
             )}
           />
-          <div className="flex items-center gap-2">
-            <Button size="xs" variant="project" onClick={handleGrantTemporaryAccess}>
-              Grant
+          <div>
+            <Button isFullWidth variant="project" onClick={handleApplyDuration}>
+              Apply
             </Button>
-            {duration.isTemporary && !maxDurationMs && (
-              <Button size="xs" variant="danger" onClick={handleCancelTemporaryAccess}>
-                Cancel
-              </Button>
-            )}
           </div>
         </PopoverContent>
       </Popover>
-      {!isPopoverOpen && <FieldError errors={[errors.duration?.temporaryRange]} />}
+      <Field orientation="horizontal" className="justify-end gap-3">
+        <Label
+          htmlFor="expire-access"
+          className={cn(!duration.isTemporary && "text-muted opacity-70")}
+        >
+          Expire Access
+        </Label>
+        <Checkbox
+          id="expire-access"
+          variant="project"
+          isChecked={duration.isTemporary}
+          isDisabled={Boolean(maxDurationMs)}
+          onCheckedChange={(isChecked) => handleExpirationChange(isChecked === true)}
+        />
+      </Field>
+      {errors.duration?.temporaryRange && <FieldError errors={[errors.duration.temporaryRange]} />}
       {matchedPolicy?.maxTimePeriod && (
         <FieldDescription>
           Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
@@ -604,28 +620,27 @@ export const RequestAccessForm = ({
             render={({ field }) => (
               <Field>
                 <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={(value) => {
-                    if (value === field.value) return;
-                    field.onChange(value);
+                <Combobox
+                  modal
+                  options={currentProject?.environments ?? []}
+                  value={
+                    currentProject?.environments?.find(({ slug }) => slug === field.value) ?? null
+                  }
+                  onValueChange={(environmentOption) => {
+                    if (environmentOption.slug === field.value) return;
+                    field.onChange(environmentOption.slug);
                     // clear alongside the env change so both land in one render
                     form.setValue("secretPath", "", {
                       shouldValidate: form.formState.isSubmitted
                     });
                   }}
-                >
-                  <SelectTrigger id="environmentSlug" className="w-full">
-                    <SelectValue placeholder="Select an environment" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {currentProject?.environments?.map(({ slug, id, name }) => (
-                      <SelectItem value={slug} key={id}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  getOptionValue={(environmentOption) => environmentOption.slug}
+                  getOptionLabel={(environmentOption) => environmentOption.name}
+                  id="environmentSlug"
+                  placeholder="Select an environment"
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
+                />
               </Field>
             )}
           />
@@ -636,22 +651,20 @@ export const RequestAccessForm = ({
               const secretPathField = (
                 <Field>
                   <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
-                  <Select
-                    value={field.value || ""}
+                  <Combobox
+                    modal
+                    options={selectablePaths}
+                    value={selectablePaths.find((path) => path === field.value) ?? null}
                     onValueChange={field.onChange}
-                    disabled={!selectablePaths.length}
-                  >
-                    <SelectTrigger id="secretPath" className="w-full" isError={Boolean(error)}>
-                      <SelectValue placeholder="Select a secret path" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {selectablePaths.map((path) => (
-                        <SelectItem value={path} key={path}>
-                          {path}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    getOptionValue={(path) => path}
+                    getOptionLabel={(path) => path}
+                    id="secretPath"
+                    isDisabled={!selectablePaths.length}
+                    isError={Boolean(error)}
+                    placeholder="Select a secret path"
+                    searchPlaceholder="Search secret paths..."
+                    searchAriaLabel="Search secret paths"
+                  />
                   <FieldError errors={[error]} />
                 </Field>
               );

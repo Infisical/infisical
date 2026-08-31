@@ -23,7 +23,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
         actorAuthMethod: req.permission.authMethod,

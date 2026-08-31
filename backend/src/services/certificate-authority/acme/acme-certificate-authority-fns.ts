@@ -25,7 +25,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -138,7 +138,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -156,7 +156,7 @@ type TOrderCertificateDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -600,7 +600,7 @@ export const executeAcmeOrder = async (
     );
 
     if (isRenewal && originalCertificateId) {
-      await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, innerTx);
+      await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, innerTx);
     }
 
     await certificateBodyDAL.create(

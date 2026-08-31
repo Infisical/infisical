@@ -49,9 +49,7 @@ const vaultFactory = (
         async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, httpsAgent, targetHostname),
         {
           protocol: GatewayProxyProtocol.Tcp,
-          relayHost: gatewayV2Details.relayHost,
-          gateway: gatewayV2Details.gateway,
-          relay: gatewayV2Details.relay
+          ...gatewayV2Details
         }
       );
     }

@@ -1,34 +1,138 @@
 ---
-title: "Secret management in development environments"
+title: "Inject secrets into local development"
 sidebarTitle: "Local development"
-description: "Learn how to manage secrets in local development environments."
+description: "Run your application on your own machine with secrets pulled from Infisical instead of a .env file."
 ---
 
-## Problem at hand
+import InstallCli from "/snippets/cli/install-cli.mdx";
+import LogIn from "/snippets/cli/local-development/log-in.mdx";
+import LinkProject from "/snippets/cli/local-development/link-project.mdx";
+import StartApplication from "/snippets/cli/local-development/start-application.mdx";
 
-There are a number of issues that arise with secret management in local development environment: 
-1. **Getting secrets onto local machines**. When new developers join or a new project is created, the process of getting the development set of secrets onto local machines is often unclear. As a result, developers end up spending a lot of time onboarding and risk potentially following insecure practices when sharing secrets from one developer to another.
-2. **Syncing secrets with teammates**. One of the problems with .env files is that they become unsynced when one of the developers updates a secret or configuration. Even if the rest of the team is notified, developers don't make all the right changes immediately, and later on end up spending a lot of time debugging an issue due to missing environment variables. This leads to a lot of inefficiencies and lost time. 
-3. **Accidentally leaking secrets**. When developing locally, it's common for developers to accidentally leak a hardcoded secret as part of a commit. As soon as the secret is part of the git history, it becomes hard to get it removed and create a security vulnerability.
+This guide shows you how to inject secrets from Infisical into your local application without using a `.env` file. You'll install the [Infisical CLI](/cli/overview), link your codebase to your Infisical project, and start your application through `infisical run`.
 
-## Solution
+## Prerequisites
 
-One of the main benefits of Infisical is the facilitation of secret management workflows in local development use cases. In particular, Infisical heavily follows the "Security Shift Left" principle to enable developers to effortlessly follow secure practices when coding.
+- An Infisical project with secrets in its **Development** environment. If you don't have one yet, follow the [quickstart](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret) first.
 
-### CLI
+## Step 1: Install the CLI
 
-[Infisical CLI](/cli/overview) is the most frequently used Infisical tool for secret management in local development environments. It makes it easy to inject secrets right into the local application environments based on the permissions given to corresponding developers.
+Install the CLI with the package manager for your operating system.
 
-### Dashboard
+<InstallCli />
 
-On top of that, Infisical provides a great [Web Dashboard](https://app.infisical.com/signup) that can be used to making quick secret updates.
+Check that the installation worked:
 
-![project dashboard](../../images/dashboard.png)
+```bash
+infisical --version
+```
 
-### Personal overrides
+## Step 2: Inject secrets into your application
 
-By default, all the secrets in the Infisical environments are shared among project members who have the permission to access those environment. At the same time, when doing local development, it is often desirable to change the value of a certain secret only for a particular self. For such use cases, Infisical supports the functionality of **Personal Overrides** – which allow developers to override values of any secrets without affecting the workflows of the rest of the team. Personal Overrides can be created both in the dashboard or via [Infisical CLI](/cli/overview). 
+<Note>
+  If you prefer to learn by watching, follow along with our [step-by-step video tutorial](https://www.youtube.com/watch?v=zYCeELjcgQ4).
+</Note>
 
-### Secret scanning
+### Log in to Infisical
 
-In addition, Infisical also provides a set of tools to automatically prevent secret leaks to git history. This functionality can be set up on the level of [Infisical CLI using pre-commit hooks](/cli/scanning-overview#automatically-scan-changes-before-you-commit) or through a direct integration with platforms like GitHub.
+<LogIn />
+
+### Link your codebase to your project
+
+<LinkProject />
+
+### Start your application with secrets injected
+
+<StartApplication />
+
+## Confirm secrets are injected
+
+If your application starts but behaves as though a value is missing, check what the CLI is injecting before you look at your application code. This prints one secret exactly as your application would receive it:
+
+<CodeGroup>
+
+```bash macOS/Linux
+infisical run --env=dev -- printenv <YOUR_SECRET_KEY>
+```
+
+```powershell Windows (PowerShell)
+infisical run --env=dev -- powershell -Command 'echo $env:<YOUR_SECRET_KEY>'
+```
+
+```batch Windows (Command Prompt)
+infisical run --env=dev -- cmd /c echo %<YOUR_SECRET_KEY>%
+```
+
+</CodeGroup>
+
+To see every key available in an environment, list the secrets directly:
+
+```bash
+infisical secrets --env=dev --path=/
+```
+
+## Override secrets locally
+
+Everyone working in a project shares the same values for a given environment, which is what keeps a team in sync. When you need a different value on your machine alone, such as pointing a database URL at a database running on your laptop, create a [personal override](/documentation/platform/secrets-mgmt/project#personal-overrides) instead of editing the shared secret:
+
+```bash
+infisical secrets set <YOUR_SECRET_KEY>=<your-local-value> --type=personal
+```
+
+Your next `infisical run` uses the override, and your teammates keep receiving the shared value. You can also create an override from the secret's row in the dashboard.
+
+## Export secrets to a file
+
+Some tools read secrets from a file and offer no way to accept them from the environment. For those cases, write the secrets to a file with [`infisical export`](/cli/commands/export):
+
+```bash
+infisical export --env=dev --format=dotenv --output-file=./.env
+```
+
+<Warning>
+  An exported file is plain text, and it goes out of date as soon as someone changes a value in Infisical. Add it to your `.gitignore`, and regenerate it rather than treating it as the source of truth. We recommend using `infisical run` wherever possible.
+</Warning>
+
+## Scan commits for secrets
+
+Fetching secrets from Infisical keeps them out of your repository, but a credential can still reach a commit by being pasted into a source file. Install the pre-commit hook to scan your staged changes each time you commit:
+
+```bash
+infisical scan install --pre-commit-hook
+```
+
+The hook stops the commit when it finds something that looks like a secret. Check out [Secret Scanning](/documentation/platform/secret-scanning/overview) to learn more.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The infisical command isn't found">
+    Your shell reports `infisical: command not found`, or `infisical is not recognized` on Windows. The CLI isn't on your `PATH`. Run the install command for your platform again, then open a new terminal window so that it picks up the updated `PATH`.
+  </Accordion>
+  <Accordion title="Your application starts, but a secret is missing">
+    The CLI is probably reading from a different environment or folder than the one holding your secret. Run `infisical secrets --env=dev --path=/` to see what it resolves to, confirm the environment slug in your project settings, and add `--path` if the secret lives in a folder rather than at the root.
+  </Accordion>
+  <Accordion title="The CLI can't find your project, or asks you to log in again">
+    The CLI is pointed at the wrong instance. It uses Infisical Cloud US by default, so an EU or self-hosted account needs the address set through the `INFISICAL_DOMAIN` environment variable, the `--domain` flag, or the `domain` field in [`.infisical.json`](/cli/project-config).
+  </Accordion>
+  <Accordion title="It works in your terminal but not in your editor">
+    Your editor's run configuration starts your application on its own, outside the `infisical run` process, and the injected variables exist only inside that process and the commands it starts. Change the run configuration to call `infisical run --env=dev -- <your-start-command>`. Avoid launching the editor itself through `infisical run`, because its extensions, language servers, and other child processes would also inherit the secrets.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/run">
+    All available flags for `run`, `export`, `secrets`, and the rest of the CLI.
+  </Card>
+  <Card title="Docker" icon="docker" href="/integrations/platforms/docker">
+    Inject the same secrets into containers and Docker Compose services.
+  </Card>
+  <Card title="Secrets delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
+    Choose how to deliver secrets to CI/CD, Kubernetes, and production workloads.
+  </Card>
+  <Card title="Language SDKs" icon="code" href="/sdks/overview">
+    Fetch secrets from inside your application code instead of the environment.
+  </Card>
+</CardGroup>

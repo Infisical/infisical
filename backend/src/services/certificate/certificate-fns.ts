@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
@@ -7,11 +8,13 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateDALFactory } from "./certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertSignatureAlgorithm,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -159,10 +162,19 @@ export const generatePkcs12FromCertificate = async ({
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
     }
 
-    // node-forge doesn't support PQC keys
+    // node-forge only builds keystores from RSA keys, and cannot read PQC keys at all
+    let keyType: string | undefined;
     try {
-      crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "pem", type: "pkcs8" });
+      keyType = crypto.nativeCrypto.createPrivateKey({
+        key: privateKey,
+        format: "pem",
+        type: "pkcs8"
+      }).asymmetricKeyType;
     } catch {
+      keyType = undefined;
+    }
+
+    if (keyType !== "rsa") {
       throw new BadRequestError({
         message: "PKCS#12 export is not supported for this key type. Use PEM format instead."
       });
@@ -296,6 +308,68 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
   }
 };
 
+const EC_CURVE_KEY_ALGORITHMS: Record<string, CertKeyAlgorithm> = {
+  "P-256": CertKeyAlgorithm.ECDSA_P256,
+  "P-384": CertKeyAlgorithm.ECDSA_P384,
+  "P-521": CertKeyAlgorithm.ECDSA_P521
+};
+
+const RSA_KEY_ALGORITHMS: Record<number, CertKeyAlgorithm> = {
+  2048: CertKeyAlgorithm.RSA_2048,
+  3072: CertKeyAlgorithm.RSA_3072,
+  4096: CertKeyAlgorithm.RSA_4096
+};
+
+const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.RSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.RSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.RSA_SHA512
+};
+
+const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
+};
+
+// Import accepts certificates the issuance enums do not cover, such as Ed25519 and secp256k1, so an
+// unrecognised algorithm is recorded under its own name rather than rejected. The UI falls back to
+// the raw value when it is not one it has a label for.
+export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
+  let certObj: x509.X509Certificate;
+  try {
+    certObj = new x509.X509Certificate(decryptedCertificate);
+  } catch {
+    return {};
+  }
+
+  const publicKeyAlgorithm = certObj.publicKey.algorithm as {
+    name: string;
+    modulusLength?: number;
+    namedCurve?: string;
+  };
+  const signature = certObj.signatureAlgorithm as unknown as { name: string; hash?: { name: string } };
+  const hashName = signature.hash?.name ?? "";
+
+  let keyAlgorithm: string = publicKeyAlgorithm.name;
+  if (publicKeyAlgorithm.name.startsWith("RSA")) {
+    const bits = publicKeyAlgorithm.modulusLength;
+    keyAlgorithm = (bits && RSA_KEY_ALGORITHMS[bits]) || (bits ? `RSA_${bits}` : "RSA");
+  } else if (publicKeyAlgorithm.name === "ECDSA") {
+    const curve = publicKeyAlgorithm.namedCurve ?? "";
+    keyAlgorithm = EC_CURVE_KEY_ALGORITHMS[curve] ?? (curve ? `EC_${curve}` : "EC");
+  }
+
+  let signatureAlgorithm: string = signature.name;
+  if (signature.name.startsWith("RSA")) {
+    signatureAlgorithm = RSA_SIGNATURE_ALGORITHMS[hashName] ?? `RSA-${hashName || "UNKNOWN"}`;
+  } else if (signature.name === "ECDSA") {
+    signatureAlgorithm = ECDSA_SIGNATURE_ALGORITHMS[hashName] ?? `ECDSA-${hashName || "UNKNOWN"}`;
+  }
+
+  return { keyAlgorithm, signatureAlgorithm };
+};
+
 /**
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
@@ -328,4 +402,19 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };
+};
+
+export const linkRenewedCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
+  originalCertificateId: string,
+  renewedCertificateId: string,
+  tx?: Knex
+) => {
+  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+
+  if (originalCertificate?.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  }
+
+  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };

@@ -1,3 +1,13 @@
+import {
+  BotIcon,
+  EyeIcon,
+  KeyRoundIcon,
+  type LucideIcon,
+  PencilIcon,
+  ServerIcon,
+  Share2Icon,
+  UsersIcon
+} from "lucide-react";
 import picomatch from "picomatch";
 import { z } from "zod";
 
@@ -36,6 +46,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -158,7 +169,8 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.SyncCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
-  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional()
+  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({
@@ -275,6 +287,10 @@ const ProjectFolderGrantPolicyActionSchema = z.object({
   [ProjectPermissionProjectFolderGrantActions.ReadGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.CreateGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: z.boolean().optional()
+});
+
+const SecretFolderPolicyActionSchema = GeneralPolicyActionSchema.extend({
+  [ProjectPermissionSecretFolderActions.ManageAccess]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -630,7 +646,7 @@ export const projectRoleFormSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: SecretPolicyActionWithConditionsSchema.array().default([]),
-      [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.SecretFolders]: SecretFolderPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -1097,6 +1113,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canRemoveCertificates = action.includes(
             ProjectPermissionPkiSyncActions.RemoveCertificates
           );
+          const canSetPostSyncCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetPostSyncCommand
+          );
+          const canSetHealthCheckCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetHealthCheckCommand
+          );
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
@@ -1109,6 +1131,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.SyncCertificates]: canSyncCertificates,
             [ProjectPermissionPkiSyncActions.ImportCertificates]: canImportCertificates,
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
+            [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
+            [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1413,23 +1437,44 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.SecretFolders) {
+          const canManageAccess = action.includes(
+            ProjectPermissionSecretFolderActions.ManageAccess
+          );
+          const canReadFolder = action.includes(ProjectPermissionActions.Read);
+          const canEditFolder = action.includes(ProjectPermissionActions.Edit);
+          const canDeleteFolder = action.includes(ProjectPermissionActions.Delete);
+          const canCreateFolder = action.includes(ProjectPermissionActions.Create);
+
+          // remove this condition later
+          // keeping when old routes create permission with folder read
+          if (
+            canReadFolder &&
+            !canEditFolder &&
+            !canDeleteFolder &&
+            !canCreateFolder &&
+            !canManageAccess
+          ) {
+            return;
+          }
+
+          formVal[subject]!.push({
+            read: canReadFolder,
+            create: canCreateFolder,
+            edit: canEditFolder,
+            delete: canDeleteFolder,
+            [ProjectPermissionSecretFolderActions.ManageAccess]: canManageAccess,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
         const canDelete = action.includes(ProjectPermissionActions.Delete);
         const canCreate = action.includes(ProjectPermissionActions.Create);
-
-        // remove this condition later
-        // keeping when old routes create permission with folder read
-        if (
-          subject === ProjectPermissionSub.SecretFolders &&
-          canRead &&
-          !canEdit &&
-          !canDelete &&
-          !canCreate
-        ) {
-          return;
-        }
 
         formVal[subject]!.push({
           read: canRead,
@@ -2885,6 +2930,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove Certificates from Destination",
         value: ProjectPermissionPkiSyncActions.RemoveCertificates,
         description: "Remove synced certificates from the destination"
+      },
+      {
+        label: "Set Health Check",
+        value: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+        description: "Set the command a sync runs on the destination host before delivering"
+      },
+      {
+        label: "Set Post-Sync Command",
+        value: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+        description: "Set the command a sync runs on the destination host after delivering"
       }
     ]
   },
@@ -3311,6 +3366,7 @@ export type RoleTemplate = {
   id: string;
   name: string;
   description: string;
+  icon: LucideIcon;
   permissions: { subject: ProjectPermissionSub; actions: string[] }[];
 };
 
@@ -3320,6 +3376,7 @@ const projectManagerTemplate = (
   id: "project-manager",
   name: "Project Management Policies",
   description: "Grants access to manage project members and settings",
+  icon: UsersIcon,
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
@@ -3362,6 +3419,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kms-viewer",
       name: "KMS Viewing Policies",
       description: "Grants read access to KMS keys and KMIP clients",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3377,6 +3435,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "key-editor",
       name: "KMS Key Editing Policies",
       description: "Grants read and edit access to KMS keys",
+      icon: KeyRoundIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3388,6 +3447,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kmip-editor",
       name: "KMIP Client Editing Policies",
       description: "Grants read and edit access to KMIP clients",
+      icon: ServerIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Kmip,
@@ -3402,6 +3462,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-viewer",
       name: "Certificate Viewing Policies",
       description: "Grants read access to certificates and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3444,6 +3505,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-editor",
       name: "Certificate Editing Policies",
       description: "Grants read and edit access to certificates and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3486,6 +3548,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-viewer",
       name: "Secret Scanning Viewing Policies",
       description: "Grants read access to data sources and findings",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3509,6 +3572,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-editor",
       name: "Secret Scanning Editing Policies",
       description: "Grants read and edit access to data sources and findings",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3536,6 +3600,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-viewer",
       name: "Secret Viewing Policies",
       description: "Grants read access to secrets and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretRollback,
@@ -3594,6 +3659,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-editor",
       name: "Secret Editing Policies",
       description: "Grants read and edit access to secrets and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Environments,
@@ -3693,6 +3759,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent-proxy",
       name: "Agent Proxy Policies",
       description: "Reads secret values, mints dynamic secret leases, and reports service usage",
+      icon: Share2Icon,
       permissions: [
         {
           subject: ProjectPermissionSub.Secrets,
@@ -3715,6 +3782,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent",
       name: "Agent Policies",
       description: "Routes traffic through proxied services",
+      icon: BotIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.ProxiedServices,

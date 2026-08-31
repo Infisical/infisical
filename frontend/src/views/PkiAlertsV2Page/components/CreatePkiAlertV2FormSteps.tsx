@@ -792,7 +792,7 @@ export const CreatePkiAlertV2FormSteps = ({
                         </div>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="bg-mineshaft-800">
+                    <AccordionContent className="bg-mineshaft-800 p-6">
                       {channel?.channelType === PkiAlertChannelTypeV2.EMAIL && (
                         <Controller
                           control={control}

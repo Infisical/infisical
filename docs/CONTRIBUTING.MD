@@ -9,6 +9,81 @@
 - Using Mintlify components (`<Steps>`, `<Tabs>`, `<Card>`, etc.)
 - Page structure and formatting
 
+## Linting prose
+
+Parts of the style guide are enforced by [Vale](https://vale.sh). Install it and run the
+linter from the repository root:
+
+```
+brew install vale
+make lint-docs-branch   # only the .mdx files this branch touched
+make lint-docs          # every .mdx file in docs/
+```
+
+The configuration lives in `docs/.vale.ini` and `docs/.vale/styles/`. The Vale version CI
+installs is pinned in `docs/.vale-version`, and both targets warn when the version you have
+installed differs. CI verifies the download against the checksums published with that
+release. The config pins `.mdx` to the Markdown parser, so behavior is tied to the
+version.
+
+Both targets call `docs/scripts/lint-docs.sh`, and so does the `Check docs style` GitHub
+workflow, which runs only on pull requests that touch `docs/` and lints the files the pull
+request changed. A branch that edits the configuration itself -- `.vale.ini`, a file under
+`.vale/styles/`, `.vale-version`, or the script -- is linted in full instead, since a rule
+change reaches pages the branch never touched. Local and CI results therefore match. You can
+also run `vale <path>` directly on a subset. A run fails only on errors; warnings and
+suggestions are printed but do not block.
+
+Mintlify runs its own Vale check against this same config, and its results do not always
+agree with ours -- it is a separate build we do not control. `Check docs style` is the check
+to go by.
+
+What it checks: sentence case in headings and in the `title`/`sidebarTitle` frontmatter
+fields, the enforced spellings in
+`docs/.vale/styles/Infisical/Terminology.yml`, spelling against the vocabulary in
+`docs/.vale/styles/config/vocabularies/Infisical/`, `$` prompts that break copy-paste,
+placeholders like `foo`, and em dashes piling up in one paragraph.
+
+**Adding a word.** If Vale flags a term that is spelled correctly, add it to the vocabulary:
+
+- `config/vocabularies/Infisical/canonical/accept.txt` for a term with one correct casing.
+  Note that a multi-word entry forces its casing on every heading containing it, so only put
+  a phrase here when it is always Title Case.
+- `config/vocabularies/Infisical/any-case/accept.txt`, prefixed with `(?i)`, for anything that
+  legitimately appears in more than one case -- a product noun that doubles as a common noun,
+  or an acronym that collides with an ordinary word.
+
+Comments in those files need a hash **and a space**: `#Foo` is read as a pattern, not a comment.
+
+Prefer listing a distinctive word on its own rather than relying on a multi-word entry to
+cover it. Our Vale masks a multi-word phrase so its parts are accepted; Mintlify's CI Vale
+does not, so `Ab Initio` alone left `Initio` reported there.
+
+**Rules must survive both Vale builds.** Mintlify's CI check runs its own Vale against this
+same config, and the two do not agree on everything. A `conditional` rule scoped to `raw` was
+dropped for this reason: it reported a missing `description` on 148 files that all had one.
+`Infisical.ShellPrompts` and `Infisical.Placeholders` also use `scope: raw`, because they have
+to see inside code blocks; they behave correctly locally, but treat their CI behavior as
+unverified. Anything that needs a whole-file view is safer as a separate check than as a Vale
+rule.
+
+**Enforcing a spelling.** Add a swap to `Infisical/Terminology.yml`. List only forms that are
+always wrong, and remember the lowercase spelling of a product name is usually its binary,
+package, or API group.
+
+**Suppressing a rule.** Vale's sentence-case check has a few known blind spots around colons
+and single-letter labels. Where it is wrong, silence it in place rather than weakening the rule:
+
+```mdx
+{/* vale Infisical.SentenceCaseHeadings = NO */}
+
+## Option A: Managed PostgreSQL service
+
+{/* vale Infisical.SentenceCaseHeadings = YES */}
+```
+
+`{/* vale off */}` and `{/* vale on */}` disable everything between them.
+
 ## Getting familiar with Mintlify
 
 New to Mintlify? [Start Here](https://mintlify.com/docs/quickstart)

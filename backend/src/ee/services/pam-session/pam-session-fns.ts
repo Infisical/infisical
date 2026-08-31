@@ -13,6 +13,15 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 
+export const LIVE_PAM_SESSION_STATUSES = [PamSessionStatus.Active, PamSessionStatus.Starting];
+
+export const isPamSessionLive = (session: { status: string; expiresAt: Date }) =>
+  LIVE_PAM_SESSION_STATUSES.includes(session.status as PamSessionStatus) &&
+  new Date(session.expiresAt).getTime() > Date.now();
+
+export const pamSessionRemainingSeconds = (session: { expiresAt: Date }) =>
+  Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
+
 export const resolvePamSessionDistinctId = async ({
   session,
   userDAL
@@ -75,12 +84,13 @@ export const reportPamSessionEnded = async ({
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent
 // best-effort (fire-and-forget) so callers don't block on the gateway round-trip, and shared by every
-// termination path (manual terminate, grant revocation) so they can't drift.
+// termination path (manual terminate, grant revocation, expiry) so they can't drift.
 export const sendPamSessionCancellationSignal = ({
   sessionId,
   gatewayId,
   accountType,
   actorId,
+  actorType = ActorType.USER,
   actorEmail,
   gatewayV2Service
 }: {
@@ -88,6 +98,7 @@ export const sendPamSessionCancellationSignal = ({
   gatewayId: string;
   accountType: string;
   actorId: string;
+  actorType?: ActorType.USER | ActorType.IDENTITY;
   actorEmail: string;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
@@ -100,7 +111,7 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: ActorType.USER, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
       });
       if (!certs) {
         logger.error(
@@ -155,7 +166,7 @@ export const terminatePamSessions = async ({
     {
       $in: {
         id: sessions.map((session) => session.id),
-        status: [PamSessionStatus.Active, PamSessionStatus.Starting]
+        status: LIVE_PAM_SESSION_STATUSES
       }
     },
     { status: PamSessionStatus.Terminated, endedAt: new Date() },

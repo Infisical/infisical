@@ -85,14 +85,16 @@
     "flatted": "^3.4.2",
     "@octokit/request-error": "^5.1.1",
     "fast-uri": "^3.1.2",
-    "undici": "^7.24.0",
+    "undici": "^7.29.0",
     "eslint-plugin-import": {
       "minimatch": "^3.1.2"
     },
     "ws": "^8.20.1",
     "fast-xml-parser": "^5.7.0",
     "path-to-regexp": "^8.4.0",
-    "protobufjs": "^7.5.6"
+    "protobufjs": "^7.5.6",
+    "shell-quote": "^1.9.0",
+    "websocket-driver": "^0.7.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.18.10",
@@ -163,6 +165,7 @@
     "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@aws-sdk/client-ssm": "^3.1015.0",
     "@aws-sdk/client-sts": "^3.600.0",
+    "@aws-sdk/rds-signer": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1020.0",
     "@casl/ability": "^6.7.5",
     "@clickhouse/client": "^1.17.0",
@@ -291,8 +294,9 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "safe-regex": "^2.1.1",
-    "scim-patch": "^0.8.3",
+    "scim-patch": "^0.9.1",
     "scim2-parse-filter": "^0.2.10",
+    "segfault-handler": "^1.3.0",
     "sjcl": "^1.0.9",
     "smee-client": "^2.0.0",
     "snowflake-sdk": "^2.0.4",

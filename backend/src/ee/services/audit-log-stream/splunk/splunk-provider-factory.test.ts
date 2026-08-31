@@ -6,7 +6,7 @@ import { SplunkProviderFactory } from "./splunk-provider-factory";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
 const { sentRequests } = vi.hoisted(() => ({
-  sentRequests: [] as { body: string; contentType: string }[]
+  sentRequests: [] as { body: string; contentType: string; url: string }[]
 }));
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -18,11 +18,17 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-// Only the hostname check is stubbed, because the real one needs DNS. resolveEventTimestamp
-// stays real so the timestamp assertions exercise actual behaviour.
-vi.mock("../audit-log-stream-fns", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../audit-log-stream-fns")>()),
-  blockAuditLogStreamInternalIps: vi.fn(async () => undefined)
+// Only safeRequest's URL validation is stubbed, because the real one resolves DNS. The stub still
+// dispatches through the axios instance below, so the on-wire assertions stay on real behaviour.
+vi.mock("@app/lib/validator", () => ({
+  safeRequest: {
+    post: async (url: string, data: unknown, options: Record<string, unknown> = {}) => {
+      const { allowPrivateIps, ...axiosOpts } = options;
+      const { request } = await import("@app/lib/config/request");
+
+      return request.request({ ...axiosOpts, method: "POST", url, data });
+    }
+  }
 }));
 
 // A real axios instance with a capturing adapter, because the adapter receives `config.data`
@@ -37,7 +43,8 @@ vi.mock("@app/lib/config/request", async () => {
       adapter: async (config) => {
         sentRequests.push({
           body: config.data as string,
-          contentType: String(config.headers["Content-Type"])
+          contentType: String(config.headers["Content-Type"]),
+          url: String(config.url)
         });
 
         return { data: {}, status: 200, statusText: "OK", headers: {}, config };
@@ -89,6 +96,36 @@ const buildLog = (idx: number) =>
     event: { type: "get-secrets" },
     createdAt: new Date(Date.UTC(2026, 5, 11, 22, 7, 30, 732) + idx * 1_000).toISOString()
   }) as unknown as TAuditLogs;
+
+describe("SplunkProviderFactory HEC port", () => {
+  beforeEach(() => {
+    sentRequests.length = 0;
+  });
+
+  // Credentials stored before the port field existed decrypt without one, so undefined has to
+  // keep resolving to 8088 or every pre-existing self-managed stream breaks.
+  test.each([
+    ["no port", undefined, "https://hec.example.com:8088/services/collector/event"],
+    ["port 8088", 8088, "https://hec.example.com:8088/services/collector/event"],
+    ["port 443, as paid Splunk Cloud stacks require", 443, "https://hec.example.com:443/services/collector/event"],
+    ["a custom port", 19088, "https://hec.example.com:19088/services/collector/event"]
+  ])("posts logs to %s", async (_label, port, expected) => {
+    await SplunkProviderFactory().batchStreamLog({
+      credentials: { ...CREDENTIALS, port },
+      auditLogs: [buildLog(0)]
+    });
+
+    expect(sentRequests.map((entry) => entry.url)).toEqual([expected]);
+  });
+
+  test("validateCredentials pings the configured port", async () => {
+    await SplunkProviderFactory().validateCredentials({
+      credentials: { ...CREDENTIALS, port: 443 }
+    });
+
+    expect(sentRequests.map((entry) => entry.url)).toEqual(["https://hec.example.com:443/services/collector/event"]);
+  });
+});
 
 describe("SplunkProviderFactory batchStreamLog", () => {
   beforeEach(() => {

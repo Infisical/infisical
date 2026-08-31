@@ -17,6 +17,23 @@ tables:
       - editedByUserId
       - editNote
 
+  - name: additional_privileges
+    source: public.additional_privileges
+    columns:
+      - id
+      - name
+      - isTemporary
+      - temporaryMode
+      - temporaryRange
+      - temporaryAccessStartTime
+      - temporaryAccessEndTime
+      - actorUserId
+      - actorIdentityId
+      - orgId
+      - projectId
+      - createdAt
+      - updatedAt
+
   - name: app_connections
     source: public.app_connections
     columns:
@@ -332,6 +349,7 @@ tables:
       - accessTokenPeriod
       - tokenReviewMode
       - gatewayV2Id
+      - templateId
 
   - name: identity_ldap_auths
     source: public.identity_ldap_auths

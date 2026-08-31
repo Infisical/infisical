@@ -181,7 +181,7 @@ On Linux, `run` checks the sandbox before starting your agent. If the private ne
   On the shared-network fallback the agent can reach the network directly, so routing through the proxy depends on the agent honoring the proxy environment variables: a tool that ignores them is not brokered, and its traffic leaves unproxied. Everything else is unchanged, including the environment scrub, the keyring block, and the credential-path denies. Allow unprivileged user namespaces on the host to restore the enforced fence.
 </Warning>
 
-### Network: the proxy is the only way out
+### Network: The proxy is the only way out
 
 Under both enforced modes the agent has exactly one route to the outside, the proxy. Direct connections fail, including connections straight to an IP with no hostname involved. Only HTTP and HTTPS are brokered, so SSH cannot be: use HTTPS with a brokered token, which is how `git` and `gh` work.
 
@@ -194,7 +194,7 @@ Two consequences for local servers are worth knowing, since the fence applies to
 - The agent **cannot reach a service running on your machine** outside the sandbox, such as a database on `127.0.0.1:5432`. Loopback bypasses the proxy by design, and the fence denies the direct connection, so it fails.
 - A server the **agent** starts is reachable from your machine on macOS, but not on Linux: there the agent gets its own private network, so a dev server it launches is invisible from outside. Start long-lived local servers yourself, outside the agent.
 
-### Filesystem: broad read, credentials denied
+### Filesystem: Broad read, credentials denied
 
 Reads are allowed nearly everywhere, which is what keeps agents useful. Writes are limited to the working directory, the per-run temporary directory, `/tmp`, and the state directories of the agents `run` knows about (`~/.claude`, `~/.claude.json`, `~/.codex`), so interactive sessions keep their history and settings. Any other directory an agent writes to needs `--allow-write`. Carved out of the broad read is everywhere credentials live:
 
@@ -239,7 +239,7 @@ That is precise: `~/.aws/config` becomes readable, read-only, while everything e
   Re-opening `~/.infisical` would hand the agent your login token and the local CA private key, which defeats the whole design. Prefer naming a single file over a directory.
 </Warning>
 
-### Environment: scrubbed
+### Environment: Scrubbed
 
 The agent inherits your environment with the credential-shaped parts removed:
 
@@ -275,7 +275,7 @@ To serve the second group on macOS, `run` keeps the local root under `~/.infisic
 
 On Linux the root is generated fresh in memory for each run and the environment variables are sufficient, so there is no trust-store step.
 
-## Permissions: it all runs as you
+## Permissions: It all runs as you
 
 Every API call is made with your own token, and it needs three permissions: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
 

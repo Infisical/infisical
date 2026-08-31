@@ -208,6 +208,25 @@ const RuleFormContent = ({
     );
     return Boolean(hasRegex && hasLength);
   })();
+
+  // Oracle 12c and older limits passwords to 30 characters. Show a heads-up
+  // when OracleDB is selected and a constraint actually exceeds that limit:
+  // min/max length > 30, or any regex (whose output length can't be checked
+  // statically).
+  const ORACLE_12C_MAX_PASSWORD_LENGTH = 30;
+  const watchedEnforcement = form.watch("enforcement");
+  const showOracleLengthWarning = (() => {
+    if (watchedEnforcement.type !== RuleType.SecretRotations) return false;
+    if (!watchedEnforcement.providers.includes(SecretRotationRuleProvider.OracleDBCredentials))
+      return false;
+    return watchedConstraints?.some((c) => {
+      if (c.type === ConstraintType.RegexPattern) return true;
+      if (c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength) {
+        return Number(c.value) > ORACLE_12C_MAX_PASSWORD_LENGTH;
+      }
+      return false;
+    });
+  })();
   const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
     if (disallowedConstraintTypes.includes(opt.type)) return false;
     const targets = isGeneratedCredentialRule
@@ -263,70 +282,70 @@ const RuleFormContent = ({
             </div>
           </div>
 
-          {/* Enforcement Type + Providers */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted">Rule Type</label>
-              <Controller
-                control={control}
-                name="enforcement.type"
-                render={({ field: { value, onChange } }) => (
-                  <Select
-                    value={value}
-                    onValueChange={(next) => {
-                      onChange(next);
-                      replace([]);
-                      if (next !== RuleType.StaticSecrets) {
-                        form.setValue("enforcement.providers" as never, [] as never, {
-                          shouldDirty: true,
-                          shouldValidate: false
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {(Object.values(RuleType) as RuleType[]).map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {RULE_TYPE_LABELS[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            {watchedRuleType === RuleType.DynamicSecrets && (
-              <ProviderMultiSelect<DynamicSecretRuleProvider>
-                label="Dynamic Secret Providers"
-                options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
-                control={control}
-                error={
-                  // discriminated form types: providers only exists on this arm
-                  (errors.enforcement as { providers?: { message?: string } } | undefined)
-                    ?.providers?.message
-                }
-              />
-            )}
-            {watchedRuleType === RuleType.SecretRotations && (
-              <ProviderMultiSelect<SecretRotationRuleProvider>
-                label="Rotation Providers"
-                options={SECRET_ROTATION_PROVIDER_OPTIONS}
-                control={control}
-                error={
-                  (errors.enforcement as { providers?: { message?: string } } | undefined)
-                    ?.providers?.message
-                }
-              />
-            )}
+          {/* Rule Type */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Rule Type</label>
+            <Controller
+              control={control}
+              name="enforcement.type"
+              render={({ field: { value, onChange } }) => (
+                <Select
+                  value={value}
+                  onValueChange={(next) => {
+                    onChange(next);
+                    replace([]);
+                    if (next !== RuleType.StaticSecrets) {
+                      form.setValue("enforcement.providers" as never, [] as never, {
+                        shouldDirty: true,
+                        shouldValidate: false
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {(Object.values(RuleType) as RuleType[]).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {RULE_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
+
+          {/* Providers */}
+          {watchedRuleType === RuleType.DynamicSecrets && (
+            <ProviderMultiSelect<DynamicSecretRuleProvider>
+              label="Dynamic Secret Providers"
+              options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                // discriminated form types: providers only exists on this arm
+                (errors.enforcement as { providers?: { message?: string } } | undefined)?.providers
+                  ?.message
+              }
+            />
+          )}
+          {watchedRuleType === RuleType.SecretRotations && (
+            <ProviderMultiSelect<SecretRotationRuleProvider>
+              label="Rotation Providers"
+              options={SECRET_ROTATION_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                (errors.enforcement as { providers?: { message?: string } } | undefined)?.providers
+                  ?.message
+              }
+            />
+          )}
 
           {/* Scope */}
           <div>
             <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Environment</label>
                 <Controller
@@ -395,6 +414,18 @@ const RuleFormContent = ({
                   <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
                   ).
                 </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showOracleLengthWarning && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Oracle 12c password length limitation</AlertTitle>
+              <AlertDescription>
+                If you are using Oracle 12c or older, passwords are limited to 30 characters. Make
+                sure your length and pattern constraints stay within this limit to avoid rotation
+                failures.
               </AlertDescription>
             </Alert>
           )}
@@ -674,7 +705,7 @@ export const SecretValidationRulesSection = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -709,7 +740,7 @@ export const SecretValidationRulesSection = () => {
                         {rule.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell variant="action" className="py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Actions" variant="ghost" size="xs">

@@ -22,3 +22,12 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   name: "Example: Default"
 };
+
+/**
+ * Renders the external-link icon alone, without the badge chrome. Use it where a labelled badge
+ * would crowd the surrounding text, such as beside a dialog title.
+ */
+export const Minified: Story = {
+  name: "Example: Minified",
+  args: { variant: "minified" }
+};

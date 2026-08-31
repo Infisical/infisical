@@ -46,7 +46,7 @@ export const registerDbtConnectionRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId }

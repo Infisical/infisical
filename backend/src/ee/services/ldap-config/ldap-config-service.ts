@@ -12,7 +12,7 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -28,6 +28,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -102,7 +103,8 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -128,6 +130,7 @@ export const ldapConfigServiceFactory = ({
   userGroupMembershipDAL,
   userDAL,
   userAliasDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -501,10 +504,7 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
@@ -559,6 +559,7 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
+      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -606,7 +607,13 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.LDAP);
+          await throwOnPlanSeatLimitReached({
+            licenseService,
+            orgId,
+            identityLimit,
+            tx,
+            aliasType: UserAliasType.LDAP
+          });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
@@ -717,6 +724,7 @@ export const ldapConfigServiceFactory = ({
               userGroupMembershipDAL,
               membershipGroupDAL,
               projectKeyDAL,
+              additionalPrivilegeDAL,
               usageMeteringService,
               alertChannelRecipientDAL,
               tx

@@ -11,7 +11,6 @@ import {
   TSecretsV2
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -34,7 +33,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { diff, groupBy } from "@app/lib/fn";
+import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -144,8 +143,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
@@ -169,7 +167,14 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem" | "hashGet" | "hashSet"
+    | "getItem"
+    | "getItemBuffer"
+    | "setExpiry"
+    | "setItemWithExpiry"
+    | "deleteItem"
+    | "pgGetIntItem"
+    | "hashGet"
+    | "hashSet"
   >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
@@ -193,7 +198,6 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   folderDAL,
   permissionService,
-  permissionDAL,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -1054,7 +1058,12 @@ export const secretV2BridgeServiceFactory = ({
         actorOrgId,
         actionProjectType: ActionProjectType.SecretManager
       });
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1101,7 +1110,10 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) return 0;
@@ -1123,12 +1135,17 @@ export const secretV2BridgeServiceFactory = ({
   ) => {
     const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
 
-    const secrets = await secretDAL.findByFolderIds({
+    const { limit } = filters;
+
+    // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
+    const scannedSecrets = await secretDAL.findByFolderIds({
       folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
       userId,
       tx: undefined,
-      filters
+      filters: limit ? { ...filters, limit: limit + 1 } : filters
     });
+
+    const { items: secrets, isLimitReached } = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1182,7 +1199,10 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
-    return decryptedSecrets;
+    return {
+      secrets: decryptedSecrets,
+      isLimitReached
+    };
   };
 
   // get secrets for multiple envs
@@ -1212,7 +1232,12 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     if (!isInternal) {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1227,7 +1252,7 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
-    const decryptedSecrets = await getSecretsByFolderMappings(
+    const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
@@ -1238,7 +1263,7 @@ export const secretV2BridgeServiceFactory = ({
       permission
     );
 
-    return decryptedSecrets;
+    return secrets;
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
@@ -1265,15 +1290,17 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // Cache the fingerprint for the marker window so repeated polls
-      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
-      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
+      // Cache the fingerprint for the marker window so repeated polls skip the per-request DB query.
+      // Same 10s TTL as getProjectPermission's marker, so no new staleness. This gates only the Etag
+      // cache, the real permission check is still done on the getProjectPermission call. It is the same
+      // fingerprint that validates the permission cache, so folder grants are covered here too — at the
+      // cost of its project-wide folder-version half churning this ETag on any folder change.
       permissionFingerprint = await withCache({
         keyStore,
         key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
         ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
         fetcher: () =>
-          permissionDAL.getPermissionFingerprint({
+          permissionService.getProjectPermissionFingerprint({
             projectId,
             orgId: actorOrgId,
             actorId,
@@ -1331,11 +1358,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
-    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
-    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
-    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
-    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
+
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
       projectId,
       version: secretDalVersion,
@@ -1351,11 +1374,11 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
+    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
     if (encryptedCachedSecrets) {
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
+        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets });
         // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
@@ -1511,6 +1534,9 @@ export const secretV2BridgeServiceFactory = ({
             secretTags: secret.tags.map((i) => i.slug)
           });
 
+        const isValueMasked = secretValueHidden && !isPersonalSecret;
+        const isValueDiscarded = isValueMasked && secret.type !== SecretType.Personal;
+
         return reshapeBridgeSecret(
           projectId,
           environment,
@@ -1524,14 +1550,17 @@ export const secretV2BridgeServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
                 : el.value || ""
             })),
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : "",
+            // reshapeBridgeSecret still surfaces the real plaintext for Personal secrets even when
+            // masking, so the decrypt is only skippable when the value is certain to be discarded.
+            value:
+              !isValueDiscarded && secret.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+                : "",
             comment: secret.encryptedComment
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden && !isPersonalSecret
+          isValueMasked
         );
       });
 
@@ -1629,7 +1658,7 @@ export const secretV2BridgeServiceFactory = ({
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
       if (stored) {
-        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
+        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
@@ -1721,7 +1750,7 @@ export const secretV2BridgeServiceFactory = ({
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
     if (stored) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
+      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });

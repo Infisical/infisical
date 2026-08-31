@@ -1,0 +1,287 @@
+---
+title: "GCP Certificate Manager"
+sidebarTitle: "GCP Certificate Manager"
+description: "Upload certificates to GCP Certificate Manager and rotate them in place."
+---
+
+Upload certificates managed in Infisical to GCP Certificate Manager as self-managed certificates. When a certificate is renewed, Infisical updates the same GCP certificate in place, so the load balancers serving it pick up the new material with no change in GCP.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificate to sync, then configure the GCP Certificate Manager destination.
+</Info>
+
+## Prerequisites
+
+- A [GCP Connection](/integrations/app-connections/gcp)
+- These APIs enabled on the GCP project that will hold your certificates:
+
+  ```bash
+  gcloud services enable \
+      certificatemanager.googleapis.com \
+      cloudresourcemanager.googleapis.com \
+      serviceusage.googleapis.com \
+      --project=PROJECT_ID
+  ```
+
+- These roles granted to the connection's service account on that same project:
+
+  | Role | Needed for |
+  | --- | --- |
+  | Certificate Manager Editor (`roles/certificatemanager.editor`) | Uploading and rotating certificates, and creating certificate map entries |
+  | Service Usage Viewer (`roles/serviceusage.serviceUsageViewer`) | Listing the projects that have Certificate Manager enabled |
+  | Browser (`roles/browser`) | Showing the project in the sync form |
+  | Certificate Manager Owner (`roles/certificatemanager.owner`) | Anything that deletes: removing certificates, and replacing or removing certificate map entries |
+
+<Warning>
+  `roles/certificatemanager.editor` grants no delete permissions at all. Grant Owner if you enable certificate map binding, even with removal turned off: changing the hostname on a bound sync replaces the map entry, and switching or unbinding the map removes the old one. Both are deletes.
+</Warning>
+
+<Note>
+  If you manage several GCP projects, make sure the APIs and roles are applied to the project that will hold your certificates, not to whichever project you happen to have open.
+</Note>
+
+## Create a GCP Certificate Manager sync
+
+<Tabs>
+  <Tab title="Infisical UI">
+    1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+    2. Select the **GCP Certificate Manager** option.
+
+    3. Configure the **Destination**:
+        - **GCP Connection**: Choose the connection to authenticate with.
+        - **GCP Project**: Select the target project. Only projects with the Certificate Manager API enabled appear in the list.
+        - **Location**: Select **Global** for global external Application Load Balancers and Media CDN, or a region for regional Application Load Balancers.
+        - **Scope**: Select the scope matching your load balancer. See [Scopes](#scopes) below.
+        - **Attach to a certificate map**: Optionally have Infisical maintain the certificate map entry that puts this certificate in front of traffic. Available for global certificates using the Default scope only.
+
+    4. Configure the **Sync Options**:
+        - **Auto-Sync Enabled**: Automatically push the certificate to GCP whenever it is renewed or updated in Infisical.
+        - **Certificate name schema**: Controls the GCP certificate resource ID. Must start with a lowercase letter and produce lowercase letters, digits and hyphens only.
+        - **Preserve certificate on renewal**: Enabled by default. See [Certificate renewal behavior](#certificate-renewal-behavior).
+
+    5. Configure the **Details**:
+        - **Name**: A name for this sync.
+        - **Description**: Optional description.
+
+    6. Select the certificates to sync.
+
+    7. Review and click **Create Sync**.
+  </Tab>
+  <Tab title="API">
+    To create a **GCP Certificate Manager Certificate Sync**, make an API request to the [Create GCP Certificate Manager PKI Sync](/api-reference/endpoints/pki/syncs/gcp-certificate-manager/create) API endpoint.
+
+    ### Sample request
+
+    <Note>
+      You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+      If not provided, you can add them later using the certificate management endpoints.
+    </Note>
+
+    ```bash Request
+    curl --request POST \
+    --url https://app.infisical.com/api/v1/cert-manager/syncs/gcp-certificate-manager \
+    --header 'Authorization: Bearer <access-token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name": "my-gcp-cert-sync",
+        "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "description": "Push TLS certs to the production load balancer",
+        "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+        "destination": "gcp-certificate-manager",
+        "isAutoSyncEnabled": true,
+        "certificateIds": [
+            "550e8400-e29b-41d4-a716-446655440000"
+        ],
+        "destinationConfig": {
+            "gcpProjectId": "my-prod-project",
+            "location": "global",
+            "scope": "default",
+            "certificateMapBinding": {
+                "certificateMap": "prod-map",
+                "hostname": "app.example.com"
+            }
+        },
+        "syncOptions": {
+            "canImportCertificates": false,
+            "canRemoveCertificates": true,
+            "preserveItemOnRenewal": true,
+            "certificateNameSchema": "infisical-{{certificateId}}"
+        }
+    }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+        "pkiSync": {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "my-gcp-cert-sync",
+            "description": "Push TLS certs to the production load balancer",
+            "destination": "gcp-certificate-manager",
+            "isAutoSyncEnabled": true,
+            "destinationConfig": {
+                "gcpProjectId": "my-prod-project",
+                "location": "global",
+                "scope": "default",
+                "certificateMapBinding": {
+                    "certificateMap": "prod-map",
+                    "hostname": "app.example.com"
+                }
+            },
+            "syncOptions": {
+                "canImportCertificates": false,
+                "canRemoveCertificates": true,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "infisical-{{certificateId}}"
+            },
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "createdAt": "2026-08-19T00:00:00.000Z",
+            "updatedAt": "2026-08-19T00:00:00.000Z"
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Certificate naming
+
+GCP Certificate Manager resource IDs must start with a letter, contain only lowercase letters, digits and hyphens, and be 1 to 63 characters. The default certificate name schema is `infisical-{{certificateId}}`, which always satisfies that. A schema has to begin with a letter rather than a placeholder, because a certificate ID can begin with a digit, and Infisical rejects one that does not when you save the sync.
+
+If you use `{{commonName}}` or `{{applicationName}}` in the schema, their values are converted to lowercase and any other character becomes a hyphen, so `API.Example.com` becomes `api-example-com`.
+
+A compiled name longer than 63 characters is shortened: it keeps its first 54 characters and ends with a hyphen and 8 characters of a hash of the whole name. **The start of the name is what survives, and the end is replaced.** The hash is what keeps two certificates from ever collapsing onto one GCP certificate, so nothing depends on any particular placeholder surviving.
+
+Only `{{commonName}}` and `{{applicationName}}` can push a name over the limit, because every other placeholder has a fixed length that Infisical already checks when you save the sync.
+
+For example, with the schema `{{commonName}}-{{certificateId}}` and the common name `checkout-service-eu-west-1.payments.internal.example.com`:
+
+```
+compiled  checkout-service-eu-west-1-payments-internal-example-com-550e8400e29b41d4a716446655440000
+in GCP    checkout-service-eu-west-1-payments-internal-example-c-3e574b24
+```
+
+The certificate ID is gone entirely. A second certificate for the same common name keeps the same first 54 characters and differs only in the hash, so the two never collide.
+
+Put the identifier first if you want it visible in GCP, or use `{{shortCertificateId}}` to keep names short enough that they are never shortened at all.
+
+## Labels
+
+Under **Sync Options**, enable **Configure labels** to attach your own GCP labels to every certificate the sync manages. Use them to group certificates for billing, filtering, or your own inventory tooling.
+
+Label keys must start with a lowercase letter and contain only lowercase letters, digits, hyphens and underscores, up to 63 characters. Values follow the same character rules and may be empty. You can set up to 62 labels.
+
+Infisical always adds two labels of its own, which you cannot override:
+
+- `managed-by: infisical` marks the certificate as managed by this sync.
+- `infisical-certificate-id` records the Infisical certificate ID, so you can find a certificate in GCP with `gcloud certificate-manager certificates list --filter="labels.infisical-certificate-id=CERTIFICATE_ID"`.
+
+## Scopes
+
+The scope is set when Infisical creates each certificate and is immutable in GCP, so pick the one matching how the certificate will be served. Certificates already uploaded by an earlier sync keep the scope they were created with.
+
+- **Default**: Global external Application Load Balancers and regional services. This is the common choice.
+- **Edge Cache**: Media CDN.
+- **All Regions**: Cross-region internal Application Load Balancers. Available for global certificates only.
+- **Client Auth**: Backend mTLS client certificates.
+
+<Note>
+  Certificate map binding requires the **Default** scope. A certificate map entry can only reference a Default-scope certificate, so Infisical rejects the combination when you save the sync.
+</Note>
+
+## Attaching certificates to traffic
+
+Uploading a certificate does not by itself serve any traffic. Something has to reference it.
+
+For a **global** certificate, a certificate map entry maps a hostname to the certificate, and a target HTTPS proxy attaches the map. You have two options:
+
+- **Wire it yourself once.** Create the certificate map entry pointing at the certificate Infisical created. Because renewals update that same certificate in place, you never have to touch it again.
+- **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and moves it to the replacement when the certificate changes. This requires the Default scope.
+
+<Warning>
+  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP does not consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names do not include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
+
+  For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname. Leave the hostname empty to serve the certificate as the map's primary entry, which has no coverage requirement.
+</Warning>
+
+## Certificate renewal behavior
+
+**Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
+
+When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove Expired/Revoked Certificates**:
+
+- **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical moves its own entry to the new certificate first. Anything else pointing at the old certificate has to be updated by hand, and GCP refuses to delete a certificate that is still referenced.
+- **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it is no longer tracked by the sync.
+
+<Note>
+  The sync form leaves removal off when you create a sync in the UI. The API leaves it **on** when the field is omitted, so a sync created with Terraform or a script deletes replaced certificates unless you set `canRemoveCertificates` to `false` explicitly.
+</Note>
+
+<Warning>
+  Turning off preserve-on-renewal while leaving removal disabled means every renewal adds a certificate to your GCP project and none are ever removed. GCP allows 1,000 self-managed certificates per project for global certificates and 100 per region. Either leave preserve-on-renewal on, or enable removal so the replaced certificates are cleaned up.
+</Warning>
+
+## Partial failures
+
+A sync run never takes a working certificate out of the serving path to reflect a failure elsewhere in the run.
+
+- If one certificate fails to upload, or is skipped, the certificate map entry keeps the copy GCP is already serving for it. Only the certificates that did sync are updated.
+- If the certificate map entry itself cannot be updated, the run reports the failure and leaves both the entry and the existing certificates alone. Nothing is deleted until the entry is current again, so a transient error does not become an outage.
+- Changing the bound certificate map creates the entry in the new map before the entry in the old map is removed.
+
+## Supported key algorithms
+
+GCP Certificate Manager accepts RSA 2048, RSA 3072, RSA 4096, ECDSA P-256 and ECDSA P-384. Certificates using any other key algorithm are skipped.
+
+## Manual certificate sync
+
+You can manually trigger certificate synchronization, which is useful for:
+
+- Initial setup when uploading certificates for the first time
+- Testing certificate sync configurations
+- Forcing a sync after making changes
+
+Use the [Sync Certificates](/api-reference/endpoints/pki/syncs/gcp-certificate-manager/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I import certificates from GCP back into Infisical?">
+    No. GCP never returns the private key of a self-managed certificate, so importing certificates from GCP Certificate Manager into Infisical is not supported.
+  </Accordion>
+
+  <Accordion title="Why can't I change the location or scope of an existing sync?">
+    A GCP certificate's location and scope are immutable, and the location is part of the certificate's resource path. Changing either on an existing sync would leave the original certificates behind, still serving traffic under the old scope. Create a new sync instead.
+  </Accordion>
+
+  <Accordion title="Why did removing a certificate fail?">
+    GCP refuses to delete a certificate that is still referenced by a certificate map entry. Detach it from the map, then run the sync again.
+  </Accordion>
+
+  <Accordion title="Is this GCP Certificate Authority Service?">
+    No. GCP Certificate Manager stores certificates and serves them from Google's load balancers. Certificate Authority Service is a certificate authority, which issues certificates rather than receiving them.
+  </Accordion>
+
+  <Accordion title="How many certificates can one sync push?">
+    GCP allows 1,000 self-managed certificates per project for global certificates, and 100 per region for regional certificates. A sync using certificate map binding is limited to four certificates, which is the GCP limit for one certificate map entry, and every one of them has to cover the bound hostname.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+    Import certificates into ACM for use with AWS services.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>
