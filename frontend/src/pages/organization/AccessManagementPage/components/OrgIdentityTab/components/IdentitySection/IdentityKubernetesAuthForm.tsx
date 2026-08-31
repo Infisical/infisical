@@ -5,6 +5,7 @@ import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
+import { VaultKubernetesAuthImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -12,10 +13,14 @@ import {
   AlertAction,
   AlertDescription,
   Button,
+  Checkbox,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  FilterableSelect,
   GatewayPicker,
   Input,
   Select,
@@ -33,9 +38,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
@@ -43,6 +49,7 @@ import {
   DEFAULT_TRUSTED_IPS,
   mapTrustedIpsFromServer,
   superRefineAccessTokenTtl,
+  superRefineKubernetesConnectionFields,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
 import { useScopeVariant } from "@app/hooks";
@@ -57,6 +64,8 @@ import {
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections/queries";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/hooks/api/identities/types";
+import { MachineIdentityAuthMethod } from "@app/hooks/api/identityAuthTemplates";
+import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
 import { useCanUseOrgAppConnectionImport } from "@app/hooks/useCanUseAppConnectionImport";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
@@ -65,16 +74,18 @@ import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitFi
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
-import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z
     .object({
+      scope: z.enum(["template", "custom"]),
+      templateId: z.string().optional(),
       tokenReviewMode: z
         .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
         .default(IdentityKubernetesAuthTokenReviewMode.Api),
       kubernetesHost: z.string().optional().nullable(),
       tokenReviewerJwt: z.string().optional(),
+      removeTemplateSourcedJwt: z.boolean().optional(),
       gatewayId: z.string().optional().nullable(),
       gatewayPoolId: z.string().optional().nullable(),
       allowedNames: z.string(),
@@ -88,58 +99,28 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenTrustedIps: trustedIpsSchema
     })
     .superRefine((data, ctx) => {
-      if (
-        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-        !data.kubernetesHost?.length
-      ) {
-        ctx.addIssue({
-          path: ["kubernetesHost"],
-          code: z.ZodIssueCode.custom,
-          message: "When token review mode is set to API, a Kubernetes host must be provided"
-        });
+      if (data.scope === "template") {
+        if (!data.templateId) {
+          ctx.addIssue({
+            path: ["templateId"],
+            code: z.ZodIssueCode.custom,
+            message: "Template is required when using a template configuration"
+          });
+        }
+        return;
       }
 
-      if (
-        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-        !data.gatewayId &&
-        !data.gatewayPoolId
-      ) {
-        ctx.addIssue({
-          path: ["gatewayId"],
-          code: z.ZodIssueCode.custom,
-          message:
-            "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
-        });
-      }
-
-      if (
-        data.verifyTlsCertificate &&
-        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-        !data.caCert?.length
-      ) {
-        ctx.addIssue({
-          path: ["caCert"],
-          code: z.ZodIssueCode.custom,
-          message: "A CA certificate is required when TLS certificate verification is enabled."
-        });
-      }
-
-      if (
-        data.verifyTlsCertificate === false &&
-        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-        data.caCert?.length
-      ) {
-        ctx.addIssue({
-          path: ["verifyTlsCertificate"],
-          code: z.ZodIssueCode.custom,
-          message:
-            "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
-        });
-      }
+      superRefineKubernetesConnectionFields(data, ctx);
     })
     .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
+
+type ConfigurationOption = {
+  group: "Configuration" | "Templates";
+  label: string;
+  value: string;
+};
 
 type Props = {
   handlePopUpOpen: (
@@ -174,6 +155,17 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
+  const { permission } = useOrgPermission();
+
+  const canAttachTemplates = permission.can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+
+  const { data: templates, isLoading: isTemplatesLoading } = useGetAvailableTemplates(
+    MachineIdentityAuthMethod.KUBERNETES,
+    { enabled: canAttachTemplates && Boolean(subscription?.machineIdentityAuthTemplates) }
+  );
 
   const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
@@ -205,14 +197,17 @@ export const IdentityKubernetesAuthForm = ({
     reset,
     watch,
     setValue,
-
-    formState: { isSubmitting }
+    clearErrors,
+    formState: { errors, isSubmitting }
   } = useForm<FormData>({
     resolver,
     defaultValues: {
+      scope: "custom",
+      templateId: "",
       tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
       tokenReviewerJwt: "",
+      removeTemplateSourcedJwt: false,
       allowedNames: "",
       allowedNamespaces: "",
       gatewayId: "",
@@ -229,9 +224,12 @@ export const IdentityKubernetesAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        scope: data.templateId ? "template" : "custom",
+        templateId: data.templateId || "",
         tokenReviewMode: data.tokenReviewMode,
         kubernetesHost: data.kubernetesHost,
         tokenReviewerJwt: data.tokenReviewerJwt,
+        removeTemplateSourcedJwt: false,
         allowedNames: data.allowedNames,
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
@@ -248,9 +246,12 @@ export const IdentityKubernetesAuthForm = ({
       });
     } else {
       reset({
+        scope: "custom",
+        templateId: "",
         tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
         kubernetesHost: "",
         tokenReviewerJwt: "",
+        removeTemplateSourcedJwt: false,
         allowedNames: "",
         allowedNamespaces: "",
         allowedAudience: "",
@@ -264,12 +265,46 @@ export const IdentityKubernetesAuthForm = ({
     }
   }, [data]);
 
+  const scope = watch("scope");
+  const selectedTemplateId = watch("templateId");
+
+  const configurationOptions = useMemo<ConfigurationOption[]>(
+    () => [
+      {
+        group: "Configuration",
+        label: "Custom Configuration",
+        value: "custom"
+      },
+      ...(templates ?? []).map((template) => ({
+        group: "Templates" as const,
+        label: template.name,
+        value: template.id
+      }))
+    ],
+    [templates]
+  );
+
+  const selectedConfiguration =
+    configurationOptions.find(
+      ({ value }) => value === (scope === "template" ? selectedTemplateId : "custom")
+    ) ??
+    // while the template list is loading (or the linked template is missing from it), keep
+    // the picker controlled and visibly linked so the user cannot mistake it for unset
+    (scope === "template" && selectedTemplateId
+      ? { group: "Templates" as const, label: "Linked template", value: selectedTemplateId }
+      : undefined);
+
   useEffect(() => {
     onSubmittingChange?.(isSubmitting);
   }, [isSubmitting, onSubmittingChange]);
 
   const handleImportFromVault = (role: VaultKubernetesAuthRole) => {
     try {
+      // importing a Vault role defines a custom configuration; drop any selected template
+      // so the imported connection values are actually submitted
+      setValue("scope", "custom");
+      setValue("templateId", "");
+
       setValue("kubernetesHost", role.config.kubernetes_host, {
         shouldDirty: true,
         shouldTouch: true,
@@ -354,8 +389,11 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const onFormSubmit = async ({
+    scope: submissionScope,
+    templateId: submissionTemplateId,
     kubernetesHost,
     tokenReviewerJwt,
+    removeTemplateSourcedJwt,
     allowedNames,
     allowedNamespaces,
     allowedAudience,
@@ -371,56 +409,64 @@ export const IdentityKubernetesAuthForm = ({
   }: FormData) => {
     if (!identityId) return;
 
+    const basePayload = {
+      ...(projectId ? { projectId } : { organizationId: orgId }),
+      identityId,
+      allowedNames: allowedNames || "",
+      allowedNamespaces: allowedNamespaces || "",
+      accessTokenTTL: Number(accessTokenTTL),
+      accessTokenMaxTTL: Number(accessTokenMaxTTL),
+      accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
+      accessTokenTrustedIps
+    };
+
+    const customConfigPayload = {
+      ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+        ? {
+            kubernetesHost: kubernetesHost || ""
+          }
+        : {
+            kubernetesHost: null
+          }),
+      allowedAudience: allowedAudience || "",
+      gatewayId: gatewayPoolId ? null : gatewayId || null,
+      gatewayPoolId: gatewayPoolId || null,
+      verifyTlsCertificate,
+      tokenReviewMode
+    };
+
     if (data) {
-      await updateMutateAsync({
-        ...(projectId ? { projectId } : { organizationId: orgId }),
-        ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-          ? {
-              kubernetesHost: kubernetesHost || ""
-            }
+      // a blank field can only mean "clear" when the stored JWT was readable and
+      // prefilled; template-sourced JWTs read back as "" so blank must keep them, and
+      // removing one takes the explicit checkbox
+      let tokenReviewerJwtUpdate: string | null | undefined =
+        tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined);
+      if (removeTemplateSourcedJwt) {
+        tokenReviewerJwtUpdate = null;
+      }
+      await updateMutateAsync(
+        submissionScope === "template"
+          ? { ...basePayload, templateId: submissionTemplateId }
           : {
-              kubernetesHost: null
-            }),
-        tokenReviewerJwt: tokenReviewerJwt || null,
-        allowedNames,
-        allowedNamespaces,
-        allowedAudience,
-        caCert,
-        verifyTlsCertificate,
-        identityId,
-        gatewayId: gatewayPoolId ? null : gatewayId || null,
-        gatewayPoolId: gatewayPoolId || null,
-        tokenReviewMode,
-        accessTokenTTL: Number(accessTokenTTL),
-        accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
-        accessTokenTrustedIps
-      });
+              ...basePayload,
+              ...customConfigPayload,
+              // unlink an existing template so the custom values are accepted
+              ...(data.templateId ? { templateId: null } : {}),
+              tokenReviewerJwt: tokenReviewerJwtUpdate,
+              caCert
+            }
+      );
     } else {
-      await addMutateAsync({
-        ...(projectId ? { projectId } : { organizationId: orgId }),
-        identityId,
-        ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-          ? {
-              kubernetesHost: kubernetesHost || ""
-            }
+      await addMutateAsync(
+        submissionScope === "template"
+          ? { ...basePayload, templateId: submissionTemplateId }
           : {
-              kubernetesHost: null
-            }),
-        tokenReviewerJwt: tokenReviewerJwt || undefined,
-        allowedNames: allowedNames || "",
-        allowedNamespaces: allowedNamespaces || "",
-        allowedAudience: allowedAudience || "",
-        gatewayId: gatewayPoolId ? null : gatewayId || null,
-        gatewayPoolId: gatewayPoolId || null,
-        caCert: caCert || "",
-        verifyTlsCertificate,
-        tokenReviewMode,
-        accessTokenTTL: Number(accessTokenTTL),
-        accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
-        accessTokenTrustedIps
-      });
+              ...basePayload,
+              ...customConfigPayload,
+              tokenReviewerJwt: tokenReviewerJwt || undefined,
+              caCert: caCert || ""
+            }
+      );
     }
 
     handlePopUpToggle("identityAuthMethod", false);
@@ -434,6 +480,16 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const isRemovingTemplateJwt = watch("removeTemplateSourcedJwt");
+  const hasTemplateSourcedJwt = Boolean(data?.isTokenReviewerJwtTemplateSourced);
+  const templateDisabledClass = scope === "template" ? "opacity-55" : "";
+
+  let tokenReviewerJwtPlaceholder = "eyJhbGciOiJSUzI1NiIs...";
+  if (scope === "template") {
+    tokenReviewerJwtPlaceholder = "Defined in template";
+  } else if (hasTemplateSourcedJwt) {
+    tokenReviewerJwtPlaceholder = "Leave blank to keep the stored JWT";
+  }
 
   return (
     <form
@@ -441,6 +497,8 @@ export const IdentityKubernetesAuthForm = ({
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
           [
+            "scope",
+            "templateId",
             "kubernetesHost",
             "tokenReviewerJwt",
             "tokenReviewMode",
@@ -483,6 +541,89 @@ export const IdentityKubernetesAuthForm = ({
                 </AlertDescription>
               </Alert>
             )}
+            {canAttachTemplates && (
+              <Controller
+                control={control}
+                name="scope"
+                render={({ field: { onChange }, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="kubernetes-configuration">Configuration</FieldLabel>
+                    <FilterableSelect<ConfigurationOption>
+                      inputId="kubernetes-configuration"
+                      value={selectedConfiguration}
+                      options={configurationOptions}
+                      groupBy="group"
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.value}
+                      placeholder="Select or search configurations..."
+                      isLoading={isTemplatesLoading}
+                      isError={Boolean(error || errors.templateId)}
+                      onChange={(option) => {
+                        const selectedOption = option as ConfigurationOption | null;
+                        if (!selectedOption) return;
+
+                        if (selectedOption.value === "custom") {
+                          onChange("custom");
+                          setValue("templateId", "");
+                          clearErrors("templateId");
+                          setValue(
+                            "tokenReviewMode",
+                            data?.tokenReviewMode || IdentityKubernetesAuthTokenReviewMode.Api
+                          );
+                          setValue("kubernetesHost", data?.kubernetesHost || "");
+                          setValue("tokenReviewerJwt", data?.tokenReviewerJwt || "");
+                          setValue(
+                            "gatewayId",
+                            data?.gatewayPoolId ? null : data?.gatewayId || null
+                          );
+                          setValue("gatewayPoolId", data?.gatewayPoolId || null);
+                          setValue("caCert", data?.caCert || "");
+                          setValue("verifyTlsCertificate", data?.verifyTlsCertificate ?? true);
+                          setValue("allowedAudience", data?.allowedAudience || "");
+                          return;
+                        }
+
+                        const template = templates?.find(({ id }) => id === selectedOption.value);
+                        if (!template) return;
+
+                        onChange("template");
+                        setValue("templateId", template.id);
+                        // template-managed fields become disabled, so any validation errors
+                        // pinned to them are no longer actionable
+                        clearErrors([
+                          "templateId",
+                          "kubernetesHost",
+                          "caCert",
+                          "verifyTlsCertificate",
+                          "tokenReviewerJwt",
+                          "gatewayId",
+                          "gatewayPoolId"
+                        ]);
+                        const fields = template.templateFields;
+                        setValue(
+                          "tokenReviewMode",
+                          fields.tokenReviewMode || IdentityKubernetesAuthTokenReviewMode.Api
+                        );
+                        setValue("kubernetesHost", fields.kubernetesHost || "");
+                        setValue("tokenReviewerJwt", fields.tokenReviewerJwt || "");
+                        setValue(
+                          "gatewayId",
+                          fields.gatewayPoolId ? null : fields.gatewayId || null
+                        );
+                        setValue("gatewayPoolId", fields.gatewayPoolId || null);
+                        setValue("caCert", fields.caCert || "");
+                        setValue(
+                          "verifyTlsCertificate",
+                          fields.verifyTlsCertificate ?? Boolean(fields.caCert)
+                        );
+                        setValue("allowedAudience", fields.allowedAudience || "");
+                      }}
+                    />
+                    <FieldError>{error?.message || errors.templateId?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
             <OrgPermissionCan
               I={OrgGatewayPermissionActions.AttachGateways}
               a={OrgPermissionSubjects.Gateway}
@@ -497,7 +638,7 @@ export const IdentityKubernetesAuthForm = ({
                     const gatewayIdVal = watch("gatewayId");
 
                     return (
-                      <Field>
+                      <Field className={templateDisabledClass}>
                         <FieldLabel htmlFor="gatewayId">Gateway (optional)</FieldLabel>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -518,7 +659,7 @@ export const IdentityKubernetesAuthForm = ({
                                     );
                                   }
                                 }}
-                                isDisabled={!isAllowed}
+                                isDisabled={!isAllowed || scope === "template"}
                                 className="w-full"
                               />
                             </div>
@@ -542,7 +683,7 @@ export const IdentityKubernetesAuthForm = ({
               control={control}
               name="tokenReviewMode"
               render={({ field, fieldState: { error } }) => (
-                <Field>
+                <Field className={templateDisabledClass}>
                   <FieldLabel
                     htmlFor="tokenReviewMode"
                     className="inline-flex items-center gap-1.5"
@@ -560,7 +701,11 @@ export const IdentityKubernetesAuthForm = ({
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={scope === "template"}
+                  >
                     <SelectTrigger id="tokenReviewMode" isError={Boolean(error)}>
                       <SelectValue placeholder="Select review mode" />
                     </SelectTrigger>
@@ -579,7 +724,7 @@ export const IdentityKubernetesAuthForm = ({
                 defaultValue="2592000"
                 name="kubernetesHost"
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
+                  <Field className={templateDisabledClass}>
                     <FieldLabel
                       htmlFor="kubernetesHost"
                       className="inline-flex items-center gap-1.5"
@@ -603,6 +748,7 @@ export const IdentityKubernetesAuthForm = ({
                       type="text"
                       value={field.value || ""}
                       autoComplete="off"
+                      disabled={scope === "template"}
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>
@@ -616,7 +762,7 @@ export const IdentityKubernetesAuthForm = ({
                 control={control}
                 name="tokenReviewerJwt"
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
+                  <Field className={templateDisabledClass}>
                     <FieldLabel
                       htmlFor="tokenReviewerJwt"
                       className="inline-flex items-center gap-1.5"
@@ -640,10 +786,44 @@ export const IdentityKubernetesAuthForm = ({
                       id="tokenReviewerJwt"
                       type="password"
                       autoComplete="new-password"
-                      placeholder="eyJhbGciOiJSUzI1NiIs..."
+                      placeholder={tokenReviewerJwtPlaceholder}
+                      disabled={scope === "template" || isRemovingTemplateJwt}
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
+            {scope === "custom" && hasTemplateSourcedJwt && (
+              <Controller
+                control={control}
+                name="removeTemplateSourcedJwt"
+                render={({ field: { value, onChange } }) => (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id="removeTemplateSourcedJwt"
+                      variant={scopeVariant}
+                      isChecked={Boolean(value)}
+                      onCheckedChange={(next) => {
+                        const checked = next === true;
+                        onChange(checked);
+                        if (checked) setValue("tokenReviewerJwt", "");
+                      }}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="removeTemplateSourcedJwt" className="cursor-pointer">
+                        Remove template-sourced token reviewer JWT
+                      </FieldLabel>
+                      <FieldDescription>
+                        This identity stores a write-only token reviewer JWT copied from its auth
+                        template. Its connection settings cannot be changed while the JWT is kept.
+                        Check to remove it on save
+                        {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+                          ? ", or enter a new JWT above to replace it."
+                          : "."}
+                      </FieldDescription>
+                    </FieldContent>
                   </Field>
                 )}
               />
@@ -748,7 +928,7 @@ export const IdentityKubernetesAuthForm = ({
               defaultValue=""
               name="allowedAudience"
               render={({ field, fieldState: { error } }) => (
-                <Field>
+                <Field className={templateDisabledClass}>
                   <FieldLabel
                     htmlFor="allowedAudience"
                     className="inline-flex items-center gap-1.5"
@@ -769,6 +949,7 @@ export const IdentityKubernetesAuthForm = ({
                     id="allowedAudience"
                     type="text"
                     placeholder="https://kubernetes.default.svc"
+                    disabled={scope === "template"}
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>
@@ -783,14 +964,14 @@ export const IdentityKubernetesAuthForm = ({
                   render={({ field: { value, onChange }, fieldState: { error } }) => {
                     const hasCaCert = Boolean(watch("caCert")?.length);
                     return (
-                      <Field>
+                      <Field className={templateDisabledClass}>
                         <div className="flex items-center gap-2">
                           <Switch
                             id="k8s-verify-tls-certificate"
                             variant={scopeVariant}
                             checked={hasCaCert ? true : value}
                             onCheckedChange={onChange}
-                            disabled={hasCaCert}
+                            disabled={hasCaCert || scope === "template"}
                           />
                           <FieldLabel
                             htmlFor="k8s-verify-tls-certificate"
@@ -840,7 +1021,7 @@ export const IdentityKubernetesAuthForm = ({
                   render={({ field, fieldState: { error } }) => {
                     const verifyTlsCertificate = watch("verifyTlsCertificate");
                     return (
-                      <Field>
+                      <Field className={templateDisabledClass}>
                         <FieldLabel htmlFor="caCert" className="inline-flex items-center gap-1.5">
                           CA Certificate
                           <Tooltip>
@@ -859,6 +1040,7 @@ export const IdentityKubernetesAuthForm = ({
                           {...field}
                           id="caCert"
                           placeholder="-----BEGIN CERTIFICATE----- ..."
+                          disabled={scope === "template"}
                           isError={Boolean(error)}
                           onChange={(e) => {
                             field.onChange(e);

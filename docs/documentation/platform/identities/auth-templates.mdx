@@ -22,6 +22,10 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
 
 ![Identity Auth Templates Section](/images/platform/identities/auth-templates/templates-section.png)
 
+<Warning>
+  Editing a template propagates its authentication settings to every identity linked to it. Treat permission to edit templates as equivalent to permission to manage authentication for all identities that use them, and grant it accordingly.
+</Warning>
+
 ### Creating a template
 
 <Steps>
@@ -34,7 +38,7 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
     
     ![Create Template Button](/images/platform/identities/auth-templates/create-template-button.png)
     
-    Select the authentication method you want to create a template for (currently supports LDAP Auth).
+    Select the authentication method you want to create a template for (currently supports LDAP Auth and Kubernetes Auth).
   </Step>
   
   <Step title="Configure template settings">
@@ -49,12 +53,29 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
         - **Template Name**: A descriptive name for your template
         - **URL**: The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` _(for connection over SSL/TLS)_, etc.
         - **Bind DN**: The DN to bind to the LDAP server with.
-        - **Bind Pass**: The password to bind to the LDAP server with.
+        - **Bind Pass**: The password to bind to the LDAP server with. For security, this value is never displayed again after saving; when editing a template, leave the field blank to keep the current password.
         - **Search Base / DN**: Base DN under which to perform user search such as `ou=Users,dc=acme,dc=com`.
         - **CA Certificate**: The CA certificate to use when verifying the LDAP server certificate. This field is optional but recommended.
         
         <Note>
           You can read more about LDAP Auth configuration in the [LDAP Auth documentation](/documentation/platform/identities/ldap-auth/general).
+        </Note>
+      </Tab>
+      <Tab title="Kubernetes Auth Template">
+        **For Kubernetes Auth templates**, configure the following fields:
+
+        - **Template Name**: A descriptive name for your template
+        - **Gateway**: An optional [gateway](/documentation/platform/gateways/overview) or gateway pool used to reach the Kubernetes API server.
+        - **Review Mode**: How service account tokens are reviewed. Select **Gateway as Reviewer** to have a gateway deployed in the cluster review tokens with its own service account, or **Manual Token Reviewer JWT (API)** to call the Kubernetes TokenReview API directly.
+        - **Kubernetes Host / Base Kubernetes API URL**: The host string, host:port pair, or URL to the base of the Kubernetes API server. Required when the review mode is set to API.
+        - **Token Reviewer JWT**: An optional long-lived service account token used to call the TokenReview API. If omitted, the authenticating client's own token is used, which requires the client's service account to have the `system:auth-delegator` ClusterRole binding. For security, this value is never displayed again after saving; when editing a template, leave the field blank to keep the current token.
+        - **Allowed Audience**: An optional audience claim that service account tokens must have to authenticate with Infisical.
+        - **Verify TLS Certificate** and **CA Certificate**: Whether and how to validate the Kubernetes API server's TLS certificate.
+
+        Allowed namespaces, allowed service account names, and access token settings are not part of the template. They are configured per identity, since they define which workloads may authenticate as each specific identity.
+
+        <Note>
+          You can read more about Kubernetes Auth configuration in the [Kubernetes Auth documentation](/documentation/platform/identities/kubernetes-auth).
         </Note>
       </Tab>
     </Tabs>
@@ -91,6 +112,6 @@ You can view which identities are using a specific template by clicking **View U
 </Accordion>
 
 <Accordion title="Do templates support all authentication methods?">
-  Currently, auth templates support LDAP Auth. Support for additional authentication methods will be added in future releases.
+  Currently, auth templates support LDAP Auth and Kubernetes Auth. Support for additional authentication methods will be added in future releases.
 </Accordion>
 </AccordionGroup>

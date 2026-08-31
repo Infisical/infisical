@@ -104,6 +104,7 @@ import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-k
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TFolderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
@@ -452,6 +453,7 @@ declare module "fastify" {
       membershipIdentity: TMembershipIdentityServiceFactory;
       membershipGroup: TMembershipGroupServiceFactory;
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
+      folderPermission: TFolderPermissionServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;

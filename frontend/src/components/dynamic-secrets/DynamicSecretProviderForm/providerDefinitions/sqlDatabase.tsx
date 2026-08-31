@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
+import { VaultSqlDatabaseImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
@@ -43,7 +44,6 @@ import {
   DynamicSecretRuleProvider,
   SecretValidationRuleType
 } from "@app/hooks/api/secretValidationRules";
-import { VaultSqlDatabaseImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultSqlDatabaseImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";

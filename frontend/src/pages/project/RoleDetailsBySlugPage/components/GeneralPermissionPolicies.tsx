@@ -33,6 +33,7 @@ import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "@app/context";
 
@@ -104,15 +105,23 @@ const ActionsMultiSelect = ({
   const memberGrantPrivileges = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
   const identityGrantPrivileges = Boolean(rule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
   const groupsGrantPrivileges = Boolean(rule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+  const folderManageAccess = Boolean(rule?.[ProjectPermissionSecretFolderActions.ManageAccess]);
 
   const legacyActionsState = useMemo(
     () => ({
       secretsRead,
       memberGrantPrivileges,
       identityGrantPrivileges,
-      groupsGrantPrivileges
+      groupsGrantPrivileges,
+      folderManageAccess
     }),
-    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+    [
+      secretsRead,
+      memberGrantPrivileges,
+      identityGrantPrivileges,
+      groupsGrantPrivileges,
+      folderManageAccess
+    ]
   );
 
   const visibleActions = useMemo(

@@ -5,15 +5,66 @@ import {
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
+  SecretFolderRole,
   TemporaryPermissionMode
 } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
+import { EventType, SecretFolderAccessEventMetadata } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags, FOLDER_ACCESS, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+
+import { SanitizedFolderAccessIdentitySchema, SanitizedFolderAccessSchema } from "../sanitizedSchema/folder-access";
+import { booleanSchema } from "../sanitizedSchemas";
+
+const folderAccessFolderFields = (docs: { environmentSlug: string; secretPath: string }) => ({
+  environmentSlug: z.string().trim().min(1).max(64).describe(docs.environmentSlug),
+  secretPath: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1024)
+    .transform(prefixWithSlash)
+    .transform(removeTrailingSlash)
+    .describe(docs.secretPath)
+});
+
+const identityFolderAccessParamsSchema = z.object({
+  projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
+  identityId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.identityId)
+});
+
+const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
+const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
+
+const identityFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
+  identityId: z.string().uuid()
+});
+
+const toSecretFolderAccessAuditMetadata = (
+  folderAccess: z.infer<typeof SanitizedFolderAccessSchema>,
+  actor: { userId: string } | { identityId: string }
+): SecretFolderAccessEventMetadata => ({
+  folderAccessId: folderAccess.id,
+  folderId: folderAccess.folderId,
+  environment: folderAccess.environment,
+  secretPath: folderAccess.secretPath,
+  permission: folderAccess.permission,
+  ...actor,
+  isTemporary: folderAccess.isTemporary,
+  ...(folderAccess.isTemporary
+    ? {
+        temporaryMode: folderAccess.temporaryMode ?? undefined,
+        temporaryRange: folderAccess.temporaryRange ?? undefined,
+        temporaryAccessStartTime: folderAccess.temporaryAccessStartTime?.toISOString(),
+        temporaryAccessEndTime: folderAccess.temporaryAccessEndTime?.toISOString()
+      }
+    : {})
+});
 
 export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -453,6 +504,9 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         projectId: z.string().min(1).trim(),
         identityId: z.string().min(1).trim()
       }),
+      querystring: z.object({
+        includeFolderPermissions: booleanSchema.describe(FOLDER_ACCESS.PERMISSION_AUDIT.includeFolderPermissions)
+      }),
       response: {
         200: z.object({
           sources: z
@@ -479,7 +533,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        targetIdentityId: req.params.identityId
+        targetIdentityId: req.params.identityId,
+        includeFolderPermissions: req.query.includeFolderPermissions
       });
 
       await server.services.auditLog.createAuditLog({
@@ -560,5 +615,255 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
       return { identities };
     }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/identities/:identityId/secret-folder-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "createIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Grant a machine identity access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      body: z.object({
+        ...folderAccessFolderFields(FOLDER_ACCESS.CREATE),
+        permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
+        type: folderAccessCreateTypeSchema.optional()
+      }),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.createFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        environmentSlug: req.body.environmentSlug,
+        secretPath: req.body.secretPath,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.CREATE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/identities/:identityId/secret-folder-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "updateIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Update a machine identity's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      body: z
+        .object({
+          ...folderAccessFolderFields(FOLDER_ACCESS.UPDATE),
+          permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
+          type: folderAccessUpdateTypeSchema.optional()
+        })
+        .refine(
+          (body) => body.permission !== undefined || body.type !== undefined,
+          "Provide at least one of 'permission' or 'type' to update"
+        ),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        environmentSlug: req.body.environmentSlug,
+        secretPath: req.body.secretPath,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
+    }
+  });
+
+  // deliberate REST deviation: DELETE carries a body identifying the folder, consistent with the
+  // user folder-access routes and DELETE /:projectId/memberships
+  server.route({
+    method: "DELETE",
+    url: "/identities/:identityId/secret-folder-access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "deleteIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Revoke a machine identity's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      body: z.object(folderAccessFolderFields(FOLDER_ACCESS.DELETE)),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        environmentSlug: req.body.environmentSlug,
+        secretPath: req.body.secretPath,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.DELETE_SECRET_FOLDER_ACCESS,
+          metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/identities/:identityId/secret-folder-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "List every folder a machine identity has been granted access on in a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.projectId),
+        identityId: z.string().uuid().describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.identityId)
+      }),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
+      });
+
+      return { folderAccess: folderAccess.map((grant) => ({ ...grant, identityId: req.params.identityId })) };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secret-folder-access/identities",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listFolderAccessIdentities",
+      tags: [ApiDocsTags.FolderAccess],
+      description:
+        "List the machine identities of a project split by whether they have access on a folder, with the project roles that grant it.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITIES.projectId)
+      }),
+      querystring: z.object({
+        ...folderAccessFolderFields(FOLDER_ACCESS.LIST_IDENTITIES),
+        offset: z.coerce.number().int().min(0).default(0).describe(FOLDER_ACCESS.LIST_IDENTITIES.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(50).describe(FOLDER_ACCESS.LIST_IDENTITIES.limit),
+        search: z.string().trim().max(64).optional().describe(FOLDER_ACCESS.LIST_IDENTITIES.search)
+      }),
+      response: {
+        200: z.object({
+          identities: SanitizedFolderAccessIdentitySchema.array().describe(FOLDER_ACCESS.LIST_IDENTITIES.identities),
+          identitiesWithoutAccess: SanitizedFolderAccessIdentitySchema.array().describe(
+            FOLDER_ACCESS.LIST_IDENTITIES.identitiesWithoutAccess
+          ),
+          totalCount: z.number().describe(FOLDER_ACCESS.LIST_IDENTITIES.totalCount)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.folderPermission.listFolderAccessIdentities({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        environmentSlug: req.query.environmentSlug,
+        secretPath: req.query.secretPath,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        search: req.query.search
+      })
   });
 };

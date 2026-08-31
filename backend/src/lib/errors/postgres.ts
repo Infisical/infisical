@@ -1,3 +1,5 @@
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+
 /**
  * Postgres error codes we translate into client errors instead of letting them surface as a 500.
  * See https://www.postgresql.org/docs/current/errcodes-appendix.html
@@ -15,7 +17,7 @@ const MAX_CAUSE_DEPTH = 5;
  * DALs wrap the driver error in a `DatabaseError` (sometimes more than one layer deep), so the pg
  * error code is never on the outermost error.
  */
-export const hasPostgresErrorCode = (err: unknown, code: PostgresErrorCode): boolean => {
+export const hasPostgresErrorCode = (err: unknown, code: PostgresErrorCode | DatabaseErrorCode): boolean => {
   let current = err;
 
   for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
