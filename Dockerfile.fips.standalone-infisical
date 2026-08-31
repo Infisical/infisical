@@ -195,6 +195,7 @@ RUN apt-get update && apt-get install -y \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
+    libsqlite3-0=3.46.1-7+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
