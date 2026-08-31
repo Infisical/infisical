@@ -1,6 +1,13 @@
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CornerDownLeftIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CircleAlertIcon,
+  CornerDownLeftIcon,
+  LoaderCircleIcon
+} from "lucide-react";
 
 import { cn } from "../../utils";
 import { Kbd } from "../Kbd";
@@ -37,9 +44,16 @@ export type GlobalCommandMenuGroup = {
   items: GlobalCommandMenuItem[];
 };
 
+export type GlobalCommandMenuSearchStatus =
+  | { state: "idle" }
+  | { state: "loading"; message?: string }
+  | { state: "error"; message: string };
+
 export type GlobalCommandMenuProps = {
   groups: GlobalCommandMenuGroup[];
   searchGroups?: GlobalCommandMenuGroup[];
+  searchStatus?: GlobalCommandMenuSearchStatus;
+  onSearchChange?: (search: string) => void;
   isEnabled?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
@@ -140,6 +154,8 @@ const CommandResult = ({ item }: { item: GlobalCommandMenuItem }) => {
 export const GlobalCommandMenu = ({
   groups,
   searchGroups = groups,
+  searchStatus = { state: "idle" },
+  onSearchChange,
   isEnabled = true,
   open: controlledOpen,
   defaultOpen = false,
@@ -165,10 +181,19 @@ export const GlobalCommandMenu = ({
     openRef.current = open;
   }, [open]);
 
+  const updateSearch = React.useCallback(
+    (nextSearch: string) => {
+      setSearch(nextSearch);
+      if (!activeDrilldown) onSearchChange?.(nextSearch);
+    },
+    [activeDrilldown, onSearchChange]
+  );
+
   const resetMenu = React.useCallback(() => {
     setSearch("");
+    onSearchChange?.("");
     setDrilldown([]);
-  }, []);
+  }, [onSearchChange]);
 
   const setOpen = React.useCallback(
     (nextOpen: boolean) => {
@@ -199,7 +224,7 @@ export const GlobalCommandMenu = ({
   }, [isEnabled, setOpen]);
 
   const goBack = () => {
-    setSearch("");
+    updateSearch("");
     setDrilldown((current) => current.slice(0, -1));
   };
 
@@ -212,6 +237,16 @@ export const GlobalCommandMenu = ({
   const visibleItems = visibleGroups.flatMap((group) => group.items);
   const resultCount = visibleItems.length;
   const inputPlaceholder = activeDrilldown?.drilldownPlaceholder ?? placeholder;
+  const isAsyncRootSearch = mode === "search" && !activeDrilldown;
+  const isSearching = isAsyncRootSearch && searchStatus.state === "loading";
+  const searchError =
+    isAsyncRootSearch && searchStatus.state === "error" ? searchStatus.message : undefined;
+  const liveStatus = (() => {
+    if (isSearching) return searchStatus.message ?? "Searching resources.";
+    if (searchError) return searchError;
+    if (resultCount === 0) return emptyMessage;
+    return `${resultCount} ${resultCount === 1 ? "result" : "results"}`;
+  })();
 
   return (
     <CommandDialog
@@ -249,7 +284,7 @@ export const GlobalCommandMenu = ({
         className="h-14"
         placeholder={inputPlaceholder}
         value={search}
-        onValueChange={setSearch}
+        onValueChange={updateSearch}
         startAdornment={
           activeDrilldown ? (
             <button
@@ -268,11 +303,9 @@ export const GlobalCommandMenu = ({
         className="max-h-[min(420px,60vh)] p-1"
       >
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {resultCount === 0
-            ? emptyMessage
-            : `${resultCount} ${resultCount === 1 ? "result" : "results"}`}
+          {liveStatus}
         </div>
-        {resultCount === 0 && (
+        {resultCount === 0 && !isSearching && !searchError && (
           <CommandEmpty className="flex min-h-12 items-center justify-center">
             {emptyMessage}
           </CommandEmpty>
@@ -288,7 +321,7 @@ export const GlobalCommandMenu = ({
                 className="min-h-14"
                 onSelect={() => {
                   if (item.children) {
-                    setSearch("");
+                    updateSearch("");
                     setDrilldown((current) => [...current, item]);
                     return;
                   }
@@ -301,6 +334,21 @@ export const GlobalCommandMenu = ({
               </CommandItem>
             ))}
           </CommandGroup>
+        )}
+        {isSearching && (
+          <div className="flex min-h-12 items-center justify-center gap-2 px-3 py-2 text-sm text-muted">
+            <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
+            <span>{searchStatus.message ?? "Searching resources…"}</span>
+          </div>
+        )}
+        {searchError && (
+          <div
+            role="alert"
+            className="flex min-h-12 items-center justify-center gap-2 px-3 py-2 text-sm text-danger"
+          >
+            <CircleAlertIcon aria-hidden="true" className="size-4" />
+            <span>{searchError}</span>
+          </div>
         )}
       </CommandList>
       <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2 text-[11px] text-muted">

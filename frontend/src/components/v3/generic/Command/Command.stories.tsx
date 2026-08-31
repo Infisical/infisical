@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   BuildingIcon,
@@ -25,7 +25,11 @@ import {
   CommandSeparator,
   CommandShortcut
 } from "./Command";
-import { GlobalCommandMenu, type GlobalCommandMenuGroup } from "./GlobalCommandMenu";
+import {
+  GlobalCommandMenu,
+  type GlobalCommandMenuGroup,
+  type GlobalCommandMenuSearchStatus
+} from "./GlobalCommandMenu";
 
 /**
  * Command renders a searchable command palette — an input paired with a scrollable
@@ -316,6 +320,99 @@ export const GlobalNavigation: Story = {
     }
   },
   render: () => <GlobalNavigationStory />
+};
+
+const AsyncGlobalNavigationStory = () => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [resolvedQuery, setResolvedQuery] = useState("");
+  const [searchStatus, setSearchStatus] = useState<GlobalCommandMenuSearchStatus>({
+    state: "idle"
+  });
+
+  useEffect(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    setResolvedQuery("");
+
+    if (normalizedQuery.length < 2) {
+      setSearchStatus({ state: "idle" });
+      return undefined;
+    }
+
+    setSearchStatus({ state: "loading", message: "Searching project resources…" });
+    const timeout = window.setTimeout(() => {
+      if (normalizedQuery === "error") {
+        setSearchStatus({ state: "error", message: "Could not search project resources." });
+        return;
+      }
+
+      setResolvedQuery(normalizedQuery);
+      setSearchStatus({ state: "idle" });
+    }, 700);
+
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+
+  const resourceGroups: GlobalCommandMenuGroup[] = resolvedQuery
+    ? [
+        {
+          heading: "Project resources",
+          items: [
+            {
+              id: "resource-api-key",
+              label: "API_KEY",
+              breadcrumb: "Production / apps / api / Secret",
+              icon: FileIcon,
+              keywords: ["secret", "production", "api"],
+              onSelect: () => setOpen(false)
+            },
+            {
+              id: "resource-api-folder",
+              label: "api",
+              breadcrumb: "Production / apps / Folder",
+              icon: FolderIcon,
+              keywords: ["folder", "production"],
+              onSelect: () => setOpen(false)
+            }
+          ]
+        }
+      ]
+    : [];
+
+  return (
+    <div className="flex w-full max-w-96 flex-col gap-3">
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Search Project Resources
+        <CommandShortcut>⌘/Ctrl K</CommandShortcut>
+      </Button>
+      <p className="text-sm text-accent">
+        Type at least two characters. Type “error” to preview the failure state.
+      </p>
+      <GlobalCommandMenu
+        groups={[]}
+        searchGroups={resourceGroups}
+        searchStatus={searchStatus}
+        onSearchChange={setQuery}
+        open={open}
+        onOpenChange={setOpen}
+        placeholder="Search project resources..."
+        emptyMessage="No project resources found."
+      />
+    </div>
+  );
+};
+
+export const GlobalAsyncSearch: Story = {
+  name: "Example: Async Search",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass `onSearchChange` and `searchStatus` when a consumer adds debounced server-backed results. Loading and failure remain distinct from an empty result set, and the generic component stays independent of resource APIs."
+      }
+    }
+  },
+  render: () => <AsyncGlobalNavigationStory />
 };
 
 const ORGANIZATIONS = [

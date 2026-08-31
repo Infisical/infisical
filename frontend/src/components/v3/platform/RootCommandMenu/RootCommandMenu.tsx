@@ -23,14 +23,44 @@ import {
 import {
   GlobalCommandMenu,
   type GlobalCommandMenuGroup,
-  type GlobalCommandMenuItem
+  type GlobalCommandMenuItem,
+  type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
 import { OrgIcon, ProjectIcon } from "@app/components/v3/platform/ScopeIcons";
-import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionAuditLogsActions,
+  OrgPermissionBillingActions,
+  OrgPermissionGroupActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionKmipActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionPkiDiscoveryActions,
+  ProjectPermissionSub,
+  type TProjectPermission,
+  useOrganization,
+  useOrgPermission,
+  useProject,
+  useProjectPermission
+} from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSecretScanningFindingActions,
+  ProjectPermissionSecretSyncActions
+} from "@app/context/ProjectPermissionContext/types";
 import { getProjectTitle } from "@app/helpers/project";
 import { useGetOrganizationGroups, useGetOrganizations, useGetUserProjects } from "@app/hooks/api";
 import type { Project } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetUserOrgPermissions } from "@app/hooks/api/roles";
+
+import { useSecretManagerCommandSearch } from "./useSecretManagerCommandSearch";
 
 export type RootCommandMenuShell = "organization" | "admin" | "personal-settings";
 
@@ -39,16 +69,26 @@ type CommandContent = {
   searchGroups: GlobalCommandMenuGroup[];
 };
 
+type AsyncCommandSearch = {
+  groups: GlobalCommandMenuGroup[];
+  searchStatus: GlobalCommandMenuSearchStatus;
+  onSearchChange: (search: string) => void;
+};
+
 const NavigationCommandMenu = ({
   browseGroups,
-  searchGroups
+  searchGroups,
+  asyncSearch
 }: {
   browseGroups: GlobalCommandMenuGroup[];
   searchGroups: GlobalCommandMenuGroup[];
+  asyncSearch?: AsyncCommandSearch;
 }) => (
   <GlobalCommandMenu
     groups={browseGroups}
-    searchGroups={searchGroups}
+    searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
+    searchStatus={asyncSearch?.searchStatus}
+    onSearchChange={asyncSearch?.onSearchChange}
     title="Search Infisical"
     description="Search pages, projects, organizations, teams, and commands."
     placeholder="Find..."
@@ -97,7 +137,15 @@ const useEntityCommandGroups = ({
   const navigate = useNavigate();
   const { data: projects = [] } = useGetUserProjects();
   const { data: organizations = [] } = useGetOrganizations();
-  const { data: teams = [] } = useGetOrganizationGroups(currentOrganizationId ?? "");
+  const { data: orgPermissionData } = useGetUserOrgPermissions({
+    orgId: currentOrganizationId ?? ""
+  });
+  const canReadTeams = Boolean(
+    orgPermissionData?.permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups)
+  );
+  const { data: teams = [] } = useGetOrganizationGroups(
+    canReadTeams ? (currentOrganizationId ?? "") : ""
+  );
   const organizationNames = new Map(
     organizations.map((organization) => [organization.id, organization.name])
   );
@@ -310,12 +358,22 @@ const getOrganizationItems = ({
   navigate,
   organizationId,
   organizationName,
-  isRootOrganization
+  isRootOrganization,
+  canReadAccessControl,
+  canReadAuditLogs,
+  canReadBilling,
+  canReadIntegrations,
+  canReadSettings
 }: {
   navigate: ReturnType<typeof useNavigate>;
   organizationId: string;
   organizationName: string;
   isRootOrganization: boolean;
+  canReadAccessControl: boolean;
+  canReadAuditLogs: boolean;
+  canReadBilling: boolean;
+  canReadIntegrations: boolean;
+  canReadSettings: boolean;
 }): GlobalCommandMenuItem[] => [
   {
     id: `organization-${organizationId}-home`,
@@ -327,30 +385,41 @@ const getOrganizationItems = ({
     onSelect: () =>
       navigate({ to: "/organizations/$orgId/projects", params: { orgId: organizationId } })
   },
-  {
-    id: `organization-${organizationId}-integrations`,
-    label: "Integrations",
-    breadcrumb: `${organizationName} / Organization`,
-    icon: BlocksIcon,
-    keywords: ["connections"],
-    priority: 25,
-    onSelect: () =>
-      navigate({ to: "/organizations/$orgId/integrations", params: { orgId: organizationId } })
-  },
-  {
-    id: `organization-${organizationId}-access-control`,
-    label: "Access Control",
-    breadcrumb: `${organizationName} / Organization`,
-    icon: ShieldIcon,
-    keywords: ["users", "groups", "teams", "roles", "machine identities"],
-    priority: 25,
-    onSelect: () =>
-      navigate({
-        to: "/organizations/$orgId/access-management",
-        params: { orgId: organizationId }
-      })
-  },
-  ...(isRootOrganization
+  ...(canReadIntegrations
+    ? [
+        {
+          id: `organization-${organizationId}-integrations`,
+          label: "Integrations",
+          breadcrumb: `${organizationName} / Organization`,
+          icon: BlocksIcon,
+          keywords: ["connections"],
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/integrations",
+              params: { orgId: organizationId }
+            })
+        }
+      ]
+    : []),
+  ...(canReadAccessControl
+    ? [
+        {
+          id: `organization-${organizationId}-access-control`,
+          label: "Access Control",
+          breadcrumb: `${organizationName} / Organization`,
+          icon: ShieldIcon,
+          keywords: ["users", "groups", "teams", "roles", "machine identities"],
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/access-management",
+              params: { orgId: organizationId }
+            })
+        }
+      ]
+    : []),
+  ...(isRootOrganization && canReadBilling
     ? [
         {
           id: `organization-${organizationId}-billing`,
@@ -364,29 +433,40 @@ const getOrganizationItems = ({
         }
       ]
     : []),
-  {
-    id: `organization-${organizationId}-audit-logs`,
-    label: "Audit Logs",
-    breadcrumb: `${organizationName} / Organization`,
-    icon: FileTextIcon,
-    priority: 25,
-    onSelect: () =>
-      navigate({ to: "/organizations/$orgId/audit-logs", params: { orgId: organizationId } })
-  },
-  {
-    id: `organization-${organizationId}-settings`,
-    label: "Settings",
-    breadcrumb: `${organizationName} / Organization`,
-    icon: SettingsIcon,
-    keywords: ["general", "organization settings"],
-    priority: 25,
-    onSelect: () =>
-      navigate({
-        to: "/organizations/$orgId/settings",
-        params: { orgId: organizationId },
-        search: { selectedTab: "tab-org-general" }
-      })
-  }
+  ...(canReadAuditLogs
+    ? [
+        {
+          id: `organization-${organizationId}-audit-logs`,
+          label: "Audit Logs",
+          breadcrumb: `${organizationName} / Organization`,
+          icon: FileTextIcon,
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/audit-logs",
+              params: { orgId: organizationId }
+            })
+        }
+      ]
+    : []),
+  ...(canReadSettings
+    ? [
+        {
+          id: `organization-${organizationId}-settings`,
+          label: "Settings",
+          breadcrumb: `${organizationName} / Organization`,
+          icon: SettingsIcon,
+          keywords: ["general", "organization settings"],
+          priority: 25,
+          onSelect: () =>
+            navigate({
+              to: "/organizations/$orgId/settings",
+              params: { orgId: organizationId },
+              search: { selectedTab: "tab-org-general" }
+            })
+        }
+      ]
+    : [])
 ];
 
 const getProjectLandingItem = ({
@@ -612,19 +692,85 @@ const getProjectPageItems = ({
   }
 };
 
-const CertificateProjectCommandMenu = ({ content }: { content: CommandContent }) => {
+const filterProjectPageItems = (items: GlobalCommandMenuItem[], permission: TProjectPermission) => {
+  const canReadAccessControl =
+    permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
+    permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  const canReadIntegrations =
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations) ||
+    permission.can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs) ||
+    permission.can(ProjectPermissionAppConnectionActions.Read, ProjectPermissionSub.AppConnections);
+  const canReadSettings =
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+
+  return items.filter(({ id }) => {
+    if (id.endsWith("-access-control")) return canReadAccessControl;
+    if (id.endsWith("-integrations")) return canReadIntegrations;
+    if (id.endsWith("-audit-logs")) {
+      return permission.can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
+    }
+    if (id.endsWith("-settings")) return canReadSettings;
+    if (id.endsWith("-kmip")) {
+      return permission.can(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
+    }
+    if (id.endsWith("-inventory")) {
+      return permission.can(
+        ProjectPermissionCertificateActions.Read,
+        ProjectPermissionSub.Certificates
+      );
+    }
+    if (id.endsWith("-discovery")) {
+      return permission.can(
+        ProjectPermissionPkiDiscoveryActions.Read,
+        ProjectPermissionSub.PkiDiscovery
+      );
+    }
+    if (id.endsWith("-findings")) {
+      return permission.can(
+        ProjectPermissionSecretScanningFindingActions.Read,
+        ProjectPermissionSub.SecretScanningFindings
+      );
+    }
+    if (id.endsWith("-app-connections")) {
+      return permission.can(
+        ProjectPermissionAppConnectionActions.Read,
+        ProjectPermissionSub.AppConnections
+      );
+    }
+    return true;
+  });
+};
+
+const CertificateProjectCommandMenu = ({
+  content,
+  hasProjectRole,
+  permission
+}: {
+  content: CommandContent;
+  hasProjectRole: (role: string) => boolean;
+  permission: TProjectPermission;
+}) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { hasProjectRole } = useProjectPermission();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const projectItems = getProjectPageItems({
-    navigate,
-    project: currentProject,
-    organizationName: currentOrg.name,
-    pathname,
-    isCertificateManagerAdmin: hasProjectRole("admin")
-  });
+  const projectItems = filterProjectPageItems(
+    getProjectPageItems({
+      navigate,
+      project: currentProject,
+      organizationName: currentOrg.name,
+      pathname,
+      isCertificateManagerAdmin: hasProjectRole("admin")
+    }),
+    permission
+  );
 
   return (
     <NavigationCommandMenu
@@ -637,22 +783,58 @@ const CertificateProjectCommandMenu = ({ content }: { content: CommandContent })
   );
 };
 
+const SecretManagerProjectCommandMenu = ({
+  content,
+  projectItems
+}: {
+  content: CommandContent;
+  projectItems: GlobalCommandMenuItem[];
+}) => {
+  const { currentProject } = useProject();
+  const asyncSearch = useSecretManagerCommandSearch(currentProject);
+
+  return (
+    <NavigationCommandMenu
+      browseGroups={[
+        { heading: currentProject.name, items: projectItems.slice(0, 2) },
+        ...content.browseGroups
+      ]}
+      searchGroups={[{ heading: "Current Project", items: projectItems }, ...content.searchGroups]}
+      asyncSearch={asyncSearch}
+    />
+  );
+};
+
 const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { hasProjectRole, permission } = useProjectPermission();
 
   if (currentProject.type === ProjectType.CertificateManager) {
-    return <CertificateProjectCommandMenu content={content} />;
+    return (
+      <CertificateProjectCommandMenu
+        content={content}
+        hasProjectRole={hasProjectRole}
+        permission={permission}
+      />
+    );
   }
 
-  const projectItems = getProjectPageItems({
-    navigate,
-    project: currentProject,
-    organizationName: currentOrg.name,
-    pathname
-  });
+  const projectItems = filterProjectPageItems(
+    getProjectPageItems({
+      navigate,
+      project: currentProject,
+      organizationName: currentOrg.name,
+      pathname
+    }),
+    permission
+  );
+
+  if (currentProject.type === ProjectType.SecretManager) {
+    return <SecretManagerProjectCommandMenu content={content} projectItems={projectItems} />;
+  }
 
   return (
     <NavigationCommandMenu
@@ -670,6 +852,7 @@ const OrganizationCommandMenu = () => {
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
   const { currentOrg, isRootOrganization } = useOrganization();
   const user = useRouteContext({ from: "/_authenticate", select: (context) => context.user });
+  const { permission } = useOrgPermission();
   const navigate = useNavigate();
   const entityGroups = useEntityCommandGroups({
     currentOrganizationId: currentOrg.id,
@@ -679,7 +862,23 @@ const OrganizationCommandMenu = () => {
     navigate,
     organizationId: currentOrg.id,
     organizationName: currentOrg.name,
-    isRootOrganization
+    isRootOrganization,
+    canReadAccessControl:
+      permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) ||
+      permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) ||
+      permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups) ||
+      permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
+    canReadAuditLogs: permission.can(
+      OrgPermissionAuditLogsActions.Read,
+      OrgPermissionSubjects.AuditLogs
+    ),
+    canReadBilling: permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing),
+    canReadIntegrations:
+      permission.can(
+        OrgPermissionAppConnectionActions.Read,
+        OrgPermissionSubjects.AppConnections
+      ) || permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings),
+    canReadSettings: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings)
   });
   const accountItems = getAccountItems(navigate);
   const globalItems = [
