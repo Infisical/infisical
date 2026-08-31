@@ -1,4 +1,12 @@
-import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -7,6 +15,7 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
@@ -199,6 +208,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { useSecretManagerScrollContainer } from "@app/layouts/SecretManagerLayout";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -324,6 +334,8 @@ const OverviewPageContent = () => {
   });
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
+  const secretRowsStartRef = useRef<HTMLTableRowElement>(null);
+  const secretManagerScrollContainer = useSecretManagerScrollContainer();
   const { currentProject, projectId } = useProject();
   const { user } = useUser();
   const { data: approvalCount } = useGetSecretApprovalRequestCount({ projectId });
@@ -2672,6 +2684,65 @@ const OverviewPageContent = () => {
     return "table" as const;
   })();
 
+  const [secretRowsScrollMargin, setSecretRowsScrollMargin] = useState(0);
+
+  const measureSecretRowGroup = useCallback((element: Element) => {
+    // One logical secret row is its main <tr> plus any following override or expanded
+    // sibling <tr> carrying the same data-index, so sum the group's height.
+    const index = element.getAttribute("data-index");
+    let height = 0;
+    let node: Element | null = element;
+    while (node instanceof HTMLElement && node.getAttribute("data-index") === index) {
+      height += node.offsetHeight;
+      node = node.nextElementSibling;
+    }
+    return height;
+  }, []);
+
+  const secretRowVirtualizer = useVirtualizer({
+    count: mergedSecKeys.length,
+    getScrollElement: () => secretManagerScrollContainer,
+    estimateSize: () => (isSingleEnvView ? 56 : 40),
+    overscan: 8,
+    scrollMargin: secretRowsScrollMargin,
+    measureElement: measureSecretRowGroup,
+    getItemKey: (index) => mergedSecKeys[index]
+  });
+
+  useLayoutEffect(() => {
+    const startElement = secretRowsStartRef.current;
+    const scrollElement = secretManagerScrollContainer;
+    const tableElement = tableRef.current;
+    if (!startElement || !scrollElement || !tableElement) return undefined;
+
+    const measure = () => {
+      const next =
+        startElement.getBoundingClientRect().top -
+        scrollElement.getBoundingClientRect().top +
+        scrollElement.scrollTop;
+      setSecretRowsScrollMargin((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+    };
+
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(tableElement);
+    resizeObserver.observe(scrollElement);
+
+    // eslint-disable-next-line consistent-return
+    return () => resizeObserver.disconnect();
+  }, [secretManagerScrollContainer, tableView]);
+
+  const secretVirtualItems = secretRowVirtualizer.getVirtualItems();
+  const secretRowsTotalSize = secretRowVirtualizer.getTotalSize();
+  const secretRowsSpacerCols = visibleEnvs.length + 2;
+  const secretRowsTopSpacer = secretVirtualItems.length
+    ? secretVirtualItems[0].start - secretRowsScrollMargin
+    : 0;
+  const secretRowsBottomSpacer = secretVirtualItems.length
+    ? secretRowsTotalSize -
+      (secretVirtualItems[secretVirtualItems.length - 1].end - secretRowsScrollMargin)
+    : 0;
+
   if (!isProjectV3)
     return (
       <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
@@ -3548,37 +3619,64 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
-                          {mergedSecKeys.map((key) => (
-                            <SecretTableRow
-                              isSelected={
-                                !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
-                              }
-                              onToggleSecretSelect={() => {
-                                if (!hasPendingBatchChanges)
-                                  toggleSelectedEntry(EntryType.SECRET, key);
-                              }}
-                              isExpanded={Boolean(expandedSecretRows[key])}
-                              onToggleExpand={toggleSecretRowExpand}
-                              isSecretVisible={Boolean(visibleSecretRows[key])}
-                              onToggleSecretVisible={toggleSecretRowVisible}
-                              secretPath={secretPath}
-                              getImportedSecretByKey={getImportedSecretByKey}
-                              isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
-                              onSecretCreate={handleSecretCreate}
-                              onSecretDelete={handleSecretDelete}
-                              onSecretUpdate={handleSecretUpdate}
-                              key={`overview-${key}`}
-                              environments={visibleEnvs}
-                              secretKey={key}
-                              getSecretByKey={getSecretByKeyWithPending}
-                              tableWidth={tableWidth}
-                              importedBy={importedBy}
-                              isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
-                              isBatchMode={isBatchModeActive}
-                              onBatchRevert={handleBatchRevert}
-                              isSelectionDisabled={hasPendingBatchChanges}
+                          <tr ref={secretRowsStartRef} aria-hidden>
+                            <td
+                              colSpan={secretRowsSpacerCols}
+                              style={{ height: 0, padding: 0, border: 0 }}
                             />
-                          ))}
+                          </tr>
+                          {secretRowsTopSpacer > 0 && (
+                            <tr aria-hidden>
+                              <td
+                                colSpan={secretRowsSpacerCols}
+                                style={{ height: secretRowsTopSpacer, padding: 0, border: 0 }}
+                              />
+                            </tr>
+                          )}
+                          {secretVirtualItems.map((virtualItem) => {
+                            const key = mergedSecKeys[virtualItem.index];
+                            return (
+                              <SecretTableRow
+                                isSelected={
+                                  !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
+                                }
+                                onToggleSecretSelect={() => {
+                                  if (!hasPendingBatchChanges)
+                                    toggleSelectedEntry(EntryType.SECRET, key);
+                                }}
+                                isExpanded={Boolean(expandedSecretRows[key])}
+                                onToggleExpand={toggleSecretRowExpand}
+                                isSecretVisible={Boolean(visibleSecretRows[key])}
+                                onToggleSecretVisible={toggleSecretRowVisible}
+                                secretPath={secretPath}
+                                getImportedSecretByKey={getImportedSecretByKey}
+                                isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
+                                onSecretCreate={handleSecretCreate}
+                                onSecretDelete={handleSecretDelete}
+                                onSecretUpdate={handleSecretUpdate}
+                                key={`overview-${key}`}
+                                virtualIndex={virtualItem.index}
+                                measureElement={secretRowVirtualizer.measureElement}
+                                environments={visibleEnvs}
+                                secretKey={key}
+                                getSecretByKey={getSecretByKeyWithPending}
+                                tableWidth={tableWidth}
+                                importedBy={importedBy}
+                                isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
+                                isBatchMode={isBatchModeActive}
+                                onBatchRevert={handleBatchRevert}
+                                isSelectionDisabled={hasPendingBatchChanges}
+                              />
+                            );
+                          })}
+                          {secretRowsBottomSpacer > 0 && (
+                            <tr aria-hidden>
+                              <td
+                                colSpan={secretRowsSpacerCols}
+                                style={{ height: secretRowsBottomSpacer, padding: 0, border: 0 }}
+                              />
+                            </tr>
+                          )}
                           <SecretNoAccessTableRow
                             environments={visibleEnvs}
                             count={Math.max(

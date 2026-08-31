@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
@@ -104,6 +104,8 @@ type Props = {
   isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
   isSelectionDisabled?: boolean;
+  virtualIndex: number;
+  measureElement: (node: Element | null) => void;
 };
 
 export const SecretTableRow = ({
@@ -127,9 +129,27 @@ export const SecretTableRow = ({
   isSingleEnvSecretsVisible,
   isBatchMode,
   onBatchRevert,
-  isSelectionDisabled
+  isSelectionDisabled,
+  virtualIndex,
+  measureElement
 }: Props) => {
   const totalCols = environments.length + 2; // secret key row + icon
+  const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  const setRowRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      rowRef.current = node;
+      measureElement(node);
+    },
+    [measureElement]
+  );
+
+  // A logical secret row spans one <tr> plus, when present, its override or expanded
+  // sibling <tr>; re-measure the whole group on every render so the virtualizer tracks
+  // the override/expanded toggles and the value input growing as the user types.
+  useLayoutEffect(() => {
+    if (rowRef.current) measureElement(rowRef.current);
+  });
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
@@ -227,6 +247,8 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
+        ref={setRowRef}
+        data-index={virtualIndex}
         onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
         className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
       >
@@ -446,7 +468,10 @@ export const SecretTableRow = ({
           })}
       </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+        <TableRow
+          data-index={virtualIndex}
+          className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+        >
           <TableCell>
             <GitBranchIcon className="text-override" />
           </TableCell>
@@ -496,7 +521,7 @@ export const SecretTableRow = ({
         </Modal>
       )}
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
+        <TableRow data-index={virtualIndex}>
           <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
