@@ -8,8 +8,11 @@ import { Loader } from "./Loader";
 /**
  * `Loader` is the branded Infisical loading animation — the stroke-draw of the
  * logo mark. It is the single source for that animation: the mark, the three
- * tints, and the size scale all live here, so no consumer references a Lottie
- * asset directly.
+ * tints, and the size scale all live here, and every product call site composes
+ * it rather than naming a Lottie asset itself. `main.tsx` is the deliberate
+ * exception: the entry module has to keep importing the `v2` barrel to hold
+ * `@app/context` in the entry chunk, so the router's pending component stays on
+ * `v2/Lottie`.
  *
  * Reach for `Loader` when the surface is Infisical's own and the wait is
  * unmeasurable: full-page route transitions (`PageLoader`), pending `Button`
