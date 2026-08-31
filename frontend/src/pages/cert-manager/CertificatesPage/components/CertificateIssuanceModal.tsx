@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { FileBadge, Plus, Tags, Trash2 } from "lucide-react";
+import { FileBadge, InfoIcon, Plus, Tags, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Empty,
   EmptyContent,
@@ -364,6 +366,11 @@ export const CertificateIssuanceModal = ({
 
   const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
   isAwsPcaProfileRef.current = isAwsPcaProfile;
+
+  const digicertProductNameId =
+    externalCaType === CaType.DIGICERT
+      ? actualSelectedProfile?.certificateAuthority?.productNameId
+      : undefined;
 
   const { data: policyData } = useGetCertificatePolicyById({
     policyId: actualSelectedProfile?.certificatePolicyId || "",
@@ -756,6 +763,20 @@ export const CertificateIssuanceModal = ({
                 </Field>
               )}
             />
+          )}
+
+          {currentStepKey === "subject" && digicertProductNameId && (
+            <Alert variant="info" className="mb-4">
+              <InfoIcon />
+              <AlertDescription>
+                <p>
+                  This profile orders through the DigiCert{" "}
+                  <span className="font-mono">{digicertProductNameId}</span> product, set on the
+                  issuing CA. Subject values the product does not accept are rejected when the order
+                  is placed.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
           {currentStepKey === "subject" && constraints.shouldShowSubjectSection && (
