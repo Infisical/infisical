@@ -1,20 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
   TTriggerDevEnvironment,
   TTriggerDevOrganization,
-  TTriggerDevProject,
   useTriggerDevConnectionListEnvironments,
   useTriggerDevConnectionListProjects
 } from "@app/hooks/api/appConnections/trigger-dev";
@@ -96,12 +94,12 @@ export const TriggerDevSyncFields = () => {
       <Field>
         <FieldLabel>Organization</FieldLabel>
         <FieldContent>
-          <FilterableSelect
+          <Combobox
             isLoading={isProjectsLoading && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={selectedOrganization}
-            onChange={(option) => {
-              const selected = option as SingleValue<TTriggerDevOrganization>;
+            onValueChange={(option) => {
+              const selected = option;
               setSelectedOrgId(selected?.id ?? null);
               setValue("destinationConfig.projectRef", "");
               setValue("destinationConfig.environment", "");
@@ -110,6 +108,7 @@ export const TriggerDevSyncFields = () => {
             placeholder="Select an organization..."
             getOptionLabel={(option) => `${option.name} (${option.slug})`}
             getOptionValue={(option) => option.id}
+            modal
           />
         </FieldContent>
       </Field>
@@ -121,12 +120,12 @@ export const TriggerDevSyncFields = () => {
           <Field>
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!selectedOrgId}
                 value={orgProjects.find((v) => v.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TTriggerDevProject>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.environment", "");
                 }}
@@ -134,6 +133,7 @@ export const TriggerDevSyncFields = () => {
                 placeholder={selectedOrgId ? "Select a project..." : "Select an organization first"}
                 getOptionLabel={(option) => `${option.name} (${option.id})`}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -148,18 +148,19 @@ export const TriggerDevSyncFields = () => {
           <Field>
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectRef)}
                 isDisabled={!projectRef}
                 value={environments?.find((env) => env.slug === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TTriggerDevEnvironment>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.slug ?? "");
                 }}
                 options={environments ?? []}
                 placeholder={projectRef ? "Select an environment..." : "Select a project first"}
                 getOptionLabel={(option) => getEnvironmentLabel(option)}
                 getOptionValue={(option) => option.slug}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

@@ -1,21 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useGetAzureDevOpsProjects } from "@app/hooks/api/appConnections/azure";
-import { AzureDevOpsProject } from "@app/hooks/api/appConnections/azure/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -57,21 +55,19 @@ export const AzureDevOpsSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((v) => v.appId === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<AzureDevOpsProject>)?.appId ?? null);
-                  setValue(
-                    "destinationConfig.devopsProjectName",
-                    (option as SingleValue<AzureDevOpsProject>)?.name ?? ""
-                  );
+                onValueChange={(option) => {
+                  onChange(option.appId ?? null);
+                  setValue("destinationConfig.devopsProjectName", option.name ?? "");
                 }}
                 options={projects}
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

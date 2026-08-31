@@ -1,24 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TWindmillWorkspace,
-  useWindmillConnectionListWorkspaces
-} from "@app/hooks/api/appConnections/windmill";
+import { useWindmillConnectionListWorkspaces } from "@app/hooks/api/appConnections/windmill";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -62,17 +58,16 @@ export const WindmillSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces?.find((workspace) => workspace.name === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TWindmillWorkspace>)?.name ?? null)
-                }
+                onValueChange={(option) => onChange(option.name ?? null)}
                 options={workspaces}
                 placeholder="Select a workspace..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

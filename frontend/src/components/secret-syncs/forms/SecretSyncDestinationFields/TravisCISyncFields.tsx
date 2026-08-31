@@ -1,18 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TTravisCIBranch,
-  TTravisCIRepository,
   useTravisCIConnectionListBranches,
   useTravisCIConnectionListRepositories
 } from "@app/hooks/api/appConnections/travis-ci";
@@ -57,12 +54,12 @@ export const TravisCISyncFields = () => {
           <Field>
             <FieldLabel>Repository</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isRepositoriesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={repositories.find((repo) => repo.id === value) ?? null}
-                onChange={(option) => {
-                  const repo = option as SingleValue<TTravisCIRepository>;
+                onValueChange={(option) => {
+                  const repo = option;
                   onChange(repo?.id ?? "");
                   setValue("destinationConfig.repositorySlug", repo?.slug ?? "");
                   setValue("destinationConfig.branch", undefined);
@@ -71,6 +68,7 @@ export const TravisCISyncFields = () => {
                 placeholder="Select a repository..."
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -84,23 +82,24 @@ export const TravisCISyncFields = () => {
           <Field>
             <FieldLabel>Branch (Optional)</FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                isClearable
+              <Combobox
                 isLoading={
                   isBranchesPending && Boolean(connectionId) && Boolean(currentRepositoryId)
                 }
                 isDisabled={!connectionId || !currentRepositoryId}
                 value={branches.find((branch) => branch.name === value) ?? null}
-                onChange={(option) => {
-                  const branch = option as SingleValue<TTravisCIBranch>;
+                onValueChange={(option) => {
+                  const branch = option;
                   onChange(branch?.name ?? undefined);
                 }}
+                onClear={() => onChange(undefined)}
                 options={branches}
                 placeholder="Select a branch..."
                 getOptionLabel={(option) =>
                   option.isDefault ? `${option.name} (default)` : option.name
                 }
                 getOptionValue={(option) => option.name}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

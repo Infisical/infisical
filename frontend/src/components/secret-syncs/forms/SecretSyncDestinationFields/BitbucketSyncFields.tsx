@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
@@ -74,25 +73,26 @@ export const BitbucketSyncFields = () => {
           <Field>
             <FieldLabel>Bitbucket Workspace</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces.find((w) => w.slug === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TBitbucketWorkspace>;
+                onValueChange={(option) => {
+                  const v = option as TBitbucketWorkspace;
                   onChange(v?.slug ?? "");
                   setValue("destinationConfig.repositorySlug", "");
                   setValue("destinationConfig.environmentId", "");
                 }}
-                onInputChange={(newValue) => setWorkspaceSearch(newValue)}
-                filterOption={null}
+                onInputValueChange={(newValue) => setWorkspaceSearch(newValue)}
+                shouldFilter={false}
                 options={workspaces}
                 placeholder="Search for a workspace..."
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.slug}
-                noOptionsMessage={({ inputValue }) =>
+                emptyMessage={(inputValue) =>
                   inputValue ? "No workspaces found matching your search." : "No workspaces found."
                 }
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -107,26 +107,27 @@ export const BitbucketSyncFields = () => {
           <Field>
             <FieldLabel>Bitbucket Repository</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isRepositoriesLoading && Boolean(workspace)}
                 isDisabled={!workspace}
                 value={repositories.find((r) => r.slug === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TBitbucketRepo>;
+                onValueChange={(option) => {
+                  const v = option as TBitbucketRepo;
                   onChange(v?.slug ?? "");
                   setValue("destinationConfig.environmentId", "");
                 }}
-                onInputChange={(newValue) => setRepoSearch(newValue)}
-                filterOption={null}
+                onInputValueChange={(newValue) => setRepoSearch(newValue)}
+                shouldFilter={false}
                 options={repositories}
                 placeholder="Search for a repository..."
                 getOptionLabel={(option) => option.full_name}
                 getOptionValue={(option) => option.slug}
-                noOptionsMessage={({ inputValue }) =>
+                emptyMessage={(inputValue) =>
                   inputValue
                     ? "No repositories found matching your search."
                     : "No repositories found."
                 }
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -141,19 +142,20 @@ export const BitbucketSyncFields = () => {
           <Field>
             <FieldLabel>Bitbucket Deployment Environment (Optional)</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isEnvironmentsLoading && Boolean(repository)}
                 isDisabled={!repository}
                 value={environments.find((e) => e.uuid === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TBitbucketEnvironment>;
+                onValueChange={(option) => {
+                  const v = option as TBitbucketEnvironment;
                   onChange(v?.uuid ?? "");
                 }}
+                onClear={() => onChange("")}
                 options={environments}
                 placeholder="Select environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.uuid}
-                isClearable
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

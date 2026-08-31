@@ -1,19 +1,16 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TNetlifyAccount,
-  TNetlifySite,
   useNetlifyConnectionListAccounts,
   useNetlifyConnectionListSites
 } from "@app/hooks/api/appConnections/netlify";
@@ -65,12 +62,12 @@ export const NetlifySyncFields = () => {
           <Field>
             <FieldLabel>Account</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={accounts.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNetlifyAccount>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.accountName", v?.name ?? "");
                 }}
@@ -78,6 +75,7 @@ export const NetlifySyncFields = () => {
                 placeholder="Select an account..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -91,12 +89,12 @@ export const NetlifySyncFields = () => {
           <Field>
             <FieldLabel>Site (Optional)</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isSitesLoading && Boolean(accountId)}
                 isDisabled={!accountId}
                 value={sites.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNetlifySite>;
+                onValueChange={(option) => {
+                  const v = option;
                   if (v?.id === value) {
                     onChange(undefined);
                     setValue("destinationConfig.siteName", undefined);
@@ -109,6 +107,7 @@ export const NetlifySyncFields = () => {
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldDescription>
                 If you do not select a site, the secrets will be synced to all sites in the account.
@@ -125,17 +124,18 @@ export const NetlifySyncFields = () => {
           <Field>
             <FieldLabel>Context (Optional)</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isDisabled={!accountId}
                 value={contexts.find((p) => p.value === value) ?? undefined}
-                onChange={(option) => {
-                  const v = option as SingleValue<{ label: string; value: NetlifySyncContext }>;
+                onValueChange={(option) => {
+                  const v = option;
                   if (v) onChange(v.value);
                 }}
                 options={contexts}
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.label}
                 getOptionValue={(option) => option.value}
+                modal
               />
               <FieldDescription>
                 Avoid configuring multiple syncs with overlapping contexts for the same site.

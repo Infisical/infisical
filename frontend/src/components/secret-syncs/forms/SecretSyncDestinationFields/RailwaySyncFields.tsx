@@ -1,25 +1,21 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TRailwayProject,
-  useRailwayConnectionListProjects
-} from "@app/hooks/api/appConnections/railway";
+import { useRailwayConnectionListProjects } from "@app/hooks/api/appConnections/railway";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -66,12 +62,12 @@ export const RailwaySyncFields = () => {
           <Field>
             <FieldLabel>Select a project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TRailwayProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.projectName", v?.name ?? "");
                 }}
@@ -79,6 +75,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -93,12 +90,12 @@ export const RailwaySyncFields = () => {
           <Field>
             <FieldLabel>Select an environment</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={environments.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TRailwayProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.environmentName", v?.name ?? "");
                 }}
@@ -106,6 +103,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -131,12 +129,12 @@ export const RailwaySyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={services.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TRailwayProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.serviceName", v?.name ?? "");
                 }}
@@ -144,6 +142,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select a service..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldDescription>
                 Scope your secrets to a specific service within the environment.

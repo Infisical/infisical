@@ -1,22 +1,20 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useCamundaConnectionListClusters } from "@app/hooks/api/appConnections/camunda";
-import { TCamundaCluster } from "@app/hooks/api/appConnections/camunda/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { CamundaSyncScope } from "@app/hooks/api/secretSyncs/types/camunda-sync";
 
@@ -61,21 +59,19 @@ export const CamundaSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={clusters?.find((cluster) => cluster.uuid === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TCamundaCluster>)?.uuid ?? null);
-                  setValue(
-                    "destinationConfig.clusterName",
-                    (option as SingleValue<TCamundaCluster>)?.name ?? ""
-                  );
+                onValueChange={(option) => {
+                  onChange(option.uuid ?? null);
+                  setValue("destinationConfig.clusterName", option.name ?? "");
                 }}
                 options={clusters}
                 placeholder="Select a cluster..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.uuid}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

@@ -4,12 +4,12 @@ import { subject } from "@casl/ability";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   SecretPathInput,
   Tooltip,
   TooltipContent,
@@ -99,14 +99,15 @@ export const AzureEntraIdScimSyncSourceFields = () => {
             <Field>
               <FieldLabel>Environment</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={currentProject.environments}
                   placeholder="Select environment..."
                   getOptionLabel={(option) => option?.name}
                   getOptionValue={(option) => option?.id}
                   isError={Boolean(error)}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -149,9 +150,9 @@ export const AzureEntraIdScimSyncSourceFields = () => {
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   value={secrets?.find((s) => s.key === value) ?? null}
-                  onChange={(option) => {
+                  onValueChange={(option) => {
                     const selected = option as { id: string; key: string } | null;
                     onChange(selected?.key ?? "");
                   }}
@@ -162,6 +163,7 @@ export const AzureEntraIdScimSyncSourceFields = () => {
                   getOptionValue={(option) => option.id}
                   isDisabled={!selectedEnvironment?.slug || !selectedSecretPath}
                   isError={Boolean(error)}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

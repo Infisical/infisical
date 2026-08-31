@@ -1,14 +1,13 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -16,9 +15,6 @@ import {
   SelectValue
 } from "@app/components/v3";
 import {
-  TGitHubConnectionEnvironment,
-  TGitHubConnectionOrganization,
-  TGitHubConnectionRepository,
   useGitHubConnectionListEnvironments,
   useGitHubConnectionListOrganizations,
   useGitHubConnectionListRepositories
@@ -114,19 +110,16 @@ export const GitHubSyncFields = () => {
               <Field>
                 <FieldLabel>Organization</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     isLoading={isOrganizationsPending && Boolean(connectionId)}
                     isDisabled={!connectionId}
                     value={organizations.find((org) => org.login === value) ?? null}
-                    onChange={(option) =>
-                      onChange(
-                        (option as SingleValue<TGitHubConnectionOrganization>)?.login ?? null
-                      )
-                    }
+                    onValueChange={(option) => onChange(option.login ?? null)}
                     options={organizations}
                     placeholder="Select an organization..."
                     getOptionLabel={(option) => option.login}
                     getOptionValue={(option) => option.login}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -170,19 +163,20 @@ export const GitHubSyncFields = () => {
                 <Field>
                   <FieldLabel>Selected Repositories</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
                       isLoading={isRepositoriesPending && Boolean(currentOrg)}
                       isDisabled={!currentOrg || !connectionId}
-                      isMulti
+                      multiple
                       value={repositories.filter((repo) => value?.includes(repo.id))}
-                      onChange={(option) => {
-                        const repos = option as MultiValue<TGitHubConnectionRepository>;
+                      onValueChange={(option) => {
+                        const repos = option;
                         onChange(repos.map((repo) => repo.id));
                       }}
                       options={repositories.filter((repo) => repo.owner.login === currentOrg)}
                       placeholder="Select one or more repositories..."
                       getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                       getOptionValue={(option) => option.id.toString()}
+                      modal
                     />
                     <FieldError errors={[error]} />
                   </FieldContent>
@@ -200,12 +194,12 @@ export const GitHubSyncFields = () => {
             <Field>
               <FieldLabel>Repository</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isRepositoriesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={repositories.find((repo) => repo.name === value) ?? null}
-                  onChange={(option) => {
-                    const repo = option as SingleValue<TGitHubConnectionRepository>;
+                  onValueChange={(option) => {
+                    const repo = option;
 
                     onChange(repo?.name);
                     setValue("destinationConfig.owner", repo?.owner.login ?? "");
@@ -215,6 +209,7 @@ export const GitHubSyncFields = () => {
                   placeholder="Select a repository..."
                   getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -232,17 +227,16 @@ export const GitHubSyncFields = () => {
             <Field>
               <FieldLabel>Environment</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
                   isDisabled={!connectionId || !currentRepo}
                   value={environments.find((env) => env.name === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<TGitHubConnectionEnvironment>)?.name ?? null)
-                  }
+                  onValueChange={(option) => onChange(option.name ?? null)}
                   options={environments}
                   placeholder="Select an environment..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

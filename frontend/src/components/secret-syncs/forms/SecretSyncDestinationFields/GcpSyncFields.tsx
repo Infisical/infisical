@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { FormatOptionLabelMeta, MultiValue, SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -13,12 +12,12 @@ import {
   AlertDescription,
   AlertTitle,
   Badge,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -33,27 +32,23 @@ import {
   useGcpConnectionListProjectLocations,
   useGcpConnectionListProjects
 } from "@app/hooks/api/appConnections/gcp/queries";
-import { TGcpLocation, TGcpProject } from "@app/hooks/api/appConnections/gcp/types";
+import { TGcpLocation } from "@app/hooks/api/appConnections/gcp/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
-// The control renders selected values inside chips (isMulti), where a nested Badge reads as a
-// badge-in-badge; use plain parentheses there and keep the Badge for menu options.
-const formatOptionLabel = (
-  { displayName, locationId }: TGcpLocation,
-  { context }: FormatOptionLabelMeta<TGcpLocation>
-) =>
-  context === "value" ? (
-    <span>
-      {displayName} ({locationId})
-    </span>
-  ) : (
-    <div className="flex w-full flex-row items-center gap-1">
-      <span>{displayName}</span> <Badge variant="info">{locationId}</Badge>
-    </div>
-  );
+const renderLocationOption = ({ displayName, locationId }: TGcpLocation) => (
+  <div className="flex w-full flex-row items-center gap-1">
+    <span>{displayName}</span> <Badge variant="info">{locationId}</Badge>
+  </div>
+);
+
+const renderLocationValue = ({ displayName, locationId }: TGcpLocation) => (
+  <span>
+    {displayName} ({locationId})
+  </span>
+);
 
 const ADVANCED_ITEM_VALUE = "gcp-secret-manager-advanced";
 
@@ -180,19 +175,20 @@ export const GcpSyncFields = () => {
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={projects?.find((project) => project.id === value) ?? null}
-                  onChange={(option) => {
+                  onValueChange={(option) => {
                     setValue("destinationConfig.locationId", "");
                     setValue("destinationConfig.userReplicaLocationIds", []);
-                    onChange((option as SingleValue<TGcpProject>)?.id ?? null);
+                    onChange(option.id);
                   }}
-                  options={projects}
+                  options={projects ?? []}
                   placeholder="Select a GCP project..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -264,17 +260,18 @@ export const GcpSyncFields = () => {
               <Field>
                 <FieldLabel>Region</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     isLoading={areLocationsPending && Boolean(projectId)}
                     isDisabled={!projectId}
                     value={locations?.find((option) => option.locationId === value) ?? null}
-                    onChange={(option) =>
-                      onChange((option as SingleValue<TGcpLocation>)?.locationId ?? "")
-                    }
-                    options={locations}
+                    onValueChange={(option) => onChange(option.locationId)}
+                    options={locations ?? []}
                     placeholder="Select a region..."
+                    getOptionLabel={(option) => `${option.displayName} (${option.locationId})`}
                     getOptionValue={(option) => option.locationId}
-                    formatOptionLabel={formatOptionLabel}
+                    renderOption={renderLocationOption}
+                    renderValue={renderLocationValue}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -315,26 +312,28 @@ export const GcpSyncFields = () => {
                         </Tooltip>
                       </FieldLabel>
                       <FieldContent>
-                        <FilterableSelect
-                          isMulti
+                        <Combobox
+                          multiple
                           isLoading={areLocationsPending && Boolean(projectId)}
                           isDisabled={!projectId || lockReplicaRegions}
-                          isClearable={!lockReplicaRegions}
                           value={
                             locations?.filter((option) =>
                               (value || []).includes(option.locationId)
                             ) ?? []
                           }
-                          onChange={(option) =>
-                            onChange((option as MultiValue<TGcpLocation>).map((o) => o.locationId))
+                          onValueChange={(options) =>
+                            onChange(options.map((option) => option.locationId))
                           }
-                          options={locations}
+                          options={locations ?? []}
                           placeholder="Automatic replication"
+                          getOptionLabel={(option) =>
+                            `${option.displayName} (${option.locationId})`
+                          }
                           getOptionValue={(option) => option.locationId}
-                          formatOptionLabel={formatOptionLabel}
-                          menuPortalTarget={menuPortalTarget ?? undefined}
-                          menuPosition="fixed"
-                          menuPlacement="auto"
+                          renderOption={renderLocationOption}
+                          renderValue={renderLocationValue}
+                          portalContainer={menuPortalTarget}
+                          modal
                         />
 
                         {(value?.length ?? 0) > 0 && (

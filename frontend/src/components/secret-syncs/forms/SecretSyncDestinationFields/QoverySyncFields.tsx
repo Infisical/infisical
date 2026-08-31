@@ -1,20 +1,16 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TQoveryConnectionEnvironment,
-  TQoveryConnectionOrganization,
-  TQoveryConnectionProject,
   useQoveryConnectionListEnvironments,
   useQoveryConnectionListOrganizations,
   useQoveryConnectionListProjects
@@ -72,12 +68,12 @@ export const QoverySyncFields = () => {
           <Field>
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionOrganization>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.organizationName", selected?.name ?? "");
                   setValue("destinationConfig.projectId", "");
@@ -89,6 +85,7 @@ export const QoverySyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -103,12 +100,12 @@ export const QoverySyncFields = () => {
           <Field>
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId && organizationId)}
                 isDisabled={!organizationId}
                 value={projects?.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionProject>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.projectName", selected?.name ?? "");
                   setValue("destinationConfig.environmentId", "");
@@ -118,6 +115,7 @@ export const QoverySyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -134,20 +132,24 @@ export const QoverySyncFields = () => {
               Environment <span className="text-xs text-muted">(optional)</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                isClearable
+              <Combobox
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectId)}
                 isDisabled={!projectId}
                 value={environments?.find((environment) => environment.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TQoveryConnectionEnvironment>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.environmentName", selected?.name ?? "");
+                }}
+                onClear={() => {
+                  onChange("");
+                  setValue("destinationConfig.environmentName", "");
                 }}
                 options={environments}
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldDescription>
                 Leave empty to sync at the project level, or select an environment to sync at the

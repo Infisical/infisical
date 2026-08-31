@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -23,9 +22,6 @@ import {
   TERRAFORM_CLOUD_SYNC_SCOPES,
   TerraformCloudSyncCategory,
   TerraformCloudSyncScope,
-  TTerraformCloudConnectionOrganization,
-  TTerraformCloudConnectionVariableSet,
-  TTerraformCloudConnectionWorkspace,
   useTerraformCloudConnectionListOrganizations
 } from "@app/hooks/api/appConnections/terraform-cloud";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -68,16 +64,14 @@ export const TerraformCloudSyncFields = () => {
           <Field>
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={
                   organizations ? (organizations.find((org) => org.id === value) ?? null) : null
                 }
-                onChange={(option) => {
-                  onChange(
-                    (option as SingleValue<TTerraformCloudConnectionOrganization>)?.id ?? null
-                  );
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.variableSetId", "");
                   setValue("destinationConfig.workspaceId", "");
                   setValue("destinationConfig.variableSetName", "");
@@ -87,6 +81,7 @@ export const TerraformCloudSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -215,13 +210,12 @@ export const TerraformCloudSyncFields = () => {
             <Field>
               <FieldLabel>Variable Set</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
                   value={variableSets.find((variableSet) => variableSet.id === value) ?? null}
-                  onChange={(option) => {
-                    const selectedOption =
-                      option as SingleValue<TTerraformCloudConnectionVariableSet>;
+                  onValueChange={(option) => {
+                    const selectedOption = option;
                     onChange(selectedOption?.id ?? null);
 
                     if (selectedOption) {
@@ -234,6 +228,7 @@ export const TerraformCloudSyncFields = () => {
                   placeholder="Select a variable set..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -249,13 +244,12 @@ export const TerraformCloudSyncFields = () => {
             <Field>
               <FieldLabel>Workspace</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
                   value={workspaces.find((workspace) => workspace.id === value) ?? null}
-                  onChange={(option) => {
-                    const selectedOption =
-                      option as SingleValue<TTerraformCloudConnectionWorkspace>;
+                  onValueChange={(option) => {
+                    const selectedOption = option;
                     onChange(selectedOption?.id ?? null);
 
                     if (selectedOption) {
@@ -268,6 +262,7 @@ export const TerraformCloudSyncFields = () => {
                   placeholder="Select a workspace..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

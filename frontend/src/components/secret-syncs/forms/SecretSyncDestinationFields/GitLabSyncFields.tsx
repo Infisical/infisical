@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Label,
   Select,
@@ -220,27 +219,29 @@ export const GitLabSyncFields = () => {
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isGroupsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={groupOptions.find((group) => group.id === value) ?? null}
-                  onChange={(option) => {
-                    const selected = option as SingleValue<TGitLabGroup>;
+                  onValueChange={(option) => {
+                    const selected = option as TGitLabGroup;
                     onChange(selected?.id ?? "");
                     setValue("destinationConfig.groupName", selected?.fullName ?? "", {
                       shouldDirty: true
                     });
                   }}
-                  onInputChange={(newValue) => setGroupSearch(newValue)}
-                  filterOption={null}
+                  onInputValueChange={(newValue) => setGroupSearch(newValue)}
+                  shouldFilter={false}
                   options={groupOptions}
                   placeholder="Search for a group..."
                   getOptionLabel={(option) => `${option.name} · ${option.fullPath}`}
-                  formatOptionLabel={formatGitLabGroupOptionLabel}
+                  renderOption={formatGitLabGroupOptionLabel}
+                  renderValue={formatGitLabGroupOptionLabel}
                   getOptionValue={(option) => option.id}
-                  noOptionsMessage={({ inputValue }) =>
+                  emptyMessage={(inputValue) =>
                     inputValue ? "No groups found matching your search." : "No groups found."
                   }
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -269,30 +270,32 @@ export const GitLabSyncFields = () => {
                 </Tooltip>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isProjectsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={projectOptions.find((project) => project.id === value) ?? null}
-                  onChange={(option) => {
-                    const selected = option as SingleValue<TGitLabProject>;
+                  onValueChange={(option) => {
+                    const selected = option as TGitLabProject;
                     onChange(selected?.id ?? "");
                     setValue("destinationConfig.projectName", selected?.name ?? "", {
                       shouldDirty: true
                     });
                   }}
-                  onInputChange={(newValue) => setProjectSearch(newValue)}
-                  filterOption={null}
+                  onInputValueChange={(newValue) => setProjectSearch(newValue)}
+                  shouldFilter={false}
                   options={projectOptions}
                   placeholder="Search for a project..."
                   getOptionLabel={(option) => {
                     const shortName = option.name.split("/").pop() || option.name;
                     return `${shortName} · ${option.name}`;
                   }}
-                  formatOptionLabel={formatGitLabProjectOptionLabel}
+                  renderOption={formatGitLabProjectOptionLabel}
+                  renderValue={formatGitLabProjectOptionLabel}
                   getOptionValue={(option) => option.id}
-                  noOptionsMessage={({ inputValue }) =>
+                  emptyMessage={(inputValue) =>
                     inputValue ? "No projects found matching your search." : "No projects found."
                   }
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

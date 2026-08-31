@@ -385,6 +385,49 @@ export const InDialog: Story = {
   render: () => <InDialogRender />
 };
 
+const ExternalFilteringRender = () => {
+  const [search, setSearch] = useState("");
+  const [value, setValue] = useState<(typeof PROJECTS)[number] | null>(null);
+  const options = PROJECTS.filter((project) =>
+    project.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+  );
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-external-filtering">Project</FieldLabel>
+      <StoryCombobox
+        id="combobox-external-filtering"
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        onInputValueChange={setSearch}
+        shouldFilter={false}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select project..."
+        searchPlaceholder="Search projects..."
+        searchAriaLabel="Search projects"
+        emptyMessage={(inputValue) =>
+          inputValue ? "No projects match your search." : "No projects found."
+        }
+      />
+    </Field>
+  );
+};
+
+export const ExternalFiltering: Story = {
+  name: "Example: External Filtering",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `shouldFilter={false}` and handle `onInputValueChange` when options are filtered outside the component, such as server-side search. The selected value remains stable when it is absent from the latest result page."
+      }
+    }
+  },
+  render: () => <ExternalFilteringRender />
+};
+
 export const States: Story = {
   render: () => (
     <div className="flex flex-col gap-5">

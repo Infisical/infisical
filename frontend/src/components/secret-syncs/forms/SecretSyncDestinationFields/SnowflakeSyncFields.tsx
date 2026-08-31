@@ -1,22 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  TSnowflakeDatabase,
-  TSnowflakeSchema,
   useSnowflakeConnectionListDatabases,
   useSnowflakeConnectionListSchemas
 } from "@app/hooks/api/appConnections/snowflake";
@@ -71,18 +68,19 @@ export const SnowflakeSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isDatabasesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={databases.find((db) => db.name === value) ?? null}
-                onChange={(option) => {
+                onValueChange={(option) => {
                   setValue("destinationConfig.schema", "");
-                  onChange((option as SingleValue<TSnowflakeDatabase>)?.name ?? "");
+                  onChange(option.name ?? "");
                 }}
                 options={databases}
                 placeholder="Select a database..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -108,17 +106,16 @@ export const SnowflakeSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
                 isDisabled={!connectionId || !database}
                 value={schemas.find((schema) => schema.name === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TSnowflakeSchema>)?.name ?? "")
-                }
+                onValueChange={(option) => onChange(option.name ?? "")}
                 options={schemas}
                 placeholder="Select a schema..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

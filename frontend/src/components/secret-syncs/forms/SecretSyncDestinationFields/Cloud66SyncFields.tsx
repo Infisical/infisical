@@ -1,5 +1,4 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -7,14 +6,13 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import { TCloud66Stack } from "@app/hooks/api/appConnections/cloud-66";
 import { useCloud66ConnectionListStacks } from "@app/hooks/api/appConnections/cloud-66/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -50,12 +48,12 @@ export const Cloud66SyncFields = () => {
           <Field>
             <FieldLabel>Stack</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isStacksLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={stacks?.find((stack) => stack.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedStack = option as SingleValue<TCloud66Stack>;
+                onValueChange={(option) => {
+                  const selectedStack = option;
                   onChange(selectedStack?.id ?? "");
                   setValue("destinationConfig.stackName", selectedStack?.name ?? "");
                 }}
@@ -63,6 +61,7 @@ export const Cloud66SyncFields = () => {
                 placeholder="Select a stack..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

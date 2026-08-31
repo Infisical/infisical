@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -20,12 +19,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HUMANITEC_SYNC_SCOPES } from "@app/helpers/secretSyncs";
-import {
-  THumanitecConnectionApp,
-  THumanitecConnectionEnvironment,
-  THumanitecConnectionOrganization,
-  useHumanitecConnectionListOrganizations
-} from "@app/hooks/api/appConnections/humanitec";
+import { useHumanitecConnectionListOrganizations } from "@app/hooks/api/appConnections/humanitec";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
@@ -66,12 +60,12 @@ export const HumanitecSyncFields = () => {
           <Field>
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={organizations ? (organizations.find((org) => org.id === value) ?? []) : []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null);
+                value={organizations?.find((org) => org.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.app", "");
                   setValue("destinationConfig.env", "");
                 }}
@@ -79,6 +73,7 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -103,7 +98,7 @@ export const HumanitecSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                 isDisabled={!connectionId || !currentOrg}
                 value={
@@ -111,8 +106,8 @@ export const HumanitecSyncFields = () => {
                     .find((org) => org.id === currentOrg)
                     ?.apps?.find((app) => app.id === value) ?? null
                 }
-                onChange={(option) => {
-                  onChange((option as SingleValue<THumanitecConnectionApp>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.env", "");
                 }}
                 options={
@@ -121,6 +116,7 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -191,7 +187,7 @@ export const HumanitecSyncFields = () => {
             <Field>
               <FieldLabel>Environment</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={
                     isOrganizationsPending &&
                     Boolean(connectionId) &&
@@ -200,13 +196,12 @@ export const HumanitecSyncFields = () => {
                   }
                   isDisabled={!connectionId || !currentApp}
                   value={environments.find((env) => env.id === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<THumanitecConnectionEnvironment>)?.id ?? null)
-                  }
+                  onValueChange={(option) => onChange(option.id ?? null)}
                   options={environments}
                   placeholder="Select an env..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

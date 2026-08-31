@@ -3,12 +3,12 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   SecretPathInput
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
@@ -63,14 +63,15 @@ const DefaultSecretSyncSourceFields = () => {
           <Field>
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 value={value}
-                onChange={onChange}
+                onValueChange={onChange}
                 options={currentProject.environments}
                 placeholder="Select environment..."
                 getOptionLabel={(option) => option?.name}
                 getOptionValue={(option) => option?.id}
                 isError={Boolean(error)}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

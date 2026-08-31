@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { CircleHelp, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -9,12 +8,12 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Label,
@@ -23,10 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TAwsConnectionKmsKey,
-  useListAwsConnectionKmsKeys
-} from "@app/hooks/api/appConnections/aws";
+import { useListAwsConnectionKmsKeys } from "@app/hooks/api/appConnections/aws";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
@@ -181,16 +177,14 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     isLoading={isKmsKeysPending && Boolean(connectionId && region)}
                     isDisabled={!connectionId}
                     value={kmsKeys.find((org) => org.alias === value) ?? null}
-                    onChange={(option) =>
-                      onChange((option as SingleValue<TAwsConnectionKmsKey>)?.alias ?? null)
-                    }
+                    onValueChange={(option) => onChange(option.alias ?? null)}
                     isError={Boolean(error)}
                     // eslint-disable-next-line react/no-unstable-nested-components
-                    noOptionsMessage={({ inputValue }) =>
+                    emptyMessage={(inputValue) =>
                       inputValue ? undefined : (
                         <p>
                           To configure a KMS key, ensure the following permissions are present on
@@ -222,6 +216,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                         : option.alias
                     }
                     getOptionValue={(option) => option.alias}
+                    modal
                   />
                 </FieldContent>
                 <FieldError errors={[error]} />

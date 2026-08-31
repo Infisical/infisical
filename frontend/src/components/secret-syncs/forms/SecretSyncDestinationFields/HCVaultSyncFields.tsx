@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
@@ -46,7 +45,7 @@ export const HCVaultSyncFields = () => {
       <Controller
         name="destinationConfig.mount"
         control={control}
-        render={({ field: { onChange }, fieldState: { error } }) => (
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
             <FieldLabel>
               Secrets Engine Mount
@@ -63,14 +62,16 @@ export const HCVaultSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isMountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                onChange={(option) =>
-                  onChange((option as SingleValue<{ value: string }>)?.value ?? null)
-                }
-                options={mounts?.map((v) => ({ label: v, value: v }))}
+                value={value ? { label: value, value } : null}
+                onValueChange={(option) => onChange(option.value)}
+                options={mounts?.map((mount) => ({ label: mount, value: mount })) ?? []}
                 placeholder="Select a Secrets Engine Mount..."
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.value}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

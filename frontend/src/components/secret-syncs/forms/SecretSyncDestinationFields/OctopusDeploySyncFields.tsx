@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -28,11 +27,6 @@ import {
   useOctopusDeployConnectionListProjects,
   useOctopusDeployConnectionListSpaces
 } from "@app/hooks/api/appConnections/octopus-deploy/queries";
-import {
-  TOctopusDeployProject,
-  TOctopusDeploySpace,
-  TScopeValueOption
-} from "@app/hooks/api/appConnections/octopus-deploy/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 
@@ -110,12 +104,12 @@ export const OctopusDeploySyncFields = () => {
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
                       isLoading={isSpacesLoading && Boolean(connectionId)}
                       isDisabled={!connectionId}
                       value={spaces?.find((space) => space.id === value) ?? null}
-                      onChange={(option) => {
-                        const selectedSpace = option as SingleValue<TOctopusDeploySpace>;
+                      onValueChange={(option) => {
+                        const selectedSpace = option;
                         onChange(selectedSpace?.id ?? null);
                         setValue("destinationConfig.spaceName", selectedSpace?.name ?? "");
                         setValue("destinationConfig.projectId", "");
@@ -126,6 +120,7 @@ export const OctopusDeploySyncFields = () => {
                       placeholder={spaces?.length ? "Select a space..." : "No spaces found..."}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      modal
                     />
                     <FieldError errors={[error]} />
                   </FieldContent>
@@ -185,12 +180,12 @@ export const OctopusDeploySyncFields = () => {
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
+                      <Combobox
                         isLoading={isProjectsLoading && Boolean(connectionId && spaceId)}
                         isDisabled={Boolean(!connectionId || !spaceId)}
                         value={projects?.find((project) => project.id === value) ?? null}
-                        onChange={(option) => {
-                          const selectedProject = option as SingleValue<TOctopusDeployProject>;
+                        onValueChange={(option) => {
+                          const selectedProject = option;
                           onChange(selectedProject?.id ?? null);
                           setValue("destinationConfig.projectName", selectedProject?.name ?? "");
                           setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
@@ -203,6 +198,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -224,18 +220,16 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Environments</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.environments?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.environments || []}
@@ -246,6 +240,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -261,17 +256,15 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Target Tags</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.roles?.filter((opt) => (value || []).includes(opt.id)) ||
                           []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.roles || []}
@@ -282,6 +275,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -297,18 +291,16 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Targets</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.machines?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.machines || []}
@@ -319,6 +311,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -334,18 +327,16 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Processes</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.processes?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.processes || []}
@@ -356,6 +347,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -371,18 +363,16 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Deployment Steps</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.actions?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.actions || []}
@@ -393,6 +383,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -408,18 +399,16 @@ export const OctopusDeploySyncFields = () => {
                   <Field>
                     <FieldLabel>Channels</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.channels?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.channels || []}
@@ -430,6 +419,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        modal
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>

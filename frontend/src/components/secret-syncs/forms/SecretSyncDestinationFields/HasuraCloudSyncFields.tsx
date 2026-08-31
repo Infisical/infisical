@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  THasuraCloudProject,
-  useHasuraCloudConnectionListProjects
-} from "@app/hooks/api/appConnections/hasura-cloud";
+import { useHasuraCloudConnectionListProjects } from "@app/hooks/api/appConnections/hasura-cloud";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -45,12 +41,12 @@ export const HasuraCloudSyncFields = () => {
           <Field>
             <FieldLabel>Select a project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<THasuraCloudProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.projectName", v?.name ?? "");
                 }}
@@ -58,6 +54,7 @@ export const HasuraCloudSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

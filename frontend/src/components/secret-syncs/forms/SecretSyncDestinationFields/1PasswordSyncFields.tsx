@@ -1,24 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TOnePassVault,
-  useOnePassConnectionListVaults
-} from "@app/hooks/api/appConnections/1password";
+import { useOnePassConnectionListVaults } from "@app/hooks/api/appConnections/1password";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -63,15 +59,16 @@ export const OnePassSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={vaults?.find((v) => v.id === value) || null}
-                onChange={(option) => onChange((option as SingleValue<TOnePassVault>)?.id ?? null)}
+                onValueChange={(option) => onChange(option.id ?? null)}
                 options={vaults}
                 placeholder="Select a vault..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

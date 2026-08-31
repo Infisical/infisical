@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TLaravelForgeOrganization,
-  TLaravelForgeServer,
-  TLaravelForgeSite,
   useLaravelForgeConnectionListOrganizations,
   useLaravelForgeConnectionListServers,
   useLaravelForgeConnectionListSites
@@ -73,12 +69,12 @@ export const LaravelForgeSyncFields = () => {
           <Field>
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.slug === value) ?? null}
-                onChange={(option) => {
-                  const selectedOrg = option as SingleValue<TLaravelForgeOrganization>;
+                onValueChange={(option) => {
+                  const selectedOrg = option;
                   onChange(selectedOrg?.slug ?? "");
                   setValue("destinationConfig.orgName", selectedOrg?.name ?? "");
                   setValue("destinationConfig.serverId", "");
@@ -88,6 +84,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -102,12 +99,12 @@ export const LaravelForgeSyncFields = () => {
           <Field>
             <FieldLabel>Server</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isServersLoading && Boolean(connectionId && orgSlug)}
                 isDisabled={!connectionId || !orgSlug}
                 value={servers?.find((server) => server.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedServer = option as SingleValue<TLaravelForgeServer>;
+                onValueChange={(option) => {
+                  const selectedServer = option;
                   onChange(selectedServer?.id ?? "");
                   setValue("destinationConfig.serverName", selectedServer?.name ?? "");
                   setValue("destinationConfig.siteId", "");
@@ -116,6 +113,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a server..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -130,12 +128,12 @@ export const LaravelForgeSyncFields = () => {
           <Field>
             <FieldLabel>Site</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isSitesLoading && Boolean(connectionId && orgSlug && serverId)}
                 isDisabled={!connectionId || !orgSlug || !serverId}
                 value={sites?.find((site) => site.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedSite = option as SingleValue<TLaravelForgeSite>;
+                onValueChange={(option) => {
+                  const selectedSite = option;
                   onChange(selectedSite?.id ?? "");
                   setValue("destinationConfig.siteName", selectedSite?.name ?? "");
                 }}
@@ -143,6 +141,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

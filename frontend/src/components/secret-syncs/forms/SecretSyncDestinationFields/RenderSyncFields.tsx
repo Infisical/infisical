@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -21,8 +20,6 @@ import {
 } from "@app/components/v3";
 import { RENDER_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
-  TRenderEnvironmentGroup,
-  TRenderService,
   useRenderConnectionListEnvironmentGroups,
   useRenderConnectionListServices
 } from "@app/hooks/api/appConnections/render";
@@ -119,21 +116,19 @@ export const RenderSyncFields = () => {
             <Field>
               <FieldLabel>Service</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isServicesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={services ? (services.find((service) => service.id === value) ?? []) : []}
-                  onChange={(option) => {
-                    onChange((option as SingleValue<TRenderService>)?.id ?? null);
-                    setValue(
-                      "destinationConfig.serviceName",
-                      (option as SingleValue<TRenderService>)?.name ?? ""
-                    );
+                  value={services?.find((service) => service.id === value) ?? null}
+                  onValueChange={(option) => {
+                    onChange(option.id ?? null);
+                    setValue("destinationConfig.serviceName", option.name ?? "");
                   }}
                   options={services}
                   placeholder="Select a service..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -150,21 +145,19 @@ export const RenderSyncFields = () => {
             <Field>
               <FieldLabel>Environment Group</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={groups ? (groups.find((g) => g.id === value) ?? []) : []}
-                  onChange={(option) => {
-                    onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
-                    setValue(
-                      "destinationConfig.environmentGroupName",
-                      (option as SingleValue<TRenderEnvironmentGroup>)?.name ?? ""
-                    );
+                  value={groups?.find((group) => group.id === value) ?? null}
+                  onValueChange={(option) => {
+                    onChange(option.id ?? null);
+                    setValue("destinationConfig.environmentGroupName", option.name ?? "");
                   }}
                   options={groups}
                   placeholder="Select an environment group..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

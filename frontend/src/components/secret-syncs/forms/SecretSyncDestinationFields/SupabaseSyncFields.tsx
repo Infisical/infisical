@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  TSupabaseProject,
-  useSupabaseConnectionListProjects
-} from "@app/hooks/api/appConnections/supabase";
+import { useSupabaseConnectionListProjects } from "@app/hooks/api/appConnections/supabase";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -47,12 +43,12 @@ export const SupabaseSyncFields = () => {
           <Field>
             <FieldLabel>Select a project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TSupabaseProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.projectName", v?.name ?? "");
                 }}
@@ -60,6 +56,7 @@ export const SupabaseSyncFields = () => {
                 placeholder="Select project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

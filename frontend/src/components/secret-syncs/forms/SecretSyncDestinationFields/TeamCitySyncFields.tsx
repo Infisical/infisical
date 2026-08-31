@@ -1,24 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TTeamCityProjectWithBuildTypes,
-  useTeamCityConnectionListProjects
-} from "@app/hooks/api/appConnections/teamcity";
+import { useTeamCityConnectionListProjects } from "@app/hooks/api/appConnections/teamcity";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -68,18 +64,19 @@ export const TeamCitySyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((proj) => proj.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TTeamCityProjectWithBuildTypes>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.buildConfig", "");
                 }}
                 options={projects}
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -105,19 +102,20 @@ export const TeamCitySyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedProject}
                 value={buildTypes.find((buildType) => buildType.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedOption = option as SingleValue<{ id: string; name: string }>;
+                onValueChange={(option) => {
+                  const selectedOption = option;
                   onChange(selectedOption?.id ?? "");
                 }}
+                onClear={() => onChange("")}
                 options={buildTypes}
-                isClearable
                 placeholder="Select a build configuration..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldDescription>
                 Not selecting a Build Configuration will sync your secrets to the entire project.

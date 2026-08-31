@@ -1,17 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useOnaConnectionListProjects } from "@app/hooks/api/appConnections/ona";
-import { TOnaProject } from "@app/hooks/api/appConnections/ona/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -44,12 +42,12 @@ export const OnaSyncFields = () => {
           <Field>
             <FieldLabel>Ona Project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TOnaProject>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.projectName", selected?.name ?? "");
                 }}
@@ -57,6 +55,7 @@ export const OnaSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

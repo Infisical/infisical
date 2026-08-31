@@ -4,12 +4,12 @@ import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -74,27 +74,31 @@ export const AzureEntraIdScimSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 value={options.find((sp) => sp.id === value) ?? null}
-                onChange={(option) => {
+                onValueChange={(option) => {
                   const selected = option as TAzureScimServicePrincipal | null;
                   setSelectedSp(selected);
                   onChange(selected?.id ?? "");
                 }}
-                onInputChange={(newValue) => setSearchInput(newValue)}
-                filterOption={null}
+                onClear={() => {
+                  setSelectedSp(null);
+                  onChange("");
+                }}
+                onInputValueChange={(newValue) => setSearchInput(newValue)}
+                shouldFilter={false}
                 isLoading={isLoadingServicePrincipals}
                 options={options}
                 placeholder="Search for a SCIM service principal..."
                 getOptionLabel={(option) => option.displayName}
                 getOptionValue={(option) => option.id}
-                isClearable
                 isDisabled={!connectionId}
-                noOptionsMessage={() =>
+                emptyMessage={() =>
                   debouncedSearch
                     ? "No matching service principals found"
                     : "Type to search for service principals"
                 }
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

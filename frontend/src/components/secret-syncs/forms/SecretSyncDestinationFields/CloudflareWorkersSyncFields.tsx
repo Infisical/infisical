@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  TCloudflareWorkersScript,
-  useCloudflareConnectionListWorkersScripts
-} from "@app/hooks/api/appConnections/cloudflare";
+import { useCloudflareConnectionListWorkersScripts } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -44,17 +40,18 @@ export const CloudflareWorkersSyncFields = () => {
           <Field>
             <FieldLabel>Worker Script</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isScriptsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={scripts?.find((script) => script.id === value) || []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TCloudflareWorkersScript>)?.id ?? null);
+                value={scripts?.find((script) => script.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                 }}
                 options={scripts}
                 placeholder="Select a worker script..."
                 getOptionLabel={(option) => option.id}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

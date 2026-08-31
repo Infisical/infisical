@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -80,12 +79,12 @@ export const OCIVaultSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isCompartmentsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={compartments?.find((c) => c.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<{ id: string }>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.vaultOcid", "");
                   setValue("destinationConfig.keyOcid", "");
                 }}
@@ -93,6 +92,7 @@ export const OCIVaultSyncFields = () => {
                 placeholder="Select a compartment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -118,18 +118,19 @@ export const OCIVaultSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedCompartment}
                 value={vaults?.find((v) => v.id === value) || null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<{ id: string }>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.keyOcid", "");
                 }}
                 options={vaults}
                 placeholder="Select a vault..."
                 getOptionLabel={(option) => option.displayName}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -155,17 +156,18 @@ export const OCIVaultSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isKeysLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedCompartment || !selectedVault}
                 value={keys?.find((v) => v.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<{ id: string }>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                 }}
                 options={keys}
                 placeholder="Select a key..."
                 getOptionLabel={(option) => option.displayName}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

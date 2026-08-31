@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -20,7 +19,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  TZabbixHost,
   useZabbixConnectionListHosts,
   ZABBIX_SYNC_SCOPES,
   ZabbixMacroType,
@@ -118,12 +116,12 @@ export const ZabbixSyncFields = () => {
             <Field>
               <FieldLabel>Host</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   isLoading={isHostsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={hosts.find((host) => host.hostId === value) ?? null}
-                  onChange={(option) => {
-                    const selectedOption = option as SingleValue<TZabbixHost>;
+                  onValueChange={(option) => {
+                    const selectedOption = option;
                     onChange(selectedOption?.hostId ?? null);
 
                     if (selectedOption) {
@@ -136,6 +134,7 @@ export const ZabbixSyncFields = () => {
                   placeholder="Select a host..."
                   getOptionLabel={(option) => option.host}
                   getOptionValue={(option) => option.hostId}
+                  modal
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

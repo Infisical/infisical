@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   SecretPathInput,
   Tooltip,
   TooltipContent,
@@ -18,7 +17,6 @@ import {
 } from "@app/components/v3";
 import {
   TRemoteInfisicalEnvironmentFolderTree,
-  TRemoteInfisicalProject,
   useExternalInfisicalConnectionGetEnvironmentFolderTree,
   useExternalInfisicalConnectionListProjects
 } from "@app/hooks/api/appConnections/external-infisical";
@@ -100,12 +98,12 @@ export const ExternalInfisicalSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TRemoteInfisicalProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? "");
                   setValue("destinationConfig.environment", "");
                   setValue("destinationConfig.secretPath", "/");
@@ -114,6 +112,7 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -135,12 +134,12 @@ export const ExternalInfisicalSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !projectId}
                 value={environments.find((e) => e.slug === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<{ id: string; name: string; slug: string }>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.slug ?? "");
                   setValue("destinationConfig.secretPath", "/");
                 }}
@@ -148,6 +147,7 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.slug}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

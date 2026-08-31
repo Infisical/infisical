@@ -1,20 +1,18 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { THerokuApp } from "@app/hooks/api/appConnections/heroku";
 import { useHerokuConnectionListApps } from "@app/hooks/api/appConnections/heroku/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -57,21 +55,19 @@ export const HerokuSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps?.find((app) => app.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<THerokuApp>)?.id ?? "");
-                  setValue(
-                    "destinationConfig.appName",
-                    (option as SingleValue<THerokuApp>)?.name ?? ""
-                  );
+                onValueChange={(option) => {
+                  onChange(option.id ?? "");
+                  setValue("destinationConfig.appName", option.name ?? "");
                 }}
                 options={apps}
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

@@ -1,21 +1,16 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  TCircleCIOrganization,
-  TCircleCIProject,
-  useCircleCIConnectionListOrganizations
-} from "@app/hooks/api/appConnections/circleci";
+import { useCircleCIConnectionListOrganizations } from "@app/hooks/api/appConnections/circleci";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -57,12 +52,12 @@ export const CircleCISyncFields = () => {
           <Field>
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations.find((org) => org.name === value) ?? null}
-                onChange={(option) => {
-                  const selectedOrg = option as SingleValue<TCircleCIOrganization>;
+                onValueChange={(option) => {
+                  const selectedOrg = option;
                   onChange(selectedOrg?.name ?? "");
                   setValue("destinationConfig.projectId", "");
                   setValue("destinationConfig.projectName", "");
@@ -71,6 +66,7 @@ export const CircleCISyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -85,15 +81,15 @@ export const CircleCISyncFields = () => {
           <Field>
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                noOptionsMessage={() =>
+              <Combobox
+                emptyMessage={() =>
                   "No projects found. Please create a project in your selected organization."
                 }
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!selectedOrgName}
                 value={projects.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedProject = option as SingleValue<TCircleCIProject>;
+                onValueChange={(option) => {
+                  const selectedProject = option;
                   onChange(selectedProject?.id ?? "");
                   setValue("destinationConfig.projectName", selectedProject?.name ?? "");
                 }}
@@ -101,6 +97,7 @@ export const CircleCISyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
