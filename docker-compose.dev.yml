@@ -2,11 +2,11 @@ version: "3.9"
 
 services:
   nginx:
-    container_name: infisical-dev-nginx
+    container_name: ${STACK_NAME:-infisical-dev}-nginx
     image: nginx
     restart: "always"
     ports:
-      - 8080:80
+      - ${STACK_NGINX_PORT:-8080}:80
     volumes:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -16,7 +16,7 @@ services:
   db:
     image: postgres:14-alpine
     ports:
-      - "5432:5432"
+      - "${STACK_DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
@@ -26,11 +26,11 @@ services:
 
   redis:
     image: redis
-    container_name: infisical-dev-redis
+    container_name: ${STACK_NAME:-infisical-dev}-redis
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
-      - 6379:6379
+      - ${STACK_REDIS_PORT:-6379}:6379
     volumes:
       - redis_data:/data
 
@@ -56,7 +56,7 @@ services:
     profiles: [clickhouse]
 
   redis-commander:
-    container_name: infisical-dev-redis-commander
+    container_name: ${STACK_NAME:-infisical-dev}-redis-commander
     image: ghcr.io/joeferner/redis-commander:0.9.0
     restart: always
     depends_on:
@@ -64,7 +64,7 @@ services:
     environment:
       - REDIS_HOSTS=local:redis:6379
     ports:
-      - "8085:8081"
+      - "${STACK_REDIS_COMMANDER_PORT:-8085}:8081"
 
   bull-board:
     container_name: infisical-dev-bull-board
@@ -93,7 +93,7 @@ services:
     command: postgres -c max_locks_per_transaction=512
 
   backend:
-    container_name: infisical-dev-api
+    container_name: ${STACK_NAME:-infisical-dev}-api
     build:
       context: ./backend
       dockerfile: Dockerfile.dev.fips
@@ -107,9 +107,9 @@ services:
     env_file:
       - .env
     ports:
-      - 4000:4000
-      - 9464:9464 # for OTEL collection of Prometheus metrics
-      - 9229:9229 # For debugger access
+      - ${STACK_API_PORT:-4000}:4000
+      - ${STACK_METRICS_PORT:-9464}:9464 # for OTEL collection of Prometheus metrics
+      - ${STACK_DEBUG_PORT:-9229}:9229 # For debugger access
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
@@ -167,7 +167,7 @@ services:
     profiles: [metrics]
 
   frontend:
-    container_name: infisical-dev-frontend
+    container_name: ${STACK_NAME:-infisical-dev}-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -216,19 +216,19 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: pass
     ports:
-      - 5050:80
+      - ${STACK_PGADMIN_PORT:-5050}:80
     depends_on:
       - db
 
   smtp-server:
-    container_name: infisical-dev-smtp-server
+    container_name: ${STACK_NAME:-infisical-dev}-smtp-server
     image: jcalonso/mailhog:v1.0.1 # multi-arch fork; upstream mailhog/mailhog is amd64-only
     restart: always
     logging:
       driver: "none" # disable saving logs
     ports:
-      - 1025:1025 # SMTP server
-      - 8025:8025 # Web UI
+      - ${STACK_SMTP_PORT:-1025}:1025 # SMTP server
+      - ${STACK_MAIL_PORT:-8025}:8025 # Web UI
 
   openldap:
     # note: more advanced configuration is available

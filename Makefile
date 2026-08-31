@@ -123,3 +123,16 @@ ifndef TAG
 endif
 	cd upgrade-impact && \
 	npm run generate:dry-run -- --tag $(TAG)
+
+# Host dependencies. The Docker stack installs its own inside the containers,
+# but lint and type checks run against these.
+install:
+	cd backend && npm install
+	cd frontend && npm install
+
+# Run this checkout as its own stack, so several branches can be up at once.
+# See docs/contributing/platform/developing.mdx.
+stack-init stack-up stack-down stack-rm stack-db:
+	@./scripts/stack.sh $(subst stack-,,$@)
+
+.PHONY: install stack-init stack-up stack-down stack-rm stack-db
