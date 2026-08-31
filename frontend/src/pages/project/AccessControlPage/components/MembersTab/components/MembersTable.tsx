@@ -55,6 +55,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
+  useProjectPermission,
   useUser
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -91,6 +92,11 @@ type Filter = {
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
   const { user } = useUser();
+  const { permission } = useProjectPermission();
+  const canReadProjectRoles = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Role
+  );
   const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>({
     roles: []
@@ -106,7 +112,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     isPending: isProjectRolesLoading,
     isError: isProjectRolesError,
     refetch: refetchProjectRoles
-  } = useGetProjectRoles(projectId, currentProject?.type);
+  } = useGetProjectRoles(projectId, currentProject?.type, canReadProjectRoles);
 
   const {
     search,
@@ -220,35 +226,37 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             placeholder={isCertManager ? "Search users..." : "Search project users..."}
           />
         </InputGroup>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant={isTableFiltered ? "project" : "outline"}
-              aria-label={isProjectRolesLoading ? "Loading role filters" : "Filter users by role"}
-              isDisabled={isProjectRolesLoading || isProjectRolesError}
-            >
-              <FilterIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
-            </DropdownMenuLabel>
-            {projectRoles?.map(({ id, slug, name }) => (
-              <DropdownMenuCheckboxItem
-                key={id}
-                checked={filter.roles.includes(slug)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleRoleToggle(slug);
-                  setPage(1);
-                }}
+        {canReadProjectRoles && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant={isTableFiltered ? "project" : "outline"}
+                aria-label={isProjectRolesLoading ? "Loading role filters" : "Filter users by role"}
+                isDisabled={isProjectRolesLoading || isProjectRolesError}
               >
-                {name}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <FilterIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>
+                {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+              </DropdownMenuLabel>
+              {projectRoles?.map(({ id, slug, name }) => (
+                <DropdownMenuCheckboxItem
+                  key={id}
+                  checked={filter.roles.includes(slug)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleRoleToggle(slug);
+                    setPage(1);
+                  }}
+                >
+                  {name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {isProjectRolesError && (
         <Alert variant="danger" className="mb-4">
