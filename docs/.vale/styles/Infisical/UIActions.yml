@@ -1,0 +1,17 @@
+extends: existence
+message: "Use 'select' instead of '%s'. It covers mouse, touch, and keyboard."
+level: warning
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#select-not-click-or-tap
+ignorecase: true
+vocab: false
+# `right-click` and `double-click` name device gestures that have no "select"
+# equivalent, so they keep their own verbs. The lookbehinds sit on the tokens
+# rather than in `exceptions:` because the Mintlify CI runner predates Vale
+# 3.15, where an exception that only contains the match is ignored.
+#
+# A `click` handler or `onClick` prop is hidden already: `IgnoredScopes` covers
+# inline code, and fenced blocks never reach a text scope.
+tokens:
+  - '(?<!right-)(?<!double-)click(?:s|ed|ing)?(?: on)?'
+  - 'tap(?:s|ped|ping)?'
+  - 'swipe(?:s|d|ing)?'

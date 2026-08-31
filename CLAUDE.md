@@ -78,9 +78,13 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 
 ### Documentation
 
-When writing or editing documentation in `docs/`, follow the [Documentation Style Guide](docs/STYLE_GUIDE.md). It covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, and more.
+**Use the `docs-style` skill for any work under `docs/`** (`.claude/skills/docs-style/`). It carries the procedure for the [Documentation Style Guide](docs/STYLE_GUIDE.md): what belongs on a page, and the sentence-level review pass Vale cannot check.
 
-Run `make lint-docs` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. `make lint-docs-branch` runs the same rules over only the `.mdx` files the branch touched. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
+If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
+
+The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
+
+Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions` report at warning and suggestion level, so they never change the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
 
 ### Auth & Permissions
 
