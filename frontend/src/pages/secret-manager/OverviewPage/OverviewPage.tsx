@@ -309,6 +309,14 @@ const DEFAULT_FILTER_STATE = {
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 
+// Every overview row type is rendered into the same TableBody, so their React keys share one
+// namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
+// proxied service named "foo" and a secret named "ps-foo" both produce "overview-ps-foo". Encoding
+// the row type and the name as a JSON array instead is injective, because JSON.stringify escapes
+// the separators and quotes it emits, so two rows collide only when their type and name are equal.
+const overviewRowKey = (rowType: string, ...parts: (string | number)[]) =>
+  JSON.stringify([rowType, ...parts]);
+
 const OverviewPageContent = () => {
   const { t } = useTranslation();
 
@@ -438,20 +446,26 @@ const OverviewPageContent = () => {
     });
   }, []);
 
-  const [expandedSecretRows, setExpandedSecretRows] = useState<Record<string, boolean>>({});
-  const [visibleSecretRows, setVisibleSecretRows] = useState<Record<string, boolean>>({});
+  // These are keyed by secret key, which is arbitrary user input, so they must not be plain
+  // objects: a secret named "toString"/"constructor"/"__proto__" would otherwise read back a
+  // truthy value inherited from Object.prototype and render a row as expanded/revealed before
+  // the user asked for it. Set/Map have no such inherited entries.
+  const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(() => new Set());
+  // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
+  // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
+  const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
 
   const toggleSecretRowExpand = useCallback((key: string) => {
-    setExpandedSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
-  const toggleSecretRowVisible = useCallback((key: string) => {
-    setVisibleSecretRows((prev) => ({ ...prev, [key]: !prev[key] }));
+    setExpandedSecretRows((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   }, []);
 
   const resetSecretRowStates = useCallback(() => {
-    setExpandedSecretRows({});
-    setVisibleSecretRows({});
+    setExpandedSecretRows(new Set());
+    setVisibleSecretRows(new Map());
   }, []);
 
   useEffect(() => {
@@ -891,6 +905,53 @@ const OverviewPageContent = () => {
       return sec;
     },
     [secrets]
+  );
+
+  // A row aggregates one secret per environment, so there is no single secret id to key reveal
+  // state by. Fingerprint the ids behind a row instead, and honour a reveal only while that
+  // fingerprint still matches the one captured when the user clicked reveal, so deleting and
+  // recreating a secret under the same name falls back to hidden rather than silently showing a
+  // different secret's value. Comparing rather than pruning means a fingerprint that is only
+  // transiently absent re-matches once the data returns. Changing the visible environments also
+  // changes the fingerprint and re-hides the row, which is the cheap direction to fail in.
+  const secretRowIdentities = useMemo(() => {
+    const idsByKey = new Map<string, string[]>();
+    secrets?.forEach((secret) => {
+      const ids = idsByKey.get(secret.key);
+      const secretIds = secret.idOverride ? [secret.id, secret.idOverride] : [secret.id];
+      if (ids) ids.push(...secretIds);
+      else idsByKey.set(secret.key, secretIds);
+    });
+
+    const identities = new Map<string, string>();
+    idsByKey.forEach((ids, key) => identities.set(key, ids.sort().join(",")));
+    return identities;
+  }, [secrets]);
+
+  // Never returns undefined, so a key with no entry cannot compare equal to a missing reveal.
+  const getSecretRowIdentity = useCallback(
+    (key: string) => secretRowIdentities.get(key) ?? "",
+    [secretRowIdentities]
+  );
+
+  const isSecretRowVisible = useCallback(
+    (key: string) => visibleSecretRows.get(key) === getSecretRowIdentity(key),
+    [visibleSecretRows, getSecretRowIdentity]
+  );
+
+  const toggleSecretRowVisible = useCallback(
+    (key: string) => {
+      const identity = getSecretRowIdentity(key);
+      setVisibleSecretRows((prev) => {
+        const next = new Map(prev);
+        // Compare against the current identity rather than mere presence, so revealing a row whose
+        // stale entry is being ignored re-reveals it instead of clearing the stale entry.
+        if (next.get(key) === identity) next.delete(key);
+        else next.set(key, identity);
+        return next;
+      });
+    },
+    [getSecretRowIdentity]
   );
 
   const { data: tags } = useGetWsTags(
@@ -3479,7 +3540,7 @@ const OverviewPageContent = () => {
                           {isSingleEnvView &&
                             sortableImportItems.map((imp, idx) => (
                               <SecretImportTableRow
-                                key={`overview-import-${imp.id}`}
+                                key={overviewRowKey("import", imp.id)}
                                 index={idx}
                                 secretImport={imp}
                                 importEnvSlug={imp.importEnv.slug}
@@ -3502,7 +3563,7 @@ const OverviewPageContent = () => {
                             secretImportNames.map(
                               ({ importEnvSlug, importEnvName, importPath }, index) => (
                                 <SecretImportTableRow
-                                  key={`overview-import-${importEnvSlug}:${importPath}`}
+                                  key={overviewRowKey("import", importEnvSlug, importPath)}
                                   index={index}
                                   importEnvSlug={importEnvSlug}
                                   importEnvName={importEnvName}
@@ -3539,7 +3600,7 @@ const OverviewPageContent = () => {
                                     toggleSelectedEntry(EntryType.FOLDER, folderName);
                                 }}
                                 environments={visibleEnvs}
-                                key={`overview-${folderName}-${index + 1}`}
+                                key={overviewRowKey("folder", folderName, index)}
                                 onClick={handleFolderClick}
                                 onToggleFolderEdit={(name: string) =>
                                   handlePopUpOpen("updateFolder", { name, description })
@@ -3567,7 +3628,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               tableWidth={tableWidth}
                               secretPath={secretPath}
-                              key={`overview-${dynamicSecretName}`}
+                              key={overviewRowKey("dynamic-secret", dynamicSecretName)}
                               onEdit={(dynamicSecret) =>
                                 handlePopUpOpen("editDynamicSecret", dynamicSecret)
                               }
@@ -3595,7 +3656,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               getSecretRotationByName={getSecretRotationByName}
                               getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                              key={`overview-${secretRotationName}`}
+                              key={overviewRowKey("secret-rotation", secretRotationName)}
                               tableWidth={tableWidth}
                               isSelected={Boolean(
                                 selectedEntries.secretRotation[secretRotationName]
@@ -3641,7 +3702,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
-                              key={`overview-ht-${honeyTokenName}`}
+                              key={overviewRowKey("honey-token", honeyTokenName)}
                               isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
                               onToggleHoneyTokenSelect={() =>
                                 toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
@@ -3660,7 +3721,7 @@ const OverviewPageContent = () => {
                           ))}
                           {proxiedServiceNames.map((proxiedServiceName) => (
                             <ProxiedServiceTableRow
-                              key={`overview-ps-${proxiedServiceName}`}
+                              key={overviewRowKey("proxied-service", proxiedServiceName)}
                               proxiedServiceName={proxiedServiceName}
                               environments={visibleEnvs}
                               isProxiedServiceInEnv={isProxiedServicePresentInEnv}
@@ -3681,7 +3742,7 @@ const OverviewPageContent = () => {
                             />
                           </tr>
                           {secretRowsRenderPlan.map(({ index, key, spacerBefore }) => (
-                            <Fragment key={`overview-${key}`}>
+                            <Fragment key={overviewRowKey("secret", key)}>
                               {spacerBefore > 0 && (
                                 <tr aria-hidden>
                                   <td
@@ -3698,9 +3759,9 @@ const OverviewPageContent = () => {
                                   if (!hasPendingBatchChanges)
                                     toggleSelectedEntry(EntryType.SECRET, key);
                                 }}
-                                isExpanded={Boolean(expandedSecretRows[key])}
+                                isExpanded={expandedSecretRows.has(key)}
                                 onToggleExpand={toggleSecretRowExpand}
-                                isSecretVisible={Boolean(visibleSecretRows[key])}
+                                isSecretVisible={isSecretRowVisible(key)}
                                 onToggleSecretVisible={toggleSecretRowVisible}
                                 secretPath={secretPath}
                                 getImportedSecretByKey={getImportedSecretByKey}
