@@ -14,4 +14,3 @@ vocab: false
 tokens:
   - '(?<!right-)(?<!double-)click(?:s|ed|ing)?(?: on)?'
   - 'tap(?:s|ped|ping)?'
-  - 'swipe(?:s|d|ing)?'
