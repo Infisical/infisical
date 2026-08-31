@@ -64,6 +64,10 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
 
           - **File Path**: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`). Required.
 
+          <Warning>
+            Every sync replaces the entire file with the secrets from Infisical. This means that if there any entries in the same path that came from outside Infisical, those entires will be lost on the next sync. Since neither setting a key schema or **Disable secret deletion** in [sync options](#Sync-Options) prevents this, we recommend pointing **File Path** at a file that only this sync writes to.
+          </Warning>
+
           ![.env File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-dot-env.png)
         </Tab>
         <Tab title="One Secret Per File">
@@ -72,7 +76,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
           - **Directory Path**: The directory under `/mnt/workspace/` where secret files are created (e.g., `secrets/`). Optional. Leave it empty to mount files directly in `/mnt/workspace/`.
 
           <Warning>
-            When secret deletion protection is disabled, any files in the target directory that don't correspond to a secret in Infisical are removed. If that directory holds files managed outside of Infisical, enable **Disable secret deletion** to keep them.
+            If **Disable secret deletion** is turned off in [Sync Options](#sync-options), every file in the target directory that doesn't correspond to a secret in Infisical is removed. Since deletion targets the directory itself rather than specific key names, setting a key schema won't prevent those files from being deleted. Because of this, we recommend leaving **Disable secret deletion** enabled and pointing **Directory Path** at a directory that only this sync writes to.
           </Warning>
 
           ![One Secret Per File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-secret-per-file.png)
@@ -85,7 +89,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
       Spacelift offers only **Overwrite Spacelift**. Spacelift doesn't expose the values of secrets once they're written, so Infisical can't import the secrets that already exist in a context.
 
       <Note>
-        If **Disable secret deletion** is turned off, the first run removes secrets that exist in Spacelift but not in Infisical. Leave deletion protection enabled or set a [key schema](/integrations/secret-syncs/overview#key-schemas) to protect them.
+        If **Disable secret deletion** is turned off in [Sync Options](#sync-options), the first run removes environment variables that exist in Spacelift but not in Infisical. Because of this, we recommend leaving deletion protection enabled or setting a [key schema](/integrations/secret-syncs/overview#key-schemas) to protect your other environment variables.
       </Note>
     </Step>
     <Step title="Sync Options" titleSize="h3">
@@ -119,7 +123,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
   </Steps>
 
   <Check>
-    Your Spacelift Sync is created. If auto-sync is enabled, it begins syncing your secrets to the selected context right away.
+    Your Spacelift Sync is created. If [auto-sync](#sync-options) is enabled, it begins syncing your secrets to the selected context right away.
   </Check>
 </View>
 <View title="API" icon="code">
@@ -127,7 +131,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
   ## Set up using the API
 
   You can create a Spacelift Sync by making an API request to the [Create Spacelift Sync](/api-reference/endpoints/secret-syncs/spacelift/create) API endpoint.
-  
+
   The `destinationConfig` block determines how secrets are stored in the context. Here are some sample requests for different configurations:
 
   ### Environment variables
@@ -161,7 +165,7 @@ Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift contex
 
   ### File mount (.env)
 
-  All secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>`. The `mountPath` field is required.
+  All secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>`. The `mountPath` field is required. Every sync replaces the entire file, so point `mountPath` at a file that only this sync writes to.
 
   ```bash Request
   curl --request POST \
