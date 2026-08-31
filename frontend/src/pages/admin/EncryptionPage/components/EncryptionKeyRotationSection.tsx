@@ -41,6 +41,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  IconButton,
   Label,
   Pagination,
   Table,
@@ -74,6 +75,7 @@ export const EncryptionKeyRotationSection = () => {
 
   const [generatedKey, setGeneratedKey] = useState<TCreatedEncryptionKeyRotation | null>(null);
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  const [acceptsKeyReplacement, setAcceptsKeyReplacement] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [overrideStraggler, setOverrideStraggler] = useState(false);
   const [page, setPage] = useState(1);
@@ -109,6 +111,7 @@ export const EncryptionKeyRotationSection = () => {
 
   const handleGenerate = async () => {
     const rotation = await createRotation({ replaceStaged: Boolean(rootKey.staged) });
+    setAcceptsKeyReplacement(false);
     setGeneratedKey(rotation);
   };
 
@@ -175,20 +178,19 @@ export const EncryptionKeyRotationSection = () => {
               <AlertTitle>Root encryption key rotation in progress</AlertTitle>
               <AlertDescription>
                 <p>
-                  The old key still opens this database, the rotation has not reduced exposure yet.
-                  Deactivating it is safe and causes no service interruption, as long as every
-                  instance has restarted onto the new key.
+                  The previous key is still active. Once all instances have been migrated to the new
+                  encryption key it is safe to remove this key.
                 </p>
                 <p className="mt-2">
-                  It is removed automatically on{" "}
-                  {new Date(rootKey.expiring.expiresAt).toLocaleString()}, or later if an instance
-                  starts with it again.{" "}
+                  This key will be automatically removed on{" "}
+                  {new Date(rootKey.expiring.expiresAt).toLocaleDateString()} at{" "}
+                  {new Date(rootKey.expiring.expiresAt).toLocaleTimeString()}.{" "}
                   <button
                     type="button"
                     className="cursor-pointer underline underline-offset-4 hover:text-foreground"
                     onClick={() => setIsDeactivateOpen(true)}
                   >
-                    Deactivate old key
+                    Deactivate now
                   </button>
                 </p>
               </AlertDescription>
@@ -226,17 +228,17 @@ export const EncryptionKeyRotationSection = () => {
                       <TableCell variant="action" className="pr-3">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
-                              className="min-w-25 justify-start text-foreground/70 hover:border-danger/25 hover:bg-danger/10 hover:text-danger"
-                              size="xs"
+                            <IconButton
+                              className="text-foreground/70 hover:bg-danger/10 hover:text-danger"
+                              size="sm"
                               variant="ghost"
+                              aria-label="Discard generated key"
                               isDisabled={!rootKey.staged.label}
                               isPending={isDiscarding}
                               onClick={handleDiscard}
                             >
                               <Trash2Icon />
-                              <span className="flex-1 text-center">Discard</span>
-                            </Button>
+                            </IconButton>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
                             Delete this generated key. It has never encrypted anything, so nothing
@@ -281,19 +283,20 @@ export const EncryptionKeyRotationSection = () => {
                         {rootKey.expiring?.label === entry.label && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                className="min-w-25 justify-start text-foreground/70 hover:border-warning/25 hover:bg-warning/10 hover:text-warning"
-                                size="xs"
+                              <IconButton
+                                className="text-foreground/70 hover:bg-warning/10 hover:text-warning"
+                                size="sm"
                                 variant="ghost"
+                                aria-label="Deactivate old key"
                                 onClick={() => setIsDeactivateOpen(true)}
                               >
                                 <ShieldOffIcon />
-                                <span className="flex-1 text-center">Deactivate</span>
-                              </Button>
+                              </IconButton>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                              Stop this key from opening the database. Backups taken before the
-                              rotation will still need it.
+                              Deactivate the old key, removing its access to the database. Backups
+                              taken before the rotation can still only be opened with it, so keep it
+                              archived.
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -426,10 +429,12 @@ export const EncryptionKeyRotationSection = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="flex flex-col gap-4">
-            <div>
-              <p className="mb-1.5 text-sm font-medium">Set this environment variable</p>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm">
-                <span className="flex-1 break-all">ENCRYPTION_KEY={generatedKey?.key}</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-accent">Set this environment variable</span>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
+                <p className="grow font-mono text-sm break-all text-foreground">
+                  ENCRYPTION_KEY={generatedKey?.key}
+                </p>
                 <CopyButton
                   value={`ENCRYPTION_KEY=${generatedKey?.key}`}
                   ariaLabel="Copy encryption key"
@@ -437,35 +442,50 @@ export const EncryptionKeyRotationSection = () => {
               </div>
             </div>
 
-            <div>
-              <p className="mb-1.5 text-sm font-medium">Label</p>
-              <div className="flex items-center gap-1">
-                <p className="font-mono text-xs text-foreground/70">{generatedKey?.label}</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-accent">Label</span>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
+                <p className="grow font-mono text-sm break-all text-foreground">
+                  {generatedKey?.label}
+                </p>
                 <CopyButton value={generatedKey?.label ?? ""} ariaLabel="Copy key label" />
               </div>
-              <p className="mt-1 text-xs text-foreground/60">
+              <p className="mt-1 text-xs text-accent">
                 Store this alongside the key. It is how you identify which key a database backup
                 needs.
               </p>
             </div>
 
             {generatedKey?.removesExpiringKey && (
-              <Alert variant="warning">
-                <AlertTriangleIcon />
-                <AlertTitle>This will remove your previous key</AlertTitle>
-                <AlertDescription>
-                  <p>
-                    The key from your last rotation has not been removed yet. Applying this new key
-                    removes it immediately, and any instance still running it will fail to restart.
-                  </p>
-                  {generatedKey.removesExpiringKey.lastResolvedAt && (
-                    <p className="mt-2">
-                      An instance started on it{" "}
-                      {new Date(generatedKey.removesExpiringKey.lastResolvedAt).toLocaleString()}.
-                    </p>
-                  )}
-                </AlertDescription>
-              </Alert>
+              <div className="flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 p-3">
+                <Checkbox
+                  id="ack-replaces-expiring-key"
+                  variant="warning"
+                  isChecked={acceptsKeyReplacement}
+                  onCheckedChange={(value) => setAcceptsKeyReplacement(value === true)}
+                />
+                <Label
+                  htmlFor="ack-replaces-expiring-key"
+                  className="text-xs font-normal text-label"
+                >
+                  <span>
+                    Applying this key removes{" "}
+                    {generatedKey.removesExpiringKey.label ? (
+                      <span className="font-mono text-foreground">
+                        {generatedKey.removesExpiringKey.label}
+                      </span>
+                    ) : (
+                      "the key still expiring from an earlier rotation"
+                    )}
+                    , already expiring from an earlier rotation. My active key is not removed, it
+                    becomes the new expiring key.
+                    {generatedKey.removesExpiringKey.lastResolvedAt &&
+                      ` An instance last started on the removed key ${new Date(
+                        generatedKey.removesExpiringKey.lastResolvedAt
+                      ).toLocaleString()} and would fail its next restart, if not updated.`}
+                  </span>
+                </Label>
+              </div>
             )}
 
             <Alert variant="info">
@@ -477,7 +497,12 @@ export const EncryptionKeyRotationSection = () => {
             </Alert>
           </DialogBody>
           <DialogFooter>
-            <Button onClick={() => setGeneratedKey(null)}>I have stored the key</Button>
+            <Button
+              isDisabled={Boolean(generatedKey?.removesExpiringKey) && !acceptsKeyReplacement}
+              onClick={() => setGeneratedKey(null)}
+            >
+              I have stored the key
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
