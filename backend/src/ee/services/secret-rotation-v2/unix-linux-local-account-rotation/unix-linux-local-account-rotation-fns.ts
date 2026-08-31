@@ -1,3 +1,6 @@
+import { StringDecoder } from "node:string_decoder";
+
+import RE2 from "re2";
 import { Client, ClientChannel } from "ssh2";
 
 import {
@@ -27,6 +30,59 @@ import {
 } from "./unix-linux-local-account-rotation-types";
 
 const SHELL_TIMEOUT = 15_000;
+const MAX_BUFFER_SIZE = 64 * 1024;
+const MAX_TRANSCRIPT_SIZE = 4 * 1024;
+
+const SUDO_PROMPT = new RE2("\\[sudo\\]", "i");
+const ANY_PASSWORD_PROMPT = new RE2("password", "i");
+const NEW_PASSWORD_PROMPT = new RE2("new\\s+password", "i");
+const CONFIRM_PASSWORD_PROMPT = new RE2("retype|re-?enter|again|new\\s+password", "i");
+const PASSWORD_CHANGE_SUCCEEDED = new RE2("\\b(?:success(?:fully)?|updated|changed)\\b", "i");
+const MANAGED_PASSWORD_CHANGE_FAILED = new RE2(
+  "\\bauthentication\\s+failure\\b|\\bsorry\\b|\\bunknown\\s+user\\b|\\buser\\s+not\\s+known\\b|\\bdoes\\s+not\\s+exist\\b|\\bunchanged\\b",
+  "i"
+);
+const SELF_PASSWORD_CHANGE_FAILED = new RE2("\\berror\\b|\\bfail(?:ed|ure|s)?\\b|\\bunchanged\\b", "i");
+const SU_LOGIN_FAILED = new RE2("\\bauthentication\\s+failure\\b|\\bincorrect\\s+password\\b|\\bsu:", "i");
+
+export type TInteractiveShellStream = {
+  on(event: "data", listener: (chunk: Buffer) => void): void;
+  on(event: "close", listener: () => void): void;
+  on(event: "error", listener: (err: Error) => void): void;
+  write(data: string): void;
+  end(): void;
+};
+
+const escapeForPattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const lineAt = (text: string, index: number) => {
+  const start = text.lastIndexOf("\n", index) + 1;
+  const end = text.indexOf("\n", index);
+  return (end === -1 ? text.slice(start) : text.slice(start, end)).trim();
+};
+
+// The transcript is interpolated into rotation errors, which are persisted and rendered in the UI,
+// so bounding and redaction live here: no individual error site can forget to apply them.
+const createTranscript = (secrets: (string | undefined)[]) => {
+  const knownSecrets = secrets.filter((secret): secret is string => Boolean(secret));
+  const redact = (value: string) =>
+    knownSecrets.reduce((redacted, secret) => redacted.replaceAll(secret, "***"), value);
+
+  let text = "";
+  let truncated = false;
+
+  return {
+    append: (chunk: string) => {
+      text += chunk;
+      if (text.length > MAX_TRANSCRIPT_SIZE) {
+        text = text.slice(-MAX_TRANSCRIPT_SIZE);
+        truncated = true;
+      }
+    },
+    redact,
+    read: () => (truncated ? `...${redact(text)}` : redact(text))
+  };
+};
 
 // Execute a command via SSH exec with a PTY (no login shell, no MOTD)
 // Returns a stream that can be used for interactive I/O
@@ -38,6 +94,163 @@ const execCommandWithPty = (client: Client, command: string): Promise<ClientChan
         return;
       }
       resolve(stream);
+    });
+  });
+};
+
+// Drives the prompts of `passwd <username>` for managed rotation (admin changing another user's
+// password). Prompts are matched against everything received so far, not just the arriving chunk:
+// a PTY behind an SSH channel and a gateway tunnel re-segments freely, so a prompt can straddle
+// two data events.
+export const runManagedPasswordChange = (
+  stream: TInteractiveShellStream,
+  newPassword: string,
+  appConnectionPassword?: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const transcript = createTranscript([newPassword, appConnectionPassword]);
+    const decoder = new StringDecoder("utf8");
+
+    let pending = "";
+    let step = 0;
+    let completed = false;
+    let settled = false;
+    let closing = false;
+    let errorMessage = "";
+
+    const safeReject = (error: Error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        stream.end();
+        safeReject(new Error(`Password change timed out. Output: ${transcript.read()}`));
+      }
+    }, SHELL_TIMEOUT);
+
+    const finish = () => {
+      closing = true;
+      clearTimeout(timeout);
+      stream.end();
+    };
+
+    // Matched text is dropped so the same bytes cannot satisfy a later step as well, which would
+    // send the new password a third time or read the first prompt as its own confirmation.
+    const consume = (match: RegExpExecArray) => {
+      pending = pending.slice(match.index + match[0].length);
+    };
+
+    const advance = (): boolean => {
+      const failure = MANAGED_PASSWORD_CHANGE_FAILED.exec(pending);
+      if (failure) {
+        errorMessage = transcript.redact(lineAt(pending, failure.index));
+        consume(failure);
+        finish();
+        return false;
+      }
+
+      if (step === 0) {
+        const sudoPrompt = SUDO_PROMPT.exec(pending);
+        if (sudoPrompt) {
+          if (!appConnectionPassword) {
+            clearTimeout(timeout);
+            safeReject(
+              new Error(
+                "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
+              )
+            );
+            stream.end();
+            return false;
+          }
+          consume(sudoPrompt);
+          stream.write(`${appConnectionPassword}\n`);
+          // Still step 0: the new-password prompt follows, and may already be in this buffer.
+          return true;
+        }
+
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(pending);
+        if (newPasswordPrompt) {
+          consume(newPasswordPrompt);
+          stream.write(`${newPassword}\n`);
+          step = 1;
+          return true;
+        }
+
+        return false;
+      }
+
+      if (step === 1) {
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(pending);
+        if (confirmPrompt) {
+          consume(confirmPrompt);
+          stream.write(`${newPassword}\n`);
+          step = 2;
+          return true;
+        }
+
+        return false;
+      }
+
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(pending);
+      if (success) {
+        consume(success);
+        completed = true;
+        finish();
+      }
+
+      return false;
+    };
+
+    stream.on("data", (chunk: Buffer) => {
+      if (settled || closing) return;
+
+      const text = decoder.write(chunk);
+      if (!text) return;
+
+      transcript.append(text);
+      pending += text;
+
+      // A host can coalesce several prompts into one chunk, and once it is waiting on our answer no
+      // further data event arrives, so advance until nothing more matches instead of once per event.
+      let progressed = true;
+      while (progressed && !settled && !closing) {
+        progressed = advance();
+      }
+
+      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
+        clearTimeout(timeout);
+        stream.end();
+        safeReject(
+          new Error(
+            `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
+          )
+        );
+      }
+    });
+
+    stream.on("close", () => {
+      clearTimeout(timeout);
+      const tail = decoder.end();
+      if (tail) transcript.append(tail);
+      if (settled) return;
+      settled = true;
+
+      if (errorMessage && !completed) {
+        reject(new Error(`Password change failed: ${errorMessage}`));
+      } else if (completed || step >= 2) {
+        resolve();
+      } else {
+        reject(new Error(`Password change incomplete (step ${step}). Output: ${transcript.read()}`));
+      }
+    });
+
+    stream.on("error", (streamErr: Error) => {
+      clearTimeout(timeout);
+      safeReject(new Error(`Stream error: ${streamErr.message}`));
     });
   });
 };
@@ -55,11 +268,25 @@ const changeManagedPassword = async (
   const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
   const stream = await execCommandWithPty(client, command);
 
+  return runManagedPasswordChange(stream, newPassword, appConnectionPassword);
+};
+
+// Drives the prompts of `passwd` for self rotation (user changing their own password), matching
+// against everything received so far for the same reason as the managed handler.
+export const runSelfPasswordChange = (
+  stream: TInteractiveShellStream,
+  oldPassword: string,
+  newPassword: string
+): Promise<void> => {
   return new Promise((resolve, reject) => {
-    let output = "";
+    const transcript = createTranscript([oldPassword, newPassword]);
+    const decoder = new StringDecoder("utf8");
+
+    let pending = "";
     let step = 0;
     let completed = false;
     let settled = false;
+    let closing = false;
     let errorMessage = "";
 
     const safeReject = (error: Error) => {
@@ -72,69 +299,115 @@ const changeManagedPassword = async (
     const timeout = setTimeout(() => {
       if (!settled) {
         stream.end();
-        safeReject(new Error(`Password change timed out. Output: ${output}`));
+        safeReject(new Error(`Password change timed out. Output: ${transcript.read()}`));
       }
     }, SHELL_TIMEOUT);
 
-    stream.on("data", (data: Buffer) => {
-      if (settled) return;
+    const finish = () => {
+      closing = true;
+      clearTimeout(timeout);
+      stream.end();
+    };
 
-      const text = data.toString();
-      output += text;
-      const lower = text.toLowerCase();
+    const consume = (match: RegExpExecArray) => {
+      pending = pending.slice(match.index + match[0].length);
+    };
 
-      if (step === 0 && lower.includes("[sudo]")) {
-        // sudo is asking for the logged-in user's password
-        if (!appConnectionPassword) {
-          clearTimeout(timeout);
-          safeReject(
-            new Error(
-              "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
-            )
-          );
-          stream.end();
-          return;
+    const advance = (): boolean => {
+      if (step >= 1) {
+        const failure = SELF_PASSWORD_CHANGE_FAILED.exec(pending);
+        if (failure) {
+          errorMessage = transcript.redact(lineAt(pending, failure.index));
+          consume(failure);
+          finish();
+          return false;
         }
-        stream.write(`${appConnectionPassword}\n`);
-        // stay at step 0 to catch "New password" next
-      } else if (step === 0 && lower.includes("new password")) {
-        stream.write(`${newPassword}\n`);
-        step = 1;
-      } else if (
-        step === 1 &&
-        (lower.includes("retype") || lower.includes("again") || lower.includes("new password"))
-      ) {
-        stream.write(`${newPassword}\n`);
-        step = 2;
-      } else if (step >= 2 && (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))) {
+      }
+
+      if (step === 0) {
+        const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(pending);
+        if (currentPasswordPrompt) {
+          consume(currentPasswordPrompt);
+          stream.write(`${oldPassword}\n`);
+          step = 1;
+          return true;
+        }
+
+        return false;
+      }
+
+      if (step === 1) {
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(pending);
+        if (newPasswordPrompt) {
+          consume(newPasswordPrompt);
+          stream.write(`${newPassword}\n`);
+          step = 2;
+          return true;
+        }
+
+        return false;
+      }
+
+      if (step === 2) {
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(pending);
+        if (confirmPrompt) {
+          consume(confirmPrompt);
+          stream.write(`${newPassword}\n`);
+          step = 3;
+          return true;
+        }
+
+        return false;
+      }
+
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(pending);
+      if (success) {
+        consume(success);
         completed = true;
+        finish();
+      }
+
+      return false;
+    };
+
+    stream.on("data", (chunk: Buffer) => {
+      if (settled || closing) return;
+
+      const text = decoder.write(chunk);
+      if (!text) return;
+
+      transcript.append(text);
+      pending += text;
+
+      let progressed = true;
+      while (progressed && !settled && !closing) {
+        progressed = advance();
+      }
+
+      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
         clearTimeout(timeout);
         stream.end();
-      } else if (
-        step >= 0 &&
-        (lower.includes("authentication failure") ||
-          lower.includes("sorry") ||
-          lower.includes("unknown user") ||
-          lower.includes("user not known") ||
-          lower.includes("does not exist"))
-      ) {
-        errorMessage = text.trim();
-        clearTimeout(timeout);
-        stream.end();
+        safeReject(
+          new Error(
+            `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
+          )
+        );
       }
     });
 
     stream.on("close", () => {
       clearTimeout(timeout);
+      const tail = decoder.end();
+      if (tail) transcript.append(tail);
       if (settled) return;
       settled = true;
 
       if (errorMessage && !completed) {
         reject(new Error(`Password change failed: ${errorMessage}`));
-      } else if (completed || step >= 2) {
+      } else if (completed || step >= 3) {
         resolve();
       } else {
-        reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
+        reject(new Error(`Password change incomplete (step ${step}). Output: ${transcript.read()}`));
       }
     });
 
@@ -151,12 +424,26 @@ const changeManagedPassword = async (
 const changeSelfPassword = async (client: Client, oldPassword: string, newPassword: string): Promise<void> => {
   const stream = await execCommandWithPty(client, "LC_ALL=C passwd");
 
+  return runSelfPasswordChange(stream, oldPassword, newPassword);
+};
+
+// Drives the prompts of `su - <username>`, matching against everything received so far for the same
+// reason as the password handlers.
+export const runSuLoginVerification = (
+  stream: TInteractiveShellStream,
+  targetUsername: string,
+  targetPassword: string
+): Promise<void> => {
   return new Promise((resolve, reject) => {
-    let output = "";
+    const transcript = createTranscript([targetPassword]);
+    const decoder = new StringDecoder("utf8");
+    const whoamiReply = new RE2(escapeForPattern(targetUsername), "i");
+
+    let pending = "";
     let step = 0;
     let completed = false;
     let settled = false;
-    let errorMessage = "";
+    let closing = false;
 
     const safeReject = (error: Error) => {
       if (!settled) {
@@ -168,57 +455,100 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
     const timeout = setTimeout(() => {
       if (!settled) {
         stream.end();
-        safeReject(new Error(`Password change timed out. Output: ${output}`));
+        safeReject(new Error(`su verification timed out. Output: ${transcript.read()}`));
       }
     }, SHELL_TIMEOUT);
 
-    stream.on("data", (data: Buffer) => {
-      if (settled) return;
+    const finish = () => {
+      closing = true;
+      clearTimeout(timeout);
+      stream.end();
+    };
 
-      const text = data.toString();
-      output += text;
-      const lower = text.toLowerCase();
+    const consume = (match: RegExpExecArray) => {
+      pending = pending.slice(match.index + match[0].length);
+    };
 
-      // Handle passwd prompts step by step
-      if (step === 0 && lower.includes("password")) {
-        // Current/old password prompt (could be "Current password:", "Old password:", etc.)
-        stream.write(`${oldPassword}\n`);
-        step = 1;
-      } else if (step === 1 && lower.includes("new password")) {
-        // New password prompt
-        stream.write(`${newPassword}\n`);
+    const advance = (): boolean => {
+      if (step >= 1) {
+        const failure = SU_LOGIN_FAILED.exec(pending);
+        if (failure) {
+          const diagnostic = transcript.redact(lineAt(pending, failure.index));
+          consume(failure);
+          clearTimeout(timeout);
+          safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${diagnostic}`));
+          stream.end();
+          return false;
+        }
+      }
+
+      if (step === 0) {
+        const passwordPrompt = ANY_PASSWORD_PROMPT.exec(pending);
+        if (passwordPrompt) {
+          consume(passwordPrompt);
+          stream.write(`${targetPassword}\n`);
+          step = 1;
+          return true;
+        }
+
+        return false;
+      }
+
+      if (step === 1) {
+        // Anything buffered here is su's own banner or shell prompt; only the reply to whoami names
+        // the user we ended up as, so it is dropped rather than sliced.
+        if (!pending.trim()) return false;
+        pending = "";
+        stream.write("whoami\n");
         step = 2;
-      } else if (
-        step === 2 &&
-        (lower.includes("retype") || lower.includes("again") || lower.includes("new password"))
-      ) {
-        // Confirm new password prompt
-        stream.write(`${newPassword}\n`);
-        step = 3;
-      } else if (step === 3 && (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))) {
-        // Password changed successfully
+        return true;
+      }
+
+      if (whoamiReply.test(pending)) {
         completed = true;
+        stream.write("exit\n");
+        finish();
+      }
+
+      return false;
+    };
+
+    stream.on("data", (chunk: Buffer) => {
+      if (settled || closing) return;
+
+      const text = decoder.write(chunk);
+      if (!text) return;
+
+      transcript.append(text);
+      pending += text;
+
+      let progressed = true;
+      while (progressed && !settled && !closing) {
+        progressed = advance();
+      }
+
+      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
         clearTimeout(timeout);
         stream.end();
-      } else if (step >= 1 && (lower.includes("error") || lower.includes("fail") || lower.includes("unchanged"))) {
-        // Password change failed
-        errorMessage = text.trim();
-        clearTimeout(timeout);
-        stream.end();
+        safeReject(
+          new Error(
+            `su verification failed for user ${targetUsername}: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
+          )
+        );
       }
     });
 
     stream.on("close", () => {
       clearTimeout(timeout);
+      const tail = decoder.end();
+      if (tail) transcript.append(tail);
       if (settled) return;
       settled = true;
 
-      if (errorMessage && !completed) {
-        reject(new Error(`Password change failed: ${errorMessage}`));
-      } else if (completed || step >= 3) {
+      if (completed) {
         resolve();
       } else {
-        reject(new Error(`Password change incomplete (step ${step}). Output: ${output}`));
+        reject(new Error(`su verification failed for user ${targetUsername}. Output: ${transcript.read()}`));
       }
     });
 
@@ -235,73 +565,7 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
 const verifySuLogin = async (client: Client, targetUsername: string, targetPassword: string): Promise<void> => {
   const stream = await execCommandWithPty(client, `LC_ALL=C su - ${targetUsername}`);
 
-  return new Promise((resolve, reject) => {
-    let output = "";
-    let step = 0;
-    let completed = false;
-    let settled = false;
-
-    const safeReject = (error: Error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
-
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        stream.end();
-        safeReject(new Error(`su verification timed out. Output: ${output}`));
-      }
-    }, SHELL_TIMEOUT);
-
-    stream.on("data", (data: Buffer) => {
-      if (settled) return;
-
-      const text = data.toString();
-      output += text;
-      const lower = text.toLowerCase();
-
-      if (step === 0 && lower.includes("password")) {
-        // su is asking for the target user's password
-        stream.write(`${targetPassword}\n`);
-        step = 1;
-      } else if (step === 1) {
-        if (lower.includes("authentication failure") || lower.includes("incorrect password") || lower.includes("su:")) {
-          clearTimeout(timeout);
-          safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${text.trim()}`));
-          stream.end();
-          return;
-        }
-        // After successful su, run whoami
-        stream.write("whoami\n");
-        step = 2;
-      } else if (step === 2 && lower.includes(targetUsername.toLowerCase())) {
-        // whoami confirmed we are the target user
-        completed = true;
-        clearTimeout(timeout);
-        stream.write("exit\n");
-        stream.end();
-      }
-    });
-
-    stream.on("close", () => {
-      clearTimeout(timeout);
-      if (settled) return;
-      settled = true;
-
-      if (completed) {
-        resolve();
-      } else {
-        reject(new Error(`su verification failed for user ${targetUsername}. Output: ${output}`));
-      }
-    });
-
-    stream.on("error", (streamErr: Error) => {
-      clearTimeout(timeout);
-      safeReject(new Error(`Stream error: ${streamErr.message}`));
-    });
-  });
+  return runSuLoginVerification(stream, targetUsername, targetPassword);
 };
 
 export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
