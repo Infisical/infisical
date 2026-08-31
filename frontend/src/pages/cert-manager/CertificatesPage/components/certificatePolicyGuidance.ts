@@ -94,6 +94,29 @@ const listPatterns = (patterns: string[]): string[] => {
 const listSequences = (sequences: string[][]): string[] =>
   listPatterns(sequences.map(formatSequence));
 
+/** A finding no single row can own, such as an ordered sequence or a set-level requirement. */
+export type PolicyNotice = {
+  /** Distinguishes notices that word the same fault identically but list different patterns. */
+  key: string;
+  message: string;
+  /** Names what `items` are, in the policy editor's words. */
+  label?: string;
+  /** Rendered one per line, because an entry may contain commas of its own. */
+  items?: string[];
+};
+
+const noticeKey = ({ message, label, items }: Omit<PolicyNotice, "key">): string =>
+  [message, label ?? "", ...(items ?? [])].join("\u0000");
+
+const toNotice = (notice: Omit<PolicyNotice, "key">): PolicyNotice => ({
+  ...notice,
+  key: noticeKey(notice)
+});
+
+const dedupeNotices = (notices: PolicyNotice[]): PolicyNotice[] => [
+  ...new Map(notices.map((notice) => [notice.key, notice])).values()
+];
+
 const matchesSequence = (request: string[], policy: string[]): boolean =>
   request.length === policy.length &&
   request.every((component, index) =>
@@ -188,36 +211,114 @@ const acceptedSequences = (rule: TSubjectRule): string[][] | undefined => {
   return patterns?.length ? patterns.map(parseSequence) : undefined;
 };
 
+const componentMatches = (component: string, option?: string): boolean =>
+  option !== undefined && matchesNormalizedPattern(component.toLowerCase(), option.toLowerCase());
+
+/**
+ * The sequences still in play at a position, given what the rows before it already hold. Once
+ * "corp" is entered, a sequence starting with "zamn" can no longer apply, so offering its later
+ * components would send the requester down a branch they have already left.
+ *
+ * A row that is empty or already wrong rules nothing out, so guidance further along survives it.
+ */
+const reachableSequences = (
+  components: string[],
+  position: number,
+  sequences: string[][]
+): string[][] => {
+  const reachable = sequences.filter((sequence) =>
+    components
+      .slice(0, position)
+      .every((component, index) => !component || componentMatches(component, sequence[index]))
+  );
+  return reachable.length > 0 ? reachable : sequences;
+};
+
+/**
+ * Components that would extend a denied run at this position, either continuing one the rows before
+ * it have already begun or starting a fresh one here. A denied run may sit anywhere in the chain,
+ * so every offset counts, but only those with enough rows left to actually complete the run: with
+ * three rows, a three-component run can only start at the first one.
+ */
+const deniedComponentsAt = (
+  components: string[],
+  position: number,
+  denied: string[][]
+): string[] => {
+  const options = denied.flatMap((sequence) =>
+    // `matched` is how much of the run the rows before this one already cover, so the run began at
+    // `position - matched` and needs to reach `position - matched + sequence.length`.
+    Array.from({ length: position + 1 }, (_, index) => index)
+      .filter((matched) => {
+        const start = position - matched;
+        if (matched >= sequence.length) return false;
+        if (start + sequence.length > components.length) return false;
+
+        return sequence
+          .slice(0, matched)
+          .every((option, offset) => componentMatches(components[start + offset] ?? "", option));
+      })
+      .map((matched) => sequence[matched])
+  );
+
+  return Array.from(new Set(options));
+};
+
 /**
  * Domain components are an ordered sequence, so each row is constrained by its own position rather
  * than by the sequence as a whole.
  */
 const getDomainComponentHint = (
   rule: TSubjectRule | undefined,
-  position: number
+  position: number,
+  components: string[]
 ): string[] | undefined => {
-  const sequences = rule && acceptedSequences(rule);
-  if (!sequences) return undefined;
+  if (!rule) return undefined;
 
-  const options = Array.from(
-    new Set(sequences.filter((sequence) => position < sequence.length).map((s) => s[position]))
-  );
+  const lines: string[] = [];
+  const sequences = acceptedSequences(rule);
+  let allowedHere: string[] | undefined;
 
-  if (options.length === 0) {
-    return [
-      `The sequence takes ${formatComponentCounts(sequences.map((s) => s.length))}, so this row is past its end`
-    ];
+  if (sequences) {
+    const candidates = reachableSequences(components, position, sequences);
+    allowedHere = Array.from(
+      new Set(candidates.filter((sequence) => position < sequence.length).map((s) => s[position]))
+    );
+
+    if (allowedHere.length === 0) {
+      return [
+        `The sequence takes ${formatComponentCounts(candidates.map((s) => s.length))}, so this row is past its end`
+      ];
+    }
+
+    // A bare "*" accepts anything at this position, so there is nothing to tell the requester.
+    if (!allowedHere.includes("*")) {
+      lines.push(labelledLine(rule.required?.length ? "Required" : "Allowed", allowedHere));
+    }
   }
 
-  // A bare "*" accepts anything at this position, so there is nothing to tell the requester.
-  if (options.includes("*")) return undefined;
+  // Warning about a denied component the allowed set would never let through here is pure noise.
+  // Two patterns cannot be tested for overlap, so a wildcard is assumed to be reachable.
+  const isReachableHere = (component: string) =>
+    !allowedHere ||
+    isWildcardPattern(component) ||
+    allowedHere.some((option) => componentMatches(component, option));
 
-  return [labelledLine(rule?.required?.length ? "Required" : "Allowed", options)];
+  const denied = deniedComponentsAt(
+    components,
+    position,
+    (rule.denied ?? []).map(parseSequence)
+  ).filter(isReachableHere);
+  if (denied.length > 0) lines.push(labelledLine("Denied", denied));
+
+  return lines.length > 0 ? lines : undefined;
 };
+
+const TTL_PATTERN = /^(\d+)([dmyh])$/;
 
 // Mirrors parseTTL in backend/src/services/certificate-policy/certificate-policy-service.ts.
 const parseTtlToMs = (ttl: string): number | undefined => {
-  const match = /^(\d+)([dmyh])$/.exec(ttl.trim());
+  const match = TTL_PATTERN.exec(ttl.trim());
   if (!match) return undefined;
 
   const value = Number(match[1]);
@@ -237,8 +338,24 @@ const parseTtlToMs = (ttl: string): number | undefined => {
   }
 };
 
+const TTL_UNIT_NAMES: Record<string, string> = {
+  h: "hour",
+  d: "day",
+  m: "month",
+  y: "year"
+};
+
+/** "365y" is the input format; a requester reading a limit wants "365 years". */
+const formatTtl = (ttl: string): string => {
+  const match = TTL_PATTERN.exec(ttl.trim());
+  if (!match) return ttl;
+
+  const value = Number(match[1]);
+  return `${value} ${TTL_UNIT_NAMES[match[2]]}${value === 1 ? "" : "s"}`;
+};
+
 export const getValidityHint = (maxTtl?: string): string[] | undefined =>
-  maxTtl ? [`Maximum: ${maxTtl}`] : undefined;
+  maxTtl ? [`Maximum: ${formatTtl(maxTtl)}`] : undefined;
 
 export const validateTtlAgainstPolicy = (ttl: string, maxTtl?: string): string | undefined => {
   const trimmed = ttl?.trim() ?? "";
@@ -249,9 +366,11 @@ export const validateTtlAgainstPolicy = (ttl: string, maxTtl?: string): string |
   const requested = parseTtlToMs(trimmed);
   if (requested === undefined) return "Enter a duration such as 30d, 12h, 6m, or 1y";
 
-  const max = maxTtl ? parseTtlToMs(maxTtl) : undefined;
+  if (!maxTtl) return undefined;
+
+  const max = parseTtlToMs(maxTtl);
   if (max === undefined || requested <= max) return undefined;
-  return `Exceeds the maximum validity of ${maxTtl} allowed by this policy`;
+  return `Exceeds the maximum validity of ${formatTtl(maxTtl)} allowed by this policy`;
 };
 
 const getSanHint = (rule?: SanRule): string[] | undefined => {
@@ -350,10 +469,9 @@ const validateDomainComponentRows = (
   return components.map((component, position) => {
     if (!component) return undefined;
 
-    const options = Array.from(new Set(candidates.map((sequence) => sequence[position])));
-    const isAccepted = options.some((option) =>
-      matchesNormalizedPattern(component.toLowerCase(), option.toLowerCase())
-    );
+    const reachable = reachableSequences(components, position, candidates);
+    const options = Array.from(new Set(reachable.map((sequence) => sequence[position])));
+    const isAccepted = options.some((option) => componentMatches(component, option));
 
     return isAccepted ? undefined : `${label} ${patternClause("must match", "one of", options)}`;
   });
@@ -375,11 +493,13 @@ const validateDomainComponents = (
 
   const isDenied = containsAnySequence(components, denied);
   if (isDenied) {
-    notices.push({
-      message: `Domain components "${formatted}" are denied by this policy.`,
-      label: "Denied",
-      items: listSequences(denied)
-    });
+    notices.push(
+      toNotice({
+        message: `Domain components "${formatted}" are denied by this policy.`,
+        label: "Denied",
+        items: listSequences(denied)
+      })
+    );
   }
 
   const describeMismatch = (candidates: string[][], label: string) => {
@@ -389,22 +509,26 @@ const validateDomainComponents = (
     const lengths = candidates.map((sequence) => sequence.length);
     if (!lengths.includes(components.length)) {
       // A count mismatch is the most common way a sequence fails, and naming it beats "do not match".
-      notices.push({
-        message: `Domain components must form a sequence of ${formatComponentCounts(lengths)}, but this request has ${components.length}.`,
-        label,
-        items
-      });
+      notices.push(
+        toNotice({
+          message: `Domain components must form a sequence of ${formatComponentCounts(lengths)}, but this request has ${components.length}.`,
+          label,
+          items
+        })
+      );
     } else if (!isReportedPerRow) {
       // Otherwise the rows carry the fault themselves, on the exact component that is wrong.
-      notices.push({
-        message: `Domain components "${formatted}" do not match. ${DOMAIN_COMPONENT_ORDER_NOTE}`,
-        label,
-        items
-      });
+      notices.push(
+        toNotice({
+          message: `Domain components "${formatted}" do not match. ${DOMAIN_COMPONENT_ORDER_NOTE}`,
+          label,
+          items
+        })
+      );
     }
 
     if (isReversalOf(components, candidates)) {
-      notices.push({ message: DOMAIN_COMPONENT_REVERSAL_NOTE });
+      notices.push(toNotice({ message: DOMAIN_COMPONENT_REVERSAL_NOTE }));
     }
   };
 
@@ -412,18 +536,33 @@ const validateDomainComponents = (
   describeMismatch(required, "Required");
   if (!isDenied && !satisfiesRequired) describeMismatch(allowed, "Allowed");
 
-  return notices;
+  // The required and allowed branches can word the same fault identically, and both can add the
+  // reversal note. Saying it twice is never useful.
+  return dedupeNotices(notices);
 };
 
 /** A single literal pattern can be filled in for the user; wildcards cannot. */
 const literalSuggestion = (patterns: string[]): string =>
   patterns.length === 1 && !isWildcardPattern(patterns[0]) ? patterns[0] : "";
 
+/**
+ * One row per component of the required sequence, prefilled only where the value is knowable. A
+ * wildcard fixes the position but not the value, so it still earns a row: a policy requiring
+ * "*,*,*" needs three domain components even though none of them can be filled in.
+ */
 const requiredSequenceRows = (rule: TSubjectRule): string[] => {
   const sequences = (rule.required ?? []).map(parseSequence);
-  const onlySequence = sequences.length === 1 ? sequences[0] : undefined;
-  const isFillable = Boolean(onlySequence?.every((part) => !isWildcardPattern(part)));
-  return isFillable && onlySequence ? onlySequence : [""];
+  if (sequences.length === 0) return [""];
+
+  // Sequences of differing length leave the row count unknowable, so fall back to a single row.
+  const lengths = new Set(sequences.map((sequence) => sequence.length));
+  if (lengths.size !== 1) return [""];
+
+  return Array.from({ length: sequences[0].length }, (_, position) => {
+    const options = Array.from(new Set(sequences.map((sequence) => sequence[position])));
+    // A position is fillable only when every sequence agrees on one literal value for it.
+    return options.length === 1 && !isWildcardPattern(options[0]) ? options[0] : "";
+  });
 };
 
 /**
@@ -496,15 +635,6 @@ export type PolicyRowGuidance = {
   isLocked: boolean;
 };
 
-/** A finding no single row can own, such as an ordered sequence or a set-level requirement. */
-export type PolicyNotice = {
-  message: string;
-  /** Names what `items` are, in the policy editor's words. */
-  label?: string;
-  /** Rendered one per line, because an entry may contain commas of its own. */
-  items?: string[];
-};
-
 export type PolicySectionGuidance = {
   rows: PolicyRowGuidance[];
   notices: PolicyNotice[];
@@ -567,7 +697,7 @@ export const evaluateSubjectStep = ({
     if (isLocked) lockableDomainComponents -= 1;
 
     return {
-      hint: getDomainComponentHint(domainComponentRule, position),
+      hint: getDomainComponentHint(domainComponentRule, position, domainComponentValues),
       error: domainComponentErrors[position],
       isLocked
     };
@@ -590,17 +720,21 @@ export const evaluateSubjectStep = ({
       const label = SUBJECT_ATTRIBUTE_LABELS[type];
       if (type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
         const sequences = rule.required.map(parseSequence);
-        subjectNotices.push({
-          message: `${label} rows are required.`,
-          label: "Required",
-          items: listSequences(sequences)
-        });
+        subjectNotices.push(
+          toNotice({
+            message: `${label} rows are required.`,
+            label: "Required",
+            items: listSequences(sequences)
+          })
+        );
         return;
       }
 
-      subjectNotices.push({
-        message: `${label} is required and ${patternClause("must match", "one of", rule.required)}`
-      });
+      subjectNotices.push(
+        toNotice({
+          message: `${label} is required and ${patternClause("must match", "one of", rule.required)}`
+        })
+      );
     });
   }
 
@@ -659,9 +793,9 @@ export const evaluateSubjectStep = ({
           unclaimedBlankRows -= 1;
           return;
         }
-        sanNotices.push({
-          message: `A ${formatSANType(type)} SAN matching ${pattern} is required`
-        });
+        sanNotices.push(
+          toNotice({ message: `A ${formatSANType(type)} SAN matching ${pattern} is required` })
+        );
       });
     });
   }
@@ -678,7 +812,7 @@ export const evaluateSubjectStep = ({
   });
 
   return {
-    subject: toSection(subjectRows, subjectNotices, isSubjectSectionShown),
-    sans: toSection(sanRows, sanNotices, isSanSectionShown)
+    subject: toSection(subjectRows, dedupeNotices(subjectNotices), isSubjectSectionShown),
+    sans: toSection(sanRows, dedupeNotices(sanNotices), isSanSectionShown)
   };
 };

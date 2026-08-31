@@ -39,6 +39,13 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   }
 };
 
+type PolicyRow = { type: string; value: string };
+
+const isSameRows = (current: PolicyRow[] | undefined, next: PolicyRow[]): boolean =>
+  Boolean(current) &&
+  current!.length === next.length &&
+  current!.every((row, index) => row.type === next[index].type && row.value === next[index].value);
+
 const parseTtlToMs = (ttl: string): number => {
   const match = ttl.match(/^(\d+)([dhmy])$/);
   if (!match) return 0;
@@ -345,10 +352,16 @@ export const useCertificatePolicy = (
         }
       }
 
-      // Seed the rows the policy requires so they are visible as fields from the start.
+      // Seed the rows the policy requires so they are visible as fields from the start. Writing an
+      // identical value would still hand the form a new array, and the guidance hook reads those
+      // identities as an edit and clears the findings the requester is looking at.
       const seeded = withRequiredRows(buildPolicyRules(templateData), nextSubjectAttrs, nextSans);
-      setValue("subjectAltNames", seeded.subjectAltNames);
-      setValue("subjectAttributes", seeded.subjectAttributes);
+      if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
+        setValue("subjectAltNames", seeded.subjectAltNames);
+      }
+      if (!isSameRows(currentSubjectAttrs, seeded.subjectAttributes)) {
+        setValue("subjectAttributes", seeded.subjectAttributes);
+      }
 
       // Set isCA if template requires it
       if (templateRequiresCA) {

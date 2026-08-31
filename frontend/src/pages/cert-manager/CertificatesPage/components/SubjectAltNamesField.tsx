@@ -18,6 +18,7 @@ import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/Policies
 
 import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
 import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
+import { PolicyNoticeList } from "./PolicyNoticeList";
 import { PolicyRowMessage } from "./PolicyRowMessage";
 
 type SubjectAltNamesFieldProps = {
@@ -27,7 +28,7 @@ type SubjectAltNamesFieldProps = {
   rowErrors?: (string | undefined)[];
   /** Per-row policy findings: the constraint, how the value breaks it, and whether it is fixed. */
   policyRows?: PolicyRowGuidance[];
-  /** Policy findings spanning several rows, such as a required SAN pattern. */
+  /** Violations spanning several rows, such as an unmet required SAN pattern. */
   policyNotices?: PolicyNotice[];
   /** Policy findings stay hidden until the requester tries to leave the step. */
   revealPolicyErrors?: boolean;
@@ -135,23 +136,7 @@ export const SubjectAltNamesField = ({
               </Button>
             </div>
             <FieldError>{error}</FieldError>
-            {revealPolicyErrors && Boolean(policyNotices?.length) && (
-              <div className="mb-2 space-y-2">
-                {policyNotices?.map((notice) => (
-                  <FieldError key={notice.message}>
-                    <span className="block">
-                      {notice.message}
-                      {notice.label ? ` ${notice.label}:` : null}
-                    </span>
-                    {notice.items?.map((item) => (
-                      <span key={item} className="block pl-3">
-                        {item}
-                      </span>
-                    ))}
-                  </FieldError>
-                ))}
-              </div>
-            )}
+            {revealPolicyErrors && <PolicyNoticeList notices={policyNotices ?? []} />}
           </Field>
         );
       }}
