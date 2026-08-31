@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
+import { ORGANIZATIONS } from "@app/lib/api-docs";
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   id: true,
@@ -41,13 +42,17 @@ export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
   // derived from the active SAML/OIDC config, not a column
   orgAuthMethod: z.string(),
   userJoinedAt: z.date().optional().nullable(),
-  // the actor's membership state, not an org column: a deactivated membership still lists the org
-  isActive: z.boolean(),
+  // optional, not because the column is nullable, but so a client generated from this schema still
+  // accepts a response from a deployment that predates the field
+  isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive),
   subOrganizations: OrganizationsSchema.pick({
     id: true,
     name: true,
     slug: true
   })
-    .extend({ userJoinedAt: z.date().optional().nullable(), isActive: z.boolean() })
+    .extend({
+      userJoinedAt: z.date().optional().nullable(),
+      isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive)
+    })
     .array()
 });

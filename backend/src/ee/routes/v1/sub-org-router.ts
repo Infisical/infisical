@@ -118,9 +118,10 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           organizations: sanitizedSubOrganizationSchema
             .extend({
-              // the caller's membership state, not an org column: null when the caller has no
-              // membership at all, which isAccessible=false permits
-              isActive: z.boolean().nullable()
+              // nullable because isAccessible=false returns sub-orgs the caller has no membership
+              // in; optional so a client generated from this schema still accepts a response from a
+              // deployment that predates the field
+              isActive: z.boolean().nullable().optional().describe(SUB_ORGANIZATIONS.LIST.isActive)
             })
             .array(),
           totalCount: z.number()

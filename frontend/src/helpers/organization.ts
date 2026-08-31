@@ -38,11 +38,17 @@ export const verifyOrgStillAccessible = async (
     return false;
   }
 
-  const isAccessible = accessibleOrgs.some(
-    (org) =>
-      org.id === organization.id ||
-      org.subOrganizations.some((subOrg) => subOrg.id === organization.id)
-  );
+  // Presence is not enough: a deactivated membership still lists the org (that is what the
+  // Inactive badge reads), and select-organization refuses it, so treat it as inaccessible rather
+  // than destroying the session for it. `!== false` so an older deployment that omits the field
+  // still permits the switch.
+  const isAccessible = accessibleOrgs.some((org) => {
+    if (org.id === organization.id) return org.isActive !== false;
+
+    return org.subOrganizations.some(
+      (subOrg) => subOrg.id === organization.id && subOrg.isActive !== false
+    );
+  });
 
   if (isAccessible) return true;
 

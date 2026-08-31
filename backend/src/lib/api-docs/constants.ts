@@ -856,6 +856,10 @@ export const SPIFFE_AUTH = {
 } as const;
 
 export const ORGANIZATIONS = {
+  LIST_ORGANIZATIONS: {
+    isActive:
+      "Whether the requesting user's membership in this organization is active. A deactivated membership still lists the organization, but cannot be selected. Absent on deployments that predate this field."
+  },
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
@@ -1012,7 +1016,9 @@ export const SUB_ORGANIZATIONS = {
     search: "Optional. Filter sub organizations by name (case-insensitive substring match).",
     orderBy: "The field to order sub organizations by. Currently only 'name' is supported.",
     orderDirection: "The direction to order sub organizations. Either 'asc' or 'desc'.",
-    isAccessible: "Filter to only return sub organizations that the actor has access to."
+    isAccessible: "Filter to only return sub organizations that the actor has access to.",
+    isActive:
+      "Whether the requesting actor's membership in this sub organization is active. A deactivated membership still lists the sub organization, but cannot be selected. Null when the actor has no membership at all, which isAccessible=false permits. Absent on deployments that predate this field."
   },
   DELETE: {
     subOrgId: "The id of the sub organization to delete."

@@ -40,9 +40,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               orgAuthMethod: z.string(),
               userRole: z.string(),
               userJoinedAt: z.date(),
-              // the caller's membership state, not an org column: a deactivated membership still
-              // lists the org, and select-organization then refuses it
-              isActive: z.boolean()
+              // optional, not because the column is nullable, but so a client generated from this
+              // schema still accepts a response from a deployment that predates the field
+              isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive)
             })
             .array()
         })
