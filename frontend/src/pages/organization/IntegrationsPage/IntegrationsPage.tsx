@@ -102,7 +102,11 @@ export const IntegrationsPage = () => {
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabsList
               variant={isSubOrganization ? "sub-org" : "org"}
-              aria-label="Organization integrations sections"
+              aria-label={
+                isSubOrganization
+                  ? "Sub-organization integrations sections"
+                  : "Organization integrations sections"
+              }
             >
               {tabs.map(({ key, label }) => (
                 <TabsTrigger value={key} key={`tab-${key}`}>
