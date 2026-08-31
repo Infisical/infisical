@@ -8,6 +8,7 @@ import {
   OrgPermissionSubOrgActions
 } from "@app/ee/services/permission/org-permission";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -15,21 +16,25 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
+import { TMembershipGroupDALFactory } from "../membership-group-dal";
 import { TMembershipGroupScopeFactory } from "../membership-group-types";
 
 type TOrgMembershipGroupScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "getGroupById">;
 };
 
 export const newOrgMembershipGroupFactory = ({
   permissionService,
   orgDAL,
-  groupDAL
+  groupDAL,
+  membershipGroupDAL
 }: TOrgMembershipGroupScopeFactoryDep): TMembershipGroupScopeFactory => {
   const getScopeField: TMembershipGroupScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -197,6 +202,28 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+
+    const targetMembership = await membershipGroupDAL.getGroupById({
+      scopeData: dto.scopeData,
+      groupId: dto.selector.groupId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(dto.permission.orgId),
+        () => orgDAL.findById(dto.permission.orgId)
+      );
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.Delete,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged group from the organization"
+      });
+    }
 
     return { group: { id: group.id, name: group.name } };
   };

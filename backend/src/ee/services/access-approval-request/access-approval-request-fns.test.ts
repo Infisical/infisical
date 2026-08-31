@@ -1,6 +1,13 @@
 import { packRules } from "@casl/ability/extra";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+// logger is initialized at app boot and is undefined under unit tests; stub it so
+// validateHandlebarTemplate's reject path surfaces its BadRequestError rather than a logger error.
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
+// eslint-disable-next-line import/first
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 
 describe("verifyRequestedPermissions", () => {
@@ -224,5 +231,48 @@ describe("verifyRequestedPermissions: requestedPermissions", () => {
       { subject: "secret-folders", actions: ["create"] }
     ]);
     expect(result.accessTypes).toEqual(["Secrets (Read, Edit)", "Secret Folders (Create)"]);
+  });
+});
+
+describe("verifyRequestedPermissions input hardening", () => {
+  const makeRule = (env: string, secretPath: string) => ({
+    action: "read",
+    subject: "secrets",
+    conditions: {
+      environment: env,
+      secretPath: { $glob: secretPath }
+    }
+  });
+
+  test("rejects a handlebars expression in secretPath", () => {
+    // interpolatePermissionRules compiles the granted privilege before evaluating it, so a template
+    // surviving here would widen the grant at read time.
+    const permissions = packRules([makeRule("dev", "/apps/{{identity.auth.kubernetes.namespace}}/*")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(/Template sanitization failed/);
+  });
+
+  test("rejects a handlebars expression in environment", () => {
+    const permissions = packRules([makeRule("{{identity.name}}", "/apps/*")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(/Template sanitization failed/);
+  });
+
+  test("rejects an unescaped handlebars expression", () => {
+    const permissions = packRules([makeRule("dev", "/apps/{{{identity.name}}}/*")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(/Template sanitization failed/);
+  });
+
+  test("rejects a non-slug environment", () => {
+    const permissions = packRules([makeRule("Dev Environment", "/apps/*")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow();
+  });
+
+  test("rejects an over-long secretPath", () => {
+    const permissions = packRules([makeRule("dev", `/${"a".repeat(600)}`)]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow();
+  });
+
+  test("still accepts an ordinary glob path", () => {
+    const permissions = packRules([makeRule("dev", "/apps/team-a/*")]);
+    expect(verifyRequestedPermissions({ permissions }).secretPath).toBe("/apps/team-a/*");
   });
 });

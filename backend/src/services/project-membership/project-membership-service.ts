@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -269,6 +270,23 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+
+    const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
+      [ProjectMembershipRole.Member],
+      projectId
+    );
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+      opSubject: ProjectPermissionSub.Member,
+      actorPermission: permission,
+      targetPermissions: memberRolePermissions,
+      baseMessage: "Failed to add a member with a role exceeding your own privileges"
+    });
+
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );

@@ -8,7 +8,7 @@ import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertPermissionBoundary, assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -19,6 +19,7 @@ import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -37,7 +38,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
@@ -348,6 +349,30 @@ export const newOrgMembershipUserFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+
+    if (!("selector" in dto)) return;
+
+    const targetMembership = await membershipUserDAL.getUserById({
+      scopeData: dto.scopeData,
+      userId: dto.selector.userId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (!targetRoles.length) return;
+
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId);
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionActions.Delete,
+      opSubject: OrgPermissionSubjects.Member,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged member from the organization"
+    });
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {

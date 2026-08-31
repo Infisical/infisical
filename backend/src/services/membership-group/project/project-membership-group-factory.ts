@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -15,6 +16,7 @@ import {
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -24,7 +26,7 @@ import { TMembershipGroupScopeFactory } from "../membership-group-types";
 type TProjectMembershipGroupScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne" | "getGroupById">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
@@ -211,6 +213,28 @@ export const newProjectMembershipGroupFactory = ({
 
     const groupDetails = await groupDAL.findById(dto.selector.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
+
+    const targetMembership = await membershipGroupDAL.getGroupById({
+      scopeData: dto.scopeData,
+      groupId: dto.selector.groupId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(dto.permission.orgId),
+        () => orgDAL.findById(dto.permission.orgId)
+      );
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionGroupActions.Delete,
+        opSubject: ProjectPermissionSub.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged group from the project"
+      });
+    }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
   };

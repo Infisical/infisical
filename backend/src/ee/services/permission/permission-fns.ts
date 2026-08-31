@@ -389,6 +389,46 @@ const assertPermissionBoundary = (actorPermission: MongoAbility, managedPermissi
   }
 };
 
+type TAssertRoleSetBoundaryArg = {
+  shouldUseNewPrivilegeSystem: boolean;
+  opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[];
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1];
+  actorPermission: MongoAbility;
+  targetPermissions: { permission: MongoAbility }[];
+  baseMessage: string;
+  subjectFields?: Record<string, string | undefined>;
+};
+
+// Bounds a privilege change against every role the target holds, not just the first one.
+const assertRoleSetBoundary = ({
+  shouldUseNewPrivilegeSystem,
+  opActions,
+  opSubject,
+  actorPermission,
+  targetPermissions,
+  baseMessage,
+  subjectFields
+}: TAssertRoleSetBoundaryArg) => {
+  const primaryAction = Array.isArray(opActions) ? opActions[0] : opActions;
+
+  for (const target of targetPermissions) {
+    const boundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      opActions,
+      opSubject,
+      actorPermission,
+      target.permission,
+      subjectFields
+    );
+
+    if (!boundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(baseMessage, shouldUseNewPrivilegeSystem, primaryAction, opSubject),
+        details: { missingPermissions: boundary.missingPermissions }
+      });
+  }
+};
+
 // Subjects whose forbid rules on new fine-grained actions must also forbid the
 // legacy umbrella action they replaced. Without this expansion, an admin allow
 // on the legacy action survives a custom-role forbid on the new actions and
@@ -634,6 +674,7 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
 
 export {
   assertPermissionBoundary,
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,

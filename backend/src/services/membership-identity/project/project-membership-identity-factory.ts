@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -15,6 +16,7 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -27,7 +29,7 @@ type TProjectMembershipIdentityScopeFactoryDep = {
 
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "getIdentityById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -35,7 +37,8 @@ export const newProjectMembershipIdentityFactory = ({
   permissionService,
   orgDAL,
   identityDAL,
-  projectDAL
+  projectDAL,
+  membershipIdentityDAL
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -231,6 +234,29 @@ export const newProjectMembershipIdentityFactory = ({
     );
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
+    }
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: dto.scopeData,
+      identityId: dto.selector.identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(dto.permission.orgId),
+        () => orgDAL.findById(dto.permission.orgId)
+      );
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionIdentityActions.Delete,
+        opSubject: ProjectPermissionSub.Identity,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged identity from the project",
+        subjectFields: { identityId: dto.selector.identityId }
+      });
     }
   };
 
