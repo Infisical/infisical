@@ -26,8 +26,8 @@ type Props = {
   accountType: PamAccountType;
   isAccessible: boolean;
   requiresApproval: boolean;
+  hasApprovalConfig: boolean;
   accessStatus: PamAccessStatus;
-  requiresCredentialApproval: boolean;
   supportsCredentialReveal: boolean;
   credentialAccessStatus: PamAccessStatus;
   onLaunch: () => void;
@@ -43,8 +43,8 @@ export const AccountActionsMenu = ({
   accountType,
   isAccessible,
   requiresApproval,
+  hasApprovalConfig,
   accessStatus,
-  requiresCredentialApproval,
   supportsCredentialReveal,
   credentialAccessStatus,
   onLaunch,
@@ -72,7 +72,8 @@ export const AccountActionsMenu = ({
 
   const isCredentialPending = credentialAccessStatus === PamAccessStatus.Pending;
   const needsCredentialApproval =
-    requiresCredentialApproval && credentialAccessStatus !== PamAccessStatus.Granted;
+    requiresApproval && credentialAccessStatus !== PamAccessStatus.Granted;
+  const canRequestCredentials = hasApprovalConfig && !isCredentialPending;
 
   const availableTabs = PAM_ACCOUNT_TABS.filter(
     (tab) => (tab.value !== PamSheetTab.Rotation || isRotatable) && (!tab.action || can(tab.action))
@@ -109,7 +110,7 @@ export const AccountActionsMenu = ({
               <div>
                 <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
                   {isPending ? <Clock className="size-4" /> : <KeyRound className="size-4" />}
-                  {isPending ? "Request Pending" : "Request Access"}
+                  {isPending ? "Access Request Pending" : "Request Access"}
                 </DropdownMenuItem>
               </div>
             </TooltipTrigger>
@@ -136,7 +137,7 @@ export const AccountActionsMenu = ({
               <TooltipTrigger asChild>
                 <div>
                   <DropdownMenuItem
-                    isDisabled={isCredentialPending}
+                    isDisabled={!canRequestCredentials}
                     onClick={onRequestCredentialAccess}
                   >
                     {isCredentialPending ? (
@@ -148,8 +149,12 @@ export const AccountActionsMenu = ({
                   </DropdownMenuItem>
                 </div>
               </TooltipTrigger>
-              {isCredentialPending && (
-                <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
+              {!canRequestCredentials && (
+                <TooltipContent side="left">
+                  {isCredentialPending
+                    ? "Your request is awaiting approval"
+                    : "This folder has no approvers configured"}
+                </TooltipContent>
               )}
             </Tooltip>
           ) : (

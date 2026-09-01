@@ -1,5 +1,6 @@
 import {
   PamAccessStatus,
+  PamAccountAccessibilityIssue,
   PamAccountType,
   PamResourcePermissionActions,
   TAccessiblePamAccount,
@@ -64,7 +65,6 @@ export const FolderAccountRow = ({
     requireReason: account.requireReason,
     accessStatus,
     grantExpiresAt: account.grantExpiresAt,
-    requiresCredentialApproval: account.requiresCredentialApproval,
     credentialAccessStatus: account.credentialAccessStatus,
     createdAt: account.createdAt,
     updatedAt: account.updatedAt
@@ -98,8 +98,10 @@ export const FolderAccountRow = ({
           accountType={accountType}
           isAccessible={account.isAccessible}
           requiresApproval={requiresApproval}
+          hasApprovalConfig={
+            !account.accessibilityIssues.includes(PamAccountAccessibilityIssue.NoApprovalConfig)
+          }
           accessStatus={accessStatus}
-          requiresCredentialApproval={account.requiresCredentialApproval}
           supportsCredentialReveal={account.supportsCredentialReveal}
           credentialAccessStatus={account.credentialAccessStatus}
           onLaunch={() => onLaunchAccount(launchableAccount)}

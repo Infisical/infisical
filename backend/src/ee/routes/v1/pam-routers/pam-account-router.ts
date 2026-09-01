@@ -62,9 +62,6 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
-  requiresCredentialApproval: z
-    .boolean()
-    .describe("Whether this account requires approval before its credentials can be viewed"),
   supportsCredentialReveal: z.boolean().describe("Whether this account type stores a credential that can be revealed"),
   credentialAccessStatus: z.nativeEnum(PamAccessStatus).describe("Current credential-approval status for the caller"),
   permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")

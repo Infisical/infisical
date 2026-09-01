@@ -17,7 +17,7 @@ const DEFAULT_RESOURCE_ROLES = [
     slug: PamResourceRole.Operator,
     name: "Operator",
     isDefault: true,
-    description: "Launch sessions and view account credentials; cannot approve requests or change configuration"
+    description: "Launch sessions and view account credentials"
   },
   {
     slug: PamResourceRole.Connector,

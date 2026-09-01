@@ -60,9 +60,9 @@ Gotchas:
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
-- **Session launch and credential reveal (`pamAccountService.getCredentials`) are independent gates over
-  one folder policy.** `requiresApproval` / `requiresCredentialApproval` turn them on; both use the same
-  `PamAccess` policy and approvers, told apart by `accessType` on the request data and grant attributes.
+- **Session launch and credential reveal (`pamAccountService.getCredentials`) are separately approved
+  behind one switch.** The template's `requiresApproval` gates both; they share the same `PamAccess`
+  policy and approvers, told apart by `accessType` on the request data and grant attributes.
   **A missing `accessType` means session**, so a grant predating credential access can never unlock a
   reveal — never treat it as a wildcard. Hence `checkGrant`/`getAccessStatusBatch` take an `accessType`,
   pending requests dedupe per (account, accessType), and `revokeGrantRow` skips session termination for a

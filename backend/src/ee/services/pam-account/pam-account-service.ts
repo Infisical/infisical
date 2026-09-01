@@ -243,9 +243,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       (a) => resolveAccessControls(a.templatePolicies).requiresApproval
     );
     const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
-    const accountIdsRequiringCredentialApproval = accounts
-      .filter((a) => resolveAccessControls(a.templatePolicies).requiresCredentialApproval)
-      .map((a) => a.id);
+
     const folderIdsRequiringApproval = [
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
@@ -259,7 +257,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         ),
         deps.pamAccessRequestService.getAccessStatusBatch(
           { actorId: ctx.actorId, actor: ctx.actor },
-          accountIdsRequiringCredentialApproval,
+          accountIdsRequiringApproval,
           projectId,
           PamAccessType.Credential
         ),
@@ -276,7 +274,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requiresCredentialApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+      const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
@@ -299,12 +297,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         accessibilityIssues,
         isStale: a.isStale,
         requiresApproval,
-        requiresCredentialApproval,
         supportsCredentialReveal: hasRevealableCredential(a.accountType as PamAccountType),
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
-        credentialAccessStatus: requiresCredentialApproval
+        credentialAccessStatus: requiresApproval
           ? (credentialStatusEntry?.accessStatus ?? PamAccessStatus.None)
           : PamAccessStatus.None,
         permissions: permissionsByAccountId.get(a.id) ?? [],
@@ -389,7 +386,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const trimmedReason = reason?.trim() || null;
 
     let grantExpiresAt: Date | null = null;
-    if (policy.requiresCredentialApproval) {
+    if (policy.requiresApproval) {
       const grant = await deps.pamAccessRequestService.checkGrant({
         actorId: ctx.actorId,
         actor: ctx.actor,

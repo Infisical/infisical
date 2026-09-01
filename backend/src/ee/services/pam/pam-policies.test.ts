@@ -88,7 +88,6 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
-    requiresCredentialApproval: false,
     requireReason: false,
     requireMfa: false,
     maxSessionDurationSeconds: null

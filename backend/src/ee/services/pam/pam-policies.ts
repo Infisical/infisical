@@ -5,7 +5,6 @@ import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
-  RequiresCredentialApproval = "requires-credential-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -51,8 +50,6 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
       { message: "One or more patterns are not valid regular expressions" }
     );
 
-const CREDENTIAL_BEARING_ACCOUNT_TYPES = Object.values(PamAccountType).filter((type) => type !== PamAccountType.AwsIam);
-
 type TPamPolicyTypeOverride = {
   description?: string;
   schema?: z.ZodTypeAny;
@@ -71,12 +68,6 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     label: "Require Approval",
     description: "Users must request and receive approval before launching sessions.",
     appliesTo: "all",
-    schema: z.boolean()
-  },
-  [PamPolicyType.RequiresCredentialApproval]: {
-    label: "Require Approval for Credentials",
-    description: "Users must request and receive approval before viewing this account's credentials.",
-    appliesTo: CREDENTIAL_BEARING_ACCOUNT_TYPES,
     schema: z.boolean()
   },
   [PamPolicyType.RequireMfa]: {
@@ -180,7 +171,6 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 
 export type TPamAccessControls = {
   requiresApproval: boolean;
-  requiresCredentialApproval: boolean;
   requireReason: boolean;
   requireMfa: boolean;
   maxSessionDurationSeconds: number | null;
@@ -200,7 +190,6 @@ export const resolveAccessControls = (policyMap: unknown): TPamAccessControls =>
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   return {
     requiresApproval: resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true,
-    requiresCredentialApproval: resolvePolicy(policyMap, PamPolicyType.RequiresCredentialApproval) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,
     maxSessionDurationSeconds: typeof duration === "number" ? duration : null

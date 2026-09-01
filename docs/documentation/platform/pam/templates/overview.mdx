@@ -34,15 +34,14 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   <Step title="Configure policies">
     | Option | What it does |
     |--------|--------------|
-    | **Require Approval** | Users must request and receive approval before launching a session |
-    | **Require Approval for Credentials** | Users must request and receive approval before [viewing the account's credentials](/documentation/platform/pam/accounts/viewing-credentials) |
+    | **Require Approval** | Users must request and receive approval before launching a session or [viewing credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
 
     <Note>
-      The two approval options are separate gates. Turning on **Require Approval** does not gate the credential, and an approved session request does not reveal it. Gate both if a session and the raw password should each need sign-off.
+      **Require Approval** gates sessions and credential reveals with one switch, but they are approved separately: a session request never reveals the credential, and a credential request never launches a session. A member who needs both files both.
     </Note>
 
     <Note>

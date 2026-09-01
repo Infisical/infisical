@@ -351,7 +351,6 @@ export type TAccessiblePamAccount = {
   requireReason?: boolean;
   accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
-  requiresCredentialApproval?: boolean;
   credentialAccessStatus?: PamAccessStatus;
   disabledReason?: string | null;
   createdAt: string;

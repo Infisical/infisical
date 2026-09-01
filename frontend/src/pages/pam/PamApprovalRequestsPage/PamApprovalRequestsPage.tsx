@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { FolderOpen, KeyRound, SearchIcon, ShieldCheck } from "lucide-react";
+import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
@@ -36,10 +36,11 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { PamAccessType, useListPamPendingMyApproval } from "@app/hooks/api/pam";
+import { useListPamPendingMyApproval } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AccessTypeBadge } from "../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { getRequestStatusInfo } from "../components/approvalRequestStatus";
 import { formatDuration } from "../components/formatDuration";
@@ -70,13 +71,10 @@ const RequestRow = ({
             <AccountPlatformIcon accountType={request.accountType} size={16} />
           )}
           {request.accountName ?? "-"}
-          {request.accessType === PamAccessType.Credential && (
-            <Badge variant="warning">
-              <KeyRound className="mr-1 size-3" />
-              Credentials
-            </Badge>
-          )}
         </div>
+      </TableCell>
+      <TableCell>
+        <AccessTypeBadge accessType={request.accessType} />
       </TableCell>
       <TableCell className="text-sm">{request.folderName ?? "-"}</TableCell>
       <TableCell className="text-sm">{formatDuration(duration)}</TableCell>
@@ -135,6 +133,7 @@ const RequestTable = ({
         <TableRow>
           <TableHead>Requester</TableHead>
           <TableHead>Account</TableHead>
+          <TableHead>Requesting</TableHead>
           <TableHead>Folder</TableHead>
           <TableHead>Duration</TableHead>
           <TableHead>Requested</TableHead>
@@ -145,7 +144,7 @@ const RequestTable = ({
         {isPending &&
           Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={`skeleton-${i + 1}`}>
-              {Array.from({ length: 6 }).map((__, j) => (
+              {Array.from({ length: 7 }).map((__, j) => (
                 <TableCell key={`cell-${j + 1}`}>
                   <Skeleton className="h-4 w-full" />
                 </TableCell>

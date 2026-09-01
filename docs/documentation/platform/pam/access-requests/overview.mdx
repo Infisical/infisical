@@ -6,12 +6,7 @@ description: "Require approval before a member can use a sensitive account."
 
 Some [accounts](/documentation/platform/pam/accounts/overview) are sensitive enough that simply having access to them should not be enough to use them. A production database or a domain admin account should be reachable only by people who are already trusted, but even for them, each individual use should clear an extra checkpoint. Access requests add that checkpoint: before a member can [launch a session](/documentation/platform/pam/sessions/overview) on a gated account, their access has to be approved.
 
-An account can gate two things independently, and each is requested separately:
-
-- **Session access**, gated by the template's **Require Approval** policy.
-- **Credential access**, gated by **Require Approval for Credentials**. See [Viewing credentials](/documentation/platform/pam/accounts/viewing-credentials).
-
-Everything below applies to both. An approved session request never reveals the credential, and an approved credential request never launches a session, so a member who needs both files both.
+The template's **Require Approval** policy gates two things, and each is requested separately: launching a session, and [viewing the account's credentials](/documentation/platform/pam/accounts/overview#viewing-credentials). Everything below applies to both. An approved session request never reveals the credential, and an approved credential request never launches a session, so a member who needs both files both.
 
 The same checkpoint applies to [AI agents](/documentation/platform/pam/ai-agents/overview). An agent requests access as whoever started it, a person or a [machine identity](/documentation/platform/identities/machine-identities), and waits for an approver either way.
 

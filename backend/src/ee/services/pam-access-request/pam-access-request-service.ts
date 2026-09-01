@@ -673,10 +673,7 @@ export const pamAccessRequestServiceFactory = ({
     );
 
     const accessControls = resolveAccessControls(account.templatePolicies);
-    const gateEnabled = isCredentialRequest
-      ? accessControls.requiresCredentialApproval
-      : accessControls.requiresApproval;
-    if (!gateEnabled) {
+    if (!accessControls.requiresApproval) {
       throw new BadRequestError({
         message: isCredentialRequest
           ? "This account does not require approval to view its credentials"

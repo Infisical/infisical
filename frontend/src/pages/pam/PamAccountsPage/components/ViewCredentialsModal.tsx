@@ -39,10 +39,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-const errorMessageOf = (err: unknown) =>
-  (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-  "Failed to reveal credentials. Please try again.";
-
 const MFA_FAILURE_MESSAGE = {
   blocked:
     "Your browser blocked the MFA verification window. Allow popups for this site, then try again.",
@@ -145,10 +141,7 @@ export const ViewCredentialsModal = ({
       if (isStale()) return;
 
       const challengeId = mfaSessionId ? undefined : extractMfaSessionId(err);
-      if (!challengeId) {
-        setErrorMessage(errorMessageOf(err));
-        return;
-      }
+      if (!challengeId) return;
 
       setIsVerifyingMfa(true);
       const outcome = await runMfaChallenge(challengeId);
@@ -181,7 +174,7 @@ export const ViewCredentialsModal = ({
 
         {errorMessage && (
           <Alert variant="danger">
-            <AlertTitle>Could not reveal credentials</AlertTitle>
+            <AlertTitle>MFA verification incomplete</AlertTitle>
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         )}

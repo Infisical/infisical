@@ -783,6 +783,7 @@ export const useCreatePamAccessRequest = () => {
 
 export const usePamAccountCredentials = () => {
   return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
     mutationFn: async ({ accountId, reason, mfaSessionId }: TGetPamAccountCredentialsDTO) => {
       const { data } = await apiRequest.post<TPamAccountCredentials>(
         `/api/v1/pam/accounts/${accountId}/credentials`,

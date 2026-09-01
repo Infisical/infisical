@@ -64,7 +64,6 @@ export const formatRotationInterval = (seconds: number | null | undefined): stri
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
-  RequiresCredentialApproval = "requires-credential-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
