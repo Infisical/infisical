@@ -376,7 +376,7 @@ export const SecretEditRow = ({
         ) : (
           <>
             <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Copy Secret">
+              <Tooltip content="Copy Value">
                 <IconButton
                   isDisabled={secretValueHidden}
                   ariaLabel="copy-value"

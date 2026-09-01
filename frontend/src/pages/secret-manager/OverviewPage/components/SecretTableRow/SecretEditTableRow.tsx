@@ -1454,7 +1454,7 @@ export const SecretEditTableRow = ({
                   : "Access Denied"
                 : isCopied
                   ? "Copied"
-                  : "Copy Secret"}
+                  : "Copy Value"}
             </TooltipContent>
           </Tooltip>
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
