@@ -67,6 +67,9 @@ type ContentProps = {
 
 const MAX_PATH_LENGTH = 30;
 
+// keep in sync with MAX_VAULT_IMPORT_PATHS on the import endpoint
+const MAX_IMPORT_PATHS = 25;
+
 const getDisplayPath = (path: string) =>
   path.length > MAX_PATH_LENGTH ? `…${path.slice(path.length - MAX_PATH_LENGTH)}` : path;
 
@@ -167,8 +170,16 @@ const Content = ({
     [selectedPaths, destinationPath, mountPath, keepVaultStructure]
   );
   const { invalidPaths } = preview;
+  const isOverPathLimit = selectedPaths.length > MAX_IMPORT_PATHS;
 
   const handleImport = () => {
+    if (isOverPathLimit) {
+      createNotification({
+        type: "error",
+        text: `Select at most ${MAX_IMPORT_PATHS} Vault paths per import`
+      });
+      return;
+    }
     if (!selectedPaths.length) {
       createNotification({
         type: "error",
@@ -280,7 +291,8 @@ const Content = ({
             modal
           />
           <FieldDescription>
-            Choose one or more secret paths from the selected mount to import into Infisical
+            Choose up to {MAX_IMPORT_PATHS} secret paths from the selected mount to import into
+            Infisical
           </FieldDescription>
         </Field>
 
@@ -303,6 +315,21 @@ const Content = ({
             </FieldDescription>
           </FieldContent>
         </Field>
+
+        {isOverPathLimit && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>
+              {selectedPaths.length} secret paths selected, {MAX_IMPORT_PATHS} is the maximum
+            </AlertTitle>
+            <AlertDescription>
+              An import handles at most {MAX_IMPORT_PATHS} Vault paths at a time. Deselect{" "}
+              {selectedPaths.length - MAX_IMPORT_PATHS} path
+              {selectedPaths.length - MAX_IMPORT_PATHS > 1 ? "s" : ""} and import the rest in
+              another run.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {invalidPaths.length > 0 && (
           <Alert variant="warning">
@@ -401,6 +428,7 @@ const Content = ({
           onClick={handleImport}
           isDisabled={
             !selectedPaths.length ||
+            isOverPathLimit ||
             invalidPaths.length > 0 ||
             mountsQuery.isLoading ||
             vaultSecretPathsQuery.isLoading

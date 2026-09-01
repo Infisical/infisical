@@ -610,6 +610,8 @@ export type TVaultFolderImportUnit = {
   secrets: { secretKey: string; secretValue: string }[];
 };
 
+export const MAX_VAULT_IMPORT_PATHS = 25;
+
 export const MAX_VAULT_FOLDER_IMPORT_SECRETS = 1024;
 
 export const assertVaultFolderImportSecretCount = (units: TVaultFolderImportUnit[]) => {

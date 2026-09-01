@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { MAX_VAULT_IMPORT_PATHS } from "@app/services/external-migration/external-migration-fns/vault";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
 import {
   ExternalMigrationImportStatus,
@@ -281,7 +282,13 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
           .min(1)
           .max(255)
           .describe("The Vault KV secrets engine the selected paths belong to, e.g. 'kv' or 'apps/kv'."),
-        vaultSecretPaths: z.array(z.string().max(255)).min(1).max(100),
+        vaultSecretPaths: z
+          .array(z.string().max(255))
+          .min(1, { message: "Select at least one Vault path to import." })
+          .max(MAX_VAULT_IMPORT_PATHS, {
+            message: `Select at most ${MAX_VAULT_IMPORT_PATHS} Vault paths per import. Import the remaining paths in another run.`
+          })
+          .describe(`The Vault secret paths to import, at most ${MAX_VAULT_IMPORT_PATHS} per request.`),
         connectionId: z.string().uuid(),
         keepVaultStructure: z
           .boolean()
