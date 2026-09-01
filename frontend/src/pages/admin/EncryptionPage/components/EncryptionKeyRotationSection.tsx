@@ -179,12 +179,7 @@ export const EncryptionKeyRotationSection = () => {
               <AlertDescription>
                 <p>
                   The previous key is still active. Once all instances have been migrated to the new
-                  encryption key it is safe to remove this key.
-                </p>
-                <p className="mt-2">
-                  This key will be automatically removed on{" "}
-                  {new Date(rootKey.expiring.expiresAt).toLocaleDateString()} at{" "}
-                  {new Date(rootKey.expiring.expiresAt).toLocaleTimeString()}.{" "}
+                  encryption key it is safe to remove this key.{" "}
                   <button
                     type="button"
                     className="cursor-pointer underline underline-offset-4 hover:text-foreground"
@@ -262,10 +257,19 @@ export const EncryptionKeyRotationSection = () => {
                         {entry.supersededAt &&
                           !entry.retiredAt &&
                           (rootKey.expiring?.label === entry.label ? (
-                            <Badge variant="warning">
-                              <ClockIcon />
-                              Expires {new Date(rootKey.expiring.expiresAt).toLocaleDateString()}
-                            </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="warning">
+                                  <ClockIcon />
+                                  Expires{" "}
+                                  {new Date(rootKey.expiring.expiresAt).toLocaleDateString()}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Removed automatically on{" "}
+                                {new Date(rootKey.expiring.expiresAt).toLocaleString()}
+                              </TooltipContent>
+                            </Tooltip>
                           ) : (
                             <Badge variant="neutral">
                               <ClockIcon />
@@ -353,8 +357,8 @@ export const EncryptionKeyRotationSection = () => {
                 <AlertDescription>
                   One last started on it{" "}
                   {new Date(rootKey.expiring.lastResolvedAt).toLocaleString()}. That is the last
-                  time the key was used. Check your fleet before continuing: an instance that never
-                  restarted onto the new key fails its next restart.
+                  time the key was used. Check your fleet before continuing: any instance that
+                  hasn&apos;t restarted onto the new key will fail to start.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -477,12 +481,8 @@ export const EncryptionKeyRotationSection = () => {
                     ) : (
                       "the key still expiring from an earlier rotation"
                     )}
-                    , already expiring from an earlier rotation. My active key is not removed, it
-                    becomes the new expiring key.
-                    {generatedKey.removesExpiringKey.lastResolvedAt &&
-                      ` An instance last started on the removed key ${new Date(
-                        generatedKey.removesExpiringKey.lastResolvedAt
-                      ).toLocaleString()} and would fail its next restart, if not updated.`}
+                    , any instances that started on this removed key will fail. The current active
+                    key will not be removed, it will become the new expiring key.
                   </span>
                 </Label>
               </div>
