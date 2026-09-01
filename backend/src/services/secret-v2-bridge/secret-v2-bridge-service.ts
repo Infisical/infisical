@@ -2197,12 +2197,15 @@ export const secretV2BridgeServiceFactory = ({
     const project = providedTx
       ? await projectDAL.findById(projectId, providedTx)
       : await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId));
-    await scanSecretPolicyViolations(
-      projectId,
-      secretPath,
-      deduplicatedSecrets,
-      project.secretDetectionIgnoreValues || []
-    );
+
+    if (!providedTx) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        deduplicatedSecrets,
+        project.secretDetectionIgnoreValues || []
+      );
+    }
 
     await secretValidationRuleService.validateSecrets({
       projectId,

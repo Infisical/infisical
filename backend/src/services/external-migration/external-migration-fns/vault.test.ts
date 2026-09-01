@@ -1,4 +1,13 @@
-import { buildVaultFolderImportPlan } from "./vault";
+import { BadRequestError } from "@app/lib/errors";
+
+import {
+  assertVaultFolderImportSecretCount,
+  buildVaultFolderImportPlan,
+  MAX_VAULT_FOLDER_IMPORT_SECRETS
+} from "./vault";
+
+const secretsForCount = (count: number) =>
+  Object.fromEntries(Array.from({ length: count }, (_, i) => [`KEY_${i}`, "value"]));
 
 describe("buildVaultFolderImportPlan", () => {
   test("strips the mount and nests the remaining segments under the destination path", () => {
@@ -192,5 +201,36 @@ describe("buildVaultFolderImportPlan", () => {
       { secretKey: "NESTED", secretValue: '{"a":1}' },
       { secretKey: "LIST", secretValue: '[1,"two"]' }
     ]);
+  });
+});
+
+describe("assertVaultFolderImportSecretCount", () => {
+  test("allows 1024 secrets across multiple paths", () => {
+    const plan = buildVaultFolderImportPlan({
+      secretPath: "/imports",
+      mountPath: "kv",
+      secretsPerPath: [
+        { vaultSecretPath: "kv/app/web", secrets: secretsForCount(512) },
+        { vaultSecretPath: "kv/app/api", secrets: secretsForCount(512) }
+      ]
+    });
+
+    expect(() => assertVaultFolderImportSecretCount(plan)).not.toThrow();
+  });
+
+  test("rejects 1025 secrets", () => {
+    const plan = buildVaultFolderImportPlan({
+      secretPath: "/imports",
+      mountPath: "kv",
+      secretsPerPath: [
+        { vaultSecretPath: "kv/app/web", secrets: secretsForCount(512) },
+        { vaultSecretPath: "kv/app/api", secrets: secretsForCount(513) }
+      ]
+    });
+
+    expect(() => assertVaultFolderImportSecretCount(plan)).toThrowError(BadRequestError);
+    expect(() => assertVaultFolderImportSecretCount(plan)).toThrowError(
+      new RegExp(`Cannot import 1025 secrets.*at most ${MAX_VAULT_FOLDER_IMPORT_SECRETS} secrets`)
+    );
   });
 });

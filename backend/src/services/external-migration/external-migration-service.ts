@@ -58,6 +58,7 @@ import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-serv
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TUserDALFactory } from "../user/user-dal";
 import {
+  assertVaultFolderImportSecretCount,
   assertVaultPathsWithinMount,
   buildVaultFolderImportPlan,
   decryptEnvKeyDataFn,
@@ -613,6 +614,7 @@ export const externalMigrationServiceFactory = ({
     auditLogInfo: AuditLogInfo;
   }) => {
     const units: TVaultFolderImportUnit[] = buildVaultFolderImportPlan({ secretPath, mountPath, secretsPerPath });
+    assertVaultFolderImportSecretCount(units);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) {

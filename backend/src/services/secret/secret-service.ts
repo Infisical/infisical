@@ -2209,9 +2209,9 @@ export const secretServiceFactory = ({
     }
 
     if (shouldUseSecretV2Bridge) {
-      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-        projectDAL.findById(projectId)
-      );
+      const project = tx
+        ? await projectDAL.findById(projectId, tx)
+        : await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId));
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())

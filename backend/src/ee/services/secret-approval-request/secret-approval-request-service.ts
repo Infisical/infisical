@@ -2145,18 +2145,22 @@ export const secretApprovalRequestServiceFactory = ({
     );
 
     const project = await projectDAL.findById(projectId, providedTx);
-    await scanSecretPolicyViolations(
-      projectId,
-      secretPath,
-      [
-        ...(data[SecretOperations.Create] || []),
-        ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
-      ].map((el) => ({
-        secretKey: el.secretKey,
-        secretValue: el.secretValue as string
-      })),
-      project.secretDetectionIgnoreValues || []
-    );
+
+    // scanSecretPolicyViolations is an expensive operation, so it only runs it if we are not in a transaction
+    if (!providedTx) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        [
+          ...(data[SecretOperations.Create] || []),
+          ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
+        ].map((el) => ({
+          secretKey: el.secretKey,
+          secretValue: el.secretValue as string
+        })),
+        project.secretDetectionIgnoreValues || []
+      );
+    }
 
     const secretsToValidate: { key: string; value?: string; secretId?: string }[] = [];
 

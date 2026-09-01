@@ -610,6 +610,17 @@ export type TVaultFolderImportUnit = {
   secrets: { secretKey: string; secretValue: string }[];
 };
 
+export const MAX_VAULT_FOLDER_IMPORT_SECRETS = 1024;
+
+export const assertVaultFolderImportSecretCount = (units: TVaultFolderImportUnit[]) => {
+  const secretCount = units.reduce((count, { secrets }) => count + secrets.length, 0);
+  if (secretCount > MAX_VAULT_FOLDER_IMPORT_SECRETS) {
+    throw new BadRequestError({
+      message: `Cannot import ${secretCount} secrets while preserving Vault structure. Import at most ${MAX_VAULT_FOLDER_IMPORT_SECRETS} secrets at a time, or import without preserving the Vault structure.`
+    });
+  }
+};
+
 type TVaultMappedPath = {
   vaultSecretPath: string;
   secrets: Record<string, JsonValue>;
