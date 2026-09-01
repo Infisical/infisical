@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -11,10 +12,19 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
+import {
+  createDistinguishedName,
+  extractDnParts,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
+import {
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "./certificate-constants";
 
 /**
  * Extracts certificate request data from a CSR string
@@ -25,14 +35,25 @@ import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from
  * This allows applyProfileDefaults to correctly apply defaults for missing fields
  * (e.g., ACME clients like CertBot often omit CN, putting domain only in SAN).
  */
+export const parseCsr = (csr: string): x509.Pkcs10CertificateRequest => {
+  try {
+    return new x509.Pkcs10CertificateRequest(csr);
+  } catch {
+    throw new BadRequestError({
+      message: "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request."
+    });
+  }
+};
+
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
   const subject = extractDnParts(csrObj.subjectName);
 
   // Only include keys for fields that have values, so applyProfileDefaults
   // can distinguish "absent" (use default) from "explicitly set".
   const certificateRequest: TCertificateRequest = {};
   if (subject.commonName) certificateRequest.commonName = subject.commonName;
+  if (subject.domainComponents?.length) certificateRequest.domainComponents = subject.domainComponents;
   if (subject.organization) certificateRequest.organization = subject.organization;
   if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
   if (subject.locality) certificateRequest.locality = subject.locality;
@@ -53,10 +74,13 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
   if (csrExtendedKeyUsageExtension) {
-    const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
-      (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
-    );
-    const mapped = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    const mapped = csrExtendedKeyUsageExtension.usages.map((ekuOid) => {
+      const name = CertExtendedKeyUsageOIDToName[ekuOid as string];
+      if (!name) {
+        throw new BadRequestError({ message: `Unsupported extended key usage in CSR: ${ekuOid as string}` });
+      }
+      return mapLegacyExtendedKeyUsageToStandard(name);
+    });
     if (mapped.length > 0) {
       certificateRequest.extendedKeyUsages = mapped;
     }
@@ -66,14 +90,12 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   if (sanExtension) {
     const sanNames = new x509.GeneralNames(sanExtension.value);
     const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter(
-        (value) =>
-          value.type === TAltNameType.EMAIL ||
-          value.type === TAltNameType.DNS ||
-          value.type === TAltNameType.IP ||
-          value.type === TAltNameType.URL
-      )
+      .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
       .map((name): TAltNameMapping => {
+        if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+          return { type: name.type as TAltNameType, value: name.value };
+        }
+
         const altNameType = validateAndMapAltNameType(name.value);
         if (!altNameType) {
           throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
@@ -99,13 +121,33 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   return certificateRequest;
 };
 
+export const buildSubjectOverrideForCsr = (
+  csr: string,
+  request: Pick<
+    TCertificateRequest,
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
+  >
+): string => {
+  const csrSubject = extractDnParts(parseCsr(csr).subjectName);
+
+  return createDistinguishedName({
+    commonName: csrSubject.commonName ?? request.commonName,
+    organization: csrSubject.organization ?? request.organization,
+    ou: csrSubject.ou ?? request.organizationalUnit,
+    country: csrSubject.country ?? request.country,
+    province: csrSubject.province ?? request.state,
+    locality: csrSubject.locality ?? request.locality,
+    domainComponents: csrSubject.domainComponents ?? request.domainComponents
+  });
+};
+
 /**
  * Extracts the key algorithm and signature algorithm from a CSR
  * @param csr - The CSR in PEM format
  * @returns Object containing keyAlgorithm and signatureAlgorithm
  */
 export const extractAlgorithmsFromCSR = (csr: string) => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
 
   // Extract key algorithm from public key
   const { publicKey } = csrObj;
@@ -317,5 +359,44 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
   return {
     keyAlgorithm,
     signatureAlgorithm: normalizedSignatureAlg
+  };
+};
+
+/**
+ * Generates a leaf keypair and builds a PKCS#10 CSR for it. Callers pass the subject DN and the
+ * WebCrypto algorithm config (from keyAlgorithmToAlgCfg); DNS SANs are optional.
+ * Returns the private key (PKCS#8 PEM) plus the CSR in both PEM and base64-DER form.
+ */
+export const generateLeafKeypairAndCsr = async ({
+  subjectName,
+  algorithm,
+  altNames = []
+}: {
+  subjectName: string;
+  algorithm: ReturnType<typeof keyAlgorithmToAlgCfg>;
+  altNames?: string[];
+}): Promise<{ privateKeyPem: string; csrPem: string; csrDerBase64: string }> => {
+  const leafKeys = await crypto.nativeCrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+  const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+  const privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+  const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+    name: subjectName,
+    keys: leafKeys,
+    signingAlgorithm: algorithm,
+    ...(altNames.length > 0 && {
+      extensions: [
+        new x509.SubjectAlternativeNameExtension(
+          altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
+          false
+        )
+      ]
+    })
+  });
+
+  return {
+    privateKeyPem,
+    csrPem: csrObj.toString("pem"),
+    csrDerBase64: Buffer.from(new Uint8Array(csrObj.rawData)).toString("base64")
   };
 };

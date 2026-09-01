@@ -43,7 +43,8 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
       defaults?.organizationalUnit ||
       defaults?.country ||
       defaults?.state ||
-      defaults?.locality
+      defaults?.locality ||
+      (defaults?.domainComponents && defaults.domainComponents.length > 0)
   );
 
   const hasCryptoDefaults = Boolean(
@@ -223,6 +224,20 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
               <Detail>
                 <DetailLabel>Locality (L)</DetailLabel>
                 <DetailValue>{defaults.locality}</DetailValue>
+              </Detail>
+            )}
+            {defaults.domainComponents && defaults.domainComponents.length > 0 && (
+              <Detail>
+                <DetailLabel>Domain Components (DC)</DetailLabel>
+                <DetailValue>
+                  <div className="flex flex-wrap gap-1">
+                    {defaults.domainComponents.map((dc) => (
+                      <Badge key={dc} variant="neutral">
+                        {dc}
+                      </Badge>
+                    ))}
+                  </div>
+                </DetailValue>
               </Detail>
             )}
           </div>

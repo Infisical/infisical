@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
-import { conditionsMatcher } from "@app/hooks/api/roles/queries";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 

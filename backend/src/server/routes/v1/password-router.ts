@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -41,7 +42,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "setupPassword",
       body: z.object({
-        password: z.string().trim(),
+        password: PasswordPolicySchema,
         token: z.string().trim()
       }),
       response: {

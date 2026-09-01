@@ -4,7 +4,13 @@ import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { CheckCircleIcon, CircleAlertIcon, InfoIcon, LoaderCircleIcon } from "lucide-react";
+import {
+  CheckCircleIcon,
+  CircleAlertIcon,
+  InfoIcon,
+  LoaderCircleIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -73,6 +79,7 @@ type Props = {
 
 type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
   onClose: () => void;
+  foldersWithRbacPolicies: string[];
 };
 
 type OptionValue = { secretPath: string };
@@ -303,10 +310,12 @@ const formatBlockedDestination = (
 ) => {
   const envName =
     envNameBySlug.get(blocked.destinationEnvironment) ?? blocked.destinationEnvironment;
+  // a policy name is only present when the destination is actually governed by a secret approval policy.
+  // when it is absent the destination is blocked because the actor lacks permission to create folders there.
   if (blocked.policyName && blocked.blockingPath) {
     return `At environment ${envName} the path "${blocked.blockingPath}" is governed by the secret approval policy "${blocked.policyName}", so "${blocked.folderName}" cannot be moved there.`;
   }
-  return `At environment ${envName} the destination is governed by a secret approval policy, so "${blocked.folderName}" cannot be moved there.`;
+  return `At the destination environment "${envName}" you don't have permission to create folders, so "${blocked.folderName}" cannot be moved there.`;
 };
 
 // surfaces the two destination-side reasons a move is blocked: a cyclic/self move (client-side) and a destination
@@ -350,10 +359,22 @@ const MoveBlockAlerts = ({
     );
   }
 
+  // a blocked destination carries a policy name only when it is genuinely governed by a secret approval
+  // policy; otherwise the block is a permission issue (the actor cannot create folders at the destination).
+  // title the alert by what actually blocks the set so a permission block is not mislabeled as a policy.
+  const hasPolicyBlock = blockedDestinations.some((blocked) => Boolean(blocked.policyName));
+  const hasPermissionBlock = blockedDestinations.some((blocked) => !blocked.policyName);
+  let title = "This move is blocked";
+  if (hasPolicyBlock && !hasPermissionBlock) {
+    title = "The destination is protected by a secret approval policy";
+  } else if (hasPermissionBlock && !hasPolicyBlock) {
+    title = "You don't have permission to move to the destination";
+  }
+
   return (
     <Alert variant="danger" className="mt-4">
       <CircleAlertIcon />
-      <AlertTitle>The destination is protected by a secret approval policy</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <ul className="list-disc pl-4">
           {blockedDestinations.map((blocked) => (
@@ -362,6 +383,27 @@ const MoveBlockAlerts = ({
             </li>
           ))}
         </ul>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) => {
+  if (!folderNames.length) return null;
+
+  const isSingle = folderNames.length === 1;
+
+  return (
+    <Alert variant="warning" className="mt-4">
+      <TriangleAlertIcon />
+      <AlertTitle>
+        Folder permissions will move with {isSingle ? "this folder" : "these folders"}
+      </AlertTitle>
+      <AlertDescription>
+        Folder-specific permissions are granted on{" "}
+        {folderNames.map((name) => `"${name}"`).join(", ")} or{" "}
+        {isSingle ? "one of its subfolders" : "their subfolders"}. Users and identities with this
+        access will keep it at the new location.
       </AlertDescription>
     </Alert>
   );
@@ -377,7 +419,8 @@ const SingleEnvContent = ({
   visibleEnvs,
   projectId,
   projectSlug,
-  sourceSecretPath
+  sourceSecretPath,
+  foldersWithRbacPolicies
 }: ContentProps) => {
   const sourceEnv = visibleEnvs[0];
   const moveCopy = getMoveSelectionCopy({ secrets, rotations, folders });
@@ -647,6 +690,7 @@ const SingleEnvContent = ({
         blockedDestinations={blockedDestinations}
         environments={environments}
       />
+      <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -714,7 +758,8 @@ const MultiEnvContent = ({
   environments,
   projectId,
   projectSlug,
-  sourceSecretPath
+  sourceSecretPath,
+  foldersWithRbacPolicies
 }: ContentProps) => {
   const moveSecrets = useMoveSecrets();
   const moveSecretRotation = useMoveSecretRotation();
@@ -1076,6 +1121,7 @@ const MultiEnvContent = ({
         blockedDestinations={blockedDestinations}
         environments={environments}
       />
+      <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -1213,7 +1259,8 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
 
   // gate the eligibility check on `isOpen` so selecting a folder never triggers the call, while the
   // snapshot keeps `folderIds` populated so the rendered view stays stable through the close animation
-  const { isChecking, canMove, blockedFolders } = useGetFoldersMoveEligibility(folderIds, isOpen);
+  const { isChecking, canMove, blockedFolders, foldersWithRbacPolicies } =
+    useGetFoldersMoveEligibility(folderIds, isOpen);
 
   const renderContent = () => {
     if (hasFolders && isChecking) {
@@ -1239,6 +1286,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         <SingleEnvContent
           {...contentProps}
           visibleEnvs={visibleEnvs}
+          foldersWithRbacPolicies={foldersWithRbacPolicies}
           onClose={() => onOpenChange(false)}
         />
       );
@@ -1248,6 +1296,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
       <MultiEnvContent
         {...contentProps}
         visibleEnvs={visibleEnvs}
+        foldersWithRbacPolicies={foldersWithRbacPolicies}
         onClose={() => onOpenChange(false)}
       />
     );
@@ -1261,7 +1310,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-xl overflow-visible [&>*]:min-w-0">
+      <DialogContent className="max-w-xl [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{moveCopy.title}</DialogTitle>
           <DialogDescription>

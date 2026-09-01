@@ -29,16 +29,14 @@ export {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
-  ProjectPermissionPamInsightsActions,
-  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionSshHostActions,
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

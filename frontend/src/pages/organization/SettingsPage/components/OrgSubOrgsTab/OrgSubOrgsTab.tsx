@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { DeleteActionModal, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
@@ -71,7 +72,6 @@ import {
   useUpdateSubOrganization
 } from "@app/hooks/api/subOrganizations";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { NewSubOrganizationForm } from "@app/layouts/OrganizationLayout/components/NavBar/NewSubOrganizationForm";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 const editSubOrgSchema = z.object({
@@ -214,14 +214,12 @@ export const OrgSubOrgsTab = () => {
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Mfa
-          email={user.email as string}
-          method={requiredMfaMethod}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
-      </div>
+      <Mfa
+        email={user.email as string}
+        method={requiredMfaMethod}
+        successCallback={mfaSuccessCallback}
+        closeMfa={() => toggleShowMfa.off()}
+      />
     );
   }
 
@@ -430,20 +428,10 @@ export const OrgSubOrgsTab = () => {
         </CardContent>
       </Card>
 
-      <Modal
+      <NewSubOrganizationModal
         isOpen={popUp.addSubOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSubOrg", isOpen)}
-      >
-        <ModalContent
-          title="Add Sub Org"
-          subTitle="Create a new sub-organization under this organization."
-        >
-          <NewSubOrganizationForm
-            onClose={() => handlePopUpClose("addSubOrg")}
-            handleOrgSelection={() => handlePopUpClose("addSubOrg")}
-          />
-        </ModalContent>
-      </Modal>
+      />
 
       <Modal
         isOpen={popUp.editSubOrg.isOpen}

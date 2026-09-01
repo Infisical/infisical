@@ -1,16 +1,9 @@
-import {
-  FileKeyIcon,
-  KeyIcon,
-  LockIcon,
-  LucideIcon,
-  RadarIcon,
-  TerminalIcon,
-  UsersIcon
-} from "lucide-react";
+import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 const secretsToBeAdded = [
   {
@@ -38,6 +31,33 @@ const secretsToBeAdded = [
   }
 ];
 
+const seedExampleSecrets = async (projectId: string) => {
+  await apiRequest.post("/api/v4/secrets/batch", {
+    projectId,
+    environment: "dev",
+    secretPath: "/",
+    secrets: secretsToBeAdded
+  });
+};
+
+/**
+ * Seed the example secrets into a project that may already have them: a prior attempt can
+ * have created the project but failed before seeding finished. Seeding is all-or-nothing
+ * server-side, so any existing secret means the project is already seeded.
+ */
+export const ensureExampleSecrets = async (projectId: string) => {
+  const { secrets } = await fetchProjectSecrets({
+    projectId,
+    environment: "dev",
+    secretPath: "/",
+    viewSecretValue: false
+  });
+
+  if (secrets.length === 0) {
+    await seedExampleSecrets(projectId);
+  }
+};
+
 /**
  * Create and initialize a new project in organization with id [organizationId]
  * Note: current user should be a member of the organization
@@ -51,17 +71,9 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
     type: ProjectType.SecretManager
   });
 
-  try {
-    const { data } = await apiRequest.post("/api/v4/secrets/batch", {
-      projectId: project.id,
-      environment: "dev",
-      secretPath: "/",
-      secrets: secretsToBeAdded
-    });
-    return data;
-  } catch (err) {
-    console.error("Failed to upload secrets", err);
-  }
+  // A seeding failure must propagate; swallowing it here would report the project as
+  // fully initialized and the example secrets would never be retried.
+  await seedExampleSecrets(project.id);
 
   return project;
 };
@@ -85,11 +97,11 @@ export const urlSlugToProjectType = (slug: string): ProjectType | null => {
   return slug as ProjectType;
 };
 
-// Org-wide resource pages (KMIP servers, Secret Sharing) live at literal
-// /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out of the
-// pathname so the sidebar can resolve the active product when the route param is absent.
+// Org-wide resource pages (KMIP servers, Secret Sharing, Product Settings, Insights) live at
+// literal /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out
+// of the pathname so the sidebar can resolve the active product when the route param is absent.
 const ORG_RESOURCE_PROJECT_SLUG_RE =
-  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings)/;
+  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings|insights)/;
 
 export const parseProjectSlugFromPath = (pathname: string): string | undefined =>
   pathname.match(ORG_RESOURCE_PROJECT_SLUG_RE)?.[1];
@@ -97,8 +109,7 @@ export const parseProjectSlugFromPath = (pathname: string): string | undefined =
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
   ProjectType.KMS,
-  ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.SecretScanning
 ]);
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>
@@ -110,6 +121,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
       return "/organizations/$orgId/projects/cert-manager/$projectId";
+    case ProjectType.PAM:
+      return "/organizations/$orgId/pam" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -126,7 +139,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretScanning:
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
-      return `/organizations/$orgId/projects/${type}/$projectId/resources` as const;
+      return "/organizations/$orgId/pam/access" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -137,9 +150,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
-    [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "PAM"
+    [ProjectType.PAM]: "Privileged Access Manager"
   };
   return titleConvert[type] || type;
 };
@@ -147,15 +159,15 @@ export const getProjectTitle = (type: ProjectType) => {
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]:
-      "Centralized secrets across environments — sync, rotation, dynamic credentials, and lifecycle policies.",
+      "Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.",
     [ProjectType.CertificateManager]:
       "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
     [ProjectType.KMS]:
-      "Key Management — generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
+      "Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.",
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Privileged Access Management — just-in-time access, session brokering, and credential vaulting for privileged users and machines."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
   };
   return descriptions[type] ?? "";
 };
@@ -185,24 +197,11 @@ export const collapseCertManagerProjects = (
   ];
 };
 
-export const getProjectLottieIcon = (type: ProjectType) => {
-  const iconConvert: Partial<Record<ProjectType, string>> = {
-    [ProjectType.SecretManager]: "vault",
-    [ProjectType.KMS]: "unlock",
-    [ProjectType.CertificateManager]: "note",
-    [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
-  };
-  return iconConvert[type] || "vault";
-};
-
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
   const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
     [ProjectType.SecretManager]: KeyIcon,
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
-    [ProjectType.SSH]: TerminalIcon,
     [ProjectType.SecretScanning]: RadarIcon,
     [ProjectType.PAM]: UsersIcon
   };

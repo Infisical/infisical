@@ -26,7 +26,7 @@ import {
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
@@ -219,7 +219,9 @@ export const projectEnvServiceFactory = ({
             await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
           }
         }
-        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        const updated = await projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        return updated;
       });
 
       await keyStore.setItemWithExpiry(
@@ -291,6 +293,7 @@ export const projectEnvServiceFactory = ({
             });
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+          await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
 
           return doc;
         }
@@ -328,6 +331,7 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 
@@ -378,9 +382,16 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.deleteAfter === null) {
+        if (!target || target.projectId !== projectId || !target.deleteAfter) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        if (new Date(target.deleteAfter).getTime() <= Date.now()) {
+          throw new BadRequestError({
+            message: "Cannot restore environment: its deletion grace period has already elapsed.",
             name: "RestoreEnvironment"
           });
         }
@@ -412,6 +423,7 @@ export const projectEnvServiceFactory = ({
             name: "RestoreEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 

@@ -56,11 +56,11 @@ function ResultsGrid({ result }: { result: QueryResult }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-background">
         <DataGrid {...gridProps} className="min-h-0 flex-1" stretchColumns />
       </div>
       {isTruncated && (
-        <div className="shrink-0 border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs text-yellow-500/80">
+        <div className="shrink-0 border-t border-border bg-card px-3 py-1.5 text-xs text-warning/80">
           Showing first {result.rows.length.toLocaleString()} rows (results truncated)
         </div>
       )}
@@ -80,7 +80,7 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
   if (error) {
     return (
       <div className="p-4">
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 font-mono text-xs whitespace-pre-wrap text-red-400">
+        <div className="rounded-md border border-danger/30 bg-danger/10 px-4 py-3 font-mono text-xs whitespace-pre-wrap text-danger">
           {error}
         </div>
       </div>
@@ -90,7 +90,7 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
   if (!result) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-mineshaft-300">Run a query to see results</p>
+        <p className="text-sm text-muted">Run a query to see results</p>
       </div>
     );
   }
@@ -122,9 +122,9 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
-        <span className="rounded border-2 border-mineshaft-500 bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
+        <span className="rounded border-2 border-border bg-container px-3 py-1.5 font-mono text-sm text-foreground">
           {message}
-          {isMutation && <span className="ml-2 text-mineshaft-400">· No rows returned</span>}
+          {isMutation && <span className="ml-2 text-muted">· No rows returned</span>}
         </span>
       </div>
     );

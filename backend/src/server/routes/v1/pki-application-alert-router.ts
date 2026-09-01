@@ -41,7 +41,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listAlerts({
         actor: req.permission.type,
@@ -74,7 +74,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       body: BasePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.createAlert({
         actor: req.permission.type,
@@ -106,9 +106,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
-          alertType: alert.eventType,
-          orgId: req.permission.orgId
+          alertType: alert.eventType
         }
       });
 
@@ -132,7 +133,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       body: UpdatePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.updateAlert({
         actor: req.permission.type,
@@ -159,6 +160,17 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiAlertUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          applicationId: req.params.applicationId
+        }
+      });
+
       return { alert };
     }
   });
@@ -178,7 +190,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       }),
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.deleteAlert({
         actor: req.permission.type,
@@ -206,8 +218,9 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          applicationId: req.params.applicationId,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          applicationId: req.params.applicationId
         }
       });
 

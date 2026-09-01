@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import { useDragOperation } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
+  BanIcon,
   ChevronDownIcon,
   FolderIcon,
   GripVerticalIcon,
@@ -21,6 +22,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -75,6 +77,7 @@ type Props = {
   importedSecrets: ImportedSecretData[];
   index: number;
   secretImport?: TSecretImport;
+  isVisible?: boolean;
 };
 
 export const SecretImportTableRow = ({
@@ -90,7 +93,8 @@ export const SecretImportTableRow = ({
   onDelete,
   importedSecrets,
   index,
-  secretImport
+  secretImport,
+  isVisible
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
@@ -104,6 +108,10 @@ export const SecretImportTableRow = ({
   const singleEnvImport = isSingleEnvView
     ? (secretImport ?? getSecretImportByEnv(importEnvSlug, importPath, singleEnvSlug))
     : undefined;
+
+  const isAccessRevoked = isSingleEnvView
+    ? (singleEnvImport?.isAccessRevoked ?? false)
+    : (secretImport?.isAccessRevoked ?? false);
 
   const {
     ref: sortableRef,
@@ -452,7 +460,40 @@ export const SecretImportTableRow = ({
     );
   };
 
+  const getImportedSecretPath = (importItem?: TSecretImport | null) => {
+    if (importItem?.isReplication) {
+      return `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${importItem.id}`;
+    }
+
+    if (importItem?.importEnv?.projectId !== currentProject?.id) {
+      return secretPath;
+    }
+
+    return importPath;
+  };
+
+  const renderRevokedContent = () => (
+    <Empty>
+      <EmptyHeader className="gap-1.5">
+        <div className="flex items-center gap-2">
+          <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
+          <EmptyTitle>
+            {secretImport?.sourceProjectName
+              ? `"${secretImport.sourceProjectName}" revoked access to these secrets.`
+              : "Access to these secrets has been revoked."}
+          </EmptyTitle>
+        </div>
+        <EmptyDescription>
+          Import can no longer be resolved. Re-request access from the source project or remove this
+          import.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+
   const renderMultiEnvExpandedSecrets = () => {
+    if (isAccessRevoked) return renderRevokedContent();
+
     if (hasAnyReplicatedImport) {
       const selectedImport = selectedEnvImportData?.secretImportRecord;
 
@@ -489,13 +530,15 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
                   secretKey={secret.key}
-                  environment={selectedImport?.isReplication ? effectiveSelectedEnv : importEnvSlug}
-                  secretPath={
-                    selectedImport?.isReplication
-                      ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${selectedImport.id}`
-                      : importPath
+                  environment={
+                    selectedImport?.isReplication ||
+                    selectedImport?.importEnv?.projectId !== currentProject?.id
+                      ? effectiveSelectedEnv
+                      : importEnvSlug
                   }
+                  secretPath={getImportedSecretPath(selectedImport)}
                   isEmpty={secret.isEmpty}
+                  isVisible={isVisible}
                 />
               ))}
             </TableBody>
@@ -547,10 +590,19 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${secret.key}`}
                   secretKey={secret.key}
-                  environment={importEnvSlug}
-                  secretPath={importPath}
+                  environment={
+                    secretImport?.importEnv?.projectId !== currentProject?.id
+                      ? environments[0]?.slug || importEnvSlug
+                      : importEnvSlug
+                  }
+                  secretPath={
+                    secretImport?.importEnv?.projectId !== currentProject?.id
+                      ? secretPath
+                      : importPath
+                  }
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
+                  isVisible={isVisible}
                 />
               );
             })}
@@ -569,6 +621,8 @@ export const SecretImportTableRow = ({
   };
 
   const renderExpandedSecrets = (envSlug: string) => {
+    if (isAccessRevoked) return renderRevokedContent();
+
     if (filteredImportedSecrets.length === 0) {
       return (
         <Empty className="bg-transparent shadow-none">
@@ -599,13 +653,15 @@ export const SecretImportTableRow = ({
             <SecretImportSecretRow
               key={`import-secret-${envSlug}-${secret.key}`}
               secretKey={secret.key}
-              environment={singleEnvImport?.isReplication ? singleEnvSlug : importEnvSlug}
-              secretPath={
-                singleEnvImport?.isReplication
-                  ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${singleEnvImport.id}`
-                  : importPath
+              environment={
+                singleEnvImport?.isReplication ||
+                singleEnvImport?.importEnv?.projectId !== currentProject?.id
+                  ? singleEnvSlug
+                  : importEnvSlug
               }
+              secretPath={getImportedSecretPath(singleEnvImport)}
               isEmpty={secret.isEmpty}
+              isVisible={isVisible}
             />
           ))}
         </TableBody>
@@ -657,6 +713,11 @@ export const SecretImportTableRow = ({
         >
           <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">
+              {secretImport?.sourceProjectName &&
+                secretImport.importEnv.projectId &&
+                secretImport.importEnv.projectId !== currentProject?.id && (
+                  <Badge variant="warning">{secretImport.sourceProjectName}</Badge>
+                )}
               <Badge variant="neutral">
                 <LayersIcon />
                 {importEnvName}
@@ -664,6 +725,19 @@ export const SecretImportTableRow = ({
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
               <span className="truncate">{importPath}</span>
             </div>
+            {isAccessRevoked && (
+              <div
+                className={twMerge(
+                  "ml-auto flex items-center",
+                  isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16"
+                )}
+              >
+                <Badge variant="danger">
+                  <BanIcon />
+                  Secret share revoked
+                </Badge>
+              </div>
+            )}
             {isSingleEnvView &&
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (

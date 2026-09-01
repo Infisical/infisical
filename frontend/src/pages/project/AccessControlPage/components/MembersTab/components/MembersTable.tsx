@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
+  CircleAlertIcon,
   ClockAlertIcon,
   ClockIcon,
   FilterIcon,
   InfoIcon,
   MoreHorizontalIcon,
+  RefreshCwIcon,
   SearchIcon,
   UserXIcon
 } from "lucide-react";
@@ -14,7 +16,11 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
+  Button,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -95,7 +101,12 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const productLabel = isCertManager ? "Certificate Manager" : "Project";
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
-  const { data: projectRoles } = useGetProjectRoles(projectId, currentProject?.type);
+  const {
+    data: projectRoles,
+    isPending: isProjectRolesLoading,
+    isError: isProjectRolesError,
+    refetch: refetchProjectRoles
+  } = useGetProjectRoles(projectId, currentProject?.type);
 
   const {
     search,
@@ -108,8 +119,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     orderDirection,
     orderBy,
     setOrderBy,
-    setOrderDirection,
-    toggleOrderDirection
+    setOrderDirection
   } = usePagination<MembersOrderBy>(MembersOrderBy.Name, {
     initPerPage: getUserTablePreference("projectMembersTable", PreferenceKey.PerPage, 20)
   });
@@ -119,11 +129,12 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setUserTablePreference("projectMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(
-    projectId,
-    undefined,
-    filterRoles
-  );
+  const {
+    data: members = [],
+    isPending: isMembersLoading,
+    isError: isMembersError,
+    refetch: refetchMembers
+  } = useGetWorkspaceUsers(projectId, undefined, filterRoles);
 
   const filteredUsers = useMemo(
     () =>
@@ -167,14 +178,16 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
-  const handleSort = (column: MembersOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
+  const handleSort = (column: MembersOrderBy, direction: "ascending" | "descending" | "none") => {
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+  };
+
+  const getSortDirection = (column: MembersOrderBy) => {
+    if (orderBy !== column) return "none" as const;
+    return orderDirection === OrderByDirection.ASC
+      ? ("ascending" as const)
+      : ("descending" as const);
   };
 
   const isTableFiltered = Boolean(filter.roles.length);
@@ -209,7 +222,11 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton variant={isTableFiltered ? "project" : "outline"}>
+            <IconButton
+              variant={isTableFiltered ? "project" : "outline"}
+              aria-label={isProjectRolesLoading ? "Loading role filters" : "Filter users by role"}
+              isDisabled={isProjectRolesLoading || isProjectRolesError}
+            >
               <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
@@ -233,303 +250,350 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {!isMembersLoading && !filteredUsers?.length ? (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {search || isTableFiltered
-                ? isCertManager
-                  ? "No users match search"
-                  : "No project users match search"
-                : isCertManager
-                  ? "No users found"
-                  : "No project users found"}
-            </EmptyTitle>
-            <EmptyDescription>
-              {search || isTableFiltered
-                ? "Adjust your search or filter criteria."
-                : "Add users to get started."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/3" onClick={() => handleSort(MembersOrderBy.Name)}>
-                  Name
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderDirection === OrderByDirection.DESC &&
-                        orderBy === MembersOrderBy.Name &&
-                        "rotate-180",
-                      orderBy !== MembersOrderBy.Name && "opacity-30"
-                    )}
-                  />
-                </TableHead>
-                <TableHead className="w-1/3" onClick={() => handleSort(MembersOrderBy.Email)}>
-                  Email
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderDirection === OrderByDirection.DESC &&
-                        orderBy === MembersOrderBy.Email &&
-                        "rotate-180",
-                      orderBy !== MembersOrderBy.Email && "opacity-30"
-                    )}
-                  />
-                </TableHead>
-                <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
-                <TableHead className="w-5" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isMembersLoading &&
-                Array.from({ length: 10 }).map((_, i) => (
-                  <TableRow key={`skeleton-${i + 1}`}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {!isMembersLoading &&
-                filteredUsersPage.map((projectMember) => {
-                  const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
-                  const name =
-                    u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
-                  const email = u?.email || inviteEmail;
-                  const detailKey = isCertManager ? u.id : membershipId;
+      {isProjectRolesError && (
+        <Alert variant="danger" className="mb-4">
+          <CircleAlertIcon />
+          <AlertTitle>Could not load role filters</AlertTitle>
+          <AlertDescription>
+            <span>Retry to restore role filtering.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchProjectRoles().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {isMembersError && (
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Could not load {productLabel.toLowerCase()} users</AlertTitle>
+          <AlertDescription>
+            <span>Retry to load the membership list.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchMembers().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {!isMembersError &&
+        (!isMembersLoading && !filteredUsers?.length ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {search || isTableFiltered
+                  ? isCertManager
+                    ? "No users match search"
+                    : "No project users match search"
+                  : isCertManager
+                    ? "No users found"
+                    : "No project users found"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {search || isTableFiltered
+                  ? "Adjust your search or filter criteria."
+                  : "Add users to get started."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="w-1/3"
+                    sortDirection={getSortDirection(MembersOrderBy.Name)}
+                    onSortChange={(direction) => handleSort(MembersOrderBy.Name, direction)}
+                  >
+                    Name
+                    <ChevronDownIcon
+                      className={twMerge(
+                        "transition-transform",
+                        orderDirection === OrderByDirection.DESC &&
+                          orderBy === MembersOrderBy.Name &&
+                          "rotate-180",
+                        orderBy !== MembersOrderBy.Name && "opacity-30"
+                      )}
+                    />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/3"
+                    sortDirection={getSortDirection(MembersOrderBy.Email)}
+                    onSortChange={(direction) => handleSort(MembersOrderBy.Email, direction)}
+                  >
+                    Email
+                    <ChevronDownIcon
+                      className={twMerge(
+                        "transition-transform",
+                        orderDirection === OrderByDirection.DESC &&
+                          orderBy === MembersOrderBy.Email &&
+                          "rotate-180",
+                        orderBy !== MembersOrderBy.Email && "opacity-30"
+                      )}
+                    />
+                  </TableHead>
+                  <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isMembersLoading &&
+                  Array.from({ length: 10 }).map((_, i) => (
+                    <TableRow key={`skeleton-${i + 1}`}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!isMembersLoading &&
+                  filteredUsersPage.map((projectMember) => {
+                    const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
+                    const name =
+                      u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
+                    const email = u?.email || inviteEmail;
+                    const detailKey = isCertManager ? u.id : membershipId;
 
-                  return (
-                    <TableRow
-                      key={`membership-${membershipId}`}
-                      className="group cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") {
+                    return (
+                      <TableRow
+                        key={`membership-${membershipId}`}
+                        className="group cursor-pointer"
+                        role="link"
+                        tabIndex={0}
+                        onKeyDown={(evt) => {
+                          if (evt.key === "Enter") {
+                            navigate({
+                              to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
+                              params: {
+                                projectId,
+                                membershipId: detailKey
+                              }
+                            });
+                          }
+                        }}
+                        onClick={() =>
                           navigate({
                             to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                             params: {
                               projectId,
                               membershipId: detailKey
                             }
-                          });
+                          })
                         }
-                      }}
-                      onClick={() =>
-                        navigate({
-                          to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                          params: {
-                            projectId,
-                            membershipId: detailKey
-                          }
-                        })
-                      }
-                    >
-                      <TableCell isTruncatable>
-                        {name ?? <span className="text-muted">&mdash;</span>}
-                      </TableCell>
-                      <TableCell isTruncatable>{email}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          {roles
-                            .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                            .map(
-                              ({
-                                role,
-                                customRoleName,
-                                id,
-                                isTemporary,
-                                temporaryAccessEndTime
-                              }) => {
-                                const isExpired =
-                                  new Date() > new Date(temporaryAccessEndTime || ("" as string));
-                                return (
-                                  <Badge key={id} variant={isExpired ? "danger" : "neutral"}>
-                                    <span className="capitalize">
-                                      {formatProjectRoleName(role, customRoleName)}
-                                    </span>
-                                    {isTemporary && (
-                                      <Tooltip>
-                                        <TooltipTrigger>
-                                          {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {isExpired ? "Access expired" : "Temporary access"}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
-                                  </Badge>
-                                );
-                              }
-                            )}
-                          {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                            <Popover>
-                              <Tooltip>
-                                <TooltipTrigger className="flex h-4 items-center">
-                                  <PopoverTrigger asChild>
-                                    <Badge variant="neutral" asChild>
-                                      <button type="button" onClick={(e) => e.stopPropagation()}>
-                                        +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-                                      </button>
+                      >
+                        <TableCell isTruncatable>
+                          {name ?? <span className="text-muted">&mdash;</span>}
+                        </TableCell>
+                        <TableCell isTruncatable>{email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {roles
+                              .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                              .map(
+                                ({
+                                  role,
+                                  customRoleName,
+                                  id,
+                                  isTemporary,
+                                  temporaryAccessEndTime
+                                }) => {
+                                  const isExpired =
+                                    new Date() > new Date(temporaryAccessEndTime || ("" as string));
+                                  return (
+                                    <Badge key={id} variant={isExpired ? "danger" : "neutral"}>
+                                      <span className="capitalize">
+                                        {formatProjectRoleName(role, customRoleName)}
+                                      </span>
+                                      {isTemporary && (
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            {isExpired ? "Access expired" : "Temporary access"}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
                                     </Badge>
-                                  </PopoverTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>Click to view additional roles</TooltipContent>
-                              </Tooltip>
-                              <PopoverContent
-                                side="right"
-                                className="flex w-auto max-w-sm flex-wrap gap-1.5"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {roles
-                                  .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                  .map(
-                                    ({
-                                      role,
-                                      customRoleName,
-                                      id,
-                                      isTemporary,
-                                      temporaryAccessEndTime
-                                    }) => {
-                                      const isExpired =
-                                        new Date() >
-                                        new Date(temporaryAccessEndTime || ("" as string));
-                                      return (
-                                        <Badge
-                                          key={id}
-                                          className="z-10"
-                                          variant={isExpired ? "danger" : "neutral"}
-                                        >
-                                          <span className="capitalize">
-                                            {formatProjectRoleName(role, customRoleName)}
-                                          </span>
-                                          {isTemporary && (
-                                            <Tooltip>
-                                              <TooltipTrigger tabIndex={-1}>
-                                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                {isExpired ? "Access expired" : "Temporary access"}
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          )}
-                                        </Badge>
-                                      );
-                                    }
-                                  )}
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  variant="ghost"
-                                  size="xs"
-                                  isDisabled={userId === u?.id}
+                                  );
+                                }
+                              )}
+                            {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
+                              <Popover>
+                                <Tooltip>
+                                  <TooltipTrigger className="flex h-4 items-center">
+                                    <PopoverTrigger asChild>
+                                      <Badge variant="neutral" asChild>
+                                        <button type="button" onClick={(e) => e.stopPropagation()}>
+                                          +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                                        </button>
+                                      </Badge>
+                                    </PopoverTrigger>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Click to view additional roles</TooltipContent>
+                                </Tooltip>
+                                <PopoverContent
+                                  side="right"
+                                  className="flex w-auto max-w-sm flex-wrap gap-1.5"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <MoreHorizontalIcon />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                            </TooltipTrigger>
-                            {userId === u?.id && (
-                              <TooltipContent side="left">
-                                You cannot modify your own membership
-                              </TooltipContent>
+                                  {roles
+                                    .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                    .map(
+                                      ({
+                                        role,
+                                        customRoleName,
+                                        id,
+                                        isTemporary,
+                                        temporaryAccessEndTime
+                                      }) => {
+                                        const isExpired =
+                                          new Date() >
+                                          new Date(temporaryAccessEndTime || ("" as string));
+                                        return (
+                                          <Badge
+                                            key={id}
+                                            className="z-10"
+                                            variant={isExpired ? "danger" : "neutral"}
+                                          >
+                                            <span className="capitalize">
+                                              {formatProjectRoleName(role, customRoleName)}
+                                            </span>
+                                            {isTemporary && (
+                                              <Tooltip>
+                                                <TooltipTrigger tabIndex={-1}>
+                                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                  {isExpired
+                                                    ? "Access expired"
+                                                    : "Temporary access"}
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            )}
+                                          </Badge>
+                                        );
+                                      }
+                                    )}
+                                </PopoverContent>
+                              </Popover>
                             )}
-                          </Tooltip>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {!isCertManager && (
+                          </div>
+                        </TableCell>
+                        <TableCell variant="action">
+                          <DropdownMenu>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton
+                                    variant="ghost"
+                                    size="xs"
+                                    aria-label="Open member actions"
+                                    isDisabled={userId === u?.id}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreHorizontalIcon />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              {userId === u?.id && (
+                                <TooltipContent side="left">
+                                  You cannot modify your own membership
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              {!isCertManager && (
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionMemberActions.AssumePrivileges}
+                                  a={ProjectPermissionSub.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <Tooltip>
+                                      <TooltipTrigger className="block w-full">
+                                        <DropdownMenuItem
+                                          isDisabled={!isAllowed}
+                                          onClick={(evt) => {
+                                            evt.preventDefault();
+                                            evt.stopPropagation();
+                                            handlePopUpOpen("assumePrivileges", {
+                                              userId: u.id
+                                            });
+                                          }}
+                                        >
+                                          Assume Privileges
+                                          {isAllowed && <InfoIcon className="text-muted" />}
+                                        </DropdownMenuItem>
+                                      </TooltipTrigger>
+                                      {isAllowed && (
+                                        <TooltipContent className="max-w-80" side="left">
+                                          Assume the privileges of this user, allowing you to
+                                          replicate their access behavior.
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  )}
+                                </ProjectPermissionCan>
+                              )}
                               <ProjectPermissionCan
-                                I={ProjectPermissionMemberActions.AssumePrivileges}
+                                I={ProjectPermissionActions.Delete}
                                 a={ProjectPermissionSub.Member}
                               >
                                 {(isAllowed) => (
-                                  <Tooltip>
-                                    <TooltipTrigger className="block w-full">
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={(evt) => {
-                                          evt.preventDefault();
-                                          evt.stopPropagation();
-                                          handlePopUpOpen("assumePrivileges", {
-                                            userId: u.id
-                                          });
-                                        }}
-                                      >
-                                        Assume Privileges
-                                        {isAllowed && <InfoIcon className="text-muted" />}
-                                      </DropdownMenuItem>
-                                    </TooltipTrigger>
-                                    {isAllowed && (
-                                      <TooltipContent className="max-w-80" side="left">
-                                        Assume the privileges of this user, allowing you to
-                                        replicate their access behavior.
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    isDisabled={!isAllowed}
+                                    onClick={(evt) => {
+                                      evt.preventDefault();
+                                      evt.stopPropagation();
+                                      handlePopUpOpen("removeMember", {
+                                        username: u.username
+                                      });
+                                    }}
+                                  >
+                                    <UserXIcon />
+                                    {`Remove User From ${productLabel}`}
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                            )}
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Delete}
-                              a={ProjectPermissionSub.Member}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={!isAllowed}
-                                  onClick={(evt) => {
-                                    evt.preventDefault();
-                                    evt.stopPropagation();
-                                    handlePopUpOpen("removeMember", {
-                                      username: u.username
-                                    });
-                                  }}
-                                >
-                                  <UserXIcon />
-                                  {`Remove User From ${productLabel}`}
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-          {Boolean(filteredUsers.length) && (
-            <Pagination
-              count={filteredUsers.length}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={handlePerPageChange}
-            />
-          )}
-        </>
-      )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+            {Boolean(filteredUsers.length) && (
+              <Pagination
+                count={filteredUsers.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={handlePerPageChange}
+              />
+            )}
+          </>
+        ))}
     </div>
   );
 };

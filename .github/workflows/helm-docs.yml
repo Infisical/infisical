@@ -1,0 +1,7 @@
+name: Helm Docs
+on: workflow_dispatch
+jobs:
+  generate-helm-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "TODO"

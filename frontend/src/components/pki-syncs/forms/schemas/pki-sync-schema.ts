@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
+
 import {
   AwsCertificateManagerPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
@@ -29,9 +32,29 @@ import {
   UpdateF5BigIpPkiSyncDestinationSchema
 } from "./f5-big-ip-pki-sync-destination-schema";
 import {
+  GcpCertificateManagerPkiSyncDestinationSchema,
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema
+} from "./gcp-certificate-manager-pki-sync-destination-schema";
+import {
+  KempLoadMasterPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema
+} from "./kemp-loadmaster-pki-sync-destination-schema";
+import {
+  LinuxServerPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema
+} from "./linux-server-pki-sync-destination-schema";
+import {
   NetScalerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
+import {
+  NutanixPrismCentralPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
+} from "./nutanix-prism-central-pki-sync-destination-schema";
+import {
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema
+} from "./windows-server-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
@@ -40,8 +63,13 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
+  GcpCertificateManagerPkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
-  F5BigIpPkiSyncDestinationSchema
+  F5BigIpPkiSyncDestinationSchema,
+  KempLoadMasterPkiSyncDestinationSchema,
+  LinuxServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema,
+  NutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -51,11 +79,40 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
-  UpdateF5BigIpPkiSyncDestinationSchema
+  UpdateF5BigIpPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema,
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
-export const PkiSyncFormSchema = PkiSyncUnionSchema;
+export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
+  if (
+    data.destination === PkiSync.GcpCertificateManager &&
+    data.destinationConfig?.certificateMapBinding &&
+    (data.certificateIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "certificateMapBinding"],
+      message: `Certificate map binding supports up to ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificates, which is the GCP limit for one certificate map entry.`
+    });
+  }
+
+  if (
+    (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
+    data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+    !data.credentials?.exportPassword
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["credentials", "exportPassword"],
+      message: "A password is required for PKCS#12 exports"
+    });
+  }
+});
 
 export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema;
 

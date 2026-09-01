@@ -3,8 +3,13 @@
  */
 
 const PKI_DOCS_BASE_URL = "https://infisical.com/docs/documentation/platform/pki";
+const APP_CONNECTIONS_DOCS_BASE_URL = "https://infisical.com/docs/integrations/app-connections";
 
 export const PkiDocsUrls = {
+  appConnections: {
+    microsoftIntune: `${APP_CONNECTIONS_DOCS_BASE_URL}/microsoft-intune`
+  },
+
   // Overview
   overview: `${PKI_DOCS_BASE_URL}/overview`,
   gettingStarted: `${PKI_DOCS_BASE_URL}/getting-started`,
@@ -33,6 +38,7 @@ export const PkiDocsUrls = {
   applications: {
     overview: `${PKI_DOCS_BASE_URL}/applications/overview`,
     certificates: `${PKI_DOCS_BASE_URL}/applications/certificates`,
+    certificateRenewal: `${PKI_DOCS_BASE_URL}/applications/certificate-renewal`,
     approvals: `${PKI_DOCS_BASE_URL}/applications/approvals`,
     enrollment: {
       overview: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/overview`,

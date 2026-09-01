@@ -35,6 +35,7 @@ export const DynamicSecretsBrowser = () => {
     {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Container Orchestration"},
     {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Authentication"},
     {"name": "Milvus", "slug": "milvus", "path": "/documentation/platform/dynamic-secrets/milvus", "description": "Learn how to generate dynamic Milvus database credentials on-demand.", "category": "Databases"},
+    {"name": "Tailscale", "slug": "tailscale", "path": "/documentation/platform/dynamic-secrets/tailscale", "description": "Learn how to generate dynamic Tailscale credentials on-demand.", "category": "Authentication"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
@@ -70,7 +71,7 @@ export const DynamicSecretsBrowser = () => {
           <input
             type="text"
             placeholder="Search dynamic secrets..."
-            className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm"
+            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-[#1e1f22] dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -86,8 +87,8 @@ export const DynamicSecretsBrowser = () => {
               onClick={() => setSelectedCategory(category)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
                 selectedCategory === category
-                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200'
+                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-[#1e1f22] dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700'
               }`}
             >
               {category}
@@ -98,7 +99,7 @@ export const DynamicSecretsBrowser = () => {
 
       {/* Results Count */}
       <div className="mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {filteredDynamicSecrets.length} dynamic secret{filteredDynamicSecrets.length !== 1 ? 's' : ''} found
           {selectedCategory !== 'All' && ` in ${selectedCategory}`}
           {searchTerm && ` for "${searchTerm}"`}
@@ -112,18 +113,18 @@ export const DynamicSecretsBrowser = () => {
             <a
               key={secret.slug}
               href={secret.path}
-              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
+              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-[#1e1f22] dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
             >
               <div className="w-full">
                 <div className="flex items-center justify-between mb-0.5">
-                  <h3 className="text-base font-medium text-gray-900 leading-none m-0">
+                  <h3 className="text-base font-medium text-gray-900 leading-none m-0 dark:text-gray-100">
                     {secret.name}
                   </h3>
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
+                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0 dark:bg-yellow-900/30 dark:text-yellow-300">
                     {secret.category}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed dark:text-gray-400">
                   {secret.description}
                 </p>
               </div>
@@ -133,7 +134,7 @@ export const DynamicSecretsBrowser = () => {
       ) : (
         <div className="text-center py-8">
           <div className="flex flex-col items-center space-y-2">
-            <p className="text-gray-500">No dynamic secrets found matching your criteria</p>
+            <p className="text-gray-500 dark:text-gray-400">No dynamic secrets found matching your criteria</p>
             {searchTerm && (
               <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
             )}

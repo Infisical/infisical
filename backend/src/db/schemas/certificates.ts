@@ -52,7 +52,9 @@ export const CertificatesSchema = z.object({
   keySource: z.string().default("infisical"),
   hsmConnectorId: z.string().uuid().nullable().optional(),
   hsmKeyLabel: z.string().nullable().optional(),
-  hsmPublicKeySpki: zodBuffer.nullable().optional()
+  hsmPublicKeySpki: zodBuffer.nullable().optional(),
+  subjectDomainComponents: z.string().nullable().optional(),
+  orderId: z.string().uuid().default("00000000-0000-0000-0000-000000000000")
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

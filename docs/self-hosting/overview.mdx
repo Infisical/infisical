@@ -1,65 +1,97 @@
 ---
-title: ""
-sidebarTitle: "Introduction"
-description: "Learn how to self-host Infisical on your own infrastructure."
+title: "Self-hosting Infisical"
+description: "Run Infisical on your own infrastructure, from a single container to a high availability cluster."
+sidebarTitle: "Self-hosting"
+icon: "server"
 ---
 
-Self-hosting Infisical lets you retain data on your own infrastructure and network. Many organizations choose self-hosting for benefits in compliance and flexibility.
+You can self-host Infisical instead of using Infisical Cloud. This keeps your data on your own infrastructure and network.
 
-- Compliance: Deploying Infisical in your own environment helps meet strict regulatory requirements (e.g. SOC 2, HIPAA, FIPS 140-3) by aligning with your existing security controls. All data remains under your governance, and Infisical’s architecture supports compliance needs through strong encryption and access controls.
-- Flexibility: You have complete control over deployment topology and integrations. Infisical can run in diverse environments. From air-gapped bare-metal servers to Kubernetes clusters or cloud VMs, this flexibility lets you tailor networking, security, and performance configurations to fit your organization’s needs.
+<Accordion title="Why self-host?">
+  Teams usually choose self-hosting for two reasons:
 
+  - **Compliance.** Running Infisical inside your own environment lets it sit behind your existing security controls, which matters for SOC 2, HIPAA, and FIPS 140-3. All data stays under your governance.
+  - **Flexibility.** You control the deployment topology. Infisical runs on air-gapped bare metal, Kubernetes clusters, and cloud VMs alike, so you can tune networking, security, and performance to fit.
+</Accordion>
 
+Before you begin, check the [hardware requirements](/self-hosting/configuration/requirements) for your expected load. If you need Enterprise features such as SSO or gateways, see [Enterprise licensing](/self-hosting/ee).
 
-Choose from a number of deployment options listed below to get started.
+## Get started
+
+Pick the platform you already run:
 
 <CardGroup cols={3}>
-  <Card
-    title="Docker"
-    color="#000000"
-    icon="docker"
-    href="./deployment-options/standalone-infisical"
-  >
-    Use the fully packaged docker image to deploy Infisical anywhere.
+  <Card title="Docker" icon="docker" href="/self-hosting/deployment-options/standalone-infisical">
+    A single packaged container. The quickest way to get an instance running.
   </Card>
-  <Card
-    title="Kubernetes"
-    color="#000000"
-    icon="dharmachakra"
-    href="./deployment-options/kubernetes-helm"
-  >
-    Deploy Infisical on Kubernetes using our Helm chart.
+  <Card title="Docker Compose" icon="docker" href="/self-hosting/deployment-options/docker-compose">
+    Infisical, PostgreSQL, and Redis together from one template.
   </Card>
-  <Card
-    title="Docker Compose"
-    color="#000000"
-    icon="docker"
-    href="./deployment-options/docker-compose"
-  >
-    Install Infisical using our Docker Compose template.
+  <Card title="Kubernetes" icon="dharmachakra" href="/self-hosting/deployment-options/kubernetes-helm">
+    Deploy with the official Helm chart, with bundled PostgreSQL and Redis.
   </Card>
-  <Card
-    title="AWS"
-    color="#000000"
-    icon="aws"
-    href="./deployment-options/aws-native"
-  >
-    Deploy Infisical on AWS using ECS with Fargate.
+  <Card title="Linux package" icon="linux" href="/self-hosting/deployment-options/native/linux-package/installation">
+    Install directly on a host, with no containers involved.
   </Card>
-  <Card
-    title="GCP"
-    color="#000000"
-    icon="google"
-    href="./deployment-options/gcp-native"
-  >
-    Deploy Infisical on GCP using GKE.
+  <Card title="AWS" icon="aws" href="/self-hosting/deployment-options/aws-native">
+    ECS with Fargate, backed by RDS, ElastiCache, and an ALB.
   </Card>
-  <Card
-    title="Linux package"
-    color="#000000"
-    icon="linux"
-    href="./deployment-options/native/linux-package/installation"
-  >
-    Install Infisical on your system without containers using our Linux package.
+  <Card title="GCP" icon="google" href="/self-hosting/deployment-options/gcp-native">
+    GKE, backed by Cloud SQL and Memorystore.
   </Card>
 </CardGroup>
+
+## Configure
+
+Apply settings once the instance is running:
+
+<CardGroup cols={3}>
+  <Card title="Environment variables" icon="list" href="/self-hosting/configuration/envars">
+    Every variable the instance reads, and which ones are required.
+  </Card>
+  <Card title="Custom certificates" icon="certificate" href="/self-hosting/guides/custom-certificates">
+    Trust an internal certificate authority or use your own TLS certificates.
+  </Card>
+  <Card title="HSM integration" icon="microchip" href="/self-hosting/guides/hsm-integration">
+    Back the encryption root key with a hardware security module.
+  </Card>
+  <Card title="Programmatic provisioning" icon="terminal" href="/self-hosting/guides/automated-bootstrapping">
+    Set up an instance from scratch without touching the UI.
+  </Card>
+  <Card title="CDN caching" icon="bolt" href="/self-hosting/guides/cdn-caching">
+    Serve static assets from a CDN to cut load times.
+  </Card>
+</CardGroup>
+
+## Operate
+
+Keep the instance healthy once it's carrying real traffic:
+
+<CardGroup cols={3}>
+  <Card title="Server admin console" icon="sliders" href="/documentation/platform/admin-panel/server-admin">
+    Instance-wide settings, user management, and sign-up controls.
+  </Card>
+  <Card title="Upgrade Infisical" icon="arrow-up" href="/self-hosting/guides/upgrading-infisical">
+    Move to a newer version without losing data.
+  </Card>
+  <Card title="Multi-region replication" icon="globe" href="/self-hosting/guides/replication">
+    Run read replicas closer to the teams that use them.
+  </Card>
+  <Card title="Production hardening" icon="shield-halved" href="/self-hosting/guides/production-hardening">
+    What to lock down before you put an instance in front of a team.
+  </Card>
+  <Card title="Monitoring and telemetry" icon="chart-line" href="/self-hosting/guides/monitoring-telemetry">
+    Collect metrics and traces with Grafana and OpenTelemetry.
+  </Card>
+  <Card title="Migrate Mongo to PostgreSQL" icon="database" href="/self-hosting/guides/mongo-to-postgres">
+    Move an instance from the older MongoDB backend.
+  </Card>
+</CardGroup>
+
+## Common questions
+
+Answers to the questions that come up most often when running your own instance, including licensing, upgrades, and backups.
+
+<Card title="Self-hosting FAQ" icon="circle-question" href="/self-hosting/faq">
+  Read the FAQ.
+</Card>

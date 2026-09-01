@@ -1,5 +1,5 @@
 schemaVersion: 1
-generatedAt: 2026-06-26T17:52:56.035Z
+generatedAt: 2026-08-27T04:29:40.606Z
 versions:
   - version: v0.159.16
     releasedAt: 2026-04-17T17:49:54-03:00
@@ -58,6 +58,12 @@ versions:
   - version: v0.160.7
     releasedAt: 2026-05-26T20:55:28-03:00
     file: releases/v0.160.7.yaml
+  - version: v0.160.8
+    releasedAt: 2026-05-29T18:08:56-03:00
+    file: releases/v0.160.8.yaml
+  - version: v0.160.9
+    releasedAt: 2026-05-29T18:54:17-03:00
+    file: releases/v0.160.9.yaml
   - version: v0.160.10
     releasedAt: 2026-06-01T23:13:39-03:00
     file: releases/v0.160.10.yaml
@@ -76,3 +82,78 @@ versions:
   - version: v0.161.9
     releasedAt: 2026-06-26T09:13:49-07:00
     file: releases/v0.161.9.yaml
+  - version: v0.161.10
+    releasedAt: 2026-06-29T17:57:59+04:00
+    file: releases/v0.161.10.yaml
+  - version: v0.161.11
+    releasedAt: 2026-07-02T19:28:16-03:00
+    file: releases/v0.161.11.yaml
+  - version: v0.161.12
+    releasedAt: 2026-07-03T11:21:08-03:00
+    file: releases/v0.161.12.yaml
+  - version: v0.161.13
+    releasedAt: 2026-07-06T14:50:57+05:30
+    file: releases/v0.161.13.yaml
+  - version: v0.161.14
+    releasedAt: 2026-07-06T13:25:36-03:00
+    file: releases/v0.161.14.yaml
+  - version: v0.162.1
+    releasedAt: 2026-07-08T15:58:09+04:00
+    file: releases/v0.162.1.yaml
+  - version: v0.162.3
+    releasedAt: 2026-07-10T19:03:59-03:00
+    file: releases/v0.162.3.yaml
+  - version: v0.162.7
+    releasedAt: 2026-07-15T23:36:04+04:00
+    file: releases/v0.162.7.yaml
+  - version: v0.162.8
+    releasedAt: 2026-07-18T02:42:16+04:00
+    file: releases/v0.162.8.yaml
+  - version: v0.162.9
+    releasedAt: 2026-07-18T03:59:01+04:00
+    file: releases/v0.162.9.yaml
+  - version: v0.162.11
+    releasedAt: 2026-07-21T19:19:24-03:00
+    file: releases/v0.162.11.yaml
+  - version: v0.162.12
+    releasedAt: 2026-07-23T07:29:25+05:30
+    file: releases/v0.162.12.yaml
+  - version: v0.162.13
+    releasedAt: 2026-07-23T22:15:06-03:00
+    file: releases/v0.162.13.yaml
+  - version: v0.162.14
+    releasedAt: 2026-07-27T15:09:35-07:00
+    file: releases/v0.162.14.yaml
+  - version: v0.162.15
+    releasedAt: 2026-07-30T05:07:01+08:00
+    file: releases/v0.162.15.yaml
+  - version: v0.162.18
+    releasedAt: 2026-08-07T14:39:29-04:00
+    file: releases/v0.162.18.yaml
+  - version: v0.162.19
+    releasedAt: 2026-08-10T20:00:22-03:00
+    file: releases/v0.162.19.yaml
+  - version: v0.162.20
+    releasedAt: 2026-08-17T20:15:19+01:00
+    file: releases/v0.162.20.yaml
+  - version: v0.162.21
+    releasedAt: 2026-08-17T17:45:27-07:00
+    file: releases/v0.162.21.yaml
+  - version: v0.162.22
+    releasedAt: 2026-08-20T15:37:54-07:00
+    file: releases/v0.162.22.yaml
+  - version: v0.162.23
+    releasedAt: 2026-08-21T10:04:30-07:00
+    file: releases/v0.162.23.yaml
+  - version: v0.162.24
+    releasedAt: 2026-08-21T12:18:38-07:00
+    file: releases/v0.162.24.yaml
+  - version: v0.163.0
+    releasedAt: 2026-08-26T10:56:43-03:00
+    file: releases/v0.163.0.yaml
+  - version: v0.164.0
+    releasedAt: 2026-08-26T11:46:27-07:00
+    file: releases/v0.164.0.yaml
+  - version: v0.164.1
+    releasedAt: 2026-08-26T23:53:28-03:00
+    file: releases/v0.164.1.yaml

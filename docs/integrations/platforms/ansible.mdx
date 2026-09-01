@@ -36,7 +36,7 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
 
 The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), [LDAP Auth](/documentation/platform/identities/ldap-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
 
-### Login Module (Recommended)
+### Login module (recommended)
 
 The recommended approach is to use the `login` module to authenticate once and reuse the credentials across multiple tasks. This reduces authentication overhead and makes playbooks cleaner. Alternatively, you can still pass credentials directly to each plugin/module if preferred.
 
@@ -181,11 +181,12 @@ The recommended approach is to use the `login` module to authenticate once and r
   </Accordion>
 </AccordionGroup>
 
-## Available Plugins and Modules
+## Available plugins and modules
 
-### Lookup Plugins
+### Lookup plugins
 - `infisical.vault.login` - Authenticate and return reusable login data
 - `infisical.vault.read_secrets` - Read secrets from Infisical
+- `infisical.vault.read_folders` - Read folders from Infisical
 
 ### Modules
 
@@ -197,6 +198,12 @@ The recommended approach is to use the `login` module to authenticate once and r
 - `infisical.vault.create_secret` - Create a new secret
 - `infisical.vault.update_secret` - Update an existing secret
 - `infisical.vault.delete_secret` - Delete a secret
+
+**Folders:**
+- `infisical.vault.create_folder` - Create a new folder
+- `infisical.vault.read_folders` - List folders at a path, or get one by ID
+- `infisical.vault.update_folder` - Rename or re-describe an existing folder
+- `infisical.vault.delete_folder` - Delete a folder
 
 **Dynamic Secrets:**
 - `infisical.vault.create_dynamic_secret` - Create a dynamic secret configuration
@@ -212,7 +219,7 @@ The recommended approach is to use the `login` module to authenticate once and r
 
 ## Examples
 
-### Reading Secrets
+### Reading secrets
 
 ```yaml
 ---
@@ -270,7 +277,7 @@ Use the `raw` option to retrieve complete secret metadata including version, cre
   # Returns: {"HOST": {"id": "...", "secretKey": "HOST", "secretValue": "google.com", "version": 1, ...}, ...}
 ```
 
-#### Using the Lookup Plugin
+#### Using the lookup plugin
 
 The `read_secrets` lookup plugin allows for inline secret retrieval. Unlike modules that run on target hosts, lookup plugins run on the Ansible controller during playbook parsing. This is useful for retrieving secrets to use in variable definitions:
 
@@ -286,7 +293,7 @@ vars:
   # { "key": "HOST", "value": "google.com" }
 ```
 
-### Managing Secrets (CRUD)
+### Managing secrets (CRUD)
 
 Create, update, and delete secrets programmatically:
 
@@ -332,11 +339,87 @@ Create, update, and delete secrets programmatically:
   register: deleted_secret
 ```
 
-### Dynamic Secrets
+### Managing folders
+
+[Folders](/documentation/platform/folder) are the path namespace that the `path` option on every secret module addresses. Create a folder before writing secrets into it.
+
+<Note>
+  Folder operations require `infisicalsdk` version 1.0.17 or newer. The modules fail with a clear message when the installed version is older.
+</Note>
+
+```yaml
+- name: Create a folder
+  infisical.vault.create_folder:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    name: "services"
+    description: "Per-service secrets"
+  register: created_folder
+
+- name: List the folders at the root
+  infisical.vault.read_folders:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+  register: folders
+
+- name: Show the folder names
+  debug:
+    msg: "{{ folders.folders | map(attribute='name') | list }}"
+
+- name: Get a single folder by ID
+  infisical.vault.read_folders:
+    login_data: "{{ infisical_login.login_data }}"
+    folder_id: "{{ created_folder.folder.id }}"
+  register: one_folder
+
+- name: Rename the folder
+  infisical.vault.update_folder:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    folder_id: "{{ created_folder.folder.id }}"
+    name: "apps"
+
+- name: Delete the folder and everything inside it
+  infisical.vault.delete_folder:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    folder_id_or_name: "apps"
+    force_delete: true
+```
+
+`read_folders` returns only the direct children of `path`. Set `recursive: true` to list every folder below it instead.
+
+Set `path` to the folder's parent path, not to the folder itself. To rename `/services/backend`, pass `path: "/services"`.
+
+`update_folder` targets a folder only by `folder_id`, never by name, so use `read_folders` to look the ID up first. It also requires `name` on every call, so pass the current name when you only want to change the description. `delete_folder` is more flexible and accepts either an ID or a name through `folder_id_or_name`.
+
+<Warning>
+  Setting `force_delete: true` deletes every secret and subfolder inside the folder along with it.
+</Warning>
+
+#### Reading folders with the lookup plugin
+
+The `read_folders` lookup plugin retrieves folders inline, the same way `read_secrets` does. It returns a plain list rather than the `folders` key the module returns, and returns a one-element list when you pass `folder_id`:
+
+```yaml
+- name: Read folder names with a lookup
+  set_fact:
+    folder_names: "{{ lookup('infisical.vault.read_folders', login_data=infisical_login.login_data, project_id='<project-id>', env_slug='dev', path='/') | map(attribute='name') | list }}"
+```
+
+### Dynamic secrets
 
 Dynamic secrets generate credentials on-demand with automatic expiration. They support various providers like SQL databases, AWS, GCP, Azure, and more. For the full list of supported providers and their configuration options, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
 
-#### Creating a Dynamic Secret
+#### Creating a dynamic secret
 
 ```yaml
 # Create a dynamic secret for PostgreSQL
@@ -366,7 +449,7 @@ Dynamic secrets generate credentials on-demand with automatic expiration. They s
   For the full list of supported provider types and their input configurations, see the [Dynamic Secrets API Documentation](https://infisical.com/docs/api-reference/endpoints/dynamic-secrets/create#body-provider).
 </Note>
 
-#### Getting and Using Dynamic Secret Credentials
+#### Getting and using dynamic secret credentials
 
 To use a dynamic secret, you need to create a **lease** which generates the actual credentials:
 
@@ -392,7 +475,7 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
     query: "SELECT version();"
 ```
 
-#### Managing Leases
+#### Managing leases
 
 ```yaml
 # Get lease details
@@ -426,7 +509,7 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
     lease_id: "{{ lease.lease.id }}"
 ```
 
-#### Updating and Deleting Dynamic Secrets
+#### Updating and deleting dynamic secrets
 
 ```yaml
 # Update a dynamic secret's TTL

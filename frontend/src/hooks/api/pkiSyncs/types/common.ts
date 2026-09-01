@@ -19,6 +19,8 @@ export type RootPkiSyncOptions = {
   preserveItemOnRenewal?: boolean;
   updateExistingCertificates?: boolean;
   fieldMappings?: TChefFieldMappings;
+  healthCheckCommand?: string | null;
+  postSyncCommand?: string | null;
 };
 
 export type TRootPkiSync = {
@@ -36,6 +38,9 @@ export type TRootPkiSync = {
   lastSyncJobId: string | null;
   lastSyncedAt: string | null;
   lastSyncMessage: string | null;
+  lastHealthCheckRanAt: string | null;
+  lastHealthCheckStatus: PkiSyncStatus | null;
+  lastHealthCheckMessage: string | null;
   importStatus: PkiSyncStatus | null;
   lastImportJobId: string | null;
   lastImportedAt: string | null;
@@ -78,8 +83,19 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  externalIdentifier?: string | null;
   syncMetadata?: {
     isDefault?: boolean;
     [key: string]: unknown;
   } | null;
+};
+
+export type TPkiSyncHealthCheckResult = {
+  status: PkiSyncStatus;
+  exitCode?: number;
+  timedOut?: boolean;
+  durationMs: number;
+  output?: string;
+  failureDetail?: string;
+  message?: string;
 };

@@ -1,4 +1,6 @@
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -9,11 +11,12 @@ import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -90,6 +93,9 @@ type TSecretReplicationServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -137,6 +143,9 @@ export const secretReplicationServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   folderCommitService,
+  projectFolderGrantDAL,
+  orgDAL,
+  licenseService,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -236,7 +245,7 @@ export const secretReplicationServiceFactory = ({
       const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
       await Promise.all(
         nonReplicatedDestinationImports
-          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId]?.[0]?.path as string))
           // filter out already synced ones
           .filter(
             ({ folderId }) =>
@@ -288,7 +297,13 @@ export const secretReplicationServiceFactory = ({
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         viewSecretValue: true,
-        hasSecretAccess: () => true
+        hasSecretAccess: () => true,
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId: orgId,
+        orgDAL,
+        licenseService,
+        kmsService
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
@@ -435,8 +450,8 @@ export const secretReplicationServiceFactory = ({
               destinationFolder.environmentSlug,
               destinationFolder.path
             );
-            // this means it should be a approval request rather than direct replication
-            if (policy && actor === ActorType.USER) {
+            // this means it should be an approval request rather than direct replication
+            if (shouldApplyPolicy(policy, actor)) {
               const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
               const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
                 destinationReplicationFolderId,
@@ -450,7 +465,7 @@ export const secretReplicationServiceFactory = ({
                     policyId: policy.id,
                     status: "open",
                     hasMerged: false,
-                    committerUserId: actorId,
+                    ...getCommitterIds(actor, actorId),
                     isReplicated: true
                   },
                   tx
@@ -713,7 +728,7 @@ export const secretReplicationServiceFactory = ({
             destinationFolder.path
           );
           // this means it should be a approval request rather than direct replication
-          if (policy && actor === ActorType.USER) {
+          if (shouldApplyPolicy(policy, actor)) {
             const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
             const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
               destinationReplicationFolderId,
@@ -727,7 +742,7 @@ export const secretReplicationServiceFactory = ({
                   policyId: policy.id,
                   status: "open",
                   hasMerged: false,
-                  committerUserId: actorId,
+                  ...getCommitterIds(actor, actorId),
                   isReplicated: true
                 },
                 tx

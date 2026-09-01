@@ -5,10 +5,16 @@ export const getDefaultOnPremFeatures = () => {
     tier: -1,
     workspaceLimit: null,
     workspacesUsed: 0,
+    secretSyncLimit: null,
+    maxInternalCas: null,
+    maxPamAccounts: null,
+    pam: null,
+    certManager: null,
+    secretsTemporaryAccess: null,
+    enterprisePamAccount: null,
+    pkiCodeSigning: null,
     memberLimit: null,
-    membersUsed: 0,
     identityLimit: null,
-    identitiesUsed: 0,
     environmentLimit: null,
     environmentsUsed: 0,
     secretVersioning: true,
@@ -30,7 +36,6 @@ export const getDefaultOnPremFeatures = () => {
     secretApproval: true,
     secretRotation: true,
     caCrl: false,
-    sshHostGroups: false,
     enterpriseSecretSyncs: false,
     enterpriseCertificateSyncs: false,
     enterpriseAppConnections: true,
@@ -40,11 +45,10 @@ export const getDefaultOnPremFeatures = () => {
     honeyTokens: false,
     honeyTokenLimit: 0,
     gatewayPool: false,
-    fips: true
+    fips: true,
+    secretsFolderRbac: true
   };
 };
-
-export const setupLicenseRequestWithStore = () => {};
 
 export const getLicenseKeyConfig = () => {
   return {

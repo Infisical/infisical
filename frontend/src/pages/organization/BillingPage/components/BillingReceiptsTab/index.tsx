@@ -1,1 +1,0 @@
-export { BillingReceiptsTab } from "./BillingReceiptsTab";

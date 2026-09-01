@@ -1,0 +1,72 @@
+---
+title: "Agent Proxy"
+sidebarTitle: "Overview"
+description: "Give AI agents and untrusted code execution environments access without handing over your secrets."
+---
+
+The **Infisical Agent Proxy** is a credential broker for AI agents and untrusted code execution environments. It sits between your AI agents and the APIs they call including LLM providers, GitHub, Slack, and more.
+
+Agents like Claude Code or OpenClaw route HTTP requests through the proxy, which swaps dummy credentials for real ones (or replaces auth headers entirely), before forwarding the request to the target service.
+
+```text
+            Your private network                                Public internet
+
++----------+                 +-------------+                  +------------------+
+| AI agent | --------------> | Agent Proxy | ---------------> |  api.slack.com   |
++----------+  request with a +-------------+ request with the |  api.github.com  |
+             placeholder key        |        real credential  |  ...             |
+                                    |                         +------------------+
+                                    |  fetches the real
+                                    |  credential values
+                                    v
+                             +-------------+
+                             |  Infisical  |
+                             +-------------+
+```
+
+## Why Agent Proxy
+
+Traditional secrets management involves returning credentials back to applications and services.
+
+This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
+
+Enter Infisical Agent Proxy - a proxy service backed by Infisical that prevents credential exfiltration by brokering access to credentials stored in Infisical at the network boundary.
+
+## What you configure in Infisical
+
+Two things, and they are the same no matter where your agent runs:
+
+1. Add the credential as a secret in Infisical; this can be a static secret or a [dynamic secret](/documentation/platform/dynamic-secrets/overview).
+
+2. Configure a [proxied service](/documentation/platform/agent-proxy/proxied-services). This defines the external service (`api.anthropic.com`, `api.github.com`, `slack.com`, and so on) that Agent Proxy brokers access to, and how the credential is applied to requests bound for it.
+
+Then you route your agent's traffic through Agent Proxy. The agent needs no code changes: the [Infisical CLI](/cli/overview) launches it with its HTTP clients pointed at the proxy, and the proxy applies the real credential to matching requests on the way out.
+
+## Where the proxy runs
+
+The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. A **local proxy** is for agents that live as long as your terminal session: it starts and stops with the agent on your own computer, sandboxed away from your credentials. A **standalone proxy** is for agents running on your infrastructure: it runs on a host of its own and serves agents across your network.
+
+The Quickstart starts with the parts both need, then hands you this choice at the point you have to make it.
+
+## What you work with
+
+| Object              | What it is                                                                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Proxied service** | A config that maps a host to the secret the proxy applies, static or [dynamic](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets). Defined next to your secrets in the dashboard. |
+| **Agent proxy**     | The forward proxy in the [Infisical CLI](/cli/overview) that attaches credentials to outbound requests. Runs on a host in your network, or on your own machine for the duration of a local run.            |
+| **Agent**           | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenClaw, Hermes, or any other untrusted workload.                                                                                            |
+
+<Warning>
+  The Agent Proxy is distinct from similarly named Infisical components:
+
+    - The [Infisical Agent](/integrations/platforms/infisical-agent) fetches secrets to disk for applications.
+    - The [Infisical Proxy](/integrations/platforms/infisical-proxy) caches the Infisical API.
+    - [Gateways](/documentation/platform/gateways/overview) let Infisical reach into private networks.
+
+</Warning>
+
+## Next steps
+
+<Card title="Set Up Credentials" icon="rocket" href="/documentation/platform/agent-proxy/quickstart/credentials">
+  Start the quickstart: add the secret and the proxied service, then pick where the proxy runs.
+</Card>

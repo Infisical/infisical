@@ -1,6 +1,6 @@
 ---
-title: "Microsoft AD CS"
-description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) with Infisical."
+title: "Azure ADCS (web enrollment)"
+description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over HTTPS web enrollment."
 ---
 
 Issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) for enterprise-grade certificate management integrated with your existing Windows infrastructure.
@@ -31,7 +31,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
 
       <Step title="Create New Azure ADCS Certificate Authority">
         Click **Create CA** and configure:
-        - **Type**: Choose **Active Directory Certificate Services (AD CS)**
+        - **Type**: Choose **Azure ADCS (Web Enrollment)**
         - **Name**: Friendly name for this CA (e.g., "Production ADCS CA")
         - **App Connection**: Choose your ADCS connection from the dropdown
       </Step>
@@ -61,11 +61,11 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       </Step>
     </Steps>
 
-    ## Certificate Templates
+    ## Certificate templates
 
     Infisical automatically retrieves available certificate templates from your ADCS server, ensuring you can only select templates that are properly configured and accessible. The system dynamically discovers templates during the certificate authority setup and certificate issuance process.
 
-    ### Common Template Types
+    ### Common template types
 
     ADCS templates you might see include:
 
@@ -77,7 +77,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
     - **Administrator**: For administrative certificates
     - **Subordinate Certification Authority**: For issuing CA certificates
 
-    ### Template Requirements
+    ### Template requirements
 
     Ensure your ADCS templates are configured with:
 
@@ -92,9 +92,9 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       to use will be displayed during certificate issuance.
     </Info>
 
-    ## Certificate Issuance Limitations
+    ## Certificate issuance limitations
 
-    ### Immediate Issuance Only
+    ### Immediate issuance only
 
     <Warning>
       **Manual Approval Not Supported**: Infisical currently supports only
@@ -108,7 +108,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
     - **Not require** administrator approval for the templates you plan to use
     - **Allow** the connection account to request and receive certificates immediately
 
-    ### What Happens with Manual Approval
+    ### What happens with manual approval
 
     If a certificate request requires manual approval:
 
@@ -122,16 +122,16 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       is planned for future releases.
     </Info>
 
-    ### Certificate Revocation
+    ### Certificate revocation
 
     <Warning>
       Certificate revocation is **not supported** by the Azure ADCS connector due to
       security and complexity considerations.
     </Warning>
 
-    ## Advanced Configuration
+    ## Advanced configuration
 
-    ### Custom Validity Periods
+    ### Custom validity periods
 
     Enable custom certificate validity periods on your ADCS server:
 
@@ -147,7 +147,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
   <Tab title="Signing Internal Intermediate CAs">
     In addition to using AD CS as an external CA for direct certificate issuance, you can use AD CS to **sign internal intermediate CAs** in Infisical. This lets you create an Infisical-managed CA hierarchy where the intermediate CA's certificate is issued by your AD CS server, with support for auto-renewal.
 
-    ## How It Works
+    ## How it works
 
     1. Infisical generates a CSR for the intermediate CA.
     2. The CSR is submitted to AD CS via Web Enrollment using the configured certificate template.
@@ -160,7 +160,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       so that the CSR's subject fields are honored.
     </Warning>
 
-    ## Installing an Intermediate CA Certificate via AD CS
+    ## Installing an intermediate CA certificate via AD CS
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -172,8 +172,8 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
           <Step title="Open the Install Certificate Modal">
             Press **Install CA Certificate** on the intermediate CA. Select **External CA (Automated)** and press **Choose Integration**.
           </Step>
-          <Step title="Select Azure AD CS">
-            Choose **Azure AD CS** as the integration provider.
+          <Step title="Select Azure ADCS (Web Enrollment)">
+            Choose **Azure ADCS (Web Enrollment)** as the integration provider.
           </Step>
           <Step title="Configure Signing Details">
             Configure the following:
@@ -220,7 +220,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       </Tab>
     </Tabs>
 
-    ## Auto-Renewal
+    ## Auto-renewal
 
     Infisical supports automatic renewal of intermediate CA certificates signed by AD CS. When enabled, Infisical will automatically submit a new CSR to AD CS and import the renewed certificate before the current one expires.
 
@@ -231,7 +231,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
         Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
       </Tab>
       <Tab title="API">
-        ### Enable Auto-Renewal
+        ### Enable auto-renewal
 
         ```bash Request
         curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/auto-renewal' \
@@ -263,7 +263,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       </Tab>
     </Tabs>
 
-    ## Manual Renewal
+    ## Manual renewal
 
     You can also manually trigger a renewal for an AD CS-signed intermediate CA at any time. Each renewal submits a fresh CSR (AD CS has no renewal API).
 
@@ -271,7 +271,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       <Tab title="Infisical UI">
         Navigate to the CA details page and press the **Renew CA** button.
 
-        The renewal modal will confirm that this CA is configured to use Azure AD CS for signing. Press **Renew via AD CS** to submit a new CSR to AD CS and install the renewed certificate.
+        The renewal modal will confirm that this CA is configured to use Azure ADCS for signing. Press **Renew via ADCS** to submit a new CSR to ADCS and install the renewed certificate.
       </Tab>
       <Tab title="API">
         To manually renew an AD CS-signed CA, re-trigger the install flow via the API.

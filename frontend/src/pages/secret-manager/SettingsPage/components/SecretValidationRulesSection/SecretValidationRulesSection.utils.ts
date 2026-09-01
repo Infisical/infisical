@@ -2,9 +2,11 @@ import {
   DatabaseIcon,
   HashIcon,
   HistoryIcon,
+  KeyRoundIcon,
   LayersIcon,
   LucideIcon,
   RulerIcon,
+  TerminalIcon,
   TextCursorInputIcon,
   TextIcon
 } from "lucide-react";
@@ -121,7 +123,12 @@ export enum DynamicSecretRuleProvider {
 // Provider identifiers selectable in secret-rotation rules. Keep aligned with
 // backend `SecretRotationRuleProvider`.
 export enum SecretRotationRuleProvider {
-  PostgresCredentials = "postgres-credentials"
+  PostgresCredentials = "postgres-credentials",
+  MySqlCredentials = "mysql-credentials",
+  MsSqlCredentials = "mssql-credentials",
+  OracleDBCredentials = "oracledb-credentials",
+  UnixLinuxLocalAccount = "unix-linux-local-account",
+  LdapPassword = "ldap-password"
 }
 
 export type TProviderOption<T extends string> = {
@@ -140,6 +147,31 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
     value: SecretRotationRuleProvider.PostgresCredentials,
     label: "PostgreSQL Credentials",
     icon: DatabaseIcon
+  },
+  {
+    value: SecretRotationRuleProvider.MySqlCredentials,
+    label: "MySQL Credentials",
+    icon: DatabaseIcon
+  },
+  {
+    value: SecretRotationRuleProvider.MsSqlCredentials,
+    label: "MsSQL Credentials",
+    icon: DatabaseIcon
+  },
+  {
+    value: SecretRotationRuleProvider.OracleDBCredentials,
+    label: "OracleDB Credentials",
+    icon: DatabaseIcon
+  },
+  {
+    value: SecretRotationRuleProvider.UnixLinuxLocalAccount,
+    label: "Unix/Linux Local Account",
+    icon: TerminalIcon
+  },
+  {
+    value: SecretRotationRuleProvider.LdapPassword,
+    label: "LDAP Password",
+    icon: KeyRoundIcon
   }
 ];
 
@@ -243,10 +275,11 @@ export const ruleFormSchema = z.object({
   description: z.string().max(500).optional(),
   environment: z.string().nullable().default(null),
   folderPath: z.string().min(1, "Folder path is required").default("/**"),
+  // Mirrors the API rule config shape (see backend `SecretValidationRuleSchema`).
   enforcement: z.discriminatedUnion("type", [
-    z.object({ type: z.literal(RuleType.StaticSecrets), inputs: staticSecretsInputsSchema }),
-    z.object({ type: z.literal(RuleType.DynamicSecrets), inputs: dynamicSecretsInputsSchema }),
-    z.object({ type: z.literal(RuleType.SecretRotations), inputs: secretRotationsInputsSchema })
+    z.object({ type: z.literal(RuleType.StaticSecrets), ...staticSecretsInputsSchema.shape }),
+    z.object({ type: z.literal(RuleType.DynamicSecrets), ...dynamicSecretsInputsSchema.shape }),
+    z.object({ type: z.literal(RuleType.SecretRotations), ...secretRotationsInputsSchema.shape })
   ])
 });
 

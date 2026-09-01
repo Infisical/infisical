@@ -4,7 +4,6 @@ import {
   IntegrationsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
-  ProjectSshConfigsSchema,
   ProjectType,
   SortDirection
 } from "@app/db/schemas";
@@ -55,7 +54,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspaces = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
@@ -93,7 +92,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspace = await server.services.project.getAProject({
         filter: {
@@ -341,7 +340,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
@@ -378,7 +377,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
@@ -388,107 +387,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         projectId: req.params.workspaceId
       });
       return { authorizations };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:workspaceId/ssh-config",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      response: {
-        200: ProjectSshConfigsSchema.pick({
-          id: true,
-          createdAt: true,
-          updatedAt: true,
-          projectId: true,
-          defaultUserSshCaId: true,
-          defaultHostSshCaId: true
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const sshConfig = await server.services.project.getProjectSshConfig({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: sshConfig.projectId,
-        event: {
-          type: EventType.GET_PROJECT_SSH_CONFIG,
-          metadata: {
-            id: sshConfig.id,
-            projectId: sshConfig.projectId
-          }
-        }
-      });
-
-      return sshConfig;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/:workspaceId/ssh-config",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        defaultUserSshCaId: z.string().optional(),
-        defaultHostSshCaId: z.string().optional()
-      }),
-      response: {
-        200: ProjectSshConfigsSchema.pick({
-          id: true,
-          createdAt: true,
-          updatedAt: true,
-          projectId: true,
-          defaultUserSshCaId: true,
-          defaultHostSshCaId: true
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const sshConfig = await server.services.project.updateProjectSshConfig({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        ...req.body
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: sshConfig.projectId,
-        event: {
-          type: EventType.UPDATE_PROJECT_SSH_CONFIG,
-          metadata: {
-            id: sshConfig.id,
-            projectId: sshConfig.projectId,
-            defaultUserSshCaId: sshConfig.defaultUserSshCaId,
-            defaultHostSshCaId: sshConfig.defaultHostSshCaId
-          }
-        }
-      });
-
-      return sshConfig;
     }
   });
 
@@ -532,7 +430,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const config = await server.services.project.getProjectWorkflowIntegrationConfig({
         actorId: req.permission.id,
@@ -707,19 +605,22 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         name: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .refine(
+            (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Spaces, CharacterType.Hyphen])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+            }
+          )
           .optional()
       }),
       response: {
         200: z.object({
-          projects: SanitizedProjectSchema.extend({ isMember: z.boolean() }).array(),
+          projects: SanitizedProjectSchema.extend({ isMember: z.boolean(), isDirectMember: z.boolean() }).array(),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { docs: projects, totalCount } = await server.services.project.searchProjects({
         permission: req.permission,

@@ -33,12 +33,15 @@ import promptSync from "prompt-sync";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
+import { inMemoryKeyStore } from "@app/keystore/memory";
 import { getConfig, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -129,6 +132,8 @@ const main = async () => {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(knex);
+  const kmsKekHistoryDAL = kmsKekHistoryDALFactory(knex);
   const hsmConfig = getHsmConfig(logger);
 
   const hsmModule = initializeHsmModule(hsmConfig);
@@ -151,12 +156,15 @@ const main = async () => {
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
+    kmsLegacyEncryptionKeyDAL,
+    kmsKekHistoryDAL,
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore: inMemoryKeyStore(),
     envConfig
   });
   // Loads the decrypted root key into the service's in-memory buffer; the

@@ -1,6 +1,4 @@
-import http from "node:http";
-
-import { logger } from "@app/lib/logger";
+import { postGatewayRpc } from "./gateway-rpc";
 
 export type Pkcs11RpcEndpoint = "/v1/test" | "/v1/generate-key-pair" | "/v1/sign" | "/v1/get-public-key";
 
@@ -27,86 +25,47 @@ export const callPkcs11Endpoint = async <T>(args: {
   body: Pkcs11RpcRequestBody;
   timeoutMs?: number;
 }): Promise<Pkcs11RpcResponse<T>> => {
-  const payload = JSON.stringify(args.body);
-  return new Promise<Pkcs11RpcResponse<T>>((resolve, reject) => {
-    const req = http.request(
-      {
-        host: "127.0.0.1",
-        port: args.port,
-        path: args.endpoint,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(payload).toString(),
-          Connection: "close"
-        },
-        timeout: args.timeoutMs ?? PKCS11_RPC_TIMEOUT_MS
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => {
-          const text = Buffer.concat(chunks).toString("utf8");
-          const status = res.statusCode ?? 0;
-          if (!text) {
-            resolve({
-              ok: false,
-              status,
-              errorCode: "internal",
-              errorMessage: `Empty response body from Gateway (status ${status})`
-            });
-            return;
-          }
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(text);
-          } catch {
-            resolve({
-              ok: false,
-              status,
-              errorCode: "internal",
-              errorMessage: `Malformed response body from Gateway: ${text.slice(0, 256)}`
-            });
-            return;
-          }
-          if (status >= 200 && status < 300) {
-            const { result } = parsed as { result?: T };
-            if (result === undefined) {
-              resolve({
-                ok: false,
-                status,
-                errorCode: "internal",
-                errorMessage: "Gateway response missing `result` field"
-              });
-              return;
-            }
-            resolve({ ok: true, status, result });
-            return;
-          }
-          const errEnv = (parsed as { error?: { code?: string; message?: string } }).error;
-          resolve({
-            ok: false,
-            status,
-            errorCode: errEnv?.code ?? "internal",
-            errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}`
-          });
-        });
-        res.on("error", (err) => {
-          logger.warn({ err }, `PKCS#11 RPC response stream error [port=${args.port}]`);
-          reject(err);
-        });
-      }
-    );
-    req.on("timeout", () => {
-      req.destroy(new Error(`PKCS#11 RPC timed out after ${args.timeoutMs ?? PKCS11_RPC_TIMEOUT_MS}ms`));
-    });
-    req.on("error", (err) => {
-      logger.warn({ err }, `PKCS#11 RPC request error [port=${args.port}]`);
-      reject(err);
-    });
-    req.write(payload);
-    req.end();
+  const { status, text } = await postGatewayRpc({
+    port: args.port,
+    path: args.endpoint,
+    payload: JSON.stringify(args.body),
+    timeoutMs: args.timeoutMs ?? PKCS11_RPC_TIMEOUT_MS,
+    label: "PKCS#11"
   });
+
+  if (!text) {
+    return {
+      ok: false,
+      status,
+      errorCode: "internal",
+      errorMessage: `Empty response body from Gateway (status ${status})`
+    };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      status,
+      errorCode: "internal",
+      errorMessage: `Malformed response body from Gateway: ${text.slice(0, 256)}`
+    };
+  }
+  if (status >= 200 && status < 300) {
+    const { result } = parsed as { result?: T };
+    if (result === undefined) {
+      return { ok: false, status, errorCode: "internal", errorMessage: "Gateway response missing `result` field" };
+    }
+    return { ok: true, status, result };
+  }
+  const errEnv = (parsed as { error?: { code?: string; message?: string } }).error;
+  return {
+    ok: false,
+    status,
+    errorCode: errEnv?.code ?? "internal",
+    errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}`
+  };
 };
 
 export const isRetryablePkcs11RpcError = (failure: Pkcs11RpcFailure): boolean => {

@@ -16,6 +16,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TFolderMoveBlockingType } from "./secret-folder-types";
 
@@ -48,8 +49,8 @@ export const buildFolderIdMap = (folders: TSecretFolders[]): Record<string, TSec
   return map;
 };
 
-export const buildChildrenMap = (folders: TSecretFolders[]): Record<string, TSecretFolders[]> => {
-  const map: Record<string, TSecretFolders[]> = {};
+export const buildChildrenMap = <T extends TSecretFolders>(folders: T[]): Record<string, T[]> => {
+  const map: Record<string, T[]> = {};
   for (const folder of folders) {
     const key = folder.parentId || "null";
     if (!map[key]) {
@@ -102,21 +103,23 @@ export const resolveClosestFolder = (
 
 // read permission used to decide whether an actor is allowed to learn that a given blocking resource
 // exists at a folder path. used to avoid disclosing subtree contents (e.g. honey tokens) to actors
-// without access while still scanning the full subtree to enforce move correctness.
-const FOLDER_MOVE_BLOCK_PERMISSION: Record<TFolderMoveBlockingType, { action: string; subject: ProjectPermissionSub }> =
-  {
-    secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
-    dynamic_secret: {
-      action: ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      subject: ProjectPermissionSub.DynamicSecrets
-    },
-    honey_token: { action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens },
-    secret_rotation: {
-      action: ProjectPermissionSecretRotationActions.Read,
-      subject: ProjectPermissionSub.SecretRotation
-    },
-    secret_approval_policy: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretFolders }
-  };
+// without access while still scanning the full subtree to enforce move correctness. every blocking type
+// except secret_approval_policy (handled explicitly in canActorReadBlock) must have an entry here.
+const FOLDER_MOVE_BLOCK_PERMISSION: Record<
+  Exclude<TFolderMoveBlockingType, "secret_approval_policy">,
+  { action: string; subject: ProjectPermissionSub }
+> = {
+  secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
+  dynamic_secret: {
+    action: ProjectPermissionDynamicSecretActions.ReadRootCredential,
+    subject: ProjectPermissionSub.DynamicSecrets
+  },
+  honey_token: { action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens },
+  secret_rotation: {
+    action: ProjectPermissionSecretRotationActions.Read,
+    subject: ProjectPermissionSub.SecretRotation
+  }
+};
 
 // when set, the move-block scan only reports blocks at paths the actor is allowed to read, so it cannot
 // disclose the existence of blocking resources in a subtree the actor cannot see (used by the read-only
@@ -143,13 +146,24 @@ export const canActorReadBlock = (
   blockingType: TFolderMoveBlockingType,
   secretPath: string
 ) => {
-  const { action, subject: sub } = FOLDER_MOVE_BLOCK_PERMISSION[blockingType];
+  // an approval policy blocks at a folder path, and folder read is implied-for-all (folder list/get is not
+  // gated by a Read permission), so its existence is not disclosure-gated on a Read-on-SecretFolders proxy.
+  if (blockingType === "secret_approval_policy") return true;
+
+  const blockPermission = FOLDER_MOVE_BLOCK_PERMISSION[blockingType];
+  if (!blockPermission) {
+    throw new InternalServerError({
+      message: `Unhandled folder move blocking type: ${blockingType}`
+    });
+  }
+
+  const { action, subject: sub } = blockPermission;
   return (permission as MongoAbility).can(action, subject(sub, { environment, secretPath }));
 };
 
 // absolute path of a subtree folder, re-rooted at `rootFolderPath`; the moved folder itself is "/". when the
 // root is "/", its prefix is dropped so child paths stay "/child" rather than "//child".
-const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
+export const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
   if (folderPath === "/") return rootFolderPath;
   const prefix = rootFolderPath === "/" ? "" : rootFolderPath;
   return `${prefix}${folderPath}`;
@@ -242,31 +256,25 @@ export const checkFolderMovePolicyBlock = async (
     subtree,
     projectId,
     environment,
-    rootFolderPath,
-    accessScope
+    rootFolderPath
   }: {
     subtree: { id: string; path: string }[];
     projectId: string;
     environment: string;
     rootFolderPath: string;
-    accessScope?: TFolderMoveAccessScope;
   },
-  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps
+  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
+  tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
 
-  let subtreeAbsPaths = subtree.map((f) => toAbsPath(f.path));
-  // only consider paths the actor is allowed to read, so policy presence at inaccessible paths isn't disclosed.
-  if (accessScope) {
-    subtreeAbsPaths = subtreeAbsPaths.filter((secretPath) =>
-      canActorReadBlock(accessScope.permission, accessScope.environment, "secret_approval_policy", secretPath)
-    );
-  }
+  const subtreeAbsPaths = subtree.map((f) => toAbsPath(f.path));
 
   const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
     projectId,
     environment,
-    subtreeAbsPaths
+    subtreeAbsPaths,
+    tx
   );
 
   // report the first blocked path in subtree order, matching the previous per-folder behavior.
@@ -283,6 +291,22 @@ export const checkFolderMovePolicyBlock = async (
   }
 
   return null;
+};
+
+type TCheckFolderRbacPoliciesDeps = {
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+};
+
+export const checkFolderHasRbacPolicies = async (
+  { subtree }: { subtree: { id: string }[] },
+  { additionalPrivilegeDAL }: TCheckFolderRbacPoliciesDeps,
+  tx: Knex
+): Promise<boolean> => {
+  const folderIds = subtree.map((f) => f.id);
+  if (!folderIds.length) return false;
+
+  const [privilege] = await additionalPrivilegeDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
+  return Boolean(privilege);
 };
 
 // throws the appropriate BadRequestError for a detected move block. the full subtree is always scanned to

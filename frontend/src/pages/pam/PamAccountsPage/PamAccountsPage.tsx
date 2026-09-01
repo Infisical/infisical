@@ -1,0 +1,443 @@
+import { useMemo, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { PageHeader } from "@app/components/v2";
+import {
+  Button,
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useOrganization } from "@app/context";
+import {
+  PamAccountType,
+  PamResourcePermissionActions,
+  TAccessiblePamAccount,
+  TPamAccountListItem,
+  useDeletePamAccount,
+  useDeletePamFolder,
+  useGetPamAccessCapabilities,
+  useListPamAccounts,
+  useListPamFolders
+} from "@app/hooks/api/pam";
+import { ProjectType } from "@app/hooks/api/projects/types";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { usePamSheetState } from "@app/hooks/usePamSheetState";
+import { usePopUp } from "@app/hooks/usePopUp";
+
+import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
+import { RequestAccessSheet } from "../components/RequestAccessSheet";
+import { PamDocsUrls } from "../pam-docs-urls";
+import { AccountDetailSheet } from "./components/AccountDetailSheet";
+import { AccountsBreadcrumb } from "./components/AccountsBreadcrumb";
+import { CreateAccountSheet } from "./components/CreateAccountSheet";
+import { CreateFolderModal } from "./components/CreateFolderModal";
+import { DeleteAccountModal } from "./components/DeleteAccountModal";
+import { DeleteFolderModal } from "./components/DeleteFolderModal";
+import { FolderAccountRows } from "./components/FolderAccountRows";
+import { FolderDetailSheet } from "./components/FolderDetailSheet";
+
+const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
+
+export const PamAccountsPage = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
+  const [searchInput, setSearchInput] = useState("");
+
+  // Every role sees the same folder/account structure; permissions only disable actions on a row,
+  // never hide it. Capabilities just drive the create affordances and the empty-state copy.
+  const { data: capabilities } = useGetPamAccessCapabilities();
+
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
+  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders();
+
+  // Folders where the user can create accounts — gates the "Add Account" affordance.
+  const { data: creatableFolders = [] } = useListPamFolders({
+    filterByAction: PamResourcePermissionActions.CreateAccounts
+  });
+  // Product admins qualify even with zero folders: the create sheet lets them add one inline.
+  const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
+
+  const deleteAccount = useDeletePamAccount();
+  const deleteFolder = useDeletePamFolder();
+
+  // For regular users - request access flow
+  const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
+
+  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
+    "createAccount",
+    "deleteAccount",
+    "createFolder",
+    "deleteFolder"
+  ] as const);
+
+  const accountSheet = usePamSheetState("accountId");
+  const folderSheet = usePamSheetState("folderId");
+
+  const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
+
+  // Debounced so typing doesn't fire a request per keystroke; the filter query, the rows it
+  // produces, and the match highlighting all read from the same settled value.
+  const [debouncedSearch] = useDebounce(searchInput);
+  const query = debouncedSearch.trim();
+  const filterActive = Boolean(query);
+
+  // Filtering is done server-side in a single request across every folder the caller can read, so
+  // searching doesn't have to open (and fetch) each folder just to filter its rows in the client.
+  const { data: matches = [], isLoading: isLoadingMatches } = useListPamAccounts(
+    { search: query || undefined },
+    { enabled: filterActive }
+  );
+
+  // Group the flat match list back under its folder so the tree layout is unchanged while filtering.
+  const matchesByFolder = useMemo(() => {
+    const grouped: Record<string, TPamAccountListItem[]> = {};
+    matches.forEach((account) => {
+      if (!account.folderId) return;
+      grouped[account.folderId] = [...(grouped[account.folderId] ?? []), account];
+    });
+    return grouped;
+  }, [matches]);
+
+  // While searching, only folders with matches are worth rendering.
+  const visibleFolders = filterActive
+    ? folders.filter((folder) => (matchesByFolder[folder.id]?.length ?? 0) > 0)
+    : folders;
+
+  // First search has no cached matches to fall back on, so show skeletons instead of an empty table.
+  const isSearching = filterActive && isLoadingMatches;
+  const showEmpty = !isLoadingFolders && !isSearching && visibleFolders.length === 0;
+
+  // Compute empty state messages to avoid nested ternaries
+  let emptyTitle: string;
+  let emptyDescription: string;
+  if (filterActive) {
+    emptyTitle = "No accounts match your search";
+    emptyDescription = "Try a different search term.";
+  } else if (canManage) {
+    emptyTitle = "No accounts yet";
+    emptyDescription =
+      "Create your first account to get started. You'll need at least one account template.";
+  } else {
+    emptyTitle = "No accounts available";
+    emptyDescription = "Ask your PAM admin to grant you access to a folder or account.";
+  }
+
+  const handleDelete = () => {
+    const { accountId, accountType } = popUp.deleteAccount.data as {
+      accountId: string;
+      accountType: PamAccountType;
+    };
+
+    deleteAccount.mutate(
+      { accountId, accountType },
+      {
+        onSuccess: () => {
+          createNotification({ text: "Account deleted", type: "success" });
+          handlePopUpClose("deleteAccount");
+        }
+      }
+    );
+  };
+
+  const handleDeleteFolder = () => {
+    const { folderId } = popUp.deleteFolder.data as { folderId: string };
+
+    deleteFolder.mutate(
+      { folderId },
+      {
+        onSuccess: () => {
+          createNotification({ text: "Folder deleted", type: "success" });
+          handlePopUpClose("deleteFolder");
+        }
+      }
+    );
+  };
+
+  return (
+    <div className="mx-auto mb-6 w-full max-w-8xl">
+      <Helmet>
+        <title>{t("common.head-title", { title: "Accounts" })}</title>
+      </Helmet>
+      <PageHeader
+        title="Accounts"
+        description="Access and manage privileged accounts."
+        scope={ProjectType.PAM}
+        icon={FolderOpen}
+      />
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>
+            Accounts
+            <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
+            <AccountsBreadcrumb orgId={currentOrg.id} />
+          </CardTitle>
+          <CardDescription>
+            Launch sessions for accounts you have access to, or manage account settings.
+          </CardDescription>
+          <CardAction>
+            <div className="flex items-center gap-3">
+              <InputGroup className="w-64">
+                <InputGroupAddon align="inline-start">
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  placeholder="Search accounts..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </InputGroup>
+
+              <ButtonGroup>
+                {/* Always rendered — disabled rather than hidden, so the affordance is discoverable
+                    and the reason it's unavailable is explained in the tooltip. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={canManage ? undefined : "cursor-not-allowed"}>
+                      <Button
+                        variant="pam"
+                        isDisabled={!canManage}
+                        className="rounded-r-none"
+                        onClick={() => handlePopUpOpen("createAccount")}
+                      >
+                        <Plus />
+                        Add Account
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canManage && (
+                    <TooltipContent>
+                      You don&apos;t have permission to create accounts in any folder
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      variant="pam"
+                      aria-label="More create options"
+                      className="border-l-transparent"
+                    >
+                      <ChevronDown />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={4}
+                    className="min-w-48"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenuLabel>New</DropdownMenuLabel>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <DropdownMenuItem
+                            isDisabled={!capabilities?.isProductAdmin}
+                            onClick={() => handlePopUpOpen("createFolder")}
+                          >
+                            <FolderPlus />
+                            Add Folder
+                          </DropdownMenuItem>
+                        </div>
+                      </TooltipTrigger>
+                      {!capabilities?.isProductAdmin && (
+                        <TooltipContent side="left">
+                          Only product admins can create folders
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ButtonGroup>
+            </div>
+          </CardAction>
+        </CardHeader>
+
+        {(isLoadingFolders || isSearching) && (
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              {SKELETON_KEYS.map((key) => (
+                <Skeleton key={key} className="h-10 w-full rounded-md" />
+              ))}
+            </div>
+          </CardContent>
+        )}
+
+        {showEmpty && (
+          <CardContent>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>{emptyTitle}</EmptyTitle>
+                <EmptyDescription>{emptyDescription}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        )}
+
+        {!isLoadingFolders && !isSearching && !showEmpty && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-20" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleFolders.map((folder) => (
+                <FolderAccountRows
+                  key={folder.id}
+                  folder={folder}
+                  search={debouncedSearch}
+                  accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
+                  onOpenFolderView={() =>
+                    navigate({
+                      to: "/organizations/$orgId/pam/accounts/$folderId",
+                      params: { orgId: currentOrg.id, folderId: folder.id }
+                    })
+                  }
+                  onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
+                  onLaunchAccount={setLaunchAccount}
+                  onRequestAccess={setRequestAccount}
+                  onDeleteAccount={(accountId, accountName, accountType) =>
+                    handlePopUpOpen("deleteAccount", {
+                      accountId,
+                      accountName,
+                      accountType
+                    })
+                  }
+                  onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
+                  onFolderAddAccount={() =>
+                    handlePopUpOpen("createAccount", { folderId: folder.id })
+                  }
+                  onFolderDelete={() =>
+                    handlePopUpOpen("deleteFolder", {
+                      folderId: folder.id,
+                      folderName: folder.name,
+                      accountCount: folder.accountCount
+                    })
+                  }
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+
+      {/* Modals and sheets are rendered for every role; their contents are permission-gated
+          internally, and the actions that open them are disabled when the user lacks access. */}
+      <CreateAccountSheet
+        isOpen={popUp.createAccount.isOpen}
+        defaultFolderId={(popUp.createAccount.data as { folderId?: string } | undefined)?.folderId}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("createAccount");
+        }}
+        onCreated={(accountId) => accountSheet.openSheet(accountId)}
+      />
+
+      <CreateFolderModal
+        isOpen={popUp.createFolder.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("createFolder");
+        }}
+      />
+
+      <AccountDetailSheet
+        isOpen={accountSheet.isOpen}
+        accountId={accountSheet.selectedId}
+        onOpenChange={(open) => {
+          if (!open) accountSheet.closeSheet();
+        }}
+      />
+
+      <FolderDetailSheet
+        isOpen={folderSheet.isOpen}
+        folder={folders.find((f) => f.id === folderSheet.selectedId)}
+        activeTab={folderSheet.tab}
+        onTabChange={folderSheet.setTab}
+        onOpenChange={(open) => {
+          if (!open) folderSheet.closeSheet();
+        }}
+      />
+
+      <DeleteAccountModal
+        isOpen={popUp.deleteAccount.isOpen}
+        accountName={
+          (popUp.deleteAccount.data as { accountName: string } | undefined)?.accountName ?? ""
+        }
+        accountType={
+          (popUp.deleteAccount.data as { accountType: PamAccountType } | undefined)?.accountType
+        }
+        isLoading={deleteAccount.isPending}
+        onConfirm={handleDelete}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("deleteAccount");
+        }}
+      />
+
+      <DeleteFolderModal
+        isOpen={popUp.deleteFolder.isOpen}
+        folderName={
+          (popUp.deleteFolder.data as { folderName: string } | undefined)?.folderName ?? ""
+        }
+        accountCount={
+          (popUp.deleteFolder.data as { accountCount: number } | undefined)?.accountCount
+        }
+        isLoading={deleteFolder.isPending}
+        onConfirm={handleDeleteFolder}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
+
+      {/* Shared components */}
+      <LaunchSessionSheet
+        account={launchAccount}
+        isOpen={launchAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setLaunchAccount(null);
+        }}
+      />
+
+      <RequestAccessSheet
+        account={requestAccount}
+        isOpen={!!requestAccount}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccount(null);
+        }}
+      />
+    </div>
+  );
+};

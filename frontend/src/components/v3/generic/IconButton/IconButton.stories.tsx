@@ -41,6 +41,7 @@ const meta = {
         "outline",
         "ghost",
         "ghost-muted",
+        "neutral",
         "success",
         "info",
         "warning",
@@ -52,7 +53,7 @@ const meta = {
     },
     size: {
       control: "select",
-      options: ["xs", "sm", "md", "lg"]
+      options: ["2xs", "xs", "sm", "md", "lg"]
     },
     isPending: {
       control: "boolean"
@@ -149,6 +150,22 @@ export const GhostMuted: Story = {
       description: {
         story:
           "Same borderless treatment as `ghost` but with a muted icon color until hover. Use for secondary actions that shouldn't draw the eye at rest — like inline edit pencils in detail panels."
+      }
+    }
+  }
+};
+
+export const Neutral: Story = {
+  name: "Variant: Neutral",
+  args: {
+    variant: "neutral",
+    "aria-label": "More",
+    children: <MoreHorizontalIcon />
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Use for neutral actions that need a subtle filled background."
       }
     }
   }

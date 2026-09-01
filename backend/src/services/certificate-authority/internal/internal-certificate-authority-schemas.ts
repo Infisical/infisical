@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import {
+  PKI_TEXT_COLUMN_MAX_LENGTH,
+  subjectAttributeSchema
+} from "@app/services/certificate-common/certificate-constants";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import {
@@ -24,6 +29,9 @@ type TInternalCertificateAuthorityConfiguration = {
   notAfter?: string;
   maxPathLength?: number | null;
   keyAlgorithm: CertKeyAlgorithm;
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+  hsmKeyLabel?: string;
   dn?: string | null;
   parentCaId?: string | null;
   serialNumber?: string | null;
@@ -35,18 +43,35 @@ type TInternalCertificateAuthorityConfiguration = {
 export const InternalCertificateAuthorityConfigurationSchema = z
   .object({
     type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
-    friendlyName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
-    commonName: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
-    organization: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
-    ou: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
-    country: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
-    province: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
-    locality: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
+    friendlyName: z
+      .string()
+      .trim()
+      .max(PKI_TEXT_COLUMN_MAX_LENGTH)
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
+    commonName: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
+    organization: subjectAttributeSchema
+      .default("")
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
+    ou: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
+    country: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
+    province: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
+    locality: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
     notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
     notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
     maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
     keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
-    dn: z.string().trim().nullish(),
+    keySource: z
+      .nativeEnum(CertKeySource)
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keySource),
+    hsmConnectorId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
+    hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
+    dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().nullish(),
     activeCaCertId: z.string().uuid().nullish(),

@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -23,7 +22,8 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemTitle
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -75,15 +75,19 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
   const total = gateways?.length ?? 0;
 
   return (
-    <Card>
+    <Card className="min-w-0" aria-labelledby="relay-connected-gateways-title">
       <CardHeader>
-        <CardTitle>Connected Gateways</CardTitle>
+        <CardTitle>
+          <h2 id="relay-connected-gateways-title">Connected Gateways</h2>
+        </CardTitle>
         <CardDescription>Gateways currently routing through this relay</CardDescription>
       </CardHeader>
       <CardContent>
         {isPending && (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="lg" />
+          <div className="space-y-2" aria-label="Loading connected gateways">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         {!isPending && total === 0 && (
@@ -108,7 +112,7 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
                     <span className="flex-1">{label}</span>
                     <Badge variant={variant}>{items.length}</Badge>
                   </AccordionTrigger>
-                  <AccordionContent className="px-4 py-3">
+                  <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                     <ItemGroup>
                       {items.map((g) => (
                         <Item asChild variant="outline" size="xs" key={g.id}>

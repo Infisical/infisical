@@ -6,6 +6,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { callSshExec, SshExecAuthMethod, SshExecCredentials, SshExecResult } from "@app/lib/gateway-v2/ssh-rpc";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -161,14 +162,14 @@ export const getSshConnectionClient = async (
 
 export const executeWithPotentialGateway = async <T>(
   config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
   operation: (targetHost: string, targetPort: number) => Promise<T>,
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
   const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
 
   if (gatewayPoolId && !gatewayPoolService) {
-    throw new BadRequestError({
+    throw new InternalServerError({
       message: "Pool-backed connections require gatewayPoolService at the call site"
     });
   }
@@ -178,6 +179,12 @@ export const executeWithPotentialGateway = async <T>(
       : directGatewayId;
 
   if (gatewayId) {
+    if (!gatewayV2Service) {
+      throw new InternalServerError({
+        message: "Gateway-backed connections require gatewayV2Service at the call site"
+      });
+    }
+
     await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -196,9 +203,7 @@ export const executeWithPotentialGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
@@ -206,6 +211,114 @@ export const executeWithPotentialGateway = async <T>(
   // Non-gateway path - direct connection
   await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, false);
   return operation(credentials.host, credentials.port);
+};
+
+export const withSshConnection = async <T>(
+  config: TSshConnectionConfig,
+  gatewayServices: {
+    gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+    gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  },
+  operation: (client: Client) => Promise<T>
+): Promise<T> =>
+  executeWithPotentialGateway(
+    config,
+    gatewayServices.gatewayV2Service,
+    async (targetHost, targetPort) => {
+      const client = await getSshConnectionClient(config, targetHost, targetPort);
+      try {
+        return await operation(client);
+      } finally {
+        client.destroy();
+      }
+    },
+    gatewayServices.gatewayPoolService
+  );
+
+type TSshGatewayServices = {
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+};
+
+const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
+  switch (config.method) {
+    case SshConnectionMethod.Password:
+      return {
+        authMethod: SshExecAuthMethod.Password,
+        username: config.credentials.username,
+        password: config.credentials.password
+      };
+    case SshConnectionMethod.SshKey:
+      return {
+        authMethod: SshExecAuthMethod.PublicKey,
+        username: config.credentials.username,
+        privateKey: config.credentials.privateKey,
+        passphrase: config.credentials.passphrase
+      };
+    default:
+      throw new InternalServerError({
+        message: `Unhandled connection method: ${(config as { method: string }).method}`
+      });
+  }
+};
+
+export const executeSshCommandViaGateway = async (
+  config: TSshConnectionConfig,
+  gatewayServices: TSshGatewayServices,
+  args: { command: string; timeoutMs: number }
+): Promise<SshExecResult> => {
+  const { gatewayV2Service, gatewayPoolService } = gatewayServices;
+  const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new InternalServerError({
+      message: "Pool-backed connections require gatewayPoolService at the call site"
+    });
+  }
+
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
+
+  if (!gatewayId) {
+    throw new BadRequestError({
+      message: "Running a command on the host requires the SSH connection to use a gateway."
+    });
+  }
+  if (!gatewayV2Service) {
+    throw new InternalServerError({ message: "Gateway-backed commands require gatewayV2Service at the call site" });
+  }
+
+  await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);
+
+  const connectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: credentials.host,
+    targetPort: credentials.port
+  });
+  if (!connectionDetails) {
+    throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+  }
+
+  const response = await withGatewayV2Proxy(
+    async (proxyPort) =>
+      callSshExec({
+        port: proxyPort,
+        command: args.command,
+        credentials: toSshExecCredentials(config),
+        timeoutMs: args.timeoutMs
+      }),
+    {
+      protocol: GatewayProxyProtocol.Discovery,
+      ...connectionDetails
+    }
+  );
+
+  if (!response.ok) {
+    throw new BadRequestError({ message: response.errorMessage });
+  }
+  return response.result;
 };
 
 export const validateSshConnectionCredentials = async (

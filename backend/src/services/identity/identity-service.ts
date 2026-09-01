@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -13,12 +13,15 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { MaxIdentities } from "@app/services/license-client";
+import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -45,12 +48,16 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
-  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource" | "deleteAlertsForDeletedResource">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
+  >;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -62,13 +69,14 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
-  licenseDAL,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertService,
+  identityAccessTokenService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -125,18 +133,17 @@ export const identityServiceFactory = ({
         });
     }
 
+    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+
     const identity = await identityDAL.transaction(async (tx) => {
       // Acquire advisory lock to prevent race conditions when checking identity limits
       // This ensures that concurrent requests cannot bypass the identity limit check
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
 
-      // Check identity limit inside the transaction after acquiring the lock
-      // We count directly from the database to get the accurate count, not the cached plan value
-      const plan = await licenseService.getPlan(orgId);
-      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-      if (!isEnterpriseBypass && plan?.identityLimit) {
-        const currentIdentityCount = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
-        if (currentIdentityCount >= plan.identityLimit) {
+      // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
+      if (identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
+        if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });
@@ -186,7 +193,7 @@ export const identityServiceFactory = ({
       };
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    usageMeteringService.emit(orgId, MaxIdentities.key);
+    usageMeteringService.emit(orgId, IdentitiesMeter.key);
 
     return identity;
   };
@@ -203,8 +210,6 @@ export const identityServiceFactory = ({
     metadata,
     isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
-
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
       actorId: id,
@@ -258,6 +263,8 @@ export const identityServiceFactory = ({
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -347,7 +354,6 @@ export const identityServiceFactory = ({
     id,
     isActorSuperAdmin
   }: TDeleteIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
     const identityOrgMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -368,6 +374,8 @@ export const identityServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
@@ -376,9 +384,23 @@ export const identityServiceFactory = ({
       if (identityOrgMembership.identity.hasDeleteProtection)
         throw new BadRequestError({ message: "Identity has delete protection" });
 
-      const deletedIdentity = await identityDAL.deleteById(id);
+      const deletedIdentity = await identityDAL.transaction(async (tx) => {
+        await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: id, tx });
+
+        await alertService.deleteAlertsForDeletedResource(
+          {
+            resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+            resourceId: id
+          },
+          tx
+        );
+        return identityDAL.deleteById(id, tx);
+      });
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
@@ -408,11 +430,29 @@ export const identityServiceFactory = ({
         tx
       );
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
+
+      await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
+
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: actorOrgId,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: id
+        },
+        tx
+      );
+
       return doc;
     });
 
+    await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
+
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+    // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
+    // identity meters change too.
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

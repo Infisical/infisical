@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Empty,
@@ -230,7 +231,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
               <span className="my-4 text-sm text-danger">{errors.groups.message}</span>
             )}
             {groups.length > 0 ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Group</TableHead>
@@ -339,7 +340,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
       </form>
 
       <Dialog open={isAddGroupModalOpen} onOpenChange={setIsAddGroupModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Groups to Template</DialogTitle>
             <DialogDescription>
@@ -396,7 +397,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
                 )}
               />
             </div>
-            <div className="mt-8 flex items-center justify-end gap-4">
+            <DialogFooter className="mt-8">
               <Button type="button" variant="ghost" onClick={handleCloseAddGroupModal}>
                 Cancel
               </Button>
@@ -407,7 +408,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
               >
                 Add Groups
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

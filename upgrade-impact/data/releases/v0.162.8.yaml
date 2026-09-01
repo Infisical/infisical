@@ -1,0 +1,85 @@
+version: v0.162.8
+releasedAt: 2026-07-18T02:42:16+04:00
+sourceTag: v0.162.8
+previousTag: v0.162.7
+impactLevel: low
+summary: Startup applies additive schema changes. Existing self-hosted instances
+  should check whether public signups remain enabled after upgrading.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Secret versions envId removal
+    description: The secret_versions_v2 table drops the redundant envId column, its
+      foreign key, and its partial index. The migration is written to skip
+      missing tables or columns and runs outside a transaction.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260713120000_drop-secret-versions-v2-envid-column.ts
+        path: backend/src/db/migrations/20260713120000_drop-secret-versions-v2-envid-column.ts
+        description: Drops envId column, FK, and index
+  - title: PKI domain components columns
+    description: PKI adds nullable columns for certificate subject domain components
+      on certificates and certificate requests. The change is additive and
+      preserves existing rows.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260714112217_add-certificate-subject-domain-components.ts
+        path: backend/src/db/migrations/20260714112217_add-certificate-subject-domain-components.ts
+        description: Adds nullable PKI domain component columns
+  - title: Snapshot folders delete index
+    description: A concurrent index is added on
+      secret_snapshot_folders.folderVersionId to avoid slow cascades and
+      timeouts during project cleanup and folder-version pruning.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260715120000_add-secret-snapshot-folders-folder-version-id-index.ts
+        path: backend/src/db/migrations/20260715120000_add-secret-snapshot-folders-folder-version-id-index.ts
+        description: Adds concurrent index for cleanup path
+  - title: Proxied service credential schema
+    description: Proxied service credentials now allow either a static secret key or
+      dynamic secret fields. The schema first adds nullable dynamic-secret
+      columns and makes secretKey nullable, then removes dynamicSecretConfig.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260715184927_proxied-service-dynamic-secret-credentials.ts
+        path: backend/src/db/migrations/20260715184927_proxied-service-dynamic-secret-credentials.ts
+        description: Adds dynamic secret columns; secretKey nullable
+      - type: file
+        ref: backend/src/db/migrations/20260716234217_drop-proxied-service-dynamic-secret-config.ts
+        path: backend/src/db/migrations/20260716234217_drop-proxied-service-dynamic-secret-config.ts
+        description: Drops dynamicSecretConfig column
+configChanges: []
+deploymentNotes:
+  - title: Public signup default
+    description: New self-hosted installs disable self-service signups after the
+      first super admin is created. Existing initialized instances keep their
+      current signup setting after upgrading.
+    action: If you want signups disabled on an existing instance, change Admin
+      Console → Authentication → Allow user signups to Disabled.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: docs/self-hosting/guides/production-hardening.mdx
+        path: docs/self-hosting/guides/production-hardening.mdx
+        description: Existing instances keep current signup setting
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-17T23:45:51.273Z
+  sourceRange:
+    from: v0.162.7
+    to: v0.162.8

@@ -1,38 +1,26 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
-import { Spinner } from "@app/components/v2";
+import {
+  DynamicSecretProviderForm,
+  dynamicSecretProviderRegistry
+} from "@app/components/dynamic-secrets";
+import {
+  Alert,
+  AlertDescription,
+  DiscardChangesAlertDialog,
+  PageLoader,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
 import { useGetDynamicSecretDetails } from "@app/hooks/api";
-import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-
-import { EditDynamicSecretAwsElastiCacheProviderForm } from "./EditDynamicSecretAwsElastiCacheProviderForm";
-import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
-import { EditDynamicSecretAwsMemoryDbProviderForm } from "./EditDynamicSecretAwsMemoryDbProviderForm";
-import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
-import { EditDynamicSecretAzureSqlDatabaseForm } from "./EditDynamicSecretAzureSqlDatabaseForm";
-import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
-import { EditDynamicSecretClickHouseForm } from "./EditDynamicSecretClickHouseForm";
-import { EditDynamicSecretCouchbaseForm } from "./EditDynamicSecretCouchbaseForm";
-import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
-import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
-import { EditDynamicSecretGithubForm } from "./EditDynamicSecretGithubForm";
-import { EditDynamicSecretIbmApiConnectForm } from "./EditDynamicSecretIbmApiConnectForm";
-import { EditDynamicSecretKubernetesForm } from "./EditDynamicSecretKubernetesForm";
-import { EditDynamicSecretLdapForm } from "./EditDynamicSecretLdapForm";
-import { EditDynamicSecretMilvusForm } from "./EditDynamicSecretMilvusForm";
-import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
-import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
-import { EditDynamicSecretRabbitMqForm } from "./EditDynamicSecretRabbitMqForm";
-import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
-import { EditDynamicSecretSapAseForm } from "./EditDynamicSecretSapAseForm";
-import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
-import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
-import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
-import { EditDynamicSecretSshForm } from "./EditDynamicSecretSshForm";
-import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
-import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 type Props = {
-  onClose: () => void;
+  isOpen: boolean;
+  onToggle: (isOpen: boolean) => void;
   dynamicSecretName: string;
   projectSlug: string;
   environment: string;
@@ -40,477 +28,76 @@ type Props = {
 };
 
 export const EditDynamicSecretForm = ({
+  isOpen,
   dynamicSecretName,
   environment,
   projectSlug,
-  onClose,
+  onToggle,
   secretPath
 }: Props) => {
-  const { data: dynamicSecretDetails, isPending: isDynamicSecretLoading } =
-    useGetDynamicSecretDetails({
-      projectSlug,
-      environmentSlug: environment,
-      name: dynamicSecretName,
-      path: secretPath
-    });
+  const [isDirty, setIsDirty] = useState(false);
+  const close = () => {
+    setIsDirty(false);
+    onToggle(false);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: close });
+  const { data: dynamicSecret, isPending } = useGetDynamicSecretDetails({
+    projectSlug,
+    environmentSlug: environment,
+    name: dynamicSecretName,
+    path: secretPath
+  });
 
-  if (isDynamicSecretLoading) {
-    return (
-      <div className="flex w-full items-center justify-center p-8">
-        <Spinner />
-      </div>
+  let content = <PageLoader />;
+  if (!dynamicSecret) {
+    content = (
+      <Alert variant="danger">
+        <AlertDescription>Unable to load this dynamic secret.</AlertDescription>
+      </Alert>
+    );
+  } else {
+    const definition = dynamicSecretProviderRegistry.getDefinition(dynamicSecret.type);
+    content = definition ? (
+      <DynamicSecretProviderForm
+        mode="edit"
+        definition={definition}
+        dynamicSecret={dynamicSecret}
+        environment={environment}
+        projectSlug={projectSlug}
+        secretPath={secretPath}
+        onCompleted={close}
+        onCancel={requestDiscard}
+        onDirtyChange={setIsDirty}
+      />
+    ) : (
+      <Alert variant="danger">
+        <AlertDescription>
+          The {dynamicSecret.type} provider is not available in the shared provider registry.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {dynamicSecretDetails?.type === DynamicSecretProviders.SqlDatabase && (
-        <motion.div
-          key="sqldatabase-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretSqlProviderForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Cassandra && (
-        <motion.div
-          key="cassandra-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretCassandraForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.AwsIam && (
-        <motion.div
-          key="aws-iam-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretAwsIamForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Redis && (
-        <motion.div
-          key="redis-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretRedisProviderForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.AwsElastiCache && (
-        <motion.div
-          key="redis-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretAwsElastiCacheProviderForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.AwsMemoryDb && (
-        <motion.div
-          key="aws-memorydb-provider-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretAwsMemoryDbProviderForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.MongoAtlas && (
-        <motion.div
-          key="mongo-atlas-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretMongoAtlasForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-
-      {dynamicSecretDetails?.type === DynamicSecretProviders.ElasticSearch && (
-        <motion.div
-          key="elastic-search-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretElasticSearchForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.MongoDB && (
-        <motion.div
-          key="mongodb-search-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretMongoDBForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-
-      {dynamicSecretDetails?.type === DynamicSecretProviders.RabbitMq && (
-        <motion.div
-          key="rabbit-mq-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretRabbitMqForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-
-      {dynamicSecretDetails?.type === DynamicSecretProviders.AzureEntraId && (
-        <motion.div
-          key="azure-entra-id-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretAzureEntraIdForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-
-      {dynamicSecretDetails?.type === DynamicSecretProviders.AzureSqlDatabase && (
-        <motion.div
-          key="azure-sql-database-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretAzureSqlDatabaseForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Ldap && (
-        <motion.div
-          key="ldap-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretLdapForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.SapHana && (
-        <motion.div
-          key="sap-hana-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretSapHanaForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.SapAse && (
-        <motion.div
-          key="sap-ase-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretSapAseForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Snowflake && (
-        <motion.div
-          key="snowflake-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretSnowflakeForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Totp && (
-        <motion.div
-          key="totp-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretTotpForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Kubernetes && (
-        <motion.div
-          key="kubernetes-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretKubernetesForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Vertica && (
-        <motion.div
-          key="vertica-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretVerticaForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.GcpIam && (
-        <motion.div
-          key="gcp-iam-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretGcpIamForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Github && (
-        <motion.div
-          key="github-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretGithubForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Milvus && (
-        <motion.div
-          key="milvus-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretMilvusForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Couchbase && (
-        <motion.div
-          key="couchbase-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretCouchbaseForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Clickhouse && (
-        <motion.div
-          key="clickhouse-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretClickHouseForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.Ssh && (
-        <motion.div
-          key="ssh-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretSshForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-      {dynamicSecretDetails?.type === DynamicSecretProviders.IbmApiConnect && (
-        <motion.div
-          key="ibm-api-connect-edit"
-          transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: 30 }}
-          animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
-        >
-          <EditDynamicSecretIbmApiConnectForm
-            onClose={onClose}
-            projectSlug={projectSlug}
-            secretPath={secretPath}
-            dynamicSecret={dynamicSecretDetails}
-            environment={environment}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && requestDiscard()}>
+        <SheetContent className="w-full sm:max-w-3xl">
+          <SheetHeader>
+            <SheetTitle>Edit Dynamic Secret</SheetTitle>
+            <SheetDescription>Update dynamic secret parameters.</SheetDescription>
+          </SheetHeader>
+          {!isPending && content}
+          {isPending && <PageLoader />}
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Dynamic Secret Changes?"
+        description="Your unsaved changes to this dynamic secret will be lost."
+      />
+    </>
   );
 };

@@ -1,0 +1,231 @@
+---
+title: "Spacelift sync"
+description: "Learn how to configure a Spacelift sync for Infisical."
+---
+
+Infisical's Spacelift Sync pushes secrets from Infisical into a Spacelift context, either as environment variables or as files mounted into the run workspace. Any stack or module attached to that context picks up the current values on its next run.
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A [Spacelift App Connection](/integrations/app-connections/spacelift)
+
+<View title="UI" icon="arrow-pointer">
+
+  ## Step 1: Add the sync
+
+  <Steps>
+    <Step>
+      In your project, select **Integrations** from the sidebar, open the **Secret Syncs** tab, and select **+ Add Sync**.
+
+      ![Add Sync](/images/secret-syncs/spacelift/spacelift-sync-add.png)
+    </Step>
+    <Step>
+      Select **Spacelift** from the list of available secret syncs.
+
+      ![Select Spacelift](/images/secret-syncs/spacelift/spacelift-sync-select.png)
+    </Step>
+  </Steps>
+
+  ## Step 2: Configure the sync
+
+  Selecting Spacelift opens the setup wizard. Follow the steps to configure each section.
+
+  <Steps>
+    <Step title="Source" titleSize="h3">
+      Choose where secrets are retrieved from, then select **Continue**.
+
+      - **Environment**: The project environment to retrieve secrets from.
+      - **Secret Path**: The folder path to retrieve secrets from.
+
+      <Tip>
+        If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+      </Tip>
+
+      ![Configure Source](/images/secret-syncs/spacelift/spacelift-sync-source.png)
+    </Step>
+    <Step title="Destination" titleSize="h3">
+      Choose the connection and the target location in Spacelift, then select **Continue**.
+
+      - **Spacelift Connection**: Select the app connection to use for authentication.
+      - **Context**: Select the Spacelift context that will receive the synced secrets.
+      - **Config Type**: Select **Environment Variables** or **File Mount**. Selecting **File Mount** reveals a **File Format** field with two choices: **.env File** and **One Secret Per File**.
+
+      Whichever config type you choose, Infisical adjusts secret keys to match Unix environment variable naming rules: characters outside `a-zA-Z0-9_` are removed, and a key that begins with a digit gets a leading underscore. A key left empty by this adjustment is skipped.
+
+      <Tabs>
+        <Tab title="Environment Variables">
+          Each secret is synced as an individual environment variable in the Spacelift context (default).
+
+          ![Environment Variables Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-env-vars.png)
+        </Tab>
+        <Tab title=".env File">
+          All secrets are bundled into a single `.env` file and mounted at the specified path under `/mnt/workspace/`. For example, if the file path is `secrets.env`, the file is available at `/mnt/workspace/secrets.env` during runs.
+
+          - **File Path**: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`). Required.
+
+          <Warning>
+            Every sync replaces the entire file with the secrets from Infisical. This means that if there any entries in the same path that came from outside Infisical, those entires will be lost on the next sync. Since neither setting a key schema or **Disable secret deletion** in [sync options](#Sync-Options) prevents this, we recommend pointing **File Path** at a file that only this sync writes to.
+          </Warning>
+
+          ![.env File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-dot-env.png)
+        </Tab>
+        <Tab title="One Secret Per File">
+          Each secret is stored as a separate file. The filename is the secret key and the file content is the secret value. For example, with a directory path of `secrets/`, a secret named `MY_SECRET` is available at `/mnt/workspace/secrets/MY_SECRET`.
+
+          - **Directory Path**: The directory under `/mnt/workspace/` where secret files are created (e.g., `secrets/`). Optional. Leave it empty to mount files directly in `/mnt/workspace/`.
+
+          <Warning>
+            If **Disable secret deletion** is turned off in [Sync Options](#sync-options), every file in the target directory that doesn't correspond to a secret in Infisical is removed. Since deletion targets the directory itself rather than specific key names, setting a key schema won't prevent those files from being deleted. Because of this, we recommend leaving **Disable secret deletion** enabled and pointing **Directory Path** at a directory that only this sync writes to.
+          </Warning>
+
+          ![One Secret Per File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-secret-per-file.png)
+        </Tab>
+      </Tabs>
+    </Step>
+    <Step title="Initial Sync" titleSize="h3">
+      Choose how Infisical resolves the first run, then select **Continue**.
+
+      Spacelift offers only **Overwrite Spacelift**. Spacelift doesn't expose the values of secrets once they're written, so Infisical can't import the secrets that already exist in a context.
+
+      <Note>
+        If **Disable secret deletion** is turned off in [Sync Options](#sync-options), the first run removes environment variables that exist in Spacelift but not in Infisical. Because of this, we recommend leaving deletion protection enabled or setting a [key schema](/integrations/secret-syncs/overview#key-schemas) to protect your other environment variables.
+      </Note>
+    </Step>
+    <Step title="Sync Options" titleSize="h3">
+      Choose how secrets are written on every run, then select **Continue**.
+
+      - **Disable secret deletion**: Enabled by default. While enabled, Infisical never removes secrets from the context. Turn this off only if you want Infisical to remove secrets it doesn't manage.
+      - **Auto-sync on changes**: Enabled by default. Syncs to Spacelift automatically when secrets in the source change. Turn it off to sync manually only.
+      - **Customize key names**: Turn this on to reveal a [**Key schema**](/integrations/secret-syncs/overview#key-schemas) field, a template that rewrites each key. Use `{{secretKey}}` for the original secret name and `{{environment}}` for the environment.
+
+        <Note>
+          We highly recommend using a [key schema](/integrations/secret-syncs/overview#key-schemas) to ensure that Infisical only manages the specific keys you intend, keeping everything else in the context untouched.
+        </Note>
+
+      - **Mark as secret**: Marks the synced values as secrets in Spacelift. Secret values are then only available to Runs and Tasks, and aren't accessible in the web GUI or through the API.
+
+      ![Configure Sync Options](/images/secret-syncs/spacelift/spacelift-sync-options.png)
+    </Step>
+    <Step title="Details" titleSize="h3">
+      Name the sync, then select **Continue**.
+
+      - **Name**: A slug-friendly name for the sync.
+      - **Description (optional)**: A description for the sync.
+
+      ![Configure Details](/images/secret-syncs/spacelift/spacelift-sync-details.png)
+    </Step>
+    <Step title="Review" titleSize="h3">
+      Review the Spacelift Sync configuration, then select **Create Sync**.
+
+      ![Review Configuration](/images/secret-syncs/spacelift/spacelift-sync-review.png)
+    </Step>
+  </Steps>
+
+  <Check>
+    Your Spacelift Sync is created. If [auto-sync](#sync-options) is enabled, it begins syncing your secrets to the selected context right away.
+  </Check>
+</View>
+<View title="API" icon="code">
+
+  ## Set up using the API
+
+  You can create a Spacelift Sync by making an API request to the [Create Spacelift Sync](/api-reference/endpoints/secret-syncs/spacelift/create) API endpoint.
+
+  The `destinationConfig` block determines how secrets are stored in the context. Here are some sample requests for different configurations:
+
+  ### Environment variables
+
+  Each secret is created as an individual environment variable in the context.
+
+  ```bash Request
+  curl --request POST \
+    --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+    --header 'Content-Type: application/json' \
+    --data '{
+      "name": "my-spacelift-sync",
+      "projectId": "<project-id>",
+      "description": "an example sync",
+      "connectionId": "<connection-id>",
+      "environment": "dev",
+      "secretPath": "/my-secrets",
+      "isEnabled": true,
+      "syncOptions": {
+        "initialSyncBehavior": "overwrite-destination",
+        "disableSecretDeletion": true,
+        "writeOnly": false
+      },
+      "destinationConfig": {
+        "contextId": "<context-id>",
+        "contextName": "my-context",
+        "configType": "environment-variable"
+      }
+    }'
+  ```
+
+  ### File mount (.env)
+
+  All secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>`. The `mountPath` field is required. Every sync replaces the entire file, so point `mountPath` at a file that only this sync writes to.
+
+  ```bash Request
+  curl --request POST \
+    --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+    --header 'Content-Type: application/json' \
+    --data '{
+      "name": "my-spacelift-file-sync",
+      "projectId": "<project-id>",
+      "description": "sync secrets as a mounted .env file",
+      "connectionId": "<connection-id>",
+      "environment": "dev",
+      "secretPath": "/my-secrets",
+      "isEnabled": true,
+      "syncOptions": {
+        "initialSyncBehavior": "overwrite-destination",
+        "disableSecretDeletion": true,
+        "writeOnly": false
+      },
+      "destinationConfig": {
+        "contextId": "<context-id>",
+        "contextName": "my-context",
+        "configType": "file-mount",
+        "fileMountFormat": "dot-env",
+        "mountPath": "secrets.env"
+      }
+    }'
+  ```
+
+  ### File mount (one secret per file)
+
+  Each secret is mounted as a separate file at `/mnt/workspace/<mountPath>/<secretKey>`.
+
+  <Note>
+    The `mountPath` field is optional. Omit it to mount files directly under `/mnt/workspace/`.
+  </Note>
+
+  ```bash Request
+  curl --request POST \
+    --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+    --header 'Content-Type: application/json' \
+    --data '{
+      "name": "my-spacelift-per-file-sync",
+      "projectId": "<project-id>",
+      "description": "sync each secret as a separate mounted file",
+      "connectionId": "<connection-id>",
+      "environment": "dev",
+      "secretPath": "/my-secrets",
+      "isEnabled": true,
+      "syncOptions": {
+        "initialSyncBehavior": "overwrite-destination",
+        "disableSecretDeletion": true,
+        "writeOnly": false
+      },
+      "destinationConfig": {
+        "contextId": "<context-id>",
+        "contextName": "my-context",
+        "configType": "file-mount",
+        "fileMountFormat": "secret-per-file",
+        "mountPath": "secrets/"
+      }
+    }'
+  ```
+</View>

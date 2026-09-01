@@ -318,11 +318,42 @@ const updateSecret = async (
   }
 };
 
+type ProjectDestinationConfig = Extract<
+  TVercelSyncWithCredentials["destinationConfig"],
+  { scope: VercelSyncScope.Project }
+>;
+
 // A project-scope record is "merged" when it covers more than just the sync's env.
 const isProjectRecordMerged = (vercelSecret: VercelApiSecret) => {
   const totalScope = vercelSecret.target.length + (vercelSecret.customEnvironmentIds?.length ?? 0);
   return totalScope > 1;
 };
+
+// True when a record covers this sync's env at all (regardless of branch).
+const projectRecordCoversSyncEnv = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) => {
+  if (!isVercelDefaultEnvType(destinationConfig.env)) {
+    return Boolean(vercelSecret.customEnvironmentIds?.includes(destinationConfig.env));
+  }
+  return vercelSecret.target.includes(destinationConfig.env);
+};
+
+// True when a record's scope overlaps this sync's conflict space: the same env, and for preview
+// the same branch scope (both branch-agnostic, or the same gitBranch). Vercel keys its conflict
+// space on (target, gitBranch), so a branch-agnostic and a branch-specific record for the same key
+// coexist. A branch is only meaningful for preview; an empty-string branch is branch-agnostic.
+const projectRecordMatchesSyncScope = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) => {
+  if (!projectRecordCoversSyncEnv(vercelSecret, destinationConfig)) return false;
+
+  if (destinationConfig.env === VercelEnvironmentType.Preview) {
+    return (vercelSecret.gitBranch || undefined) === (destinationConfig.branch || undefined);
+  }
+
+  return true;
+};
+
+// The dedicated record this sync should update in place: a non-merged record whose scope matches.
+const isProjectSecretOwnedByThisSync = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) =>
+  !isProjectRecordMerged(vercelSecret) && projectRecordMatchesSyncScope(vercelSecret, destinationConfig);
 
 // Remove the sync's env from an existing Vercel project record, preserving the original value
 // for the remaining environments. Falls back to a full delete if removing our env would leave
@@ -913,23 +944,43 @@ export const VercelSyncFns = {
       return;
     }
 
+    const projectDestinationConfig = secretSync.destinationConfig;
     const vercelSecrets = await getVercelSecrets(secretSync);
-    const vercelSecretsMap = new Map(vercelSecrets.map((s) => [s.key, s]));
+
+    // Vercel allows multiple project records with the same key when their (target, gitBranch)
+    // scopes don't overlap (e.g. a branch-agnostic Preview record alongside a branch-specific
+    // one). Group by key so we don't drop siblings — a key-only Map would keep just one, then act
+    // on the wrong record and collide with the invisible sibling on create/patch.
+    const vercelSecretsByKey = new Map<string, VercelApiSecret[]>();
+    for (const vercelSecret of vercelSecrets) {
+      const records = vercelSecretsByKey.get(vercelSecret.key) ?? [];
+      records.push(vercelSecret);
+      vercelSecretsByKey.set(vercelSecret.key, records);
+    }
 
     // Create or update secrets
     for await (const key of Object.keys(secretMap)) {
-      const existingSecret = vercelSecretsMap.get(key);
+      const records = vercelSecretsByKey.get(key) ?? [];
 
-      if (!existingSecret) {
-        await createSecret(secretSync, secretMap, key);
-        // eslint-disable-next-line no-continue
-        continue;
+      // The dedicated record for this sync's exact env/branch scope, if any.
+      const ownedRecord = records.find((record) => isProjectSecretOwnedByThisSync(record, projectDestinationConfig));
+
+      // Merged records (cover other environments too) that overlap our exact scope: detach our
+      // env from each — preserving the original value for the remaining environments — so a
+      // dedicated record can own our scope. The branch scope must match too: a branch-agnostic
+      // merged record does not conflict with a branch-specific sync (and vice versa), so detaching
+      // it would wrongly strip our env from every other branch it covers.
+      const mergedRecords = records.filter(
+        (record) =>
+          record.id !== ownedRecord?.id &&
+          isProjectRecordMerged(record) &&
+          projectRecordMatchesSyncScope(record, projectDestinationConfig)
+      );
+      for await (const merged of mergedRecords) {
+        await detachEnvFromProjectSecret(secretSync, merged);
       }
 
-      // Merged record (covers other environments too): detach our env from it — preserving
-      // the original value for the remaining environments — then create a dedicated record.
-      if (isProjectRecordMerged(existingSecret)) {
-        await detachEnvFromProjectSecret(secretSync, existingSecret);
+      if (!ownedRecord) {
         await createSecret(secretSync, secretMap, key);
         // eslint-disable-next-line no-continue
         continue;
@@ -937,14 +988,14 @@ export const VercelSyncFns = {
 
       // Vercel does not allow changing a secret's `type` between encrypted and sensitive
       // via PATCH, so we delete and recreate when the desired sensitivity differs.
-      const existingIsSensitive = existingSecret.type === "sensitive";
-      const sensitivityChanged = existingIsSensitive !== Boolean(secretSync.destinationConfig.sensitive);
+      const existingIsSensitive = ownedRecord.type === "sensitive";
+      const sensitivityChanged = existingIsSensitive !== Boolean(projectDestinationConfig.sensitive);
 
       if (sensitivityChanged) {
-        await deleteSecret(secretSync, existingSecret);
+        await deleteSecret(secretSync, ownedRecord);
         await createSecret(secretSync, secretMap, key);
-      } else if (existingSecret.value !== secretMap[key].value) {
-        await updateSecret(secretSync, secretMap, existingSecret);
+      } else if (ownedRecord.value !== secretMap[key].value) {
+        await updateSecret(secretSync, secretMap, ownedRecord);
       }
     }
 
@@ -956,8 +1007,10 @@ export const VercelSyncFns = {
         // eslint-disable-next-line no-continue
         continue;
 
-      // Skip merged rows: delete removes the whole multi-env record, not only this sync's scope.
-      if (isProjectRecordMerged(vercelSecret)) {
+      // Only delete records this sync owns (its exact env/branch scope). This skips merged
+      // multi-env rows — a delete would drop the whole record, not just our scope — and sibling
+      // records on a different branch scope, which this sync doesn't manage.
+      if (!isProjectSecretOwnedByThisSync(vercelSecret, projectDestinationConfig)) {
         // eslint-disable-next-line no-continue
         continue;
       }

@@ -1,22 +1,42 @@
+import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 
 import {
-  GenericFieldLabel,
+  Badge,
+  CodeBlock,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import {
+  BOOLEAN_SYNC_OPTION_FIELDS,
+  getCertificateDisplayName,
+  KEY_VALUE_SYNC_OPTION_FIELDS,
+  PKI_SYNC_MAP,
+  truncateCertificateSerialNumber,
+  VALUE_SYNC_OPTION_FIELDS
+} from "@app/helpers/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
+
+const ReviewFieldLabel = ({ label, children }: { label: string; children?: ReactNode }) => (
+  <div className="row-span-2 grid min-w-0 grid-rows-subgrid pb-2">
+    <p className="mb-1 text-xs font-medium text-muted">{label}</p>
+    {children ? (
+      <div className="text-sm break-words text-foreground">{children}</div>
+    ) : (
+      <div className="text-sm text-muted/50 italic">None</div>
+    )}
+  </div>
+);
 
 export const PkiSyncReviewFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
@@ -48,133 +68,159 @@ export const PkiSyncReviewFields = () => {
 
   const destinationName = PKI_SYNC_MAP[destination].name;
   const selectedCertificates = getSelectedCertificates(certificateIds);
+  const postSyncCommand =
+    syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
+  const healthCheckCommand =
+    syncOptions && "healthCheckCommand" in syncOptions ? syncOptions.healthCheckCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Certificates</span>
+        <div className="w-full border-b border-border">
+          <span className="text-sm text-muted">Certificates</span>
         </div>
         <div className="w-full">
           {selectedCertificates.length === 0 ? (
-            <span className="text-bunker-400">No certificates selected</span>
+            <span className="text-sm text-muted/50 italic">No certificates selected</span>
           ) : (
-            <TableContainer>
-              <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-1/2">SAN / CN</Th>
-                    <Th className="w-1/4">Serial Number</Th>
-                    <Th className="w-1/4">Expires At</Th>
-                  </Tr>
-                </THead>
-                <TBody>
-                  {selectedCertificates.map((cert) => {
-                    let originalDisplayName = "—";
-                    if (cert.altNames && cert.altNames.trim()) {
-                      originalDisplayName = cert.altNames.trim();
-                    } else if (cert.commonName && cert.commonName.trim()) {
-                      originalDisplayName = cert.commonName.trim();
-                    }
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>SAN / CN</TableHead>
+                  <TableHead className="w-1/5">Serial Number</TableHead>
+                  <TableHead className="w-1/6">Issued At</TableHead>
+                  <TableHead className="w-1/6 pr-5">Expires At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedCertificates.map((cert) => {
+                  const { originalDisplayName, displayName, isTruncated } =
+                    getCertificateDisplayName(cert);
+                  const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
 
-                    let displayName = originalDisplayName;
-                    let isTruncated = false;
-                    if (originalDisplayName.length > 34) {
-                      displayName = `${originalDisplayName.substring(0, 34)}...`;
-                      isTruncated = true;
-                    }
-
-                    const truncatedSerial =
-                      cert.serialNumber.length > 8
-                        ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
-                        : cert.serialNumber;
-
-                    return (
-                      <Tr key={cert.id}>
-                        <Td className="max-w-0">
-                          {isTruncated ? (
-                            <Tooltip content={originalDisplayName} className="max-w-lg">
+                  return (
+                    <TableRow key={cert.id}>
+                      <TableCell className="max-w-0">
+                        {isTruncated ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <div className="truncate">{displayName}</div>
-                            </Tooltip>
-                          ) : (
-                            <div className="truncate">{displayName}</div>
-                          )}
-                        </Td>
-                        <Td className="max-w-0">
-                          <div
-                            className="font-mono text-xs text-bunker-300"
-                            title={cert.serialNumber}
-                          >
-                            {truncatedSerial}
-                          </div>
-                        </Td>
-                        <Td className="max-w-0">
-                          <span className="text-sm text-bunker-300">
-                            {new Date(cert.notAfter).toLocaleDateString()}
-                          </span>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </TBody>
-              </Table>
-            </TableContainer>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-lg">
+                              {originalDisplayName}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <div className="truncate">{displayName}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-0">
+                        <div className="font-mono text-xs" title={cert.serialNumber}>
+                          {truncatedSerial}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-0">
+                        <span className="text-sm">
+                          {new Date(cert.notBefore).toLocaleDateString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-0 pr-5">
+                        <span className="text-sm">
+                          {new Date(cert.notAfter).toLocaleDateString()}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Destination</span>
+        <div className="w-full border-b border-border">
+          <span className="text-sm text-muted">Destination</span>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Connection">{connection?.name}</GenericFieldLabel>
-          <GenericFieldLabel label="Service">{destinationName}</GenericFieldLabel>
+        <div className="grid grid-cols-3 gap-x-8">
+          <ReviewFieldLabel label="Connection">{connection?.name}</ReviewFieldLabel>
+          <ReviewFieldLabel label="Service">{destinationName}</ReviewFieldLabel>
           {destinationConfig && "vaultBaseUrl" in destinationConfig && (
-            <GenericFieldLabel label="Vault URL">
-              {destinationConfig.vaultBaseUrl}
-            </GenericFieldLabel>
+            <ReviewFieldLabel label="Vault URL">{destinationConfig.vaultBaseUrl}</ReviewFieldLabel>
           )}
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Sync Options</span>
+        <div className="w-full border-b border-border">
+          <span className="text-sm text-muted">Sync Options</span>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-3">
-          <GenericFieldLabel label="Auto-Sync">
-            <div className="mt-1">
-              <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
-                {isAutoSyncEnabled ? "Enabled" : "Disabled"}
-              </Badge>
-            </div>
-          </GenericFieldLabel>
-          {/* Hidden for now - Import certificates functionality disabled
-          {syncOptions?.canImportCertificates !== undefined && (
-            <GenericFieldLabel label="Import Certificates">
-              <Badge variant={syncOptions.canImportCertificates ? "success" : "danger"}>
-                {syncOptions.canImportCertificates ? "Enabled" : "Disabled"}
-              </Badge>
-            </GenericFieldLabel>
-          )}
-          */}
-          {syncOptions?.canRemoveCertificates !== undefined && (
-            <GenericFieldLabel label="Remove Certificates">
-              <div className="mt-1">
-                <Badge variant={syncOptions.canRemoveCertificates ? "success" : "danger"}>
-                  {syncOptions.canRemoveCertificates ? "Enabled" : "Disabled"}
+        <div className="grid grid-cols-3 gap-x-8">
+          <ReviewFieldLabel label="Auto-Sync">
+            <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
+              {isAutoSyncEnabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </ReviewFieldLabel>
+          {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
+            if (typeof optionValue !== "boolean") return null;
+            return (
+              <ReviewFieldLabel key={key} label={label}>
+                <Badge variant={optionValue ? "success" : "danger"}>
+                  {optionValue ? "Enabled" : "Disabled"}
                 </Badge>
-              </div>
-            </GenericFieldLabel>
-          )}
+              </ReviewFieldLabel>
+            );
+          })}
+          {KEY_VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
+            if (!Array.isArray(optionValue) || !optionValue.length) return null;
+            const pairs = optionValue as { key: string; value?: string }[];
+            return (
+              <ReviewFieldLabel key={key} label={label}>
+                <div className="flex flex-wrap gap-1">
+                  {pairs.map((pair) => (
+                    <Badge key={pair.key} variant="neutral" isTruncatable>
+                      <span>{pair.value ? `${pair.key}: ${pair.value}` : pair.key}</span>
+                    </Badge>
+                  ))}
+                </div>
+              </ReviewFieldLabel>
+            );
+          })}
+          {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
+            if (optionValue === undefined || optionValue === null || optionValue === "")
+              return null;
+            return (
+              <ReviewFieldLabel key={key} label={label}>
+                <Badge variant="neutral">{String(optionValue)}</Badge>
+              </ReviewFieldLabel>
+            );
+          })}
         </div>
       </div>
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Details</span>
+      {healthCheckCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Health Check</span>
+          </div>
+          <CodeBlock value={healthCheckCommand} className="max-h-48 whitespace-pre-wrap" />
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
+      )}
+      {postSyncCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Post-Sync Command</span>
+          </div>
+          <CodeBlock value={postSyncCommand} className="max-h-48 whitespace-pre-wrap" />
+        </div>
+      )}
+      <div className="flex flex-col gap-3">
+        <div className="w-full border-b border-border">
+          <span className="text-sm text-muted">Details</span>
+        </div>
+        <div className="grid grid-cols-3 gap-x-8">
+          <ReviewFieldLabel label="Name">{name}</ReviewFieldLabel>
+          <ReviewFieldLabel label="Description">{description}</ReviewFieldLabel>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ type Props = {
   secretPath?: string;
   isEmpty?: boolean;
   missingFromEnvs?: string[];
+  isVisible?: boolean;
 };
 
 export const SecretImportSecretRow = ({
@@ -17,7 +18,8 @@ export const SecretImportSecretRow = ({
   environment,
   secretPath = "/",
   isEmpty,
-  missingFromEnvs
+  missingFromEnvs,
+  isVisible
 }: Props) => {
   return (
     <TableRow className="group">
@@ -40,6 +42,7 @@ export const SecretImportSecretRow = ({
           environment={environment}
           secretPath={secretPath}
           isEmpty={isEmpty}
+          isVisible={isVisible}
         />
       </TableCell>
     </TableRow>

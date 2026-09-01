@@ -1,11 +1,7 @@
 import { Knex } from "knex";
 
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
-import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
-import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
@@ -103,6 +99,7 @@ export type TUpdateProjectDTO = {
     showSnapshotsLegacy?: boolean;
     secretDetectionIgnoreValues?: string[];
     enforceEncryptedSecretManagerSecretMetadata?: boolean;
+    auditLogsRetentionDays?: number;
   };
 } & Omit<TProjectPermission, "projectId">;
 
@@ -193,21 +190,7 @@ export type TGetProjectKmsKey = TProjectPermission;
 
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
 
-export type TListProjectSshCasDTO = TProjectPermission;
-export type TListProjectSshHostsDTO = TProjectPermission;
-export type TListProjectSshCertificateTemplatesDTO = TProjectPermission;
 export type TListProjectPkiSubscribersDTO = TProjectPermission;
-export type TListProjectSshCertificatesDTO = {
-  offset: number;
-  limit: number;
-} & TProjectPermission;
-
-export type TUpdateProjectSshConfig = {
-  defaultUserSshCaId?: string;
-  defaultHostSshCaId?: string;
-} & TProjectPermission;
-
-export type TGetProjectSshConfig = TProjectPermission;
 
 export type TGetProjectWorkflowIntegrationConfig = TProjectPermission & {
   integration: WorkflowIntegration;
@@ -239,15 +222,6 @@ export type TDeleteProjectWorkflowIntegration = {
   integrationId: string;
   integration: WorkflowIntegration;
 } & TProjectPermission;
-
-export type TBootstrapSshProjectDTO = {
-  projectId: string;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "transaction" | "create">;
-  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
-  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  tx?: Knex;
-};
 
 export enum SearchProjectSortBy {
   NAME = "name"

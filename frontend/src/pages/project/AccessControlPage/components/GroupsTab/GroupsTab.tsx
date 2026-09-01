@@ -9,6 +9,7 @@ export const GroupsTab = withProjectPermission(
   },
   {
     action: ProjectPermissionActions.Read,
-    subject: ProjectPermissionSub.Groups
+    subject: ProjectPermissionSub.Groups,
+    accessRestrictedMode: "dialog"
   }
 );

@@ -3,45 +3,53 @@ import { useParams } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   DatabaseIcon,
+  PlugZap,
   PlusIcon,
   ShieldCheckIcon,
   TableIcon,
   TerminalSquareIcon,
-  UnplugIcon,
   XIcon
 } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
-import { useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamAccountType, useGetPamAccountById } from "@app/hooks/api/pam";
 
+import { WebAccessStatusCard } from "../PamAccountAccessPage/WebAccessStatusCard";
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
 import { QueryPanel } from "./components/QueryPanel";
 import type { SchemaInfo, TableInfo } from "./data-explorer-types";
+import type { SqlDialect } from "./sql-generation";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { useQueryTabs } from "./use-query-tabs";
 
 type Props = {
   reason?: string;
+  mfaSessionId?: string;
 };
 
-export const PamDataExplorerPage = ({ reason }: Props = {}) => {
-  const { accountId, projectId, orgId } = useParams({
+export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
+  const { accountId } = useParams({
     strict: false
   }) as {
     accountId: string;
-    projectId: string;
-    orgId: string;
+    accountType: string;
   };
 
   const { data: account } = useGetPamAccountById(accountId);
 
+  const dialect: SqlDialect = account?.accountType === PamAccountType.MySQL ? "mysql" : "postgres";
+  const defaultSchema =
+    dialect === "mysql"
+      ? ((account?.connectionDetails as { database?: string })?.database ?? "")
+      : "public";
+
   // Sidebar-only view state. Switching schemas in the sidebar does not alter
   // open tabs — tabs are bound to their own (schema, table) at open time.
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
-  const [selectedSchema, setSelectedSchema] = useState("public");
+  const [selectedSchema, setSelectedSchema] = useState(defaultSchema);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
@@ -49,8 +57,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const [disconnectReason, setDisconnectReason] = useState<string | null>(null);
   const latestSchemaRequestRef = useRef(0);
   const tabElRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-
-  const [approvalJustification, setApprovalJustification] = useState("");
 
   // Forward refs for tab-state handlers that useDataExplorerSession calls
   // before useQueryTabs has been called. Assigned after useQueryTabs below.
@@ -66,13 +72,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     isConnecting,
     errorMessage,
     mfaState,
-    approvalState,
     connect,
     disconnect,
     reconnect,
     handleMfaVerification,
-    submitApprovalRequest,
-    approvalRequestUrl,
     openConnection,
     closeConnection,
     fetchSchemas,
@@ -82,10 +85,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     cancelQuery
   } = useDataExplorerSession({
     accountId,
-    projectId,
-    orgId,
-    resourceName: account?.resource?.name ?? "",
-    accountName: account?.name ?? "",
     reason,
     onSessionEnd: (endReason?: string) => {
       setHasDisconnected(true);
@@ -138,10 +137,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     (node: HTMLDivElement | null) => {
       if (node && !connectedOnceRef.current) {
         connectedOnceRef.current = true;
-        connect();
+        connect(mfaSessionId);
       }
     },
-    [connect]
+    [connect, mfaSessionId]
   );
 
   // Cleanup on real unmount
@@ -181,7 +180,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         const result = await fetchSchemas();
         setSchemas(result);
         const hasSelected = result.find((s) => s.name === selectedSchema);
-        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? "public");
+        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? defaultSchema);
         if (!hasSelected && result.length > 0 && !keepSelected) {
           setSelectedSchema(activeSchema);
         }
@@ -280,113 +279,60 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   if (isConnecting && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-bunker-800">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
         <Spinner className="h-8 w-8" />
-        <p className="text-sm text-mineshaft-300">Connecting to database...</p>
+        <p className="text-sm text-muted">Connecting to database...</p>
       </div>
     );
   }
 
   if (mfaState?.required) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <ShieldCheckIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">MFA Verification Required</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">
-          Multi-factor authentication is required to access this database account.
-        </p>
+      <WebAccessStatusCard
+        icon={ShieldCheckIcon}
+        title="MFA Verification Required"
+        description="Multi-factor authentication is required to access this database account."
+      >
         {mfaState.verifying ? (
-          <div className="flex items-center gap-2 text-xs text-mineshaft-400">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted">
             <Spinner className="h-4 w-4" />
             Waiting for verification...
           </div>
         ) : (
-          <Button variant="outline" size="xs" onClick={handleMfaVerification}>
+          <Button variant="pam" isFullWidth onClick={handleMfaVerification}>
             Verify MFA
           </Button>
         )}
-      </div>
-    );
-  }
-
-  if (approvalState?.required) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Approval Required</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">
-          This account is protected by policy: {approvalState.policyName ?? "Unknown"}
-        </p>
-        {approvalState.submitted ? (
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-xs text-mineshaft-300">Approval request created successfully.</p>
-            {approvalRequestUrl && (
-              <a
-                href={approvalRequestUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary-500 underline hover:text-primary-400"
-              >
-                View approval request
-              </a>
-            )}
-            <Button variant="outline" size="xs" onClick={handleReconnect}>
-              Reconnect
-            </Button>
-          </div>
-        ) : (
-          <div className="flex w-full max-w-sm flex-col gap-2">
-            <textarea
-              className="w-full rounded border border-mineshaft-600 bg-bunker-700 px-3 py-2 text-xs text-mineshaft-200 placeholder:text-mineshaft-500 focus:border-mineshaft-400 focus:outline-none"
-              placeholder="Justification (optional)"
-              rows={2}
-              value={approvalJustification}
-              onChange={(e) => setApprovalJustification(e.target.value)}
-            />
-            {approvalState.errorMessage && (
-              <p className="text-xs text-red-400">{approvalState.errorMessage}</p>
-            )}
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                size="xs"
-                isPending={approvalState.creating}
-                onClick={() => submitApprovalRequest(approvalJustification)}
-              >
-                Create Approval Request
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
   if (errorMessage && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <AlertTriangleIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Connection Error</h2>
-        <p className="max-w-sm text-center text-xs text-mineshaft-400">{errorMessage}</p>
-        <Button variant="outline" size="xs" onClick={handleReconnect}>
+      <WebAccessStatusCard
+        tone="danger"
+        icon={AlertTriangleIcon}
+        title="Connection Error"
+        description={errorMessage}
+      >
+        <Button variant="pam" isFullWidth onClick={handleReconnect}>
           Try Again
         </Button>
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
   if (hasDisconnected && !isConnected && !isConnecting) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-bunker-800">
-        <UnplugIcon className="size-8 text-mineshaft-400" />
-        <h2 className="text-sm font-medium text-mineshaft-100">Disconnected</h2>
-        <p className="text-xs text-mineshaft-400">
-          {disconnectReason ?? "The database connection was closed."}
-        </p>
-        <Button variant="outline" size="xs" onClick={handleReconnect}>
+      <WebAccessStatusCard
+        icon={PlugZap}
+        title="Disconnected"
+        description={disconnectReason ?? "The database connection was closed."}
+      >
+        <Button variant="pam" isFullWidth onClick={handleReconnect}>
           Reconnect
         </Button>
-      </div>
+      </WebAccessStatusCard>
     );
   }
 
@@ -395,7 +341,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const tabOpeningDisabled = isOpeningTab || atTabLimit;
 
   return (
-    <div ref={mountRef} className="flex h-screen w-screen flex-col bg-bunker-800">
+    <div ref={mountRef} className="flex h-screen w-screen flex-col bg-background">
       <div className="flex flex-1 overflow-hidden">
         <DataExplorerSidebar
           schemas={schemas}
@@ -410,7 +356,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:#4a4b4e_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-mineshaft-600 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-border bg-card px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:var(--color-border)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
             {tabs.map((tab) => {
               const isActive = activeTabId === tab.id;
               const Icon = tab.kind === "browse" ? TableIcon : TerminalSquareIcon;
@@ -428,9 +374,9 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   className={cn(
                     "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                     isActive
-                      ? "border-info text-mineshaft-100"
-                      : "border-transparent text-mineshaft-400 hover:text-mineshaft-200",
-                    tab.isDead && "text-red-400"
+                      ? "border-info text-foreground"
+                      : "border-transparent text-muted hover:text-foreground",
+                    tab.isDead && "text-danger"
                   )}
                 >
                   <span className="flex items-center gap-1.5">
@@ -443,7 +389,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                       e.stopPropagation();
                       closeTab(tab.id);
                     }}
-                    className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
+                    className="ml-1 rounded p-0.5 text-muted transition-colors hover:text-foreground"
                     aria-label={`Close ${tab.title}`}
                   >
                     <XIcon className="size-3" />
@@ -458,7 +404,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                 openQueryTab().catch(() => {});
               }}
               disabled={tabOpeningDisabled}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors first:ml-0 hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
               aria-label="New query tab"
               title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >
@@ -473,8 +419,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
           {tabs.map((tab) => {
             const deadTabView = (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-                <AlertTriangleIcon className="size-8 text-red-400" />
-                <p className="text-sm text-mineshaft-300">
+                <AlertTriangleIcon className="size-8 text-danger" />
+                <p className="text-sm text-muted">
                   This connection was closed and cannot be reused.
                 </p>
                 <Button variant="outline" size="xs" onClick={() => closeTab(tab.id)}>
@@ -497,6 +443,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   executeQuery={executeQuery}
                   isLoading={tab.isLoadingDetail}
                   onRefresh={() => handleTabRefresh(tab.id)}
+                  dialect={dialect}
                 />
               );
             } else {
@@ -508,6 +455,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   cancelQuery={cancelQuery}
                   onSqlChange={(sql) => updateTabSql(tab.id, sql)}
                   onTransactionStateChange={(open) => setTabTransactionOpen(tab.id, open)}
+                  dialect={dialect}
                 />
               );
             }
@@ -523,8 +471,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
           {tabs.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <DatabaseIcon className="size-12 text-mineshaft-600" />
-              <p className="text-sm text-mineshaft-400">No tabs open</p>
+              <DatabaseIcon className="size-12 text-muted" />
+              <p className="text-sm text-muted">No tabs open</p>
               <Button
                 variant="outline"
                 size="xs"
@@ -541,19 +489,14 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
-        <span className="text-mineshaft-400">
+      <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
+        <span className="text-muted">
           {tables.length} table{tables.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Resource:</span>{" "}
-            <span className="text-mineshaft-300">{account?.resource?.name ?? "Database"}</span>
-          </span>
-          <span className="text-mineshaft-500">|</span>
-          <span>
-            <span className="text-mineshaft-400">Account:</span>{" "}
-            <span className="text-mineshaft-300">{account?.name ?? "Account"}</span>
+            <span className="text-muted">Account:</span>{" "}
+            <span className="text-muted">{account?.name ?? "Account"}</span>
           </span>
         </div>
       </div>

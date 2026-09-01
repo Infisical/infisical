@@ -44,6 +44,8 @@ export const AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.AzureKeyVault,
   canImportCertificates: false,
   canRemoveCertificates: true,
+  canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-PKI-Sync-{{certificateId}}",
   forbiddenCharacters: AZURE_KEY_VAULT_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: AZURE_KEY_VAULT_CERTIFICATE_NAMING.ALLOWED_CHARACTER_PATTERN,

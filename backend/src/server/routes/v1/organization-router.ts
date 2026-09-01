@@ -11,13 +11,16 @@ import {
   OrgRolesSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -42,6 +45,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
@@ -66,6 +71,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
@@ -86,7 +93,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitizedOrganizationSchema
+          organization: sanitizedOrganizationSchema.extend({
+            pamProjectId: z.string().nullable()
+          })
         })
       }
     },
@@ -120,7 +129,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listOrgIntegrationAuth({
         actorId: req.permission.id,
@@ -238,7 +247,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
@@ -266,6 +275,27 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             metadata: {}
           }
         });
+
+        const distinctId = getTelemetryDistinctId(req);
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.AuditLogsViewed,
+            distinctId,
+            organizationId: req.permission.orgId,
+            dedup: {
+              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.permission.orgId, distinctId),
+              ttlSeconds: KeyStoreTtls.TelemetryAuditLogsViewedInSeconds
+            },
+            properties: {
+              orgId: req.permission.orgId,
+              projectId: req.query.projectId,
+              resultCount: auditLogs.length,
+              dateRangeStart: req.query.startDate || getLastMidnightDateISO(),
+              dateRangeEnd: req.query.endDate || new Date().toISOString(),
+              actorType: req.permission.type
+            }
+          })
+          .catch(() => {});
       }
 
       return { auditLogs };
@@ -291,7 +321,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.auditLog.getAuditLogPostgresStorageStatus({
         actor: req.permission.type,
@@ -332,7 +362,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers({
         actor: req.permission.type,
@@ -379,7 +409,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         secretsProductEnabled: z.boolean().optional(),
         pkiProductEnabled: z.boolean().optional(),
         kmsProductEnabled: z.boolean().optional(),
-        sshProductEnabled: z.boolean().optional(),
         scannerProductEnabled: z.boolean().optional(),
         shareSecretsProductEnabled: z.boolean().optional(),
         maxSharedSecretLifetime: z
@@ -397,6 +426,10 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .optional()
           .describe("Block duplicate secret sync destinations across the organization"),
+        allowCrossProjectSecretSharing: z
+          .boolean()
+          .optional()
+          .describe("Allow secret imports and references to target secrets in other projects within the organization"),
         secretShareBrandConfig: z
           .object({
             primaryColor: z
@@ -469,7 +502,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
         req.permission.id,
@@ -564,7 +597,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const groups = await server.services.org.getOrgGroups({
         actor: req.permission.type,
@@ -597,7 +630,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { users } = await server.services.membershipUser.listAvailableUsers({
         permission: req.permission,
@@ -629,7 +662,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
         permission: req.permission,
@@ -678,8 +711,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           }),
           pam: z.object({
             accountsCount: z.number(),
-            resourcesCount: z.number(),
-            projectsCount: z.number()
+            accountTemplatesCount: z.number(),
+            foldersCount: z.number()
           })
         })
       }

@@ -44,29 +44,11 @@ var AdminPermissions = []gocasl.JSONRule{
 	// PkiCollections
 	{Action: ss(PkiCollectionsActionRead.Name(), PkiCollectionsActionCreate.Name(), PkiCollectionsActionEdit.Name(), PkiCollectionsActionDelete.Name()), Subject: ss(SubPkiCollections)},
 
-	// SshCertificateAuthorities
-	{Action: ss(SshCaActionRead.Name(), SshCaActionCreate.Name(), SshCaActionEdit.Name(), SshCaActionDelete.Name()), Subject: ss(SubSshCertificateAuthorities)},
-
-	// SshCertificates
-	{Action: ss(SshCertActionRead.Name(), SshCertActionCreate.Name(), SshCertActionEdit.Name(), SshCertActionDelete.Name()), Subject: ss(SubSshCertificates)},
-
-	// SshCertificateTemplates
-	{Action: ss(SshCertTemplateActionRead.Name(), SshCertTemplateActionCreate.Name(), SshCertTemplateActionEdit.Name(), SshCertTemplateActionDelete.Name()), Subject: ss(SubSshCertificateTemplates)},
-
-	// SshHostGroups
-	{Action: ss(SshHostGroupsActionRead.Name(), SshHostGroupsActionCreate.Name(), SshHostGroupsActionEdit.Name(), SshHostGroupsActionDelete.Name()), Subject: ss(SubSshHostGroups)},
-
 	// PamFolders
 	{Action: ss(PamFoldersActionRead.Name(), PamFoldersActionCreate.Name(), PamFoldersActionEdit.Name(), PamFoldersActionDelete.Name()), Subject: ss(SubPamFolders)},
 
 	// PamResources
 	{Action: ss(PamResourceActionRead.Name(), PamResourceActionCreate.Name(), PamResourceActionEdit.Name(), PamResourceActionDelete.Name()), Subject: ss(SubPamResources)},
-
-	// McpServers
-	{Action: ss(McpServersActionRead.Name(), McpServersActionCreate.Name(), McpServersActionEdit.Name(), McpServersActionDelete.Name()), Subject: ss(SubMcpServers)},
-
-	// McpActivityLogs
-	{Action: ss(McpActivityLogsActionRead.Name()), Subject: ss(SubMcpActivityLogs)},
 
 	// AuditLogs
 	{Action: ss(AuditLogsActionRead.Name()), Subject: ss(SubAuditLogs)},
@@ -91,9 +73,6 @@ var AdminPermissions = []gocasl.JSONRule{
 
 	// Commits
 	{Action: ss(CommitsActionRead.Name(), CommitsActionPerformRollback.Name()), Subject: ss(SubCommits)},
-
-	// SshHosts
-	{Action: ss(SshHostActionRead.Name(), SshHostActionCreate.Name(), SshHostActionEdit.Name(), SshHostActionDelete.Name(), SshHostActionIssueHostCert.Name()), Subject: ss(SubSshHosts)},
 
 	// PkiSubscribers
 	{Action: ss(PkiSubscriberActionRead.Name(), PkiSubscriberActionCreate.Name(), PkiSubscriberActionEdit.Name(), PkiSubscriberActionDelete.Name(), PkiSubscriberActionIssueCert.Name(), PkiSubscriberActionListCerts.Name()), Subject: ss(SubPkiSubscribers)},
@@ -166,9 +145,6 @@ var AdminPermissions = []gocasl.JSONRule{
 
 	// PamDiscovery
 	{Action: ss(PamDiscoveryActionRead.Name(), PamDiscoveryActionCreate.Name(), PamDiscoveryActionEdit.Name(), PamDiscoveryActionDelete.Name(), PamDiscoveryActionRunScan.Name()), Subject: ss(SubPamDiscovery)},
-
-	// McpEndpoints
-	{Action: ss(McpEndpointActionRead.Name(), McpEndpointActionCreate.Name(), McpEndpointActionEdit.Name(), McpEndpointActionDelete.Name(), McpEndpointActionConnect.Name()), Subject: ss(SubMcpEndpoints)},
 
 	// ApprovalRequests
 	{Action: ss(ApprovalRequestActionRead.Name(), ApprovalRequestActionCreate.Name()), Subject: ss(SubApprovalRequests)},
@@ -264,16 +240,6 @@ var MemberPermissions = []gocasl.JSONRule{
 	// PkiCollections
 	{Action: ss(PkiCollectionsActionRead.Name()), Subject: ss(SubPkiCollections)},
 
-	// SshCertificates
-	{Action: ss(SshCertActionRead.Name()), Subject: ss(SubSshCertificates)},
-	{Action: ss(SshCertActionCreate.Name()), Subject: ss(SubSshCertificates)},
-
-	// SshCertificateTemplates
-	{Action: ss(SshCertTemplateActionRead.Name()), Subject: ss(SubSshCertificateTemplates)},
-
-	// SshHosts
-	{Action: ss(SshHostActionRead.Name()), Subject: ss(SubSshHosts)},
-
 	// PkiSubscribers
 	{Action: ss(PkiSubscriberActionRead.Name()), Subject: ss(SubPkiSubscribers)},
 
@@ -318,15 +284,6 @@ var MemberPermissions = []gocasl.JSONRule{
 
 	// PamDiscovery
 	{Action: ss(PamDiscoveryActionRead.Name()), Subject: ss(SubPamDiscovery)},
-
-	// McpEndpoints
-	{Action: ss(McpEndpointActionRead.Name()), Subject: ss(SubMcpEndpoints)},
-
-	// McpServers
-	{Action: ss(McpServersActionRead.Name()), Subject: ss(SubMcpServers)},
-
-	// McpActivityLogs
-	{Action: ss(McpActivityLogsActionRead.Name()), Subject: ss(SubMcpActivityLogs)},
 
 	// ApprovalRequests
 	{Action: ss(ApprovalRequestActionCreate.Name()), Subject: ss(SubApprovalRequests)},
@@ -407,12 +364,6 @@ var ViewerPermissions = []gocasl.JSONRule{
 	// Cmek
 	{Action: ss(CmekActionRead.Name()), Subject: ss(SubCmek)},
 
-	// SshCertificates
-	{Action: ss(SshCertActionRead.Name()), Subject: ss(SubSshCertificates)},
-
-	// SshCertificateTemplates
-	{Action: ss(SshCertTemplateActionRead.Name()), Subject: ss(SubSshCertificateTemplates)},
-
 	// SecretSyncs
 	{Action: ss(SecretSyncActionRead.Name()), Subject: ss(SubSecretSyncs)},
 
@@ -451,25 +402,10 @@ var ViewerPermissions = []gocasl.JSONRule{
 
 	// PamDiscovery
 	{Action: ss(PamDiscoveryActionRead.Name()), Subject: ss(SubPamDiscovery)},
-
-	// McpEndpoints
-	{Action: ss(McpEndpointActionRead.Name()), Subject: ss(SubMcpEndpoints)},
-
-	// McpServers
-	{Action: ss(McpServersActionRead.Name()), Subject: ss(SubMcpServers)},
-
-	// McpActivityLogs
-	{Action: ss(McpActivityLogsActionRead.Name()), Subject: ss(SubMcpActivityLogs)},
 }
 
 // NoAccessPermissions defines the (empty) permission set for the no-access role.
 var NoAccessPermissions = []gocasl.JSONRule{}
-
-// SshHostBootstrapPermissions defines the permission set for the ssh-host-bootstrapper role.
-// Exact port of buildSshHostBootstrapPermissionRules() from default-roles.ts.
-var SshHostBootstrapPermissions = []gocasl.JSONRule{
-	{Action: ss(SshHostActionCreate.Name(), SshHostActionIssueHostCert.Name()), Subject: ss(SubSshHosts)},
-}
 
 // CryptographicOperatorPermissions defines the permission set for the cryptographic-operator role.
 // Exact port of buildCryptographicOperatorPermissionRules() from default-roles.ts.

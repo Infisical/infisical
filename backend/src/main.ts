@@ -20,6 +20,7 @@ import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
 import { registerInfrastructureMetrics } from "./lib/telemetry/metrics";
+import { registerSegfaultHandler } from "./lib/telemetry/segfault-handler";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -35,6 +36,7 @@ const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
 
 const run = async () => {
   const logger = initLogger();
+  await registerSegfaultHandler();
   await removeTemporaryBaseDirectory();
 
   setupAxiosResponseInterceptor(logger);
@@ -55,7 +57,9 @@ const run = async () => {
   const db = initDbConnection({
     dbConnectionUri: databaseCredentials.dbConnectionUri,
     dbRootCert: databaseCredentials.dbRootCert,
-    readReplicas: databaseCredentials.readReplicas
+    readReplicas: databaseCredentials.readReplicas,
+    pool: databaseCredentials.pool,
+    replicaPool: databaseCredentials.replicaPool
   });
 
   // Register connection-pool and entity-count observable gauges. No-ops when telemetry is disabled.
@@ -72,7 +76,8 @@ const run = async () => {
   const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
         dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
-        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
+        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT,
+        pool: { min: envConfig.AUDIT_LOGS_DB_POOL_MIN, max: envConfig.AUDIT_LOGS_DB_POOL_MAX }
       })
     : undefined;
 
@@ -90,7 +95,7 @@ const run = async () => {
 
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
-  const redis = buildRedisFromConfig(envConfig);
+  const redis = buildRedisFromConfig(envConfig, "app");
 
   const server = await main({
     db,

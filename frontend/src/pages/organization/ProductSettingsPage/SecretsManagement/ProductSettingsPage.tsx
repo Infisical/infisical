@@ -17,7 +17,12 @@ import {
   FieldTitle,
   Switch
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useServerConfig
+} from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -27,6 +32,7 @@ import { ProjectTemplatesSection } from "./project-templates/ProjectTemplatesSec
 export const ProductSettingsPage = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
+  const { config } = useServerConfig();
 
   const handleToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
@@ -42,6 +48,20 @@ export const ProductSettingsPage = () => {
     });
   };
 
+  const handleCrossProjectSharingToggle = async (state: boolean) => {
+    if (!currentOrg?.id) return;
+
+    await updateOrg({
+      orgId: currentOrg.id,
+      allowCrossProjectSecretSharing: state
+    });
+
+    createNotification({
+      text: `Successfully ${state ? "enabled" : "disabled"} cross-project secret sharing for this organization`,
+      type: "success"
+    });
+  };
+
   return (
     <>
       <Helmet>
@@ -49,7 +69,7 @@ export const ProductSettingsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl text-white">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Product Settings"
@@ -91,6 +111,31 @@ export const ProductSettingsPage = () => {
                       )}
                     </OrgPermissionCan>
                   </Field>
+                  {config.isCrossProjectSecretSharingEnabled && (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>Cross-project secret sharing</FieldTitle>
+                        <FieldDescription>
+                          When enabled, allows secret imports and secret references to target
+                          folders and secrets from other projects within the same organization.
+                        </FieldDescription>
+                      </FieldContent>
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Edit}
+                        a={OrgPermissionSubjects.Settings}
+                      >
+                        {(isAllowed) => (
+                          <Switch
+                            id="allow-cross-project-secret-sharing"
+                            variant="project"
+                            checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
+                            onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
+                            disabled={!isAllowed || isPending}
+                          />
+                        )}
+                      </OrgPermissionCan>
+                    </Field>
+                  )}
                 </FieldGroup>
               </CardContent>
             </Card>

@@ -9,12 +9,14 @@ export type {
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
   TSecretValidationRule,
+  TSecretValidationRuleConfig,
   TUpdateSecretValidationRuleDTO
 } from "./types";
 export {
   ConstraintTarget,
   ConstraintType,
   DynamicSecretRuleProvider,
+  SECRET_ROTATION_TO_RULE_PROVIDER,
   SecretRotationRuleProvider,
   SecretValidationRuleType
 } from "./types";

@@ -1,27 +1,45 @@
 import { useState } from "react";
-import { faEllipsisV, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  DoorClosedIcon,
+  ExternalLinkIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  SearchIcon,
+  Settings2Icon,
+  TrashIcon
+} from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  DeleteActionModal,
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow
+} from "@app/components/v3";
 import { useSubscription } from "@app/context/SubscriptionContext";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGatewayPool, useListGatewayPools } from "@app/hooks/api/gateway-pools";
@@ -41,15 +59,15 @@ export const GatewayPoolsContent = ({ search }: Props) => {
   const isEnterprise = subscription?.gatewayPool;
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
   const [resourcesPool, setResourcesPool] = useState<{ id: string; name: string } | null>(null);
-  const { data: pools, isPending: isPoolsLoading } = useListGatewayPools({
-    refetchInterval: 15_000
+  const { data: pools, isLoading: isPoolsLoading } = useListGatewayPools({
+    refetchInterval: 15_000,
+    enabled: Boolean(isEnterprise)
   });
   const deletePool = useDeleteGatewayPool();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "editPool",
-    "deletePool",
-    "upgradePlan"
+    "deletePool"
   ] as const);
 
   const filteredPools = pools?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
@@ -70,51 +88,52 @@ export const GatewayPoolsContent = ({ search }: Props) => {
     }
   };
 
-  if (!isEnterprise) {
-    return (
-      <div>
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-8 text-center">
-          <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
-          <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
-          <p className="mx-auto mb-4 max-w-md text-sm text-mineshaft-300">
-            Gateway Pools provide high availability and automatic failover. When a gateway goes
-            down, the platform automatically routes through a healthy member of the pool.
-          </p>
-          <Button colorSchema="primary" onClick={() => handlePopUpOpen("upgradePlan")}>
-            Upgrade to Enterprise
-          </Button>
-        </div>
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="To use gateway pools, upgrade to Infisical's Enterprise plan."
-        />
-      </div>
-    );
-  }
-
   return (
     <div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/3">Name</Th>
-              <Th>Connected</Th>
-              <Th>Health</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPoolsLoading && <TableSkeleton innerKey="pool-table" columns={4} key="pool-table" />}
+      {!isPoolsLoading && !filteredPools?.length ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              {pools?.length ? <SearchIcon /> : <DoorClosedIcon />}
+            </EmptyMedia>
+            <EmptyTitle>
+              {pools?.length ? "No gateway pools match your search" : "No gateway pools configured"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Table className="min-w-[52rem]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <TableHeadLabel>Name</TableHeadLabel>
+              </TableHead>
+              <TableHead>
+                <TableHeadLabel>Connected</TableHeadLabel>
+              </TableHead>
+              <TableHead>
+                <TableHeadLabel>Health</TableHeadLabel>
+              </TableHead>
+              <TableHead variant="action" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPoolsLoading &&
+              ["first", "second", "third"].map((row) => (
+                <TableRow key={`pool-skeleton-${row}`}>
+                  {["name", "connected", "health", "actions"].map((cell) => (
+                    <TableCell key={`pool-skeleton-${row}-${cell}`}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
             {filteredPools?.map((pool) => (
-              <Tr
-                key={pool.id}
-                className="cursor-pointer hover:bg-mineshaft-700/50"
-                onClick={() => setSelectedPoolId(pool.id)}
-              >
-                <Td>{pool.name}</Td>
-                <Td>
+              <TableRow key={pool.id} onClick={() => setSelectedPoolId(pool.id)}>
+                <TableCell className="font-medium">
+                  <span className="block truncate">{pool.name}</span>
+                </TableCell>
+                <TableCell>
                   {pool.connectedResourcesCount > 0 ? (
                     <button
                       type="button"
@@ -122,19 +141,19 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                         e.stopPropagation();
                         setResourcesPool({ id: pool.id, name: pool.name });
                       }}
-                      className="cursor-pointer text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
+                      className="cursor-pointer text-foreground underline decoration-muted underline-offset-2 hover:decoration-foreground"
                     >
                       {pool.connectedResourcesCount} resource
                       {pool.connectedResourcesCount !== 1 ? "s" : ""}
                     </button>
                   ) : (
-                    <span className="text-mineshaft-400">&mdash;</span>
+                    <span className="text-muted">&mdash;</span>
                   )}
-                </Td>
-                <Td>
+                </TableCell>
+                <TableCell>
                   <PoolHealthBadge pool={pool} />
-                </Td>
-                <Td>
+                </TableCell>
+                <TableCell variant="action">
                   <div
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
@@ -142,40 +161,48 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                   >
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <IconButton ariaLabel="Options" variant="plain" size="sm" className="p-1.5">
-                          <FontAwesomeIcon icon={faEllipsisV} />
+                        <IconButton aria-label="Gateway pool options" variant="ghost" size="sm">
+                          <MoreHorizontalIcon />
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          icon={<FontAwesomeIcon icon={faPen} />}
-                          onClick={() => handlePopUpOpen("editPool", pool)}
-                        >
+                        <DropdownMenuItem onClick={() => setSelectedPoolId(pool.id)}>
+                          <Settings2Icon />
+                          Manage Gateways
+                        </DropdownMenuItem>
+                        {pool.connectedResourcesCount > 0 && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setResourcesPool({
+                                id: pool.id,
+                                name: pool.name
+                              })
+                            }
+                          >
+                            <ExternalLinkIcon />
+                            View Resources
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handlePopUpOpen("editPool", pool)}>
+                          <PencilIcon />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          icon={<FontAwesomeIcon icon={faTrash} />}
                           onClick={() => handlePopUpOpen("deletePool", pool)}
-                          className="text-red-500"
+                          variant="danger"
                         >
+                          <TrashIcon />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </Td>
-              </Tr>
+                </TableCell>
+              </TableRow>
             ))}
-            {!isPoolsLoading && filteredPools?.length === 0 && (
-              <Tr>
-                <Td colSpan={4}>
-                  <EmptyState title="No gateway pools found" />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
+          </TableBody>
         </Table>
-      </TableContainer>
+      )}
 
       <PoolDetailSheet
         isOpen={Boolean(selectedPoolId)}
@@ -199,13 +226,39 @@ export const GatewayPoolsContent = ({ search }: Props) => {
         onToggle={(isOpen) => handlePopUpToggle("editPool", isOpen)}
         pool={popUp.editPool.data as TGatewayPool}
       />
-      <DeleteActionModal
-        isOpen={popUp.deletePool.isOpen}
-        title={`Delete pool "${(popUp.deletePool.data as TGatewayPool)?.name ?? ""}"?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePool", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDeletePool}
-      />
+      <AlertDialog
+        open={popUp.deletePool.isOpen}
+        confirmationValue={(popUp.deletePool.data as TGatewayPool | undefined)?.name}
+        onOpenChange={(open) => handlePopUpToggle("deletePool", open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Gateway Pool?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the gateway pool from your organization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: (popUp.deletePool.data as TGatewayPool)?.name }}
+          />
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>Deleting this gateway pool cannot be undone.</AlertDescription>
+          </Alert>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deletePool.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deletePool.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeletePool();
+              }}
+            >
+              Delete Pool
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

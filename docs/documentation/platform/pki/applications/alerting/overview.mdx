@@ -6,7 +6,7 @@ description: "Get notified when certificates expire, are issued, renewed, or rev
 
 Certificate alerting keeps your team informed about critical lifecycle events. Alerts are configured per Application and apply to all certificates within that Application.
 
-## Alert Types
+## Alert types
 
 <CardGroup cols={2}>
   <Card title="Expiration" icon="clock">
@@ -23,7 +23,7 @@ Certificate alerting keeps your team informed about critical lifecycle events. A
   </Card>
 </CardGroup>
 
-## Create an Alert
+## Create an alert
 
 In your Application, go to the **Settings** tab and find the **Alerting** section. Click **Create Alert**.
 
@@ -40,16 +40,16 @@ For expiration alerts, you'll also configure:
 | **Alert Before** | How far before expiration to notify (e.g., `30d`, `2w`, `1m`) |
 | **Daily Alerts** | If enabled, sends daily reminders until the certificate expires or is renewed |
 
-## Notification Channels
+## Notification channels
 
 Add one or more channels to receive alerts (up to 10 per alert):
 
 | Channel | Description |
 |---------|-------------|
-| **[Email](/documentation/platform/pki/applications/alerting/email)** | Send to a list of email addresses |
-| **[Slack](/documentation/platform/pki/applications/alerting/slack)** | Post to a Slack channel via Incoming Webhook |
-| **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty)** | Create incidents via Events API v2 |
-| **[Webhook](/documentation/platform/pki/applications/alerting/webhook)** | POST to any HTTPS endpoint with optional signature verification |
+| **Email** | Send to a list of email addresses |
+| **[Slack](/documentation/platform/pki/applications/alerting/slack-alerts)** | Post to a Slack channel via Incoming Webhook |
+| **[PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts)** | Create incidents via Events API v2 |
+| **[Webhook](/documentation/platform/pki/applications/alerting/webhook-alerts)** | POST to any HTTPS endpoint with optional signature verification |
 
 ## FAQ
 
@@ -65,16 +65,16 @@ Add one or more channels to receive alerts (up to 10 per alert):
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Slack Alerts" icon="slack" href="/documentation/platform/pki/applications/alerting/slack">
+  <Card title="Slack Alerts" icon="slack" href="/documentation/platform/pki/applications/alerting/slack-alerts">
     Set up Slack Incoming Webhook integration.
   </Card>
-  <Card title="PagerDuty Alerts" icon="pager" href="/documentation/platform/pki/applications/alerting/pagerduty">
+  <Card title="PagerDuty Alerts" icon="pager" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
     Configure PagerDuty Events API integration.
   </Card>
-  <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook">
+  <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
     Send alerts to custom endpoints.
   </Card>
   <Card title="Certificates" icon="certificate" href="/documentation/platform/pki/applications/certificates">

@@ -139,7 +139,12 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         .where("folderId", folderId)
         .whereIn(`${TableName.SecretVersion}.secretId`, secretIds)
         .join(
-          (tx || db)(TableName.SecretVersion).groupBy("secretId").max("version").select("secretId").as("latestVersion"),
+          (tx || db)(TableName.SecretVersion)
+            .whereIn("secretId", secretIds)
+            .groupBy("secretId")
+            .max("version")
+            .select("secretId")
+            .as("latestVersion"),
           (bd) => {
             bd.on(`${TableName.SecretVersion}.secretId`, "latestVersion.secretId").andOn(
               `${TableName.SecretVersion}.version`,
@@ -147,10 +152,11 @@ export const secretVersionDALFactory = (db: TDbClient) => {
             );
           }
         );
-      return docs.reduce<Record<string, TSecretVersions>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return docs.reduce<Record<string, TSecretVersions>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindLatestVersinMany" });
     }

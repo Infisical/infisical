@@ -1,5 +1,7 @@
 export enum CertStatus {
   ACTIVE = "active",
+  RENEWED = "renewed",
+  EXPIRED = "expired",
   REVOKED = "revoked"
 }
 
@@ -46,7 +48,14 @@ export enum CertExtendedKeyUsage {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   TIMESTAMPING = "time_stamping",
-  OCSP_SIGNING = "ocsp_signing"
+  OCSP_SIGNING = "ocsp_signing",
+  ANY_PURPOSE = "any_purpose"
+}
+
+export enum CertificateRenewalKeySource {
+  New = "new",
+  Reuse = "reuse",
+  Csr = "csr"
 }
 
 export enum CertSource {
@@ -62,4 +71,9 @@ export enum CertificateRequestStatus {
   ISSUED = "issued",
   FAILED = "failed",
   REJECTED = "rejected"
+}
+
+export enum CertificateIssuerKind {
+  Internal = "internal",
+  External = "external"
 }

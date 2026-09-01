@@ -12,6 +12,7 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   PenTool,
+  RefreshCwIcon,
   RotateCwIcon,
   Trash2Icon
 } from "lucide-react";
@@ -55,11 +56,14 @@ import {
   SignerPermissionSub,
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
+import { useListCasByProjectId } from "@app/hooks/api/ca";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   getSignerStatusBadgeVariant,
   SignerStatus,
   signerStatusLabels,
+  useCheckSignerIssuance,
   useDeleteSigner,
   useDisableSigner,
   useEnableSigner,
@@ -70,9 +74,8 @@ import {
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { ExportSignerCertModal } from "./components/ExportSignerCertModal";
-import { SignerApprovalPolicyTab } from "./components/SignerApprovalPolicyTab";
+import { SignerApprovalsSection } from "./components/SignerApprovalsSection";
 import { SignerMembersTab } from "./components/SignerMembersTab";
-import { SignerRequestsTab } from "./components/SignerRequestsTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
 type Tab = "activity" | "approvals" | "members";
@@ -97,6 +100,9 @@ export const SignerDetailPage = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
+  const cas = useListCasByProjectId();
+  const isDigicertSigner =
+    (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
     permission.can(action, SignerPermissionSub.Signer);
@@ -104,6 +110,7 @@ export const SignerDetailPage = () => {
   const disableSigner = useDisableSigner();
   const deleteSigner = useDeleteSigner();
   const reissueSigner = useReissueSignerCertificate();
+  const checkSignerIssuance = useCheckSignerIssuance();
 
   if (isLoading) return <PageLoader />;
   if (!signer)
@@ -121,6 +128,13 @@ export const SignerDetailPage = () => {
   };
 
   const onOpenExport = () => setIsExportOpen(true);
+
+  let statusTooltip: string | null = null;
+  if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
+    statusTooltip = signer.certificateFailureReason;
+  } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
+    statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+  }
 
   return (
     <>
@@ -148,7 +162,7 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {signer.status === SignerStatus.Failed && signer.certificateFailureReason ? (
+                  {statusTooltip ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -159,7 +173,7 @@ export const SignerDetailPage = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {signer.certificateFailureReason}
+                          {statusTooltip}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -218,6 +232,18 @@ export const SignerDetailPage = () => {
                       Enable signer
                     </DropdownMenuItem>
                   ) : null}
+                  {signer.status === SignerStatus.Pending && (
+                    <DropdownMenuItem
+                      onClick={() => checkSignerIssuance.mutate(signer.id)}
+                      isDisabled={
+                        checkSignerIssuance.isPending ||
+                        !can(SignerPermissionActions.ReissueCertificate)
+                      }
+                    >
+                      <RefreshCwIcon />
+                      Check issuance now
+                    </DropdownMenuItem>
+                  )}
                   {signer.status === SignerStatus.Failed && signer.caId && (
                     <DropdownMenuItem
                       onClick={() =>
@@ -258,16 +284,10 @@ export const SignerDetailPage = () => {
                 })
               }
             >
-              <TabsList variant="project" className="w-full justify-start">
-                <TabsTrigger value="activity" className="flex-none">
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger value="approvals" className="flex-none">
-                  Approvals
-                </TabsTrigger>
-                <TabsTrigger value="members" className="flex-none">
-                  Members
-                </TabsTrigger>
+              <TabsList variant="project" aria-label="Signer sections">
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="approvals">Approvals</TabsTrigger>
+                <TabsTrigger value="members">Members</TabsTrigger>
               </TabsList>
 
               <TabsContent value="activity" className="pt-2">
@@ -278,21 +298,15 @@ export const SignerDetailPage = () => {
                 />
               </TabsContent>
               <TabsContent value="approvals" className="pt-2">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">
-                  <SignerApprovalPolicyTab signerId={signerId} />
-                  <SignerRequestsTab
-                    signerId={signerId}
-                    canPreApprove={Boolean(
-                      permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
-                    )}
-                    canRequestSign={Boolean(
-                      permission.can(
-                        SignerPermissionActions.RequestSign,
-                        SignerPermissionSub.Signer
-                      )
-                    )}
-                  />
-                </div>
+                <SignerApprovalsSection
+                  signerId={signerId}
+                  canPreApprove={Boolean(
+                    permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
+                  )}
+                  canRequestSign={Boolean(
+                    permission.can(SignerPermissionActions.RequestSign, SignerPermissionSub.Signer)
+                  )}
+                />
               </TabsContent>
               <TabsContent value="members" className="pt-2">
                 <SignerMembersTab signerId={signerId} />
@@ -319,6 +333,12 @@ export const SignerDetailPage = () => {
             <AlertDialogDescription>
               This permanently removes the signer, its policy, members, requests, and signing
               history. The certificate is preserved for audit but signing will stop immediately.
+              {isDigicertSigner && (
+                <span className="mt-2 block font-medium text-warning">
+                  This also revokes the certificate&apos;s DigiCert order, so the certificate can no
+                  longer be used to sign anywhere.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -14,13 +14,15 @@ type Props = {
   environment: string;
   secretPath?: string;
   isEmpty?: boolean;
+  isVisible?: boolean;
 };
 
 export const SecretImportSecretValueCell = ({
   secretKey,
   environment,
   secretPath = "/",
-  isEmpty
+  isEmpty,
+  isVisible
 }: Props) => {
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -41,7 +43,7 @@ export const SecretImportSecretValueCell = ({
       projectId: currentProject.id
     },
     {
-      enabled: isFieldFocused && canFetchSecretValue
+      enabled: (isFieldFocused || isVisible) && canFetchSecretValue
     }
   );
 
@@ -81,6 +83,7 @@ export const SecretImportSecretValueCell = ({
       <div className="flex-1">
         <SecretInput
           value={getValue()}
+          isVisible={isVisible}
           onFocus={() => setIsFieldFocused.on()}
           onBlur={() => setIsFieldFocused.off()}
           isReadOnly

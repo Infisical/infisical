@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 
@@ -34,7 +32,11 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "aria-invalid:border-danger aria-invalid:ring-danger/40",
         "hover:border-foreground/30",
-        "data-[state=checked]:border-foreground/25 data-[state=checked]:bg-foreground/75",
+        "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
+        "in-data-[slot=button]:border-(--control-variant-border-color) in-data-[slot=button]:hover:border-(--control-variant-border-color)",
+        "in-data-[slot=button]:data-[state=checked]:border-(--control-variant-color) in-data-[slot=button]:data-[state=checked]:bg-(--control-variant-color)",
+        "in-data-[slot=field-label]:border-(--control-variant-border-color) in-data-[slot=field-label]:hover:border-(--control-variant-border-color)",
+        "in-data-[slot=field-label]:data-[state=checked]:border-(--control-variant-color) in-data-[slot=field-label]:data-[state=checked]:bg-(--control-variant-color)",
         className
       )}
       {...props}
@@ -43,7 +45,7 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         data-slot="radio-group-indicator"
         className="flex size-4 items-center justify-center"
       >
-        <span className="size-2 rounded-full bg-background" />
+        <span className="size-2 rounded-full bg-black" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );

@@ -7,7 +7,7 @@ import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
@@ -29,7 +29,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
-import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
 import {
   CaCertDetailsSection,
   CaCertificatesSection,
@@ -74,7 +73,6 @@ const Page = () => {
   const { mutateAsync: deleteCa } = useDeleteCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
     "deleteCa",
     "installCaCert",
     "renewCa",
@@ -105,9 +103,10 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-white">
       {data && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificateAuthorityActions.Read}
           a={subject(ProjectPermissionSub.CertificateAuthorities, {
             name: data.name
@@ -196,15 +195,10 @@ const Page = () => {
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

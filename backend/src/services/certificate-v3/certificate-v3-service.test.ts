@@ -3,20 +3,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
@@ -25,18 +32,20 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
-import { createDistinguishedName, extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
+import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
 vi.mock("../certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn(),
-  extractAlgorithmsFromCSR: vi.fn()
+  extractAlgorithmsFromCSR: vi.fn(),
+  buildSubjectOverrideForCsr: vi.fn()
 }));
 
 vi.mock("@peculiar/x509", async (importOriginal) => {
@@ -49,24 +58,41 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
   };
 });
 
-vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  extractDnParts: vi.fn().mockReturnValue({
-    commonName: "test.example.com"
-  }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
-  assertCaInProfileProject: vi.fn()
+vi.mock("../certificate-authority/certificate-authority-fns", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../certificate-authority/certificate-authority-fns")>();
+  return {
+    ...actual,
+    assertCaInProfileProject: vi.fn()
+  };
+});
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
 
+  const mockTelemetryService = {
+    sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
+  };
+
   const mockCertificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    | "findOne"
+    | "findById"
+    | "updateById"
+    | "transaction"
+    | "create"
+    | "find"
+    | "getRequestEnrollmentTypeByCertId"
+    | "getOriginatingRequestByCertId"
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
     updateById: vi.fn(),
+    getRequestEnrollmentTypeByCertId: vi.fn().mockResolvedValue(null),
+    getOriginatingRequestByCertId: vi.fn().mockResolvedValue({ enrollmentType: null, csr: null }),
     create: vi.fn().mockResolvedValue({
       id: "new-cert-id",
       serialNumber: "123456789",
@@ -74,7 +100,8 @@ describe("CertificateV3Service", () => {
       commonName: "test.example.com",
       status: "ACTIVE",
       source: "issued",
-      keySource: "infisical"
+      keySource: "infisical",
+      orderId: "00000000-0000-0000-0000-000000000000"
     }),
     transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
@@ -110,9 +137,10 @@ describe("CertificateV3Service", () => {
 
   const mockCertificatePolicyService: Pick<
     TCertificatePolicyServiceFactory,
-    "validateCertificateRequest" | "getPolicyById"
+    "validateCertificateRequest" | "validateRequestAgainstPolicy" | "getPolicyById"
   > = {
     validateCertificateRequest: vi.fn(),
+    validateRequestAgainstPolicy: vi.fn().mockReturnValue({ isValid: true, errors: [] }),
     getPolicyById: vi.fn()
   };
 
@@ -150,6 +178,32 @@ describe("CertificateV3Service", () => {
     })
   };
 
+  const mockCertificateIssuanceQueue = {
+    queueCertificateIssuance: vi.fn()
+  };
+
+  const mockCertificateRequestService = {
+    createCertificateRequest: vi.fn()
+  };
+
+  const mockApprovalPolicyDAL = {
+    findByProjectId: vi.fn(),
+    findStepsByPolicyId: vi.fn()
+  };
+
+  const mockCertificateRequestDAL = {
+    updateById: vi.fn(),
+    findById: vi.fn(),
+    create: vi.fn(),
+    transaction: vi.fn(),
+    transitionFromPending: vi.fn(),
+    attachCertificate: vi.fn()
+  };
+
+  const mockApprovalPolicyService = {
+    createRequestFromPolicy: vi.fn()
+  };
+
   const mockActor = {
     actor: ActorType.USER,
     actorId: "user-123",
@@ -163,6 +217,24 @@ describe("CertificateV3Service", () => {
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
+    });
+    vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(null);
+    vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
+      enrollmentType: null,
+      csr: null
+    });
+
+    mockCertificateIssuanceQueue.queueCertificateIssuance.mockResolvedValue(undefined);
+    mockCertificateRequestService.createCertificateRequest.mockResolvedValue({ id: "cert-req-123" });
+    mockApprovalPolicyDAL.findByProjectId.mockResolvedValue([]);
+    mockApprovalPolicyDAL.findStepsByPolicyId.mockResolvedValue([]);
+    mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "cert-req-123" });
+    mockCertificateRequestDAL.findById.mockResolvedValue({ id: "cert-req-123" });
+    mockCertificateRequestDAL.create.mockResolvedValue({ id: "cert-req-123", createdAt: new Date() });
+    mockCertificateRequestDAL.transitionFromPending.mockResolvedValue({ id: "cert-req-123" });
+    mockCertificateRequestDAL.attachCertificate.mockResolvedValue({ id: "cert-req-123" });
+    mockApprovalPolicyService.createRequestFromPolicy.mockResolvedValue({
+      request: { id: "approval-req-123", steps: [{ id: "step-1", stepNumber: 1, approvers: [] }] }
     });
 
     // Mock ForbiddenError.from static method
@@ -192,11 +264,6 @@ describe("CertificateV3Service", () => {
       keyAlgorithm: "RSA_2048" as any,
       signatureAlgorithm: "RSA-SHA256" as any
     });
-
-    vi.mocked(extractDnParts).mockReturnValue({
-      commonName: "test.example.com"
-    });
-    vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");
 
     service = certificateV3ServiceFactory({
       certificateDAL: mockCertificateDAL,
@@ -240,36 +307,17 @@ describe("CertificateV3Service", () => {
           return callback(mockTx);
         })
       } as any,
-      certificateIssuanceQueue: {
-        queueCertificateIssuance: vi.fn().mockResolvedValue(undefined)
-      },
-      certificateRequestService: {
-        createCertificateRequest: vi.fn().mockResolvedValue({ id: "cert-req-123" })
-      },
-      approvalPolicyDAL: {
-        findByProjectId: vi.fn().mockResolvedValue([]),
-        findStepsByPolicyId: vi.fn().mockResolvedValue([])
-      },
-      certificateRequestDAL: {
-        updateById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
-        findById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
-        create: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
-        transaction: vi.fn()
-      },
+      certificateIssuanceQueue: mockCertificateIssuanceQueue,
+      certificateRequestService: mockCertificateRequestService,
+      approvalPolicyDAL: mockApprovalPolicyDAL,
+      certificateRequestDAL: mockCertificateRequestDAL,
       userDAL: {
         findById: vi.fn().mockResolvedValue({ id: "user-123" })
       },
       identityDAL: {
         findById: vi.fn().mockResolvedValue({ id: "identity-123", name: "test-identity" })
       },
-      approvalPolicyService: {
-        createRequestFromPolicy: vi.fn().mockResolvedValue({
-          request: {
-            id: "approval-req-123",
-            steps: [{ id: "step-1", stepNumber: 1, approvers: [] }]
-          }
-        })
-      },
+      approvalPolicyService: mockApprovalPolicyService,
       resourceMetadataDAL: {
         insertMany: vi.fn().mockResolvedValue([]),
         delete: vi.fn().mockResolvedValue([]),
@@ -284,7 +332,8 @@ describe("CertificateV3Service", () => {
       },
       licenseService: {
         getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
-      }
+      },
+      telemetryService: mockTelemetryService
     });
   });
 
@@ -428,7 +477,8 @@ describe("CertificateV3Service", () => {
         revokedAt: null,
         revokedBy: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
@@ -460,6 +510,362 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("privateKey");
       expect(result).toHaveProperty("serialNumber", "123456");
       expect(result).toHaveProperty("certificateId", "cert-123");
+
+      expect(mockTelemetryService.sendPostHogEvents).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: PostHogEventTypes.IssueCert,
+          properties: expect.objectContaining({
+            profileId,
+            projectId: "project-123",
+            enrollmentType: EnrollmentType.API,
+            operation: CertificateIssuanceOperation.ISSUE
+          })
+        })
+      );
+    });
+
+    describe("read-private-key permission scoping", () => {
+      const profileId = "profile-123";
+
+      const mockProfile = {
+        id: profileId,
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "test-profile",
+        description: "Test profile",
+        apiConfigId: "api-config-legacy"
+      };
+
+      const mockCA = {
+        id: "ca-123",
+        projectId: "project-123",
+        externalCa: undefined,
+        internalCa: {
+          id: "internal-ca-123",
+          parentCaId: null,
+          type: "ROOT",
+          friendlyName: "Test CA",
+          organization: "Test Org",
+          ou: "Test OU",
+          country: "US",
+          province: "CA",
+          locality: "SF",
+          commonName: "Test CA",
+          dn: "CN=Test CA",
+          serialNumber: "123",
+          maxPathLength: null,
+          keyAlgorithm: "RSA_2048",
+          notBefore: undefined,
+          notAfter: undefined,
+          activeCaCertId: "cert-123",
+          caId: "ca-123",
+          crlDistributionPointUrls: [],
+          disableManagedCrlDistributionPointUrl: false
+        },
+        name: "Test CA",
+        status: "ACTIVE",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        enableDirectIssuance: true
+      };
+
+      const mockPolicy = {
+        id: "policy-123",
+        name: "Test Policy",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        projectId: "project-123",
+        description: "Test policy",
+        signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
+        keyAlgorithm: { defaultKeyType: "RSA_2048" },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      const mockCertificateResult = {
+        certificate: "cert",
+        certificateChain: "chain",
+        issuingCaCertificate: "issuing-ca",
+        privateKey: "key",
+        serialNumber: "123456",
+        certificateId: "cert-1",
+        commonName: "test.example.com"
+      };
+
+      const mockCertRecord = {
+        id: "cert-123",
+        serialNumber: "123456",
+        status: "ACTIVE",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        projectId: "project-123",
+        commonName: "test.example.com",
+        friendlyName: "Test Cert",
+        notBefore: new Date(),
+        notAfter: new Date(),
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        revokedAt: null,
+        revokedBy: null,
+        source: "issued",
+        keySource: "infisical"
+      };
+
+      // Return a real ability so the read-private-key check is evaluated against the certificate subject
+      // rather than a mocked boolean.
+      const grantPermission = (rules: any) => {
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility<ProjectPermissionSet>(rules)
+        });
+      };
+
+      beforeEach(() => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+        vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        });
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA as any);
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
+        vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
+        vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(undefined as any)
+        );
+      });
+
+      it("returns the private key when read-private-key is granted unconditionally", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          { action: ProjectPermissionCertificateActions.ReadPrivateKey, subject: ProjectPermissionSub.Certificates }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+
+      it("omits the private key when read-private-key is granted only for a non-matching certificate subject", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "not-the-issued-name.invalid" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeUndefined();
+      });
+
+      it("returns the private key when the read-private-key condition matches the issued certificate subject", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "test.example.com" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+
+      it("returns the private key when a read-private-key condition on a non-common-name field matches", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { status: "ACTIVE" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+
+      it("omits the private key when a read-private-key condition on a non-common-name field excludes the certificate", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { status: { $ne: "ACTIVE" } }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeUndefined();
+      });
+    });
+
+    // Exercises the self-signed issuance branch (real key generation), which passes a different
+    // certificate record (certificateData) into the same permission subject as the CA branch.
+    describe("read-private-key permission scoping (self-signed issuance)", () => {
+      const profileId = "self-signed-profile-123";
+
+      const mockProfile = {
+        id: profileId,
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.SELF_SIGNED,
+        caId: null,
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "self-signed-profile",
+        description: "Self-signed profile",
+        apiConfigId: "api-config-legacy"
+      };
+
+      const mockPolicy = {
+        id: "policy-123",
+        name: "Test Policy",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        projectId: "project-123",
+        description: "Test policy",
+        signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
+        keyAlgorithm: { defaultKeyType: "RSA_2048" },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      const mockCertRecord = {
+        id: "cert-123",
+        serialNumber: "123456",
+        status: "ACTIVE",
+        commonName: "test.example.com",
+        friendlyName: "Test Cert",
+        altNames: "",
+        projectId: "project-123",
+        caId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        notBefore: new Date(),
+        notAfter: new Date(),
+        source: "issued",
+        keySource: "infisical"
+      };
+
+      const grantPermission = (rules: any) => {
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility<ProjectPermissionSet>(rules)
+        });
+      };
+
+      beforeEach(() => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+        vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        });
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
+        vi.mocked(mockCertificateDAL.create).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(undefined as any)
+        );
+      });
+
+      it("returns the private key when read-private-key is granted unconditionally", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          { action: ProjectPermissionCertificateActions.ReadPrivateKey, subject: ProjectPermissionSub.Certificates }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+
+      it("omits the private key when the read-private-key condition does not match the issued certificate", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "not-the-issued-name.invalid" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeUndefined();
+      });
+
+      it("returns the private key when the read-private-key condition matches the issued certificate", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "test.example.com" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
     });
 
     it("should correctly map camelCase key usages to snake_case before validation", async () => {
@@ -558,7 +964,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       };
 
       const camelCaseRequest = {
@@ -653,7 +1060,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord);
 
@@ -797,6 +1205,9 @@ describe("CertificateV3Service", () => {
         certificateChain: "chain",
         issuingCaCertificate: "issuing-ca",
         serialNumber: "789012",
+        // signCertFromCa always returns the id of the certificate it persisted, and the response is
+        // built from that rather than from a follow-up read.
+        certificateId: "cert-456",
         commonName: "test.example.com",
         ca: {
           id: "ca-123",
@@ -854,7 +1265,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       };
 
       const mockPolicy = {
@@ -912,6 +1324,16 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("serialNumber", "789012");
       expect(result).toHaveProperty("certificateId", "cert-456");
       expect(result).not.toHaveProperty("privateKey");
+
+      expect(mockTelemetryService.sendPostHogEvents).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: PostHogEventTypes.IssueCert,
+          properties: expect.objectContaining({
+            enrollmentType: EnrollmentType.API,
+            operation: CertificateIssuanceOperation.SIGN
+          })
+        })
+      );
     });
 
     it("should throw ForbiddenRequestError when profile is not configured for API enrollment", async () => {
@@ -1000,6 +1422,116 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
+    });
+
+    describe("CA certificate orders", () => {
+      const profileId = "profile-ca-order";
+      const caOrder = {
+        ...mockCertificateOrder,
+        basicConstraints: { isCA: true, pathLength: 1 }
+      };
+
+      const mockProfile = {
+        id: profileId,
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "aws-pca-profile",
+        description: "AWS PCA profile",
+        estConfigId: null,
+        apiConfigId: "api-config-1"
+      };
+
+      const setupCa = (externalCaType: CaType | null) => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+          id: "ca-123",
+          projectId: "project-123",
+          status: CaStatus.ACTIVE,
+          externalCa: externalCaType ? { id: "ext-ca-1", type: externalCaType } : null
+        } as any);
+        vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+          isValid: true,
+          errors: []
+        } as any);
+        vi.mocked(mockCertificateRequestDAL.transaction).mockImplementation(
+          async (callback: (tx: any) => Promise<unknown>) => callback({})
+        );
+      };
+
+      it("rejects CA issuance for an external CA other than AWS Private CA", async () => {
+        setupCa(CaType.DIGICERT);
+
+        await expect(service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor })).rejects.toThrow(
+          "CA certificate issuance is not supported for this external certificate authority"
+        );
+      });
+
+      it("passes basicConstraints to the issuance queue for AWS Private CA", async () => {
+        setupCa(CaType.AWS_PCA);
+        vi.mocked(mockApprovalPolicyDAL.findByProjectId).mockResolvedValue([]);
+
+        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
+
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
+          expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 1 } })
+        );
+        expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(
+          expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 1 } })
+        );
+      });
+
+      // The approval branch writes its own request row, and issuance later reads it back.
+      it("persists basicConstraints on the request row when an approval policy applies", async () => {
+        setupCa(CaType.AWS_PCA);
+        vi.mocked(mockApprovalPolicyDAL.findByProjectId).mockResolvedValue([
+          {
+            id: "approval-policy-1",
+            isActive: true,
+            scopeType: null,
+            scopeId: null,
+            bypassForMachineIdentities: false,
+            maxRequestTtl: null,
+            conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
+          }
+        ] as any);
+
+        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
+
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+        // The value matters, the storage form does not.
+        const [persistedRow] = vi.mocked(mockCertificateRequestDAL.create).mock.calls[0] as [
+          { basicConstraints?: unknown }
+        ];
+        const persisted =
+          typeof persistedRow.basicConstraints === "string"
+            ? (JSON.parse(persistedRow.basicConstraints) as unknown)
+            : persistedRow.basicConstraints;
+        expect(persisted).toEqual({ isCA: true, pathLength: 1 });
+        expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            requestData: expect.objectContaining({
+              certificateRequest: expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 1 } })
+            })
+          })
+        );
+      });
+
+      it("rejects a CA order for AWS Private CA without a path length", async () => {
+        setupCa(CaType.AWS_PCA);
+
+        await expect(
+          service.orderCertificate({
+            profileId,
+            certificateOrder: { ...mockCertificateOrder, basicConstraints: { isCA: true } },
+            ...mockActor
+          })
+        ).rejects.toThrow("path length between 0 and 3 is required");
+      });
     });
   });
 
@@ -1130,7 +1662,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
         id: "cert-1",
@@ -1154,7 +1687,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1178,7 +1712,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
         return callback(undefined as any);
@@ -1297,7 +1832,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
         id: "cert-1",
@@ -1321,7 +1857,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1345,7 +1882,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
         return callback(undefined as any);
@@ -1464,7 +2002,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
         id: "cert-1",
@@ -1488,7 +2027,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1512,7 +2052,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
         return callback(undefined as any);
@@ -1631,7 +2172,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
         id: "cert-1",
@@ -1655,7 +2197,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
         id: "cert-1",
@@ -1679,7 +2222,8 @@ describe("CertificateV3Service", () => {
         pkiSubscriberId: null,
         profileId: null,
         source: "issued",
-        keySource: "infisical"
+        keySource: "infisical",
+        orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
         return callback(undefined as any);
@@ -1728,7 +2272,8 @@ describe("CertificateV3Service", () => {
       keyAlgorithm: "RSA_2048",
       signatureAlgorithm: "RSA-SHA256",
       source: "issued",
-      keySource: "infisical"
+      keySource: "infisical",
+      orderId: "00000000-0000-0000-0000-000000000000"
     };
 
     const mockProfile = {
@@ -1828,21 +2373,24 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
-        certificate: "renewed-cert",
-        certificateChain: "renewed-chain",
-        issuingCaCertificate: "issuing-ca",
-        privateKey: "private-key",
-        serialNumber: "789012",
-        certificateId: "cert-456",
-        commonName: "test.example.com",
-        ca: mockCA
-      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
 
       const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
@@ -1867,7 +2415,8 @@ describe("CertificateV3Service", () => {
         {
           profileId: "profile-123",
           renewBeforeDays: 14,
-          renewedFromCertificateId: "cert-123"
+          renewedFromCertificateId: "cert-123",
+          orderId: "00000000-0000-0000-0000-000000000000"
         },
         {}
       );
@@ -1881,12 +2430,86 @@ describe("CertificateV3Service", () => {
       );
     });
 
+    it("preserves CA basicConstraints when renewing a CA certificate", async () => {
+      const caCert = { ...mockOriginalCert, isCA: true, pathLength: 1 };
+      vi.mocked(mockCertificateDAL.findById)
+        .mockResolvedValueOnce(caCert)
+        .mockResolvedValueOnce({ ...caCert, id: "cert-456", serialNumber: "789012" });
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        ...mockPolicy,
+        basicConstraints: { isCA: "allowed", maxPathLength: 2 }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      } as any);
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...caCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
+
+      const newCert = { ...caCert, id: "cert-456", serialNumber: "789012" };
+      vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
+
+      await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+      expect(mockInternalCaService.issueCertFromCa).toHaveBeenCalledWith(
+        expect.objectContaining({
+          basicConstraints: { isCA: true, pathLength: 2 },
+          pathLength: 1
+        })
+      );
+      expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 1 } })
+      );
+    });
+
+    // The policy only sees a CA renewal as a CA request if basicConstraints are passed to it,
+    // so this covers denied policies and tightened path lengths on both renewal paths.
+    it("sends the certificate's CA constraints to policy validation on renewal", async () => {
+      const caCert = { ...mockOriginalCert, isCA: true, pathLength: 3 };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(caCert);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: false,
+        errors: ["Requested path length (3) exceeds maximum allowed by policy (2)."],
+        warnings: []
+      } as any);
+
+      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
+        "exceeds maximum allowed by policy"
+      );
+
+      expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
+        mockPolicy,
+        expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 3 } })
+      );
+      expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+    });
+
     it("should validate certificate against current policy during renewal", async () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
         isValid: false,
         errors: ["Subject alternative name not allowed"],
         warnings: []
@@ -1916,14 +2539,9 @@ describe("CertificateV3Service", () => {
         })
       ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
 
-      // Should store policy validation error
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
-        "cert-123",
-        {
-          renewalError: "Policy validation failed: Subject alternative name not allowed"
-        },
-        expect.anything()
-      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewalError: "Certificate renewal failed. Errors: Subject alternative name not allowed"
+      });
     });
 
     it("should reject renewal if certificate has no profile and no CA", async () => {
@@ -1948,18 +2566,90 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Only certificates issued from a profile can be renewed");
+      ).rejects.toThrow("This certificate is not linked to a certificate profile, so it cannot be renewed");
     });
 
-    it("should reject renewal if certificate was issued from CSR (external private key)", async () => {
+    it("refuses to renew a certificate into a name the caller may not edit", async () => {
+      // The suite-wide beforeEach stubs ForbiddenError.from into a no-op, which would let any
+      // permission check pass. This test is about the check itself, so it needs the real one.
+      vi.mocked(ForbiddenError).from.mockRestore();
+
+      // A real ability, so the condition is evaluated by CASL rather than by a mock. The caller may
+      // edit certificates named allowed.example.com and issue from the profile, nothing else.
+      const cnScoped = createMongoAbility([
+        {
+          action: [ProjectPermissionCertificateActions.Read, ProjectPermissionCertificateActions.Edit],
+          subject: ProjectPermissionSub.Certificates,
+          conditions: { commonName: "allowed.example.com" }
+        },
+        {
+          action: ProjectPermissionCertificateProfileActions.IssueCert,
+          subject: ProjectPermissionSub.CertificateProfiles
+        }
+      ]);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue({ permission: cnScoped });
+
+      const scopedCert = { ...mockOriginalCert, commonName: "allowed.example.com" };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(scopedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      } as any);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({
+        id: "secret-123",
+        certId: "cert-123"
+      } as any);
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+
+      // Renaming it outside that scope must be refused even though the profile policy accepts the
+      // name: the replacement inherits the original's syncs and would be pushed. The allow path is
+      // covered by the other renewal tests, which run with an unconditional ability.
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          attributes: { commonName: "out-of-scope.example.com" },
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it("refuses to reuse a key pair it holds neither the key nor the signing request for", async () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(null as any);
+      vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
+        enrollmentType: EnrollmentType.API,
+        csr: null
+      });
 
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
         const mockTx = {};
         return callback(mockTx);
       });
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          renewalKeySource: CertificateRenewalKeySource.Reuse,
+          ...mockActor
+        })
+      ).rejects.toThrow("cannot be reused");
+    });
+
+    it("should reject renewal for a protocol-enrolled certificate", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
+        enrollmentType: EnrollmentType.ACME,
+        csr: null
+      });
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       await expect(
         service.renewCertificate({
@@ -1973,7 +2663,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("certificates issued from CSR (external private key) cannot be renewed");
+      ).rejects.toThrow("Certificate is not eligible for renewal: ACME certificates cannot be renewed");
     });
 
     it("should reject renewal if certificate is already renewed", async () => {
@@ -2151,21 +2841,24 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
-      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
-        certificate: "renewed-cert",
-        certificateChain: "renewed-chain",
-        issuingCaCertificate: "issuing-ca",
-        privateKey: "private-key",
-        serialNumber: "789012",
-        certificateId: "cert-456",
-        commonName: "test.example.com",
-        ca: mockCA
-      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
 
       const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
@@ -2227,13 +2920,7 @@ describe("CertificateV3Service", () => {
         commonName: ""
       });
 
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
-        "cert-123",
-        {
-          renewBeforeDays: 7
-        },
-        expect.anything()
-      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: 7 });
     });
 
     it("should reject update if certificate is not from profile", async () => {
@@ -2315,7 +3002,50 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate has already been renewed");
     });
 
-    it("should reject update with accurate enrollment type when profile is ACME", async () => {
+    it("should allow update for an API-issued certificate under a legacy ACME-labeled profile", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedByCertificateId: null,
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null,
+        commonName: ""
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.ACME,
+        issuerType: IssuerType.CA,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.API);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
+
+      const result = await service.updateRenewalConfig({
+        actor: ActorType.USER,
+        actorId: "user-123",
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: "org-123",
+        certificateId: "cert-123",
+        renewBeforeDays: 7
+      });
+
+      expect(result).toEqual({
+        projectId: "project-123",
+        renewBeforeDays: 7,
+        commonName: ""
+      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: 7 });
+    });
+
+    it("should reject update for a protocol-enrolled certificate regardless of key presence", async () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
@@ -2329,24 +3059,15 @@ describe("CertificateV3Service", () => {
 
       const mockProfile = {
         id: "profile-123",
-        enrollmentType: EnrollmentType.ACME,
+        enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         projectId: "project-123"
       };
 
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
-
-      await expect(
-        service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
-          certificateId: "cert-123",
-          renewBeforeDays: 7
-        })
-      ).rejects.toThrow(ForbiddenRequestError);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.ACME);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       await expect(
         service.updateRenewalConfig({
@@ -2440,13 +3161,7 @@ describe("CertificateV3Service", () => {
         commonName: ""
       });
 
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
-        "cert-123",
-        {
-          renewBeforeDays: null
-        },
-        expect.anything()
-      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: null });
     });
 
     it("should reject disable if certificate is not from profile", async () => {

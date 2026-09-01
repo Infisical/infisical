@@ -42,7 +42,6 @@ export enum AuthMode {
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
-  MCP_JWT = "mcpJwt",
   // Delegated OAuth 2.0 access tokens issued via the authorization code flow. These are NOT
   // first-party dashboard sessions: a route must explicitly opt into AuthMode.OAUTH to accept them.
   OAUTH = "oauth",
@@ -102,15 +101,15 @@ export type AuthModeJwtTokenPayload = {
   subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
-  mcp?: {
-    endpointId: string;
-  };
   // Present only on delegated OAuth 2.0 access tokens. Its presence marks the token as
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
   // Granted OAuth delegation scopes (see OauthScope). The delegated ability is intersected with
   // these in permission-service; an empty/absent list denies all scope-guarded resource access.
   scopes?: string[];
+  // Set instead of `scopes` on RFC 8693 token exchange tokens, which carry the user's authorization
+  // unnarrowed. Never both. See OauthDelegationMode.
+  delegation?: string;
 };
 
 export type AuthModeMfaJwtTokenPayload = {

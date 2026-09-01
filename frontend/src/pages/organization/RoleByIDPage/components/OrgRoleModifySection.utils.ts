@@ -19,6 +19,7 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
@@ -86,6 +87,7 @@ const identityPermissionSchema = z
       [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
       [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+      [OrgPermissionIdentityActions.EditAuth]: z.boolean().optional(),
       [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -193,6 +195,16 @@ const honeyTokenPermissionSchema = z
   .array(z.object({ [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional() }))
   .optional();
 
+const secretsManagementInsightsPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const projectPermissionSchema = z
   .array(
     z.object({
@@ -252,7 +264,8 @@ export const formSchema = z.object({
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
       "email-domains": emailDomainPermissionSchema,
-      "honey-tokens": honeyTokenPermissionSchema
+      "honey-tokens": honeyTokenPermissionSchema,
+      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema
     })
     .optional()
     .superRefine((permissions, ctx) => {
@@ -532,7 +545,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.ProjectTemplates]: {
-    title: "Project Templates",
+    title: "Secrets Management Project Templates",
     description: "Manage reusable templates applied when creating new projects",
     actions: [
       {
@@ -619,11 +632,20 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Identities",
         description: "Delete machine identities"
       },
-      { value: OrgPermissionIdentityActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionIdentityActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to machine identities"
+      },
       {
         value: OrgPermissionIdentityActions.RevokeAuth,
         label: "Revoke Auth",
         description: "Revoke authentication for a machine identity"
+      },
+      {
+        value: OrgPermissionIdentityActions.EditAuth,
+        label: "Configure Auth",
+        description: "Add or update authentication methods for a machine identity"
       },
       {
         value: OrgPermissionIdentityActions.CreateToken,
@@ -666,7 +688,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Groups",
         description: "Delete groups"
       },
-      { value: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionGroupActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to groups"
+      },
       {
         value: OrgPermissionGroupActions.AddMembers,
         label: "Add Members",
@@ -717,7 +743,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.Gateway]: {
     title: "Gateways",
-    description: "Manage gateways used for private network access",
+    description: "Manage gateways that securely connect Infisical to your infrastructure",
     actions: [
       {
         value: OrgGatewayPermissionActions.ListGateways,
@@ -727,7 +753,8 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgGatewayPermissionActions.CreateGateways,
         label: "Create Gateways",
-        description: "Register new gateways for private network access"
+        description:
+          "Register new gateways that securely proxy Infisical traffic into your infrastructure"
       },
       {
         value: OrgGatewayPermissionActions.EditGateways,
@@ -887,7 +914,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.SecretShare]: {
-    title: "Secret Share",
+    title: "Secrets Management Secret Sharing",
     description: "Configure settings for sharing secrets externally",
     actions: [
       {
@@ -897,8 +924,29 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.SecretsManagementInsights]: {
+    title: "Secrets Management Insights",
+    description: "View organization-wide secrets management insights and reports",
+    actions: [
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.Read,
+        label: "Read",
+        description: "View secrets management insights"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+        label: "Generate Report",
+        description: "Generate new secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        label: "Delete Report",
+        description: "Delete secrets management insight reports"
+      }
+    ]
+  },
   [OrgPermissionSubjects.HoneyTokens]: {
-    title: "Honey Tokens",
+    title: "Secrets Management Honey Tokens",
     description: "Configure honey token setup for the organization",
     actions: [
       {

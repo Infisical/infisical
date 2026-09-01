@@ -1,6 +1,19 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+import { SigningAlgorithm } from "@app/hooks/api/cmeks";
+
 export type TGetUserSignerPermissionDTO = {
   signerId: string;
 };
+
+export type TSignerExternalConfiguration =
+  | {
+      caType: CaType.DIGICERT;
+      reissueFromExternalOrderId?: string;
+    }
+  | {
+      caType: CaType.ADCS;
+      template?: string;
+    };
 
 export enum SignerStatus {
   Pending = "pending",
@@ -65,6 +78,58 @@ export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
   }
 };
 
+export enum CodeSigningScopeField {
+  Command = "command",
+  SigningApplication = "signingApplication",
+  SigningApplicationHash = "signingApplicationHash",
+  Hostname = "hostname",
+  OsUsername = "osUsername",
+  IpAddress = "ipAddress",
+  DataHash = "dataHash"
+}
+
+export const codeSigningScopeFieldLabels: Record<CodeSigningScopeField, string> = {
+  [CodeSigningScopeField.Command]: "Command",
+  [CodeSigningScopeField.SigningApplication]: "Signing Application",
+  [CodeSigningScopeField.SigningApplicationHash]: "Signing Application Checksum",
+  [CodeSigningScopeField.Hostname]: "Hostname",
+  [CodeSigningScopeField.OsUsername]: "OS Username",
+  [CodeSigningScopeField.IpAddress]: "IP Address",
+  [CodeSigningScopeField.DataHash]: "Data Hash"
+};
+
+export const codeSigningScopeFieldDescriptions: Record<CodeSigningScopeField, string> = {
+  [CodeSigningScopeField.Command]: "The exact signing command that must be issued.",
+  [CodeSigningScopeField.SigningApplication]:
+    "The signing tool executable, as its filename appears on the machine.",
+  [CodeSigningScopeField.SigningApplicationHash]: "Checksum of the signing tool binary.",
+  [CodeSigningScopeField.Hostname]: "The machine the signing requests come from.",
+  [CodeSigningScopeField.OsUsername]: "The operating system account running the signing tool.",
+  [CodeSigningScopeField.IpAddress]: "The address sign calls must come from.",
+  [CodeSigningScopeField.DataHash]: "SHA-256 hash of the payload being signed."
+};
+
+/** How each value is compared at signing time, mirroring the API's matching rules. */
+export const codeSigningScopeFieldMatchRules: Record<CodeSigningScopeField, string> = {
+  [CodeSigningScopeField.Command]:
+    "Compared exactly, apart from whitespace. Reordering the options counts as a different command.",
+  [CodeSigningScopeField.SigningApplication]: "Compared exactly, including capitalisation.",
+  [CodeSigningScopeField.SigningApplicationHash]:
+    "Compared as a hex string, so capitalisation does not matter.",
+  [CodeSigningScopeField.Hostname]: "Compared without regard to capitalisation.",
+  [CodeSigningScopeField.OsUsername]: "Compared exactly, including capitalisation.",
+  [CodeSigningScopeField.IpAddress]: "Compared exactly, so one address per approval.",
+  [CodeSigningScopeField.DataHash]: "Only that exact payload can be signed."
+};
+
+export type TCodeSigningScope = Partial<Record<CodeSigningScopeField, string>>;
+
+export const MONOSPACED_SCOPE_FIELDS: readonly CodeSigningScopeField[] = [
+  CodeSigningScopeField.Command,
+  CodeSigningScopeField.DataHash,
+  CodeSigningScopeField.SigningApplicationHash
+];
+
 export enum SigningOperationStatus {
   Pending = "pending",
   Success = "success",
@@ -77,6 +142,34 @@ export const signingOperationStatusLabels: Record<SigningOperationStatus, string
   [SigningOperationStatus.Success]: "Success",
   [SigningOperationStatus.Failed]: "Failed",
   [SigningOperationStatus.Denied]: "Denied"
+};
+
+export const getSigningOperationStatusBadgeVariant = (status: SigningOperationStatus) => {
+  switch (status) {
+    case SigningOperationStatus.Success:
+      return "success" as const;
+    case SigningOperationStatus.Failed:
+      return "danger" as const;
+    case SigningOperationStatus.Denied:
+      return "warning" as const;
+    default:
+      return "neutral" as const;
+  }
+};
+
+export const signingAlgorithmLabels: Record<SigningAlgorithm, string> = {
+  [SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256]: "RSA PKCS#1 v1.5 (SHA-256)",
+  [SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_384]: "RSA PKCS#1 v1.5 (SHA-384)",
+  [SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_512]: "RSA PKCS#1 v1.5 (SHA-512)",
+  [SigningAlgorithm.RSASSA_PSS_SHA_256]: "RSA-PSS (SHA-256)",
+  [SigningAlgorithm.RSASSA_PSS_SHA_384]: "RSA-PSS (SHA-384)",
+  [SigningAlgorithm.RSASSA_PSS_SHA_512]: "RSA-PSS (SHA-512)",
+  [SigningAlgorithm.ECDSA_SHA_256]: "ECDSA (SHA-256)",
+  [SigningAlgorithm.ECDSA_SHA_384]: "ECDSA (SHA-384)",
+  [SigningAlgorithm.ECDSA_SHA_512]: "ECDSA (SHA-512)",
+  [SigningAlgorithm.ML_DSA_44]: "ML-DSA-44",
+  [SigningAlgorithm.ML_DSA_65]: "ML-DSA-65",
+  [SigningAlgorithm.ML_DSA_87]: "ML-DSA-87"
 };
 
 export type TSigner = {
@@ -92,6 +185,7 @@ export type TSigner = {
   certificateTtlDays?: number | null;
   certificateRenewBeforeDays?: number | null;
   keyAlgorithm?: SignerKeyAlgorithm | string | null;
+  externalCaConfig?: { caType: CaType.ADCS; template?: string } | null;
   lastSignedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -102,6 +196,11 @@ export type TSigner = {
   certificateHsmConnectorId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
+  externalOrder?: {
+    provider: string;
+    orderId: number;
+    status?: string | null;
+  } | null;
 };
 
 export enum SigningActorType {
@@ -114,7 +213,7 @@ export type TSigningOperation = {
   signerId: string;
   projectId: string;
   status: SigningOperationStatus;
-  signingAlgorithm: string;
+  signingAlgorithm: SigningAlgorithm;
   dataHash: string;
   actorType: SigningActorType;
   actorId: string;
@@ -124,7 +223,10 @@ export type TSigningOperation = {
   clientMetadata?: {
     tool?: string;
     hostname?: string;
-    reportedIp?: string;
+    command?: string;
+    sourceIp?: string;
+    osUsername?: string;
+    signingApplicationHash?: string;
   } | null;
   errorMessage?: string | null;
   createdAt: string;
@@ -206,7 +308,12 @@ export type TSignerRequest = {
   status: SignerRequestStatus;
   justification?: string | null;
   currentStep: number;
-  requestData: unknown;
+  requestData: {
+    version?: number;
+    requestData?: {
+      scope?: TCodeSigningScope;
+    } & Record<string, unknown>;
+  } | null;
   expiresAt?: string | null;
   scopeType?: string | null;
   scopeId?: string | null;
@@ -265,6 +372,7 @@ export type TCreateSignerDTO = {
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
   certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TUpdateSignerDTO = {
@@ -288,6 +396,7 @@ export type TReissueSignerCertificateDTO = {
     keySource: CertKeySource;
     hsmConnectorId?: string;
   };
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TEnableSignerDTO = { signerId: string };
@@ -308,6 +417,11 @@ export type TListSigningOperationsDTO = {
 export type TListSigningOperationsResponse = {
   operations: TSigningOperation[];
   totalCount: number;
+};
+
+export type TSigningOperationDetail = {
+  operation: TSigningOperation;
+  signerName: string;
 };
 
 export type TListSignerMembersDTO = { signerId: string; kind: "user" | "identity" | "group" };
@@ -395,8 +509,8 @@ export type TRequestToSignDTO = {
   signerId: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningScope;
 };
 export type TPreApproveSigningDTO = {
   signerId: string;
@@ -404,7 +518,7 @@ export type TPreApproveSigningDTO = {
   granteeIdentityId?: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningScope;
 };
 export type TRevokeSignerRequestDTO = { signerId: string; requestId: string };

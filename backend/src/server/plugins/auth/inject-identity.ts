@@ -7,7 +7,7 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -21,11 +21,12 @@ import {
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT | AuthMode.MCP_JWT | AuthMode.OAUTH;
+      authMode: AuthMode.JWT | AuthMode.OAUTH;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -113,6 +114,14 @@ export type TAuthMode =
       token: TKmipServerAccessTokenJwtPayload;
     };
 
+// A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
+// needs the acting user (name, email, session id) should take both rather than narrow on AuthMode.JWT,
+// which silently costs the OAuth caller its audit trail or actor metadata.
+export const isUserSessionAuth = (
+  auth: TAuthMode
+): auth is Extract<TAuthMode, { authMode: AuthMode.JWT | AuthMode.OAUTH }> =>
+  auth.authMode === AuthMode.JWT || auth.authMode === AuthMode.OAUTH;
+
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
   if (apiKey) {
@@ -134,12 +143,14 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN: {
-      if (decodedToken?.mcp) {
-        return {
-          authMode: AuthMode.MCP_JWT,
-          token: decodedToken as AuthModeJwtTokenPayload,
-          actor: ActorType.USER
-        } as const;
+      // Access tokens from the removed Agent Sentinel (MCP) product were signed as
+      // ACCESS_TOKEN with an "mcp" claim and a live token session; without this
+      // guard they would fall through and authenticate as a full user JWT session
+      // despite having been endpoint-scoped.
+      if ("mcp" in decodedToken) {
+        throw new UnauthorizedError({
+          message: "This token was issued for the removed Agent Sentinel (MCP) product and is no longer accepted"
+        });
       }
 
       if (decodedToken?.oauthClientId) {
@@ -234,10 +245,6 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (pathname === "/api/v1/ai/mcp/servers/oauth/callback") {
-        return;
-      }
-
       if (pathname === "/api/v1/oauth/token") {
         return;
       }
@@ -264,6 +271,14 @@ export const injectIdentity = fp(
 
       // Authentication is handled on a route-level here.
       if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+        return;
+      }
+
+      // Tombstoned prefixes for the removed SSH / Agent Sentinel products answer
+      // 410 without auth; skip injection so expired or invalid tokens from shipped
+      // clients (the CLI always sends one) still receive the explanatory response
+      // instead of a 401. Remove together with removed-product-tombstone-router.ts.
+      if (pathname.startsWith("/api/v1/ssh/") || pathname.startsWith("/api/v1/ai/mcp/")) {
         return;
       }
 
@@ -295,36 +310,23 @@ export const injectIdentity = fp(
           fireIdentifyForUser(user);
           break;
         }
-        case AuthMode.MCP_JWT: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set(RequestContextKey.OrgId, orgId);
-          requestContext.set(RequestContextKey.OrgName, orgName);
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
-          req.auth = {
-            authMode: AuthMode.MCP_JWT,
-            user,
-            userId: user.id,
-            tokenVersionId,
-            actor,
-            orgId,
-            rootOrgId,
-            parentOrgId,
-            authMethod: token.authMethod,
-            isMfaVerified: token.isMfaVerified,
-            token
-          };
-          fireIdentifyForUser(user);
-          break;
-        }
         case AuthMode.OAUTH: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token);
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } = await server.services.authToken
+            .fnValidateJwtIdentity(token)
+            .catch((err) => {
+              if (err instanceof NotFoundError) {
+                throw new UnauthorizedError({
+                  name: "InvalidToken",
+                  message: "Access token is no longer valid. Obtain a new one."
+                });
+              }
+              throw err;
+            });
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
-          // that must be scope-narrowed from a first-party session that must not be.
-          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          if (token.delegation !== OauthDelegationMode.Full) {
+            requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          }
           requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.OAUTH,

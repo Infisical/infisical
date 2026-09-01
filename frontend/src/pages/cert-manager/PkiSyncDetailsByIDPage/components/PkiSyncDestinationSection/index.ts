@@ -4,4 +4,9 @@ export { AwsSecretsManagerPkiSyncDestinationSection } from "./AwsSecretsManagerP
 export { AzureKeyVaultPkiSyncDestinationSection } from "./AzureKeyVaultPkiSyncDestinationSection";
 export { ChefPkiSyncDestinationSection } from "./ChefPkiSyncDestinationSection";
 export { F5BigIpPkiSyncDestinationSection } from "./F5BigIpPkiSyncDestinationSection";
+export { GcpCertificateManagerPkiSyncDestinationSection } from "./GcpCertificateManagerPkiSyncDestinationSection";
+export { KempLoadMasterPkiSyncDestinationSection } from "./KempLoadMasterPkiSyncDestinationSection";
+export { LinuxServerPkiSyncDestinationSection } from "./LinuxServerPkiSyncDestinationSection";
 export { NetScalerPkiSyncDestinationSection } from "./NetScalerPkiSyncDestinationSection";
+export { NutanixPrismCentralPkiSyncDestinationSection } from "./NutanixPrismCentralPkiSyncDestinationSection";
+export { WindowsServerPkiSyncDestinationSection } from "./WindowsServerPkiSyncDestinationSection";

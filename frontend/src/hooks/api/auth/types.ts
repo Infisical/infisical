@@ -113,10 +113,36 @@ export type CompleteAccountSignupDTO =
       hubspotUtk?: string;
     };
 
+export type SignupOnboardingDTO = {
+  selectedProduct?:
+    | "secret-manager"
+    | "cert-manager"
+    | "kms"
+    | "secret-scanning"
+    | "pam"
+    | "exploring";
+  /** An empty array means "just exploring". */
+  selectedProducts?: ("secret-manager" | "cert-manager" | "kms" | "secret-scanning" | "pam")[];
+  launchDestination?:
+    | "secret-manager"
+    | "cert-manager"
+    | "kms"
+    | "secret-scanning"
+    | "pam"
+    | "organization-overview";
+  attributionSource?: string;
+};
+
 export type VerifySignupInviteDTO = {
   email: string;
   code: string;
   organizationId: string;
+};
+
+export type VerifySignupInviteRes = {
+  message: string;
+  token?: string;
+  organizationName?: string;
 };
 
 export type ResetPasswordDTO = {

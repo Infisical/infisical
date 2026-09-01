@@ -37,12 +37,13 @@ export const DiscoveryPage = () => {
   };
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex h-full flex-col justify-between text-white">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
+          className="mb-6"
           scope={ProjectType.CertificateManager}
           title={
             <span className="inline-flex items-center gap-x-2">

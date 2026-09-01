@@ -1,3 +1,18 @@
+## 1.4.0 (August 6, 2026)
+* Added Kubernetes auth enrollment (`gateway.enrollment.method: kubernetes`). The gateway authenticates with the projected service account token of its own pod, so no enrollment token or cloud credential needs to be distributed to the cluster.
+* Added `gateway.enrollment.kubernetes.gatewayId` and `gateway.enrollment.kubernetes.serviceAccountTokenPath`.
+* Bumped the default CLI image from `0.43.84` to `0.43.123`, the first release containing `--enroll-method=kubernetes`.
+* The default CLI requires a positional gateway name. The legacy machine-identity flow now passes `gateway.name` as `gateway start <name>` when set.
+* Added `gateway.enrollment.kubernetes.externalTokenReview`. Installing with `serviceAccount.createAsAuthDelegator` disabled now fails unless this is set, since the gateway would otherwise start but never be able to have its token reviewed.
+
+## 1.3.0 (August 5, 2026)
+* Added `extraArgs` for appending additional command-line arguments to the gateway container.
+
+## 1.2.0 (July 17, 2026)
+* Added `extraEnv` for injecting additional environment variables into the gateway container.
+* Added `extraEnvFrom` for loading environment variables from Secrets or ConfigMaps.
+* Added `extraObjects` for deploying additional Kubernetes manifests alongside the chart.
+
 ## 1.1.0 (May 11, 2026)
 * Added support for the new enrollment-based gateway registration flow (`gateway.enrollment.method: token` or `aws`).
 * Added PersistentVolumeClaim support (`persistence.*`) for credential storage across pod restarts.

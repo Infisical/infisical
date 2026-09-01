@@ -8,20 +8,15 @@ import { useOrganization, useProject } from "@app/context";
 import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { AINav } from "./AINav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
 import { SecretScanningNav } from "./SecretScanningNav";
-import { SshNav } from "./SshNav";
 import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
-  MCP_SUBMENU,
-  PAM_APPROVALS_SUBMENU,
-  PAM_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
@@ -37,9 +32,7 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.SecretManager]: SecretManagerNav,
   [ProjectType.KMS]: KmsNav,
   [ProjectType.CertificateManager]: CertManagerNav,
-  [ProjectType.SSH]: SshNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.AI]: AINav,
   [ProjectType.SecretScanning]: SecretScanningNav
 };
 
@@ -71,7 +64,6 @@ export const ProjectNav = () => {
     Boolean(pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//));
   const isOnIntegrations = pathname.includes("/integrations");
   const isOnProjectSettings = /\/settings(\/|\?|$)/.test(pathname);
-  const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   const isOnCertPolicies = isCertManager && pathname.includes("/policies");
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
@@ -80,6 +72,8 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
+    // PAM navigation is handled separately by PamNav.
+    if (currentProject.type === ProjectType.PAM) return null;
     // Secret manager renders access control as in-page tabs (no secondary submenu).
     if (isOnAccessControl && currentProject.type !== ProjectType.SecretManager)
       return PROJECT_ACCESS_CONTROL_SUBMENU;
@@ -88,12 +82,8 @@ export const ProjectNav = () => {
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;
-    if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
-    if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
-      return PAM_APPROVALS_SUBMENU;
     return null;
   };
 
@@ -106,13 +96,18 @@ export const ProjectNav = () => {
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
     const typePath = PROJECT_TYPE_PATH[currentProject.type];
+    const isPam = currentProject.type === ProjectType.PAM;
     // Already on this submenu's page (e.g. after collapsing via the "< back" button):
     // re-navigating to the same URL would push a duplicate history entry, so just re-expand.
-    const submenuPath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
+    const submenuPath = isPam
+      ? `/organizations/${currentOrg.id}/pam/${submenu.pathSuffix}`
+      : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any,
+      to: isPam
+        ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+        : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

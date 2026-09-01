@@ -2,6 +2,7 @@ import { BanIcon, EyeIcon } from "lucide-react";
 
 import {
   Badge,
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -11,7 +12,14 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useOrgPermission, useSubscription } from "@app/context";
+import {
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { IdentityAuthMethod, useGetIdentityLdapAuth } from "@app/hooks/api";
+import { MachineIdentityAuthMethod } from "@app/hooks/api/identityAuthTemplates";
+import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 
 import {
   IdentityAuthAccessTokenFields,
@@ -25,7 +33,22 @@ export const IdentityLdapAuthContent = ({
   isLockedOut,
   onMutated
 }: ViewAuthMethodProps) => {
+  const { subscription } = useSubscription();
+  const { permission } = useOrgPermission();
+
+  const canAttachTemplates = permission.can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+
   const { data, isPending } = useGetIdentityLdapAuth(identityId);
+
+  const { data: templates } = useGetAvailableTemplates(MachineIdentityAuthMethod.LDAP, {
+    enabled:
+      canAttachTemplates &&
+      Boolean(subscription?.machineIdentityAuthTemplates) &&
+      Boolean(data?.templateId)
+  });
 
   if (isPending) {
     return <PageLoader />;
@@ -44,8 +67,16 @@ export const IdentityLdapAuthContent = ({
     );
   }
 
+  const linkedTemplateName = templates?.find((template) => template.id === data.templateId)?.name;
+  const configurationLabel = data.templateId
+    ? (linkedTemplateName ?? "Linked template")
+    : "Custom Configuration";
+
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
+      <IdentityAuthFieldDisplay className="col-span-2" label="Configuration">
+        {configurationLabel}
+      </IdentityAuthFieldDisplay>
       <IdentityAuthAccessTokenFields
         accessTokenTTL={data.accessTokenTTL}
         accessTokenMaxTTL={data.accessTokenMaxTTL}
@@ -54,19 +85,6 @@ export const IdentityLdapAuthContent = ({
       />
       <IdentityAuthFieldDisplay label="LDAP URL">{data.url}</IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Bind DN">{data.bindDN}</IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Bind Pass">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="neutral">
-              <EyeIcon />
-              Reveal
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xl p-2">
-            <p className="rounded-sm bg-container p-2 break-words">{data.bindPass}</p>
-          </TooltipContent>
-        </Tooltip>
-      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Search Base / DN">
         {data.searchBase}
       </IdentityAuthFieldDisplay>
@@ -98,6 +116,6 @@ export const IdentityLdapAuthContent = ({
           data={data}
         />
       )}
-    </div>
+    </DetailGroup>
   );
 };

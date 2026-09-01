@@ -1,11 +1,11 @@
 import { TOrgPermission } from "@app/lib/types";
+import { TEntitlementsResponse } from "@app/services/license-client/license-client-types";
 
 export enum InstanceType {
   OnPrem = "self-hosted",
+  // Self-hosted online license: features are resolved from License Server v2.
   EnterpriseOnPrem = "enterprise-self-hosted",
   EnterpriseOnPremOffline = "enterprise-self-hosted-offline",
-  // Self-hosted instance whose license is resolved from License Server v2 (new "infisical_lk_" key).
-  EnterpriseOnPremV2 = "enterprise-self-hosted-v2",
   Cloud = "cloud"
 }
 
@@ -21,29 +21,30 @@ export type TOfflineLicense = {
   issuedAt: string;
   expiresAt: string | null;
   terminatesAt: string | null;
+  // v1 (or absent) offline licenses carry the legacy feature-flag set directly; version 2 licenses
+  // carry License Server v2 entitlements, which we project into the same feature shape.
+  version?: number;
   features: TFeatureSet;
+  entitlements?: TEntitlementsResponse;
 };
 
-export type TPlanBillingInfo = {
-  currentPeriodStart: number;
-  currentPeriodEnd: number;
-  interval: "month" | "year";
-  intervalCount: number;
-  amount: number;
-  quantity: number;
+export type TOrgSeatUsage = {
+  membersUsed: number;
+  identitiesUsed: number;
 };
 
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
+  // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
+  // read-only offline banner instead of the live billing surface.
+  isOffline?: boolean;
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;
   dynamicSecret: false;
   memberLimit: null;
-  membersUsed: number;
   identityLimit: null;
-  identitiesUsed: number;
   enforceIdentityLimit?: boolean;
   subOrganization: false;
   environmentLimit: null;
@@ -84,13 +85,16 @@ export type TFeatureSet = {
   pkiAcme: true;
   pkiScep: false;
   pkiPqc: false;
+  // PKI code signing capability. null (default) is ignored (no restriction); an explicit boolean gates
+  // code signer creation.
+  pkiCodeSigning: null;
   kmsPqc: false;
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
   gateway: false;
   gatewayPool: false;
-  sshHostGroups: false;
+  pamSlackNotifications: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseCertificateSyncs: false;
@@ -102,11 +106,17 @@ export type TFeatureSet = {
   secretShareExternalBranding: false;
   honeyTokens: false;
   honeyTokenLimit: 0;
+  secretsBrokering: true;
+  secretSyncLimit: null;
+  maxInternalCas: null;
+  maxPamAccounts: null;
+  pam: null;
+  certManager: null;
+  secretsTemporaryAccess: null;
+  enterprisePamAccount: null;
+  crossProjectSecretSharing: false;
+  secretsFolderRbac: false;
 };
-
-export type TOrgPlansTableDTO = {
-  billingCycle: string;
-} & TOrgPermission;
 
 export type TOrgPlanDTO = {
   projectId?: string;
@@ -114,44 +124,10 @@ export type TOrgPlanDTO = {
   rootOrgId: string;
 } & TOrgPermission;
 
-export type TStartOrgTrialDTO = {
-  success_url: string;
-} & TOrgPermission;
-
-export type TCreateOrgPortalSession = TOrgPermission;
-
-export type TGetOrgBillInfoDTO = TOrgPermission;
-
-export type TOrgPlanTableDTO = TOrgPermission;
-
-export type TOrgBillingDetailsDTO = TOrgPermission;
-
-export type TUpdateOrgBillingDetailsDTO = TOrgPermission & {
-  name?: string;
-  email?: string;
-};
-
-export type TOrgPmtMethodsDTO = TOrgPermission;
-
-export type TAddOrgPmtMethodDTO = TOrgPermission & { success_url: string; cancel_url: string };
-
-export type TDelOrgPmtMethodDTO = TOrgPermission & { pmtMethodId: string };
-
-export type TGetOrgTaxIdDTO = TOrgPermission;
-
-export type TAddOrgTaxIdDTO = TOrgPermission & { type: string; value: string };
-
-export type TDelOrgTaxIdDTO = TOrgPermission & { taxId: string };
-
-export type TOrgInvoiceDTO = TOrgPermission;
-
-export type TOrgLicensesDTO = TOrgPermission;
-
 export enum LicenseType {
   Offline = "offline",
-  Online = "online",
-  // New self-hosted key (prefix "infisical_lk_") that resolves entitlements from License Server v2.
-  OnlineV2 = "online-v2"
+  // Self-hosted online license key; resolves entitlements from License Server v2.
+  Online = "online"
 }
 
 export type TLicenseKeyConfig =

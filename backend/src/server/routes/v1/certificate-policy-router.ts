@@ -13,32 +13,15 @@ import {
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  pkiDescriptionSchema
 } from "@app/services/certificate-common/certificate-constants";
-import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
+import {
+  certificatePolicyResponseSchema,
+  policySubjectSchema
+} from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
-
-const policySubjectSchema = z
-  .object({
-    type: attributeTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
-  })
-  .refine(
-    (data) => {
-      if (!data.allowed && !data.required && !data.denied) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Subject attribute must have at least one allowed, required, or denied value"
-    }
-  );
 
 const policyKeyUsagesSchema = z
   .object({
@@ -179,25 +162,25 @@ const policyBasicConstraintsSchema = z
 const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
-  description: z.string().max(1000).optional(),
-  subject: z.array(policySubjectSchema).optional(),
-  sans: z.array(policySanSchema).optional(),
-  keyUsages: policyKeyUsagesSchema.optional(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
-  algorithms: policyAlgorithmsSchema.optional(),
-  validity: policyValiditySchema.optional(),
+  description: pkiDescriptionSchema.optional(),
+  subject: z.array(policySubjectSchema).nullish(),
+  sans: z.array(policySanSchema).nullish(),
+  keyUsages: policyKeyUsagesSchema.nullish(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
+  algorithms: policyAlgorithmsSchema.nullish(),
+  validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional()
 });
 
 const updateCertificatePolicySchema = z.object({
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
-  description: z.string().max(1000).optional(),
-  subject: z.array(policySubjectSchema).optional(),
-  sans: z.array(policySanSchema).optional(),
-  keyUsages: policyKeyUsagesSchema.optional(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
-  algorithms: policyAlgorithmsSchema.optional(),
-  validity: policyValiditySchema.optional(),
+  description: pkiDescriptionSchema.optional(),
+  subject: z.array(policySubjectSchema).nullish(),
+  sans: z.array(policySanSchema).nullish(),
+  keyUsages: policyKeyUsagesSchema.nullish(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
+  algorithms: policyAlgorithmsSchema.nullish(),
+  validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional()
 });
 
@@ -219,7 +202,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.createPolicy({
         actor: req.permission.type,
@@ -248,7 +231,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 
@@ -279,7 +263,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
@@ -328,7 +312,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.getPolicyById({
         actor: req.permission.type,
@@ -375,7 +359,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.updatePolicy({
         actor: req.permission.type,
@@ -395,6 +379,16 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
             certificatePolicyId: certificatePolicy.id,
             name: certificatePolicy.name
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePolicyUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 
@@ -421,7 +415,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.deletePolicy({
         actor: req.permission.type,
@@ -448,7 +442,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 

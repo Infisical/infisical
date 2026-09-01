@@ -6,7 +6,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 import { cn } from "../../utils";
 
-const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
+const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,
@@ -37,42 +37,44 @@ const syntaxHighlight = (
       const part = el;
       const innerContent = el.slice(2, -1);
       const parts = innerContent.split(".");
+      const isCrossProjectRef = parts[0]?.startsWith("@");
 
       return (
-        <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
+        <span className="ph-no-capture relative z-10 text-secret" key={`secret-value-${i + 1}`}>
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
             const isHovered = hoveredPart === segmentKey;
-            const shouldShowHoverStyle = isHovered && isCmdOrCtrlPressed;
+            const isInteractive = isCmdOrCtrlPressed && !isCrossProjectRef;
+            const shouldShowHoverStyle = isHovered && isInteractive;
 
             return (
               <span key={segmentKey}>
                 <span
                   role="button"
-                  tabIndex={isCmdOrCtrlPressed ? 0 : -1}
+                  tabIndex={isInteractive ? 0 : -1}
                   className={cn(
-                    "ph-no-capture text-yellow-200/80",
-                    isCmdOrCtrlPressed ? "pointer-events-auto" : "pointer-events-none",
-                    shouldShowHoverStyle && "cursor-pointer underline decoration-yellow-400"
+                    "ph-no-capture text-secret/80",
+                    isInteractive ? "pointer-events-auto" : "pointer-events-none",
+                    shouldShowHoverStyle && "cursor-pointer underline decoration-secret"
                   )}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
                   onMouseDown={(e) => {
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       e.stopPropagation();
                     }
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       onClickSegment?.(segment, parts);
                     }
                   }}
                   onKeyDown={(e) => {
-                    if (isCmdOrCtrlPressed && (e.key === "Enter" || e.key === " ")) {
+                    if (isInteractive && (e.key === "Enter" || e.key === " ")) {
                       e.preventDefault();
                       e.stopPropagation();
                       onClickSegment?.(segment, parts);
@@ -82,7 +84,7 @@ const syntaxHighlight = (
                   {segment}
                 </span>
                 {segmentIndex < parts.length - 1 && (
-                  <span className="ph-no-capture pointer-events-none text-yellow-200/80">.</span>
+                  <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
                 )}
               </span>
             );

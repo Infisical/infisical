@@ -22,6 +22,8 @@ export const NETSCALER_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.NetScaler,
   canImportCertificates: false,
   canRemoveCertificates: true,
+  canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: NETSCALER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: NETSCALER_NAMING.ALLOWED_CHARACTER_PATTERN,

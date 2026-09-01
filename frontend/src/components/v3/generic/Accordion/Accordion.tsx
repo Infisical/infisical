@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDownIcon } from "lucide-react";
@@ -96,7 +94,6 @@ function AccordionContent({
     >
       <div
         className={cn(
-          "group-data-[variant=default]/accordion:p-6",
           "group-data-[variant=ghost]/accordion:pt-2 group-data-[variant=ghost]/accordion:pb-4",
           className
         )}

@@ -3,48 +3,144 @@
         "name": "Docker",
         "slug": "docker",
         "image": "Docker",
+        "category": "Containers",
+        "description": "Inject environment variables into your Docker containers.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/docker"
     },
     {
         "name": "Docker Compose",
         "slug": "docker-compose",
         "image": "Docker Compose",
+        "category": "Containers",
+        "description": "Inject environment variables into services in your Docker Compose file.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/docker-compose"
     },
     {
         "name": "Kubernetes",
         "slug": "kubernetes",
         "image": "Kubernetes",
+        "category": "Kubernetes",
+        "description": "Inject, push, and manage secrets in your clusters with the Infisical Operator.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes"
     },
     {
         "name": "Terraform",
         "slug": "terraform",
         "image": "Terraform",
+        "category": "IaC",
+        "description": "Fetch secrets in Terraform using data sources or ephemeral resources.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/terraform"
     },
     {
         "name": "Jenkins",
         "slug": "jenkins",
         "image": "Jenkins",
+        "category": "CI/CD",
+        "description": "Fetch secrets in your Jenkins pipelines.",
         "docsLink": "https://infisical.com/docs/integrations/cicd/jenkins"
     },
     {
         "name": "Infisical Agent",
         "slug": "agent",
         "image": "Agent",
+        "category": "Infisical",
+        "description": "Continuously fetch and render secrets to files or processes.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/infisical-agent"
     },
     {
         "name": "Amazon ECS",
         "slug": "ecs",
-        "image": "ECS",
+        "image": "Amazon ECS",
+        "category": "AWS",
+        "description": "Deliver secrets to Amazon ECS workloads with the Infisical Agent.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/ecs-with-agent"
     },
     {
         "name": "Ansible",
         "slug": "ansible",
         "image": "Ansible",
+        "category": "Automation",
+        "description": "Manage secrets in your Ansible playbooks with the Infisical collection.",
         "docsLink": "https://infisical.com/docs/integrations/platforms/ansible"
+    },
+    {
+        "name": "Pulumi",
+        "slug": "pulumi",
+        "image": "Pulumi",
+        "category": "IaC",
+        "description": "Manage Infisical secrets and resources in Pulumi via the Terraform Bridge.",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/pulumi"
+    },
+    {
+        "name": "Packer",
+        "slug": "packer",
+        "image": "Packer",
+        "category": "IaC",
+        "description": "Fetch secrets in your Packer builds using a data source.",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/packer"
+    },
+    {
+        "name": "AWS Lambda",
+        "slug": "aws-lambda",
+        "image": "AWS Lambda",
+        "category": "AWS",
+        "description": "Use Infisical secrets in your AWS Lambda functions.",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/aws/lambda"
+    },
+    {
+        "name": "AWS Amplify",
+        "slug": "aws-amplify",
+        "image": "AWS Amplify",
+        "category": "CI/CD",
+        "description": "Access secrets at AWS Amplify build time.",
+        "docsLink": "https://infisical.com/docs/integrations/cicd/aws-amplify"
+    },
+    {
+        "name": "Apache Airflow",
+        "slug": "apache-airflow",
+        "image": "Apache Airflow",
+        "category": "Orchestration",
+        "description": "Use Infisical as a custom secrets backend for Apache Airflow.",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/apache-airflow"
+    },
+    {
+        "name": "GitHub Actions",
+        "slug": "github-actions",
+        "image": "GitHub",
+        "category": "CI/CD",
+        "description": "Fetch secrets in GitHub Actions workflows using OIDC authentication.",
+        "docsLink": "https://infisical.com/docs/integrations/cicd/githubactions"
+    },
+    {
+        "name": "Kubernetes CSI",
+        "slug": "kubernetes-csi",
+        "image": "Kubernetes",
+        "category": "Kubernetes",
+        "description": "Mount secrets directly into pods with the Infisical CSI provider.",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes-csi"
+    },
+    {
+        "name": "Kubernetes Agent Injector",
+        "slug": "kubernetes-injector",
+        "image": "Kubernetes",
+        "category": "Kubernetes",
+        "description": "Inject secrets directly into pods with the Infisical Agent Injector.",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes-injector"
+    },
+    {
+        "name": "Backstage",
+        "slug": "backstage",
+        "image": "Backstage",
+        "category": "Developer Portal",
+        "description": "Manage secrets from your Backstage portal with the Infisical plugin.",
+        "docsLink": "https://infisical.com/docs/integrations/external/backstage"
+    },
+    {
+        "name": "Microsoft Power Apps",
+        "slug": "microsoft-power-apps",
+        "image": "Microsoft Power Apps",
+        "category": "Low Code",
+        "description": "Fetch secrets in Power Apps through an Azure Function and custom connector.",
+        "docsLink": "https://infisical.com/docs/integrations/external/microsoft-power-apps"
     }
 ]

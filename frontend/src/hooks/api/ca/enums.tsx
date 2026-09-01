@@ -2,6 +2,7 @@ export enum CaType {
   INTERNAL = "internal",
   ACME = "acme",
   AZURE_AD_CS = "azure-ad-cs",
+  ADCS = "adcs",
   AWS_PCA = "aws-pca",
   DIGICERT = "digicert",
   AWS_ACM_PUBLIC_CA = "aws-acm-public-ca",
@@ -47,7 +48,8 @@ export enum CaSigningConfigType {
   INTERNAL = "internal",
   MANUAL = "manual",
   VENAFI = "venafi",
-  AZURE_ADCS = "azure-ad-cs"
+  AZURE_ADCS = "azure-ad-cs",
+  ADCS = "adcs"
 }
 
 export enum GoDaddyProductType {

@@ -1,8 +1,9 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
+import { GATEWAYS } from "@app/lib/api-docs";
 import { zodBuffer } from "@app/lib/zod";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { gatewayMetricsReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -61,6 +62,37 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Heartbeat is expensive: the platform dials back through the relay to check the gateway is
+  // really there, then writes to Postgres. Every gateway reports load every 10 seconds, which is
+  // far too often for that. This one just writes a Redis key. It does not touch heartbeat, so a
+  // gateway cannot look alive just by reporting load.
+  server.route({
+    method: "POST",
+    url: "/metrics",
+    config: {
+      rateLimit: gatewayMetricsReportLimit
+    },
+    schema: {
+      operationId: "gatewayMetricsReport",
+      body: z.object({
+        activeChannels: z.number().int().min(0).max(1_000_000).describe(GATEWAYS.METRICS_REPORT.activeChannels)
+      }),
+      response: {
+        200: z.object({
+          gatewayId: z.string().uuid().describe(GATEWAYS.METRICS_REPORT.gatewayId),
+          activeChannels: z.number().int().describe(GATEWAYS.METRICS_REPORT.activeChannels)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.gatewayV2.reportMetrics({
+        orgPermission: req.permission,
+        activeChannels: req.body.activeChannels
+      });
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/heartbeat",
@@ -110,7 +142,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const gateways = await server.services.gatewayV2.listGateways({
         orgPermission: req.permission
@@ -227,37 +259,11 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               environmentSlug: z.string()
             })
           ),
-          pamResources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              resourceType: z.string()
-            })
-          ),
-          pamDiscoverySources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              discoveryType: z.string()
-            })
-          ),
           kubernetesAuths: z.array(
             z.object({
               id: z.string(),
               identityId: z.string(),
               identityName: z.string()
-            })
-          ),
-          mcpServers: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string()
             })
           ),
           pkiDiscoveryConfigs: z.array(
@@ -271,7 +277,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const resources = await server.services.gatewayV2.getConnectedResources({
         orgPermission: req.permission,

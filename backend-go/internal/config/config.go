@@ -199,6 +199,9 @@ type Config struct {
 	SecretScanningOrgWhitelist  string
 	SecretScanningGitAppSlug    string
 
+	// Cross-project secret sharing
+	CrossProjectSecretSharing string
+
 	// License
 	LicenseServerURL  string
 	LicenseServerKey  string
@@ -561,6 +564,9 @@ func LoadConfig() (*Config, error) {
 		Optional(&cfg.SecretScanningPrivateKey, "SECRET_SCANNING_PRIVATE_KEY", "").
 		Optional(&cfg.SecretScanningOrgWhitelist, "SECRET_SCANNING_ORG_WHITELIST", "").
 		Optional(&cfg.SecretScanningGitAppSlug, "SECRET_SCANNING_GIT_APP_SLUG", "infisical-radar").
+
+		// Cross-project secret sharing
+		Optional(&cfg.CrossProjectSecretSharing, "CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST", "").
 
 		// License
 		Optional(&cfg.LicenseServerURL, "LICENSE_SERVER_URL", "https://portal.infisical.com").

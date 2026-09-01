@@ -3,6 +3,9 @@ import { Knex } from "knex";
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 
 import {
   TAddIdentitiesToGroup,
@@ -117,6 +120,8 @@ const addAcceptedUsersToGroup = async ({
         });
       }
 
+      recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "project_bot" });
+      logger.info(`Legacy root key used to read a project bot key for group sync [projectId=${project.id}]`);
       const botPrivateKey = crypto
         .encryption()
         .symmetric()
@@ -177,7 +182,8 @@ export const addUsersToGroupByUserIds = async ({
   projectBotDAL,
   tx: outerTx,
   membershipGroupDAL,
-  shouldFailOnMissingMembers = true
+  shouldFailOnMissingMembers = true,
+  usageMeteringService
 }: TAddUsersToGroupByUserIds) => {
   const processAddition = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -298,6 +304,9 @@ export const addUsersToGroupByUserIds = async ({
       );
     }
 
+    // These users may now be in a secret-manager or PAM project through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -320,7 +329,8 @@ export const addIdentitiesToGroup = async ({
   identityIds,
   identityDAL,
   identityGroupMembershipDAL,
-  membershipDAL
+  membershipDAL,
+  usageMeteringService
 }: TAddIdentitiesToGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -369,6 +379,9 @@ export const addIdentitiesToGroup = async ({
       tx
     );
 
+    // These identities may now be in a secret-manager or PAM project through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -386,9 +399,12 @@ export const removeUsersFromGroupByUserIds = async ({
   userDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
+  additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
-  shouldFailOnMissingMembers = true
+  shouldFailOnMissingMembers = true,
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -459,36 +475,51 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
+    const projectIds = Array.from(
+      new Set(
+        (
+          await membershipGroupDAL.find(
+            {
+              scope: AccessScope.Project,
+              actorGroupId: group.id,
+              scopeOrgId: group.orgId
+            },
+            { tx }
+          )
+        ).map((gp) => gp.scopeProjectId as string)
+      )
+    );
+
     if (membersToRemoveFromGroupNonPending.length) {
-      // check which projects the group is part of
-      const projectIds = Array.from(
-        new Set(
-          (
-            await membershipGroupDAL.find(
-              {
-                scope: AccessScope.Project,
-                actorGroupId: group.id,
-                scopeOrgId: group.orgId
-              },
-              { tx }
-            )
-          ).map((gp) => gp.scopeProjectId as string)
-        )
+      const userIdsToRemove = membersToRemoveFromGroupNonPending.map((member) => member.id);
+      const stillReach = await userGroupMembershipDAL.filterProjectsByUserMembership(
+        userIdsToRemove,
+        group.id,
+        projectIds,
+        tx
       );
 
-      for await (const userId of membersToRemoveFromGroupNonPending.map((member) => member.id)) {
-        const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
-          userId,
-          group.id,
-          projectIds,
-          tx
-        );
-        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !projectsUserStillMemberOf.has(projectId));
+      for await (const userId of userIdsToRemove) {
+        const reachable = stillReach.get(userId);
+        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !reachable?.has(projectId));
 
         if (projectsToDeleteKeyFor.length) {
           await projectKeyDAL.delete(
             {
               receiverId: userId,
+              $in: {
+                projectId: projectsToDeleteKeyFor
+              }
+            },
+            tx
+          );
+
+          // additional privileges are keyed on actor + project, not membership, so leaving the
+          // user's last route into these projects must reap them or they reactivate if the user
+          // is ever re-added
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: userId,
               $in: {
                 projectId: projectsToDeleteKeyFor
               }
@@ -508,17 +539,48 @@ export const removeUsersFromGroupByUserIds = async ({
     }
 
     if (membersToRemoveFromGroupPending.length) {
+      const pendingUserIds = membersToRemoveFromGroupPending.map((member) => member.id);
+      const stillReach = await userGroupMembershipDAL.filterProjectsByUserMembership(
+        pendingUserIds,
+        group.id,
+        projectIds,
+        tx
+      );
+
+      for await (const userId of pendingUserIds) {
+        const reachable = stillReach.get(userId);
+        const projectsToReapGrantsFor = projectIds.filter((projectId) => !reachable?.has(projectId));
+
+        if (projectsToReapGrantsFor.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: userId,
+              $in: {
+                projectId: projectsToReapGrantsFor
+              },
+              $notNull: ["folderId"]
+            },
+            tx
+          );
+        }
+      }
+
       await userGroupMembershipDAL.delete(
         {
           groupId: group.id,
           $in: {
-            userId: membersToRemoveFromGroupPending.map((member) => member.id)
+            userId: pendingUserIds
           }
         },
         tx
       );
     }
 
+    await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
+
+    // These users may have left a secret-manager or PAM project they only reached through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
   };
 
@@ -541,7 +603,9 @@ export const removeIdentitiesFromGroup = async ({
   identityIds,
   identityDAL,
   membershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  additionalPrivilegeDAL,
+  usageMeteringService
 }: TRemoveIdentitiesFromGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -585,6 +649,48 @@ export const removeIdentitiesFromGroup = async ({
     }
   });
   return identityDAL.transaction(async (tx) => {
+    const projectIds = Array.from(
+      new Set(
+        (
+          await membershipDAL.find(
+            {
+              scope: AccessScope.Project,
+              actorGroupId: group.id,
+              scopeOrgId: group.orgId
+            },
+            { tx }
+          )
+        ).map((gp) => gp.scopeProjectId as string)
+      )
+    );
+
+    const stillReach = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+      identityIdsArray,
+      group.id,
+      projectIds,
+      tx
+    );
+
+    for await (const identityId of identityIdsArray) {
+      const reachable = stillReach.get(identityId);
+      const projectsToReapPrivilegesFor = projectIds.filter((projectId) => !reachable?.has(projectId));
+
+      if (projectsToReapPrivilegesFor.length) {
+        // additional privileges are keyed on actor + project, not membership, so leaving the
+        // identity's last route into these projects must reap them or they reactivate if the
+        // identity is ever re-added
+        await additionalPrivilegeDAL.delete(
+          {
+            actorIdentityId: identityId,
+            $in: {
+              projectId: projectsToReapPrivilegesFor
+            }
+          },
+          tx
+        );
+      }
+    }
+
     await identityGroupMembershipDAL.delete(
       {
         groupId: group.id,
@@ -595,6 +701,9 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    // These identities may have left a secret-manager or PAM project they only reached through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };

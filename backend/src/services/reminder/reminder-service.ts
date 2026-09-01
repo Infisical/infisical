@@ -1,16 +1,19 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-recipient-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TReminderDALFactory } from "./reminder-dal";
@@ -23,6 +26,7 @@ type TReminderServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
 
 export const reminderServiceFactory = ({
@@ -31,7 +35,8 @@ export const reminderServiceFactory = ({
   smtpService,
   projectMembershipDAL,
   permissionService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  folderDAL
 }: TReminderServiceFactoryDep): TReminderServiceFactory => {
   const $addDays = (days: number, fromDate: Date = new Date()): Date => {
     const result = new Date(fromDate);
@@ -71,6 +76,30 @@ export const reminderServiceFactory = ({
         }))
       );
     }
+  };
+
+  const $getSecretForPermissionCheck = async (secretId: string) => {
+    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
+    if (!secret) {
+      throw new BadRequestError({ message: `Secret ${secretId} not found` });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secret.projectId, [secret.folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({
+        message: `Folder with id '${secret.folderId}' not found`
+      });
+    }
+
+    return {
+      secret,
+      subjectFields: {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((tag) => tag.slug)
+      }
+    };
   };
 
   const createReminderInternal: TReminderServiceFactory["createReminderInternal"] = async ({
@@ -149,10 +178,7 @@ export const reminderServiceFactory = ({
     actorAuthMethod,
     reminder
   }: TCreateReminderDTO) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: reminder.secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${reminder.secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -161,7 +187,10 @@ export const reminderServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
 
     const response = await createReminderInternal({
       ...reminder,
@@ -183,10 +212,7 @@ export const reminderServiceFactory = ({
     actorOrgId: string;
     actorAuthMethod: ActorAuthMethod;
   }) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -195,16 +221,43 @@ export const reminderServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission,
       ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSub.Secrets
+      subjectFields
     );
     const reminder = await reminderDAL.findSecretReminder(secretId);
     return reminder;
   };
 
   const sendDailyReminders: TReminderServiceFactory["sendDailyReminders"] = async () => {
+    const appCfg = getConfig();
     const remindersToSend = await reminderDAL.findSecretDailyReminders();
+
+    // Resolve the human-readable folder path for each reminder's secret, batched per project.
+    const folderIdsByProjectId = new Map<string, Set<string>>();
+    for (const reminder of remindersToSend) {
+      if (reminder.projectId && reminder.folderId) {
+        const folderIds = folderIdsByProjectId.get(reminder.projectId) ?? new Set<string>();
+        folderIds.add(reminder.folderId);
+        folderIdsByProjectId.set(reminder.projectId, folderIds);
+      }
+    }
+
+    const folderPathById = new Map<string, string>();
+    for (const [projectId, folderIdSet] of folderIdsByProjectId) {
+      const folderIds = [...folderIdSet];
+      // Resolving folder paths only enriches the email. A failure here must not abort the whole
+      // daily reminder batch, so degrade gracefully and let the email send without the path/link.
+      try {
+        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+        folders.forEach((folder, idx) => {
+          if (folder?.path) folderPathById.set(folderIds[idx], folder.path);
+        });
+      } catch (error) {
+        logger.error(error, `Failed to resolve secret paths for reminder emails [projectId=${projectId}]`);
+      }
+    }
 
     for (const reminder of remindersToSend) {
       try {
@@ -216,6 +269,18 @@ export const reminderServiceFactory = ({
             const members = await projectMembershipDAL.findAllProjectMembers(reminder.projectId);
             recipients.push(...members.map((m) => m.user.email).filter((email): email is string => Boolean(email)));
           }
+
+          const secretPath = reminder.folderId ? folderPathById.get(reminder.folderId) : undefined;
+          let secretUrl: string | undefined;
+          if (reminder.organizationId && reminder.projectId && reminder.envSlug) {
+            const query = new URLSearchParams({
+              secretPath: secretPath || "/",
+              environments: JSON.stringify([reminder.envSlug])
+            });
+            if (reminder.secretKey) query.set("search", reminder.secretKey);
+            secretUrl = `${appCfg.SITE_URL}/organizations/${reminder.organizationId}/projects/secret-management/${reminder.projectId}/overview?${query.toString()}`;
+          }
+
           await smtpService.sendMail({
             template: SmtpTemplates.SecretReminder,
             subjectLine: "Infisical secret reminder",
@@ -223,7 +288,11 @@ export const reminderServiceFactory = ({
             substitutions: {
               reminderNote: reminder.message || "",
               projectName: reminder.projectName || "",
-              organizationName: reminder.organizationName || ""
+              organizationName: reminder.organizationName || "",
+              secretKey: reminder.secretKey || "",
+              environment: reminder.envName || reminder.envSlug || "",
+              secretPath: secretPath || "",
+              secretUrl: secretUrl || ""
             }
           });
           if (reminder.repeatDays) {
@@ -254,10 +323,7 @@ export const reminderServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     secretId: string;
   }) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -267,7 +333,10 @@ export const reminderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
     await reminderDAL.delete({ secretId });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secret.projectId);
   };

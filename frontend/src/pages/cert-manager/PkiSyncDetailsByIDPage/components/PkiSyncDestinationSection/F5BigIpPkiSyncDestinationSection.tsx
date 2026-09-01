@@ -1,12 +1,5 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { F5BigIpProfileType, TF5BigIpPkiSync } from "@app/hooks/api/pkiSyncs/types/f5-big-ip-sync";
-
-const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-4">
-    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
 
 const PROFILE_TYPE_LABELS: Record<F5BigIpProfileType, string> = {
   [F5BigIpProfileType.None]: "None",
@@ -26,26 +19,35 @@ export const F5BigIpPkiSyncDestinationSection = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Partition">{partition || "Common"}</GenericFieldLabel>
-      <GenericFieldLabel label="Profile Binding">
-        {PROFILE_TYPE_LABELS[resolvedProfileType]}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Partition</DetailLabel>
+        <DetailValue>{partition || "Common"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Profile Binding</DetailLabel>
+        <DetailValue>{PROFILE_TYPE_LABELS[resolvedProfileType]}</DetailValue>
+      </Detail>
       {hasProfileBinding && profileName ? (
-        <GenericFieldLabel
-          label={
-            resolvedProfileType === F5BigIpProfileType.ServerSsl
+        <Detail>
+          <DetailLabel>
+            {resolvedProfileType === F5BigIpProfileType.ServerSsl
               ? "Server SSL Profile Name"
-              : "Client SSL Profile Name"
-          }
-        >
-          {profileName}
-        </GenericFieldLabel>
+              : "Client SSL Profile Name"}
+          </DetailLabel>
+          <DetailValue>{profileName}</DetailValue>
+        </Detail>
       ) : null}
       {hasProfileBinding && createProfileIfMissing ? (
-        <GenericFieldLabel label="Create profile if missing">Yes</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Create profile if missing</DetailLabel>
+          <DetailValue>Yes</DetailValue>
+        </Detail>
       ) : null}
       {hasProfileBinding && createProfileIfMissing && parentProfile ? (
-        <GenericFieldLabel label="Parent Profile">{parentProfile}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Parent Profile</DetailLabel>
+          <DetailValue>{parentProfile}</DetailValue>
+        </Detail>
       ) : null}
     </>
   );

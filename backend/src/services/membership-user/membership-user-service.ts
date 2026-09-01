@@ -15,18 +15,22 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
@@ -41,6 +45,7 @@ import { getServerCfg } from "../super-admin/super-admin-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
 import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
@@ -84,6 +89,8 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -108,7 +115,9 @@ export const membershipUserServiceFactory = ({
   approvalPolicyDAL,
   emailDomainDAL,
   oidcConfigDAL,
-  samlConfigDAL
+  samlConfigDAL,
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -135,12 +144,43 @@ export const membershipUserServiceFactory = ({
     })
   };
 
-  const $getUsers = async (usernames: string[]) => {
+  const $getUsers = async (usernames: string[], orgId: string, rootOrgId?: string | null) => {
     const existingUsers = await userDAL.find({ $in: { username: usernames } });
-    if (existingUsers.length !== usernames.length) {
-      const newUserEmails = usernames
-        .filter((inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail))
-        .map((el) => el.toLowerCase());
+    const unmatched = usernames.filter((username) => !existingUsers.some((el) => el.username === username));
+
+    // Something that isn't a username may still be an IdP identifier we already recorded on the
+    // member's SSO alias (a UPN, say). This is what lets a provisioning system that only knows IdP
+    // identifiers name existing users. Has to run before the email validation below, since an
+    // externalId needn't look like an email and "Invalid emails" would be a misleading failure.
+    let aliasResolvedIdentifiers: string[] = [];
+    if (unmatched.length) {
+      const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+        identifiers: unmatched,
+        orgId,
+        rootOrgId,
+        userAliasDAL,
+        userDAL
+      });
+
+      if (ambiguousIdentifiers.length) {
+        throw new BadRequestError({
+          message: `Identifier(s) ${ambiguousIdentifiers
+            .map((el) => `'${el}'`)
+            .join(
+              ", "
+            )} match more than one SSO account in this organization. Invite the user by their email address instead, or contact support to resolve the duplicate.`
+        });
+      }
+
+      // Track identifiers, not resolved usernames: an alias-resolved user's username is their
+      // email, which is never the identifier that found them.
+      aliasResolvedIdentifiers = [...resolved.keys()];
+      existingUsers.push(...resolved.values());
+    }
+
+    const stillUnmatched = unmatched.filter((username) => !aliasResolvedIdentifiers.includes(username));
+    if (stillUnmatched.length) {
+      const newUserEmails = stillUnmatched.map((el) => el.toLowerCase());
 
       const invalidEmails = newUserEmails.filter((el) => {
         try {
@@ -191,7 +231,11 @@ export const membershipUserServiceFactory = ({
         }
       });
     }
-    return existingUsers;
+
+    // A person can now arrive twice in one request, once by username and once by alias. Callers
+    // count this list against memberships and insert from it, so a dupe trips
+    // membership_unique_user_org.
+    return unique(existingUsers, (user) => user.id);
   };
 
   const createMembership = async (dto: TCreateMembershipUserDTO) => {
@@ -246,6 +290,15 @@ export const membershipUserServiceFactory = ({
       });
     }
 
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: rolesToUse
+    });
+
     const isEmailInvalid = await isDisposableEmail(data.usernames);
     if (isEmailInvalid) {
       throw new BadRequestError({
@@ -254,7 +307,7 @@ export const membershipUserServiceFactory = ({
     }
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
-    const users = await $getUsers(sanitizedEmails);
+    const users = await $getUsers(sanitizedEmails, dto.permission.orgId, orgDetails.rootOrgId);
     const existingMemberships = await membershipUserDAL.find({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
@@ -354,6 +407,12 @@ export const membershipUserServiceFactory = ({
     });
 
     const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
+
+    // Adding a user to a project changes the secret-manager and PAM identity meters (a direct member).
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+    }
     return { memberships: membershipDoc, signUpTokens };
   };
 
@@ -393,6 +452,15 @@ export const membershipUserServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipUserDAL.findOne({
@@ -523,7 +591,8 @@ export const membershipUserServiceFactory = ({
           userGroupMembershipDAL,
           membershipRoleDAL,
           additionalPrivilegeDAL,
-          approvalPolicyDAL
+          approvalPolicyDAL,
+          alertChannelRecipientDAL
         });
         return doc;
       }
@@ -549,12 +618,27 @@ export const membershipUserServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
+
+      if (dto.scopeData.scope === AccessScope.Project) {
+        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [dto.selector.userId] }, tx);
+      }
+
       return doc;
     };
 
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
+
+    // Removing a user from a project drops a direct member; removing them from the org cascades their
+    // project + group memberships. Either way the secret-manager and PAM identity meters change.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+    } else {
+      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    }
     return { membership: membershipDoc };
   };
 

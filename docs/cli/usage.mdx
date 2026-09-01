@@ -3,85 +3,66 @@ title: "Quickstart"
 description: "Manage secrets with Infisical CLI"
 ---
 
+import LogIn from "/snippets/cli/local-development/log-in.mdx";
+import LinkProject from "/snippets/cli/local-development/link-project.mdx";
+import StartApplication from "/snippets/cli/local-development/start-application.mdx";
+
 The CLI is designed for a variety of secret management applications ranging from local development to CI/CD and production scenarios.
 
 <Tabs>
   <Tab title="Local development">
-    In the following steps, we explore how to use the Infisical CLI to fetch back environment variables from Infisical
-    and inject them into your local development process.
-    
-    <Note>
-    If you prefer learning by watching, you can follow along our step-by-step video tutorial [here](https://www.youtube.com/watch?v=zYCeELjcgQ4).
-    </Note>
+  The steps below authenticate the CLI with your own account, link a codebase to an Infisical project, and inject the secrets you have access to into your local development process as environment variables.
+
+  <Note>
+    If you prefer to learn by watching, follow along with our [step-by-step video tutorial](https://www.youtube.com/watch?v=zYCeELjcgQ4).
+  </Note>
+
+  ## Step 1: Log in to Infisical
+
+  <LogIn />
+
+  ## Step 2: Link your codebase to your project
+
+  <LinkProject />
+
+  ## Step 3: Start your application with secrets injected
+
+  <StartApplication />
+
+  For installation instructions, troubleshooting, and related local workflows such as personal overrides and secret scanning, see the [local development guide](/documentation/guides/local-development).
+
+  </Tab>
+
+  <Tab title="Docker containers">
+    Install the Infisical CLI into your Docker image and start your application with it to inject secrets at runtime.
 
     <Steps>
-      <Step title="Log in with the CLI">
-        Start by running the `infisical login` command to authenticate with Infisical.
+      <Step title="Install the Infisical CLI in your Dockerfile">
+        Install the CLI with the package manager of your base image. The example below targets Alpine; find the commands for other distributions [here](/cli/overview).
+
+        ```dockerfile
+        RUN apk add --no-cache bash wget && \
+            wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh && \
+            apk update && apk add infisical
+        ```
+      </Step>
+      <Step title="Start your application with the CLI">
+        Set your container start command to run your application through `infisical run`. The CLI fetches your secrets from Infisical and injects them as environment variables.
+
+        ```dockerfile
+        CMD ["infisical", "run", "--projectId", "<your-project-id>", "--env", "prod", "--", "npm", "run", "start"]
+        ```
+      </Step>
+      <Step title="Authenticate the container">
+        Create a [machine identity](/documentation/platform/identities/machine-identities) and pass its access token to the container through the `INFISICAL_TOKEN` environment variable.
 
         ```bash
-        infisical login
+        docker run --env INFISICAL_TOKEN=$INFISICAL_TOKEN <your-image>
         ```
-        <Note>
-          If you are in a containerized environment such as WSL 2 or Codespaces, run `infisical login -i` to avoid browser based login
-        </Note>
-      </Step>
-      <Step title="Initialize Infisical for your project">
-        Next, navigate to your project and initialize Infisical.
-
-        ```bash
-        # navigate to your project
-        cd /path/to/project
-
-        # initialize infisical
-        infisical init
-        ```
-
-        The `infisical init` command creates a `.infisical.json` file, containing [local project settings](./project-config), at the location where the command is executed.
-
-        <Note>
-          The `.infisical.json` file does not contain any sensitive data, so you may commit it to your git repository.
-        </Note>
-      </Step>
-      <Step title="Inject environment variables">
-        Finally, pass environment variables from Infisical into your application.
-
-        <Tabs>
-          <Tab title="Feed secrets to your application">
-            ```bash
-            infisical run --env=dev --path=/apps/firefly -- [your application start command] # e.g. npm run dev
-
-            # example with node (nodemon)
-            infisical run --env=staging --path=/apps/spotify -- nodemon index.js
-
-            # example with flask
-            infisical run --env=prod --path=/apps/backend -- flask run
-
-            # example with spring boot - maven
-            infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
-            ```
-
-          </Tab>
-          <Tab title="Feed secrets via custom aliases (advanced)">
-            Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
-            ```bash
-            #!/bin/sh
-
-            yd() {
-              yarn dev
-            }
-            ```
-
-            To make the secrets available from Infisical to `yd`, you can run the following command:
-
-            ```bash
-            infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
-            ```
-          </Tab>
-        </Tabs>
-
-        View all available options for `run` command [here](./commands/run)
       </Step>
     </Steps>
+
+    For Docker Compose and `--env-file` workflows, see the [Docker guide](/integrations/platforms/docker).
 
   </Tab>
 
@@ -132,7 +113,7 @@ For versions prior to v0.4.0, the CLI defaults to US Cloud. To connect to EU Clo
 </Note>
 
 <Warning>
-  ## Domain Configuration
+  ## Domain configuration
 
 **Important:** If you're not using interactive login, you must configure the domain for **all CLI commands**.
 
@@ -209,7 +190,7 @@ When more than one is set, the CLI uses this order of precedence: `--domain` fla
 </Warning>
 
 <Tip>
-  ## Custom Request Headers
+  ## Custom request headers
 
 The Infisical CLI supports custom HTTP headers for requests to servers protected by authentication services such as Cloudflare Access. Configure these headers using the `INFISICAL_CUSTOM_HEADERS` environment variable:
 

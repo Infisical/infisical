@@ -1,15 +1,40 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
-import { jwtDecode } from "jwt-decode";
-import { ChevronRight, LogIn, Search } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, ChevronRight, Search } from "lucide-react";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
+import { ContentLoader, Spinner } from "@app/components/v2";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  ScrollableContent,
+  VerificationCodeHeader
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useToggle } from "@app/hooks";
@@ -21,56 +46,86 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, setAuthToken } from "@app/hooks/api/reactQuery";
-import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
+import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
+import { getSsoEnforcementError } from "./SelectOrg.utils";
 
-const OrgRow = ({
-  name,
-  label,
-  joinedAt,
-  onClick,
-  variant = "default"
-}: {
+type OrgCardProps = {
   name: string;
   label?: string;
   joinedAt?: string | null;
   onClick: () => void;
-  variant?: "default" | "sub" | "root";
-}) => {
-  const bgClass =
-    variant === "sub"
-      ? "bg-mineshaft-800 text-gray-300 hover:bg-mineshaft-700"
-      : "bg-mineshaft-700 text-gray-200 hover:bg-mineshaft-600";
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Login to ${name}`}
-      className={`group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 px-4 shadow-md transition-colors ${bgClass}`}
-    >
-      <div className="flex flex-col items-start">
-        <p className="truncate">{name}</p>
-        {(label || joinedAt) && (
-          <p className="text-xs text-mineshaft-400">
-            {label}
-            {label && joinedAt && " · "}
-            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d yyyy")}</>}
-          </p>
-        )}
-      </div>
-      <LogIn className="size-4 text-gray-400 transition-all group-hover:text-primary-400" />
-    </button>
-  );
+  footer?: ReactNode;
 };
+
+const OrgCard = forwardRef<HTMLButtonElement, OrgCardProps>(
+  ({ name, label, joinedAt, onClick, footer }, ref) => (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        aria-label={`Login to ${name}`}
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium text-foreground">{name}</span>
+          {(label || joinedAt) && (
+            <span className="block text-sm leading-relaxed text-muted">
+              {label}
+              {label && joinedAt && " · "}
+              {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d, yyyy")}</>}
+            </span>
+          )}
+        </span>
+        <ArrowRight className="size-4 self-center text-muted transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </button>
+      {footer}
+    </div>
+  )
+);
+
+OrgCard.displayName = "OrgCard";
+
+// Mirrors the step transition on the server admin onboarding (OnboardingPageLayout)
+type ViewTransitionContext = {
+  direction: number;
+  prefersReducedMotion: boolean;
+};
+
+const viewTransitionVariants = {
+  enter: ({ direction, prefersReducedMotion }: ViewTransitionContext) =>
+    prefersReducedMotion
+      ? {
+          opacity: 0
+        }
+      : {
+          transform: `translate3d(${direction * 32}px, 0, 0) scale(1.01)`,
+          opacity: 0.28
+        },
+  center: {
+    transform: "translate3d(0, 0, 0) scale(1)",
+    opacity: 1
+  },
+  exit: {
+    opacity: 0,
+    transition: {
+      duration: 0
+    }
+  }
+};
+
+// Fixed (viewport-adaptive) list height — matches ScrollableContent's lg max-height clamp —
+// so filtering or switching views never reflows the vertically-centered header and search
+const listHeightClass = "h-[clamp(12rem,calc(100dvh_-_24rem),28rem)]";
 
 export const SelectOrgPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const router = useRouter();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
+  const { autoSelectErrorMessage } = useRouteContext({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
 
   const {
     org_id: orgId,
@@ -91,6 +146,41 @@ export const SelectOrgPage = () => {
   const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const mfaOrgInfo = useRef<{ rootOrg: TOrgWithSubOrgs; subOrgId?: string } | null>(null);
+
+  const prefersReducedMotion = useReducedMotion();
+  const viewDepth = selectedRootOrg ? 1 : 0;
+  const previousViewDepthRef = useRef(viewDepth);
+  let viewDirection = 0;
+  if (viewDepth > previousViewDepthRef.current) {
+    viewDirection = 1;
+  } else if (viewDepth < previousViewDepthRef.current) {
+    viewDirection = -1;
+  }
+
+  useEffect(() => {
+    previousViewDepthRef.current = viewDepth;
+  }, [viewDepth]);
+
+  const viewTransitionContext: ViewTransitionContext = {
+    direction: viewDirection,
+    prefersReducedMotion: Boolean(prefersReducedMotion)
+  };
+
+  // A view switch unmounts the focused control, dropping keyboard focus to <body>.
+  // Focus the drilled-into org's card on entry and restore the originating
+  // "View sub-organizations" control on return.
+  const rootOrgCardRef = useRef<HTMLButtonElement | null>(null);
+  const subOrgStripRefs = useRef(new Map<string, HTMLButtonElement>());
+  const returnFocusOrgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (selectedRootOrg) {
+      rootOrgCardRef.current?.focus();
+    } else if (returnFocusOrgIdRef.current) {
+      subOrgStripRefs.current.get(returnFocusOrgIdRef.current)?.focus();
+      returnFocusOrgIdRef.current = null;
+    }
+  }, [selectedRootOrg]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -120,11 +210,6 @@ export const SelectOrgPage = () => {
       }));
   }, [orgs, searchTerm]);
 
-  const totalOrgCount = useMemo(() => {
-    if (!orgs) return 0;
-    return orgs.reduce((sum, org) => sum + 1 + org.subOrganizations.length, 0);
-  }, [orgs]);
-
   const filteredSubOrgs = useMemo(() => {
     if (!selectedRootOrg) return [];
     if (!searchTerm.trim()) return selectedRootOrg.subOrganizations;
@@ -145,34 +230,10 @@ export const SelectOrgPage = () => {
       return;
     }
 
-    if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
-      const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
-
-      let ssoRequired = false;
-      let ssoType = "";
-
-      if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-        ssoRequired = true;
-        ssoType = "Google SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.OIDC &&
-        authToken.authMethod !== AuthMethod.OIDC
-      ) {
-        ssoRequired = true;
-        ssoType = "OIDC SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.SAML &&
-        !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
-      ) {
-        ssoRequired = true;
-        ssoType = "SAML SSO";
-      }
-
-      if (ssoRequired) {
-        createNotification({
-          text: `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`,
-          type: "error"
-        });
+    if (!canBypassOrgAuth) {
+      const ssoEnforcementError = getSsoEnforcementError(org);
+      if (ssoEnforcementError) {
+        createNotification({ text: ssoEnforcementError, type: "error" });
         return;
       }
     }
@@ -245,16 +306,30 @@ export const SelectOrgPage = () => {
     }
   };
 
-  // MFA pending from IdP redirect
+  // beforeLoad can't toast on cold loads (Toaster not yet mounted) so it hands failures here;
+  // the ref dedupes StrictMode's double effect run
+  const autoSelectErrorToasted = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoSelectErrorMessage && autoSelectErrorToasted.current !== autoSelectErrorMessage) {
+      autoSelectErrorToasted.current = autoSelectErrorMessage;
+      createNotification({ text: autoSelectErrorMessage, type: "error" });
+    }
+  }, [autoSelectErrorMessage]);
+
+  // MFA challenge handed off by beforeLoad's auto-select
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const defaultOrg = orgs?.find((o) => o.id === orgId);
+    const rootOrg = orgs?.find((o) => o.id === orgId);
+    const subOrgParent = rootOrg
+      ? undefined
+      : orgs?.find((o) => o.subOrganizations.some((sub) => sub.id === orgId));
+    const mfaOrg = rootOrg ?? subOrgParent;
     const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
-    if (mfaMethodFromSearch && storedMfaToken && defaultOrg) {
+    if (mfaMethodFromSearch && storedMfaToken && mfaOrg) {
       sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
       SecurityClient.setMfaToken(storedMfaToken);
       toggleShowMfa.on();
-      mfaOrgInfo.current = { rootOrg: defaultOrg };
+      mfaOrgInfo.current = { rootOrg: mfaOrg, subOrgId: rootOrg ? undefined : orgId };
     }
   }, [mfaMethodFromSearch, orgs?.length, orgId]);
 
@@ -267,104 +342,94 @@ export const SelectOrgPage = () => {
       );
     }
 
-    if (selectedRootOrg) {
-      return (
-        <div className="space-y-2">
-          <OrgRow
-            name={selectedRootOrg.name}
-            label="Root organization"
-            joinedAt={selectedRootOrg.userJoinedAt}
-            onClick={() => handleSelectOrganization(selectedRootOrg)}
-            variant="root"
-          />
-          <p className="px-1 pt-1 text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
-            Sub-organizations
-          </p>
-          {filteredSubOrgs.length === 0 ? (
-            <p className="py-4 text-center text-sm text-mineshaft-400">
-              No sub-organizations found
-            </p>
-          ) : (
-            filteredSubOrgs.map((sub) => (
-              <OrgRow
-                key={sub.id}
-                name={sub.name}
-                joinedAt={sub.userJoinedAt}
-                onClick={() => handleSelectOrganization(selectedRootOrg, sub.id)}
-                variant="sub"
-              />
-            ))
-          )}
-        </div>
-      );
-    }
-
     if (filteredOrgs.length === 0) {
-      return <p className="py-4 text-center text-sm text-mineshaft-400">No organizations found</p>;
+      return <p className="py-4 text-center text-sm text-muted">No organizations found</p>;
     }
 
     const isSearching = Boolean(searchTerm.trim());
-    return (
-      <div className="space-y-2">
-        {filteredOrgs.map((org) => {
-          const hasSubOrgs = org.subOrganizations.length > 0;
 
-          return (
-            <div key={org.id}>
-              {hasSubOrgs && !isSearching ? (
-                <div className="relative overflow-clip rounded-md border border-mineshaft-600 text-gray-200 shadow-md">
+    return (
+      <div className="flex flex-col gap-3">
+        {filteredOrgs.map((org) => (
+          <Fragment key={org.id}>
+            <OrgCard
+              name={org.name}
+              joinedAt={org.userJoinedAt}
+              onClick={() => handleSelectOrganization(org)}
+              footer={
+                !isSearching && org.subOrganizations.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => handleSelectOrganization(org)}
-                    aria-label={`Login to ${org.name}`}
-                    className="group relative z-10 flex w-full cursor-pointer items-center justify-between bg-mineshaft-700 px-4 py-3 transition-colors hover:bg-mineshaft-600"
-                  >
-                    <div className="flex flex-col items-start gap-1.5">
-                      <p className="truncate transition-colors">{org.name}</p>
-                      {org.userJoinedAt && (
-                        <p className="text-xs text-mineshaft-400">
-                          Member since {format(new Date(org.userJoinedAt), "MMM d yyyy")}
-                        </p>
-                      )}
-                    </div>
-                    <LogIn className="size-4.5 text-gray-400 transition-all group-hover:text-primary-400" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRootOrg(org)}
+                    ref={(el) => {
+                      if (el) {
+                        subOrgStripRefs.current.set(org.id, el);
+                      } else {
+                        subOrgStripRefs.current.delete(org.id);
+                      }
+                    }}
+                    onClick={() => {
+                      returnFocusOrgIdRef.current = org.id;
+                      setSelectedRootOrg(org);
+                    }}
                     aria-label={`View sub-organizations of ${org.name}`}
-                    className="pointer-events-auto flex w-full cursor-pointer items-center gap-1 bg-mineshaft-500 px-2 py-2 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
+                    className="flex w-full cursor-pointer items-center gap-1.5 border-t border-border bg-container px-4 py-2 text-left text-xs text-muted transition-colors hover:bg-container-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
                   >
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className="size-3.5" />
                     View {org.subOrganizations.length} sub-organization
                     {org.subOrganizations.length !== 1 ? "s" : ""}
                   </button>
-                </div>
-              ) : (
-                <OrgRow
-                  name={org.name}
-                  joinedAt={org.userJoinedAt}
-                  onClick={() => handleSelectOrganization(org)}
-                />
-              )}
+                ) : undefined
+              }
+            />
+            {/* While searching, surface matching sub-orgs inline so they stay discoverable */}
+            {isSearching && org.subOrganizations.length > 0 && (
+              <div className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
+                <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+                  Sub-organizations
+                </p>
+                {org.subOrganizations.map((sub) => (
+                  <OrgCard
+                    key={sub.id}
+                    name={sub.name}
+                    joinedAt={sub.userJoinedAt}
+                    onClick={() => handleSelectOrganization(org, sub.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </Fragment>
+        ))}
+      </div>
+    );
+  };
 
-              {isSearching && hasSubOrgs && (
-                <div className="mt-2 ml-1 space-y-1 border-l border-primary pl-2">
-                  {org.subOrganizations.map((sub) => (
-                    <OrgRow
-                      key={sub.id}
-                      name={sub.name}
-                      label="Sub-organization"
-                      joinedAt={sub.userJoinedAt}
-                      onClick={() => handleSelectOrganization(org, sub.id)}
-                      variant="sub"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+  const renderSubOrgContent = () => {
+    if (!selectedRootOrg) return null;
+
+    return (
+      <div className="flex flex-col gap-3">
+        <OrgCard
+          ref={rootOrgCardRef}
+          name={selectedRootOrg.name}
+          label="Root organization"
+          joinedAt={selectedRootOrg.userJoinedAt}
+          onClick={() => handleSelectOrganization(selectedRootOrg)}
+        />
+        <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+          Sub-organizations
+        </p>
+        {filteredSubOrgs.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted">No sub-organizations found</p>
+        ) : (
+          filteredSubOrgs.map((sub) => (
+            <OrgCard
+              key={sub.id}
+              name={sub.name}
+              joinedAt={sub.userJoinedAt}
+              onClick={() => handleSelectOrganization(selectedRootOrg, sub.id)}
+            />
+          ))
+        )}
       </div>
     );
   };
@@ -377,16 +442,16 @@ export const SelectOrgPage = () => {
     );
   }
 
-  return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("login.og-title") ?? ""} />
-        <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
-      {shouldShowMfa ? (
+  if (shouldShowMfa) {
+    return (
+      <>
+        <Helmet>
+          <title>{t("common.head-title", { title: t("login.title") })}</title>
+          <link rel="icon" href="/infisical.ico" />
+          <meta property="og:image" content="/images/message.png" />
+          <meta property="og:title" content={t("login.og-title") ?? ""} />
+          <meta name="og:description" content={t("login.og-description") ?? ""} />
+        </Helmet>
         <Mfa
           email={user.email as string}
           successCallback={() => {
@@ -395,73 +460,124 @@ export const SelectOrgPage = () => {
             }
           }}
           method={requiredMfaMethod as MfaMethod}
+          onChangeAccount={handleLogout}
         />
-      ) : (
-        <div className="mx-auto mt-20 w-full max-w-md pb-28">
-          <Link to="/">
-            <div className="mb-4 flex justify-center">
-              <img
-                src="/images/gradientLogo.svg"
-                style={{ height: "90px", width: "120px" }}
-                alt="Infisical logo"
-              />
-            </div>
-          </Link>
-          <div className="mb-8 space-y-2">
-            <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
-              Choose your organization
-            </h1>
-            <div className="space-y-1">
-              <p className="text-md text-center text-gray-500">
-                You&apos;re currently logged in as <strong>{user.username}</strong>
-              </p>
-              <p className="text-md text-center text-gray-500">
-                Not you?{" "}
-                <Button variant="link" onClick={handleLogout} className="font-medium">
-                  Change account
-                </Button>
-              </p>
-            </div>
-          </div>
+      </>
+    );
+  }
 
-          <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
-            {totalOrgCount >= 5 && (
-              <div className="border-b border-mineshaft-600 px-4 py-3">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={
-                    selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
-                  }
-                  leftIcon={<Search className="size-4" />}
-                  className="h-10"
-                />
-              </div>
-            )}
+  return (
+    <AuthPageLayout variant="focused" showFooter={false}>
+      <Helmet>
+        <title>{t("common.head-title", { title: t("login.title") })}</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
+      </Helmet>
+      <AuthPagePanel>
+        <VerificationCodeHeader
+          title="Choose your organization as"
+          recipient={user.username}
+          action={
+            <button
+              aria-label={`Sign out ${user.username}`}
+              className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+              onClick={handleLogout}
+              type="button"
+            >
+              Sign out
+            </button>
+          }
+        />
 
-            {selectedRootOrg && (
-              <div className="border-b border-mineshaft-600 px-4 py-2">
-                <nav className="flex items-center gap-1.5 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRootOrg(null);
-                      setSearchTerm("");
-                    }}
-                    className="text-mineshaft-400 transition-colors hover:text-gray-200"
+        <div className="flex flex-col gap-4">
+          <InputGroup variant="outlined">
+            <InputGroupAddon align="inline-start">
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={
+                selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
+              }
+              aria-label={selectedRootOrg ? "Search sub-organizations" : "Search organizations"}
+            />
+          </InputGroup>
+
+          <div className="relative -m-2 overflow-hidden p-2">
+            <AnimatePresence mode="popLayout" initial={false} custom={viewTransitionContext}>
+              <motion.div
+                key={selectedRootOrg?.id ?? "all-organizations"}
+                custom={viewTransitionContext}
+                variants={viewTransitionVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  duration: prefersReducedMotion ? 0.12 : 0.18,
+                  ease: [0.23, 1, 0.32, 1]
+                }}
+                className="w-full will-change-transform"
+              >
+                {selectedRootOrg ? (
+                  <div className={cn("flex flex-col gap-4", listHeightClass)}>
+                    <Breadcrumb>
+                      <BreadcrumbList>
+                        <BreadcrumbItem>
+                          <BreadcrumbLink asChild>
+                            <button
+                              type="button"
+                              className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                              onClick={() => {
+                                setSelectedRootOrg(null);
+                                setSearchTerm("");
+                              }}
+                            >
+                              All organizations
+                            </button>
+                          </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                          <BreadcrumbPage>{selectedRootOrg.name}</BreadcrumbPage>
+                        </BreadcrumbItem>
+                      </BreadcrumbList>
+                    </Breadcrumb>
+
+                    <ScrollableContent
+                      aria-label={`${selectedRootOrg.name} sub-organizations`}
+                      edgeBehavior="fade"
+                      outline={false}
+                      containerClassName="min-h-0 flex-1"
+                      className="h-full"
+                      // The list is full of focusable cards, so the scroll region
+                      // itself doesn't need to be a tab stop
+                      tabIndex={-1}
+                    >
+                      {renderSubOrgContent()}
+                    </ScrollableContent>
+                  </div>
+                ) : (
+                  <ScrollableContent
+                    aria-label="Your organizations"
+                    edgeBehavior="fade"
+                    outline={false}
+                    containerClassName={listHeightClass}
+                    className="h-full"
+                    // The list is full of focusable cards, so the scroll region
+                    // itself doesn't need to be a tab stop
+                    tabIndex={-1}
                   >
-                    All organizations
-                  </button>
-                  <span className="text-white">›</span>
-                  <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
-                </nav>
-              </div>
-            )}
-
-            <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
+                    {renderListContent()}
+                  </ScrollableContent>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
-      )}
-    </div>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };

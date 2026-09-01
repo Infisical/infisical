@@ -96,7 +96,6 @@ type FeatureSet struct {
 	ProjectTemplates             bool       `json:"projectTemplates"`
 	KMIP                         bool       `json:"kmip"`
 	Gateway                      bool       `json:"gateway"`
-	SSHHostGroups                bool       `json:"sshHostGroups"`
 	SecretScanning               bool       `json:"secretScanning"`
 	EnterpriseSecretSyncs        bool       `json:"enterpriseSecretSyncs"`
 	EnterpriseCertificateSyncs   bool       `json:"enterpriseCertificateSyncs"`

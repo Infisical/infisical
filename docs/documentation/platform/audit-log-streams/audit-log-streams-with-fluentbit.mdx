@@ -1,5 +1,5 @@
 ---
-title: "Stream to Non-HTTP providers"
+title: "Stream to non-HTTP providers"
 description: "How to stream Infisical Audit Logs to Non-HTTP log providers"
 ---
 
@@ -55,7 +55,7 @@ The following Fluent Bit configuration sets up an HTTP listener on port `8888` a
     compression                  gzip
     s3_key_format                /$TAG/%Y/%m/%d/%H_%M_%S.gz
 ```
-### Connecting Infisical Audit Log Stream
+### Connecting Infisical audit log stream
 
 Once Fluent Bit is set up and configured, you can point the Infisical [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to Fluent Bit's HTTP listener, which will then forward the logs to your chosen provider. 
 Using this pattern, you are able to send Infisical Audit logs to various providers that do not support HTTP based log ingestion by default. 

@@ -5,9 +5,13 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
-import { CertificateRequestStatus } from "../../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertificateRequestStatus } from "../../certificate-common/certificate-constants";
+import { reportCertificateIssued } from "../../certificate-common/certificate-telemetry-fns";
 import { TCertificateRequestDALFactory } from "../../certificate-request/certificate-request-dal";
 import {
   TAttachCertificateToRequestDTO,
@@ -57,6 +61,8 @@ export type TProcessDigiCertRequestDeps = {
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -91,7 +97,7 @@ const getOrCreateClient = async (
     kmsService: deps.kmsService
   })) as TDigiCertConnection["credentials"];
 
-  const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials.region));
+  const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials));
   clientCache?.set(request.caId, client);
   return client;
 };
@@ -181,6 +187,17 @@ export const processDigiCertPendingValidationRequest = async (
     logger.info(
       `DigiCert order issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
     );
+
+    await reportCertificateIssued({
+      telemetryService: deps.telemetryService,
+      projectDAL: deps.projectDAL,
+      projectId: request.projectId,
+      profileId: request.profileId,
+      applicationId: request.applicationId,
+      enrollmentType: EnrollmentType.API,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
+    });
+
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
   }
 

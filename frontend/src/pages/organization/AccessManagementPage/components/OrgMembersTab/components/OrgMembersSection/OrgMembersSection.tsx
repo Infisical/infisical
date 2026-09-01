@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
+import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  DeleteActionModal,
-  EmailServiceSetupModal,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -22,18 +16,17 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge
+  DocumentationLinkBadge,
+  SelectedActionBar
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
   useUser
 } from "@app/context";
 import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { useDeleteOrgMembershipBatch } from "@app/hooks/api/users/queries";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -43,7 +36,6 @@ import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const navigate = useNavigate();
   const orgId = currentOrg?.id ?? "";
@@ -86,20 +78,7 @@ export const OrgMembersSection = () => {
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
-  const isMoreIdentitiesAllowed = subscription?.identityLimit
-    ? subscription.identitiesUsed < subscription.identityLimit
-    : true;
-
-  const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
-
   const handleAddMemberModal = () => {
-    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."
-      });
-      return;
-    }
-
     handlePopUpOpen("addMember");
   };
 
@@ -153,49 +132,36 @@ export const OrgMembersSection = () => {
 
   return (
     <>
-      <div
-        className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          selectedMemberIds.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedMemberIds.length}
+        onClearSelection={() => setSelectedMemberIds([])}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedMemberIds.length} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={() => setSelectedMemberIds([])}
-          >
-            Unselect All
-          </button>
-          <OrgPermissionCan
-            I={OrgPermissionActions.Delete}
-            a={OrgPermissionSubjects.Member}
-            renderTooltip
-          >
-            {(isAllowed) => (
-              <Button
-                variant="danger"
-                className="ml-2"
-                onClick={() => {
-                  const selectedOrgMemberships = members.filter((member) =>
-                    selectedMemberIds.includes(member.id)
-                  );
+        <OrgPermissionCan
+          I={OrgPermissionActions.Delete}
+          a={OrgPermissionSubjects.Member}
+          renderTooltip
+        >
+          {(isAllowed) => (
+            <Button
+              variant="danger"
+              onClick={() => {
+                const selectedOrgMemberships = members.filter((member) =>
+                  selectedMemberIds.includes(member.id)
+                );
 
-                  if (!selectedOrgMemberships.length) return;
+                if (!selectedOrgMemberships.length) return;
 
-                  handlePopUpOpen("removeMembers", { selectedOrgMemberships });
-                }}
-                isDisabled={!isAllowed}
-                size="xs"
-              >
-                <TrashIcon />
-                Delete
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-      </div>
+                handlePopUpOpen("removeMembers", { selectedOrgMemberships });
+              }}
+              isDisabled={!isAllowed}
+              size="xs"
+            >
+              <TrashIcon />
+              Delete
+            </Button>
+          )}
+        </OrgPermissionCan>
+      </SelectedActionBar>
       <Card>
         <CardHeader>
           <CardTitle>
@@ -219,9 +185,7 @@ export const OrgMembersSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <UserPlusIcon />
-                  {isSubOrganization
-                    ? "Add Users to Sub-Organization"
-                    : "Invite Users to Organization"}
+                  {isSubOrganization ? "Add" : "Invite"}
                 </Button>
               )}
             </OrgPermissionCan>
@@ -242,14 +206,7 @@ export const OrgMembersSection = () => {
         completeInviteLinks={completeInviteLinks}
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
-      <Modal
-        isOpen={popUp.addMemberToSubOrg.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
-      >
-        <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
-          <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
-        </ModalContent>
-      </Modal>
+      <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${

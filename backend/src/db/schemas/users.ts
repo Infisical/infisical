@@ -16,7 +16,6 @@ export const UsersSchema = z.object({
   lastName: z.string().nullable().optional(),
   isAccepted: z.boolean().default(false).nullable().optional(),
   isMfaEnabled: z.boolean().default(false).nullable().optional(),
-  mfaMethods: z.string().array().nullable().optional(),
   devices: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

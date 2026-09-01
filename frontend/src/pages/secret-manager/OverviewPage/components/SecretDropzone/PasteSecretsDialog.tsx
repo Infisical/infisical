@@ -3,12 +3,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
-import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
+import { parsePastedSecrets } from "@app/components/utilities/parseSecrets";
 import {
   Button,
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   TextArea
@@ -46,12 +47,7 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
   } = useForm<TForm>({ defaultValues: { value: "" }, resolver: zodResolver(formSchema) });
 
   const onSubmit = ({ value }: TForm) => {
-    let env: TParsedEnv;
-    try {
-      env = parseJson(value);
-    } catch {
-      env = parseDotEnv(value);
-    }
+    const env = parsePastedSecrets(value);
 
     if (!Object.keys(env).length) {
       setError("value", {
@@ -129,9 +125,11 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
             <FieldError errors={[errors.value]} />
           </FieldContent>
         </Field>
-        <Button className="mt-4 ml-auto" variant="project" isDisabled={!isDirty} type="submit">
-          Parse Secrets
-        </Button>
+        <DialogFooter className="mt-4">
+          <Button variant="project" isDisabled={!isDirty} type="submit">
+            Parse Secrets
+          </Button>
+        </DialogFooter>
       </form>
     </>
   );

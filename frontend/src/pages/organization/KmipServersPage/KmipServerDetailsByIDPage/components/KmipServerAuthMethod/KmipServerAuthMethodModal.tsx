@@ -134,7 +134,7 @@ export const KmipServerAuthMethodModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-visible">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Auth Method</DialogTitle>
           <DialogDescription>

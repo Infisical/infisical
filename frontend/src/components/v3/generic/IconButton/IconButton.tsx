@@ -23,6 +23,8 @@ const iconButtonVariants = cva(
           "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10",
         "ghost-muted":
           "text-muted hover:text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:text-foreground data-[state=open]:bg-foreground/10",
+        neutral:
+          "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30",
         project:
           "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30 data-[state=open]:bg-project/15 data-[state=open]:border-project/30",
         org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30 data-[state=open]:bg-org/15 data-[state=open]:border-org/30",
@@ -34,9 +36,11 @@ const iconButtonVariants = cva(
         warning:
           "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30",
         danger:
-          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30"
+          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
+        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
       },
       size: {
+        "2xs": "h-6 w-6 [&>svg]:size-3 rounded-sm [&>svg]:stroke-[1.75]",
         xs: "h-7 w-7 [&>svg]:size-4 rounded-sm [&>svg]:stroke-[1.75]",
         sm: "h-8 w-8 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
         md: "h-9 w-9 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
@@ -102,6 +106,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
             isAutoPlay
             className={twMerge(
               "absolute rounded-xl",
+              size === "2xs" && "w-5",
               size === "xs" && "w-6",
               size === "sm" && "w-7",
               size === "md" && "w-8",

@@ -1,53 +1,85 @@
 import {
-  ActivityIcon,
-  BookCheck,
-  Database,
+  ClipboardList,
   FileText,
-  Globe,
-  ScrollText,
-  Search,
-  Settings,
+  FolderOpen,
+  Radar,
   Shield,
+  ShieldCheck,
   Video
 } from "lucide-react";
 
+import { SidebarCollapsibleGroup } from "@app/components/v3";
+import { useGetPamAccessCapabilities, useGetPamAccessRequestCount } from "@app/hooks/api/pam";
+
 import { ProjectNavList } from "./ProjectNavLink";
-import {
-  PAM_APPROVALS_SUBMENU,
-  PAM_SETTINGS_SUBMENU,
-  PROJECT_ACCESS_CONTROL_SUBMENU
-} from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
-  const items: NavItem[] = [
-    { label: "Resources", icon: Database, pathSuffix: "resources" },
-    { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery\// },
-    { label: "Sessions", icon: Video, pathSuffix: "sessions" },
-    { label: "Domains", icon: Globe, pathSuffix: "domains" },
-    { label: "Account Policies", icon: ScrollText, pathSuffix: "account-policies" },
-    {
-      label: "Approvals",
-      icon: BookCheck,
-      pathSuffix: "approvals",
-      activeMatch: /\/approvals\//,
-      submenu: PAM_APPROVALS_SUBMENU
-    },
-    {
-      label: "Access Control",
-      icon: Shield,
-      pathSuffix: "access-management",
-      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      submenu: PROJECT_ACCESS_CONTROL_SUBMENU
-    },
-    { label: "Insights", icon: ActivityIcon, pathSuffix: "insights" },
-    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    {
-      label: "Settings",
-      icon: Settings,
-      pathSuffix: "settings",
-      submenu: PAM_SETTINGS_SUBMENU
-    }
+  const { data: capabilities } = useGetPamAccessCapabilities();
+  const { data: accessRequestCount } = useGetPamAccessRequestCount();
+  const isProductAdmin = Boolean(capabilities?.isProductAdmin);
+  const canViewSessions = Boolean(capabilities?.canViewSessions);
+  const canViewAuditLogs = Boolean(capabilities?.canViewAuditLogs);
+  const isApprover = Boolean(accessRequestCount?.isApprover);
+  const pendingCount = accessRequestCount?.pendingCount ?? 0;
+
+  // Accounts is visible to all users - regular users see only their accessible accounts
+  const accessItems: NavItem[] = [{ label: "Accounts", icon: FolderOpen, pathSuffix: "accounts" }];
+
+  const manageItems: NavItem[] = [
+    ...(isProductAdmin
+      ? [{ label: "Account Templates", icon: ClipboardList, pathSuffix: "templates" }]
+      : []),
+    ...(isProductAdmin ? [{ label: "Discovery", icon: Radar, pathSuffix: "discovery" }] : [])
   ];
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+
+  const monitorItems: NavItem[] = [
+    ...(canViewSessions ? [{ label: "Sessions", icon: Video, pathSuffix: "sessions" }] : []),
+    ...(isApprover
+      ? [
+          {
+            label: "Approval Requests",
+            icon: ShieldCheck,
+            pathSuffix: "approval-requests",
+            badgeCount: pendingCount,
+            badgeVariant: "pam" as const
+          }
+        ]
+      : []),
+    ...(canViewAuditLogs ? [{ label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }] : [])
+  ];
+
+  const configureItems: NavItem[] = [
+    ...(isProductAdmin
+      ? [
+          {
+            label: "Access Control",
+            icon: Shield,
+            pathSuffix: "access-management",
+            activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
+          }
+        ]
+      : [])
+  ];
+
+  return (
+    <>
+      <ProjectNavList items={accessItems} onSubmenuOpen={onSubmenuOpen} />
+      {manageItems.length > 0 && (
+        <SidebarCollapsibleGroup label="Manage">
+          <ProjectNavList items={manageItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
+      {monitorItems.length > 0 && (
+        <SidebarCollapsibleGroup label="Monitor">
+          <ProjectNavList items={monitorItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
+      {configureItems.length > 0 && (
+        <SidebarCollapsibleGroup label="Configure">
+          <ProjectNavList items={configureItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
+    </>
+  );
 };

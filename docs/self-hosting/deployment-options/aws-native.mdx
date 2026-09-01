@@ -1,5 +1,6 @@
 ---
 title: "AWS (ECS with Fargate)"
+sidebarTitle: "ECS with Fargate"
 description: "Deploy Infisical on AWS using ECS Fargate, RDS, ElastiCache, and ALB."
 ---
 
@@ -16,7 +17,7 @@ Learn how to deploy **Infisical** on Amazon Web Services using **Elastic Contain
   Do not use the `latest` tag in production. Always pin to a specific version to avoid unexpected changes during upgrades.
 </Warning>
 
-## System Requirements
+## System requirements
 
 The following are minimum requirements for running Infisical on AWS ECS:
 
@@ -29,7 +30,7 @@ The following are minimum requirements for running Infisical on AWS ECS:
 
 For production deployments with many users or secrets, increase these values accordingly.
 
-## Deployment Steps
+## Deployment steps
 
 <Steps>
 <Step title="Set up network infrastructure (VPC, subnets, security groups)">
@@ -473,7 +474,7 @@ After completing the above steps, your Infisical instance should be running on A
 
 ---
 
-## Additional Configuration
+## Additional configuration
 
 <AccordionGroup>
   <Accordion title="Custom Domain with Route 53 and HTTPS">
@@ -857,7 +858,7 @@ After completing the above steps, your Infisical instance should be running on A
 
 ---
 
-## Infrastructure as Code
+## Infrastructure as code
 
 <AccordionGroup>
   <Accordion title="Terraform Example">
@@ -1354,7 +1355,9 @@ After completing the above steps, your Infisical instance should be running on A
     - Scale ECS tasks horizontally (increase desired count)
     - Scale RDS vertically (larger instance class)
     - Enable RDS Performance Insights for query analysis
-    - Consider connection pooling (PgBouncer)
+    - Tune the per-task connection pool with [`DB_POOL_MAX`](/self-hosting/configuration/envars#connection-pool-sizing-optional). Connection pools are per task, so `DatabaseConnections` scales with your task count and rolling deploys briefly double it. Lowering `DB_POOL_MAX` is usually the cheaper fix.
+    - Offload reads to replicas with `DB_READ_REPLICAS`
+    - Consider a connection pooler (RDS Proxy or PgBouncer) only once task count alone pushes you near `max_connections`
   </Accordion>
 
   <Accordion title="ECS Exec not working">

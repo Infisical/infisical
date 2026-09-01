@@ -1,113 +1,39 @@
-import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
-import {
-  Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalContent,
-  TextArea
-} from "@app/components/v2";
+import { Button, Field, FieldError, FieldLabel, SheetClose, TextArea } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { emailListSchema, parseEmailList } from "@app/helpers/email";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
   useAddUserToWsNonE2EE,
   useFetchServerStatus,
   useGetOrgRoles,
-  useGetProjectRoles,
   useGetUserProjects
 } from "@app/hooks/api";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import {
+  MemberFormSheet,
+  MemberFormSheetBody,
+  MemberFormSheetFooter,
+  MemberFormSheetForm
+} from "./MemberFormSheet";
+import { OrganizationRoleField } from "./OrganizationRoleField";
 import { OrgInviteLink } from "./OrgInviteLink";
+import {
+  ProjectAssignmentFields,
+  projectAssignmentSchema,
+  resolveTargetProjects
+} from "./ProjectAssignmentFields";
+import { DEFAULT_PROJECT_ROLE } from "./ProjectRoleSelect";
 
-const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
-
-const BUILT_IN_PROJECT_ROLES = [
-  { slug: "admin", name: "Admin", description: "Full administrative access over a project" },
-  { slug: "member", name: "Member", description: "Limited read/write role in a project" },
-  { slug: "viewer", name: "Viewer", description: "Only read role in a project" },
-  { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
-];
-
-const CERT_MANAGER_ROLES = [
-  {
-    slug: "admin",
-    name: "Admin",
-    description: "Full administrative access over Certificate Manager"
-  },
-  {
-    slug: "member",
-    name: "Member",
-    description: "Access scoped to the Applications and Code Signers they've been added to"
-  }
-];
-
-type ProductDefinition = {
-  type: ProjectType;
-  name: string;
-  isSingleton: boolean;
-  roles?: { slug: string; name: string; description: string }[];
-};
-
-const PRODUCT_DEFINITIONS: ProductDefinition[] = [
-  { type: ProjectType.SecretManager, name: "Secrets", isSingleton: false },
-  {
-    type: ProjectType.CertificateManager,
-    name: "Certificate Manager",
-    isSingleton: true,
-    roles: CERT_MANAGER_ROLES
-  },
-  { type: ProjectType.KMS, name: "KMS", isSingleton: false },
-  { type: ProjectType.SSH, name: "SSH", isSingleton: false },
-  { type: ProjectType.SecretScanning, name: "Secret Scanning", isSingleton: false },
-  { type: ProjectType.PAM, name: "PAM", isSingleton: false },
-  { type: ProjectType.AI, name: "AI", isSingleton: false }
-];
-
-const EmailSchema = z.string().email().min(1).trim().toLowerCase();
-
-const addMemberFormSchema = z.object({
-  emails: z.string().min(1).trim().toLowerCase(),
-  product: z
-    .object({
-      type: z.nativeEnum(ProjectType),
-      name: z.string(),
-      isSingleton: z.boolean(),
-      roles: z
-        .object({
-          slug: z.string(),
-          name: z.string(),
-          description: z.string()
-        })
-        .array()
-        .optional()
-    })
-    .optional(),
-  projects: z
-    .array(
-      z.object({
-        name: z.string(),
-        id: z.string(),
-        slug: z.string(),
-        version: z.nativeEnum(ProjectVersion),
-        type: z.nativeEnum(ProjectType).optional()
-      })
-    )
-    .default([]),
-  projectRole: z
-    .object({
-      slug: z.string().min(1),
-      name: z.string().min(1)
-    })
-    .default(DEFAULT_PROJECT_ROLE),
+const addMemberFormSchema = projectAssignmentSchema.extend({
+  emails: emailListSchema,
   organizationRole: z.object({
     name: z.string(),
     slug: z.string(),
@@ -135,55 +61,25 @@ export const AddOrgMemberModal = ({
 }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
+  const { data: organizationRoles, isPending: isOrganizationRolesPending } = useGetOrgRoles(
+    currentOrg?.id ?? ""
+  );
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
-  const { data: rawProjects, isPending: isProjectsLoading } = useGetUserProjects({
+  const { data: rawProjects } = useGetUserProjects({
     includeRoles: true
   });
 
-  const availableProducts = useMemo(
-    () => PRODUCT_DEFINITIONS.filter((def) => rawProjects?.some((p) => p.type === def.type)),
-    [rawProjects]
-  );
-
+  const methods = useForm<TAddMemberForm>({
+    resolver: zodResolver(addMemberFormSchema)
+  });
   const {
     control,
     handleSubmit,
-    watch,
     reset,
-    setValue,
     formState: { isSubmitting }
-  } = useForm<TAddMemberForm>({
-    resolver: zodResolver(addMemberFormSchema)
-  });
-
-  const selectedProduct = watch("product");
-  const isSingletonProduct = Boolean(selectedProduct?.isSingleton);
-
-  const productProjects = useMemo(() => {
-    if (!rawProjects || !selectedProduct || selectedProduct.isSingleton) return [];
-    return rawProjects.filter((p) => p.type === selectedProduct.type);
-  }, [rawProjects, selectedProduct]);
-
-  const selectedProjects = watch("projects", []);
-  const singleSelectedProjectId =
-    selectedProjects.length === 1 ? selectedProjects[0].id : undefined;
-  const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
-    singleSelectedProjectId ?? ""
-  );
-
-  // eslint-disable-next-line no-nested-ternary
-  const projectRoles = selectedProduct?.roles
-    ? selectedProduct.roles
-    : fetchedProjectRoles?.length
-      ? fetchedProjectRoles
-      : BUILT_IN_PROJECT_ROLES;
-
-  useEffect(() => {
-    setValue("projectRole", DEFAULT_PROJECT_ROLE);
-  }, [singleSelectedProjectId, selectedProduct?.type, setValue]);
+  } = methods;
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -207,47 +103,10 @@ export const AddOrgMemberModal = ({
   }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
 
-    let targetProjects: typeof projectsToInvite = [];
-    if (product?.isSingleton) {
-      const singletonProject = rawProjects?.find((p) => p.type === product.type);
-      if (singletonProject) targetProjects = [singletonProject];
-    } else if (product) {
-      targetProjects = projectsToInvite;
-    }
+    const targetProjects = resolveTargetProjects(product, projectsToInvite, rawProjects);
+    if (!targetProjects) return;
 
-    if (!isSingletonProduct) {
-      // eslint-disable-next-line no-restricted-syntax
-      for (const project of targetProjects) {
-        if (project.version !== ProjectVersion.V3) {
-          createNotification({
-            type: "error",
-            text: `Cannot add users to project "${project.name}" because it's incompatible. Please upgrade the project.`
-          });
-          return;
-        }
-      }
-    }
-
-    const parsedEmails = emails
-      .replace(/\s/g, "")
-      .split(",")
-      .map((email) => {
-        if (EmailSchema.safeParse(email).success) {
-          return email.trim();
-        }
-
-        return null;
-      });
-
-    if (parsedEmails.includes(null)) {
-      createNotification({
-        text: "Invalid email addresses provided.",
-        type: "error"
-      });
-      return;
-    }
-
-    const usernames = emails.split(",").map((email) => email.trim());
+    const usernames = parseEmailList(emails);
     const { data } = await addUsersMutateAsync({
       organizationId: currentOrg?.id,
       inviteeEmails: usernames,
@@ -296,39 +155,42 @@ export const AddOrgMemberModal = ({
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addMember?.isOpen}
+    <MemberFormSheet
+      open={popUp?.addMember?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addMember", isOpen);
         setCompleteInviteLinks(null);
       }}
+      title={`Invite others to ${currentOrg?.name}`}
+      description={
+        completeInviteLinks
+          ? "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"
+          : "An invite is specific to an email address and expires after 1 day."
+      }
     >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={`Invite others to ${currentOrg?.name}`}
-        subTitle={
-          <div>
-            {!completeInviteLinks && (
-              <div>An invite is specific to an email address and expires after 1 day.</div>
-            )}
-            {completeInviteLinks &&
-              "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"}
-          </div>
-        }
-      >
-        {!completeInviteLinks && (
-          <form onSubmit={handleSubmit(onAddMembers)}>
+      {!completeInviteLinks && (
+        <FormProvider {...methods}>
+          <MemberFormSheetForm
+            onSubmit={handleSubmit(onAddMembers)}
+            onCancel={() => handlePopUpToggle("addMember", false)}
+            submitVariant="org"
+            isSubmitting={isSubmitting}
+          >
             <Controller
               control={control}
               name="emails"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Emails" isError={Boolean(error)} errorText={error?.message}>
+                <Field>
+                  <FieldLabel htmlFor="add-org-member-emails">Emails</FieldLabel>
                   <TextArea
-                    {...field}
-                    className="ring-opacity-70 mt-1 h-20 w-full min-w-120 rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 ring-primary-800 outline-hidden transition-all placeholder:text-bunker-400 focus:ring-2"
+                    id="add-org-member-emails"
+                    className="h-24"
+                    isError={Boolean(error)}
                     placeholder="email@example.com, email2@example.com..."
+                    {...field}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
 
@@ -336,150 +198,38 @@ export const AddOrgMemberModal = ({
               control={control}
               name="organizationRole"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="Select which organization role you want to assign to the user."
-                  label="Assign organization role"
+                <OrganizationRoleField
+                  id="add-org-member-org-role"
+                  options={organizationRoles ?? []}
+                  value={value}
+                  onValueChange={onChange}
                   isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <FilterableSelect
-                    placeholder="Select role..."
-                    options={organizationRoles}
-                    getOptionValue={(option) => option.slug}
-                    getOptionLabel={(option) => option.name}
-                    value={value}
-                    onChange={onChange}
-                    components={{ Option: RoleOption }}
-                  />
-                </FormControl>
+                  errorMessage={error?.message}
+                  isLoading={isOrganizationRolesPending}
+                />
               )}
             />
 
-            <Controller
-              control={control}
-              name="product"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="Select which product to grant the users access to."
-                  label="Assign users to a product"
-                  isOptional
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                >
-                  <FilterableSelect
-                    value={value ?? null}
-                    isLoading={isProjectsLoading}
-                    onChange={(option) => {
-                      onChange(option);
-                      setValue("projects", []);
-                      setValue("projectRole", DEFAULT_PROJECT_ROLE);
-                    }}
-                    getOptionLabel={(product) => product.name}
-                    getOptionValue={(product) => product.type}
-                    options={availableProducts}
-                    placeholder="Select a product..."
-                  />
-                </FormControl>
-              )}
-            />
-
-            {selectedProduct && !isSingletonProduct && (
-              <Controller
-                control={control}
-                name="projects"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Assign users to projects"
-                    isOptional
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <FilterableSelect
-                      isMulti
-                      value={value}
-                      onChange={onChange}
-                      isLoading={isProjectsLoading}
-                      getOptionLabel={(project) => project.name}
-                      getOptionValue={(project) => project.id}
-                      options={productProjects}
-                      placeholder="Select projects..."
-                    />
-                  </FormControl>
-                )}
-              />
-            )}
-
-            {selectedProduct && (
-              <Controller
-                control={control}
-                name="projectRole"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText={
-                      isSingletonProduct ? (
-                        "Select which role to assign to the users for this product."
-                      ) : (
-                        <>
-                          Select which role to assign to the users in the selected projects.
-                          <br />
-                          <br />
-                          When multiple projects are selected, only built-in roles are available for
-                          selection.
-                          <br />
-                          <br />
-                          You can assign users to additional projects after they&apos;ve been
-                          invited.
-                        </>
-                      )
-                    }
-                    label={isSingletonProduct ? "Product role" : "Project role"}
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <FilterableSelect
-                      isDisabled={!isSingletonProduct && selectedProjects.length === 0}
-                      isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
-                      value={value}
-                      onChange={onChange}
-                      options={projectRoles ?? []}
-                      getOptionValue={(option) => option.slug}
-                      getOptionLabel={(option) => option.name}
-                      placeholder="Select role..."
-                      components={{ Option: RoleOption }}
-                    />
-                  </FormControl>
-                )}
-              />
-            )}
-
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Add Member
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("addMember", false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        )}
-        {completeInviteLinks && (
-          <div className="space-y-3">
+            <ProjectAssignmentFields />
+          </MemberFormSheetForm>
+        </FormProvider>
+      )}
+      {completeInviteLinks && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <MemberFormSheetBody>
             {completeInviteLinks.map((invite) => (
               <OrgInviteLink key={`invite-${invite.email}`} invite={invite} />
             ))}
-          </div>
-        )}
-      </ModalContent>
-    </Modal>
+          </MemberFormSheetBody>
+          <MemberFormSheetFooter>
+            <SheetClose asChild>
+              <Button type="button" variant="org">
+                Done
+              </Button>
+            </SheetClose>
+          </MemberFormSheetFooter>
+        </div>
+      )}
+    </MemberFormSheet>
   );
 };

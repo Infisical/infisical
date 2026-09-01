@@ -2,9 +2,10 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { BasePkiSyncOptionsSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { CHEF_PKI_SYNC_CERTIFICATE_NAMING, CHEF_PKI_SYNC_DATA_BAG_NAMING } from "./chef-pki-sync-constants";
 
@@ -27,11 +28,8 @@ const ChefFieldMappingsSchema = z.object({
   caCertificate: z.string().min(1, "CA certificate field name is required").default("ca_certificate")
 });
 
-const ChefPkiSyncOptionsSchema = z.object({
+const ChefPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   canImportCertificates: z.boolean().default(false),
-  canRemoveCertificates: z.boolean().default(true),
-  includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true),
   updateExistingCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
@@ -77,7 +75,7 @@ export const ChefPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateChefPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ChefPkiSyncConfigSchema,
   syncOptions: ChefPkiSyncOptionsSchema,
@@ -90,7 +88,7 @@ export const CreateChefPkiSyncSchema = z.object({
 
 export const UpdateChefPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: ChefPkiSyncConfigSchema.optional(),
   syncOptions: ChefPkiSyncOptionsSchema.optional(),

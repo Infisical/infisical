@@ -29,7 +29,7 @@ The Infisical KMIP server provides Key Management Interoperability Protocol (KMI
 
 The server is created in Infisical and then enrolled from the host where you run it, using either a one-time enrollment **token** or **AWS** authentication. The deploy command (including the enrollment token) can be copied from the server's detail page via **Show deploy command**.
 
-The server's certificate configuration (hostnames/IPs, TTL, and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. To change the certificate, edit the configuration in the UI and restart the server.
+The server's certificate configuration (hostnames/IPs and key algorithm) is defined on the server entity in the UI. The CLI fetches it on start, so you do not pass it on the command line. The running server renews its certificate automatically before it expires, with no restart required. To change the certificate configuration, edit it in the UI; the change applies at the next automatic renewal, or restart the server to apply it immediately.
 
 For detailed information about KMIP integration, PKI setup, and client configuration, see the [KMIP Integration Guide](/documentation/platform/kms/kmip).
 
@@ -189,11 +189,11 @@ For token enrollment, the single-use token is exchanged for a long-lived access 
 3. Reloads the systemd daemon
 4. Enables the service to start on boot
 
-### Arguments & Flags
+### Arguments & flags
 
 Like `infisical kmip start`, this command takes the `<server-name>` as a required positional argument (or via `--server-name` / `INFISICAL_KMIP_SERVER_NAME`). It accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
 
-### Service Details
+### Service details
 
 The systemd service is installed with secure defaults:
 

@@ -8,9 +8,14 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.AwsSecretsManager]: "AWS Secrets Manager",
   [PkiSync.AwsElasticLoadBalancer]: "AWS Elastic Load Balancer",
   [PkiSync.Chef]: "Chef",
+  [PkiSync.GcpCertificateManager]: "GCP Certificate Manager",
   [PkiSync.CloudflareCustomCertificate]: "Cloudflare Custom SSL Certificate",
   [PkiSync.NetScaler]: "NetScaler",
-  [PkiSync.F5BigIp]: "F5 BIG-IP"
+  [PkiSync.F5BigIp]: "F5 BIG-IP",
+  [PkiSync.KempLoadMaster]: "Kemp LoadMaster",
+  [PkiSync.LinuxServer]: "Linux Server",
+  [PkiSync.WindowsServer]: "Windows Server",
+  [PkiSync.NutanixPrismCentral]: "Nutanix Prism Central"
 };
 
 export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
@@ -19,7 +24,12 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef,
+  [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
-  [PkiSync.F5BigIp]: AppConnection.F5BigIp
+  [PkiSync.F5BigIp]: AppConnection.F5BigIp,
+  [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
+  [PkiSync.LinuxServer]: AppConnection.SSH,
+  [PkiSync.WindowsServer]: AppConnection.WinRM,
+  [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };

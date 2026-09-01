@@ -107,6 +107,24 @@ export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<bo
 };
 
 /**
+ * Extract the value of the first CN RDN from an LDAP DN string.
+ * RFC 4514 attribute types are case-insensitive.
+ *
+ * Expects the ldapjs DN.toString() serialization, which hex-escapes commas
+ * inside values (\2c), so splitting on "," cannot cut a value in half. A raw
+ * RFC 4514 string using the alternative `\,` escape form would be split
+ * mid-value; do not pass DNs from other sources.
+ */
+export const extractCnFromDn = (dn: string): string | undefined => {
+  const cnRdn = dn
+    .split(",")
+    .map((rdn) => rdn.trim())
+    .find((rdn) => rdn.slice(0, 3).toLowerCase() === "cn=");
+
+  return cnRdn?.substring(3);
+};
+
+/**
  * Search for groups in the LDAP server
  * @param ldapConfig - The LDAP configuration to use
  * @param filter - The filter to use when searching for groups
@@ -143,12 +161,9 @@ export const searchGroups = async (
 
         res.on("searchEntry", (entry) => {
           const dn = entry.dn.toString();
-          const cnStartIndex = dn.indexOf("cn=");
+          const cn = extractCnFromDn(dn);
 
-          if (cnStartIndex !== -1) {
-            const valueStartIndex = cnStartIndex + 3;
-            const commaIndex = dn.indexOf(",", valueStartIndex);
-            const cn = dn.substring(valueStartIndex, commaIndex === -1 ? undefined : commaIndex);
+          if (cn !== undefined) {
             groups.push({ dn, cn });
           }
         });

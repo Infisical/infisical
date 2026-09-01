@@ -7,6 +7,7 @@ import NProgress from "nprogress";
 
 import { Lottie } from "./components/v2";
 import { queryClient } from "./hooks/api/reactQuery";
+import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
@@ -14,6 +15,9 @@ import { routeTree } from "./routeTree.gen";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/500.css";
 import "@xyflow/react/dist/style.css";
 import "nprogress/nprogress.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
@@ -23,6 +27,8 @@ import "./translation";
 // don't want to use this?
 // have a look at the Quick start guide
 // for passing in lng and translations on init/
+
+initializePlatform();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);

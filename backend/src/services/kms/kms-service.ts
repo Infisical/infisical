@@ -13,21 +13,30 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
-import { PgSqlLock } from "@app/keystore/keystore";
-import { TEnvConfig } from "@app/lib/config/env";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
+import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
+import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { delay } from "@app/lib/delay";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
+  getKekLabel,
+  KMS_LEGACY_ENCRYPTION_KEY_UUID,
   KMS_ROOT_CONFIG_UUID,
+  MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  resolveInstanceEncryptionKeyBuffer,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -35,7 +44,9 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TInternalKmsKeyVersionDALFactory } from "./internal-kms-key-version-dal";
+import { TKmsKekHistoryDALFactory } from "./kms-kek-history-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
+import { TKmsLegacyEncryptionKeyDALFactory } from "./kms-legacy-encryption-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
@@ -48,12 +59,14 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGenerateMacDTO,
   TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
   TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
   TSignWithKmsDTO,
   TUpdateProjectSecretManagerKmsKeyDTO,
+  TVerifyMacDTO,
   TVerifyWithKmsDTO
 } from "./kms-types";
 
@@ -61,14 +74,37 @@ type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
-  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
+  kmsRootConfigDAL: Pick<
+    TKmsRootConfigDALFactory,
+    | "findById"
+    | "create"
+    | "updateById"
+    | "transaction"
+    | "findAll"
+    | "findStaged"
+    | "findRetained"
+    | "deleteAllStaged"
+    | "deleteById"
+  >;
+  kmsLegacyEncryptionKeyDAL: Pick<TKmsLegacyEncryptionKeyDALFactory, "findById" | "create" | "transaction">;
+  kmsKekHistoryDAL: Pick<
+    TKmsKekHistoryDALFactory,
+    "create" | "updateById" | "findHistoryPage" | "findActiveByLabel" | "findCurrent"
+  >;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
   internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
   hsmService: THsmServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
+
+type TCachedProjectSmKmsMaterial = {
+  kmsSecretManagerKeyId: string | null;
+  kmsSecretManagerEncryptedDataKey: string | null;
+  orgId: string;
+};
 
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
@@ -82,6 +118,7 @@ const KMS_KEY_VERSION_BLOB_LENGTH = 4;
 // malformed/attacker input and must fall through to the legacy path rather than reading out of bounds.
 const MIN_AES_GCM_BLOB_LENGTH = 12 + 16;
 const MIN_V02_BLOB_LENGTH = MIN_AES_GCM_BLOB_LENGTH + KMS_KEY_VERSION_BLOB_LENGTH + KMS_VERSION_BLOB_LENGTH;
+const KMS_PROJECT_SM_MATERIAL_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 
 // Single source of truth for the cipher-blob trailer so the encode side here and the decode side in
 // decryptWithKmsKey can never drift: v1 keys get the legacy 3-byte "v01" suffix (byte-identical to pre-rotation
@@ -103,11 +140,14 @@ export const kmsServiceFactory = ({
   envConfig,
   kmsDAL,
   kmsRootConfigDAL,
+  kmsLegacyEncryptionKeyDAL,
+  kmsKekHistoryDAL,
   internalKmsDAL,
   internalKmsKeyVersionDAL,
   orgDAL,
   projectDAL,
-  hsmService
+  hsmService,
+  keyStore
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY: Buffer = Buffer.alloc(0);
 
@@ -120,6 +160,7 @@ export const kmsServiceFactory = ({
     orgId,
     isReserved = true,
     isExportable = true,
+    hasDeleteProtection = false,
     tx,
     name,
     projectId,
@@ -143,6 +184,8 @@ export const kmsServiceFactory = ({
 
       // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
       await getPublicKeyFromPrivateKey(kmsKeyMaterial);
+    } else if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      kmsKeyMaterial = hmacService(encryptionAlgorithm as HmacAlgorithm).generateKeyMaterial();
     }
 
     if (!kmsKeyMaterial) {
@@ -162,6 +205,7 @@ export const kmsServiceFactory = ({
           orgId,
           isReserved,
           isExportable,
+          hasDeleteProtection,
           projectId,
           description
         },
@@ -216,7 +260,7 @@ export const kmsServiceFactory = ({
       if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
         throw new BadRequestError({
           message:
-            "Only encrypt-decrypt keys support rotation. Rotate sign-verify keys manually by creating a new key and updating your applications to use it."
+            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
         });
       }
 
@@ -256,6 +300,7 @@ export const kmsServiceFactory = ({
 
   const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
     const kms = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
+    if (!kms) return;
     if (kms.isExternal) return;
     if (kms.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
     return kmsDAL.deleteById(kmsId, tx);
@@ -584,6 +629,7 @@ export const kmsServiceFactory = ({
       name,
       isReserved,
       isExportable = true,
+      hasDeleteProtection = false,
       projectId,
       orgId,
       keyUsage,
@@ -646,6 +692,14 @@ export const kmsServiceFactory = ({
       }
     }
 
+    if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      if (key.length < MIN_HMAC_IMPORT_KEY_BYTE_LENGTH || key.length > MAX_HMAC_IMPORT_KEY_BYTE_LENGTH) {
+        throw new BadRequestError({
+          message: `Invalid HMAC key material length. Expected between ${MIN_HMAC_IMPORT_KEY_BYTE_LENGTH} and ${MAX_HMAC_IMPORT_KEY_BYTE_LENGTH} bytes, got ${key.length}.`
+        });
+      }
+    }
+
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     const encryptedKeyMaterial = cipher.encrypt(key, ROOT_ENCRYPTION_KEY);
@@ -658,6 +712,7 @@ export const kmsServiceFactory = ({
           orgId,
           isReserved,
           isExportable,
+          hasDeleteProtection,
           projectId,
           kmipMetadata
         },
@@ -745,6 +800,46 @@ export const kmsServiceFactory = ({
       const publicKey = await getPublicKeyFromPrivateKey(kmsKey);
       const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
+    };
+  };
+
+  const generateMac = async ({ kmsId }: Pick<TGenerateMacDTO, "kmsId">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, macAlgorithm, {
+      forceType: KmsKeyUsage.GENERATE_VERIFY_MAC
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { generateMac: generate } = hmacService(macAlgorithm);
+    return ({ data }: Pick<TGenerateMacDTO, "data">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const mac = generate(data, kmsKey);
+      return { mac, algorithm: macAlgorithm };
+    };
+  };
+
+  const verifyMac = async ({ kmsId }: Pick<TVerifyMacDTO, "kmsId">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, macAlgorithm, {
+      forceType: KmsKeyUsage.GENERATE_VERIFY_MAC
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { verifyMac: verify } = hmacService(macAlgorithm);
+    return ({ data, mac }: Pick<TVerifyMacDTO, "data" | "mac">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const macValid = verify(data, mac, kmsKey);
+      return { macValid, algorithm: macAlgorithm };
     };
   };
 
@@ -907,11 +1002,110 @@ export const kmsServiceFactory = ({
     return key.id;
   };
 
+  // Drops the cached KMS material for a project. Call after the writing transaction commits. Retries transient
+  // Redis failures; a final failure is safe to swallow: stale entries either degrade gracefully (creation,
+  // backup restore) or are recovered by the NotFound self-heal in $getProjectSecretManagerKmsDataKey (rotation).
+  const $invalidateProjectSecretManagerKmsMaterialCache = async (projectId: string) => {
+    const cacheKey = KeyStorePrefixes.KmsProjectSecretManagerMaterial(projectId);
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await keyStore.deleteItem(cacheKey);
+        return;
+      } catch (err) {
+        if (attempt === maxAttempts) {
+          logger.error(
+            { err, projectId },
+            `Failed to invalidate project KMS material cache after ${maxAttempts} attempts; stale reads self-heal on decrypt [projectId=${projectId}]`
+          );
+          return;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await delay(100 * attempt);
+      }
+    }
+  };
+
+  // Opportunistic cache repair for fresh (skipCache) readers: if a cached entry exists and disagrees with the
+  // project row just read from the DB, drop it so cached readers converge before the TTL expires.
+  const $repairProjectSecretManagerKmsMaterialCache = async (
+    projectId: string,
+    fresh: { kmsSecretManagerKeyId?: string | null; kmsSecretManagerEncryptedDataKey?: Buffer | null }
+  ) => {
+    try {
+      const raw = await keyStore.getItem(KeyStorePrefixes.KmsProjectSecretManagerMaterial(projectId));
+      if (!raw) return;
+      const cached = JSON.parse(raw) as TCachedProjectSmKmsMaterial;
+      const freshEncryptedDataKey = fresh.kmsSecretManagerEncryptedDataKey
+        ? Buffer.from(fresh.kmsSecretManagerEncryptedDataKey).toString("base64")
+        : null;
+      if (
+        cached.kmsSecretManagerKeyId === (fresh.kmsSecretManagerKeyId ?? null) &&
+        cached.kmsSecretManagerEncryptedDataKey === freshEncryptedDataKey
+      ) {
+        return;
+      }
+      logger.warn(
+        { projectId },
+        `Cached project KMS material disagrees with DB; dropping stale cache entry [projectId=${projectId}]`
+      );
+      await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
+    } catch (err) {
+      // best-effort: the fresh read already succeeded, so a failed repair must never fail the request
+      logger.warn({ err, projectId }, `Failed to repair project KMS material cache [projectId=${projectId}]`);
+    }
+  };
+
+  const $getCachedProjectSecretManagerKmsMaterial = async (projectId: string) => {
+    const cached = await withCache<TCachedProjectSmKmsMaterial>({
+      keyStore,
+      key: KeyStorePrefixes.KmsProjectSecretManagerMaterial(projectId),
+      ttlSeconds: KMS_PROJECT_SM_MATERIAL_CACHE_TTL_SECONDS,
+      fetcher: async () => {
+        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+          projectDAL.findById(projectId)
+        );
+        if (!project) {
+          throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+        }
+        return {
+          kmsSecretManagerKeyId: project.kmsSecretManagerKeyId ?? null,
+          kmsSecretManagerEncryptedDataKey: project.kmsSecretManagerEncryptedDataKey
+            ? Buffer.from(project.kmsSecretManagerEncryptedDataKey).toString("base64")
+            : null,
+          orgId: project.orgId
+        };
+      }
+    });
+
+    return {
+      kmsSecretManagerKeyId: cached.kmsSecretManagerKeyId,
+      kmsSecretManagerEncryptedDataKey: cached.kmsSecretManagerEncryptedDataKey
+        ? Buffer.from(cached.kmsSecretManagerEncryptedDataKey, "base64")
+        : null,
+      orgId: cached.orgId
+    };
+  };
+
   /** Single project row read; reuses snapshot for data-key path to avoid duplicate findById. */
-  const $getProjectSecretManagerKmsKeyIdAndProject = async (projectId: string, trx?: Knex) => {
+  const $getProjectSecretManagerKmsKeyIdAndProject = async (projectId: string, trx?: Knex, skipCache = false) => {
+    // Transactional callers (key/data-key creation, rotation, backup restore) must read fresh under their advisory lock
+    if (!trx && !skipCache) {
+      const material = await $getCachedProjectSecretManagerKmsMaterial(projectId);
+      if (material.kmsSecretManagerKeyId) {
+        return { kmsKeyId: material.kmsSecretManagerKeyId, project: material };
+      }
+      // No key yet: fall through to first-use creation below, which invalidates the (miss-populated) cache entry.
+    }
+
     const project = await projectDAL.findById(projectId, trx);
     if (!project) {
       throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    }
+
+    if (!trx && skipCache) {
+      await $repairProjectSecretManagerKmsMaterialCache(projectId, project);
     }
 
     if (!project.kmsSecretManagerKeyId) {
@@ -927,6 +1121,9 @@ export const kmsServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectKeyCreation(projectId)]);
         return $createProjectKmsKey(projectId, tx);
       });
+      // First-use key creation wrote kmsSecretManagerKeyId: drop the stale (keyId=null) cache entry the miss just
+      // wrote so the next read repopulates with the provisioned key.
+      await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
 
       return { kmsKeyId, project };
     }
@@ -934,8 +1131,8 @@ export const kmsServiceFactory = ({
     return { kmsKeyId: project.kmsSecretManagerKeyId, project };
   };
 
-  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
-    const { kmsKeyId } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex, skipCache = false) => {
+    const { kmsKeyId } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx, skipCache);
     return kmsKeyId;
   };
 
@@ -955,8 +1152,12 @@ export const kmsServiceFactory = ({
     return dataKey;
   };
 
-  const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
-    const { kmsKeyId, project: projectSnapshot } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+  const $getProjectSecretManagerKmsDataKeyImpl = async (projectId: string, trx?: Knex, skipCache = false) => {
+    const { kmsKeyId, project: projectSnapshot } = await $getProjectSecretManagerKmsKeyIdAndProject(
+      projectId,
+      trx,
+      skipCache
+    );
     let project = projectSnapshot;
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
@@ -972,6 +1173,9 @@ export const kmsServiceFactory = ({
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectDataKeyCreation(projectId)]);
           return $createProjectKmsDataKey(projectId, kmsKeyId, tx);
         });
+        // First-use data-key creation committed a new kmsSecretManagerEncryptedDataKey: drop the cache entry
+        // (which may still hold encryptedDataKey=null) so the next read repopulates with the new ciphertext.
+        await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
       }
 
       if (projectDataKey) {
@@ -995,6 +1199,24 @@ export const kmsServiceFactory = ({
     });
   };
 
+  const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
+    try {
+      return await $getProjectSecretManagerKmsDataKeyImpl(projectId, trx);
+    } catch (err) {
+      // Self-heal: a NotFound here means the cached material points at a KMS key deleted by rotation
+      // (invalidation failed). Drop the entry and retry once bypassing the cache.
+      if (!trx && err instanceof NotFoundError) {
+        logger.warn(
+          { err, projectId },
+          `Project KMS material resolved from cache failed with NotFound; invalidating cache and retrying fresh [projectId=${projectId}]`
+        );
+        await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
+        return await $getProjectSecretManagerKmsDataKeyImpl(projectId, undefined, true);
+      }
+      throw err;
+    }
+  };
+
   const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO, trx?: Knex) => {
     switch (dto.type) {
       case KmsDataKey.SecretManager: {
@@ -1006,20 +1228,7 @@ export const kmsServiceFactory = ({
     }
   };
 
-  const $getBasicEncryptionKey = () => {
-    const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
-
-    const isBase64 = !envConfig.ENCRYPTION_KEY;
-    if (!encryptionKey)
-      throw new BadRequestError({
-        message:
-          "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
-      });
-
-    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
-
-    return encryptionKeyBuffer;
-  };
+  const $getBasicEncryptionKey = () => resolveInstanceEncryptionKeyBuffer(envConfig);
 
   const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
     // case 1: root key is encrypted with HSM
@@ -1096,7 +1305,8 @@ export const kmsServiceFactory = ({
   };
 
   const updateProjectSecretManagerKmsKey = async ({ projectId, kms }: TUpdateProjectSecretManagerKmsKeyDTO) => {
-    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
+    // a stale cached id from a previous rotation whose invalidation failed would point at a deleted key row here.
+    const { kmsKeyId } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, undefined, true);
     const currentKms = await kmsDAL.findById(kmsKeyId);
 
     // case: internal kms -> internal kms. no change needed
@@ -1126,7 +1336,7 @@ export const kmsServiceFactory = ({
     }
 
     const dataKey = await $getProjectSecretManagerKmsDataKey(projectId);
-    return kmsDAL.transaction(async (tx) => {
+    const rotatedKms = await kmsDAL.transaction(async (tx) => {
       const project = await projectDAL.findById(projectId, tx);
       let kmsId;
       if (kms.type === KmsType.Internal) {
@@ -1156,6 +1366,10 @@ export const kmsServiceFactory = ({
       const newKms = await kmsDAL.findById(kmsId, tx);
       return KmsSanitizedSchema.parseAsync({ isExternal: !currentKms.isReserved, ...newKms });
     });
+
+    await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
+
+    return rotatedKms;
   };
 
   const getProjectKeyBackup = async (projectId: string) => {
@@ -1216,6 +1430,9 @@ export const kmsServiceFactory = ({
     }
 
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(backupKmsKeyId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${backupKmsKeyId}' not found` });
+    }
     if (kmsDoc.orgId !== project.orgId)
       throw new ForbiddenRequestError({
         message: "Backup does not belong to project"
@@ -1244,8 +1461,17 @@ export const kmsServiceFactory = ({
         },
         tx
       );
-      return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
+      const restoredKms = await kmsDAL.findByIdWithAssociatedKms(key.id, tx);
+      if (!restoredKms) {
+        // invariant: the key was created in this same transaction
+        throw new NotFoundError({ message: `KMS with ID '${key.id}' not found` });
+      }
+      return restoredKms;
     });
+
+    // Backup restore re-pointed the project at a freshly generated KMS key + re-wrapped data key,
+    // so any cached material for this project is now stale.
+    await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
 
     return {
       secretManagerKmsKey: newKms
@@ -1255,7 +1481,7 @@ export const kmsServiceFactory = ({
   const getKmsById = async (kmsKeyId: string, tx?: Knex) => {
     const kms = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
 
-    if (!kms.id) {
+    if (!kms) {
       throw new NotFoundError({
         message: `KMS with ID '${kmsKeyId}' not found`
       });
@@ -1264,42 +1490,334 @@ export const kmsServiceFactory = ({
     return { id, name, orgId, isExternal };
   };
 
-  const startService = async (hsmStatus: THsmStatus) => {
-    const kmsRootConfig = await kmsRootConfigDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
-      // check if KMS root key was already generated and saved in DB
-      const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-      if (existingRootConfig) return existingRootConfig;
-
-      const isHsmActive = hsmStatus.isHsmConfigured;
-
-      logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
-      const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
-
-      const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
-
-      const encryptedRootKey = await $encryptRootKey(newRootKey, encryptionStrategy).catch((err) => {
-        logger.error({ hsmEnabled: isHsmActive, encryptionStrategy }, "KMS: Failed to encrypt ROOT Key");
-        throw err;
-      });
-
-      const newRootConfig = await kmsRootConfigDAL.create({
-        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-        id: KMS_ROOT_CONFIG_UUID,
-        encryptedRootKey,
-        encryptionStrategy
-      });
-      return newRootConfig;
-    });
-
-    const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
-
-    logger.info("KMS: Loading ROOT Key into Memory.");
-
-    ROOT_ENCRYPTION_KEY = decryptedRootKey;
+  /** Null under HSM, where no env key is involved. */
+  const $currentKekLabel = () => {
+    try {
+      return getKekLabel($getBasicEncryptionKey());
+    } catch {
+      return null;
+    }
   };
 
+  /**
+   * The order matters twice: it keeps resolution deterministic when a key is rotated away from and
+   * later back to (two rows then open with the same key), and it makes the steady state a single
+   * decrypt, which under HSM is a device round trip.
+   */
+  const $orderRootConfigsForResolution = (rows: TKmsRootConfig[]) => {
+    const sentinel = rows.filter((row) => row.id === KMS_ROOT_CONFIG_UUID);
+    const others = rows.filter((row) => row.id !== KMS_ROOT_CONFIG_UUID);
+    return [...sentinel, ...others.filter((row) => !row.activatedAt), ...others.filter((row) => row.activatedAt)];
+  };
+
+  /**
+   * The moment a rotation takes effect. Driven by a booting pod rather than the rotate endpoint, so
+   * that generating a key is inert and an operator who never deploys it has changed nothing.
+   */
+  const $promoteRotation = async (stagedId: string, label: string | null) => {
+    return kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const staged = await kmsRootConfigDAL.findById(stagedId, tx);
+      // Another pod promoted first, writing what we were about to write.
+      if (!staged || staged.activatedAt) return false;
+
+      const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      if (!sentinel) {
+        throw new InternalServerError({ message: "KMS root config is missing its active row" });
+      }
+
+      const now = new Date();
+
+      const olderRetained = await kmsRootConfigDAL.findRetained(tx);
+
+      // The grace window, so pods that have not rolled over can still boot. Not a rollback path.
+      await kmsRootConfigDAL.create(
+        {
+          encryptedRootKey: sentinel.encryptedRootKey,
+          encryptionStrategy: sentinel.encryptionStrategy,
+          kekLabel: sentinel.kekLabel,
+          activatedAt: sentinel.activatedAt ?? sentinel.createdAt,
+          supersededAt: now
+        },
+        tx
+      );
+
+      await kmsRootConfigDAL.updateById(
+        KMS_ROOT_CONFIG_UUID,
+        {
+          encryptedRootKey: staged.encryptedRootKey,
+          encryptionStrategy: staged.encryptionStrategy,
+          kekLabel: staged.kekLabel ?? label,
+          activatedAt: now,
+          supersededAt: null
+        },
+        tx
+      );
+
+      await kmsRootConfigDAL.deleteAllStaged(tx);
+
+      const promotedLabel = staged.kekLabel ?? label;
+      const previous = await kmsKekHistoryDAL.findCurrent(tx);
+      if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
+      if (promotedLabel) {
+        await kmsKekHistoryDAL.create({ kekLabel: promotedLabel, activatedAt: now }, tx);
+      }
+
+      // Exactly one retained key survives a promotion.
+      for (const stale of olderRetained) {
+        // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
+        await kmsRootConfigDAL.deleteById(stale.id, tx);
+        // eslint-disable-next-line no-await-in-loop
+        const entry = stale.kekLabel ? await kmsKekHistoryDAL.findActiveByLabel(stale.kekLabel, tx) : undefined;
+        // eslint-disable-next-line no-await-in-loop
+        if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: now }, tx);
+        logger.info(
+          `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${
+            stale.kekLabel ?? "unknown"
+          }]`
+        );
+      }
+
+      return true;
+    });
+  };
+
+  const $bootstrapRootKey = async (hsmStatus: THsmStatus, skipRotationState = false) => {
+    const isHsmActive = hsmStatus.isHsmConfigured;
+
+    logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
+    const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
+    const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+
+    // Wrapped before the transaction opens: this can be an HSM round trip. If another pod wins the
+    // race below, this key is discarded unused.
+    const encryptedRootKey = await $encryptRootKey(newRootKey, encryptionStrategy).catch((err) => {
+      logger.error({ hsmEnabled: isHsmActive, encryptionStrategy }, "KMS: Failed to encrypt ROOT Key");
+      throw err;
+    });
+
+    return kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const existing = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      if (existing) return existing;
+
+      return kmsRootConfigDAL.create(
+        {
+          // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+          id: KMS_ROOT_CONFIG_UUID,
+          encryptedRootKey,
+          encryptionStrategy,
+          ...(skipRotationState ? {} : { activatedAt: new Date() })
+        },
+        tx
+      );
+    });
+  };
+
+  const $resolveRootKey = async (hsmStatus: THsmStatus, skipRotationState = false) => {
+    const rows = await kmsRootConfigDAL.findAll();
+    if (!rows.length) {
+      const created = await $bootstrapRootKey(hsmStatus, skipRotationState);
+      return $decryptRootKey(created);
+    }
+
+    const errors: unknown[] = [];
+    for (const row of $orderRootConfigsForResolution(rows)) {
+      // eslint-disable-next-line no-await-in-loop -- at most three rows, and the first hit returns
+      const rootKey = await $decryptRootKey(row).then(
+        (key) => key,
+        (err: unknown) => {
+          if (row.encryptionStrategy === RootKeyEncryptionStrategy.HSM) throw err;
+          errors.push(err);
+          return null;
+        }
+      );
+
+      if (rootKey) {
+        // Everything below this point writes rotation-feature state, which the migration path must not
+        // touch: historical migrations boot this service long before the migration that adds it.
+        if (skipRotationState) return rootKey;
+
+        if (!row.activatedAt && row.id !== KMS_ROOT_CONFIG_UUID) {
+          const label = $currentKekLabel();
+          // eslint-disable-next-line no-await-in-loop
+          const promoted = await $promoteRotation(row.id, label);
+          if (promoted) {
+            logger.info(
+              `KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`
+            );
+          }
+        }
+
+        // Rows written before the label existed get it from the pod that can actually decrypt them,
+        // which is the only place the value is derivable.
+        if (!row.kekLabel) {
+          const label = $currentKekLabel();
+          if (label) {
+            // eslint-disable-next-line no-await-in-loop
+            await kmsRootConfigDAL
+              .updateById(row.id, { kekLabel: label })
+              .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to label a root key row"));
+          }
+        }
+
+        // Only a retained copy is worth stamping: it is positive evidence that a straggler still holds
+        // that key, which is what makes the rotation GC decline to remove it. Absence proves nothing,
+        // since an instance that never restarts never stamps. The sentinel is never deleted, so
+        // stamping it would be a write on every boot for nothing.
+        if (row.supersededAt) {
+          // eslint-disable-next-line no-await-in-loop
+          await kmsRootConfigDAL
+            .updateById(row.id, { lastResolvedAt: new Date() })
+            .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to record use of a superseded root key"));
+          logger.warn(
+            `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [label=${
+              $currentKekLabel() ?? "hsm"
+            }]. Roll it onto the current key before the previous one is removed.`
+          );
+        }
+
+        return rootKey;
+      }
+    }
+
+    const label = $currentKekLabel();
+    const history = await kmsKekHistoryDAL.findHistoryPage({ offset: 0, limit: 5 }).catch(() => []);
+    const known = history.map((entry) => entry.kekLabel).join(", ");
+    logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
+    throw new InternalServerError({
+      message: `The configured encryption key (label ${label ?? "unknown"}) does not decrypt this database's root key. ${
+        known
+          ? `This database was last written with encryption key label(s): ${known}. Set the matching key and restart.`
+          : "Set the encryption key this database was created with and restart."
+      }`
+    });
+  };
+
+  const $parseLegacyKeySnapshot = (encryptedKeySnapshot: Buffer) =>
+    JSON.parse(decryptWithRootKey()(encryptedKeySnapshot).toString("utf8")) as TLegacyKeyMaterial;
+
+  /**
+   * Snapshots the legacy tier's env keys under the in-DB root key, which survives an env-key rotation.
+   * After this that tier no longer reads process.env, so rotating cannot strand its rows.
+   */
+  const $ensureLegacyKeyMaterial = async () => {
+    const existing = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID);
+    if (existing) {
+      setLegacyKeyMaterial($parseLegacyKeySnapshot(existing.encryptedKeySnapshot));
+      return;
+    }
+
+    const current: TLegacyKeySnapshot = {
+      ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
+      ROOT_ENCRYPTION_KEY: envConfig.ROOT_ENCRYPTION_KEY
+    };
+
+    // The FIPS relabel overwrites ROOT_ENCRYPTION_KEY unconditionally, so `current` can be missing the
+    // key existing rows were written under. Capturing it also means fixing that later needs no repair.
+    const originalCfg = getOriginalConfig() as TLegacyKeySnapshot | undefined;
+    const original: TLegacyKeySnapshot | undefined = originalCfg
+      ? { ENCRYPTION_KEY: originalCfg.ENCRYPTION_KEY, ROOT_ENCRYPTION_KEY: originalCfg.ROOT_ENCRYPTION_KEY }
+      : undefined;
+
+    const hasKey = (snapshot?: TLegacyKeySnapshot) =>
+      Boolean(snapshot && (snapshot.ENCRYPTION_KEY || snapshot.ROOT_ENCRYPTION_KEY));
+
+    // Pure HSM, no env key: leave the legacy tier throwing exactly as it does today.
+    if (!hasKey(current) && !hasKey(original)) return;
+
+    const material: TLegacyKeyMaterial = { current, original };
+    const encryptedKeySnapshot = encryptWithRootKey()(Buffer.from(JSON.stringify(material), "utf8"));
+
+    await kmsLegacyEncryptionKeyDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+      const alreadySeeded = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID, tx);
+      if (alreadySeeded) return;
+      await kmsLegacyEncryptionKeyDAL.create(
+        {
+          // @ts-expect-error id is fixed so a concurrent seed conflicts rather than duplicating
+          id: KMS_LEGACY_ENCRYPTION_KEY_UUID,
+          encryptedKeySnapshot
+        },
+        tx
+      );
+    });
+
+    // Re-read so every pod lands on the row that won the race, not its own candidate.
+    const seeded = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID);
+    setLegacyKeyMaterial(seeded ? $parseLegacyKeySnapshot(seeded.encryptedKeySnapshot) : material);
+  };
+
+  /**
+   * Backfills the key an instance already runs with, so a pre-rotation dump still has a label an
+   * operator can match against an archived key.
+   */
+  const $ensureKekHistory = async () => {
+    const label = $currentKekLabel();
+    if (!label) return;
+
+    const current = await kmsKekHistoryDAL.findCurrent();
+    if (current) return;
+
+    const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+    await kmsRootConfigDAL
+      .transaction(async (tx) => {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+        if (await kmsKekHistoryDAL.findCurrent(tx)) return;
+        await kmsKekHistoryDAL.create(
+          { kekLabel: label, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() },
+          tx
+        );
+      })
+      .catch((err: unknown) => {
+        // Never block boot on a bookkeeping row.
+        logger.warn({ err }, "KMS: Failed to record initial encryption key history entry");
+      });
+  };
+
+  /**
+   * `skipRotationState` is for callers that run *inside* a database migration. Historical migrations boot
+   * this service to re-encrypt data, and they run long before the migration that adds the rotation
+   * columns and tables, so touching any of it there fails on a fresh database. Such a caller only needs
+   * the root key in memory; the legacy-key snapshot is deliberately skipped too, and the legacy helpers
+   * fall back to reading the environment, which is correct for a migration.
+   */
+  const startService = async (hsmStatus: THsmStatus, { skipRotationState = false } = {}) => {
+    const decryptedRootKey = await $resolveRootKey(hsmStatus, skipRotationState);
+
+    logger.info("KMS: Loading ROOT Key into Memory.");
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
+
+    if (skipRotationState) return;
+
+    await $ensureLegacyKeyMaterial();
+    await $ensureKekHistory();
+  };
+
+  /** How a rotation stages a key the instance is not running with yet. */
+  const encryptRootKeyForKek = (kekBuffer: Buffer) => {
+    if (!ROOT_ENCRYPTION_KEY.length) {
+      throw new InternalServerError({ message: "KMS root key is not loaded" });
+    }
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    return cipher.encrypt(ROOT_ENCRYPTION_KEY, kekBuffer);
+  };
+
+  const getCurrentKekLabel = () => $currentKekLabel();
+
   const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    // A fleet-wide cutover. Unguarded, a switch to HSM would not take effect while a retained software
+    // copy exists: a pod with the old env key would resolve that copy and boot without the device.
+    const [staged, retained] = await Promise.all([kmsRootConfigDAL.findStaged(), kmsRootConfigDAL.findRetained()]);
+    if (staged.length || retained.length) {
+      throw new BadRequestError({
+        message:
+          "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
+      });
+    }
+
     const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
     if (!kmsRootConfig) {
       throw new NotFoundError({ message: "KMS root config not found" });
@@ -1318,6 +1836,16 @@ export const kmsServiceFactory = ({
       }
     }
 
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
+      const currentLabel = $currentKekLabel();
+      if (kmsRootConfig.kekLabel && currentLabel && kmsRootConfig.kekLabel !== currentLabel) {
+        throw new BadRequestError({
+          message: `This instance is running with encryption key label '${currentLabel}', but the active root key was written with '${kmsRootConfig.kekLabel}'. Restart it with the current encryption key before changing the root key encryption strategy.`
+        });
+      }
+    }
+
+    // Both can be HSM round trips, so they stay outside the transaction.
     const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
     const encryptedRootKey = await $encryptRootKey(decryptedRootKey, strategy);
 
@@ -1326,9 +1854,37 @@ export const kmsServiceFactory = ({
       throw new BadRequestError({ message: "Failed to re-encrypt ROOT Key with selected strategy" });
     }
 
-    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
-      encryptedRootKey,
-      encryptionStrategy: strategy
+    await kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const [stagedNow, retainedNow, sentinelNow] = await Promise.all([
+        kmsRootConfigDAL.findStaged(tx),
+        kmsRootConfigDAL.findRetained(tx),
+        kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx)
+      ]);
+      if (stagedNow.length || retainedNow.length) {
+        throw new BadRequestError({
+          message:
+            "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
+        });
+      }
+
+      if (!sentinelNow || !sentinelNow.encryptedRootKey.equals(kmsRootConfig.encryptedRootKey)) {
+        throw new BadRequestError({
+          message:
+            "The active root key changed while this request was in flight, so the encryption strategy was left unchanged. Retry the change."
+        });
+      }
+
+      await kmsRootConfigDAL.updateById(
+        KMS_ROOT_CONFIG_UUID,
+        {
+          encryptedRootKey,
+          encryptionStrategy: strategy,
+          kekLabel: strategy === RootKeyEncryptionStrategy.Software ? $currentKekLabel() : null
+        },
+        tx
+      );
     });
 
     ROOT_ENCRYPTION_KEY = decryptedRootKey;
@@ -1336,6 +1892,8 @@ export const kmsServiceFactory = ({
 
   return {
     startService,
+    encryptRootKeyForKek,
+    getCurrentKekLabel,
     generateKmsKey,
     rotateKmsKey,
     deleteInternalKms,
@@ -1358,6 +1916,8 @@ export const kmsServiceFactory = ({
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,
+    generateMac,
+    verifyMac,
     getPublicKey
   };
 };

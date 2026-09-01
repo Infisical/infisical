@@ -4,7 +4,7 @@ import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FormControl } from "@app/components/v2";
 import {
   Button,
   ButtonGroup,
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
 import {
@@ -57,6 +58,12 @@ const APP_ROLES: AppRoleOption[] = [
   }
 ];
 
+const formatMemberOptionLabel = (option: Option, meta: { context: "menu" | "value" }) => (
+  <span className={meta.context === "value" ? "block max-w-[22rem] truncate" : "block truncate"}>
+    {option.label}
+  </span>
+);
+
 const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
   await items.reduce<Promise<void>>(async (prev, item) => {
     await prev;
@@ -66,22 +73,22 @@ const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Pr
 
 const NoUserOptions = () => (
   <p>
-    No matching project members. Grant users access from the Access Control page, then return here
-    to attach them to this Application.
+    No matching members. Grant users access from the Access Control page, then return here to attach
+    them to this Application.
   </p>
 );
 
 const NoIdentityOptions = () => (
   <p>
-    No matching project identities. Grant machine identities access from the Access Control page,
-    then return here to attach them to this Application.
+    No matching identities. Grant machine identities access from the Access Control page, then
+    return here to attach them to this Application.
   </p>
 );
 
 const NoGroupOptions = () => (
   <p>
-    No matching project groups. Grant groups access from the Access Control page, then return here
-    to attach them to this Application.
+    No matching groups. Grant groups access from the Access Control page, then return here to attach
+    them to this Application.
   </p>
 );
 
@@ -265,12 +272,12 @@ export const AddApplicationMemberModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl overflow-visible">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Select existing project members, identities, or groups
-            to attach. New members must first be granted access from the Access Control page.
+            Grant access to this Application. Select existing members, identities, or groups to
+            attach. New members must first be granted access from the Access Control page.
           </DialogDescription>
         </DialogHeader>
 
@@ -304,7 +311,8 @@ export const AddApplicationMemberModal = ({
                 options={userOptions}
                 value={selectedUsers}
                 onChange={(v) => setSelectedUsers((v ?? []) as Option[])}
-                placeholder="Select existing project members…"
+                placeholder="Select existing members…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoUserOptions}
               />
             </FormControl>
@@ -319,6 +327,7 @@ export const AddApplicationMemberModal = ({
                 value={selectedIdentities}
                 onChange={(v) => setSelectedIdentities((v ?? []) as Option[])}
                 placeholder="Select existing identities…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoIdentityOptions}
               />
             </FormControl>
@@ -333,6 +342,7 @@ export const AddApplicationMemberModal = ({
                 value={selectedGroups}
                 onChange={(v) => setSelectedGroups((v ?? []) as Option[])}
                 placeholder="Select groups…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoGroupOptions}
               />
             </FormControl>

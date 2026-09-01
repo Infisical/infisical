@@ -9,6 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
 import {
+  AdcsDestinationConfigSchema,
   AzureAdCsDestinationConfigSchema,
   DestinationConfigSchema,
   VenafiDestinationConfigSchema
@@ -47,7 +48,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCaCsr",
@@ -95,7 +96,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "renewCaCertificate",
@@ -146,7 +147,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         organizationId: req.permission.orgId,
         properties: {
           caType: CaType.INTERNAL,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: ca.projectId
         }
       });
 
@@ -165,7 +167,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
@@ -277,14 +279,13 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "getCaCertificates",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
       }),
       response: {
         200: z.array(
@@ -299,24 +300,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }
     },
     handler: async (req) => {
-      const { caCerts, ca } = await server.services.internalCertificateAuthority.getCaCerts({
-        caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: ca.projectId,
-        event: {
-          type: EventType.GET_CA_CERTS,
-          metadata: {
-            caId: ca.id,
-            dn: ca.dn
-          }
-        }
+      const { caCerts } = await server.services.internalCertificateAuthority.getCaCertsPublic({
+        caId: req.params.caId
       });
 
       return caCerts;
@@ -329,14 +314,13 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "getCaCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -348,26 +332,10 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, certId, ca } =
-        await server.services.internalCertificateAuthority.getCaCert({
-          caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+      const { certificate, certificateChain, serialNumber, certId } =
+        await server.services.internalCertificateAuthority.getCaCertPublic({
+          caId: req.params.caId
         });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: ca.projectId,
-        event: {
-          type: EventType.GET_CA_CERT,
-          metadata: {
-            caId: ca.id,
-            dn: ca.dn
-          }
-        }
-      });
 
       return {
         certificate,
@@ -384,14 +352,13 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get a specific CA certificate by ID",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
-        certId: z.string().trim().describe("Certificate ID to retrieve")
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
+        certId: z.string().trim().uuid().describe("Certificate ID to retrieve")
       }),
       response: {
         200: z.object({
@@ -407,36 +374,11 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }
     },
     handler: async (req) => {
-      const {
-        certificate,
-        certificateChain,
-        serialNumber,
-        certId,
-        ca,
-        notBefore,
-        notAfter,
-        maxPathLength,
-        parentCaId
-      } = await server.services.internalCertificateAuthority.getCaCertByIdWithAuth({
-        caId: req.params.caId,
-        certId: req.params.certId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: ca.projectId,
-        event: {
-          type: EventType.GET_CA_CERT,
-          metadata: {
-            caId: ca.id,
-            dn: ca.dn
-          }
-        }
-      });
+      const { certificate, certificateChain, serialNumber, certId, notBefore, notAfter, maxPathLength, parentCaId } =
+        await server.services.internalCertificateAuthority.getCaCertByIdPublic({
+          caId: req.params.caId,
+          certId: req.params.certId
+        });
 
       const formatRfc3339 = (d?: Date) => (d ? `${d.toISOString().replace(/\.\d{3}Z$/, "Z")}` : undefined);
 
@@ -459,7 +401,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "signIntermediateCa",
@@ -525,7 +467,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "importCaCertificate",
@@ -580,7 +522,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCaCrls",
@@ -659,7 +601,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "installCaCertificateVenafi",
@@ -713,12 +655,12 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "installCaCertificateAdcs",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
-      description: "Install a CA certificate via Azure AD CS",
+      description: "Install a CA certificate via Azure AD CS (Web Enrollment)",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS.caId)
       }),
@@ -763,11 +705,65 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
 
   server.route({
     method: "POST",
+    url: "/:caId/install-certificate-microsoft-adcs",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "installCaCertificateAdcsNative",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Install a CA certificate via ADCS",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS_NATIVE.caId)
+      }),
+      body: z.object({
+        maxPathLength: z.number().min(-1).default(-1)
+      }),
+      response: {
+        202: z.object({
+          message: z.string(),
+          caId: z.string()
+        })
+      }
+    },
+    handler: async (req, reply) => {
+      const { ca } = await server.services.caSigningConfig.installCertificateAdcsNative({
+        caId: req.params.caId,
+        maxPathLength: req.body.maxPathLength,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.INSTALL_CA_CERT_ADCS,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return reply.status(202).send({
+        message: "Certificate installation queued",
+        caId: req.params.caId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:caId/signing-config",
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "createCaSigningConfig",
@@ -793,6 +789,11 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           type: z.literal(CaSigningConfigType.AzureAdCs),
           appConnectionId: z.string().uuid(),
           destinationConfig: AzureAdCsDestinationConfigSchema
+        }),
+        z.object({
+          type: z.literal(CaSigningConfigType.Adcs),
+          appConnectionId: z.string().uuid(),
+          destinationConfig: AdcsDestinationConfigSchema
         })
       ]),
       response: {
@@ -806,7 +807,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -832,7 +834,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCaSigningConfig",
@@ -876,7 +878,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updateCaSigningConfig",
@@ -903,7 +905,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -929,7 +932,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCaAutoRenewalConfig",
@@ -973,7 +976,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updateCaAutoRenewalConfig",

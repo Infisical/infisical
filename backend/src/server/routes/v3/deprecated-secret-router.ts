@@ -29,7 +29,14 @@ const SecretReferenceNode = z.object({
   key: z.string(),
   value: z.string().optional(),
   environment: z.string(),
-  secretPath: z.string()
+  secretPath: z.string(),
+  project: z
+    .object({
+      id: z.string(),
+      slug: z.string(),
+      name: z.string()
+    })
+    .optional()
 });
 
 const convertStringBoolean = (defaultValue: boolean = false) => {
@@ -84,7 +91,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secret = await server.services.secret.attachTags({
         secretName: req.params.secretName,
@@ -605,7 +612,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -760,7 +773,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -895,7 +914,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
@@ -1025,7 +1050,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { secrets, imports } = await server.services.secret.getSecrets({
         actorId: req.permission.id,
@@ -1062,7 +1093,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       // }
 
       const shouldCapture =
-        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" && req.headers["user-agent"] !== "k8-operator";
+        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" &&
+        getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR;
       if (shouldCapture) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
@@ -1113,7 +1145,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secret = await server.services.secret.getSecretByName({
         actorId: req.permission.id,
@@ -1206,7 +1244,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const {
         workspaceId: projectId,
@@ -1389,7 +1433,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const {
         secretValueCiphertext,
@@ -1565,7 +1615,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
@@ -1688,7 +1744,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
         actorId: req.permission.id,
@@ -1758,7 +1814,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -1890,7 +1952,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -2017,7 +2085,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -2161,7 +2235,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
 
@@ -2317,7 +2397,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
       const secretOperation = await server.services.secret.updateManySecretsRaw({
@@ -2359,8 +2445,29 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         inputSecrets.map(({ secretKey, secretMetadata }) => [secretKey, secretMetadata])
       );
 
+      // updateManySecretsRaw can return an empty list of secrets
+      // if mode=ignore, a change policy exists and all secrets
+      // do not exist in the DB, so we have to resolve the projectId
+      // for the auditLog and posthog events
+      let projectId = req.body.workspaceId;
+      if (!projectId) {
+        if (secrets.length > 0) {
+          projectId = secrets[0].workspace;
+        } else {
+          const extractedProjectId = await server.services.project.extractProjectIdFromSlug({
+            projectSlug,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
+            actorOrgId: req.permission.orgId
+          });
+
+          projectId = extractedProjectId;
+        }
+      }
+
       await server.services.auditLog.createAuditLog({
-        projectId: secrets[0].workspace,
+        projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_SECRETS,
@@ -2387,7 +2494,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       const createdSecrets = secrets.filter((el) => el.version === 1);
       if (createdSecrets.length) {
         await server.services.auditLog.createAuditLog({
-          projectId: secrets[0].workspace,
+          projectId,
           ...req.auditLogInfo,
           event: {
             type: EventType.CREATE_SECRETS,
@@ -2417,7 +2524,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          projectId: secrets[0].workspace,
+          projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2475,7 +2582,13 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
       const secretOperation = await server.services.secret.deleteManySecretsRaw({

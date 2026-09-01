@@ -40,7 +40,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -70,7 +70,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { connectionId },
@@ -80,6 +80,33 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
       const schemas = await server.services.appConnection.snowflake.listSchemas(connectionId, database, req.permission);
 
       return { schemas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/users`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listSnowflakeUsers",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          users: z.object({ name: z.string() }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.permission);
+
+      return { users };
     }
   });
 };

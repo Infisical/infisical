@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,13 +6,25 @@ import { SaveIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
-import { Accordion, Button } from "@app/components/v3";
+import {
+  Accordion,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DiscardChangesAlertDialog
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
+import { useServerConfig } from "@app/context/ServerConfigContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
@@ -22,13 +34,14 @@ import { CertificatePolicyPermissionConditions } from "./CertificatePolicyPermis
 import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
-import { GeneralPermissionPolicies, TPermissionAction } from "./GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  PermissionScope,
+  TPermissionAction
+} from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
-import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { MemberPermissionConditions } from "./MemberPermissionConditions";
-import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
-import { PamResourcePermissionConditions } from "./PamResourcePermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
@@ -47,7 +60,6 @@ import { SecretEventPermissionConditions } from "./SecretEventPermissionConditio
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
 import { SecretRotationPermissionConditions } from "./SecretRotationPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
-import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
 type Props = {
   roleSlug: string;
@@ -67,10 +79,6 @@ export const renderConditionalComponents = (
   if (isConditionalSubjects(subject)) {
     if (subject === ProjectPermissionSub.Identity) {
       return <IdentityManagementPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (subject === ProjectPermissionSub.SshHosts) {
-      return <SshHostPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.PkiSubscribers) {
@@ -97,17 +105,6 @@ export const renderConditionalComponents = (
       return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.PamAccounts) {
-      return <PamAccountPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (
-      subject === ProjectPermissionSub.PamResources ||
-      subject === ProjectPermissionSub.PamDomains
-    ) {
-      return <PamResourcePermissionConditions isDisabled={isDisabled} />;
-    }
-
     if (subject === ProjectPermissionSub.CertificateAuthorities) {
       return <CertificateAuthorityPermissionConditions isDisabled={isDisabled} />;
     }
@@ -124,11 +121,11 @@ export const renderConditionalComponents = (
       return <CertificatePolicyPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.McpEndpoints) {
-      return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
+    if (subject === ProjectPermissionSub.HoneyTokens) {
+      return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
-    if (subject === ProjectPermissionSub.HoneyTokens) {
+    if (subject === ProjectPermissionSub.ProjectFolderGrant) {
       return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
@@ -152,10 +149,15 @@ export const renderConditionalComponents = (
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentProject, projectId } = useProject();
+  const { config } = useServerConfig();
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
-  const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
+  const { data: role, isPending } = useGetProjectRoleBySlug(
+    projectId,
+    roleSlug as string,
+    currentProject.type
+  );
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
@@ -177,17 +179,33 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     }
   }, [role, reset]);
 
+  const handleDiscard = useCallback(() => {
+    if (!role) return;
+    reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+  }, [role, reset]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: handleDiscard });
+
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
   const onSubmit = async (el: TFormSchema) => {
     if (!projectId || !role?.id) return;
-    await updateRole({
+
+    const permissionsForm = { ...el.permissions };
+    if (!config?.isCrossProjectSecretSharingEnabled) {
+      permissionsForm[ProjectPermissionSub.ProjectFolderGrant] = [];
+    }
+
+    const updatedRole = await updateRole({
       id: role?.id as string,
       projectId,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       ...el,
-      permissions: formRolePermission2API(el.permissions)
+      permissions: formRolePermission2API(permissionsForm)
     });
-    createNotification({ type: "success", text: "Successfully updated role" });
+    reset({ ...updatedRole, permissions: rolePermission2Form(updatedRole.permissions) });
+    createNotification({ type: "success", text: `Project role "${updatedRole.name}" updated` });
   };
 
   // Expand accordion items that have validation errors
@@ -225,71 +243,70 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   return (
     <div className="w-full">
-      <form
-        onSubmit={handleFormSubmit}
-        className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4"
-      >
-        <FormProvider {...form}>
-          <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
-            <div>
-              <h3 className="text-lg font-medium text-foreground">Policies</h3>
-              <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
-            </div>
-            {isCustomRole && (
-              <div className="flex items-center gap-2">
-                {isDirty && (
+      <FormProvider {...form}>
+        <form onSubmit={handleFormSubmit}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Policies</CardTitle>
+              <CardDescription>Configure granular access policies</CardDescription>
+              {isCustomRole && (
+                <CardAction className="flex flex-wrap items-center gap-2">
+                  {isDirty && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      isDisabled={isSubmitting}
+                      onClick={requestDiscard}
+                    >
+                      Discard
+                    </Button>
+                  )}
                   <Button
-                    type="button"
-                    className="mr-4 text-muted"
-                    variant="ghost"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      if (role) {
-                        reset({ ...role, permissions: rolePermission2Form(role.permissions) });
-                      }
-                    }}
+                    variant="project"
+                    type="submit"
+                    isDisabled={isDisabled || isSubmitting || !isDirty}
+                    isPending={isSubmitting}
                   >
-                    Discard
+                    <SaveIcon />
+                    Save
                   </Button>
-                )}
-                <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
-                  <SaveIcon className="size-4" />
-                  Save
-                </Button>
-                <div className="ml-2 border-l border-border pl-4">
                   <AddPoliciesButton
                     isDisabled={isDisabled}
                     projectType={currentProject.type}
                     projectId={projectId}
                   />
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-1 flex-col overflow-hidden px-4">
-            <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
+                </CardAction>
+              )}
+            </CardHeader>
+            <CardContent>
               {!isPending && !hasPermissions && <PermissionEmptyState />}
               {hasPermissions && (
-                <Accordion
-                  type="multiple"
-                  value={openPolicies}
-                  onValueChange={setOpenPolicies}
-                  className="overflow-clip rounded-md border border-border bg-container hover:bg-container-hover"
-                >
+                <Accordion type="multiple" value={openPolicies} onValueChange={setOpenPolicies}>
                   {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                     .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
                     )
+                    .filter(
+                      (subject) =>
+                        subject !== ProjectPermissionSub.ProjectFolderGrant ||
+                        config?.isCrossProjectSecretSharingEnabled
+                    )
                     .map((subject) => (
                       <GeneralPermissionPolicies
                         subject={subject}
+                        subjectScope={PermissionScope.Project}
                         actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                         title={PROJECT_PERMISSION_OBJECT[subject].title}
                         description={PROJECT_PERMISSION_OBJECT[subject].description}
                         key={`project-permission-${subject}`}
                         isDisabled={isDisabled}
                         isOpen={openPolicies.includes(subject)}
+                        onPolicyAdded={() =>
+                          setOpenPolicies((prev) =>
+                            prev.includes(subject) ? prev : [...prev, subject]
+                          )
+                        }
                         isConditional={isConditionalSubjects(subject)}
                         onRemoveLastRule={
                           !isDisabled
@@ -318,10 +335,17 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     ))}
                 </Accordion>
               )}
-            </div>
-          </div>
-        </FormProvider>
-      </form>
+            </CardContent>
+          </Card>
+        </form>
+      </FormProvider>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes to this role's policies will be lost."
+      />
       {isSecretManagerProject && showAccessTree && (
         <AccessTree
           permissions={formattedPermissions}

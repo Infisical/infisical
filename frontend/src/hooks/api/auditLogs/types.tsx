@@ -29,6 +29,7 @@ export type TGetAuditLogsFilter = {
 interface UserActorMetadata {
   userId: string;
   email: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -955,6 +956,56 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface CreateProjectFolderGrantEvent {
+  type: EventType.CREATE_PROJECT_FOLDER_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProjectFolderGrantEvent {
+  type: EventType.DELETE_PROJECT_FOLDER_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+  };
+}
+
+interface SecretFolderAccessEventMetadata {
+  folderAccessId: string;
+  folderId: string;
+  environment: string;
+  secretPath: string;
+  permission: string;
+  userId?: string;
+  identityId?: string;
+  isTemporary: boolean;
+  temporaryMode?: string;
+  temporaryRange?: string;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+}
+
+interface CreateSecretFolderAccessEvent {
+  type: EventType.CREATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface UpdateSecretFolderAccessEvent {
+  type: EventType.UPDATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface DeleteSecretFolderAccessEvent {
+  type: EventType.DELETE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1044,7 +1095,12 @@ export type Event =
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
-  | PamAccessPolicyBypassedEvent;
+  | PamAccessPolicyBypassedEvent
+  | CreateProjectFolderGrantEvent
+  | DeleteProjectFolderGrantEvent
+  | CreateSecretFolderAccessEvent
+  | UpdateSecretFolderAccessEvent
+  | DeleteSecretFolderAccessEvent;
 
 export type AuditLog = {
   id: string;

@@ -39,6 +39,7 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

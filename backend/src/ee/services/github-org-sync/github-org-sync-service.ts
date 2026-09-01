@@ -11,8 +11,11 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -83,6 +86,8 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -96,7 +101,9 @@ export const githubOrgSyncServiceFactory = ({
   licenseService,
   orgMembershipDAL,
   membershipRoleDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -420,8 +427,14 @@ export const githubOrgSyncServiceFactory = ({
             { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
             tx
           );
+
+          await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [userId] }, tx);
         });
       }
+
+      // Group membership changes cascade into the group-expanded project identity meters.
+      usageMeteringService.emit(orgId, SecretIdentities.key);
+      usageMeteringService.emit(orgId, PamIdentities.key);
     }
   };
 
@@ -833,10 +846,22 @@ export const githubOrgSyncServiceFactory = ({
             },
             tx
           );
+
+          const removedUserIds = membershipsToRemove
+            .map((membership) => activeMembers.find((am) => am.id === membership.orgMembershipId)?.user?.id)
+            .filter(Boolean) as string[];
+          await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
+
           updatedTeams.add(teamName);
         }
       }
     });
+
+    if (createdTeams.size || updatedTeams.size) {
+      // Team membership changes cascade into the group-expanded project identity meters.
+      usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
+    }
 
     const syncDuration = Date.now() - startTime;
 

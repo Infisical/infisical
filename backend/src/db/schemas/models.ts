@@ -3,6 +3,7 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   EmailDomains = "email_domains",
+  // ssh_* tables were dropped with the SSH product; members kept for historical migrations
   SshHostGroup = "ssh_host_groups",
   SshHostGroupMembership = "ssh_host_group_memberships",
   SshHost = "ssh_hosts",
@@ -44,6 +45,12 @@ export enum TableName {
   PkiAlertHistoryCertificate = "pki_alert_history_certificate",
   PkiCollection = "pki_collections",
   PkiCollectionItem = "pki_collection_items",
+  Alert = "alerts",
+  AlertChannel = "alert_channels",
+  AlertChannelRecipient = "alert_channel_recipients",
+  AlertChannelMembership = "alert_channel_memberships",
+  AlertHistory = "alert_history",
+  AlertHistoryTarget = "alert_history_target",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -61,8 +68,11 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
+  SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
+  // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -85,6 +95,7 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretFolderVersion = "secret_folder_versions",
   SecretImport = "secret_imports",
+  ProjectFolderGrant = "project_folder_grants",
   Snapshot = "secret_snapshots",
   SnapshotSecret = "secret_snapshot_secrets",
   SnapshotFolder = "secret_snapshot_folders",
@@ -167,12 +178,15 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
   WebAuthnCredential = "webauthn_credentials",
+  UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -228,6 +242,7 @@ export enum TableName {
   GatewayV2 = "gateways_v2",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceKubernetesAuth = "resource_kubernetes_auths",
   ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
@@ -235,7 +250,9 @@ export enum TableName {
   KeyValueStore = "key_value_store",
 
   // PAM
+  PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
@@ -244,6 +261,7 @@ export enum TableName {
   PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoveredAccount = "pam_discovered_accounts",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
@@ -276,7 +294,7 @@ export enum TableName {
   // PKI Inventory Views
   CertificateInventoryView = "certificate_inventory_views",
 
-  // AI
+  // AI (ai_mcp_* tables were dropped with Agent Sentinel; members kept for historical migrations)
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",
   AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
@@ -312,6 +330,14 @@ export enum TableName {
   HoneyToken = "honey_tokens",
   HoneyTokenEvent = "honey_token_events",
   HoneyTokenSecretMapping = "honey_token_secret_mappings",
+
+  // Audit Reports (exportable compliance reports)
+  AuditReport = "audit_reports",
+
+  // Secrets Brokering (Agent Proxy)
+  OrgAgentProxyConfig = "org_agent_proxy_config",
+  ProxiedService = "proxied_services",
+  ProxiedServiceCredential = "proxied_service_credentials",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
@@ -357,8 +383,6 @@ export enum ProjectMembershipRole {
   Custom = "custom",
   Viewer = "viewer",
   NoAccess = "no-access",
-  // ssh
-  SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
   KmsCryptographicOperator = "cryptographic-operator"
 }
@@ -370,9 +394,21 @@ export enum ResourceMembershipRole {
   Custom = "custom"
 }
 
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
+}
+
 export enum ResourceType {
   CertificateApplication = "certificate-application",
-  Signer = "pki-signer"
+  Signer = "pki-signer",
+  PamFolder = "pam-folder",
+  PamAccount = "pam-account"
 }
 
 export enum SecretEncryptionAlgo {
@@ -422,20 +458,16 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam",
-  AI = "ai"
+  PAM = "pam"
 }
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
-  SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
-  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

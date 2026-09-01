@@ -1,0 +1,1106 @@
+import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
+
+import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ResourcePermissionPamResourceActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { PamIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
+
+import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { terminatePamSessionsWithoutLaunchAccess, TPamSessionActor } from "../pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import {
+  TAddPamAccountMemberDTO,
+  TAddPamFolderMemberDTO,
+  TAddPamProductMemberDTO,
+  TAddPamProductUserMembersDTO,
+  TListPamAccountMembersDTO,
+  TListPamFolderMembersDTO,
+  TListPamProductMembersDTO,
+  TRemovePamAccountMemberDTO,
+  TRemovePamFolderMemberDTO,
+  TRemovePamProductMemberDTO,
+  TUpdatePamAccountMemberDTO,
+  TUpdatePamFolderMemberDTO,
+  TUpdatePamProductMemberDTO
+} from "./pam-membership-types";
+
+type TPamMembershipServiceFactoryDep = {
+  membershipDAL: Pick<
+    TMembershipDALFactory,
+    | "create"
+    | "find"
+    | "findById"
+    | "delete"
+    | "deleteById"
+    | "findResourceMembershipsForActor"
+    | "findResourceMembershipsForActors"
+    | "transaction"
+  >;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
+  pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  userDAL: Pick<TUserDALFactory, "findById" | "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  groupDAL: Pick<TGroupDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+};
+
+export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
+
+const VALID_PRODUCT_ROLES = Object.values(PamProductRole);
+const VALID_RESOURCE_ROLES = Object.values(PamResourceRole);
+
+const resolveActorColumn = (dto: { userId?: string; groupId?: string; identityId?: string }) => {
+  if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, kind: PamMemberKind.User };
+  if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, kind: PamMemberKind.Group };
+  if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, kind: PamMemberKind.Identity };
+  throw new BadRequestError({ message: "Either userId, groupId, or identityId is required" });
+};
+
+const kindLabel = (kind: PamMemberKind) => {
+  if (kind === PamMemberKind.User) return "User";
+  if (kind === PamMemberKind.Group) return "Group";
+  return "Identity";
+};
+
+const resourceScope = (projectId: string, resourceType: ResourceType, resourceId: string) => ({
+  scope: RESOURCE_SCOPE as typeof RESOURCE_SCOPE,
+  scopeProjectId: projectId,
+  scopeResourceType: resourceType,
+  scopeResourceId: resourceId
+});
+
+export const pamMembershipServiceFactory = ({
+  membershipDAL,
+  membershipRoleDAL,
+  approvalPolicyDAL,
+  projectAccessRequestDAL,
+  pamFolderDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  userDAL,
+  userAliasDAL,
+  orgDAL,
+  groupDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL,
+  identityDAL,
+  permissionService,
+  gatewayV2Service,
+  usageMeteringService
+}: TPamMembershipServiceFactoryDep) => {
+  // Shared helpers
+
+  const checkProductAdmin = async (projectId: string, ctx: TActorContext) => {
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+    if (!hasRole(PamProductRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only PAM product admins can perform this action" });
+    }
+  };
+
+  const checkManageMembers = async (
+    projectId: string,
+    resource: { type: ResourceType; id: string; parentFolderId?: string | null },
+    ctx: TActorContext
+  ) => {
+    if (resource.parentFolderId) {
+      try {
+        const { permission } = await permissionService.getResourcePermission({
+          actor: ctx.actor,
+          actorId: ctx.actorId,
+          projectId,
+          resourceType: ResourceType.PamFolder,
+          resourceId: resource.parentFolderId,
+          actorAuthMethod: ctx.actorAuthMethod,
+          actorOrgId: ctx.actorOrgId
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionPamResourceActions.ManageMembers,
+          ResourcePermissionSub.PamResource
+        );
+        return;
+      } catch {
+        if (resource.type === ResourceType.PamFolder)
+          throw new ForbiddenRequestError({ message: "You do not have permission to manage members on this folder" });
+      }
+    }
+
+    const { permission } = await permissionService.getResourcePermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      resourceType: resource.type,
+      resourceId: resource.id,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionPamResourceActions.ManageMembers,
+      ResourcePermissionSub.PamResource
+    );
+  };
+
+  const checkAccountManagePermission = async (projectId: string, accountId: string, ctx: TActorContext) => {
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+    await checkManageMembers(
+      projectId,
+      { type: ResourceType.PamAccount, id: accountId, parentFolderId: account.folderId },
+      ctx
+    );
+    return account;
+  };
+
+  const validateActorExists = async (
+    dto: { userId?: string; groupId?: string; identityId?: string },
+    orgId: string,
+    projectId: string
+  ) => {
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    if (kind === PamMemberKind.User) {
+      const user = await userDAL.findById(id);
+      if (!user) throw new NotFoundError({ message: `User with ID '${id}' not found` });
+
+      const orgMemberships = await membershipDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorUserId: id,
+        isActive: true
+      });
+      if (orgMemberships.length === 0) {
+        throw new BadRequestError({ message: "User must be an active member of this organization" });
+      }
+    } else if (kind === PamMemberKind.Group) {
+      const group = await groupDAL.findById(id);
+      if (!group) throw new NotFoundError({ message: `Group with ID '${id}' not found` });
+      if (group.orgId !== orgId) throw new BadRequestError({ message: "Group does not belong to this organization" });
+    } else {
+      const identity = await identityDAL.findById(id);
+      if (!identity) throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
+      // Identities scoped to the PAM project itself are first-class PAM members (created in-product);
+      // identities scoped to any other project stay rejected.
+      if (identity.projectId && identity.projectId !== projectId) {
+        throw new BadRequestError({
+          message: "Identities scoped to another project cannot be added as PAM members"
+        });
+      }
+
+      const orgMemberships = await membershipDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorIdentityId: id,
+        isActive: true
+      });
+      if (orgMemberships.length === 0) {
+        throw new BadRequestError({ message: "Identity must be an active member of this organization" });
+      }
+    }
+
+    return { column, id, kind };
+  };
+
+  const validateProductMember = async (
+    projectId: string,
+    dto: { userId?: string; groupId?: string; identityId?: string }
+  ) => {
+    const { column, id } = resolveActorColumn(dto);
+    const memberships = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId,
+      [column]: id
+    });
+    if (memberships.length === 0) {
+      throw new BadRequestError({ message: "Must be a PAM product member first" });
+    }
+  };
+
+  const resolveMemberships = async (
+    memberships: Awaited<ReturnType<typeof membershipDAL.find>>,
+    defaultRole: string
+  ) => {
+    return Promise.all(
+      memberships.map(async (m) => {
+        const roles = await membershipRoleDAL.find({ membershipId: m.id });
+        return {
+          membershipId: m.id,
+          userId: m.actorUserId,
+          identityId: m.actorIdentityId,
+          groupId: m.actorGroupId,
+          role: roles[0]?.role ?? defaultRole,
+          isActive: m.isActive,
+          expiresAt: roles[0]?.isTemporary ? (roles[0]?.temporaryAccessEndTime ?? null) : null,
+          createdAt: m.createdAt
+        };
+      })
+    );
+  };
+
+  // Removing or demoting a membership does nothing on its own to the sessions the member is already
+  // running, so every path that narrows someone's access closes the sessions that access was holding open.
+  // Call this last inside the membership transaction, so the re-check sees the write; it returns the
+  // tunnel-cancellation callback for the caller to fire after COMMIT.
+  const closeSessionsLosingAccess = async (
+    projectId: string,
+    subject: { userId?: string; groupId?: string; identityId?: string } & TActorContext,
+    tx: Knex
+  ): Promise<() => void> => {
+    const actors: TPamSessionActor[] = [];
+    if (subject.userId) {
+      actors.push({ type: ActorType.USER, id: subject.userId });
+    } else if (subject.identityId) {
+      // Machine identities can launch CLI sessions, so an identity membership has sessions to close too.
+      actors.push({ type: ActorType.IDENTITY, id: subject.identityId });
+    } else if (subject.groupId) {
+      // The group held the membership, so its members are the ones losing access through it — and a group
+      // carries both user and machine-identity members, each inheriting its resource access.
+      const userMembers = await userGroupMembershipDAL.find({ groupId: subject.groupId }, { tx });
+      const identityMembers = await identityGroupMembershipDAL.find({ groupId: subject.groupId }, { tx });
+      actors.push(
+        ...userMembers.map((member) => ({ type: ActorType.USER as const, id: member.userId })),
+        ...identityMembers.map((member) => ({ type: ActorType.IDENTITY as const, id: member.identityId }))
+      );
+    }
+    if (actors.length === 0) return () => {};
+
+    return terminatePamSessionsWithoutLaunchAccess({
+      projectId,
+      actors,
+      actorId: subject.actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
+  };
+
+  const upsertRole = async (membershipId: string, role: string, tx: Knex) => {
+    const existing = await membershipRoleDAL.find({ membershipId }, { tx });
+    if (existing.length > 0) {
+      await membershipRoleDAL.update({ membershipId }, { role }, tx);
+    } else {
+      await membershipRoleDAL.create({ membershipId, role }, tx);
+    }
+  };
+
+  // Product members
+
+  const listProductMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
+    await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    return resolveMemberships(memberships, PamProductRole.Member);
+  };
+
+  // Identity members enriched with the identity's name and scope, so the PAM UI never has to
+  // join against org- or project-level identity endpoints (the org list excludes PAM-scoped identities).
+  const listProductIdentityMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
+    await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const identityMemberships = memberships.filter((m) => m.actorIdentityId);
+    const resolved = await resolveMemberships(identityMemberships, PamProductRole.Member);
+
+    const identityIds = identityMemberships.map((m) => m.actorIdentityId).filter((v): v is string => Boolean(v));
+    const identities = identityIds.length ? await identityDAL.find({ $in: { id: identityIds } }) : [];
+    const identityById = new Map(identities.map((i) => [i.id, i]));
+
+    return resolved.map((m) => {
+      const identity = m.identityId ? identityById.get(m.identityId) : undefined;
+      return {
+        ...m,
+        name: identity?.name ?? "",
+        identityProjectId: identity?.projectId ?? null,
+        identityOrgId: identity?.orgId ?? null
+      };
+    });
+  };
+
+  const addProductMember = async ({ projectId, role, ...dto }: TAddPamProductMemberDTO & TActorContext) => {
+    await checkProductAdmin(projectId, dto);
+
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+
+    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId, projectId);
+
+    const result = await membershipDAL.transaction(async (tx) => {
+      const existing = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (existing.length > 0) {
+        throw new BadRequestError({
+          message: `${kindLabel(kind)} is already a member of this PAM product`
+        });
+      }
+
+      const membership = await membershipDAL.create(
+        {
+          scope: AccessScope.Project,
+          scopeOrgId: dto.actorOrgId,
+          scopeProjectId: projectId,
+          [column]: id,
+          isActive: true
+        },
+        tx
+      );
+
+      const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+
+      // For direct API callers; the UI's Add Member flow uses the generic endpoint, which already clears this.
+      if (kind === PamMemberKind.User) {
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: id }, tx);
+      }
+
+      return {
+        membershipId: membership.id,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
+        role: membershipRole.role,
+        createdAt: membership.createdAt
+      };
+    });
+
+    // A new PAM project member (user/identity/group) changes the pam_identities meter.
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    return result;
+  };
+
+  const addProductUserMembers = async ({
+    projectId,
+    userIds,
+    emails,
+    role,
+    ...ctx
+  }: TAddPamProductUserMembersDTO & TActorContext) => {
+    await checkProductAdmin(projectId, ctx);
+
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+
+    const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
+    const userByEmail = new Map(usersByEmail.map((u) => [u.username, u]));
+
+    // The invite this request accompanies resolves IdP identifiers through SSO aliases, so this
+    // half has to as well, or it rejects a user the other half just added. Keyed by the caller's
+    // identifier so the unresolved list still echoes back what they sent.
+    const unmatched = emails.filter((e) => !userByEmail.has(e));
+    if (unmatched.length) {
+      const org = await orgDAL.findById(ctx.actorOrgId);
+      const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+        identifiers: unmatched,
+        orgId: ctx.actorOrgId,
+        rootOrgId: org?.rootOrgId,
+        userAliasDAL,
+        userDAL
+      });
+
+      if (ambiguousIdentifiers.length) {
+        throw new BadRequestError({
+          message: `Identifier(s) ${ambiguousIdentifiers
+            .map((el) => `'${el}'`)
+            .join(
+              ", "
+            )} match more than one SSO account in this organization. Use the user's email address instead, or contact support to resolve the duplicate.`
+        });
+      }
+
+      resolved.forEach((user, identifier) => userByEmail.set(identifier, user));
+    }
+
+    const unresolved = emails.filter((e) => !userByEmail.has(e));
+
+    const candidates: { userId: string; label: string }[] = [];
+    const seen = new Set<string>();
+    for (const id of userIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        candidates.push({ userId: id, label: id });
+      }
+    }
+    for (const email of emails) {
+      const user = userByEmail.get(email);
+      if (user && !seen.has(user.id)) {
+        seen.add(user.id);
+        candidates.push({ userId: user.id, label: email });
+      }
+    }
+
+    const existing = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId
+    });
+    const alreadyAttached = new Set(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
+    const skipped: string[] = [];
+
+    const orgMemberships = candidates.length
+      ? await membershipDAL.find({
+          scope: AccessScope.Organization,
+          scopeOrgId: ctx.actorOrgId,
+          isActive: true,
+          $in: { actorUserId: candidates.map((c) => c.userId) }
+        })
+      : [];
+    const orgMemberIds = new Set(orgMemberships.map((m) => m.actorUserId));
+
+    const toCreate = candidates.filter((c) => {
+      if (!orgMemberIds.has(c.userId)) {
+        unresolved.push(c.label);
+        return false;
+      }
+      if (alreadyAttached.has(c.userId)) {
+        skipped.push(c.label);
+        return false;
+      }
+      return true;
+    });
+
+    if (unresolved.length) {
+      const rejected = unresolved.map((el) => `'${el}'`).join(", ");
+      throw new BadRequestError({
+        message: `Cannot add ${rejected} to Privileged Access Manager because they are not an active member of this organization. Invite them to the organization first.`
+      });
+    }
+
+    const memberships = await membershipDAL.transaction(async (tx) => {
+      const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
+      for (const { userId } of toCreate) {
+        // eslint-disable-next-line no-await-in-loop
+        const membership = await membershipDAL.create(
+          {
+            scope: AccessScope.Project,
+            scopeOrgId: ctx.actorOrgId,
+            scopeProjectId: projectId,
+            actorUserId: userId,
+            isActive: true
+          },
+          tx
+        );
+        // eslint-disable-next-line no-await-in-loop
+        const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+        // eslint-disable-next-line no-await-in-loop
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
+        results.push({
+          membershipId: membership.id,
+          userId,
+          role: membershipRole.role,
+          createdAt: membership.createdAt
+        });
+      }
+      return results;
+    });
+
+    // Only re-meter when project members were actually added.
+    if (memberships.length > 0) {
+      usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    }
+
+    return { memberships, skipped };
+  };
+
+  const assertNotLastAdmin = async (projectId: string, membershipId: string, tx?: Knex) => {
+    const allProductMemberships = await membershipDAL.find(
+      { scope: AccessScope.Project, scopeProjectId: projectId },
+      { tx }
+    );
+    const otherMemberships = allProductMemberships.filter((m) => m.id !== membershipId);
+
+    const otherRoles = await Promise.all(
+      otherMemberships.map((m) => membershipRoleDAL.find({ membershipId: m.id }, { tx }))
+    );
+    const hasOtherAdmin = otherRoles.some((roles) => roles.some((r) => r.role === PamProductRole.Admin));
+    if (!hasOtherAdmin) {
+      throw new BadRequestError({ message: "Cannot remove or demote the last product admin" });
+    }
+  };
+
+  const updateProductMemberRole = async ({ projectId, role, ...dto }: TUpdatePamProductMemberDTO & TActorContext) => {
+    await checkProductAdmin(projectId, dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    return membershipDAL.transaction(async (tx) => {
+      const [membership] = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (!membership) {
+        throw new NotFoundError({
+          message: `${kindLabel(kind)} is not a member of this PAM product`
+        });
+      }
+
+      const existingRoles = await membershipRoleDAL.find({ membershipId: membership.id }, { tx });
+      const wasAdmin = existingRoles.some((r) => r.role === PamProductRole.Admin);
+      if (wasAdmin && role !== PamProductRole.Admin) {
+        await assertNotLastAdmin(projectId, membership.id, tx);
+      }
+
+      await upsertRole(membership.id, role, tx);
+
+      return {
+        membershipId: membership.id,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
+        role
+      };
+    });
+  };
+
+  const removeProductMember = async ({ projectId, ...dto }: TRemovePamProductMemberDTO & TActorContext) => {
+    await checkProductAdmin(projectId, dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    // A PAM-scoped identity's product membership IS its reason to exist; removing just the
+    // membership would orphan it. Delete the identity itself instead.
+    if (kind === PamMemberKind.Identity) {
+      const identity = await identityDAL.findById(id);
+      if (identity?.projectId === projectId) {
+        throw new BadRequestError({
+          message: "This identity is managed by PAM. Delete the identity instead of removing its membership."
+        });
+      }
+    }
+
+    let sendSessionCancellations: () => void = () => {};
+
+    const result = await membershipDAL.transaction(async (tx) => {
+      const [membership] = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (!membership) {
+        throw new NotFoundError({
+          message: `${kindLabel(kind)} is not a member of this PAM product`
+        });
+      }
+
+      const roles = await membershipRoleDAL.find({ membershipId: membership.id }, { tx });
+      if (roles.some((r) => r.role === PamProductRole.Admin)) {
+        await assertNotLastAdmin(projectId, membership.id, tx);
+      }
+
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+
+      const resourceMemberships = await membershipDAL.find(
+        { scope: RESOURCE_SCOPE, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      await Promise.all(
+        resourceMemberships.map(async (rm) => {
+          await membershipRoleDAL.delete({ membershipId: rm.id }, tx);
+          await membershipDAL.deleteById(rm.id, tx);
+        })
+      );
+
+      // A user/group removed from the product must no longer be an approver on any folder policy.
+      if (kind !== PamMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
+      }
+
+      await membershipDAL.deleteById(membership.id, tx);
+
+      // Leaving the product cascaded every folder and account membership above, so all launch access is gone.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+
+      return {
+        membershipId: membership.id,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined
+      };
+    });
+
+    sendSessionCancellations();
+
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    return result;
+  };
+
+  // Resource (folder/account) members
+
+  const listResourceMembers = async (projectId: string, resourceType: ResourceType, resourceId: string) => {
+    const memberships = await membershipDAL.find(resourceScope(projectId, resourceType, resourceId));
+    return resolveMemberships(memberships, PamResourceRole.Connector);
+  };
+
+  const addResourceMember = async (
+    projectId: string,
+    resourceType: ResourceType,
+    resourceId: string,
+    resourceKey: string,
+    role: string,
+    expiry: string | null | undefined,
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
+  ) => {
+    if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
+      throw new BadRequestError({
+        message: `Invalid resource role '${role}'. Expected: ${VALID_RESOURCE_ROLES.join(", ")}`
+      });
+    }
+
+    const relativeMs = expiry ? ms(expiry) : null;
+    if (expiry && (!relativeMs || relativeMs <= 0)) {
+      throw new BadRequestError({ message: `Invalid expiry duration '${expiry}'` });
+    }
+
+    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId, projectId);
+    await validateProductMember(projectId, dto);
+
+    return membershipDAL.transaction(async (tx) => {
+      const existing = await membershipDAL.find(
+        { ...resourceScope(projectId, resourceType, resourceId), [column]: id },
+        { tx }
+      );
+      if (existing.length > 0) {
+        // Expired memberships can be replaced
+        const now = new Date();
+        const existingRoles = await membershipRoleDAL.find({ membershipId: existing[0].id }, { tx });
+        const isStillActive = existingRoles.some(
+          (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))
+        );
+        if (isStillActive) {
+          throw new BadRequestError({
+            message: `${kindLabel(kind)} is already a member of this ${resourceKey}`
+          });
+        }
+        await membershipRoleDAL.delete({ membershipId: existing[0].id }, tx);
+        await membershipDAL.deleteById(existing[0].id, tx);
+      }
+
+      const membership = await membershipDAL.create(
+        {
+          ...resourceScope(projectId, resourceType, resourceId),
+          scopeOrgId: dto.actorOrgId,
+          [column]: id,
+          isActive: true
+        },
+        tx
+      );
+
+      const now = new Date();
+      const membershipRole = await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
+          role,
+          ...(relativeMs
+            ? {
+                isTemporary: true,
+                temporaryMode: TemporaryPermissionMode.Relative,
+                temporaryRange: expiry,
+                temporaryAccessStartTime: now,
+                temporaryAccessEndTime: new Date(now.getTime() + relativeMs)
+              }
+            : {})
+        },
+        tx
+      );
+
+      return {
+        membershipId: membership.id,
+        [resourceKey]: resourceId,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
+        role: membershipRole.role,
+        expiresAt: membershipRole.temporaryAccessEndTime ?? null,
+        createdAt: membership.createdAt
+      };
+    });
+  };
+
+  const updateResourceMemberRole = async (
+    projectId: string,
+    resourceType: ResourceType,
+    resourceId: string,
+    resourceKey: string,
+    role: string,
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
+  ) => {
+    if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
+      throw new BadRequestError({
+        message: `Invalid resource role '${role}'. Expected: ${VALID_RESOURCE_ROLES.join(", ")}`
+      });
+    }
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    let sendSessionCancellations: () => void = () => {};
+
+    const result = await membershipDAL.transaction(async (tx) => {
+      const [membership] = await membershipDAL.find(
+        { ...resourceScope(projectId, resourceType, resourceId), [column]: id },
+        { tx }
+      );
+      if (!membership) {
+        throw new NotFoundError({
+          message: `${kindLabel(kind)} is not a member of this ${resourceKey}`
+        });
+      }
+
+      await upsertRole(membership.id, role, tx);
+
+      // A demotion (Connector to Auditor, say) drops LaunchSessions without removing the membership.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+
+      return {
+        membershipId: membership.id,
+        [resourceKey]: resourceId,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
+        role
+      };
+    });
+
+    sendSessionCancellations();
+
+    return result;
+  };
+
+  const removeResourceMember = async (
+    projectId: string,
+    resourceType: ResourceType,
+    resourceId: string,
+    resourceKey: string,
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
+  ) => {
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    const [membership] = await membershipDAL.find({
+      ...resourceScope(projectId, resourceType, resourceId),
+      [column]: id
+    });
+    if (!membership) {
+      throw new NotFoundError({
+        message: `${kindLabel(kind)} is not a member of this ${resourceKey}`
+      });
+    }
+
+    let sendSessionCancellations: () => void = () => {};
+
+    await membershipDAL.transaction(async (tx) => {
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
+
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+    });
+
+    sendSessionCancellations();
+
+    return {
+      membershipId: membership.id,
+      [resourceKey]: resourceId,
+      userId: kind === PamMemberKind.User ? id : undefined,
+      groupId: kind === PamMemberKind.Group ? id : undefined,
+      identityId: kind === PamMemberKind.Identity ? id : undefined
+    };
+  };
+
+  // Folder members
+
+  const listFolderMembers = async ({ projectId, folderId, ...ctx }: TListPamFolderMembersDTO & TActorContext) => {
+    const folder = await pamFolderDAL.findById(folderId);
+    if (!folder || folder.projectId !== projectId) {
+      throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
+    }
+
+    await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, ctx);
+
+    return listResourceMembers(projectId, ResourceType.PamFolder, folderId);
+  };
+
+  const addFolderMember = async ({
+    projectId,
+    folderId,
+    role,
+    expiry,
+    ...dto
+  }: TAddPamFolderMemberDTO & TActorContext) => {
+    await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
+
+    const folder = await pamFolderDAL.findById(folderId);
+    if (!folder || folder.projectId !== projectId) {
+      throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
+    }
+
+    return addResourceMember(projectId, ResourceType.PamFolder, folderId, "folderId", role, expiry, dto);
+  };
+
+  const updateFolderMemberRole = async ({
+    projectId,
+    folderId,
+    role,
+    ...dto
+  }: TUpdatePamFolderMemberDTO & TActorContext) => {
+    await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
+    return updateResourceMemberRole(projectId, ResourceType.PamFolder, folderId, "folderId", role, dto);
+  };
+
+  const removeFolderMember = async ({ projectId, folderId, ...dto }: TRemovePamFolderMemberDTO & TActorContext) => {
+    await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    const [membership] = await membershipDAL.find({
+      ...resourceScope(projectId, ResourceType.PamFolder, folderId),
+      [column]: id
+    });
+    if (!membership) {
+      throw new NotFoundError({
+        message: `${kindLabel(kind)} is not a member of this folderId`
+      });
+    }
+
+    let sendSessionCancellations: () => void = () => {};
+
+    await membershipDAL.transaction(async (tx) => {
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
+
+      if (kind !== PamMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            scopeId: folderId,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
+      }
+
+      // Folder access reaches every account in the folder, so this can strip launch access on any of them.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+    });
+
+    sendSessionCancellations();
+
+    return {
+      membershipId: membership.id,
+      folderId,
+      userId: kind === PamMemberKind.User ? id : undefined,
+      groupId: kind === PamMemberKind.Group ? id : undefined,
+      identityId: kind === PamMemberKind.Identity ? id : undefined
+    };
+  };
+
+  // Account members
+
+  const listAccountMembers = async ({ projectId, accountId, ...ctx }: TListPamAccountMembersDTO & TActorContext) => {
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    await checkManageMembers(
+      projectId,
+      { type: ResourceType.PamAccount, id: accountId, parentFolderId: account.folderId },
+      ctx
+    );
+
+    return listResourceMembers(projectId, ResourceType.PamAccount, accountId);
+  };
+
+  const addAccountMember = async ({
+    projectId,
+    accountId,
+    role,
+    expiry,
+    ...dto
+  }: TAddPamAccountMemberDTO & TActorContext) => {
+    await checkAccountManagePermission(projectId, accountId, dto);
+    return addResourceMember(projectId, ResourceType.PamAccount, accountId, "accountId", role, expiry, dto);
+  };
+
+  const updateAccountMemberRole = async ({
+    projectId,
+    accountId,
+    role,
+    ...dto
+  }: TUpdatePamAccountMemberDTO & TActorContext) => {
+    await checkAccountManagePermission(projectId, accountId, dto);
+    return updateResourceMemberRole(projectId, ResourceType.PamAccount, accountId, "accountId", role, dto);
+  };
+
+  const removeAccountMember = async ({ projectId, accountId, ...dto }: TRemovePamAccountMemberDTO & TActorContext) => {
+    await checkAccountManagePermission(projectId, accountId, dto);
+    return removeResourceMember(projectId, ResourceType.PamAccount, accountId, "accountId", dto);
+  };
+
+  const getAccessCapabilities = async ({ projectId, ...ctx }: { projectId: string } & TActorContext) => {
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+    const isProductAdmin = hasRole(PamProductRole.Admin);
+
+    const hasAnyResourceWith = async (action: ResourcePermissionPamResourceActions) => {
+      const { folderIds, accountIds } = await getResourceIdsWithActions(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        { allOf: [action] },
+        ctx
+      );
+      return folderIds.length > 0 || accountIds.length > 0;
+    };
+
+    const [isResourceAdmin, canViewSessions, canViewAuditLogsResource] = await Promise.all([
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ManageMembers),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewSessions),
+      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewAuditLogs)
+    ]);
+
+    const canViewAuditLogs = isProductAdmin || canViewAuditLogsResource;
+
+    return { isProductAdmin, isResourceAdmin, canViewSessions, canViewAuditLogs };
+  };
+
+  return {
+    listProductMembers,
+    listProductIdentityMembers,
+    addProductMember,
+    addProductUserMembers,
+    updateProductMemberRole,
+    removeProductMember,
+    listFolderMembers,
+    addFolderMember,
+    updateFolderMemberRole,
+    removeFolderMember,
+    listAccountMembers,
+    addAccountMember,
+    updateAccountMemberRole,
+    removeAccountMember,
+    getAccessCapabilities
+  };
+};

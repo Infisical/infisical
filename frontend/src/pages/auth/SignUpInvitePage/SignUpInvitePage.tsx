@@ -1,45 +1,54 @@
 import { Helmet } from "react-helmet";
-import { Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import { MailX } from "lucide-react";
 
-import { Button } from "@app/components/v2";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { CardContent, CardHeader, CardTitle } from "@app/components/v3";
 
 import { SignUpPage } from "../SignUpPage/SignUpPage";
 
 export const SignupInvitePage = () => {
-  const navigate = useNavigate();
-  const { inviteEmail, error } = useRouteContext({
+  const { inviteEmail, inviteOrganizationName, error } = useRouteContext({
     from: "/_restrict-login-signup/signupinvite"
-  }) as { inviteEmail?: string; error?: string };
+  }) as { inviteEmail?: string; inviteOrganizationName?: string; error?: string };
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+      <AuthPageLayout variant="focused">
         <Helmet>
           <title>Invalid Invitation</title>
           <link rel="icon" href="/infisical.ico" />
         </Helmet>
-        <Link to="/">
-          <div className="mb-8 flex justify-center">
-            <img
-              src="/images/gradientLogo.svg"
-              style={{ height: "90px", width: "120px" }}
-              alt="Infisical logo"
-            />
-          </div>
-        </Link>
-        <div className="mx-auto w-full max-w-md rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-8 text-center">
-          <h1 className="mb-2 text-xl font-medium text-gray-200">Invitation Invalid</h1>
-          <p className="mb-6 text-sm text-gray-400">{error}</p>
-          <p className="mb-4 text-sm text-gray-500">
-            Please ask your organization admin to send a new invitation.
-          </p>
-          <Button onClick={() => navigate({ to: "/login" })} size="sm" colorSchema="primary">
-            Go to Login
-          </Button>
-        </div>
-      </div>
+        <AuthPagePanel className="text-center">
+          <CardHeader className="mb-6 items-center gap-2 text-center">
+            <div
+              aria-hidden="true"
+              className="mb-4 flex size-12 items-center justify-center justify-self-center rounded-lg bg-card text-foreground/80"
+            >
+              <MailX className="size-5" strokeWidth={1.75} />
+            </div>
+            <CardTitle className="justify-center text-center font-alliance text-2xl font-normal">
+              Invitation invalid.
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <p className="text-sm text-balance text-label">
+              Ask your organization administrator to send you a new invitation.
+            </p>
+            <Link
+              to="/login"
+              className="self-center text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+            >
+              Back to login
+            </Link>
+          </CardContent>
+        </AuthPagePanel>
+      </AuthPageLayout>
     );
   }
 
-  return <SignUpPage invite={{ email: inviteEmail ?? "" }} />;
+  return (
+    <SignUpPage invite={{ email: inviteEmail ?? "", organizationName: inviteOrganizationName }} />
+  );
 };

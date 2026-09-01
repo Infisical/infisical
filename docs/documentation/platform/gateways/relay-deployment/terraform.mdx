@@ -17,7 +17,7 @@ Before you start, make sure you have the following:
 - The AMI ID for your chosen OS (this guide uses an Ubuntu 22.04 LTS AMI).
 - Credentials for the Infisical Relay to authenticate with your Infisical instance. This guide uses a Machine Identity token, but other methods are available. You can find a full list of authentication options [here](/cli/commands/relay#available-authentication-methods).
 
-### Terraform Configuration
+### Terraform configuration
 
 Here is the complete Terraform configuration to deploy the Infisical Relay.
 
@@ -109,15 +109,14 @@ module "infisical_relay_instance" {
     # Create the relay in the Infisical UI first, then use the enrollment token here.
     #
     # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
-    sudo infisical relay systemd install \
-      --name "my-relay-example" \
+    sudo infisical relay systemd install my-relay-example \
       --enroll-method=token \
       --token "your-enrollment-token" \
       --domain "https://app.infisical.com"
 
-    # Start and enable the service to run on boot
-    sudo systemctl start infisical-relay
-    sudo systemctl enable infisical-relay
+    # Start and enable the service to run on boot.
+    # The systemd service is named after the relay.
+    sudo systemctl start my-relay-example
   EOT
 }
 
@@ -132,7 +131,7 @@ resource "aws_eip_association" "eip_assoc" {
 The provided security group rules are open to the internet (`0.0.0.0/0`) for simplicity. In a production environment, you should restrict the `cidr_blocks` to known IP addresses for enhanced security, especially for the SSH port (22).
 </Warning>
 
-### How to Deploy
+### How to deploy
 
 1.  **Save the configuration:** Save the code above to a file named `main.tf`.
 2.  **Customize values:** Update the placeholder values in `main.tf` to match your AWS environment and Infisical credentials. You'll need to replace:

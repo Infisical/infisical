@@ -3,6 +3,17 @@
 
 @source not "../public";
 
+@font-face {
+  font-family: "Alliance No. 2";
+  src:
+    url("./assets/fonts/AllianceNo2-Regular.woff2") format("woff2"),
+    url("./assets/fonts/AllianceNo2-Regular.woff") format("woff"),
+    url("./assets/fonts/AllianceNo2-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -24,15 +35,20 @@
     @apply overflow-hidden;
   }
 
-  /* Override browser/password-manager autofill styling for dark theme */
+  input {
+    color-scheme: dark;
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: var(--color-foreground) !important;
-    caret-color: var(--color-foreground);
-    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: 0 0 0 1000px var(--autofill-background, var(--color-background)) inset !important;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"] {
+    --autofill-background: var(--color-popover);
   }
 
   /* NordPass autofill override */
@@ -55,10 +71,20 @@
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --font-alliance:
+    "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   --font-inter: "Inter", sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", monospace;
+  --text-2xs: 0.7rem;
+  --text-2xs--line-height: 1rem;
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
+  --color-page: #0e1014;
   --color-background: #19191c;
   --color-foreground: #ebebeb;
   --color-success: #2ecc71;
@@ -72,7 +98,7 @@
   --color-product-pki: #ed8c34;
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
-  --color-product-pam: #ed3453;
+  --color-product-pam: #ff3568;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
@@ -100,6 +126,7 @@
   --color-import: #457d91;
   --color-secret-rotation: #4c6081;
   --color-override: #694c81;
+  --color-proxied-service: #7d4ca9;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;
@@ -216,6 +243,15 @@
   --color-blue-900: #00367d;
 }
 
+/* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
+   Bumping the type scale on detected iOS devices keeps form controls at/above that
+   threshold to prevent the zoom while preserving their relationship to surrounding text. */
+html[data-platform="ios"] {
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+}
+
 @utility min-table-row {
   width: 1%;
   white-space: nowrap;
@@ -227,6 +263,10 @@
 
 @utility h-inherit {
   height: inherit;
+}
+
+@utility text-highlight {
+  @apply bg-project px-1.5 pt-1.5 pb-0.5 text-background;
 }
 
 @utility secret-table {
@@ -491,11 +531,4 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
-}
-
-/* v3-style focus ring for ReactCodeInput */
-.code-input-v3 input:focus {
-  outline: none;
-  border-color: var(--color-ring) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 50%, transparent);
 }

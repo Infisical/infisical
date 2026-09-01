@@ -1,6 +1,8 @@
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
+export const MAX_UA_CLIENT_SECRET_TTL_SECONDS = 315_360_000; // 10 years
+
 export type TLoginUaDTO = {
   clientId: string;
   clientSecret: string;
@@ -37,6 +39,7 @@ export type TUpdateUaDTO = {
   lockoutThreshold?: number;
   lockoutDurationSeconds?: number;
   lockoutCounterResetSeconds?: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaDTO = {
@@ -45,6 +48,7 @@ export type TGetUaDTO = {
 
 export type TRevokeUaDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateUaClientSecretDTO = {
@@ -52,6 +56,7 @@ export type TCreateUaClientSecretDTO = {
   description: string;
   numUsesLimit: number;
   ttl: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaClientSecretsDTO = {
@@ -61,10 +66,12 @@ export type TGetUaClientSecretsDTO = {
 export type TRevokeUaClientSecretDTO = {
   identityId: string;
   clientSecretId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TClearUaLockoutsDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUniversalAuthClientSecretByIdDTO = {

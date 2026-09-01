@@ -1,9 +1,9 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { DiscriminativePick } from "@app/lib/types";
+import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { DatadogConnectionMethod } from "./datadog-connection-enums";
@@ -21,6 +21,10 @@ export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
     throw new BadRequestError({ message: "Invalid Datadog URL" });
   }
 
+  if (parsed.protocol !== "https:") {
+    throw new BadRequestError({ message: "Datadog URL must use HTTPS" });
+  }
+
   const { hostname } = parsed;
   const isAllowedHost = DATADOG_ALLOWED_DOMAIN_SUFFIXES.some(
     (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`)
@@ -31,8 +35,6 @@ export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
     });
   }
 
-  await blockLocalAndPrivateIpAddresses(rawUrl);
-
   return rawUrl;
 };
 
@@ -40,15 +42,24 @@ export const getDatadogConnectionListItem = () => {
   return {
     name: "Datadog" as const,
     app: AppConnection.Datadog as const,
-    methods: Object.values(DatadogConnectionMethod) as [DatadogConnectionMethod.ApiKey]
+    methods: Object.values(DatadogConnectionMethod) as [DatadogConnectionMethod.Token, DatadogConnectionMethod.ApiKey]
   };
 };
 
-export const getDatadogAuthHeaders = (credentials: { apiKey: string; applicationKey: string }) => ({
-  "DD-API-KEY": credentials.apiKey,
-  "DD-APPLICATION-KEY": credentials.applicationKey,
-  Accept: "application/json"
-});
+export const getDatadogAuthHeaders = (connection: DiscriminativePick<TDatadogConnection, "method" | "credentials">) => {
+  if (connection.method === DatadogConnectionMethod.Token) {
+    return {
+      Authorization: `Bearer ${connection.credentials.token}`,
+      Accept: "application/json"
+    };
+  }
+
+  return {
+    "DD-API-KEY": connection.credentials.apiKey,
+    "DD-APPLICATION-KEY": connection.credentials.applicationKey,
+    Accept: "application/json"
+  };
+};
 
 type TDatadogJsonApiError = { detail?: string; title?: string; status?: string };
 
@@ -70,7 +81,9 @@ export const validateDatadogConnectionCredentials = async (config: TDatadogConne
   const baseUrl = await getDatadogBaseUrl(config);
 
   try {
-    await request.get(`${baseUrl}/api/v2/permissions`, { headers: getDatadogAuthHeaders(config.credentials) });
+    await safeRequest.get(`${baseUrl}/api/v2/validate_keys`, {
+      headers: getDatadogAuthHeaders(config)
+    });
   } catch (error: unknown) {
     throw new BadRequestError({
       message: `Failed to validate Datadog credentials: ${getDatadogErrorMessage(error)}`
@@ -110,13 +123,13 @@ export const listDatadogServiceAccounts = async (connection: TDatadogConnection)
   try {
     for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
+      const { data } = await safeRequest.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
         params: {
           "filter[service_account]": "true",
           "page[size]": PAGE_SIZE,
           "page[number]": pageNumber
         },
-        headers: getDatadogAuthHeaders(connection.credentials)
+        headers: getDatadogAuthHeaders(connection)
       });
 
       const pageEntries = data.data ?? [];

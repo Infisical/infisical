@@ -19,6 +19,7 @@ import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { subjectAttributeSchema } from "@app/services/certificate-common/certificate-constants";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { InternalCertificateAuthorityResponseSchema } from "../sanitizedSchemas";
@@ -30,7 +31,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "createCertificateAuthorityV1",
@@ -40,13 +41,13 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         .object({
           projectSlug: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.projectSlug),
           type: z.nativeEnum(InternalCaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
-          friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
-          commonName: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),
-          organization: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.organization),
-          ou: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.ou),
-          country: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.country),
-          province: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.province),
-          locality: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.locality),
+          friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
+          commonName: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),
+          organization: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.organization),
+          ou: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.ou),
+          country: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.country),
+          province: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.province),
+          locality: subjectAttributeSchema.describe(CERTIFICATE_AUTHORITIES.CREATE.locality),
           // format: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notAfter),
@@ -126,7 +127,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCertificateAuthorityV1",
@@ -205,7 +206,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updateCertificateAuthorityV1",
@@ -264,7 +265,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "deleteCertificateAuthorityV1",
@@ -313,7 +314,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCertificateAuthorityCsr",
@@ -361,7 +362,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "renewCertificateAuthority",
@@ -419,7 +420,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listCertificateAuthorityCertificates",
@@ -470,7 +471,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getCertificateAuthorityCertificate",
@@ -523,7 +524,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "signIntermediateCertificateAuthority",
@@ -589,7 +590,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "importCertificateAuthorityCertificate",
@@ -645,7 +646,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "issueCertificateFromAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
@@ -656,8 +657,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.pkiCollectionId),
-          friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
-          commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
+          friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
+          commonName: subjectAttributeSchema.min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.altNames),
           ttl: z
             .string()
@@ -740,7 +741,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "signCertificateFromAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
@@ -752,8 +753,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         .object({
           csr: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.csr),
           pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
-          friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.friendlyName),
-          commonName: z.string().trim().min(1).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.commonName),
+          friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.friendlyName),
+          commonName: subjectAttributeSchema.min(1).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.altNames),
           ttl: z
             .string()
@@ -835,7 +836,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listCertificateAuthorityTemplates",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
@@ -885,7 +886,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listCertificateAuthorityCrls",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
@@ -934,7 +935,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
   //   config: {
   //     rateLimit: writeLimit
   //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
   //   schema: {
   //     description: "Rotate CRLs of the CA",
   //     params: z.object({

@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { TCertificates } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -11,8 +12,10 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
+import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -49,6 +52,8 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      keySource?: CertKeySource;
+      hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
     }
@@ -69,6 +74,8 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      keySource?: CertKeySource;
+      hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
     } & Omit<TProjectPermission, "projectId">);
@@ -232,7 +239,9 @@ type TIssueCertFromCaBaseDTO = {
   state?: string;
   locality?: string;
   ou?: string;
+  domainComponents?: string[];
   tx?: Knex;
+  onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
 };
 
 export type TIssueCertFromCaDTO =
@@ -270,6 +279,14 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       tx?: Knex;
+      /**
+       * Runs inside the same transaction that writes the certificate rows, after they are created
+       * but before it commits. Use this to record caller-side bookkeeping (profile linkage,
+       * certificate request status, metadata) atomically with the certificate itself, without
+       * having to hold a transaction open across the CA key access and signing that precede it.
+       * Throwing from here rolls the certificate back.
+       */
+      onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
     }
   | ({
       isInternal: false;
@@ -293,6 +310,8 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       tx?: Knex;
+      /** See the `onPersisted` note on the internal variant above. */
+      onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {
@@ -306,6 +325,7 @@ export type TDNParts = {
   country?: string;
   province?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TGetCaCredentialsDTO = {
@@ -314,6 +334,16 @@ export type TGetCaCredentialsDTO = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
+};
+
+export type TGetCaSignerDTO = {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
 };
 
@@ -341,6 +371,7 @@ export type TRebuildCaCrlDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
 
 export type TRotateCaCrlTriggerDTO = {

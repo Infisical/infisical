@@ -25,7 +25,7 @@ export type TOrgProductStats = {
   };
   pam: {
     accountsCount: number;
-    resourcesCount: number;
-    projectsCount: number;
+    accountTemplatesCount: number;
+    foldersCount: number;
   };
 };

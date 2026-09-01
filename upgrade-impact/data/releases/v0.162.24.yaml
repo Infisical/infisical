@@ -1,0 +1,42 @@
+version: v0.162.24
+releasedAt: 2026-08-21T12:18:38-07:00
+sourceTag: v0.162.24
+previousTag: v0.162.23
+impactLevel: low
+summary: TLS certificate auth now rejects some CA and client certificate chains
+  that previously passed, based on EKU, name constraints, and path length rules.
+requiresDbMigration: false
+breakingChanges:
+  - title: TLS cert auth validation
+    description: TLS certificate auth now enforces CA and client certificate
+      clientAuth usage, CA name constraints, and intermediate path length
+      limits. Existing certificate chains that violate these rules will fail
+      login after upgrade.
+    action: If TLS certificate auth logins fail after upgrade, inspect the CA and
+      presented chain for EKU, name constraints, and intermediate depth.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/services/identity-tls-cert-auth/identity-tls-cert-auth-service.ts
+        path: backend/src/services/identity-tls-cert-auth/identity-tls-cert-auth-service.ts
+        description: Rejects invalid chain reason codes at login
+      - type: file
+        ref: backend/src/services/identity-tls-cert-auth/identity-tls-cert-auth-fns.ts
+        path: backend/src/services/identity-tls-cert-auth/identity-tls-cert-auth-fns.ts
+        description: Implements EKU, name constraints, path length checks
+      - type: file
+        ref: docs/documentation/platform/identities/tls-cert-auth.mdx
+        path: docs/documentation/platform/identities/tls-cert-auth.mdx
+        description: Docs describe stricter TLS cert auth rules
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-21T20:31:07.561Z
+  sourceRange:
+    from: v0.162.23
+    to: v0.162.24

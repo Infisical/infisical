@@ -3,6 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -12,6 +13,7 @@ import {
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -26,14 +28,16 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../certificate-request/certificate-request-types";
+import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { MaxInternalCas } from "../license-client";
+import { InternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import {
   AcmeCertificateAuthorityFns,
   castDbEntryToAcmeCertificateAuthority
@@ -42,6 +46,14 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme/acme-certificate-authority-types";
+import {
+  ADCSCertificateAuthorityFns,
+  castDbEntryToADCSCertificateAuthority
+} from "./adcs/adcs-certificate-authority-fns";
+import {
+  TCreateADCSCertificateAuthorityDTO,
+  TUpdateADCSCertificateAuthorityDTO
+} from "./adcs/adcs-certificate-authority-types";
 import {
   AwsAcmPublicCaCertificateAuthorityFns,
   castDbEntryToAwsAcmPublicCaCertificateAuthority
@@ -68,6 +80,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
   TCreateCertificateAuthorityDTO,
@@ -118,10 +131,12 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findByIdWithAssociatedCa"
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
+    | "countInternalCasByOrgId"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -142,6 +157,9 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -149,6 +167,7 @@ export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateA
 export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
+  telemetryService,
   permissionService,
   internalCertificateAuthorityService,
   appConnectionDAL,
@@ -166,7 +185,10 @@ export const certificateAuthorityServiceFactory = ({
   resourceMetadataDAL,
   gatewayV2Service,
   gatewayPoolService,
-  usageMeteringService
+  usageMeteringService,
+  hsmConnectorService,
+  certificateAuthoritySecretDAL,
+  licenseService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -198,6 +220,21 @@ export const certificateAuthorityServiceFactory = ({
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
+  });
+
+  const adcsFns = ADCSCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const venafiTppFns = VenafiTppCertificateAuthorityFns({
@@ -281,9 +318,40 @@ export const certificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name })
     );
 
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+      throw new BadRequestError({
+        message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
+      });
+    }
+
     if (type === CaType.INTERNAL) {
+      const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
+
+      if (typeof plan.maxInternalCas === "number") {
+        const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
+        if (currentInternalCaCount >= plan.maxInternalCas) {
+          throw new BadRequestError({
+            message:
+              "Failed to create internal certificate authority due to plan limit reached. Upgrade plan to add more internal certificate authorities."
+          });
+        }
+      }
+
+      if (internalConfig.keySource === CertKeySource.Hsm) {
+        if (!internalConfig.hsmConnectorId) {
+          throw new BadRequestError({ message: "An HSM Connector is required when the key source is HSM." });
+        }
+        await hsmConnectorService.assertAttachPermission(
+          { type: actor.type, id: actor.id, authMethod: actor.authMethod, orgId: actor.orgId },
+          internalConfig.hsmConnectorId,
+          projectId
+        );
+      }
+
       const ca = await internalCertificateAuthorityService.createCa({
-        ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
+        ...internalConfig,
         isInternal: true,
         projectId,
         name
@@ -295,7 +363,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(projectId, InternalCas.key);
 
       return {
         id: ca.id,
@@ -323,6 +391,16 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
+        status,
+        actor
+      });
+    }
+
+    if (type === CaType.ADCS) {
+      return adcsFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateADCSCertificateAuthorityDTO["configuration"],
         status,
         actor
       });
@@ -407,6 +485,8 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: id });
+
       return {
         id: certificateAuthority.id,
         type,
@@ -414,7 +494,12 @@ export const certificateAuthorityServiceFactory = ({
         subject: ProjectPermissionSub.CertificateAuthorities,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: {
+          ...certificateAuthority.internalCa,
+          keySource: (caSecret?.keySource as CertKeySource | undefined) ?? CertKeySource.Infisical,
+          hsmConnectorId: caSecret?.hsmConnectorId ?? undefined,
+          hsmKeyLabel: caSecret?.hsmKeyLabel ?? undefined
+        },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -431,6 +516,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_PCA) {
@@ -516,6 +605,10 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
+    }
+
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
@@ -592,6 +685,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return azureAdCsFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
+    if (type === CaType.ADCS) {
+      return adcsFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     if (type === CaType.AWS_PCA) {
@@ -699,6 +796,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.ADCS) {
+      return adcsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
@@ -789,7 +896,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -807,6 +914,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_PCA) {
@@ -911,6 +1022,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.ADCS) {
+      return adcsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
@@ -1007,7 +1128,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1025,6 +1146,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AZURE_AD_CS) {
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_PCA) {
@@ -1089,6 +1214,50 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     return azureAdCsFns.getTemplates({
+      caId,
+      projectId
+    });
+  };
+
+  const getADCSTemplates = async ({
+    caId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    caId: string;
+    projectId: string;
+    actor: OrgServiceActor["type"];
+    actorId: string;
+    actorAuthMethod: OrgServiceActor["authMethod"];
+    actorOrgId?: string;
+  }) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${caId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, {
+        name: certificateAuthority.name
+      })
+    );
+
+    return adcsFns.getCertificateTemplates({
       caId,
       projectId
     });
@@ -1171,6 +1340,11 @@ export const certificateAuthorityServiceFactory = ({
       return;
     }
 
+    if (caType === CaType.ADCS) {
+      await adcsFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
     throw new BadRequestError({
       message: `Certificate revocation via CA service is not supported for CA type "${caType}"`
     });
@@ -1249,7 +1423,9 @@ export const certificateAuthorityServiceFactory = ({
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
-              godaddyFns
+              godaddyFns,
+              projectDAL,
+              telemetryService
             },
             certificateRequest
           )
@@ -1261,7 +1437,9 @@ export const certificateAuthorityServiceFactory = ({
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
-              digicertFns
+              digicertFns,
+              projectDAL,
+              telemetryService
             },
             certificateRequest
           );
@@ -1277,6 +1455,7 @@ export const certificateAuthorityServiceFactory = ({
     updateCertificateAuthority,
     deleteCertificateAuthority,
     getAzureAdcsTemplates,
+    getADCSTemplates,
     getCaById,
     deprecatedUpdateCertificateAuthority,
     deprecatedDeleteCertificateAuthority,

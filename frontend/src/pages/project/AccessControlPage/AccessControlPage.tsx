@@ -1,9 +1,15 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import {
+  LookingForOrgPageLink,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -19,7 +25,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
@@ -39,11 +45,29 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const hasTabs = isCertManager || isSecretManager;
+
+  const renderTabContent = () => {
+    switch (selectedTab) {
+      case ProjectAccessControlTabs.Identities:
+        return <IdentityTab />;
+      case ProjectAccessControlTabs.Groups:
+        return <GroupsTab />;
+      case ProjectAccessControlTabs.ServiceTokens:
+        return isSecretManager ? <ServiceTokenTab /> : <MembersTab />;
+      case ProjectAccessControlTabs.Roles:
+        return <ProjectRoleListTab />;
+      case ProjectAccessControlTabs.Member:
+      default:
+        return <MembersTab />;
+    }
+  };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
+          className={hasTabs ? "mb-6" : undefined}
           scope={currentProject.type}
           title={isCertManager ? "Access Control" : "Project Access Control"}
           description={
@@ -52,63 +76,46 @@ const Page = () => {
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }
         >
-          <Link
-            to="/organizations/$orgId/access-management"
-            params={{
-              orgId: currentOrg.id
-            }}
-            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-          >
-            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization access
-            control?
-          </Link>
+          <LookingForOrgPageLink page="accessControl" />
         </PageHeader>
-        <Tabs
-          orientation={isCertManager || isSecretManager ? "horizontal" : "vertical"}
-          value={selectedTab}
-          onValueChange={updateSelectedTab}
-        >
-          {(isCertManager || isSecretManager) && (
-            <TabList>
-              <Tab variant="project" value={ProjectAccessControlTabs.Member}>
-                Users
-              </Tab>
-              <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
+        {hasTabs ? (
+          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+            <TabsList variant="project" aria-label="Project access control sections">
+              <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
+              <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities
-              </Tab>
-              <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
-                Groups
-              </Tab>
+              </TabsTrigger>
+              <TabsTrigger value={ProjectAccessControlTabs.Groups}>Groups</TabsTrigger>
               {isSecretManager && (
-                <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
+                <TabsTrigger value={ProjectAccessControlTabs.ServiceTokens}>
                   Service Tokens
-                </Tab>
+                </TabsTrigger>
               )}
               {isSecretManager && (
-                <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
-                  Roles
-                </Tab>
+                <TabsTrigger value={ProjectAccessControlTabs.Roles}>Roles</TabsTrigger>
               )}
-            </TabList>
-          )}
-          <TabPanel value={ProjectAccessControlTabs.Member}>
-            <MembersTab />
-          </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.Identities}>
-            <IdentityTab />
-          </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.Groups}>
-            <GroupsTab />
-          </TabPanel>
-          {isSecretManager && (
-            <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
-              <ServiceTokenTab />
-            </TabPanel>
-          )}
-          <TabPanel value={ProjectAccessControlTabs.Roles}>
-            <ProjectRoleListTab />
-          </TabPanel>
-        </Tabs>
+            </TabsList>
+            <TabsContent value={ProjectAccessControlTabs.Member}>
+              <MembersTab />
+            </TabsContent>
+            <TabsContent value={ProjectAccessControlTabs.Identities}>
+              <IdentityTab />
+            </TabsContent>
+            <TabsContent value={ProjectAccessControlTabs.Groups}>
+              <GroupsTab />
+            </TabsContent>
+            {isSecretManager && (
+              <TabsContent value={ProjectAccessControlTabs.ServiceTokens}>
+                <ServiceTokenTab />
+              </TabsContent>
+            )}
+            <TabsContent value={ProjectAccessControlTabs.Roles}>
+              <ProjectRoleListTab />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          renderTabContent()
+        )}
       </div>
     </div>
   );

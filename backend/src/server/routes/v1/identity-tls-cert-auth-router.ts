@@ -226,6 +226,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .max(10240)
             .refine(validateCaCertificate, "Invalid CA Certificate.")
             .describe(TLS_CERT_AUTH.ATTACH.caCertificate),
+          verifyClientCertificateChain: z
+            .boolean()
+            .default(false)
+            .describe(TLS_CERT_AUTH.ATTACH.verifyClientCertificateChain),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -287,6 +291,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
             allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
+            verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -343,6 +348,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .refine(validateCaCertificate, "Invalid CA Certificate.")
             .optional()
             .describe(TLS_CERT_AUTH.UPDATE.caCertificate),
+          verifyClientCertificateChain: z
+            .boolean()
+            .optional()
+            .describe(TLS_CERT_AUTH.UPDATE.verifyClientCertificateChain),
           allowedCommonNames: validateCommonNames
             .optional()
             .nullable()
@@ -397,7 +406,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
@@ -411,6 +421,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
             allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
+            verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -444,7 +455,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getTlsCertAuth",
@@ -523,7 +534,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);

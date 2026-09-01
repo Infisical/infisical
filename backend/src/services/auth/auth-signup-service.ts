@@ -1,11 +1,20 @@
-import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import {
+  EmailDispatchAddressForm,
+  EmailDispatchDimension,
+  emailDispatchDistinctCounter,
+  EmailDispatchMailboxProvider,
+  EmailDispatchOutcome,
+  EmailDispatchPurpose as EmailDispatchMetricPurpose,
+  emailDispatchRequestCounter
+} from "@app/lib/telemetry/metrics";
+import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -15,10 +24,13 @@ import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-serv
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { extractBearerToken } from "./auth-fns";
+import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
-import { CompleteAccountType, TCompleteAccountDTO } from "./auth-signup-type";
+import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
+import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { verifyPublicEmailCaptcha } from "./captcha-fns";
+import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
@@ -30,9 +42,21 @@ type TAuthSignupDep = {
   smtpService: TSmtpService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
+  emailDispatchGuard: TEmailDispatchGuardFactory;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+const signupTrafficAttributes = (email: string) => ({
+  "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+  "email_dispatch.mailbox_provider": normalizeEmail(email).endsWith("@gmail.com")
+    ? EmailDispatchMailboxProvider.GOOGLE
+    : EmailDispatchMailboxProvider.OTHER,
+  "email_dispatch.address_form": isAliasedEmail(email)
+    ? EmailDispatchAddressForm.ALIASED
+    : EmailDispatchAddressForm.CANONICAL
+});
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
@@ -44,20 +68,60 @@ export const authSignupServiceFactory = ({
   orgService,
   orgDAL,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  signupOnboardingResponseDAL,
+  emailDispatchGuard
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
-  const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
+  const beginEmailSignupProcess = async ({
+    email,
+    ip,
+    captchaToken
+  }: {
+    email: string;
+    ip: string;
+    captchaToken?: string;
+  }): Promise<{ cooldownSeconds: number }> => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
-    if (isEmailInvalid) {
-      throw new Error("Provided a disposable email");
+
+    const trafficAttributes = signupTrafficAttributes(sanitizedEmail);
+
+    try {
+      await verifyPublicEmailCaptcha(captchaToken);
+    } catch (err) {
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.CAPTCHA_REJECTED
+      });
+      throw err;
     }
 
-    // Acquire cooldown before any operation to avoid reliable enumeration oracle and to throttle the
-    // unauthenticated DB queries below (e.g. the SSO-enforced domain lookup).
-    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    if (isEmailInvalid) {
+      throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
+    }
+
+    const { emailHash, mailboxHash, cooldownSeconds } = await emailDispatchGuard.checkMailboxCooldown({
+      purpose: EmailDispatchPurpose.Signup,
+      email: sanitizedEmail
+    });
+
+    const { isNewSource, isNewMailbox } = await emailDispatchGuard.probeTraffic({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash,
+      ip
+    });
+    if (isNewSource)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.SOURCE
+      });
+    if (isNewMailbox)
+      emailDispatchDistinctCounter.add(1, {
+        "email_dispatch.purpose": EmailDispatchMetricPurpose.SIGNUP,
+        "email_dispatch.dimension": EmailDispatchDimension.MAILBOX
+      });
 
     // Block email/password signup for domains owned by an org that enforces SSO. The org's verified
     // domain + IdP are authoritative, so allowing a competing password account would reopen an
@@ -76,8 +140,19 @@ export const authSignupServiceFactory = ({
       }
     }
 
+    await emailDispatchGuard.startMailboxCooldown({ purpose: EmailDispatchPurpose.Signup, mailboxHash });
+
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+
+    if (!(await emailDispatchGuard.consumeMailboxAllowance({ purpose: EmailDispatchPurpose.Signup, mailboxHash }))) {
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.MAILBOX_CAPPED
+      });
+      return { cooldownSeconds };
+    }
+
     if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
@@ -95,6 +170,10 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
+      emailDispatchRequestCounter.add(1, {
+        ...trafficAttributes,
+        "email_dispatch.outcome": EmailDispatchOutcome.EXISTING_ACCOUNT
+      });
       return { cooldownSeconds };
     }
 
@@ -111,6 +190,8 @@ export const authSignupServiceFactory = ({
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
 
+    emailDispatchRequestCounter.add(1, { ...trafficAttributes, "email_dispatch.outcome": EmailDispatchOutcome.SENT });
+
     return { cooldownSeconds };
   };
 
@@ -119,6 +200,10 @@ export const authSignupServiceFactory = ({
     validateEmail(sanitizedEmail);
 
     await tokenService.validateEmailSignupToken(sanitizedEmail, code);
+    await emailDispatchGuard.clearMailboxThrottle({
+      purpose: EmailDispatchPurpose.Signup,
+      mailboxHash: emailDispatchGuard.hashAddress(sanitizedEmail).mailboxHash
+    });
 
     // Only create (or recover) the user after the OTP has been verified.
     let user = await userDAL.findOne({ username: sanitizedEmail });
@@ -180,6 +265,7 @@ export const authSignupServiceFactory = ({
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
     let organizationId: string | undefined;
+    let invitingOrgId: string | undefined;
     let isInvitedUser = false;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
@@ -207,12 +293,18 @@ export const authSignupServiceFactory = ({
           },
           { tx }
         );
-        isInvitedUser = existingMemberships.length > 0;
-        if (!isInvitedUser && dto.organizationName) {
+        // Org creation is skipped whenever the user already belongs to an org at all. Attribution is
+        // narrower: only a pending invitation means someone recruited them, since a signup can pick
+        // up an `Accepted` membership of its own accord (the self-hosted default auth org).
+        const pendingInviteMemberships = existingMemberships.filter(
+          (membership) => membership.status === OrgMembershipStatus.Invited
+        );
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
+        if (!existingMemberships.length && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
               userId: user.id,
-              userEmail: user.email ?? user.username,
               orgName: dto.organizationName
             },
             tx
@@ -252,6 +344,20 @@ export const authSignupServiceFactory = ({
 
       if (shouldReject) {
         throw new BadRequestError({ message: "Invalid token" });
+      }
+
+      // An invitee whose provider did not verify their email completes signup here instead of in
+      // the email branch, so derive the same invite state. Only `Invited` counts: a signup can pick
+      // up an `Accepted` membership of its own accord (the self-hosted default auth org), and the
+      // rest of the codebase already treats `Invited` as what a pending invitation is.
+      if (!user.isAccepted) {
+        const pendingInviteMemberships = await orgDAL.findMembership({
+          actorUserId: user.id,
+          scope: AccessScope.Organization,
+          status: OrgMembershipStatus.Invited
+        });
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
       }
 
       // Update user-level verification flags based on auth method
@@ -307,13 +413,40 @@ export const authSignupServiceFactory = ({
       refreshToken: tokens.refresh,
       authMethod,
       organizationId,
+      invitingOrgId,
       isInvitedUser
     };
+  };
+
+  const recordOnboardingResponse = async ({
+    userId,
+    orgId,
+    selectedProducts,
+    launchDestination,
+    attributionSource
+  }: TRecordSignupOnboardingDTO) => {
+    const answers: TSignupOnboardingResponsesUpdate = {};
+    if (selectedProducts) {
+      answers.selectedProducts = selectedProducts;
+      answers.isExploring = selectedProducts.length === 0;
+    }
+    if (launchDestination) answers.launchDestination = launchDestination;
+    if (attributionSource) answers.attributionSource = attributionSource;
+    if (!Object.keys(answers).length) return;
+
+    // Answers arrive across separate requests; merge them into one row per signup.
+    await signupOnboardingResponseDAL.upsert(
+      [{ userId, orgId, ...answers }],
+      ["userId", "orgId"],
+      undefined,
+      Object.keys(answers) as (keyof TSignupOnboardingResponsesUpdate)[]
+    );
   };
 
   return {
     beginEmailSignupProcess,
     verifyEmailSignup,
-    completeAccount
+    completeAccount,
+    recordOnboardingResponse
   };
 };

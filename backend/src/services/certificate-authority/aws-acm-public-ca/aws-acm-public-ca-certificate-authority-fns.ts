@@ -26,7 +26,7 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -38,6 +38,7 @@ import {
   CertSubjectAlternativeNameType,
   CrlReason
 } from "@app/services/certificate/certificate-types";
+import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { ExternalMetadataSchema } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -58,7 +59,6 @@ import {
   TUpdateAwsAcmPublicCaCertificateAuthorityDTO
 } from "./aws-acm-public-ca-certificate-authority-types";
 import {
-  buildIdempotencyToken,
   generateAcmPassphrase,
   mapCertKeyAlgorithmToAcm,
   validateAcmIssuanceInputs
@@ -406,7 +406,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyAlgorithm?: CertKeyAlgorithm;
@@ -753,7 +753,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       newCertId = cert.id;
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(

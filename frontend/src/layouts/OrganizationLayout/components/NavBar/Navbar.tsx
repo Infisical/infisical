@@ -7,12 +7,10 @@ import {
   Book,
   Check,
   ChevronLeft,
-  ChevronsUpDown,
   CircleHelp,
   Clipboard,
   ExternalLink,
   Github,
-  Infinity,
   Info,
   LogOut,
   Mail,
@@ -29,6 +27,7 @@ import { twMerge } from "tailwind-merge";
 import { AnnouncementNavButton } from "@app/components/announcements/AnnouncementNavButton";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
@@ -51,10 +50,6 @@ import {
   IconButton,
   InstanceIcon,
   OrgIcon,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   SubOrgIcon,
   Tooltip,
   TooltipContent,
@@ -66,6 +61,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
@@ -77,16 +73,20 @@ import {
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
-  useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
+import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 import {
   ApplicationSelect,
   ProjectSelect
@@ -95,7 +95,6 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
 
@@ -142,6 +141,7 @@ export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
@@ -175,6 +175,8 @@ export const Navbar = () => {
   const rootOrg = isSubOrganization
     ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
     : currentOrg;
+
+  const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
 
   useEffect(() => {
     if (isModalIntrusive) {
@@ -220,6 +222,7 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
@@ -265,8 +268,6 @@ export const Navbar = () => {
     }
   };
 
-  const { mutateAsync } = useGetOrgTrialUrl();
-
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
@@ -292,22 +293,22 @@ export const Navbar = () => {
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Mfa
-          email={user.email as string}
-          method={requiredMfaMethod}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
-      </div>
+      <Mfa
+        email={user.email as string}
+        method={requiredMfaMethod}
+        successCallback={mfaSuccessCallback}
+        closeMfa={() => toggleShowMfa.off()}
+      />
     );
   }
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
+  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
   const isProjectScope =
-    location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-    location.pathname !== `/organizations/${currentOrg.id}/projects`;
+    isPamScope ||
+    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
+      location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -318,7 +319,8 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
+        // orgSlug, not domain: the domain param is a verified email-domain lookup and 403s on a slug
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }
@@ -341,7 +343,8 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isProjectScope && "from-project/5",
+        !isServerAdminPanel && isPamScope && "from-product-pam/5",
+        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -379,8 +382,7 @@ export const Navbar = () => {
                 isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
-              <Popover open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <PopoverAnchor className="absolute left-2" />
+              <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
@@ -435,20 +437,20 @@ export const Navbar = () => {
                     </Tooltip>
                   )}
                 </div>
-                <PopoverTrigger asChild>
-                  <IconButton variant="ghost" size="xs" aria-label="switch-org">
-                    <ChevronsUpDown />
-                  </IconButton>
-                </PopoverTrigger>
-                <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+                <NavbarSwitcherTrigger aria-label="switch-org" />
+                <NavbarSwitcherContent className="w-96">
                   <Command>
-                    <CommandInput placeholder="Search organizations..." />
+                    <CommandInput
+                      aria-label="Search organizations"
+                      placeholder="Search organizations..."
+                    />
                     <CommandList>
                       <CommandEmpty>No organizations found.</CommandEmpty>
                       {/* Current Organization */}
                       <CommandGroup heading="Current Organization">
                         <CommandItem
-                          value={rootOrg.name}
+                          value={rootOrg.id}
+                          keywords={[rootOrg.name]}
                           onSelect={() => {
                             setIsOrgSelectOpen(false);
                             if (isSubOrganization) {
@@ -509,7 +511,8 @@ export const Navbar = () => {
                             {subOrganizations.map((subOrg) => (
                               <CommandItem
                                 key={subOrg.id}
-                                value={subOrg.name}
+                                value={subOrg.id}
+                                keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
                                   handleOrgSelection({ organizationId: subOrg.id });
@@ -543,29 +546,29 @@ export const Navbar = () => {
                               }
                             </OrgPermissionCan>
                           </CommandGroup>
-                          <CommandSeparator />
+                          {otherOrgs.length > 0 && <CommandSeparator />}
                         </>
                       )}
                       {/* Other Organizations */}
-                      {orgs && orgs.filter((o) => o.id !== rootOrg.id).length > 0 && (
+                      {otherOrgs.length > 0 && (
                         <CommandGroup heading="Other Organizations">
-                          {orgs
-                            .filter((o) => o.id !== rootOrg.id)
-                            .map((org) => (
-                              <CommandItem
-                                key={org.id}
-                                value={org.name}
-                                onSelect={() => {
-                                  setIsOrgSelectOpen(false);
-                                  handleOrgNav(org);
-                                }}
-                              >
-                                <span className="truncate">{org.name}</span>
-                              </CommandItem>
-                            ))}
+                          {otherOrgs.map((org) => (
+                            <CommandItem
+                              key={org.id}
+                              value={org.id}
+                              keywords={[org.name]}
+                              onSelect={() => {
+                                setIsOrgSelectOpen(false);
+                                handleOrgNav(org);
+                              }}
+                            >
+                              <span className="truncate">{org.name}</span>
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       )}
                     </CommandList>
+                    <CommandSeparator />
                     <div className="p-1">
                       <button
                         type="button"
@@ -577,8 +580,8 @@ export const Navbar = () => {
                       </button>
                     </div>
                   </Command>
-                </PopoverContent>
-              </Popover>
+                </NavbarSwitcherContent>
+              </NavbarSwitcher>
             </div>
             {isProjectScope && (
               <>
@@ -591,36 +594,10 @@ export const Navbar = () => {
         )}
       </div>
 
-      {subscription &&
-      subscription.slug === SubscriptionPlanTypes.Starter &&
-      !subscription.has_used_trial ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="info"
-              size="xs"
-              className="mt-px mr-2"
-              onClick={async () => {
-                if (!subscription || !rootOrg) return;
-                const url = await mutateAsync({
-                  orgId: rootOrg.id,
-                  success_url: window.location.href
-                });
-                window.location.href = url;
-              }}
-            >
-              <Infinity />
-              Free Pro Trial
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Start Free Pro Trial</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getSubscriptionPlanLabel(subscription)}
-        </Badge>
-      )}
       <VersionBadge />
+      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
+        {getSubscriptionPlanLabel(subscription)}
+      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -695,6 +672,16 @@ export const Navbar = () => {
                 <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
                   <Info className="size-3.5" />
                   Version: {envConfig.PLATFORM_VERSION}
+                  {serverConfig.latestAvailableVersion && (
+                    <a
+                      href="https://upgrade.infisical.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info hover:underline"
+                    >
+                      (v{serverConfig.latestAvailableVersion} available)
+                    </a>
+                  )}
                 </div>
               </>
             )}
@@ -829,21 +816,11 @@ export const Navbar = () => {
           </div>
         </ModalContent>
       </Modal>
-      <Modal isOpen={showSubOrgForm} onOpenChange={setShowSubOrgForm}>
-        <ModalContent
-          title="Create Sub-Organizations"
-          subTitle="Define a new sub-organization under your current organization."
-        >
-          <div className="mb-2">
-            <NewSubOrganizationForm
-              onClose={() => {
-                setShowSubOrgForm(false);
-              }}
-              handleOrgSelection={handleOrgSelection}
-            />
-          </div>
-        </ModalContent>
-      </Modal>
+      <NewSubOrganizationModal
+        isOpen={showSubOrgForm}
+        onOpenChange={setShowSubOrgForm}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
+      />
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">
           <div className="mb-2">

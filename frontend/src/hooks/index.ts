@@ -3,15 +3,18 @@ export {
   useCanUseProjectAppConnectionImport
 } from "./useCanUseAppConnectionImport";
 export { useDebounce } from "./useDebounce";
+export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
 export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";
+export { useOnboarding } from "./useOnboarding";
 export { usePagination } from "./usePagination";
 export { usePersistentState } from "./usePersistentState";
 export { usePopUp } from "./usePopUp";
 export { useResetPageHelper } from "./useResetPageHelper";
 export * from "./useResizableHeaderHeight";
 export { useScopeVariant } from "./useScopeVariant";
+export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
 export { useToggle } from "./useToggle";

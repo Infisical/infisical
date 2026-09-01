@@ -2,11 +2,9 @@ import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
+import { createSshCert, createSshKeyPair, getSshPublicKey, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { createSshCert, createSshKeyPair, getSshPublicKey } from "../../ssh/ssh-certificate-authority-fns";
-import { SshCertType } from "../../ssh/ssh-certificate-authority-types";
-import { SshCertKeyAlgorithm } from "../../ssh-certificate/ssh-certificate-types";
 import { DynamicSecretSshSchema, SshStoredSchema, TDynamicProviderFns } from "./models";
 
 export const SshProvider = (): TDynamicProviderFns => {
@@ -103,7 +101,10 @@ export const SshProvider = (): TDynamicProviderFns => {
       keyId,
       principals: requestedPrincipals,
       requestedTtl,
-      certType: SshCertType.USER
+      certType: SshCertType.USER,
+      // revoke is a no-op for this provider, so the certificate's expiry is the only thing ending
+      // the lease and must not drift past it
+      enforceExactExpiry: true
     });
 
     return {

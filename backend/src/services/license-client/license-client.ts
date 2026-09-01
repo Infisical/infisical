@@ -6,42 +6,57 @@ import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
-  TAddSubscriptionItemsPayload,
-  TCreateCheckoutPayload,
+  TBuyProductPayload,
+  TCancelTrialPayload,
+  TChangeCommitmentsPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
+  TStartTrialPayload,
   TSubscriptionPreviewPayload
 } from "./license-client-types";
+import { createSelfHostedTokenProvider } from "./license-token-provider";
 
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    | "LICENSE_SERVER_V2_MODE"
-    | "LICENSE_SERVER_V2_URL"
-    | "LICENSE_SERVER_V2_SERVICE_KEY"
-    | "LICENSE_KEY"
-    | "INTERNAL_REGION"
+    "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY" | "INTERNAL_REGION"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  // Offline (air-gapped) licenses must never contact the license server; the SDK stays dormant for them.
+  isOffline?: boolean;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
-// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee
-// runtime import cycle (license-client <- license-service <- license-fns).
-const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
-
-// Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
-// self-hosted v2 license key or the cloud service key (plus server URL) is configured.
-const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
-  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+// Returns null (SDK dormant -> getFeature serves fallbacks) unless either a self-hosted license key or
+// the cloud service key (plus the license server URL) is configured.
+const buildBackend = (
+  envConfig: TLicenseClientFactoryDep["envConfig"],
+  isOffline: boolean
+): TLicenseClientBackend | null => {
+  // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the
+  // air-gap and leak the signed credential — keep the SDK dormant so no read can POST it to the server.
+  if (isOffline) {
     return null;
   }
 
-  const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
+  const licenseKey = envConfig.LICENSE_KEY;
+  if (licenseKey) {
+    if (!envConfig.LICENSE_SERVER_URL) {
+      logger.warn(
+        "license-client: self-hosted key set but LICENSE_SERVER_URL (token endpoint) is missing; serving feature fallbacks"
+      );
+      return null;
+    }
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl: envConfig.LICENSE_SERVER_URL });
+    return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
+  }
+
+  // One host serves both the self-hosted token endpoint and the entitlement API.
+  const serverUrl = envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("license-client: enabled but LICENSE_SERVER_V2_URL is missing; serving feature fallbacks");
+    logger.warn("license-client: LICENSE_SERVER_URL is not set; serving feature fallbacks");
     return null;
   }
 
@@ -50,19 +65,12 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   try {
     parsedUrl = new URL(serverUrl);
   } catch {
-    logger.warn("license-client: LICENSE_SERVER_V2_URL is not a valid URL; serving feature fallbacks");
+    logger.warn("license-client: LICENSE_SERVER_URL is not a valid URL; serving feature fallbacks");
     return null;
   }
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-    logger.warn("license-client: LICENSE_SERVER_V2_URL must use http(s); serving feature fallbacks");
+    logger.warn("license-client: LICENSE_SERVER_URL must use http(s); serving feature fallbacks");
     return null;
-  }
-
-  // A self-hosted v2 license authenticates with its own key as a bearer token; the cloud path mints an
-  // RS256 service JWT from the service key instead.
-  const licenseKey = envConfig.LICENSE_KEY;
-  if (licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)) {
-    return licenseServerSelfHostedBackend(serverUrl, licenseKey, envConfig.INTERNAL_REGION);
   }
 
   const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
@@ -75,8 +83,8 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
-export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
-  const backend = buildBackend(envConfig);
+export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }: TLicenseClientFactoryDep) => {
+  const backend = buildBackend(envConfig, isOffline);
   const resolver = backend ? entitlementResolverFactory({ keyStore, backend }) : null;
 
   const getEntitlements = async (org: TEntitlementOrg) => {
@@ -93,21 +101,30 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     await resolver.invalidateEntitlements(orgId);
   };
 
-  // Ask the license server to recompute its cached entitlements (used after a license change), then
-  // drop the local cache so the next read reflects them. No-op when the backend is dormant.
+  // Flag the org's license caches for stale-while-revalidate after a billing mutation instead of a hard
+  // bust, so reads keep serving cached data while a background refresh converges once Stripe reconciles.
+  const markEntitlementsStale = async (orgId: string, opts?: { checkout?: boolean }) => {
+    if (!resolver) {
+      return;
+    }
+    await resolver.markPassThrough(orgId, opts);
+  };
+
+  // Drop the local plan cache so the next read reflects a change immediately. The license server no
+  // longer caches entitlements (reads are always live), so there's nothing to ask it to recompute.
+  // No-op when the backend is dormant.
   const refreshEntitlements = async (org: TEntitlementOrg) => {
     if (!backend) {
       return;
     }
-    await backend.refreshEntitlements(org);
     await invalidateEntitlements(org.id);
   };
 
-  const getCatalog = async () => {
+  const getCatalog = async (orgId: string) => {
     if (!backend) {
       return null;
     }
-    return backend.fetchCatalog();
+    return backend.fetchCatalog(orgId);
   };
 
   const getSubscription = async (orgId: string) => {
@@ -131,13 +148,6 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.fetchBillingProfile(orgId);
   };
 
-  const createCheckout = async (orgId: string, payload: TCreateCheckoutPayload) => {
-    if (!backend) {
-      throw new Error("license client backend is not configured");
-    }
-    return backend.createCheckoutSession(orgId, payload);
-  };
-
   const createPortal = async (orgId: string, payload: TCreatePortalPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -152,18 +162,47 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.previewSubscriptionChange(orgId, payload);
   };
 
-  const addSubscriptionItems = async (orgId: string, payload: TAddSubscriptionItemsPayload) => {
+  const buyProduct = async (orgId: string, payload: TBuyProductPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.addSubscriptionItems(orgId, payload);
+    return backend.buyProduct(orgId, payload);
   };
 
-  const removeSubscriptionItem = async (orgId: string, productId: string) => {
+  const removeProduct = async (orgId: string, productId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.removeSubscriptionItem(orgId, productId);
+    return backend.removeProduct(orgId, productId);
+  };
+
+  const changeCommitments = async (orgId: string, payload: TChangeCommitmentsPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.changeCommitments(orgId, payload);
+  };
+
+  const startTrial = async (orgId: string, payload: TStartTrialPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.startTrial(orgId, payload);
+  };
+
+  const cancelTrial = async (orgId: string, payload: TCancelTrialPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.cancelTrial(orgId, payload);
+  };
+
+  // The org's trial history; returns an empty history when no backend is configured (self-hosted).
+  const getTrials = async (orgId: string) => {
+    if (!backend) {
+      return { trials: [] };
+    }
+    return backend.fetchTrials(orgId);
   };
 
   const cancelSubscription = async (orgId: string) => {
@@ -182,18 +221,25 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
 
   return {
     ...featureReaderFactory({ getEntitlements }),
+    // False when no license server is reachable (unlicensed self-hosted, or an offline license), so
+    // callers can skip work that would only end in a dormant no-op.
+    isEnabled: () => backend !== null,
     getEntitlements,
     invalidateEntitlements,
+    markEntitlementsStale,
     refreshEntitlements,
     getCatalog,
     getSubscription,
     getCloudPlan,
     getBillingProfile,
-    createCheckout,
     createPortal,
     previewSubscriptionChange,
-    addSubscriptionItems,
-    removeSubscriptionItem,
+    buyProduct,
+    removeProduct,
+    changeCommitments,
+    startTrial,
+    cancelTrial,
+    getTrials,
     cancelSubscription,
     resumeSubscription
   };

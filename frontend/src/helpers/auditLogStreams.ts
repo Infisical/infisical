@@ -1,6 +1,6 @@
 import { faCode, IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
-import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
+import { LogProvider, SPLUNK_DEFAULT_HEC_PORT } from "@app/hooks/api/auditLogStreams/enums";
 import { TAuditLogStream } from "@app/hooks/api/types";
 import { DiscriminativePick } from "@app/types";
 
@@ -13,7 +13,8 @@ export const AUDIT_LOG_STREAM_PROVIDER_MAP: Record<
   [LogProvider.Custom]: { name: "Custom", icon: faCode },
   [LogProvider.Datadog]: { name: "Datadog", image: "Datadog.png" },
   [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 },
-  [LogProvider.QRadar]: { name: "IBM QRadar", image: "IBM.png" }
+  [LogProvider.QRadar]: { name: "IBM QRadar", image: "IBM.png" },
+  [LogProvider.SumoLogic]: { name: "Sumo Logic", image: "SumoLogic.png" }
 };
 
 // Strictly for showing to the client in the front-end
@@ -24,9 +25,10 @@ export function getProviderUrl(
     case LogProvider.Custom:
     case LogProvider.Datadog:
     case LogProvider.Cribl:
+    case LogProvider.SumoLogic:
       return logStream.credentials.url;
     case LogProvider.Splunk:
-      return `https://${logStream.credentials.hostname}:8088/services/collector/event`;
+      return `https://${logStream.credentials.hostname}:${logStream.credentials.port ?? SPLUNK_DEFAULT_HEC_PORT}/services/collector/event`;
     case LogProvider.Azure:
       return `${logStream.credentials.dceUrl}/dataCollectionRules/${logStream.credentials.dcrId}/streams/Custom-${logStream.credentials.cltName}_CL`;
     default:

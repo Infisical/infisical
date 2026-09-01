@@ -29,17 +29,20 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason,
+  getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
+import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -48,10 +51,9 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
-  API_CSR_PASSTHROUGH_TEMPLATE_ARN,
   CA_KEY_ALGORITHM_TO_SIGNING_ALGORITHM_MAP,
   CRL_REASON_TO_REVOCATION_REASON_MAP
 } from "./aws-pca-certificate-authority-enums";
@@ -60,6 +62,7 @@ import {
   TCreateAwsPcaCertificateAuthorityDTO,
   TUpdateAwsPcaCertificateAuthorityDTO
 } from "./aws-pca-certificate-authority-types";
+import { resolveAwsPcaTemplateArn } from "./aws-pca-certificate-authority-validators";
 
 const base64UrlToBase64 = (base64url: string): string => {
   let base64 = base64url.replace(new RE2(/-/g), "+").replace(new RE2(/_/g), "/");
@@ -173,7 +176,7 @@ type TAwsPcaCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -271,10 +274,10 @@ const pollForCertificate = async (
 
 /**
  * Queries the CA's key algorithm via DescribeCertificateAuthority and returns
- * a compatible signing algorithm. The signing algorithm in IssueCertificateCommand
- * must match the CA's key type, not the leaf certificate's key type.
+ * a compatible signing algorithm, plus the usage mode. The SigningAlgorithm in
+ * IssueCertificateCommand must match the CA's key type, not the leaf certificate's key type.
  */
-const getSigningAlgorithmForCa = async (pcaClient: ACMPCAClient, certificateAuthorityArn: string) => {
+const describeCaForIssuance = async (pcaClient: ACMPCAClient, certificateAuthorityArn: string) => {
   const describeResult = await pcaClient.send(
     new DescribeCertificateAuthorityCommand({
       CertificateAuthorityArn: certificateAuthorityArn
@@ -296,7 +299,7 @@ const getSigningAlgorithmForCa = async (pcaClient: ACMPCAClient, certificateAuth
     });
   }
 
-  return signingAlgorithm;
+  return { signingAlgorithm, usageMode: describeResult.CertificateAuthority?.UsageMode };
 };
 
 export const castDbEntryToAwsPcaCertificateAuthority = (
@@ -552,6 +555,7 @@ export const AwsPcaCertificateAuthorityFns = ({
   const orderCertificate = async ({
     caId,
     profileId,
+    idempotencyKey,
     commonName,
     altNames = [],
     keyUsages = [],
@@ -569,10 +573,13 @@ export const AwsPcaCertificateAuthorityFns = ({
     country,
     state,
     locality,
+    basicConstraints,
     isCancelled
   }: {
     caId: string;
     profileId?: string;
+    // Must be stable across retries so AWS dedupes instead of issuing twice. Expires after 5 min.
+    idempotencyKey?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];
@@ -590,6 +597,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     country?: string;
     state?: string;
     locality?: string;
+    basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
     isCancelled?: () => Promise<boolean>;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -617,7 +625,12 @@ export const AwsPcaCertificateAuthorityFns = ({
     const pcaClient = await createPcaClient({ appConnectionId, region, appConnectionDAL, kmsService });
 
     // Get signing algorithm from the CA's key type (not the leaf key type)
-    const awsSigningAlgorithm = await getSigningAlgorithmForCa(pcaClient, certificateAuthorityArn);
+    const { signingAlgorithm: awsSigningAlgorithm, usageMode } = await describeCaForIssuance(
+      pcaClient,
+      certificateAuthorityArn
+    );
+
+    const templateArn = resolveAwsPcaTemplateArn({ basicConstraints, usageMode });
 
     let csrPem: string;
     let skLeaf: string | undefined;
@@ -657,20 +670,23 @@ export const AwsPcaCertificateAuthorityFns = ({
       if (extendedKeyUsages && extendedKeyUsages.length > 0) {
         extensions.push(
           new x509.ExtendedKeyUsageExtension(
-            extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+            extendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
             true
           )
         );
       }
 
-      const dnParts: string[] = [];
-      if (commonName) dnParts.push(`CN=${commonName}`);
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDn = dnParts.join(", ") || `CN=${commonName}`;
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDn =
+        createDistinguishedName({
+          commonName,
+          organization,
+          ou: organizationalUnit,
+          locality,
+          province: state,
+          country
+        }) || `CN=${commonName}`;
 
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
         name: subjectDn,
@@ -709,6 +725,8 @@ export const AwsPcaCertificateAuthorityFns = ({
           return { Rfc822Name: san.value };
         case CertSubjectAlternativeNameType.URI:
           return { UniformResourceIdentifier: san.value };
+        case CertSubjectAlternativeNameType.UPN:
+          return { OtherName: { TypeId: getSanOtherNameOid(san.type)!, Value: san.value } };
         default:
           return { DnsName: san.value };
       }
@@ -740,7 +758,8 @@ export const AwsPcaCertificateAuthorityFns = ({
         CertificateAuthorityArn: certificateAuthorityArn,
         Csr: Buffer.from(csrPem),
         SigningAlgorithm: awsSigningAlgorithm,
-        TemplateArn: API_CSR_PASSTHROUGH_TEMPLATE_ARN,
+        TemplateArn: templateArn,
+        ...(idempotencyKey && { IdempotencyToken: buildIdempotencyToken(idempotencyKey) }),
         ...(Object.keys(apiPassthrough).length > 0 && { ApiPassthrough: apiPassthrough }),
         Validity: {
           Type: ValidityPeriodType.DAYS,
@@ -811,7 +830,7 @@ export const AwsPcaCertificateAuthorityFns = ({
       certificateId = cert.id;
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(

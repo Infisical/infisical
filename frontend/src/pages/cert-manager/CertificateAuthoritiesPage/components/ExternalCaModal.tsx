@@ -1,46 +1,38 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
-import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared/AwsRegionSelect";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   TAvailableAppConnection,
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
+import { useAzureDNSConnectionListZones } from "@app/hooks/api/appConnections/azure-dns";
+import { useCloudflareConnectionListZones } from "@app/hooks/api/appConnections/cloudflare";
 import {
-  TAzureDNSZone,
-  useAzureDNSConnectionListZones
-} from "@app/hooks/api/appConnections/azure-dns";
-import {
-  TCloudflareZone,
-  useCloudflareConnectionListZones
-} from "@app/hooks/api/appConnections/cloudflare";
-import {
-  TDigiCertOrganization,
-  TDigiCertProduct,
   useDigiCertConnectionListOrganizations,
-  useDigiCertConnectionListProducts
+  useDigiCertConnectionListProducts,
+  useDigiCertConnectionOrgValidation
 } from "@app/hooks/api/appConnections/digicert";
-import {
-  TDNSMadeEasyZone,
-  useDNSMadeEasyConnectionListZones
-} from "@app/hooks/api/appConnections/dns-made-easy";
+import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AcmeDnsProvider,
@@ -52,166 +44,168 @@ import {
   useUpdateCa
 } from "@app/hooks/api/ca";
 import {
-  ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
-  ACME_DNS_PROVIDER_NAME_MAP
-} from "@app/hooks/api/ca/constants";
+  DigiCertCaPurpose,
+  TCreateCertificateAuthorityDTO,
+  TUpdateCertificateAuthorityDTO
+} from "@app/hooks/api/ca/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { slugSchema } from "@app/lib/schemas";
+
+import { AcmeFields } from "./ExternalCaFields/AcmeFields";
+import { AdcsFields } from "./ExternalCaFields/AdcsFields";
+import { AwsAcmPublicCaFields } from "./ExternalCaFields/AwsAcmPublicCaFields";
+import { AwsPcaFields } from "./ExternalCaFields/AwsPcaFields";
+import { AzureAdCsFields } from "./ExternalCaFields/AzureAdCsFields";
+import { DigiCertFields } from "./ExternalCaFields/DigiCertFields";
+import { ExternalCaHeader } from "./ExternalCaFields/ExternalCaHeader";
+import { GoDaddyFields } from "./ExternalCaFields/GoDaddyFields";
+import { FormData, schema } from "./ExternalCaFields/schema";
+import { VenafiTppFields } from "./ExternalCaFields/VenafiTppFields";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
-const REQUIRED_EAB_DIRECTORIES = [
-  "https://acme.digicert.com/v2/acme/directory",
-  "https://acme.zerossl.com/v2/DV90",
-  "https://acme.ssl.com/sslcom-dv-rsa",
-  "https://acme.ssl.com/sslcom-dv-ecc",
-  "https://dv.acme-v02.api.pki.goog/directory",
-  "https://acme.sectigo.com/v2/OV",
-  "https://acme.sectigo.com/v2/EV",
-  "https://acme.cisco.com/ACMEv2/directory"
-];
-
-const baseSchema = z.object({
-  type: z.nativeEnum(CaType),
-  name: slugSchema({
-    field: "Name"
-  }),
-  status: z.nativeEnum(CaStatus)
-});
-
-const acmeConfigurationSchema = z
-  .object({
-    dnsAppConnection: z.object({
-      id: z.string(),
-      name: z.string()
-    }),
-    dnsProviderConfig: z.object({
-      provider: z.nativeEnum(AcmeDnsProvider),
-      hostedZoneId: z.string()
-    }),
-    directoryUrl: z.string(),
-    accountEmail: z.string(),
-    eabKid: z.string().optional(),
-    eabHmacKey: z.string().optional(),
-    dnsResolver: z
-      .string()
-      .ip({ message: "Must be a valid IP address" })
-      .or(z.literal(""))
-      .optional()
-  })
-  .superRefine((data, ctx) => {
-    if (REQUIRED_EAB_DIRECTORIES.includes(data.directoryUrl)) {
-      if (!data.eabKid || data.eabKid.trim() === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "EAB Key Identifier (KID) is required for this directory URL",
-          path: ["eabKid"]
-        });
-      }
+type ExternalCaConfigurationPayload =
+  | {
+      dnsProviderConfig: { provider: AcmeDnsProvider; hostedZoneId: string };
+      directoryUrl: string;
+      accountEmail: string;
+      dnsAppConnectionId: string;
+      eabKid?: string;
+      eabHmacKey?: string;
+      dnsResolver?: string;
     }
-  });
-
-const azureAdCsConfigurationSchema = z.object({
-  azureAdcsConnection: z.object({
-    id: z.string(),
-    name: z.string()
-  })
-});
-
-const awsPcaConfigurationSchema = z.object({
-  awsConnection: z.object({
-    id: z.string().min(1, "AWS Connection is required"),
-    name: z.string()
-  }),
-  certificateAuthorityArn: z.string().trim().min(1, "Certificate Authority ARN is required"),
-  region: z.string().min(1, "Region is required")
-});
-
-const digicertConfigurationSchema = z.object({
-  digicertConnection: z.object({
-    id: z.string().min(1, "DigiCert Connection is required"),
-    name: z.string()
-  }),
-  organizationId: z.coerce.number().int().positive("Organization is required"),
-  productNameId: z.string().trim().min(1, "Product is required")
-});
-
-const awsAcmPublicCaConfigurationSchema = z.object({
-  awsConnection: z.object({
-    id: z.string().min(1, "AWS Connection is required"),
-    name: z.string()
-  }),
-  dnsConnection: z.object({
-    id: z.string().min(1, "Route 53 Connection is required"),
-    name: z.string()
-  }),
-  hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required"),
-  region: z.string().min(1, "Region is required")
-});
-
-const venafiTppConfigurationSchema = z.object({
-  venafiTppConnection: z.object({
-    id: z.string().min(1, "Venafi TPP Connection is required"),
-    name: z.string()
-  }),
-  policyDN: z.string().trim().min(1, "Policy DN is required")
-});
-
-const godaddyConfigurationSchema = z.object({
-  godaddyConnection: z.object({
-    id: z.string().min(1, "GoDaddy Connection is required"),
-    name: z.string()
-  }),
-  productType: z.nativeEnum(GoDaddyProductType)
-});
-
-const schema = z.discriminatedUnion("type", [
-  baseSchema.extend({
-    type: z.literal(CaType.ACME),
-    configuration: acmeConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.AZURE_AD_CS),
-    configuration: azureAdCsConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.AWS_PCA),
-    configuration: awsPcaConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.DIGICERT),
-    configuration: digicertConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.AWS_ACM_PUBLIC_CA),
-    configuration: awsAcmPublicCaConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.VENAFI_TPP),
-    configuration: venafiTppConfigurationSchema
-  }),
-  baseSchema.extend({
-    type: z.literal(CaType.GODADDY),
-    configuration: godaddyConfigurationSchema
-  })
-]);
-
-export type FormData = z.infer<typeof schema>;
+  | { azureAdcsConnectionId: string }
+  | { appConnectionId: string; caName?: string }
+  | { appConnectionId: string; certificateAuthorityArn: string; region: string }
+  | {
+      appConnectionId: string;
+      organizationId: number;
+      productNameId: string;
+      purpose: DigiCertCaPurpose;
+      verifiedContact?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        jobTitle?: string;
+        telephone?: string;
+      };
+    }
+  | { appConnectionId: string; dnsAppConnectionId: string; hostedZoneId: string; region: string }
+  | { appConnectionId: string; policyDN: string }
+  | { appConnectionId: string; productType: GoDaddyProductType };
 
 type Props = {
   popUp: UsePopUpState<["ca"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["ca"]>, state?: boolean) => void;
 };
 
-const caTypes = [
-  { label: "ACME", value: CaType.ACME },
-  { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS },
-  { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
-  { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA },
-  { label: "DigiCert CertCentral", value: CaType.DIGICERT },
-  { label: "Venafi TPP", value: CaType.VENAFI_TPP },
-  { label: "GoDaddy", value: CaType.GODADDY }
+type ExternalCaOption = {
+  type: CaType;
+  name: string;
+  category: string;
+  description: string;
+  image?: string;
+  icon?: LucideIcon;
+};
+
+const EXTERNAL_CA_OPTIONS: ExternalCaOption[] = [
+  {
+    type: CaType.ACME,
+    name: "ACME",
+    category: "Protocol",
+    description: "Issue certificates from any ACME directory such as Let's Encrypt or ZeroSSL.",
+    icon: Lock
+  },
+  {
+    type: CaType.ADCS,
+    name: "Microsoft ADCS",
+    category: "Certificates",
+    description: "Issue certificates via Active Directory Certificate Services over the Gateway.",
+    image: "Windows.png"
+  },
+  {
+    type: CaType.AZURE_AD_CS,
+    name: "Azure ADCS (Web Enrollment)",
+    category: "Certificates",
+    description: "Issue certificates via ADCS Web Enrollment over HTTPS.",
+    image: "Microsoft Azure.png"
+  },
+  {
+    type: CaType.AWS_PCA,
+    name: "AWS Private CA",
+    category: "AWS",
+    description: "Issue certificates from AWS Private Certificate Authority.",
+    image: "Amazon Web Services.png"
+  },
+  {
+    type: CaType.AWS_ACM_PUBLIC_CA,
+    name: "AWS ACM Public CA",
+    category: "AWS",
+    description: "Issue publicly-trusted certificates via AWS Certificate Manager.",
+    image: "Amazon Web Services.png"
+  },
+  {
+    type: CaType.DIGICERT,
+    name: "DigiCert CertCentral",
+    category: "Certificates",
+    description: "Issue certificates from DigiCert CertCentral.",
+    image: "DigiCert.png"
+  },
+  {
+    type: CaType.VENAFI_TPP,
+    name: "Venafi TPP",
+    category: "Certificates",
+    description: "Issue certificates from Venafi Trust Protection Platform.",
+    image: "Venafi.png"
+  },
+  {
+    type: CaType.GODADDY,
+    name: "GoDaddy",
+    category: "Certificates",
+    description: "Issue certificates from GoDaddy.",
+    image: "GoDaddy.png"
+  }
 ];
+
+const CA_TYPE_NAME: Partial<Record<CaType, string>> = Object.fromEntries(
+  EXTERNAL_CA_OPTIONS.map((option) => [option.type, option.name])
+);
+
+const CA_TYPE_MEDIA: Partial<Record<CaType, Pick<ExternalCaOption, "image" | "icon">>> =
+  Object.fromEntries(
+    EXTERNAL_CA_OPTIONS.map((option) => [option.type, { image: option.image, icon: option.icon }])
+  );
+
+const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: () => void }) => {
+  const Icon = option.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+          {option.image ? (
+            <img
+              src={`/images/integrations/${option.image}`}
+              alt={`${option.name} logo`}
+              className="h-6 w-6 object-contain"
+            />
+          ) : (
+            Icon && <Icon className="h-5 w-5 text-foreground" />
+          )}
+        </div>
+        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+          {option.category}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-foreground">{option.name}</p>
+        <p className="text-xs leading-relaxed text-muted">{option.description}</p>
+      </div>
+    </button>
+  );
+};
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
@@ -229,7 +223,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch
+    watch,
+    setValue
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -245,117 +240,120 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ? configuration.directoryUrl
       : undefined;
 
-  useEffect(() => {
-    const initialType = (popUp?.ca?.data as { type: CaType })?.type;
-    if (!ca && popUp?.ca?.isOpen) {
-      if (initialType === CaType.AZURE_AD_CS) {
-        reset({
+  const editCaId = (popUp?.ca?.data as { caId?: string })?.caId;
+  const isEditMode = Boolean(editCaId);
+
+  const [selectedType, setSelectedType] = useState<CaType | null>(null);
+  const [search, setSearch] = useState("");
+
+  const getInitialValuesForType = (type: CaType): FormData => {
+    switch (type) {
+      case CaType.AZURE_AD_CS:
+        return {
           type: CaType.AZURE_AD_CS,
           name: "",
           status: CaStatus.ACTIVE,
-          configuration: {
-            azureAdcsConnection: {
-              id: "",
-              name: ""
-            }
-          }
-        });
-      } else if (initialType === CaType.AWS_PCA) {
-        reset({
+          configuration: { azureAdcsConnection: { id: "", name: "" } }
+        };
+      case CaType.ADCS:
+        return {
+          type: CaType.ADCS,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: { adcsConnection: { id: "", name: "" }, caName: "" }
+        };
+      case CaType.AWS_PCA:
+        return {
           type: CaType.AWS_PCA,
           name: "",
           status: CaStatus.ACTIVE,
           configuration: {
-            awsConnection: {
-              id: "",
-              name: ""
-            },
+            awsConnection: { id: "", name: "" },
             certificateAuthorityArn: "",
             region: ""
           }
-        });
-      } else if (initialType === CaType.DIGICERT) {
-        reset({
+        };
+      case CaType.DIGICERT:
+        return {
           type: CaType.DIGICERT,
           name: "",
           status: CaStatus.ACTIVE,
           configuration: {
-            digicertConnection: {
-              id: "",
-              name: ""
-            },
+            digicertConnection: { id: "", name: "" },
             organizationId: 0,
-            productNameId: ""
+            productNameId: "",
+            purpose: DigiCertCaPurpose.Ssl,
+            verifiedContact: undefined
           }
-        });
-      } else if (initialType === CaType.AWS_ACM_PUBLIC_CA) {
-        reset({
+        };
+      case CaType.AWS_ACM_PUBLIC_CA:
+        return {
           type: CaType.AWS_ACM_PUBLIC_CA,
           name: "",
           status: CaStatus.ACTIVE,
           configuration: {
-            awsConnection: {
-              id: "",
-              name: ""
-            },
-            dnsConnection: {
-              id: "",
-              name: ""
-            },
+            awsConnection: { id: "", name: "" },
+            dnsConnection: { id: "", name: "" },
             hostedZoneId: "",
             region: ""
           }
-        });
-      } else if (initialType === CaType.VENAFI_TPP) {
-        reset({
+        };
+      case CaType.VENAFI_TPP:
+        return {
           type: CaType.VENAFI_TPP,
           name: "",
           status: CaStatus.ACTIVE,
-          configuration: {
-            venafiTppConnection: {
-              id: "",
-              name: ""
-            },
-            policyDN: ""
-          }
-        });
-      } else if (initialType === CaType.GODADDY) {
-        reset({
+          configuration: { venafiTppConnection: { id: "", name: "" }, policyDN: "" }
+        };
+      case CaType.GODADDY:
+        return {
           type: CaType.GODADDY,
           name: "",
           status: CaStatus.ACTIVE,
           configuration: {
-            godaddyConnection: {
-              id: "",
-              name: ""
-            },
+            godaddyConnection: { id: "", name: "" },
             productType: GoDaddyProductType.DV_SSL
           }
-        });
-      } else {
-        reset({
+        };
+      case CaType.ACME:
+      default:
+        return {
           type: CaType.ACME,
           name: "",
           status: CaStatus.ACTIVE,
           configuration: {
-            dnsAppConnection: {
-              id: "",
-              name: ""
-            },
-            dnsProviderConfig: {
-              provider: AcmeDnsProvider.ROUTE53,
-              hostedZoneId: ""
-            },
+            dnsAppConnection: { id: "", name: "" },
+            dnsProviderConfig: { provider: AcmeDnsProvider.ROUTE53, hostedZoneId: "" },
             directoryUrl: "",
             accountEmail: "",
             eabKid: "",
             eabHmacKey: "",
             dnsResolver: ""
           }
-        });
-      }
+        };
     }
-  }, [popUp?.ca?.isOpen, popUp?.ca?.data, reset, ca]);
+  };
+
+  const handleSelectType = (type: CaType) => {
+    reset(getInitialValuesForType(type));
+    setSelectedType(type);
+  };
+
+  useEffect(() => {
+    if (popUp?.ca?.isOpen && !isEditMode) {
+      setSelectedType(null);
+      setSearch("");
+      reset(undefined);
+    }
+  }, [popUp?.ca?.isOpen, isEditMode, reset]);
+
+  useEffect(() => {
+    const editType = (popUp?.ca?.data as { type?: CaType })?.type;
+    if (popUp?.ca?.isOpen && isEditMode && editType) {
+      reset(getInitialValuesForType(editType));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popUp?.ca?.isOpen, isEditMode]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
     useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
@@ -380,6 +378,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
+    });
+
+  const { data: availableAdcsConnections, isPending: isAdcsPending } =
+    useListAvailableAppConnections(AppConnection.ADCS, currentProject.id, {
+      enabled: caType === CaType.ADCS
     });
 
   const { data: availableAwsConnections, isPending: isAwsPending } = useListAvailableAppConnections(
@@ -409,6 +412,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
+    if (caType === CaType.ADCS) {
+      return availableAdcsConnections || [];
+    }
     if (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA) {
       return availableAwsConnections || [];
     }
@@ -434,6 +440,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availableAzureConnections,
+    availableAdcsConnections,
     availableAwsConnections,
     availableDigiCertConnections,
     availableVenafiTppConnections,
@@ -441,11 +448,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   ]);
 
   const isPending =
-    isRoute53Pending ||
-    isCloudflarePending ||
-    isDNSMadeEasyPending ||
-    isAzureDNSPending ||
+    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
+      caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
+    (isAdcsPending && caType === CaType.ADCS) ||
     (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA)) ||
     (isDigiCertPending && caType === CaType.DIGICERT) ||
     (isVenafiTppPending && caType === CaType.VENAFI_TPP) ||
@@ -515,6 +521,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             }
           }
         });
+      } else if (ca.type === CaType.ADCS && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            adcsConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            caName: ca.configuration.caName
+          }
+        });
       } else if (ca.type === CaType.AWS_PCA && availableConnections?.length) {
         const selectedConnection = availableConnections?.find(
           (connection) => connection.id === ca.configuration.appConnectionId
@@ -548,7 +571,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               name: selectedConnection?.name || ""
             },
             organizationId: ca.configuration.organizationId,
-            productNameId: ca.configuration.productNameId
+            productNameId: ca.configuration.productNameId,
+            purpose: ca.configuration.purpose ?? DigiCertCaPurpose.Ssl,
+            verifiedContact: ca.configuration.verifiedContact
           }
         });
       } else if (ca.type === CaType.AWS_ACM_PUBLIC_CA && availableConnections?.length) {
@@ -633,6 +658,47 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.DIGICERT && !!digicertConnectionId
     });
 
+  const digicertOrganizationId =
+    caType === CaType.DIGICERT && configuration && "organizationId" in configuration
+      ? (configuration.organizationId ?? 0)
+      : 0;
+  const digicertProductNameId =
+    caType === CaType.DIGICERT && configuration && "productNameId" in configuration
+      ? (configuration.productNameId ?? "")
+      : "";
+  const digicertPurpose =
+    caType === CaType.DIGICERT && configuration && "purpose" in configuration
+      ? (configuration.purpose ?? DigiCertCaPurpose.Ssl)
+      : DigiCertCaPurpose.Ssl;
+
+  const isCsValidationCheckable =
+    caType === CaType.DIGICERT &&
+    digicertPurpose === DigiCertCaPurpose.CodeSigning &&
+    !!digicertConnectionId &&
+    !!digicertOrganizationId &&
+    !!digicertProductNameId;
+
+  const { data: csValidation, isFetching: isCsValidationFetching } =
+    useDigiCertConnectionOrgValidation(
+      digicertConnectionId,
+      digicertOrganizationId,
+      digicertProductNameId,
+      { enabled: isCsValidationCheckable }
+    );
+
+  const csOrgValidated = isCsValidationCheckable ? csValidation?.isValidated : undefined;
+  const csRequiresContact = isCsValidationCheckable && csOrgValidated === false;
+  const isCheckingCsValidation =
+    isCsValidationCheckable && csOrgValidated === undefined && isCsValidationFetching;
+
+  useEffect(() => {
+    if (caType !== CaType.DIGICERT) return;
+    setValue("configuration.csRequiresContact", csRequiresContact);
+    if (!csRequiresContact) {
+      setValue("configuration.verifiedContact", undefined);
+    }
+  }, [caType, csRequiresContact, setValue]);
+
   const onFormSubmit = async ({
     type,
     name,
@@ -641,7 +707,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }: FormData) => {
     if (!currentProject?.slug) return;
 
-    let configPayload: any;
+    let configPayload: ExternalCaConfigurationPayload;
 
     if (type === CaType.ACME && "dnsAppConnection" in formConfiguration) {
       configPayload = {
@@ -657,6 +723,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       configPayload = {
         azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
       };
+    } else if (type === CaType.ADCS && "adcsConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.adcsConnection.id,
+        ...(formConfiguration.caName?.trim() ? { caName: formConfiguration.caName.trim() } : {})
+      };
     } else if (type === CaType.AWS_PCA && "awsConnection" in formConfiguration) {
       configPayload = {
         appConnectionId: formConfiguration.awsConnection.id,
@@ -664,10 +735,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         region: formConfiguration.region
       };
     } else if (type === CaType.DIGICERT && "digicertConnection" in formConfiguration) {
+      const purposeForPayload = formConfiguration.purpose ?? DigiCertCaPurpose.Ssl;
       configPayload = {
         appConnectionId: formConfiguration.digicertConnection.id,
         organizationId: formConfiguration.organizationId,
-        productNameId: formConfiguration.productNameId
+        productNameId: formConfiguration.productNameId,
+        purpose: purposeForPayload,
+        ...(purposeForPayload === DigiCertCaPurpose.CodeSigning &&
+        formConfiguration.csRequiresContact &&
+        formConfiguration.verifiedContact
+          ? { verifiedContact: formConfiguration.verifiedContact }
+          : {})
       };
     } else if (type === CaType.AWS_ACM_PUBLIC_CA && "awsConnection" in formConfiguration) {
       configPayload = {
@@ -697,14 +775,14 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         type,
         status,
         configuration: configPayload
-      });
+      } as TUpdateCertificateAuthorityDTO);
     } else {
       await createMutateAsync({
         name,
         type,
         status,
         configuration: configPayload
-      });
+      } as TCreateCertificateAuthorityDTO);
     }
 
     reset();
@@ -716,685 +794,225 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
   };
 
-  const modalContainer = useRef<HTMLDivElement>(null);
+  const showGrid = !isEditMode && !selectedType;
+  const activeType = isEditMode ? ca?.type : selectedType;
+  const activeTypeName = activeType ? CA_TYPE_NAME[activeType] : undefined;
+  const activeTypeMedia = activeType ? CA_TYPE_MEDIA[activeType] : undefined;
+  const headerTitle = `${isEditMode ? "Edit" : "Create"} ${
+    activeTypeName ? `${activeTypeName} CA` : "External CA"
+  }`;
+
+  const filteredCaOptions = EXTERNAL_CA_OPTIONS.filter((option) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      option.name.toLowerCase().includes(query) ||
+      option.category.toLowerCase().includes(query) ||
+      option.description.toLowerCase().includes(query)
+    );
+  });
 
   return (
-    <Modal
-      isOpen={popUp?.ca?.isOpen}
+    <Sheet
+      open={popUp?.ca?.isOpen}
       onOpenChange={(isOpen) => {
-        reset();
+        if (!isOpen) {
+          reset();
+          setSelectedType(null);
+          setSearch("");
+        }
         handlePopUpToggle("ca", isOpen);
       }}
     >
-      <ModalContent ref={modalContainer} title={`${ca ? "Edit" : "Create"} External CA`}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          {ca && (
-            <FormControl label="CA ID">
-              <Input value={ca.id} isDisabled className="bg-white/[0.07]" />
-            </FormControl>
-          )}
-          <Controller
-            control={control}
-            name="type"
-            defaultValue={CaType.ACME}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="CA Type" errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                  isDisabled={Boolean(ca)}
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
+        <SheetHeader className="border-b border-border">
+          {showGrid ? (
+            <>
+              <SheetTitle>Connect External CA</SheetTitle>
+              <SheetDescription>
+                Select the third-party certificate authority to connect to. Infisical issues through
+                it rather than hosting the signing key.
+              </SheetDescription>
+            </>
+          ) : (
+            <>
+              {!isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedType(null)}
+                  className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
                 >
-                  {caTypes.map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="my-external-ca" isDisabled={Boolean(ca)} />
-              </FormControl>
-            )}
-          />
-          {caType === CaType.ACME && (
-            <>
-              <Controller
-                control={control}
-                name="configuration.dnsProviderConfig.provider"
-                defaultValue={AcmeDnsProvider.ROUTE53}
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="DNS Provider"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                      isDisabled={Boolean(ca)}
-                    >
-                      {Object.values(AcmeDnsProvider).map((provider) => (
-                        <SelectItem value={String(provider)} key={provider}>
-                          {ACME_DNS_PROVIDER_NAME_MAP[provider]}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText={
-                      dnsProvider
-                        ? `${ACME_DNS_PROVIDER_NAME_MAP[dnsProvider]} uses the ${APP_CONNECTION_MAP[ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider]].name} App Connection. You can create one in the Organization Settings page.`
-                        : "Select a DNS provider first"
-                    }
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="DNS App Connection"
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.dnsAppConnection"
-              />
-              {dnsProvider === AcmeDnsProvider.ROUTE53 && (
-                <Controller
-                  control={control}
-                  defaultValue=""
-                  name="configuration.dnsProviderConfig.hostedZoneId"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Hosted Zone ID"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      isRequired
-                    >
-                      <Input {...field} placeholder="Z040441124N1GOOMCQYX1" />
-                    </FormControl>
-                  )}
+                  <ArrowLeftIcon className="size-3" />
+                  Select Another CA
+                </button>
+              )}
+              <SheetTitle>
+                <ExternalCaHeader
+                  name={headerTitle}
+                  subtitle="Define the connection and credentials used to issue certificates from this CA."
+                  image={activeTypeMedia?.image}
+                  icon={activeTypeMedia?.icon}
                 />
-              )}
-              {dnsProvider === AcmeDnsProvider.Cloudflare && (
-                <Controller
-                  name="configuration.dnsProviderConfig.hostedZoneId"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Zone"
-                    >
-                      <FilterableSelect
-                        isLoading={isZonesPending && !!dnsAppConnection.id}
-                        isDisabled={!dnsAppConnection.id}
-                        value={cloudflareZones.find((zone) => zone.id === value)}
-                        onChange={(option) => {
-                          onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
-                        }}
-                        options={cloudflareZones}
-                        placeholder="Select a zone..."
-                        getOptionLabel={(option) => option.name}
-                        getOptionValue={(option) => option.id}
-                      />
-                    </FormControl>
-                  )}
+              </SheetTitle>
+            </>
+          )}
+        </SheetHeader>
+
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {showGrid ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+            <InputGroup>
+              <InputGroupAddon align="inline-start">
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search certificate authorities..."
+              />
+            </InputGroup>
+            <div className="grid grid-cols-2 gap-3">
+              {filteredCaOptions.map((option) => (
+                <CaTypeCard
+                  key={option.type}
+                  option={option}
+                  onClick={() => handleSelectType(option.type)}
                 />
-              )}
-              {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
-                <Controller
-                  name="configuration.dnsProviderConfig.hostedZoneId"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Zone"
-                    >
-                      <FilterableSelect
-                        isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
-                        isDisabled={!dnsAppConnection.id}
-                        value={dnsMadeEasyZones.find((zone) => zone.id === value)}
-                        onChange={(option) => {
-                          onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
-                        }}
-                        options={dnsMadeEasyZones}
-                        placeholder="Select a zone..."
-                        getOptionLabel={(option) => option.name}
-                        getOptionValue={(option) => option.id}
-                      />
-                    </FormControl>
-                  )}
-                />
-              )}
-              {dnsProvider === AcmeDnsProvider.AzureDNS && (
-                <Controller
-                  name="configuration.dnsProviderConfig.hostedZoneId"
-                  control={control}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Zone"
-                    >
-                      <FilterableSelect
-                        isLoading={isAzureDNSZonesPending && !!dnsAppConnection.id}
-                        isDisabled={!dnsAppConnection.id}
-                        value={azureDnsZones.find((zone) => zone.id === value)}
-                        onChange={(option) => {
-                          onChange((option as SingleValue<TAzureDNSZone>)?.id ?? null);
-                        }}
-                        options={azureDnsZones}
-                        placeholder="Select a zone..."
-                        getOptionLabel={(option) => option.name}
-                        getOptionValue={(option) => option.id}
-                      />
-                    </FormControl>
-                  )}
-                />
-              )}
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.directoryUrl"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Directory URL"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input
-                      {...field}
-                      placeholder="https://acme-v02.api.letsencrypt.org/directory"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.accountEmail"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Account Email"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="user@infisical.com" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.eabKid"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="EAB Key Identifier (KID)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isOptional={!REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
-                    isRequired={REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
-                  >
-                    <Input
-                      {...field}
-                      placeholder="abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.eabHmacKey"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="EAB HMAC Key"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isOptional
-                  >
-                    <Input
-                      type="password"
-                      autoComplete="new-password"
-                      {...field}
-                      placeholder={
-                        ca
-                          ? undefined
-                          : "dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
-                      }
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.dnsResolver"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="DNS Resolver IP"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isOptional
-                    tooltipText="A custom DNS resolver IP address used to verify DNS propagation during ACME challenges. Must be a valid IP (e.g. 8.8.8.8). Leave empty to use the system default."
-                  >
-                    <Input {...field} placeholder="8.8.8.8" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {caType === CaType.AZURE_AD_CS && (
-            <Controller
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="Azure ADCS App Connection contains the Windows domain credentials and ADCS server URL for certificate requests."
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Azure ADCS Connection"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    value={value}
-                    onChange={(newValue) => {
-                      onChange(newValue);
-                    }}
-                    isLoading={isPending}
-                    options={availableConnections}
-                    placeholder="Select connection..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id}
-                    components={{ Option: AppConnectionOption }}
-                  />
-                </FormControl>
-              )}
-              control={control}
-              name="configuration.azureAdcsConnection"
-            />
-          )}
-          {caType === CaType.AWS_PCA && (
-            <>
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="AWS App Connection provides the credentials used to communicate with AWS Private Certificate Authority."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="AWS Connection"
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.awsConnection"
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.certificateAuthorityArn"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Certificate Authority ARN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input
-                      {...field}
-                      placeholder="arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/abc-123"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.region"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Region"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {caType === CaType.DIGICERT && (
-            <>
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="DigiCert App Connection provides the CertCentral API key used to place orders."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="DigiCert Connection"
-                    isRequired
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.digicertConnection"
-              />
-              <Controller
-                control={control}
-                name="configuration.organizationId"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Organization"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                    tooltipText="The validated CertCentral organization that will appear on issued certificates."
-                  >
-                    <FilterableSelect
-                      isLoading={isDigiCertOrgsPending && !!digicertConnectionId}
-                      isDisabled={!digicertConnectionId}
-                      value={digicertOrganizations.find((org) => org.id === value) ?? null}
-                      onChange={(option) => {
-                        onChange((option as SingleValue<TDigiCertOrganization>)?.id ?? 0);
-                      }}
-                      options={digicertOrganizations}
-                      placeholder="Select an organization..."
-                      getOptionLabel={(option) => option.displayName || option.name}
-                      getOptionValue={(option) => String(option.id)}
-                      menuPortalTarget={modalContainer.current}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="configuration.productNameId"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Product"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    isRequired
-                    tooltipText="Products available are account-specific entitlements fetched from CertCentral. Each Infisical CA issues under exactly one product."
-                  >
-                    <FilterableSelect
-                      isLoading={isDigiCertProductsPending && !!digicertConnectionId}
-                      isDisabled={!digicertConnectionId}
-                      value={digicertProducts.find((product) => product.nameId === value) ?? null}
-                      onChange={(option) => {
-                        onChange((option as SingleValue<TDigiCertProduct>)?.nameId ?? "");
-                      }}
-                      options={digicertProducts}
-                      placeholder="Select a product..."
-                      getOptionLabel={(option) => `${option.name} (${option.nameId})`}
-                      getOptionValue={(option) => option.nameId}
-                      menuPortalTarget={modalContainer.current}
-                    />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {caType === CaType.AWS_ACM_PUBLIC_CA && (
-            <>
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="AWS App Connection used to issue, export, renew, and revoke certificates via AWS Certificate Manager (ACM)."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="AWS Connection"
-                    isRequired
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.awsConnection"
-              />
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="AWS App Connection used to write the ACM CNAME validation records into Route 53."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="Route 53 Connection"
-                    isRequired
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.dnsConnection"
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.hostedZoneId"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Route 53 Hosted Zone ID"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                    tooltipText="The Route 53 hosted zone that owns the domain(s) you'll issue certificates for."
-                  >
-                    <Input {...field} placeholder="Z040441124N1GOOMCQYX1" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.region"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Region"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {caType === CaType.VENAFI_TPP && (
-            <>
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="Venafi TPP App Connection contains the credentials to connect to your Venafi Trust Protection Platform instance."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="Venafi TPP Connection"
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.venafiTppConnection"
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.policyDN"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Policy DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                    tooltipText="The policy folder path in Venafi TPP where certificates will be managed (e.g., \VED\Policy\Certificates)."
-                  >
-                    <Input {...field} placeholder="\VED\Policy\Certificates" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {caType === CaType.GODADDY && (
-            <>
-              <Controller
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="GoDaddy App Connection provides the API key and secret used to place certificate orders."
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="GoDaddy Connection"
-                  >
-                    <FilterableSelect
-                      value={value}
-                      onChange={(newValue) => {
-                        onChange(newValue);
-                      }}
-                      isLoading={isPending}
-                      options={availableConnections}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FormControl>
-                )}
-                control={control}
-                name="configuration.godaddyConnection"
-              />
-              <Controller
-                control={control}
-                name="configuration.productType"
-                defaultValue={GoDaddyProductType.DV_SSL}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Product"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                    tooltipText="Domain Validated SSL product to use for issuance."
-                  >
-                    <Select
-                      value={value}
-                      onValueChange={(val) => onChange(val)}
-                      className="w-full border border-mineshaft-500"
-                      position="popper"
-                      dropdownContainerClassName="max-w-none"
-                    >
-                      <SelectItem value={GoDaddyProductType.DV_SSL}>DV SSL</SelectItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {popUp?.ca?.data ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("ca", false)}
-            >
-              Cancel
-            </Button>
+              ))}
+            </div>
           </div>
-        </form>
-      </ModalContent>
-    </Modal>
+        ) : isEditMode && isCaLoading ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <Loader2Icon className="size-8 animate-spin text-accent" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              {ca && (
+                <Field className="mb-4">
+                  <FieldLabel>CA ID</FieldLabel>
+                  <Input value={ca.id} disabled />
+                </Field>
+              )}
+              <Controller
+                control={control}
+                defaultValue=""
+                name="name"
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="mb-4">
+                    <FieldLabel>
+                      Name <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      placeholder="my-external-ca"
+                      disabled={Boolean(ca)}
+                      isError={Boolean(error)}
+                    />
+                    {!error && (
+                      <FieldDescription>
+                        Must be slug-friendly: lowercase letters, numbers, and hyphens only.
+                      </FieldDescription>
+                    )}
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              {caType === CaType.ACME && (
+                <AcmeFields
+                  control={control}
+                  isExistingCa={Boolean(ca)}
+                  dnsProvider={dnsProvider}
+                  directoryUrl={directoryUrl}
+                  dnsAppConnection={dnsAppConnection}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                  cloudflareZones={cloudflareZones}
+                  isZonesPending={isZonesPending}
+                  dnsMadeEasyZones={dnsMadeEasyZones}
+                  isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
+                  azureDnsZones={azureDnsZones}
+                  isAzureDNSZonesPending={isAzureDNSZonesPending}
+                />
+              )}
+              {caType === CaType.AZURE_AD_CS && (
+                <AzureAdCsFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+              {caType === CaType.ADCS && (
+                <AdcsFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+              {caType === CaType.AWS_PCA && (
+                <AwsPcaFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+              {caType === CaType.DIGICERT && (
+                <DigiCertFields
+                  control={control}
+                  setValue={setValue}
+                  configuration={configuration}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                  digicertConnectionId={digicertConnectionId}
+                  digicertOrganizations={digicertOrganizations}
+                  isDigiCertOrgsPending={isDigiCertOrgsPending}
+                  digicertProducts={digicertProducts}
+                  isDigiCertProductsPending={isDigiCertProductsPending}
+                  csRequiresContact={csRequiresContact}
+                />
+              )}
+              {caType === CaType.AWS_ACM_PUBLIC_CA && (
+                <AwsAcmPublicCaFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+              {caType === CaType.VENAFI_TPP && (
+                <VenafiTppFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+              {caType === CaType.GODADDY && (
+                <GoDaddyFields
+                  control={control}
+                  availableConnections={availableConnections}
+                  isPending={isPending}
+                />
+              )}
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handlePopUpToggle("ca", false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="project"
+                isPending={isSubmitting || isCheckingCsValidation}
+                isDisabled={isSubmitting || isCheckingCsValidation}
+              >
+                {isEditMode ? "Update" : "Create"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

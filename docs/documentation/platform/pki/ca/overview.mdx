@@ -1,5 +1,5 @@
 ---
-title: "Certificate Authorities"
+title: "Certificate authorities"
 sidebarTitle: "Overview"
 description: "Set up Certificate Authorities to issue certificates across your organization."
 ---
@@ -17,21 +17,21 @@ Certificate Manager supports two types of CAs:
   <Card title="External CA" icon="building-columns" href="/documentation/platform/pki/ca/external-ca">
     **Integrated with Infisical**
     
-    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Azure ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
+    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Microsoft ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
   </Card>
 </CardGroup>
 
-## Which Should I Use?
+## Which should I use?
 
 | Use Case | Recommended CA |
 |----------|----------------|
 | Internal services, mTLS between microservices | Private CA |
 | Public-facing websites needing browser trust | External CA (Let's Encrypt, DigiCert) |
-| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Azure ADCS, Venafi) |
+| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Microsoft ADCS, Venafi) |
 | IoT devices, internal device fleet | Private CA |
 | Regulated environments with specific CA requirements | External CA (your approved provider) |
 
-## Private CA Hierarchy
+## Private CA hierarchy
 
 When using Private CAs, you typically create a hierarchy:
 
@@ -45,7 +45,7 @@ Root CA (offline, long-lived)
   Best practice: Keep your Root CA offline or with minimal usage. Create one or more Intermediate CAs to issue day-to-day certificates. This limits exposure if an Intermediate CA is compromised.
 </Info>
 
-## External CA Integrations
+## External CA integrations
 
 Infisical integrates with major public and private CA providers:
 
@@ -59,8 +59,11 @@ Infisical integrates with major public and private CA providers:
   <Card title="AWS PCA" icon="aws" href="/documentation/platform/pki/ca/aws-pca">
     Private CA managed in AWS.
   </Card>
-  <Card title="Azure ADCS" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
-    Active Directory Certificate Services.
+  <Card title="Microsoft ADCS" icon="microsoft" href="/documentation/platform/pki/ca/adcs">
+    Active Directory Certificate Services over the Gateway.
+  </Card>
+  <Card title="Azure ADCS (Web Enrollment)" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
+    Active Directory Certificate Services over HTTPS web enrollment.
   </Card>
   <Card title="Venafi" icon="building" href="/documentation/platform/pki/ca/venafi">
     Enterprise certificate lifecycle management.
@@ -72,7 +75,7 @@ Infisical integrates with major public and private CA providers:
 
 [View all External CA integrations →](/documentation/platform/pki/ca/external-ca)
 
-## Next Steps
+## Next steps
 
 <Steps>
   <Step title="Create or connect a CA">

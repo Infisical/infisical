@@ -15,5 +15,9 @@ export const OrgProvisioningTab = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Scim }
+  {
+    action: OrgPermissionActions.Read,
+    subject: OrgPermissionSubjects.Scim,
+    accessRestrictedMode: "dialog"
+  }
 );

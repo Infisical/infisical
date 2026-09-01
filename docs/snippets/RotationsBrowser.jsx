@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
   const rotations = [
     {
@@ -39,6 +39,24 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/dbt-service-token",
       description: "Learn how to automatically rotate DBT service tokens.",
       category: "Data Analytics",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Cloudflare API Token",
+      slug: "cloudflare-api-token",
+      path: "/documentation/platform/secret-rotation/cloudflare-api-token",
+      description:
+        "Learn how to automatically rotate Cloudflare API tokens.",
+      category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Cloudflare R2 Access Key",
+      slug: "cloudflare-r2-access-key",
+      path: "/documentation/platform/secret-rotation/cloudflare-r2-access-key",
+      description:
+        "Learn how to automatically rotate Cloudflare R2 access keys.",
+      category: "Cloud Providers",
       rotationType: "Dual-Phase",
     },
     {
@@ -161,6 +179,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Fireworks API Key",
+      slug: "fireworks-api-key",
+      path: "/documentation/platform/secret-rotation/fireworks-api-key",
+      description:
+        "Learn how to automatically rotate Fireworks AI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Supabase API Key",
       slug: "supabase-api-key",
       path: "/documentation/platform/secret-rotation/supabase-api-key",
@@ -186,7 +213,41 @@ export const RotationsBrowser = () => {
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",
       rotationType: "Dual-Phase",
-    }
+    },
+    {
+      name: "Datadog API Key",
+      slug: "datadog-api-key",
+      path: "/documentation/platform/secret-rotation/datadog-api-key",
+      description: "Learn how to automatically rotate Datadog API keys.",
+      category: "Monitoring",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "LiteLLM API Key",
+      slug: "litellm-api-key",
+      path: "/documentation/platform/secret-rotation/litellm-api-key",
+      description: "Learn how to automatically rotate LiteLLM API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "OpenAI API Key",
+      slug: "openai-api-key",
+      path: "/documentation/platform/secret-rotation/openai-service-account",
+      description:
+        "Learn how to automatically rotate OpenAI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Snowflake User Key Pair",
+      slug: "snowflake-user-key-pair",
+      path: "/documentation/platform/secret-rotation/snowflake-user-key-pair",
+      description:
+        "Learn how to automatically rotate Snowflake user key pairs.",
+      category: "Databases",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
@@ -237,7 +298,7 @@ export const RotationsBrowser = () => {
           <input
             type="text"
             placeholder="Search secret rotations..."
-            className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm"
+            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-[#1e1f22] dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -253,8 +314,8 @@ export const RotationsBrowser = () => {
               onClick={() => setSelectedCategory(category)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
                 selectedCategory === category
-                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200"
+                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-[#1e1f22] dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
               }`}
             >
               {category}
@@ -265,7 +326,7 @@ export const RotationsBrowser = () => {
 
       {/* Results Count */}
       <div className="mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {filteredRotations.length} secret rotation
           {filteredRotations.length !== 1 ? "s" : ""} found
           {selectedCategory !== "All" && ` in ${selectedCategory}`}
@@ -280,27 +341,27 @@ export const RotationsBrowser = () => {
             <a
               key={rotation.slug}
               href={rotation.path}
-              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
+              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-[#1e1f22] dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
             >
               <div className="w-full">
                 <div className="flex items-center justify-between mb-0.5">
-                  <h3 className="text-base font-medium text-gray-900 leading-none m-0">
+                  <h3 className="text-base font-medium text-gray-900 leading-none m-0 dark:text-gray-100">
                     {rotation.name}
                   </h3>
                   <div className="ml-3 flex items-center gap-2 flex-shrink-0">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       rotation.rotationType === "Dual-Phase"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                        : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
                     }`}>
                       {rotation.rotationType}
                     </span>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
                       {rotation.category}
                     </span>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed dark:text-gray-400">
                   {rotation.description}
                 </p>
               </div>
@@ -310,7 +371,7 @@ export const RotationsBrowser = () => {
       ) : (
         <div className="text-center py-8">
           <div className="flex flex-col items-center space-y-2">
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               No secret rotations found matching your criteria
             </p>
             {searchTerm && (

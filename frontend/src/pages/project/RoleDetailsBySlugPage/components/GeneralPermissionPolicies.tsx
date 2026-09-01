@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, RefObject, useEffect, useMemo } from "react";
+import { cloneElement, Fragment, RefObject, useEffect, useMemo, useRef } from "react";
 import {
   Control,
   Controller,
@@ -17,6 +17,7 @@ import {
   Badge,
   Button,
   IconButton,
+  type PermissionActionOption,
   PermissionActionSelect,
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "@app/context";
 
@@ -43,6 +45,11 @@ export type TPermissionAction = {
 
 type AnyPermissionSubject = ProjectPermissionSub | OrgPermissionSubjects;
 
+export enum PermissionScope {
+  Project = "project",
+  Organization = "org"
+}
+
 type Props<T extends AnyPermissionSubject> = {
   title: string;
   description: string;
@@ -53,8 +60,10 @@ type Props<T extends AnyPermissionSubject> = {
   children?: JSX.Element;
   isDisabled?: boolean;
   isOpen?: boolean;
+  onPolicyAdded?: () => void;
   onShowAccessTree?: (subject: string) => void;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
+  subjectScope: PermissionScope;
 };
 
 type ActionsMultiSelectProps = {
@@ -65,6 +74,7 @@ type ActionsMultiSelectProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
+  subjectScope: PermissionScope;
 };
 
 const ActionsMultiSelect = ({
@@ -73,7 +83,8 @@ const ActionsMultiSelect = ({
   actions,
   isDisabled,
   control,
-  menuPortalContainerRef
+  menuPortalContainerRef,
+  subjectScope
 }: ActionsMultiSelectProps) => {
   const { setValue, trigger } = useFormContext();
 
@@ -94,15 +105,23 @@ const ActionsMultiSelect = ({
   const memberGrantPrivileges = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
   const identityGrantPrivileges = Boolean(rule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
   const groupsGrantPrivileges = Boolean(rule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+  const folderManageAccess = Boolean(rule?.[ProjectPermissionSecretFolderActions.ManageAccess]);
 
   const legacyActionsState = useMemo(
     () => ({
       secretsRead,
       memberGrantPrivileges,
       identityGrantPrivileges,
-      groupsGrantPrivileges
+      groupsGrantPrivileges,
+      folderManageAccess
     }),
-    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+    [
+      secretsRead,
+      memberGrantPrivileges,
+      identityGrantPrivileges,
+      groupsGrantPrivileges,
+      folderManageAccess
+    ]
   );
 
   const visibleActions = useMemo(
@@ -123,12 +142,14 @@ const ActionsMultiSelect = ({
           return legacyActionsState.memberGrantPrivileges;
         }
         if (
+          subjectScope === PermissionScope.Project &&
           subject === ProjectPermissionSub.Identity &&
           value === ProjectPermissionIdentityActions.GrantPrivileges
         ) {
           return legacyActionsState.identityGrantPrivileges;
         }
         if (
+          subjectScope === PermissionScope.Project &&
           subject === ProjectPermissionSub.Groups &&
           value === ProjectPermissionGroupActions.GrantPrivileges
         ) {
@@ -137,7 +158,7 @@ const ActionsMultiSelect = ({
 
         return true;
       }),
-    [actions, subject, legacyActionsState]
+    [actions, subject, legacyActionsState, subjectScope]
   );
 
   const actionOptions = useMemo(
@@ -155,11 +176,10 @@ const ActionsMultiSelect = ({
     [actionOptions, rule]
   );
 
-  const handleChange = (newValue: unknown) => {
-    const selectedArray = Array.isArray(newValue) ? newValue : [];
+  const handleChange = (selectedActionsValue: PermissionActionOption[]) => {
     visibleActions.forEach(({ value }) => {
       const valueStr = String(value);
-      const isSelected = selectedArray.some((s: { value: string }) => s.value === valueStr);
+      const isSelected = selectedActionsValue.some((selected) => selected.value === valueStr);
       setValue(`permissions.${subject}.${rootIndex}.${valueStr}` as any, isSelected, {
         shouldDirty: true,
         shouldTouch: true
@@ -173,17 +193,13 @@ const ActionsMultiSelect = ({
     <div className="flex w-full flex-col">
       <PermissionActionSelect
         value={selectedActions}
-        onChange={handleChange}
+        onValueChange={handleChange}
         options={actionOptions}
         placeholder="Select actions..."
         isDisabled={isDisabled}
-        isClearable={!isDisabled}
         className="w-full"
-        menuPosition="fixed"
-        {...(menuPortalContainerRef?.current
-          ? { menuPortalTarget: menuPortalContainerRef.current }
-          : {})}
-        isError={actionsError}
+        portalContainer={menuPortalContainerRef}
+        isError={Boolean(actionsError)}
       />
       {actionsError && (
         <span className="mt-1 text-xs text-danger">{actionsError.message as string}</span>
@@ -191,6 +207,16 @@ const ActionsMultiSelect = ({
     </div>
   );
 };
+
+const POLICY_META_KEYS = new Set(["inverted", "conditions"]);
+
+const isPolicyUnconfigured = (rules: unknown[]): boolean =>
+  rules.every((rule) => {
+    if (!rule || typeof rule !== "object") return true;
+    return !Object.entries(rule as Record<string, unknown>).some(
+      ([key, value]) => !POLICY_META_KEYS.has(key) && value === true
+    );
+  });
 
 export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   subject,
@@ -202,15 +228,13 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   onRemoveLastRule,
   isDisabled,
   isOpen = false,
+  onPolicyAdded,
   onShowAccessTree,
-  menuPortalContainerRef
+  menuPortalContainerRef,
+  subjectScope
 }: Props<T>) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { control, watch, trigger } = useFormContext<any>();
-
-  useEffect(() => {
-    trigger("permissions");
-  }, []);
+  const { control, watch } = useFormContext<any>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { fields, remove, insert } = useFieldArray<any>({
     control,
@@ -220,6 +244,19 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const watchFields = useWatch({ control, name: `permissions.${subject}` as any }) as unknown[];
+  const wasPresentRef = useRef(false);
+  const onPolicyAddedRef = useRef(onPolicyAdded);
+  onPolicyAddedRef.current = onPolicyAdded;
+
+  useEffect(() => {
+    const isPresent = Array.isArray(watchFields) && watchFields.length > 0;
+    const justAdded = isPresent && !wasPresentRef.current;
+    wasPresentRef.current = isPresent;
+
+    if (!justAdded || !onPolicyAddedRef.current || !isPolicyUnconfigured(watchFields)) return;
+
+    onPolicyAddedRef.current();
+  }, [watchFields]);
 
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
 
@@ -339,6 +376,7 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
                         isDisabled={isDisabled}
                         control={control}
                         menuPortalContainerRef={menuPortalContainerRef}
+                        subjectScope={subjectScope}
                       />
                     </div>
                     {!isDisabled && (fields.length > 1 || isConditional || !!onRemoveLastRule) && (

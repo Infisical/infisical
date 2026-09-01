@@ -20,9 +20,9 @@ import {
   Tag
 } from "@app/components/v2";
 import { useGetSshCaPublicKey, useUpdateDynamicSecret } from "@app/hooks/api";
+import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/dynamicSecret/constants";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
 import { slugSchema } from "@app/lib/schemas";
 
 const sshCertKeyAlgorithmsArray = sshCertKeyAlgorithms.map((a) => a.value);

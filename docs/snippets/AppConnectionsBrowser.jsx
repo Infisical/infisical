@@ -411,6 +411,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "Nutanix Prism Central",
+      slug: "nutanix-prism-central",
+      path: "/integrations/app-connections/nutanix-prism-central",
+      description:
+        "Learn how to connect your Nutanix Prism Central to push certificates from Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Ona",
       slug: "ona",
       path: "/integrations/app-connections/ona",
@@ -528,6 +536,14 @@ export const AppConnectionsBrowser = () => {
       category: "AI & LLM",
     },
     {
+      name: "Fireworks",
+      slug: "fireworks",
+      path: "/integrations/app-connections/fireworks",
+      description:
+        "Learn how to connect Fireworks AI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
       name: "DigiCert",
       slug: "digicert",
       path: "/integrations/app-connections/digicert",
@@ -574,7 +590,59 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect GoDaddy to Infisical for ACME DNS validation.",
       category: "Networking & DNS",
-    }
+    }, 
+    {
+      name: "Rundeck",
+      slug: "rundeck",
+      path: "/integrations/app-connections/rundeck",
+      description:
+        "Learn how to connect Rundeck to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Qovery",
+      slug: "qovery",
+      path: "/integrations/app-connections/qovery",
+      description:
+        "Learn how to connect Qovery to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Cloud 66",
+      slug: "cloud-66",
+      path: "/integrations/app-connections/cloud-66",
+      description: "Learn how to connect Cloud66 to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Hasura Cloud",
+      slug: "hasura-cloud",
+      path: "/integrations/app-connections/hasura-cloud",
+      description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
+      category: "Platform",
+    },
+    {
+      name: "LiteLLM",
+      slug: "litellm",
+      path: "/integrations/app-connections/litellm",
+      description: "Learn how to connect LiteLLM to pull secrets from Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "OpenAI",
+      slug: "openai",
+      path: "/integrations/app-connections/openai",
+      description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "Spacelift",
+      slug: "spacelift",
+      path: "/integrations/app-connections/spacelift",
+      description:
+        "Learn how to connect Spacelift to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
@@ -625,7 +693,7 @@ export const AppConnectionsBrowser = () => {
           <input
             type="text"
             placeholder="Search app connections..."
-            className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm"
+            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-[#1e1f22] dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -641,8 +709,8 @@ export const AppConnectionsBrowser = () => {
               onClick={() => setSelectedCategory(category)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
                 selectedCategory === category
-                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200"
+                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-[#1e1f22] dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
               }`}
             >
               {category}
@@ -653,7 +721,7 @@ export const AppConnectionsBrowser = () => {
 
       {/* Results Count */}
       <div className="mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {filteredConnections.length} app connection
           {filteredConnections.length !== 1 ? "s" : ""} found
           {selectedCategory !== "All" && ` in ${selectedCategory}`}
@@ -668,18 +736,18 @@ export const AppConnectionsBrowser = () => {
             <a
               key={connection.slug}
               href={connection.path}
-              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
+              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-[#1e1f22] dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
             >
               <div className="w-full">
                 <div className="flex items-center justify-between mb-0.5">
-                  <h3 className="text-base font-medium text-gray-900 leading-none m-0">
+                  <h3 className="text-base font-medium text-gray-900 leading-none m-0 dark:text-gray-100">
                     {connection.name}
                   </h3>
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
+                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0 dark:bg-yellow-900/30 dark:text-yellow-300">
                     {connection.category}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed dark:text-gray-400">
                   {connection.description}
                 </p>
               </div>
@@ -689,7 +757,7 @@ export const AppConnectionsBrowser = () => {
       ) : (
         <div className="text-center py-8">
           <div className="flex flex-col items-center space-y-2">
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               No app connections found matching your criteria
             </p>
             {searchTerm && (

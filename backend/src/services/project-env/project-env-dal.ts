@@ -3,7 +3,15 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TProjectEnvironments } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, TFindFilter, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
+
+import {
+  envFolderIdsSubquery,
+  hardDeleteApprovalSecretLinksInBatches,
+  hardDeleteSecretReferencesInBatches,
+  hardDeleteSecretsInBatches,
+  hardDeleteSecretVersionsInBatches
+} from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 
 export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
@@ -100,6 +108,21 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Worker read: env row + orgId via a soft-delete-blind project join, so the hard-delete audit
+  // log resolves its org even while the parent project is pending deletion.
+  const findByIdWithOrgIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Environment}.id`, id)
+        .select(selectAllTableCols(TableName.Environment), db.ref("orgId").withSchema(TableName.Project).as("orgId"))
+        .first();
+      return result as (TProjectEnvironments & { orgId: string }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id with org including expired" });
+    }
+  };
+
   // Bypasses the soft-delete read filter. Used by create/update to detect when a
   // slug is held by a pending-deletion env so we can surface a friendly error
   // instead of the DB unique-constraint failure.
@@ -117,6 +140,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
         .update({
           deleteAfter: null,
           softDeletedAt: null,
@@ -189,17 +213,100 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       .decrement("position", 1);
   };
 
-  const findExpiredForHardDelete = async (tx?: Knex) => {
+  // Oldest-first, bounded discovery for the hard-delete cron. The LIMIT keeps the enqueued set bounded
+  // regardless of backlog size.
+  const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
         .whereNotNull("deleteAfter")
         .andWhere("deleteAfter", "<=", new Date())
+        .orderBy("deleteAfter", "asc")
+        .limit(limit)
         .select("*");
       return result as TProjectEnvironments[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find expired for hard delete" });
     }
   };
+
+  // Atomic hard-delete guard for the worker: removes the env only while it is still expired
+  const hardDeleteIfExpired = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
+        .del()
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Hard delete environment if expired" });
+    }
+  };
+
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
+    batchSize,
+    statementTimeoutMs,
+    interBatchSleepMs,
+    onBatchCommitted
+  });
+
+  const hardDeleteEnvironmentSecretVersionsInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretVersionsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretReferencesInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretReferencesInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentApprovalSecretLinksInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteApprovalSecretLinksInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretsInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
 
   return {
     ...projectEnvOrm,
@@ -209,12 +316,18 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     findBySlugs,
     softDeleteById,
     findByIdIncludingExpired,
+    findByIdWithOrgIncludingExpired,
     findBySlugIncludingExpired,
     restoreById,
     findLastEnvPosition,
     updateAllPosition,
     shiftPositions,
     closePositionGap,
-    findExpiredForHardDelete
+    findExpiredForHardDelete,
+    hardDeleteIfExpired,
+    hardDeleteEnvironmentSecretVersionsInBatches,
+    hardDeleteEnvironmentSecretReferencesInBatches,
+    hardDeleteEnvironmentApprovalSecretLinksInBatches,
+    hardDeleteEnvironmentSecretsInBatches
   };
 };

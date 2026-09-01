@@ -121,6 +121,7 @@ export const EditDynamicSecretIbmApiConnectForm = ({
     apiKey: apiKey || "",
     clientId: clientId || "",
     clientSecret: clientSecret || "",
+    projectSlug,
     enabled: credentialsComplete
   });
 
@@ -136,6 +137,7 @@ export const EditDynamicSecretIbmApiConnectForm = ({
     clientId: clientId || "",
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
+    projectSlug,
     enabled: orgSelected
   });
 
@@ -152,6 +154,7 @@ export const EditDynamicSecretIbmApiConnectForm = ({
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
     catalogId: selectedCatalog?.id || "",
+    projectSlug,
     enabled: catalogSelected
   });
 

@@ -4,13 +4,16 @@ import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotatio
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-api-key";
 import { DatadogApplicationKeySecretRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
+import { LiteLLMApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
 import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
+import { OpenAIServiceAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/openai-service-account";
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -18,9 +21,13 @@ import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secre
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
+import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token";
+import { CloudflareR2AccessKeyRotationSchema } from "./cloudflare-r2-access-key";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
+import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
+import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
@@ -40,9 +47,16 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationSchema,
   WindowsLocalAccountRotationSchema,
   OpenRouterApiKeyRotationSchema,
+  LiteLLMApiKeyRotationSchema,
+  OpenAIServiceAccountRotationSchema,
   HpIloRotationSchema,
   SupabaseApiKeyRotationSchema,
   SalesforceOauthCredentialsRotationSchema,
   DatadogApplicationKeySecretRotationSchema,
-  ConvexAccessKeyRotationSchema
+  DatadogApiKeyRotationSchema,
+  ConvexAccessKeyRotationSchema,
+  FireworksApiKeyRotationSchema,
+  SnowflakeUserKeyPairRotationSchema,
+  CloudflareApiTokenRotationSchema,
+  CloudflareR2AccessKeyRotationSchema
 ]);

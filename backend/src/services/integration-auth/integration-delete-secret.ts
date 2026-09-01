@@ -4,6 +4,7 @@ import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -12,7 +13,9 @@ import { logger } from "@app/lib/logger";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -36,10 +39,15 @@ const getIntegrationSecretsV2 = async (
     depth: number;
     secretPath: string;
     decryptor: (value: Buffer | null | undefined) => string;
+    actorOrgId: string;
   },
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">,
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">
 ) => {
   const content: Record<string, boolean> = {};
   if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
@@ -69,7 +77,13 @@ const getIntegrationSecretsV2 = async (
     secretImportDAL,
     secretImports,
     hasSecretAccess: () => true,
-    viewSecretValue: true
+    viewSecretValue: true,
+    projectId: dto.projectId,
+    projectFolderGrantDAL,
+    actorOrgId: dto.actorOrgId,
+    orgDAL,
+    licenseService,
+    kmsService
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -284,7 +298,11 @@ export const deleteIntegrationSecrets = async ({
   folderDAL,
   secretDAL,
   secretImportDAL,
-  kmsService
+  kmsService,
+  projectFolderGrantDAL,
+  orgDAL,
+  licenseService,
+  actorOrgId
 }: {
   integration: Omit<TIntegrations, "envId"> & {
     projectId: string;
@@ -303,6 +321,10 @@ export const deleteIntegrationSecrets = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
   const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -336,11 +358,16 @@ export const deleteIntegrationSecrets = async ({
           projectId: integration.projectId,
           folderId: folder.id,
           depth: 1,
-          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+          actorOrgId
         },
         secretV2BridgeDAL,
         folderDAL,
-        secretImportDAL
+        secretImportDAL,
+        kmsService,
+        projectFolderGrantDAL,
+        orgDAL,
+        licenseService
       )
     : await getIntegrationSecretsV1(
         {

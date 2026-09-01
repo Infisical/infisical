@@ -1,7 +1,7 @@
-// WebSocket message types for the Postgres Data Explorer
+// WebSocket message types for the Data Explorer
 
 export type DataExplorerClientMessage =
-  // Metadata (no connectionId) — served by short-lived BE pg.Clients
+  // Metadata (no connectionId) -- served by short-lived BE database connections
   | { type: "get-schemas"; id: string }
   | { type: "get-tables"; id: string; schema: string }
   // Tab-scoped — routed to a specific BE controller
@@ -46,7 +46,12 @@ export type DataExplorerServerMessage =
       detail?: string;
       hint?: string;
     }
-  | { type: "connection-opened"; id: string; connectionId: string; backendPid: number | null }
+  | {
+      type: "connection-opened";
+      id: string;
+      connectionId: string;
+      nativeConnectionId: number | null;
+    }
   | { type: "connection-open-failed"; id: string; error: string }
   | { type: "connection-closed"; connectionId: string; reason: string }
   | { type: "ready" }

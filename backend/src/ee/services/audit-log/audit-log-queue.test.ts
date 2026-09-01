@@ -11,7 +11,8 @@ const mockConfig = {
   CLICKHOUSE_AUDIT_LOG_TABLE_NAME: "audit_logs",
   CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: {},
   AUDIT_LOG_STREAMS_ENABLED: false,
-  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false
+  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false,
+  QUEUE_WORKERS_ENABLED: true
 };
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -26,7 +27,7 @@ vi.mock("@app/lib/logger", () => ({
 const STREAM_KEY = "audit-log-stream";
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
-// A push-time DTO (what pushToLog / the legacy shim receive — no resolved metadata yet).
+// A push-time DTO (what pushToLog receives — no resolved metadata yet).
 const dto = (overrides: Record<string, unknown> = {}) => ({
   event: { type: "test-event", metadata: { k: "v" } },
   actor: { type: "platform", metadata: {} },
@@ -46,32 +47,16 @@ const streamEntry = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-const legacyEntry = (overrides: Record<string, unknown> = {}) => ({
-  id: "legacy-1",
-  actor: "platform",
-  actorMetadata: { k: "v" },
-  ipAddress: "",
-  eventType: "legacy-event",
-  eventMetadata: { e: "m" },
-  userAgent: "",
-  userAgentType: "",
-  projectId: "",
-  orgId: "org-1",
-  createdAt: new Date("2026-05-27T00:00:00.000Z").toISOString(),
-  expiresAt: new Date("2026-06-26T00:00:00.000Z").toISOString(),
-  updatedAt: new Date("2026-05-27T00:00:00.000Z").toISOString(),
-  ...overrides
-});
-
 // streamCollect returns [entryId, ["data", json]] tuples; the consumer parses fields[1].
 const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => ({
   entries: payloads.map((p, i) => [`${i + 1}-0`, ["data", JSON.stringify(p)]] as [string, string[]]),
   lastId
 });
 
-const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}) => {
+const createHarness = async ({ clickhouse = false, streamsEnabled = false, queueWorkersEnabled = true } = {}) => {
   mockConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = clickhouse;
   mockConfig.AUDIT_LOG_STREAMS_ENABLED = streamsEnabled;
+  mockConfig.QUEUE_WORKERS_ENABLED = queueWorkersEnabled;
 
   const startHandlers = new Map<string, (job?: unknown) => Promise<void>>();
   const queueService = {
@@ -141,8 +126,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}
     licenseService,
     auditLogStreamOutboxService,
     clickhouseClient,
-    consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!,
-    shim: startHandlers.get(QueueName.AuditLog)!
+    consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!
   };
 };
 
@@ -152,6 +136,22 @@ const pushedEntry = (keyStore: { streamAdd: { mock: { calls: unknown[][] } } }) 
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("audit-log-queue construction", () => {
+  test("registers the batch scheduler when queue workers are enabled", async () => {
+    const { queueService } = await createHarness();
+
+    expect(queueService.upsertJobScheduler).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips scheduler registration when queue workers are disabled", async () => {
+    // A pod with workers disabled never initializes the queue, and upsertJobScheduler throws on a
+    // missing queue; the factory must branch instead of crashing the boot.
+    const { queueService } = await createHarness({ queueWorkersEnabled: false });
+
+    expect(queueService.upsertJobScheduler).not.toHaveBeenCalled();
+  });
 });
 
 describe("audit-log-queue pushToLog", () => {
@@ -235,21 +235,6 @@ describe("audit-log-queue pushToLog", () => {
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
-  });
-
-  test("compatibility shim re-routes legacy jobs into the stream", async () => {
-    const { shim, keyStore } = await createHarness();
-
-    await shim({ data: dto({ orgId: "o" }) });
-
-    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
-  });
-
-  test("compatibility shim re-throws on streamAdd failure so BullMQ retries the legacy job", async () => {
-    const { shim, keyStore } = await createHarness();
-    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
-
-    await expect(shim({ data: dto({ orgId: "o" }) })).rejects.toThrow("redis down");
   });
 });
 
@@ -396,51 +381,6 @@ describe("audit-log-queue unified consumer", () => {
     const rows = auditLogDAL.batchCreate.mock.calls[0][0];
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("ok");
-  });
-
-  test("drains legacy flat entries (rolling deploy) instead of choking on the missing event object", async () => {
-    const { consumer, clickhouseClient, keyStore } = await createHarness({ clickhouse: true });
-    keyStore.streamCollect.mockResolvedValueOnce(collectResult([legacyEntry({ id: "legacy-A" })]));
-
-    await consumer();
-
-    expect(clickhouseClient!.insert).toHaveBeenCalledTimes(1);
-    const row = clickhouseClient!.insert.mock.calls[0][0].values[0];
-    expect(row.id).toBe("legacy-A");
-    expect(row.actor).toBe("platform");
-    expect(row.eventType).toBe("legacy-event");
-    // timestamps are re-hydrated from ISO strings into Date instances for insertion
-    expect(row.createdAt).toBeInstanceOf(Date);
-    expect(row.expiresAt).toBeInstanceOf(Date);
-    expect(keyStore.streamTrim).toHaveBeenCalledWith(STREAM_KEY, "9-0", true);
-  });
-
-  test("a legacy entry at the head does not abort the batch (no poison-pill stall)", async () => {
-    const { consumer, clickhouseClient, keyStore } = await createHarness({ clickhouse: true });
-    keyStore.streamCollect.mockResolvedValueOnce(
-      collectResult([legacyEntry({ id: "legacy-head" }), streamEntry({ id: "current-tail" })])
-    );
-
-    await consumer();
-
-    // both shapes mapped and inserted in the same batch, then trimmed
-    const rows = clickhouseClient!.insert.mock.calls[0][0].values;
-    expect(rows.map((r: Record<string, unknown>) => r.id)).toEqual(["legacy-head", "current-tail"]);
-    expect(keyStore.streamTrim).toHaveBeenCalledTimes(1);
-  });
-
-  test("drops a legacy entry missing resolved metadata but keeps draining", async () => {
-    const { consumer, auditLogDAL, keyStore } = await createHarness();
-    keyStore.streamCollect.mockResolvedValueOnce(
-      collectResult([legacyEntry({ id: "no-org", orgId: undefined }), legacyEntry({ id: "ok" })])
-    );
-
-    await consumer();
-
-    const rows = auditLogDAL.batchCreate.mock.calls[0][0];
-    expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe("ok");
-    expect(keyStore.streamTrim).toHaveBeenCalledTimes(1);
   });
 
   test("skips the tick when the consumer lock is already held by another runner", async () => {

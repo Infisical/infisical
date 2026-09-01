@@ -4,14 +4,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   FilterableSelect,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+  Input
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
@@ -110,77 +116,83 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
     });
   };
 
+  const isCreateMode = !popUp?.groupCreateUpdate?.data;
+
   return (
-    <Modal
-      isOpen={popUp?.groupCreateUpdate?.isOpen}
+    <Dialog
+      open={popUp?.groupCreateUpdate?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("groupCreateUpdate", isOpen);
-        reset();
+        if (!isOpen) reset();
       }}
     >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={`${popUp?.groupCreateUpdate?.data ? "Update" : "Create"} Group`}
-      >
-        <form onSubmit={handleSubmit(onGroupModalSubmit)}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isCreateMode ? "Create Group" : "Update Group"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onGroupModalSubmit)} className="flex flex-col gap-4">
           <Controller
             control={control}
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} placeholder="Engineering" />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="name">Name</FieldLabel>
+                <Input id="name" placeholder="Engineering" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="slug"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} placeholder="engineering" />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="slug">Slug</FieldLabel>
+                <Input id="slug" placeholder="engineering" isError={Boolean(error)} {...field} />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="role"
             render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl
-                label="Role"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                className="mt-4"
-              >
+              <Field>
+                <FieldLabel htmlFor="role">Role</FieldLabel>
                 <FilterableSelect
+                  inputId="role"
                   options={roles}
                   placeholder="Select role..."
                   onChange={onChange}
                   value={value}
+                  isError={Boolean(error)}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
+                  components={{ Option: RoleOption }}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="mt-8 flex items-center">
+          <DialogFooter>
             <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={createIsLoading || updateIsLoading}
-            >
-              {!popUp?.groupCreateUpdate?.data ? "Create" : "Update"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
+              variant="ghost"
+              type="button"
               onClick={() => handlePopUpClose("groupCreateUpdate")}
             >
               Cancel
             </Button>
-          </div>
+            <Button
+              variant="org"
+              type="submit"
+              isPending={createIsLoading || updateIsLoading}
+              isDisabled={createIsLoading || updateIsLoading}
+            >
+              {isCreateMode ? "Create" : "Update"}
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

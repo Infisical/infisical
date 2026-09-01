@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +20,8 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemTitle
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -35,10 +35,7 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
   r
     ? r.appConnections.length +
       r.dynamicSecrets.length +
-      r.pamResources.length +
-      r.pamDiscoverySources.length +
       r.kubernetesAuths.length +
-      r.mcpServers.length +
       r.pkiDiscoveryConfigs.length
     : 0;
 
@@ -46,15 +43,17 @@ const ResourceRow = ({
   name,
   subtitle,
   to,
-  params
+  params,
+  search
 }: {
   name: string;
   subtitle: string;
   to: string;
   params: Record<string, string>;
+  search?: Record<string, unknown>;
 }) => (
   <Item asChild variant="outline" size="xs">
-    <Link to={to as "/"} params={params}>
+    <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
         <ItemDescription className="text-mineshaft-400">{subtitle}</ItemDescription>
@@ -71,15 +70,19 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const total = totalCountOf(resources);
 
   return (
-    <Card>
+    <Card className="min-w-0" aria-labelledby="gateway-connected-resources-title">
       <CardHeader>
-        <CardTitle>Connected Resources</CardTitle>
+        <CardTitle>
+          <h2 id="gateway-connected-resources-title">Connected Resources</h2>
+        </CardTitle>
         <CardDescription>Resources currently routing through this gateway</CardDescription>
       </CardHeader>
       <CardContent>
         {isPending && (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="lg" />
+          <div className="space-y-2" aria-label="Loading connected resources">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         {!isPending && total === 0 && (
@@ -100,7 +103,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">App Connections</span>
                   <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.appConnections.map((c) => (
                       <ResourceRow
@@ -124,73 +127,19 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Dynamic Secrets</span>
                   <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.dynamicSecrets.map((d) => (
                       <ResourceRow
                         key={d.id}
                         name={d.name}
                         subtitle={`${d.environmentSlug} · ${d.projectName}`}
-                        to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+                        to="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         params={{
                           orgId: currentOrg.id,
-                          projectId: d.projectId,
-                          envSlug: d.environmentSlug
+                          projectId: d.projectId
                         }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.pamResources.length ?? 0) > 0 && (
-              <AccordionItem value="pam-resources">
-                <AccordionTrigger>
-                  <span className="flex-1">PAM Resources</span>
-                  <Badge variant="neutral">{resources?.pamResources.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
-                  <ItemGroup>
-                    {resources?.pamResources.map((r) => (
-                      <ResourceRow
-                        key={r.id}
-                        name={r.name}
-                        subtitle={`${r.resourceType} · ${r.projectName}`}
-                        to="/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId"
-                        params={{
-                          orgId: currentOrg.id,
-                          projectId: r.projectId,
-                          resourceType: r.resourceType,
-                          resourceId: r.id
-                        }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.pamDiscoverySources.length ?? 0) > 0 && (
-              <AccordionItem value="pam-discovery">
-                <AccordionTrigger>
-                  <span className="flex-1">Discovery Sources</span>
-                  <Badge variant="neutral">{resources?.pamDiscoverySources.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
-                  <ItemGroup>
-                    {resources?.pamDiscoverySources.map((s) => (
-                      <ResourceRow
-                        key={s.id}
-                        name={s.name}
-                        subtitle={`${s.discoveryType} · ${s.projectName}`}
-                        to="/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId"
-                        params={{
-                          orgId: currentOrg.id,
-                          projectId: s.projectId,
-                          discoveryType: s.discoveryType,
-                          discoverySourceId: s.id
-                        }}
+                        search={{ environments: [d.environmentSlug] }}
                       />
                     ))}
                   </ItemGroup>
@@ -204,7 +153,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Kubernetes Auth</span>
                   <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.kubernetesAuths.map((a) => (
                       <ResourceRow
@@ -220,35 +169,13 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
               </AccordionItem>
             )}
 
-            {(resources?.mcpServers.length ?? 0) > 0 && (
-              <AccordionItem value="mcp-servers">
-                <AccordionTrigger>
-                  <span className="flex-1">MCP Servers</span>
-                  <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
-                  <ItemGroup>
-                    {resources?.mcpServers.map((s) => (
-                      <ResourceRow
-                        key={s.id}
-                        name={s.name}
-                        subtitle={s.projectName}
-                        to="/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId"
-                        params={{ orgId: currentOrg.id, projectId: s.projectId, serverId: s.id }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
             {(resources?.pkiDiscoveryConfigs.length ?? 0) > 0 && (
               <AccordionItem value="pki-discovery">
                 <AccordionTrigger>
                   <span className="flex-1">PKI Discovery</span>
                   <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.pkiDiscoveryConfigs.map((c) => (
                       <ResourceRow

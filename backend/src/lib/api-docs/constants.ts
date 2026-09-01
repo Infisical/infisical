@@ -54,8 +54,11 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  SecretValidationRules = "Secret Validation Rules",
+  ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  FolderAccess = "Folder Access",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
   PkiSyncs = "PKI Syncs",
@@ -77,11 +80,6 @@ export enum ApiDocsTags {
   PkiSigners = "PKI Signers",
   PkiSubscribers = "PKI Subscribers",
   PkiAcme = "PKI ACME",
-  SshCertificates = "SSH Certificates",
-  SshCertificateAuthorities = "SSH Certificate Authorities",
-  SshCertificateTemplates = "SSH Certificate Templates",
-  SshHosts = "SSH Hosts",
-  SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing",
@@ -93,6 +91,13 @@ export enum ApiDocsTags {
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
+  PamAccounts = "PAM Accounts",
+  PamFolders = "PAM Folders",
+  PamAccountTemplates = "PAM Account Templates",
+  PamSessions = "PAM Sessions",
+  PamMemberships = "PAM Memberships",
+  PamRoles = "PAM Roles",
+  PamDiscovery = "PAM Discovery",
   KmipServers = "KMIP Servers"
 }
 
@@ -421,6 +426,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -433,6 +440,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -605,6 +614,8 @@ export const KUBERNETES_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
+    templateId:
+      "The ID of the Kubernetes auth template to source connection settings from. When provided, the host, CA certificate, token reviewer JWT, token review mode, gateway, and allowed audience are taken from the template and cannot be set individually.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; explicitly setting the toggle to false in the same request is rejected.",
@@ -613,7 +624,7 @@ export const KUBERNETES_AUTH = {
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
-      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. Defaults to 'api' when omitted. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -627,6 +638,8 @@ export const KUBERNETES_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
+    templateId:
+      "The ID of the Kubernetes auth template to link. While linked, connection settings are managed by the template and cannot be set individually. Pass null to unlink the template; the settings copied from it are kept.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert:
       "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; the update is rejected if the resulting effective state would store a CA together with verifyTlsCertificate=false.",
@@ -885,6 +898,60 @@ export const ORGANIZATIONS = {
   }
 } as const;
 
+export const INSIGHTS = {
+  GET_SECRETS_SUMMARY: {
+    activeLeases:
+      "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
+    users: "The number of users who have accepted an active membership in the organization.",
+    identities: "The number of machine identities that belong to the organization."
+  },
+  GET_SECRETS_PROJECTS: {
+    offset: "The number of projects to skip before returning results.",
+    limit: "The maximum number of projects to return per page.",
+    projectId: "The ID of the project.",
+    projectName: "The name of the project.",
+    projectSlug: "The slug of the project.",
+    duplicatedSecrets:
+      "The number of secrets in the project whose value is shared with at least one other secret in the same project. Secrets whose value is a reference to another secret are counted as duplicates. Null when the project does not have secret blind indexing enabled.",
+    staleSecrets: "The number of secrets in the project that have not been updated in the last 90 days.",
+    failedRotations: "The number of secret rotations in the project whose last rotation attempt failed.",
+    failedSyncs: "The number of secret syncs in the project whose last sync attempt failed.",
+    orphanedLeases:
+      "The number of dynamic secret leases in the project that failed to be revoked and require manual cleanup.",
+    totalSecrets: "The total number of shared secrets in the project.",
+    warnings: "The counts of outstanding issues detected in the project.",
+    severityScore:
+      "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
+    totalProjects: "The total number of secret management projects in the organization.",
+    projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_SECRETS_ACCESS_VOLUME: {
+    days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
+    date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
+    total:
+      "The number of times a secret value was accessed across every project in the organization on this day, by any user or machine identity."
+  },
+  GET_SECRETS_AUTH_METHOD_DISTRIBUTION: {
+    methods:
+      "One entry for each machine identity authentication method that was used to access a secret value in the last seven days, ordered from most to least used. Methods that were not used are not included.",
+    authMethod: "The machine identity authentication method that was used to authenticate the accesses.",
+    count:
+      "The number of times a secret value was accessed across every project in the organization using this authentication method.",
+    totalFetches:
+      "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted, and neither are accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs."
+  },
+  GET_STATIC_SECRETS_USAGE: {
+    weeks:
+      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included with a count of zero.",
+    weekStart:
+      "The Monday the week starts on, in UTC, as YYYY-MM-DD. Weeks are UTC calendar weeks, not a rolling window anchored on today.",
+    totalSecrets:
+      "The number of static secrets created across every secret management project in the organization during this week. Each week is counted on its own, so this is not a running total. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, a week counts only the secrets created then that still exist today, so earlier weeks understate what was created at the time and drift lower as those secrets are deleted.",
+    isPartial:
+      "Whether the week is still in progress. True for the last entry only, which covers Monday through now rather than a full week, so its count is not comparable to the weeks before it."
+  }
+} as const;
+
 export const ORG_IDENTITY_MEMBERSHIP = {
   CREATE_IDENTITY_MEMBERSHIP: {
     identityId: "The ID of the machine identity to create the membership for.",
@@ -981,20 +1048,12 @@ export const PROJECTS = {
     defaultProduct: "The default product in which the project will open",
     secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
     enforceEncryptedSecretManagerSecretMetadata:
-      "Enable or disable enforcement of encrypted secret metadata for the project."
+      "Enable or disable enforcement of encrypted secret metadata for the project.",
+    auditLogsRetentionDays:
+      "The number of days to retain audit logs for. Can only be set on self-hosted and dedicated instances, and cannot exceed the retention period included in your plan."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
-  },
-  GET_SNAPSHOTS: {
-    projectId: "The ID of the project to get snapshots from.",
-    environment: "The environment to get snapshots from.",
-    path: "The secret path to get snapshots from.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th snapshot.",
-    limit: "The number of snapshots to return."
-  },
-  ROLLBACK_TO_SNAPSHOT: {
-    secretSnapshotId: "The ID of the snapshot to rollback to."
   },
   ADD_GROUP_TO_PROJECT: {
     projectId: "The ID of the project to add the group to.",
@@ -1019,23 +1078,6 @@ export const PROJECTS = {
   LIST_INTEGRATION_AUTHORIZATION: {
     projectId: "The ID of the project to list integration auths for."
   },
-  LIST_SSH_CAS: {
-    projectId: "The ID of the project to list SSH CAs for."
-  },
-  LIST_SSH_HOSTS: {
-    projectId: "The ID of the project to list SSH hosts for."
-  },
-  LIST_SSH_HOST_GROUPS: {
-    projectId: "The ID of the project to list SSH host groups for."
-  },
-  LIST_SSH_CERTIFICATES: {
-    projectId: "The ID of the project to list SSH certificates for.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
-    limit: "The number of SSH certificates to return."
-  },
-  LIST_SSH_CERTIFICATE_TEMPLATES: {
-    projectId: "The ID of the project to list SSH certificate templates for."
-  },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
     status: "The status of the CA to filter by.",
@@ -1058,7 +1100,8 @@ export const PROJECTS = {
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
-    status: "Filter by certificate status.",
+    status:
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -1422,6 +1465,7 @@ export const SECRET_IMPORTS = {
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
+      projectId: "The ID of the project to import from.",
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
     }
@@ -1461,6 +1505,7 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1479,7 +1524,12 @@ export const DASHBOARD = {
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeSecretRotations: "Whether to include secret rotations in the response.",
-    includeHoneyTokens: "Whether to include honey tokens in the response."
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 
@@ -1593,6 +1643,61 @@ export const DYNAMIC_SECRET_LEASES = {
     }
   }
 } as const;
+
+export const PROXIED_SERVICES = {
+  CREATE: {
+    projectId: "The ID of the project to create the proxied service in.",
+    environment: "The slug of the environment to create the proxied service in.",
+    secretPath: "The secret path (folder) to create the proxied service in.",
+    name: "The name of the proxied service.",
+    hostPattern:
+      "One or more comma-separated host patterns the service applies to, e.g. 'api.stripe.com, *.stripe.com'. Each pattern is host[:port][/path]; a '*.' wildcard matches exactly one label.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials: "The credentials the agent proxy applies to requests matching the host pattern."
+  },
+  LIST: {
+    projectId: "The ID of the project to list proxied services from.",
+    environment: "The slug of the environment to list proxied services from.",
+    secretPath: "The secret path (folder) to list proxied services from."
+  },
+  GET: {
+    serviceId: "The ID of the proxied service.",
+    name: "The name of the proxied service.",
+    projectId: "The ID of the project the proxied service is in.",
+    environment: "The slug of the environment the proxied service is in.",
+    secretPath: "The secret path (folder) the proxied service is in."
+  },
+  UPDATE: {
+    serviceId: "The ID of the proxied service to update.",
+    name: "The new name of the proxied service.",
+    hostPattern: "The new comma-separated host patterns.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials:
+      "The new credentials. When provided, the entire credentials collection is replaced; when omitted, existing credentials are left unchanged."
+  },
+  DELETE: {
+    serviceId: "The ID of the proxied service to delete."
+  },
+  CREDENTIAL: {
+    secretKey:
+      "The key name of the referenced static secret. The secret must live in the same folder as the service. Provide exactly one of secretKey or dynamicSecretName.",
+    dynamicSecretName:
+      "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
+    dynamicSecretField:
+      "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
+    role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
+    headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
+    headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",
+    headerPurpose:
+      "For HTTP basic auth: 'username' or 'password'. The agent proxy combines the pair into a single 'Authorization: Basic' header. Cannot be combined with headerName or headerPrefix.",
+    placeholderKey: "For credential substitution: the environment variable name the agent receives.",
+    placeholderValue:
+      "For credential substitution: the placeholder value the agent proxy swaps for the real secret value on the wire.",
+    substitutionSurfaces:
+      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body'."
+  }
+} as const;
+
 export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
@@ -1691,6 +1796,84 @@ The permission object for the privilege.
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the machine identity to list.",
     unpacked: "Whether the system should send the permissions as unpacked."
+  }
+};
+
+export const FOLDER_ACCESS = {
+  CREATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to grant access on.",
+    userId: "The ID of the user to grant folder access to.",
+    identityId: "The ID of the machine identity to grant folder access to.",
+    permission:
+      "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to update.",
+    identityId: "The ID of the machine identity whose folder access to update.",
+    permission:
+      "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  DELETE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to revoke.",
+    identityId: "The ID of the machine identity whose folder access to revoke."
+  },
+  LIST_USERS: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's users. The page is then split into the users with access and the users without access.",
+    limit: "The number of users to return, counting both lists together.",
+    search: "The text string that user names and email addresses will be filtered by.",
+    users:
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    usersWithoutAccess:
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount: "The number of users of the project that match the search, with and without access together."
+  },
+  LIST_IDENTITIES: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset:
+      "The offset to start from in the project's machine identities. The page is then split into the ones with access and the ones without access.",
+    limit: "The number of machine identities to return, counting both lists together.",
+    search: "The text string that machine identity names will be filtered by.",
+    identities:
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+    identitiesWithoutAccess:
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+    totalCount:
+      "The number of machine identities of the project that match the search, with and without access together."
+  },
+  LIST_USER_GRANTS: {
+    projectId: "The ID of the project to list the user's folder access grants in.",
+    userId: "The ID of the user whose folder access grants to list."
+  },
+  LIST_IDENTITY_GRANTS: {
+    projectId: "The ID of the project to list the machine identity's folder access grants in.",
+    identityId: "The ID of the machine identity whose folder access grants to list."
+  },
+  PERMISSION_AUDIT: {
+    includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
   }
 };
 
@@ -1887,180 +2070,6 @@ export const AUDIT_LOG_STREAMS = {
   }
 };
 
-export const SSH_CERTIFICATE_AUTHORITIES = {
-  CREATE: {
-    projectId: "The ID of the project to create the SSH CA in.",
-    friendlyName: "A friendly name for the SSH CA.",
-    keyAlgorithm:
-      "The type of public key algorithm and size, in bits, of the key pair for the SSH CA; required if keySource is internal.",
-    publicKey: "The public key for the SSH CA key pair; required if keySource is external.",
-    privateKey: "The private key for the SSH CA key pair; required if keySource is external.",
-    keySource: "The source of the SSH CA key pair. This can be one of internal or external."
-  },
-  GET: {
-    sshCaId: "The ID of the SSH CA to get."
-  },
-  GET_PUBLIC_KEY: {
-    sshCaId: "The ID of the SSH CA to get the public key for."
-  },
-  UPDATE: {
-    sshCaId: "The ID of the SSH CA to update.",
-    friendlyName: "A friendly name for the SSH CA to update to.",
-    status: "The status of the SSH CA to update to. This can be one of active or disabled."
-  },
-  DELETE: {
-    sshCaId: "The ID of the SSH CA to delete."
-  },
-  GET_CERTIFICATE_TEMPLATES: {
-    sshCaId: "The ID of the SSH CA to get the certificate templates for."
-  },
-  SIGN_SSH_KEY: {
-    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
-    publicKey: "The SSH public key to sign.",
-    certType: "The type of certificate to issue. This can be one of user or host.",
-    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
-    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
-    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key."
-  },
-  ISSUE_SSH_CREDENTIALS: {
-    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
-    certType: "The type of certificate to issue. This can be one of user or host.",
-    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
-    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
-    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key.",
-    privateKey: "The private key corresponding to the issued SSH certificate.",
-    publicKey: "The public key of the issued SSH certificate."
-  }
-};
-
-export const SSH_CERTIFICATE_TEMPLATES = {
-  GET: {
-    certificateTemplateId: "The ID of the SSH certificate template to get."
-  },
-  CREATE: {
-    sshCaId: "The ID of the SSH CA to associate the certificate template with.",
-    name: "The name of the certificate template.",
-    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    allowedUsers: "The list of allowed users for certificates issued under this template.",
-    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
-    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
-    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
-    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
-  },
-  UPDATE: {
-    certificateTemplateId: "The ID of the SSH certificate template to update.",
-    name: "The name of the certificate template.",
-    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    allowedUsers: "The list of allowed users for certificates issued under this template.",
-    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
-    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
-    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
-    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
-  },
-  DELETE: {
-    certificateTemplateId: "The ID of the SSH certificate template to delete."
-  }
-};
-
-export const SSH_HOST_GROUPS = {
-  GET: {
-    sshHostGroupId: "The ID of the SSH host group to get.",
-    filter: "The filter to apply to the SSH hosts in the SSH host group."
-  },
-  CREATE: {
-    projectId: "The ID of the project to create the SSH host group in.",
-    name: "The name of the SSH host group.",
-    loginMappings:
-      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
-  },
-  UPDATE: {
-    sshHostGroupId: "The ID of the SSH host group to update.",
-    name: "The name of the SSH host group to update to.",
-    loginMappings:
-      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
-  },
-  DELETE: {
-    sshHostGroupId: "The ID of the SSH host group to delete."
-  },
-  LIST_HOSTS: {
-    offset: "The offset to start from. If you enter 10, it will start from the 10th host",
-    limit: "The number of hosts to return."
-  },
-  ADD_HOST: {
-    sshHostGroupId: "The ID of the SSH host group to add the host to.",
-    hostId: "The ID of the SSH host to add to the SSH host group."
-  },
-  DELETE_HOST: {
-    sshHostGroupId: "The ID of the SSH host group to delete the host from.",
-    hostId: "The ID of the SSH host to delete from the SSH host group."
-  }
-};
-
-export const SSH_HOSTS = {
-  GET: {
-    sshHostId: "The ID of the SSH host to get."
-  },
-  CREATE: {
-    projectId: "The ID of the project to create the SSH host in.",
-    hostname: "The hostname of the SSH host.",
-    alias: "The alias for the SSH host.",
-    userCertTtl: "The time to live for user certificates issued under this host.",
-    hostCertTtl: "The time to live for host certificates issued under this host.",
-    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
-    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
-    loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
-    userSshCaId:
-      "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
-    hostSshCaId:
-      "The ID of the SSH CA to use for host certificates. If not specified, the default host SSH CA will be used if it exists."
-  },
-  UPDATE: {
-    sshHostId: "The ID of the SSH host to update.",
-    hostname: "The hostname of the SSH host to update to.",
-    alias: "The alias for the SSH host to update to.",
-    userCertTtl: "The time to live for user certificates issued under this host to update to.",
-    hostCertTtl: "The time to live for host certificates issued under this host to update to.",
-    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
-    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
-    loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
-  },
-  DELETE: {
-    sshHostId: "The ID of the SSH host to delete."
-  },
-  ISSUE_SSH_CREDENTIALS: {
-    sshHostId: "The ID of the SSH host to issue the SSH credentials for.",
-    loginUser: "The login user to issue the SSH credentials for.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key.",
-    privateKey: "The private key corresponding to the issued SSH certificate.",
-    publicKey: "The public key of the issued SSH certificate."
-  },
-  ISSUE_HOST_CERT: {
-    sshHostId: "The ID of the SSH host to issue the SSH certificate for.",
-    publicKey: "The SSH public key to issue the SSH certificate for.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key."
-  },
-  GET_USER_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the user SSH CA public key for.",
-    publicKey: "The public key of the user SSH CA linked to the SSH host."
-  },
-  GET_HOST_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the host SSH CA public key for.",
-    publicKey: "The public key of the host SSH CA linked to the SSH host."
-  }
-};
-
 export const CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectSlug: "Slug of the project to create the CA in.",
@@ -2198,6 +2207,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_ADCS: {
     caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
+  INSTALL_CERT_ADCS_NATIVE: {
+    caId: "The ID of the CA to install the certificate for via ADCS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2218,7 +2230,19 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    latestRenewalCertificateId:
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2254,6 +2278,19 @@ export const CERTIFICATES = {
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."
+  }
+};
+
+const domainComponentRule = (rule: string) =>
+  `Domain component sequences that are ${rule}. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.`;
+
+const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
+
+export const CERTIFICATE_POLICIES = {
+  SUBJECT_DOMAIN_COMPONENT_RULE: {
+    allowed: domainComponentRule("permitted"),
+    required: domainComponentRule("required"),
+    denied: DOMAIN_COMPONENT_DENIED_RULE
   }
 };
 
@@ -2497,16 +2534,19 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    algorithm: "The cryptographic algorithm of the key (e.g. aes-256-gcm, RSA_4096, HMAC_SHA_256).",
+    encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
-      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
+    hasDeleteProtection: "Prevents deletion of the key when enabled."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
-    isDisabled: "The flag to enable or disable this key."
+    isDisabled: "The flag to enable or disable this key.",
+    hasDeleteProtection: "Enable or disable delete protection for this key."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -2566,6 +2606,15 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  GENERATE_MAC: {
+    keyId: "The ID of the key to generate the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format to generate the MAC for (base64 encoded)."
+  },
+  VERIFY_MAC: {
+    keyId: "The ID of the key to verify the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format the MAC was generated for (base64 encoded).",
+    mac: "The MAC to be verified (base64 encoded)."
   }
 };
 
@@ -2659,6 +2708,12 @@ export const CertificateAuthorities = {
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      keySource:
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+      hsmConnectorId:
+        "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
+      hsmKeyLabel:
+        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -2881,10 +2936,18 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
+    },
+    QOVERY: {
+      accessToken: "The project access token used to authenticate with Qovery."
+    },
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",
-      applicationKey: "The Datadog Application key used to authenticate."
+      applicationKey: "The Datadog Application key used to authenticate.",
+      token: "The Datadog Service Access Token used to authenticate."
     },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
@@ -2912,12 +2975,29 @@ export const AppConnections = {
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     },
+    OPENAI: {
+      apiKey: "The OpenAI Admin API key used to manage project service accounts."
+    },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    LITELLM: {
+      apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
+      instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    FIREWORKS: {
+      apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
+      accountId: "The Fireworks account ID used to identify the Fireworks account."
+    },
+    CLOUD66: {
+      accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
     },
     CONVEX: {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
       instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
+    },
+    HASURA_CLOUD: {
+      accessToken: "The Hasura Cloud access token used to authenticate with the Hasura Cloud GraphQL API."
     },
     OVH: {
       privateKey:
@@ -2943,6 +3023,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3035,6 +3120,14 @@ export const SecretSyncs = {
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
+    },
+    CLOUDFLARE_WORKERS: {
+      syncNonSecretBindings:
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {
@@ -3080,7 +3173,9 @@ export const SecretSyncs = {
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
       projectId: "The ID of the Google project secrets should be synced to.",
-      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").',
+      userReplicaLocationIds:
+        'The Google project locations to replicate secrets to under user-managed replication (global scope, ie ["us-west4"]).'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
@@ -3123,6 +3218,17 @@ export const SecretSyncs = {
       targetProjects: "An optional array of Vercel projects to add shared environment variables to.",
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
+    },
+    QOVERY: {
+      organizationId: "The ID of the Qovery organization to sync secrets to.",
+      organizationName: "The name of the Qovery organization to sync secrets to.",
+      projectId: "The ID of the Qovery project to sync secrets to.",
+      projectName: "The name of the Qovery project to sync secrets to.",
+      environmentId:
+        "The ID of the Qovery environment to sync secrets to. When omitted, secrets are synced at the project level.",
+      environmentName: "The name of the Qovery environment to sync secrets to.",
+      variableType:
+        "Whether to sync values as Qovery environment secrets or environment variables. Environment variables expose their value; secrets do not."
     },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
@@ -3216,6 +3322,10 @@ export const SecretSyncs = {
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
     },
+    HASURA_CLOUD: {
+      projectId: "The ID of the Hasura Cloud project to sync secrets to.",
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
+    },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
     },
@@ -3238,6 +3348,10 @@ export const SecretSyncs = {
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+    },
+    CLOUD66: {
+      stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
+      stackName: "The name of the Cloud 66 stack to sync secrets to."
     },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",
@@ -3264,6 +3378,16 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };
@@ -3419,6 +3543,18 @@ export const SecretRotations = {
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     },
+    LITELLM_API_KEY: {
+      name: "The name for the generated LiteLLM API key. Infisical appends a timestamp to keep each rotated key unique and record its creation time.",
+      userId: "The ID of the LiteLLM user to associate the generated key with.",
+      teamId: "The ID of the LiteLLM team to associate the generated key with.",
+      models: "The list of model names the generated key is allowed to access. An empty list allows all models.",
+      additionalOptions:
+        "A JSON object of additional LiteLLM /key/generate options (e.g. max_budget, tpm_limit, metadata). Reserved fields (key_alias, auto_rotate, rotation_interval, duration, send_invite_email, key_type, user_id, team_id, models) are managed by Infisical or set via dedicated fields and cannot be set here."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      projectId: "The ID of the OpenAI project to create service accounts in.",
+      name: "The name for the generated OpenAI service account."
+    },
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
@@ -3430,8 +3566,35 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     },
+    DATADOG_API_KEY: {
+      name: "The name for the generated Datadog API key."
+    },
+    CLOUDFLARE_API_TOKEN: {
+      name: "The name for the generated Cloudflare API token.",
+      policies:
+        "The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to the entire account, to all zones in the account, or to a specific set of zones.",
+      allowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is denied from."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      name: "The name for the generated Cloudflare API token that backs the R2 access key.",
+      buckets:
+        "The R2 buckets the generated access key is scoped to. Each entry is a bucket name plus its jurisdiction (default, eu, or fedramp).",
+      accessLevel:
+        "The level of access the generated key has over the selected buckets (object-read for read and list, object-read-write to also write).",
+      allowedIps: "The IP addresses or CIDR blocks the generated R2 access key is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated R2 access key is denied from."
+    },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
+    },
+    FIREWORKS_API_KEY: {
+      serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      username:
+        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
+      modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
     }
   },
   SECRETS_MAPPING: {
@@ -3493,6 +3656,12 @@ export const SecretRotations = {
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     },
+    LITELLM_API_KEY: {
+      apiKey: "The name of the secret that the rotated LiteLLM API key will be mapped to."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      apiKey: "The name of the secret that the rotated OpenAI service account API key will be mapped to."
+    },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     },
@@ -3504,8 +3673,27 @@ export const SecretRotations = {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
     },
+    DATADOG_API_KEY: {
+      apiKeyId: "The name of the secret that the rotated Datadog API key ID will be mapped to.",
+      apiKey: "The name of the secret that the rotated Datadog API key value will be mapped to."
+    },
+    CLOUDFLARE_API_TOKEN: {
+      tokenId: "The name of the secret that the rotated Cloudflare API token ID will be mapped to.",
+      apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      accessKeyId: "The name of the secret that the rotated R2 access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated R2 secret access key will be mapped to."
+    },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
+    },
+    FIREWORKS_API_KEY: {
+      apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
+      publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
     }
   }
 };
@@ -3773,27 +3961,53 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  METRICS_REPORT: {
+    activeChannels:
+      "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
+    gatewayId: "ID of the gateway the report was recorded against."
+  },
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
-      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    kubernetesHost:
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayId:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayId.",
+    caCertificate:
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
+    tokenReviewerJwt:
+      "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
+    allowedNamespaces:
+      "The comma-separated list of Kubernetes namespaces whose service accounts are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedNames:
+      "The comma-separated list of Kubernetes service account names that are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedAudience:
+      "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
@@ -3817,3 +4031,115 @@ export const RELAYS = {
     token: "The one-time enrollment token previously issued for this relay (token method only)."
   }
 } as const;
+
+export const SECRET_VALIDATION_RULES = {
+  RULE: {
+    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated credential.",
+    constraints:
+      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value`, e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
+    dynamicSecretProviders:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
+    secretRotationProviders:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
+    appliesToStatic: "What the constraint checks: the secret key or the secret value.",
+    appliesToGenerated: "What the constraint checks: the generated credential.",
+    constraintTypeStatic:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
+    constraintTypeGenerated:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
+    constraintValue:
+      "The value the constraint is checked against, e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+  },
+  LIST: {
+    projectId: "The ID of the project to list secret validation rules for."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the secret validation rule in.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to update.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole, or omits to leave it untouched.",
+    isActive: "Whether the secret validation rule is active."
+  },
+  DELETE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to delete."
+  }
+} as const;
+
+export const ENCRYPTION_KEY_ROTATION = {
+  ROOT_KEY: {
+    description:
+      "Report the state of the instance encryption key: which key is active, whether a replacement is staged, and whether the key it replaced is still accepted.",
+    encryptionStrategy: "How the root key is wrapped. A key wrapped by an HSM has no environment variable to rotate.",
+    active: {
+      label:
+        "Non-reversible label of the key this instance is running with. Record it next to the archived key so a backup can be matched later.",
+      activatedAt: "When this key took effect, which is the first time an instance started with it."
+    },
+    staged: {
+      description:
+        "A generated key that has not been applied yet. Null until you generate one. Nothing changes until an instance starts with it.",
+      label: "Label of the staged key, so you can confirm the value you are about to deploy is the one you copied.",
+      createdAt: "When this key was generated."
+    },
+    expiring: {
+      description:
+        "The key this instance used before the current one. Null if none is still accepted. It still starts an instance so a fleet can finish rolling over, and is removed automatically once the retention window passes.",
+      label: "Label of the previous key. Pass it when you remove that key.",
+      supersededAt: "When the current key took effect.",
+      expiresAt:
+        "When this key becomes eligible for automatic removal. An instance starting on it restarts this clock, since that is evidence one still needs it. The weekly cleanup removes the key on its first run after this time, so the key may outlive it by a few days.",
+      lastResolvedAt:
+        "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists."
+    }
+  },
+  ROTATIONS: {
+    description:
+      "List the rotations that have taken effect, newest first. A staged key appears here only once an instance has started with it. Kept after a key is removed, so a restored backup can be matched to an archived key.",
+    offset: "How many rotations to skip before the first returned.",
+    limit: "How many rotations to return.",
+    label: "A non-reversible label derived from the key. Match it to the label you stored with an archived key.",
+    activatedAt: "When this key took effect.",
+    supersededAt: "When the next key took effect. Null on the key currently in use.",
+    retiredAt: "When this key stopped being accepted and was removed. Null while it still starts an instance.",
+    totalCount: "How many rotations this instance has recorded in total."
+  },
+  CREATE: {
+    description:
+      "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
+    replaceStaged:
+      "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
+    label:
+      "A non-reversible label derived from the new key. Record it alongside the key so a backup can be matched to it later.",
+    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
+    removesExpiringKey:
+      "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
+  },
+  DELETE_STAGED: {
+    description:
+      "Discard a generated key that has not been applied. Use this immediately if the key may have been exposed.",
+    label:
+      "Label of the staged key, which must match the key currently staged. It is a precondition, not an identifier: it fails the request rather than discarding a key another administrator staged after you loaded this page."
+  },
+  DELETE_EXPIRING: {
+    description:
+      "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
+    label:
+      "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
+    force:
+      "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};

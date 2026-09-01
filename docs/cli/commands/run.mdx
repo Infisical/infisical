@@ -35,10 +35,10 @@ Inject secrets from Infisical into your application process.
   Use this command to inject secrets into your applications process
 
 ```bash
-$ infisical run -- <your application command>
+infisical run -- <your application command>
 
 # Example
-$ infisical run -- npm run dev
+infisical run -- npm run dev
 ```
 
 ### Environment variables
@@ -182,6 +182,25 @@ $ infisical run -- npm run dev
 
   </Accordion>
 
+  <Accordion title="--recursive">
+    By default, `infisical run` only injects the secrets that sit directly in `--path` (the root of the environment, `/`, unless you set it). Secrets inside folders are left out. Add `--recursive` to also inject the secrets in every subfolder of `--path`.
+
+    If your secrets sit in one folder, `--path` alone is enough. Use `--recursive` when that folder has subfolders you also need.
+
+    ```bash
+    # Example - every secret under /backend and its subfolders
+    infisical run --path="/backend" --recursive -- npm run dev
+
+    # Example - every secret in the environment, from every folder
+    infisical run --recursive -- npm run dev
+    ```
+
+    Since `--recursive` widens what gets injected, scope it with `--path` so your application only receives the secrets it needs.
+
+    Default value: `false`
+
+  </Accordion>
+
 </Accordion>
 
 
@@ -194,7 +213,7 @@ infisical run --watch -- npm run dev
 ```
 
 This will watch for changes in your secrets and automatically restart your command with the new secrets.
-When your command restarts, it will have the new environment variables injeceted into it.
+When your command restarts, it will have the new environment variables injected into it.
 
 <Note>
   Please note that this feature is intended for development purposes. It is not recommended to use this in production environments. Generally it's not recommended to automatically reload your application in production when remote changes are made.

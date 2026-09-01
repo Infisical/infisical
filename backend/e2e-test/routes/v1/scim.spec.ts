@@ -211,7 +211,9 @@ describe("SCIM v1 Router", () => {
       });
 
       // Small delay to ensure different createdAt timestamps
-      await new Promise<void>((resolve) => setTimeout(() => resolve(), 50));
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+      });
 
       await db(TableName.UserAliases).insert({
         userId: user.id,
@@ -564,5 +566,106 @@ describe("SCIM v1 Router", () => {
       expect(["oauth", "oauth2", "oauthbearertoken", "httpbasic", "httpdigest"]).toContain(authScheme.type);
       expect(authScheme.primary).toBe(true);
     });
+  });
+
+  describe("PATCH /Users/:orgMembershipId", () => {
+    const seedScimUser = async (db: Knex, label: string) => {
+      const [user] = await db(TableName.Users)
+        .insert({
+          email: `scim-patch-${label}@${TEST_DOMAIN}`,
+          username: `scim-patch-${label}@${TEST_DOMAIN}`,
+          isGhost: false,
+          isEmailVerified: true,
+          authMethods: ["email"]
+        })
+        .returning("*");
+      createdUserIds.push(user.id);
+
+      const [membership] = await db(TableName.Membership)
+        .insert({
+          actorUserId: user.id,
+          scopeOrgId: ORG_ID,
+          scope: AccessScope.Organization,
+          isActive: true
+        })
+        .returning("*");
+      createdMembershipIds.push(membership.id);
+
+      await db(TableName.MembershipRole).insert({ membershipId: membership.id, role: "member" });
+
+      // updateScimUser resolves the user through its SSO alias and 404s without one.
+      await db(TableName.UserAliases).insert({
+        userId: user.id,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: `scim-patch-ext-${label}`
+      });
+
+      return { user, membership };
+    };
+
+    // Body is sent as a raw string so the exact wire bytes reach the parser. Building
+    // __proto__ from an object literal would set the prototype instead of emitting the key.
+    const patch = (membershipId: string, body: string, contentType: string) =>
+      testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: {
+          authorization: `Bearer ${scimToken}`,
+          "content-type": contentType
+        },
+        payload: body
+      });
+
+    test("should apply a replace operation and deactivate the membership", async () => {
+      const db = getDb();
+      const { membership } = await seedScimUser(db, `active-${crypto.randomUUID().slice(0, 8)}`);
+
+      const res = await patch(
+        membership.id,
+        JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [{ op: "replace", path: "active", value: false }]
+        }),
+        "application/scim+json"
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.payload).active).toBe(false);
+
+      const [row] = await db(TableName.Membership).where({ id: membership.id }).select("isActive");
+      expect(row.isActive).toBe(false);
+    });
+
+    // CVE-2026-48170: scim-patch below 0.9.1 walks into Object.prototype when a patch
+    // path or value carries __proto__, constructor or prototype. Both content types are
+    // covered because only application/json goes through the proto-rejecting parser;
+    // application/scim+json is parsed with JSON.parse, so scim-patch is the sole guard.
+    test.each(["application/scim+json", "application/json"])(
+      "should not pollute Object.prototype via %s",
+      async (contentType) => {
+        const db = getDb();
+        const { membership } = await seedScimUser(db, `proto-${crypto.randomUUID().slice(0, 8)}`);
+        const canary = `scimCanary${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+        const vectors = [
+          `{"Operations":[{"op":"add","path":"__proto__.${canary}","value":"polluted"}]}`,
+          `{"Operations":[{"op":"add","value":{"__proto__":{"${canary}":"polluted"}}}]}`,
+          `{"Operations":[{"op":"add","path":"constructor.prototype.${canary}","value":"polluted"}]}`,
+          `{"Operations":[{"op":"replace","path":"__proto__.${canary}","value":"polluted"}]}`
+        ];
+
+        try {
+          for (const body of vectors) {
+            await patch(membership.id, body, contentType);
+            expect(Object.prototype).not.toHaveProperty(canary);
+          }
+
+          expect(({} as Record<string, unknown>)[canary]).toBeUndefined();
+        } finally {
+          delete (Object.prototype as unknown as Record<string, unknown>)[canary];
+        }
+      }
+    );
   });
 });

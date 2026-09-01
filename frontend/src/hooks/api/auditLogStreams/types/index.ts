@@ -6,6 +6,7 @@ import { TDatadogProviderLogStream } from "./providers/datadog-provider";
 import { TQRadarProviderLogStream } from "./providers/qradar-provider";
 import { TAuditLogStreamFilters } from "./providers/root-provider";
 import { TSplunkProviderLogStream } from "./providers/splunk-provider";
+import { TSumoLogicProviderLogStream } from "./providers/sumo-logic-provider";
 
 export type { TAuditLogStreamFilters };
 
@@ -14,7 +15,8 @@ export type TAuditLogStream =
   | TDatadogProviderLogStream
   | TSplunkProviderLogStream
   | TAzureProviderLogStream
-  | TCriblProviderLogStream;
+  | TCriblProviderLogStream
+  | TSumoLogicProviderLogStream;
 
 export type TAuditLogStreamProviderMap = {
   [LogProvider.Azure]: TAzureProviderLogStream;
@@ -23,6 +25,7 @@ export type TAuditLogStreamProviderMap = {
   [LogProvider.Datadog]: TDatadogProviderLogStream;
   [LogProvider.Splunk]: TSplunkProviderLogStream;
   [LogProvider.QRadar]: TQRadarProviderLogStream;
+  [LogProvider.SumoLogic]: TSumoLogicProviderLogStream;
 };
 
 export type TCreateAuditLogStreamDTO = Pick<TAuditLogStream, "provider" | "credentials"> & {

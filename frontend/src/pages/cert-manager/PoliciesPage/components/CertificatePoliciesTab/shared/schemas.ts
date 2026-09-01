@@ -42,15 +42,11 @@ export const uiValiditySchema = z.object({
 });
 
 export const uiSignatureAlgorithmSchema = z.object({
-  allowedAlgorithms: z
-    .array(z.string().min(1, "Algorithm cannot be empty"))
-    .min(1, "At least one algorithm must be selected")
+  allowedAlgorithms: z.array(z.string().min(1, "Algorithm cannot be empty"))
 });
 
 export const uiKeyAlgorithmSchema = z.object({
-  allowedKeyTypes: z
-    .array(z.string().min(1, "Key type cannot be empty"))
-    .min(1, "At least one key type must be selected")
+  allowedKeyTypes: z.array(z.string().min(1, "Key type cannot be empty"))
 });
 
 export const uiBasicConstraintsSchema = z.object({
@@ -90,7 +86,7 @@ export const policySchema = z.object({
   description: z
     .string()
     .trim()
-    .max(1000, "Description must be less than 1000 characters")
+    .max(255, "Description must be less than 255 characters")
     .optional(),
   basicConstraints: uiBasicConstraintsSchema.optional(),
   attributes: z.array(uiAttributeSchema).optional(),
@@ -98,80 +94,8 @@ export const policySchema = z.object({
   keyUsages: uiKeyUsagesSchema.optional(),
   extendedKeyUsages: uiExtendedKeyUsagesSchema.optional(),
   validity: uiValiditySchema.optional(),
-  signatureAlgorithm: uiSignatureAlgorithmSchema,
-  keyAlgorithm: uiKeyAlgorithmSchema
+  signatureAlgorithm: uiSignatureAlgorithmSchema.optional(),
+  keyAlgorithm: uiKeyAlgorithmSchema.optional()
 });
 
 export type PolicyFormData = z.infer<typeof policySchema>;
-
-export const apiSubjectSchema = z
-  .object({
-    type: z.nativeEnum(CertSubjectAttributeType),
-    allowed: z.array(z.string().min(1, "Value cannot be empty")).optional(),
-    required: z.array(z.string().min(1, "Value cannot be empty")).optional(),
-    denied: z.array(z.string().min(1, "Value cannot be empty")).optional()
-  })
-  .refine((data) => data.allowed || data.required || data.denied, {
-    message: "At least one allowed, required, or denied value must be provided"
-  });
-
-export const apiSanSchema = z
-  .object({
-    type: z.nativeEnum(CertSubjectAlternativeNameType),
-    allowed: z.array(z.string().min(1, "Value cannot be empty")).optional(),
-    required: z.array(z.string().min(1, "Value cannot be empty")).optional(),
-    denied: z.array(z.string().min(1, "Value cannot be empty")).optional()
-  })
-  .refine((data) => data.allowed || data.required || data.denied, {
-    message: "At least one allowed, required, or denied value must be provided"
-  });
-
-export const apiPolicySchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Policy name is required")
-    .max(255, "Policy name must be less than 255 characters")
-    .regex(
-      /^[a-zA-Z0-9-_]+$/,
-      "Policy name must contain only letters, numbers, hyphens, and underscores"
-    ),
-  description: z
-    .string()
-    .trim()
-    .max(1000, "Description must be less than 1000 characters")
-    .optional(),
-  subject: z.array(apiSubjectSchema).optional(),
-  sans: z.array(apiSanSchema).optional(),
-  keyUsages: z
-    .object({
-      allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-      required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-      denied: z.array(z.nativeEnum(CertKeyUsageType)).optional()
-    })
-    .optional(),
-  extendedKeyUsages: z
-    .object({
-      allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-      required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-      denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional()
-    })
-    .optional(),
-  algorithms: z
-    .object({
-      signature: z.array(z.string().trim().min(1, "Algorithm cannot be empty")).optional(),
-      keyAlgorithm: z.array(z.string().trim().min(1, "Algorithm cannot be empty")).optional()
-    })
-    .optional(),
-  validity: z
-    .object({
-      max: z
-        .string()
-        .trim()
-        .regex(/^[1-9]\d*[dhmy]$/, "Must be in format like '365d', '12m', '1y', or '24h'")
-        .optional()
-    })
-    .optional()
-});
-
-export type ApiPolicyFormData = z.infer<typeof apiPolicySchema>;

@@ -16,7 +16,7 @@ import {
 } from "./Select";
 
 /**
- * `Select` is the v3 single-select dropdown built on `@radix-ui/react-select`. It
+ * `Select` is the v3 single-select dropdown built on `radix-ui`'s Select primitive. It
  * is a compound component — you assemble it from `Select` (root) →
  * `SelectTrigger` (the clickable surface, contains a `SelectValue`) →
  * `SelectContent` (the portalled menu) → `SelectItem`s, optionally grouped with
@@ -28,10 +28,10 @@ import {
  * `FieldLabel` / `FieldDescription` / `FieldError` from `../Field` exactly as
  * you would for `Input` — the `id` belongs on the **trigger**, not the root.
  *
- * Reach for `Select` when the option list is short and known. For long, search-
- * driven lists (commands, secrets, identities) use `Command` instead. For
- * multi-select, layer `Command` inside a `Popover` — `Select` is single-value
- * by design.
+ * Reach for `Select` when the option list is short and known. For searchable
+ * single-select lists use `Combobox`. Existing multi-select, grouped, and
+ * creatable use cases remain on `ReactSelect` while their replacement APIs are
+ * introduced — `Select` is single-value by design.
  */
 const meta = {
   title: "Generic/Select",
@@ -96,6 +96,29 @@ export const Default: Story = {
         <SelectItem value="qa">QA</SelectItem>
         <SelectItem value="prod">Production</SelectItem>
         <SelectItem value="dr">Disaster recovery</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+};
+
+export const Outlined: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default trigger variant for ordinary product forms."
+      }
+    }
+  },
+  render: () => (
+    <Select>
+      <SelectTrigger variant="outlined" className="w-full">
+        <SelectValue placeholder="Choose an environment" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="dev">Development</SelectItem>
+        <SelectItem value="staging">Staging</SelectItem>
+        <SelectItem value="prod">Production</SelectItem>
       </SelectContent>
     </Select>
   )

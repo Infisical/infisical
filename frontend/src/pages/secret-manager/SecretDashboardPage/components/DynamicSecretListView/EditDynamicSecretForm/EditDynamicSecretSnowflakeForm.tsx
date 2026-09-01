@@ -229,10 +229,11 @@ export const EditDynamicSecretSnowflakeForm = ({
                   name="inputs.password"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Password"
+                      label="Programmatic Access Token"
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
+                      tooltipText="The Programmatic Access Token (PAT) used to authenticate with Snowflake. A user password is still accepted, but Snowflake is phasing out password authentication."
                     >
                       <Input {...field} type="password" autoComplete="new-password" />
                     </FormControl>

@@ -15,15 +15,14 @@ export {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
-  ProjectPermissionPamInsightsActions,
-  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionSshHostActions,
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionProxiedServiceActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "./types";

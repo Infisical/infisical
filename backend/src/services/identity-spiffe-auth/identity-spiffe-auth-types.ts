@@ -74,6 +74,7 @@ export type TUpdateSpiffeAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetSpiffeAuthDTO = {
@@ -82,4 +83,5 @@ export type TGetSpiffeAuthDTO = {
 
 export type TRevokeSpiffeAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

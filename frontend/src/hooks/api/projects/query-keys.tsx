@@ -23,10 +23,27 @@ export const projectKeys = {
   ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
   getProjectUserDetails: (projectId: string, membershipId: string) =>
     [{ projectId, membershipId }, "project-user-details"] as const,
-  getMembershipPermissionAudit: (projectId: string, membershipId: string) =>
-    [{ projectId, membershipId }, "membership-permission-audit"] as const,
-  getIdentityPermissionAudit: (projectId: string, identityId: string) =>
-    [{ projectId, identityId }, "identity-permission-audit"] as const,
+  // the flag is a trailing element so two-argument calls prefix-match both variants
+  getMembershipPermissionAudit: (
+    projectId: string,
+    membershipId: string,
+    includeFolderPermissions?: boolean
+  ) =>
+    [
+      { projectId, membershipId },
+      "membership-permission-audit",
+      ...(includeFolderPermissions !== undefined ? [{ includeFolderPermissions }] : [])
+    ] as const,
+  getIdentityPermissionAudit: (
+    projectId: string,
+    identityId: string,
+    includeFolderPermissions?: boolean
+  ) =>
+    [
+      { projectId, identityId },
+      "identity-permission-audit",
+      ...(includeFolderPermissions !== undefined ? [{ includeFolderPermissions }] : [])
+    ] as const,
   getProjectIdentityMemberships: (projectId: string) =>
     [{ projectId }, "project-identity-memberships"] as const,
   getProjectIdentityMembershipDetails: (projectId: string, identityId: string) =>
@@ -145,23 +162,5 @@ export const projectKeys = {
   getProjectWorkflowIntegrationConfig: (
     projectId: string,
     integration: WorkflowIntegrationPlatform
-  ) => [{ projectId, integration }, "project-workflow-integration-config"] as const,
-  getProjectSshCas: (projectId: string) => [{ projectId }, "project-ssh-cas"] as const,
-  allProjectSshCertificates: (projectId: string) =>
-    [{ projectId }, "project-ssh-certificates"] as const,
-  getProjectSshHosts: (projectId: string) => [{ projectId }, "project-ssh-hosts"] as const,
-  getProjectSshHostGroups: (projectId: string) =>
-    [{ projectId }, "project-ssh-host-groups"] as const,
-  specificProjectSshCertificates: ({
-    offset,
-    limit,
-    projectId
-  }: {
-    offset: number;
-    limit: number;
-    projectId: string;
-  }) => [...projectKeys.allProjectSshCertificates(projectId), { offset, limit }] as const,
-  getProjectSshCertificateTemplates: (projectId: string) =>
-    [{ projectId }, "project-ssh-certificate-templates"] as const,
-  getProjectSshConfig: (projectId: string) => [{ projectId }, "project-ssh-config"] as const
+  ) => [{ projectId, integration }, "project-workflow-integration-config"] as const
 };

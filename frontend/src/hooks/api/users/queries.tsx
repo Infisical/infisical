@@ -1,8 +1,10 @@
+import type { RegistrationResponseJSON } from "@simplewebauthn/browser";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { authKeys } from "../auth/queries";
@@ -10,6 +12,7 @@ import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
+import { webAuthnKeys } from "../webauthn/queries";
 import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
@@ -185,6 +188,11 @@ export const useAddUsersToOrg = () => {
         email: string;
         link: string;
       }[];
+      /** Product-access grants are best-effort; present only when at least one grant failed. */
+      grantFailures?: {
+        projectIds: string[];
+        pamAccess: boolean;
+      };
     };
   };
 
@@ -267,22 +275,6 @@ export const useDeleteOrgMembershipBatch = () => {
   });
 };
 
-export const useDeactivateOrgMembership = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, DeleteOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) => {
-      return apiRequest.post(
-        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
-      );
-    },
-    onSuccess: (_, { orgId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgMembership(orgId, membershipId) });
-    }
-  });
-};
-
 export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 
@@ -329,6 +321,8 @@ export const logoutUser = async () => {
 
 // Utility function to clear session storage and query cache
 export const clearSession = () => {
+  const serverConfig = qc.getQueryData(adminQueryKeys.serverConfig());
+
   setAuthToken(""); // Clear authentication token
   localStorage.removeItem("protectedKey");
   localStorage.removeItem("protectedKeyIV");
@@ -342,6 +336,12 @@ export const clearSession = () => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   qc.clear();
+
+  // Server configuration is public and required to render authentication routes.
+  // Preserve it so delayed logout cleanup cannot suspend and remount the login page.
+  if (serverConfig !== undefined) {
+    qc.setQueryData(adminQueryKeys.serverConfig(), serverConfig);
+  }
 };
 
 let logoutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -407,27 +407,50 @@ export const useRevokeMySessions = () => {
   });
 };
 
-export const useUpdateUserMfa = () => {
+// Enroll an MFA factor: proves and persists the factor. This does not mint or
+// return recovery codes; those are issued only when MFA is enabled (useActivateMfa).
+export const useEnrollMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      isMfaEnabled,
-      selectedMfaMethod
-    }: {
-      isMfaEnabled?: boolean;
-      selectedMfaMethod?: MfaMethod;
-    }) => {
-      const {
-        data: { user }
-      } = await apiRequest.patch("/api/v2/users/me/mfa", {
-        isMfaEnabled,
-        selectedMfaMethod
-      });
-
-      return user;
+    mutationFn: async (
+      dto:
+        | { method: MfaMethod.TOTP; totp: string }
+        | {
+            method: MfaMethod.WEBAUTHN;
+            registrationResponse: RegistrationResponseJSON;
+            name?: string;
+          }
+    ) => {
+      await apiRequest.post("/api/v2/users/me/mfa/enroll", dto);
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
+      // Enrollment is method-agnostic; a WEBAUTHN enroll adds a credential, so
+      // keep the passkey list in sync regardless of the method used.
+      queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials });
+    }
+  });
+};
+
+// Enable MFA. Issues a fresh recovery-code pool (invalidating any prior codes)
+// and returns it once so the caller can display it to the user.
+export const useActivateMfa = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod?: MfaMethod }) => {
+      const { data } = await apiRequest.post<{ user: unknown; recoveryCodes: string[] }>(
+        "/api/v2/users/me/mfa/activate",
+        {
+          selectedMfaMethod
+        }
+      );
+
+      return { user: data.user, recoveryCodes: data.recoveryCodes };
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+      queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes });
     }
   });
 };
@@ -467,9 +490,7 @@ export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: userKeys.totpRegistration,
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ otpUrl: string; recoveryCodes: string[] }>(
-        "/api/v1/user/me/totp/register"
-      );
+      const { data } = await apiRequest.post<{ otpUrl: string }>("/api/v1/user/me/totp/register");
 
       return data;
     },
@@ -482,16 +503,13 @@ export const useGetUserTotpConfiguration = () => {
     queryKey: userKeys.totpConfiguration,
     queryFn: async () => {
       try {
-        const { data } = await apiRequest.get<{ isVerified: boolean; recoveryCodes: string[] }>(
-          "/api/v1/user/me/totp"
-        );
+        const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v1/user/me/totp");
 
         return data;
       } catch (error) {
         if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
           return {
-            isVerified: false,
-            recoveryCodes: []
+            isVerified: false
           };
         }
         throw error;

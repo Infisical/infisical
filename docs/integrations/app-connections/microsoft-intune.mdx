@@ -1,0 +1,115 @@
+---
+title: "Microsoft Intune connection"
+sidebarTitle: "Microsoft Intune"
+description: "Learn how to configure a Microsoft Intune Connection for Infisical."
+---
+
+Infisical's Microsoft Intune Connection lets you validate SCEP certificate requests against Microsoft Intune using Client Secrets. When a device enrolls through a [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep) configured with Intune validation, Infisical asks Intune to confirm the device's challenge before issuing the certificate, then reports the outcome back to Intune.
+
+<Note>
+  Microsoft Intune is an enterprise App Connection and requires a paid plan.
+</Note>
+
+**Prerequisites:**
+
+- A Microsoft Entra ID tenant with Microsoft Intune enabled.
+
+## Setup Azure application
+
+<Steps>
+  <Step title="Register an application in Microsoft Entra ID">
+    Navigate to Microsoft Entra ID and open **App registrations**, then create a new registration.
+    <Info>
+      Azure Active Directory is now Microsoft Entra ID.
+    </Info>
+    ![Azure app registration](/images/integrations/azure-app-configuration/config-aad.png)
+    ![Azure new application](/images/integrations/azure-app-configuration/config-new-app.png)
+  </Step>
+  <Step title="Assign API permissions to the application">
+    Set the API permissions of your Azure application to include the following **Application permissions**, then grant admin consent:
+
+    - Microsoft Graph
+      - `Application.Read.All`
+    - Microsoft Intune
+      - `scep_challenge_provider`
+
+    `Application.Read.All` lets Infisical discover the Intune SCEP validation endpoint, and `scep_challenge_provider` lets it validate challenges and report issuance outcomes.
+
+    ![Azure API permissions](/images/integrations/azure-client-secrets/app-api-permissions.png)
+  </Step>
+  <Step title="Collect the application credentials">
+    Obtain the **Directory (Tenant) ID** and **Application (Client) ID** from the application's **Overview** page, then generate a **Client Secret** under **Certificates & secrets**.
+
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-1.png)
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-2.png)
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-3.png)
+  </Step>
+</Steps>
+
+## Setup Microsoft Intune connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In Certificate Manager, navigate to the **App Connections** tab on the **Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **Microsoft Intune** option from the connection options modal.
+      </Step>
+      <Step title="Create Connection">
+        Fill in the following fields with the credentials from your Azure App Registration:
+
+        - **Tenant ID**: The Directory (Tenant) ID of your Microsoft Entra ID tenant.
+        - **Client ID**: The Application (Client) ID of your registered application.
+        - **Client Secret**: A client secret generated for your registered application.
+
+        Click **Connect** to create the connection.
+      </Step>
+      <Step title="Connection Created">
+        Your **Microsoft Intune Connection** is now available for use as the validation connection on a SCEP enrollment method.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a Microsoft Intune Connection via API, send a request to the [Create Microsoft Intune Connection](/api-reference/endpoints/app-connections/microsoft-intune/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/microsoft-intune \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-microsoft-intune-connection",
+                "method": "client-secret",
+                "credentials": {
+                    "tenantId": "your-tenant-id",
+                    "clientId": "your-client-id",
+                    "clientSecret": "your-client-secret"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+      "appConnection": {
+          "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+          "name": "my-microsoft-intune-connection",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2023-11-07T05:31:56Z",
+          "updatedAt": "2023-11-07T05:31:56Z",
+          "isPlatformManagedCredentials": false,
+          "app": "microsoft-intune",
+          "method": "client-secret",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -17,14 +17,25 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { CertPolicyState, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import {
+  CertPolicyState,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
+import {
+  isDomainComponentRule,
+  isWildcardPattern,
+  matchesNormalizedPattern,
+  validateDomainComponentsAgainstRule
+} from "./certificate-policy-fns";
 import {
   TCertificatePolicy,
   TCertificatePolicyInsert,
   TCertificatePolicyUpdate,
   TCertificateRequest,
-  TPolicyValidationResult
+  TPolicyValidationResult,
+  TSubjectRule
 } from "./certificate-policy-types";
 
 type TCertificatePolicyServiceFactoryDep = {
@@ -36,11 +47,7 @@ export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
   permissionService
 }: TCertificatePolicyServiceFactoryDep) => {
-  const consolidateAttributeArray = <
-    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
-  >(
-    attributes: T[]
-  ): T[] => {
+  const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
 
     attributes.forEach((attr) => {
@@ -81,9 +88,7 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
-  const validateSubjectAttributePolicy = (
-    subjectAttributes: Array<{ type: string; allowed?: string[]; required?: string[]; denied?: string[] }>
-  ) => {
+  const validateSubjectAttributePolicy = (subjectAttributes: TSubjectRule[]) => {
     if (!subjectAttributes || subjectAttributes.length === 0) return;
 
     // Validate each subject attribute policy
@@ -95,7 +100,6 @@ export const certificatePolicyServiceFactory = ({
         });
       }
 
-      // Check for duplicate values within arrays
       const arrays = [
         { name: "allowed", values: attr.allowed },
         { name: "required", values: attr.required },
@@ -167,20 +171,6 @@ export const certificatePolicyServiceFactory = ({
 
     const randomSlug = slugify(alphaNumericNanoId(12));
     return randomSlug;
-  };
-
-  const isWildcardPattern = (value: string): boolean => {
-    return value.includes("*");
-  };
-
-  const createWildcardRegex = (pattern: string): RegExp => {
-    const wildcardRegex = new RE2(/\*/g);
-    const withPlaceholder = pattern.replace(wildcardRegex, "__WILDCARD__");
-    const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
-    const escaped = withPlaceholder.replace(escapeRegex, "\\$&");
-    const placeholderRegex = new RE2(/__WILDCARD__/g);
-    const regexPattern = escaped.replace(placeholderRegex, ".*");
-    return new RE2(`^${regexPattern}$`);
   };
 
   const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
@@ -265,30 +255,30 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
+  const normalizeUriForComparison = (value: string): string => {
+    const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
+    if (!match) {
+      return value;
+    }
+    return `${match[1].toLowerCase()}${match[2] ?? ""}`;
+  };
+
   const validateValueAgainstConstraints = (
     value: string,
     allowedValues: string[],
-    fieldName: string
+    fieldName: string,
+    isUri = false
   ): { isValid: boolean; error?: string } => {
     if (!allowedValues || allowedValues.length === 0) {
       return { isValid: true };
     }
 
+    const normalize = (input: string): string => (isUri ? normalizeUriForComparison(input) : input.toLowerCase());
     const hasWildcards = allowedValues.some(isWildcardPattern);
+    const normalizedValue = normalize(value);
 
     for (const allowedValue of allowedValues) {
-      if (isWildcardPattern(allowedValue)) {
-        try {
-          const regex = createWildcardRegex(allowedValue);
-          if (regex.test(value)) {
-            return { isValid: true };
-          }
-        } catch (error) {
-          if (allowedValue === value) {
-            return { isValid: true };
-          }
-        }
-      } else if (allowedValue === value) {
+      if (matchesNormalizedPattern(normalizedValue, normalize(allowedValue))) {
         return { isValid: true };
       }
     }
@@ -326,15 +316,15 @@ export const certificatePolicyServiceFactory = ({
     if (request.state) requestAttributes.set(CertSubjectAttributeType.STATE, request.state);
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
-    if (subjectPolicies && subjectPolicies.length > 0) {
-      for (const attrPolicy of subjectPolicies) {
+    if (subjectPolicies) {
+      const singleValuedPolicies = subjectPolicies.filter((attrPolicy) => !isDomainComponentRule(attrPolicy));
+      for (const attrPolicy of singleValuedPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
 
         if (!options?.skipRequired && attrPolicy.required && attrPolicy.required.length > 0) {
           if (!requestValue) {
             errors.push(`Missing required ${attrPolicy.type} attribute`);
           } else {
-            // Validate that the request value matches the required pattern
             const hasMatchingRequired = attrPolicy.required.some((requiredValue) => {
               const validation = validateValueAgainstConstraints(requestValue, [requiredValue], attrPolicy.type);
               return validation.isValid;
@@ -352,7 +342,7 @@ export const certificatePolicyServiceFactory = ({
           if (attrPolicy.denied && attrPolicy.denied.length > 0) {
             const validation = validateValueAgainstConstraints(requestValue, attrPolicy.denied, attrPolicy.type);
             if (validation.isValid) {
-              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by template policy`);
+              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by this policy`);
               isValueDenied = true;
             }
           }
@@ -384,19 +374,31 @@ export const certificatePolicyServiceFactory = ({
       for (const [attrType] of requestAttributes) {
         const hasPolicy = subjectPolicies.some((policy) => policy.type === attrType);
         if (!hasPolicy) {
-          errors.push(`${attrType} is not allowed by template policy (not defined in template)`);
+          errors.push(`${attrType} is not allowed by this policy`);
         }
-      }
-    } else if (requestAttributes.size > 0) {
-      // No subject policies defined but request has subject attributes - deny all
-      for (const [attrType] of requestAttributes) {
-        errors.push(`${attrType} is not allowed by template policy (no subject policies defined)`);
       }
     }
 
-    // Validate Subject Alternative Names
+    const domainComponentPolicy = subjectPolicies?.find(isDomainComponentRule);
+    const requestDomainComponents = request.domainComponents ?? [];
+    if (domainComponentPolicy) {
+      errors.push(
+        ...validateDomainComponentsAgainstRule({
+          requestDomainComponents,
+          rule: domainComponentPolicy,
+          skipRequired: options?.skipRequired
+        })
+      );
+    } else if (subjectPolicies && requestDomainComponents.length > 0) {
+      // A subject policy is defined but has no domain_component rule, so DCs aren't
+      // permitted. When no subject policy is defined at all, every subject attribute is allowed.
+      errors.push(`${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by this policy`);
+    }
+
+    // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
+    // an empty array means nothing is allowed, so every request SAN below is rejected as uncovered.
     const sansPolicies = template.sans;
-    if (sansPolicies && sansPolicies.length > 0) {
+    if (sansPolicies) {
       const requestSansByType = new Map<string, string[]>();
 
       // Group request SANs by type
@@ -413,11 +415,18 @@ export const certificatePolicyServiceFactory = ({
       for (const sanPolicy of sansPolicies) {
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
+        const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
+
         // Check REQUIRED values - at least one SAN must match each required pattern
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
             const hasMatchingRequiredSan = requestSans.some((sanValue) => {
-              const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                [requiredValue],
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               return validation.isValid;
             });
 
@@ -430,7 +439,12 @@ export const certificatePolicyServiceFactory = ({
         // Check DENIED values - no SAN should match denied patterns
         if (sanPolicy.denied && sanPolicy.denied.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(sanValue, sanPolicy.denied, `${sanPolicy.type} SAN`);
+            const validation = validateValueAgainstConstraints(
+              sanValue,
+              sanPolicy.denied,
+              `${sanPolicy.type} SAN`,
+              isUriSan
+            );
             if (validation.isValid) {
               errors.push(`${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`);
             }
@@ -443,13 +457,23 @@ export const certificatePolicyServiceFactory = ({
             let satisfiesRequired = false;
             if (sanPolicy.required && sanPolicy.required.length > 0) {
               satisfiesRequired = sanPolicy.required.some((requiredValue) => {
-                const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+                const validation = validateValueAgainstConstraints(
+                  sanValue,
+                  [requiredValue],
+                  `${sanPolicy.type} SAN`,
+                  isUriSan
+                );
                 return validation.isValid;
               });
             }
 
             if (!satisfiesRequired) {
-              const validation = validateValueAgainstConstraints(sanValue, sanPolicy.allowed, `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                sanPolicy.allowed,
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               if (!validation.isValid && validation.error) {
                 errors.push(validation.error);
               }
@@ -462,13 +486,8 @@ export const certificatePolicyServiceFactory = ({
       for (const [requestSanType] of requestSansByType) {
         const hasPolicy = sansPolicies.some((policy) => policy.type === requestSanType);
         if (!hasPolicy) {
-          errors.push(`${requestSanType} SAN is not allowed by template policy (not defined in template)`);
+          errors.push(`${requestSanType} SAN is not allowed by this policy`);
         }
-      }
-    } else if (request.subjectAlternativeNames && request.subjectAlternativeNames.length > 0) {
-      // No SAN policies defined but request has SANs - deny all
-      for (const san of request.subjectAlternativeNames) {
-        errors.push(`${san.type} SAN is not allowed by template policy (no SAN policies defined)`);
       }
     }
 
@@ -499,9 +518,8 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
         }
       }
-    } else if (request.keyUsages && request.keyUsages.length > 0) {
-      errors.push(`Key usages are not allowed by template policy (not defined in template)`);
     }
+    // No key usage policy defined means no key usage constraint (allow all)
 
     // Validate extended key usages
     const extendedKeyUsagePolicy = template.extendedKeyUsages;
@@ -539,34 +557,21 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid extended key usages: ${invalidExtendedUsages.join(", ")}`);
         }
       }
-    } else if (request.extendedKeyUsages && request.extendedKeyUsages.length > 0) {
-      errors.push(`Extended key usages are not allowed by template policy (not defined in template)`);
     }
+    // No extended key usage policy defined means no EKU constraint (allow all)
 
-    // Validate algorithms with new structure
-    if (request.signatureAlgorithm) {
-      if (template.algorithms?.signature && template.algorithms.signature.length > 0) {
-        const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
-        if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
-          errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.signature) {
-        errors.push(
-          `Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    // An undefined algorithm policy means no algorithm constraint (allow all).
+    if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
+      const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
+      if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
+        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by this policy`);
       }
     }
 
-    if (request.keyAlgorithm) {
-      if (template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
-        const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
-        if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
-          errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.keyAlgorithm) {
-        errors.push(
-          `Key algorithm '${request.keyAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    if (request.keyAlgorithm && template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
+      const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
+      if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
+        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by this policy`);
       }
     }
 
@@ -689,8 +694,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {
@@ -764,8 +769,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {

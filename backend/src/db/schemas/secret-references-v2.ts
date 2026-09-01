@@ -12,7 +12,8 @@ export const SecretReferencesV2Schema = z.object({
   environment: z.string(),
   secretPath: z.string(),
   secretKey: z.string(),
-  secretId: z.string().uuid()
+  secretId: z.string().uuid(),
+  targetProjectSlug: z.string().nullable().optional()
 });
 
 export type TSecretReferencesV2 = z.infer<typeof SecretReferencesV2Schema>;

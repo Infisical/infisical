@@ -9,35 +9,23 @@ import { OrgWithSubOrgsSchema } from "./org-schema";
 export type TOrgWithSubOrgs = z.infer<typeof OrgWithSubOrgsSchema>;
 
 export type TUpdateOrgMembershipDTO = {
-  userId: string;
-  orgId: string;
   membershipId: string;
   role?: string;
   isActive?: boolean;
-  actorOrgId: string;
   metadata?: { key: string; value: string }[];
-  actorAuthMethod: ActorAuthMethod;
-};
+} & TOrgPermission;
 
 export type TGetOrgMembershipDTO = {
   membershipId: string;
 } & TOrgPermission;
 
 export type TDeleteOrgMembershipDTO = {
-  userId: string;
-  orgId: string;
   membershipId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+} & TOrgPermission;
 
 export type TDeleteOrgMembershipsDTO = {
-  userId: string;
-  orgId: string;
   membershipIds: string[];
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+} & TOrgPermission;
 
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
@@ -96,12 +84,12 @@ export type TUpdateOrgDTO = {
     secretsProductEnabled: boolean;
     pkiProductEnabled: boolean;
     kmsProductEnabled: boolean;
-    sshProductEnabled: boolean;
     scannerProductEnabled: boolean;
     shareSecretsProductEnabled: boolean;
     maxSharedSecretLifetime: number;
     maxSharedSecretViewLimit: number | null;
     blockDuplicateSecretSyncDestinations: boolean;
+    allowCrossProjectSecretSharing: boolean;
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;

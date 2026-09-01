@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
@@ -10,7 +9,6 @@ import {
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretType,
-  TSecretSnapshotSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -18,8 +16,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
-import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -28,6 +24,7 @@ import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/li
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { highCardinalityMeter, recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
@@ -41,6 +38,7 @@ import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { buildNativeIntegrationsUrl } from "../integration/integration-deprecation-fns";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
@@ -48,11 +46,13 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -93,7 +93,10 @@ type TSecretQueueFactoryDep = {
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
+  secretImportDAL: Pick<
+    TSecretImportDALFactory,
+    "find" | "findByFolderIds" | "findByIds" | "findCrossProjectImportsBySourceFolder"
+  >;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
@@ -115,8 +118,6 @@ type TSecretQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
-  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
-  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany" | "batchInsert">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -127,6 +128,8 @@ type TSecretQueueFactoryDep = {
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TGetSecrets = {
@@ -178,9 +181,7 @@ export const secretQueueFactory = ({
   secretVersionV2BridgeDAL,
   kmsService,
   secretVersionTagV2BridgeDAL,
-  snapshotDAL,
 
-  snapshotSecretV2BridgeDAL,
   secretApprovalRequestDAL,
   keyStore,
   auditLogService,
@@ -194,9 +195,11 @@ export const secretQueueFactory = ({
   licenseService,
   membershipUserDAL,
   membershipRoleDAL,
-  telemetryService
+  telemetryService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretQueueFactoryDep) => {
-  const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
+  const integrationMeter = highCardinalityMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
     description: "Integration secret sync errors",
     unit: "1"
@@ -375,6 +378,7 @@ export const secretQueueFactory = ({
    */
   const getIntegrationSecretsV2 = async (dto: {
     projectId: string;
+    orgId: string;
     environment: string;
     secretPath: string;
     folderId: string;
@@ -394,7 +398,13 @@ export const secretQueueFactory = ({
       folderDAL,
       projectId: dto.projectId,
       // on integration expand all secrets
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId: dto.orgId,
+      orgDAL,
+      licenseService,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
     // process secrets in current folder
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId });
@@ -439,7 +449,13 @@ export const secretQueueFactory = ({
       secretImportDAL,
       secretImports,
       hasSecretAccess: () => true,
-      viewSecretValue: true
+      viewSecretValue: true,
+      projectId: dto.projectId,
+      projectFolderGrantDAL,
+      actorOrgId: dto.orgId,
+      orgDAL,
+      licenseService,
+      kmsService
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -748,7 +764,7 @@ export const secretQueueFactory = ({
           environment: jobPayload.environmentName,
           count: jobPayload.count,
           projectName: project.name,
-          integrationUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
+          integrationUrl: buildNativeIntegrationsUrl(appCfg.SITE_URL ?? "", project.orgId, project.id)
         }
       });
     }
@@ -791,14 +807,14 @@ export const secretQueueFactory = ({
         );
         await Promise.all(
           imports
-            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId]?.[0]?.path as string))
             // filter out already synced ones
             .filter(
               ({ folderId }) =>
                 !deDupeQueue[
                   uniqueSecretQueueKey(
-                    foldersGroupedById[folderId][0]?.environmentSlug as string,
-                    foldersGroupedById[folderId][0]?.path as string
+                    foldersGroupedById[folderId]?.[0]?.environmentSlug as string,
+                    foldersGroupedById[folderId]?.[0]?.path as string
                   )
                 ]
             )
@@ -853,14 +869,14 @@ export const secretQueueFactory = ({
         );
         await Promise.all(
           referencedFolderIds
-            .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+            .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId]?.[0]?.path))
             // filter out already synced ones
             .filter(
               (folderId) =>
                 !deDupeQueue[
                   uniqueSecretQueueKey(
-                    referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
-                    referencedFoldersGroupedById[folderId][0]?.path as string
+                    referencedFoldersGroupedById[folderId]?.[0]?.environmentSlug as string,
+                    referencedFoldersGroupedById[folderId]?.[0]?.path as string
                   )
                 ]
             )
@@ -885,6 +901,79 @@ export const secretQueueFactory = ({
               })
             )
         );
+      }
+
+      // Cross-project imports: find imports from other projects that import from this folder
+      const crossProjectImports = await secretImportDAL.findCrossProjectImportsBySourceFolder(
+        folder.environment.id,
+        secretPath,
+        projectId
+      );
+      if (crossProjectImports.length) {
+        logger.info(
+          `getIntegrationSecrets: Syncing cross-project imports [jobId=${job.id}] [sourceProjectId=${projectId}] [environment=${environment}] [secretPath=${secretPath}] [targetCount=${crossProjectImports.length}]`
+        );
+        const crossProjectGroups = groupBy(crossProjectImports, (i) => i.targetProjectId);
+        for await (const [targetProjectId, groupImports] of Object.entries(crossProjectGroups)) {
+          const targetFolderIds = unique(groupImports, (i) => i.folderId).map(({ folderId }) => folderId);
+          const targetFolders = await folderDAL.findSecretPathByFolderIds(targetProjectId, targetFolderIds);
+          const targetFoldersGroupedById = groupBy(targetFolders.filter(Boolean), (i) => i?.id as string);
+          const { targetOrgId } = groupImports[0];
+
+          await Promise.all(
+            targetFolderIds
+              .filter((folderId) => Boolean(targetFoldersGroupedById[folderId]?.[0]?.path))
+              .map((folderId) =>
+                syncSecrets({
+                  projectId: targetProjectId,
+                  orgId: targetOrgId,
+                  secretPath: targetFoldersGroupedById[folderId][0]?.path as string,
+                  environmentSlug: targetFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                  environmentName: targetFoldersGroupedById[folderId][0]?.environmentName as string,
+                  _depth: depth + 1,
+                  excludeReplication: true
+                })
+              )
+          );
+        }
+      }
+
+      // Cross-project references: find secrets in other projects that reference secrets in this folder
+      if (shouldUseSecretV2Bridge) {
+        const crossProjectRefs = await secretV2BridgeDAL.findCrossProjectSecretReferencesByTargetFolder(
+          project.slug,
+          environment,
+          secretPath,
+          project.orgId
+        );
+        if (crossProjectRefs.length) {
+          logger.info(
+            `getIntegrationSecrets: Syncing cross-project references [jobId=${job.id}] [sourceProjectId=${projectId}] [environment=${environment}] [secretPath=${secretPath}] [refCount=${crossProjectRefs.length}]`
+          );
+          const crossRefProjectGroups = groupBy(crossProjectRefs, (i) => i.referencingProjectId);
+          for await (const [referencingProjectId, groupRefs] of Object.entries(crossRefProjectGroups)) {
+            const refFolderIds = unique(groupRefs, (i) => i.folderId).map(({ folderId }) => folderId);
+            const refFolders = await folderDAL.findSecretPathByFolderIds(referencingProjectId, refFolderIds);
+            const refFoldersGroupedById = groupBy(refFolders.filter(Boolean), (i) => i?.id as string);
+            const { referencingOrgId } = groupRefs[0];
+
+            await Promise.all(
+              refFolderIds
+                .filter((folderId) => Boolean(refFoldersGroupedById[folderId]?.[0]?.path))
+                .map((folderId) =>
+                  syncSecrets({
+                    projectId: referencingProjectId,
+                    orgId: referencingOrgId,
+                    secretPath: refFoldersGroupedById[folderId][0]?.path as string,
+                    environmentSlug: refFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                    environmentName: refFoldersGroupedById[folderId][0]?.environmentName as string,
+                    _depth: depth + 1,
+                    excludeReplication: true
+                  })
+                )
+            );
+          }
+        }
       }
 
       const lock = await keyStore.acquireLock(
@@ -936,6 +1025,7 @@ export const secretQueueFactory = ({
           ? await getIntegrationSecretsV2({
               environment,
               projectId,
+              orgId: project.orgId,
               folderId: folder.id,
               depth: 1,
               secretPath,
@@ -1209,7 +1299,7 @@ export const secretQueueFactory = ({
     });
 
     const folders = await folderDAL.findByProjectId(projectId);
-    // except secret version and snapshot migrate rest of everything first in a transaction
+    // except secret version, migrate rest of everything first in a transaction
     await secretDAL.transaction(async (tx) => {
       // if project v1 create the project ghost user
       if (project.version === ProjectVersion.V1) {
@@ -1242,6 +1332,8 @@ export const secretQueueFactory = ({
           },
           tx
         );
+        recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_ghost_user" });
+        logger.info(`Legacy root key used to create a project ghost user [projectId=${project.id}]`);
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
           .symmetric()
@@ -1333,79 +1425,10 @@ export const secretQueueFactory = ({
           await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
         }
 
-        const SNAPSHOT_BATCH_SIZE = 10;
-        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, SNAPSHOT_BATCH_SIZE, tx);
         const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
-        const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
-        const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
 
-        snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
-          secretVersions.forEach((el) => {
-            projectV3SnapshotSecrets.push({
-              secretVersionId: el.id,
-              snapshotId: snapshot.id,
-              createdAt: snapshot.createdAt,
-              updatedAt: snapshot.updatedAt,
-              envId: el.snapshotEnvId
-            });
-            if (projectV3SecretVersionsGroupById[el.id]) return;
-
-            const key = crypto.encryption().symmetric().decrypt({
-              ciphertext: el.secretKeyCiphertext,
-              iv: el.secretKeyIV,
-              tag: el.secretKeyTag,
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-            const value = crypto.encryption().symmetric().decrypt({
-              ciphertext: el.secretValueCiphertext,
-              iv: el.secretValueIV,
-              tag: el.secretValueTag,
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-            const comment =
-              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                ? crypto.encryption().symmetric().decrypt({
-                    ciphertext: el.secretCommentCiphertext,
-                    iv: el.secretCommentIV,
-                    tag: el.secretCommentTag,
-                    key: botKey,
-                    keySize: SymmetricKeySize.Bits128
-                  })
-                : "";
-            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-
-            const encryptedComment = comment
-              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
-              : null;
-            projectV3SecretVersionsGroupById[el.id] = {
-              id: el.id,
-              createdAt: el.createdAt,
-              updatedAt: el.updatedAt,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              encryptedComment,
-              encryptedValue,
-              key,
-              version: el.version,
-              type: el.type,
-              userId: el.userId,
-              folderId: el.folderId,
-              metadata: el.metadata,
-              reminderNote: el.secretReminderNote,
-              reminderRepeatDays: el.secretReminderRepeatDays,
-              secretId: el.secretId,
-              envId: el.envId,
-              isRedacted: false
-            };
-            el.tags.forEach(({ secretTagId }) => {
-              projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
-            });
-          });
-        });
-        // this is corner case in which some times the snapshot may not have the secret version of an existing secret
-        // example: on some integration it will pull values from 3rd party on integration but snapshot is not taken
-        // Thus it won't have secret version
+        // migrate the latest version of every current secret so V3 has a baseline version history
+        // (some secrets may not have a version, e.g. values pulled from a 3rd party integration)
         const latestSecretVersionByFolder = await secretVersionDAL.findLatestVersionMany(
           folderId,
           projectV1Secrets.map((el) => el.id),
@@ -1458,7 +1481,6 @@ export const secretQueueFactory = ({
             reminderNote: el.secretReminderNote,
             reminderRepeatDays: el.secretReminderRepeatDays,
             secretId: el.secretId,
-            envId: el.envId,
             isRedacted: false
           };
         });
@@ -1467,14 +1489,6 @@ export const secretQueueFactory = ({
         if (projectV3SecretVersions.length) {
           await secretVersionV2BridgeDAL.batchInsert(projectV3SecretVersions, tx);
         }
-        if (projectV3SecretVersionTags.length) {
-          await secretVersionTagV2BridgeDAL.batchInsert(projectV3SecretVersionTags, tx);
-        }
-
-        if (projectV3SnapshotSecrets.length) {
-          await snapshotSecretV2BridgeDAL.batchInsert(projectV3SnapshotSecrets, tx);
-        }
-        await snapshotDAL.deleteSnapshotsAboveLimit(folderId, SNAPSHOT_BATCH_SIZE, tx);
       }
       /*
        * Secret Tag Migration

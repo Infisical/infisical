@@ -1,12 +1,12 @@
 ---
-title: "Infisical Organizational Structure Blueprint"
-sidebarTitle: "Organization Structure"
+title: "Infisical organizational structure blueprint"
+sidebarTitle: "Organization structure"
 description: "Learn how to structure your projects, secrets, and other resources within Infisical."
 ---
 
 Infisical is designed to provide comprehensive, centralized, and efficient management of secrets, certificates, and encryption keys within organizations. Below is an overview of Infisical's structured components, which developers and administrators can leverage for optimal project management and security posture.
 
-### 0. Cluster/Instance
+### 0. Cluster/instance
 
 - **Best Practice**: In most cases, a single Infisical instance or cluster is sufficient. Multiple clusters are typically only necessary for large, globally distributed organizations.
 - **Use Cases**:
@@ -21,7 +21,7 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
     - In **self-hosted** setups, you can create multiple organizations (e.g., one for each department or business unit).
     - In **cloud-hosted deployments**, it's standard to use a single organization.
 
-### 1.5 Sub-Organizations (Enterprise)
+### 1.5 Sub-organizations (Enterprise)
 
 - **Definition**: [Sub-organizations](/documentation/platform/sub-organizations) are optional child organizations within a root organization, enabling large enterprises to create autonomous units that operate independently while inheriting common resources from the parent organization.
 - **Hierarchy**: One level of nesting is supported (root organization to sub-organizations). Each sub-organization works like a regular organization with its own projects, groups, and machine identities.
@@ -29,13 +29,35 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 - **Project Ownership**: Projects belong to the organization you're in. In a sub-organization, you only see projects for that sub-organization—not root organization projects.
 - **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only. No default sub-organization exists—they are created when needed.
 
-For detailed information on resource inheritance, project ownership, and enterprise examples, see the [Sub-Organizations documentation](/documentation/platform/sub-organizations).
+For detailed information on resource inheritance, project ownership, and enterprise examples, see the [Sub-organizations documentation](/documentation/platform/sub-organizations).
 
-### 2. Projects
+### 1.6 Organization-level resources
 
-- **Definition and Role**: [Projects](/documentation/platform/project) are the highest-level construct within an [organization](/documentation/platform/organization) in Infisical. They serve as the primary container for all functionalities.
+- **Not Everything Is Project-Scoped**: While projects are the primary workspace, several resources live at the organization level and are shared across projects rather than owned by any single one.
+- **Examples**:
+    - **[Machine identities](/documentation/platform/identities/machine-identities)** and **[user groups](/documentation/platform/groups)**: managed at the organization level and granted access into individual projects.
+    - **[App Connections](/integrations/app-connections/overview)**: reusable third-party credentials (AWS, GCP, GitHub, and more) that can be managed at either the organization or project level and used by features such as [secret syncs](/integrations/secret-syncs/overview) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+    - **[Gateways](/documentation/platform/gateways/overview)**: secure access to private network resources without direct inbound connections.
+    - **[Audit logs](/documentation/platform/audit-logs)** and **billing**: aggregated across all projects and product types.
+
+### 2. Products
+
+- **Definition**: Infisical is organized into several **products**, each purpose-built for a different security use case, with its own dashboard, workflows, and capabilities.
+- **Supported Products**:
+    - **[Secrets Management](/documentation/platform/secrets-mgmt/overview)**: Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.
+    - **[Certificate Manager](/documentation/platform/pki/overview)**: Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.
+    - **[KMS](/documentation/platform/kms/overview)**: Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.
+    - **[Secret Scanning](/documentation/platform/secret-scanning/overview)**: Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.
+    - **[Privileged Access Manager](/documentation/platform/pam/overview)**: Connect to databases and servers securely with session brokering, recording, and credential vaulting.
+- **How Products Are Structured**: Products differ in how they organize work, so not everything is project-based:
+    - **Secrets Management**, **KMS**, and **Secret Scanning** organize their resources into one or more **[projects](/documentation/platform/project)** (see below).
+    - **Certificate Manager** and **Privileged Access Manager** operate at the organization level as a single workspace, rather than a list of separate projects.
+
+### 2.1 Projects
+
+- **Definition and Role**: For the products that use them, a [project](/documentation/platform/project) is an isolated workspace that holds the resources, environments, and settings for a single scope of work within that product.
 - **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
-- **Functional Capabilities**: Each project encompasses features for managing secrets, certificates, and encryption keys, serving as the central hub for these resources.
+- **Scope**: The constructs described below — environments, folders, and imports — are specific to **Secrets Management** projects. Other products expose their own resources and workflows.
 
 <Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
 
@@ -56,14 +78,14 @@ For detailed information on resource inheritance, project ownership, and enterpr
 - **Project Isolation**: Imports and references only work within a single project. Secrets cannot be imported or referenced across different projects, as projects are isolated from one another.
 - **Best Practice**: Utilizing [secret imports](/documentation/platform/secret-reference#secret-imports) or [references](/documentation/platform/secret-reference#secret-referencing) ensures consistency and minimizes manual overhead when managing secrets within a project.
 
-### 6. Approval Workflows
+### 6. Approval workflows
 
 - **Importance**: Implementing approval workflows is recommended for organizations aiming to enhance efficiency and strengthen their security posture.
 - **Types of Workflows**:
-    - **[Access Requests](/documentation/platform/pr-workflows)**: This workflow allows developers to request access to sensitive resources. Such access can be configured for temporary use, a practice known as "just-in-time" access.
-    - **[Change Requests](/documentation/platform/access-controls/access-requests)**: Facilitates reviews and approvals when changes are proposed for sensitive environments or specific folders, ensuring proper oversight.
+    - **[Access Requests](/documentation/platform/access-controls/access-requests)**: This workflow allows developers to request access to sensitive resources. Such access can be configured for temporary use, a practice known as "just-in-time" access.
+    - **[Change Requests](/documentation/platform/pr-workflows)**: Facilitates reviews and approvals when changes are proposed for sensitive environments or specific folders, ensuring proper oversight.
 
-### 7. Access Controls
+### 7. Access controls
 
 Infisical’s access control framework is unified for both human users and machine identities, ensuring consistent management across the board.
 
@@ -77,22 +99,22 @@ Infisical’s access control framework is unified for both human users and machi
 
 <Note>Project access is defined not via an organization-level role, but rather through specific project memberships of both human and machine identities. Admin roles bypass this by default. </Note>
 
-### 7.2 Additional Privileges
+### 7.2 Additional privileges
 
 [Additional privileges](/documentation/platform/access-controls/additional-privileges) can be assigned to users and machines on an ad-hoc basis for specific scenarios where roles alone are insufficient. If you find yourself using additional privileges too much, it is recommended to create custom roles. Additional privileges can be temporary or permanent.
 
 
 
-### 7.3 Attribute-Based Access Control (ABAC)
+### 7.3 Attribute-based access control (ABAC)
 
 [Attribute-based Access Controls](/documentation/platform/access-controls/abac/overview) allow restrictions based on tags or attributes linked to secrets. These can be integrated with SAML assertions and other security frameworks for dynamic access management.
 
-### 7.4 User Groups
+### 7.4 User groups
 
 - **Application**: Organizations should use users groups in situations when they have a lot of developers with the same level of access (e.g., separated by team, department, seniority, etc.).
 - **Synchronization**: [User groups](/documentation/platform/groups) can be synced with an identity provider to maintain consistency and reduce manual management.
 
-### **Implementation Note**
+### **Implementation note**
 
 For larger-scale organizations, automating configurations through **Terraform** or other infrastructure-as-code (IaC) tools is advisable. Manual configurations may lead to errors, so leveraging IaC enhances reliability and consistency in managing Infisical's robust capabilities.
 

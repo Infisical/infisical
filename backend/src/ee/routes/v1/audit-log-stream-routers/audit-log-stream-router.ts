@@ -20,6 +20,10 @@ import {
   SanitizedSplunkProviderSchema,
   SplunkProviderListItemSchema
 } from "@app/ee/services/audit-log-stream/splunk/splunk-provider-schemas";
+import {
+  SanitizedSumoLogicProviderSchema,
+  SumoLogicProviderListItemSchema
+} from "@app/ee/services/audit-log-stream/sumo-logic/sumo-logic-provider-schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -29,7 +33,8 @@ const SanitizedAuditLogStreamSchema = z.union([
   SanitizedDatadogProviderSchema,
   SanitizedSplunkProviderSchema,
   SanitizedAzureProviderSchema,
-  SanitizedCriblProviderSchema
+  SanitizedCriblProviderSchema,
+  SanitizedSumoLogicProviderSchema
 ]);
 
 const ProviderOptionsSchema = z.discriminatedUnion("provider", [
@@ -37,7 +42,8 @@ const ProviderOptionsSchema = z.discriminatedUnion("provider", [
   DatadogProviderListItemSchema,
   SplunkProviderListItemSchema,
   AzureProviderListItemSchema,
-  CriblProviderListItemSchema
+  CriblProviderListItemSchema,
+  SumoLogicProviderListItemSchema
 ]);
 
 export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) => {
@@ -54,7 +60,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const providerOptions = server.services.auditLogStream.listProviderOptions();
 
@@ -75,7 +81,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogStreams = await server.services.auditLogStream.list(req.permission);
 

@@ -26,6 +26,9 @@ import {
  * The `orientation` prop on `Field` switches between `vertical` (default — stacked),
  * `horizontal` (label left, control right), and `responsive` (vertical on narrow
  * containers, horizontal on wider ones).
+ *
+ * `FieldDescription` keeps its content mounted inside `AnimatedCollapse`. Pass
+ * `isOpen` when helper text should expand or collapse in response to field state.
  */
 const meta = {
   title: "Generic/Field",

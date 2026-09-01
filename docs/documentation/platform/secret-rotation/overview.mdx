@@ -1,5 +1,5 @@
 ---
-title: "Secret Rotation"
+title: "Secret rotation"
 sidebarTitle: "Overview"
 description: "Learn how to set up automated secret rotation in Infisical."
 ---
@@ -13,7 +13,7 @@ Examples of rotated secrets include:
 - API keys and authentication tokens for cloud services and third-party integrations
 - Database credentials across production, staging, and development environments
 
-## How Rotation Works
+## How rotation works
 
 Infisical supports two rotation models: **Dual-Phase** (used by most providers) and **Single-Phase**. Select a tab below to learn how each model works.
 
@@ -21,7 +21,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
     <Tab title="Dual-Phase">
         Dual-phase rotation is the recommended approach that ensures zero downtime for your applications. This model systematically replaces secrets at regular intervals using an overlapping lifecycle that maintains continuous availability while enhancing your security posture.
 
-        ### Visual Timeline
+        ### Visual timeline
 
         ```mermaid
         gantt
@@ -45,7 +45,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
             Revoked     :crit, r3, after i3, 30d
         ```
 
-        ### Credential States
+        ### Credential states
 
         Each set of credentials transitions through three distinct states:
 
@@ -53,7 +53,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
         - **Inactive**: These credentials are still valid, but will be revoked in the next rotation 
         - **Revoked**: Permanently invalidated and deleted from the system
 
-        ### Rotation Cycle Example (30-Day Interval)
+        ### Rotation cycle example (30-day interval)
 
         Using a __30-Day__ rotation interval as an example, here's how the process unfolds:
 
@@ -89,7 +89,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
         - **Reduced Risk**: Credentials are regularly cycled, limiting the impact of potential compromise
         - **Predictable Schedule**: Makes credential management more systematic and easier to automate
 
-        ### Implementation Considerations
+        ### Implementation considerations
 
         - Choose a rotation interval appropriate for your security requirements and operational needs
         - Ensure your applications can handle credential updates gracefully
@@ -104,7 +104,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
             Single-phase rotation may cause brief service interruptions. For these providers, we recommend disabling auto-rotation and performing manual rotations during scheduled maintenance windows.
         </Warning>
 
-        ### Why Single-Phase?
+        ### Why single-phase?
 
         Some credential providers have limitations that require single-phase rotation:
 
@@ -121,3 +121,26 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
     </Tab>
 </Tabs>
 
+## Database credential rotations
+
+For most providers, including Redis and API key providers such as AWS and Cloudflare, Infisical issues a new credential on each rotation and removes the old one once it has been replaced.
+
+Database rotations work differently. Infisical never creates or drops users in [PostgreSQL](/documentation/platform/secret-rotation/postgres-credentials), [MySQL](/documentation/platform/secret-rotation/mysql-credentials), [Microsoft SQL Server](/documentation/platform/secret-rotation/mssql-credentials), [Oracle Database](/documentation/platform/secret-rotation/oracledb-credentials), or [MongoDB](/documentation/platform/secret-rotation/mongodb-credentials). Doing so would require broader privileges than rotation needs, and a new user would not inherit the grants your applications depend on. Instead, you create two users up front and name them in the rotation.
+
+### Why two users?
+
+Each cycle, Infisical generates a new password for whichever of the two users is not currently active and maps it to your secrets. The other user's password stays valid as a grace-period credential until the following cycle replaces it, which is what gives the rotation its overlap.
+
+Infisical changes passwords in place, so with a single user it would overwrite the credential currently in use and lock out every client still holding the old password. The cycle never needs more than two users, which is why the configuration form has fixed **Database Username 1** and **Database Username 2** fields.
+
+### Who connects as the two users?
+
+Your applications do. The pair backs one rotating credential: Infisical maps the active username and password to the secrets you choose, and your application connects as whichever user is currently active by reading those secrets.
+
+Grant both users the same privileges, since either one may be the active credential at any time, and let Infisical be the only thing that sets their passwords. The one user you cannot name is the one your [app connection](/integrations/app-connections/overview) authenticates with, because rotating its password would break the connection that performs the rotation.
+
+### Rotating several credentials
+
+Create a separate rotation for each credential you need, each with its own pair of users. A rotation produces a single active credential, so a database serving three applications that need independent credentials needs three rotations and six users. Two rotations must not share a pair of users, as each would overwrite the other's passwords.
+
+If you want credentials issued per identity and revoked after a short lease, rather than one shared credential that changes on a schedule, use a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead.

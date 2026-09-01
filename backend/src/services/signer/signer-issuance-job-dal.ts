@@ -62,5 +62,19 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findDuePending, cancelOpenForSigner, claimForAttempt };
+  const findLatestForSigner = async (
+    signerId: string,
+    tx?: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs | undefined> => {
+    try {
+      return await (tx || db.replicaNode())(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ signerId })
+        .orderBy("createdAt", "desc")
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindLatestSignerIssuanceJob" });
+    }
+  };
+
+  return { ...orm, findDuePending, cancelOpenForSigner, claimForAttempt, findLatestForSigner };
 };

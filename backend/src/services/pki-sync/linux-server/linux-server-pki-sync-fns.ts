@@ -1,0 +1,531 @@
+/* eslint-disable no-await-in-loop */
+import crypto from "node:crypto";
+import path from "node:path";
+
+import RE2 from "re2";
+import { Client, SFTPWrapper } from "ssh2";
+
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { logger } from "@app/lib/logger";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connection-enums";
+import { executeSshCommandViaGateway, withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
+import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
+import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
+
+import { PkiSyncError } from "../pki-sync-errors";
+import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildHealthCheckCommandFailureMessage,
+  buildHealthCheckCommandPlan,
+  buildHealthCheckFailureSyncResult,
+  didHealthCheckFail,
+  runHealthCheckCommand,
+  THealthCheckCommandResult
+} from "../pki-sync-health-check-command-fns";
+import {
+  HOST_COMMAND_TIMEOUT_MS,
+  HostCommandKind,
+  renderHostCommandContext,
+  THostCommandContext,
+  toPosixShellLiteral
+} from "../pki-sync-host-command-fns";
+import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
+
+type TLinuxServerPkiSyncFactoryDeps = {
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
+  >;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+};
+
+type TLinuxServerSyncOptions = {
+  certificateNameSchema?: string;
+  exportFormat?: PkiSyncExportFormat;
+  pemCertificateExtension?: PemCertificateExtension;
+  combineCertificateChain?: boolean;
+  includePrivateKey?: boolean;
+  canRemoveCertificates?: boolean;
+  fileMode?: string;
+  privateKeyFileMode?: string;
+  owner?: string;
+  group?: string;
+  healthCheckCommand?: string;
+  postSyncCommand?: string;
+};
+
+const buildSshConfig = (pkiSync: THealthCheckTarget): TSshConnectionConfig => {
+  const { connection } = pkiSync;
+  const credentials = connection.credentials as { privateKey?: string };
+
+  let method: SshConnectionMethod;
+  if (connection.method === SshConnectionMethod.SshKey || connection.method === SshConnectionMethod.Password) {
+    method = connection.method as SshConnectionMethod;
+  } else {
+    method = credentials.privateKey ? SshConnectionMethod.SshKey : SshConnectionMethod.Password;
+  }
+
+  return {
+    app: AppConnection.SSH,
+    method,
+    credentials: connection.credentials as TSshConnectionConfig["credentials"],
+    gatewayId: connection.gatewayId,
+    gatewayPoolId: connection.gatewayPoolId,
+    orgId: connection.orgId
+  } as TSshConnectionConfig;
+};
+
+// SFTP surfaces a missing destination directory as an ENOENT "No such file" error; matched so it
+// can be reported as an actionable "directory does not exist" message rather than a raw SSH error.
+const NO_SUCH_FILE_ERROR = new RE2("no such file", "i");
+
+// Private-key material is written owner-read/write only; certificates and chains are world-readable.
+const PRIVATE_KEY_FILE_MODE = 0o600;
+const CERTIFICATE_FILE_MODE = 0o644;
+
+const openSftp = (client: Client) =>
+  new Promise<SFTPWrapper>((resolve, reject) => {
+    client.sftp((err, sftp) => (err ? reject(err) : resolve(sftp)));
+  });
+
+// Parses an octal file-mode string (e.g. "0640" or "640") into a number, falling back when unset/invalid.
+const parseFileMode = (mode: string | undefined, fallback: number): number => {
+  if (!mode) return fallback;
+  const parsed = Number.parseInt(mode, 8);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const applyOwnership = (
+  client: Client,
+  owner: string | undefined,
+  group: string | undefined,
+  filePath: string
+): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    if (!owner && !group) {
+      resolve();
+      return;
+    }
+    const spec = `${owner ?? ""}${group ? `:${group}` : ""}`;
+    const target = toPosixShellLiteral(filePath);
+    const command = `chown ${spec} -- ${target} 2>/dev/null || sudo -n chown ${spec} -- ${target}`;
+    client.exec(command, (err, stream) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      let stderr = "";
+      stream
+        .on("close", (code: number) => {
+          if (code === 0) resolve();
+          else reject(new Error(stderr.trim() || `chown exited with code ${code}`));
+        })
+        .stderr.on("data", (chunk: Buffer) => {
+          stderr += chunk.toString();
+        });
+      stream.on("data", () => {});
+    });
+  });
+
+const writeFileAtomic = (sftp: SFTPWrapper, filePath: string, content: Buffer, mode: number): Promise<void> => {
+  // A per-write random suffix keeps concurrent syncs (e.g. a manual trigger overlapping an auto-sync)
+  // from sharing one temp path and orphaning it: OpenSSH rename is not atomic-overwrite, so we
+  // unlink-then-rename, and a shared temp name would let one job recreate the file another just moved.
+  const tmpPath = `${filePath}.${crypto.randomBytes(6).toString("hex")}.infisical.tmp`;
+  return new Promise<void>((resolve, reject) => {
+    const removeTempFileThen = (finalize: () => void) => sftp.unlink(tmpPath, () => finalize());
+
+    sftp.writeFile(tmpPath, content, { mode }, (writeErr) => {
+      if (writeErr) return reject(writeErr);
+      // Remove any existing target first for portable rename semantics, then move the temp file in.
+      return sftp.unlink(filePath, () => {
+        sftp.rename(tmpPath, filePath, (renameErr) => {
+          if (renameErr) return removeTempFileThen(() => reject(renameErr));
+          return resolve();
+        });
+      });
+    });
+  });
+};
+
+const unlinkIfExists = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
+  new Promise<void>((resolve) => {
+    sftp.unlink(filePath, () => resolve());
+  });
+
+const TEMP_FILE_MARKER = ".infisical.tmp";
+// A write completes in seconds, so any temp file older than this was left by an interrupted run
+// (dropped connection between write and rename) and is safe to remove even if another sync shares
+// this directory.
+const STALE_TEMP_AGE_SECONDS = 60;
+
+const removeStaleTempFiles = (sftp: SFTPWrapper, dir: string): Promise<void> =>
+  new Promise<void>((resolve) => {
+    sftp.readdir(dir, (err, entries) => {
+      if (err || !entries) return resolve();
+      const cutoff = Math.floor(Date.now() / 1000) - STALE_TEMP_AGE_SECONDS;
+      const stale = entries.filter((e) => e.filename.endsWith(TEMP_FILE_MARKER) && e.attrs.mtime < cutoff);
+      if (stale.length === 0) return resolve();
+      let remaining = stale.length;
+      stale.forEach((e) => {
+        sftp.unlink(path.posix.join(dir, e.filename), () => {
+          remaining -= 1;
+          if (remaining === 0) resolve();
+        });
+      });
+      return undefined;
+    });
+  });
+
+// Deletes files for tracked certificates that are no longer in the active set (revoked, expired, or
+// unlinked from the sync) and drops their tracking rows. Paths just (re)written this run are skipped
+// so a renewal that reuses a file name does not delete its own freshly delivered file.
+const reconcileLinuxServerRemovals = async (args: {
+  sftp: SFTPWrapper;
+  pkiSync: TPkiSyncWithCredentials;
+  certificateMap: TCertificateMap;
+  deliveredPaths: Set<string>;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+}): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
+  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL } = args;
+  const failedRemovals: Array<{ name: string; error: string }> = [];
+  let removed = 0;
+
+  const activeCertificateIds = new Set(
+    Object.values(certificateMap)
+      .map((certData) => certData.certificateId)
+      .filter((id): id is string => typeof id === "string")
+  );
+  const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+
+  for (const record of existingSyncRecords) {
+    if (!record.certificateId || activeCertificateIds.has(record.certificateId)) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    const metadataFiles = (record.syncMetadata as TSyncMetadata)?.files;
+    const files = metadataFiles?.length
+      ? metadataFiles
+      : [record.externalIdentifier].filter((p): p is string => Boolean(p));
+    const filesToDelete = files.filter((filePath) => !deliveredPaths.has(filePath));
+    try {
+      for (const filePath of filesToDelete) {
+        await unlinkIfExists(sftp, filePath);
+      }
+      await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
+      if (filesToDelete.length > 0) removed += 1;
+      logger.info(
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${filesToDelete.length} orphaned file(s) for certificate ${record.certificateId}`
+      );
+    } catch (err) {
+      failedRemovals.push({
+        name: record.externalIdentifier ?? record.certificateId,
+        error: (err as Error)?.message ?? "Unknown error"
+      });
+    }
+  }
+
+  return { removed, failedRemovals };
+};
+
+const resolveLinuxExportOptions = (options: TLinuxServerSyncOptions) => ({
+  format: options.exportFormat ?? PkiSyncExportFormat.Pem,
+  includePrivateKey: options.includePrivateKey ?? true,
+  pemCertificateExtension: options.pemCertificateExtension,
+  combineCertificateChain: options.combineCertificateChain
+});
+
+const executeLinuxServerHostCommand = (
+  kind: HostCommandKind,
+  plan: { command: string; context: THostCommandContext },
+  sshConfig: TSshConnectionConfig,
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">
+) =>
+  executeSshCommandViaGateway(sshConfig, gatewayServices, {
+    command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
+    timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
+  });
+
+const runLinuxServerHealthCheckCommand = ({
+  pkiSync,
+  certificateMap,
+  gatewayServices
+}: {
+  pkiSync: THealthCheckTarget;
+  certificateMap: TCertificateMap;
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+}): Promise<THealthCheckCommandResult> | undefined => {
+  const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
+  const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+  const exportOptions = resolveLinuxExportOptions(options);
+
+  const plan = buildHealthCheckCommandPlan({
+    command: options.healthCheckCommand,
+    destinationDirectory: config.destinationPath,
+    certificateMap,
+    exportOptions,
+    joinPath: (directory, fileName) => path.posix.join(directory, fileName),
+    pkcs12Password:
+      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+  });
+  if (!plan) return undefined;
+
+  return runHealthCheckCommand({
+    syncId: pkiSync.id,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: () =>
+      executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, buildSshConfig(pkiSync), gatewayServices)
+  });
+};
+
+const runLinuxServerPostSyncCommand = ({
+  syncId,
+  plan,
+  sshConfig,
+  gatewayServices
+}: {
+  syncId: string;
+  plan: TPostSyncCommandPlan;
+  sshConfig: TSshConnectionConfig;
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+}) =>
+  runPostSyncCommand({
+    syncId,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices)
+  });
+
+export const linuxServerPkiSyncFactory = ({
+  certificateSyncDAL,
+  gatewayV2Service,
+  gatewayPoolService
+}: TLinuxServerPkiSyncFactoryDeps) => {
+  const syncCertificates = async (
+    pkiSync: TPkiSyncWithCredentials,
+    certificateMap: TCertificateMap
+  ): Promise<TPkiSyncSyncResult> => {
+    const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+    const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
+    const exportOptions = resolveLinuxExportOptions(options);
+    const { format, includePrivateKey } = exportOptions;
+    const canRemoveCertificates = options.canRemoveCertificates ?? false;
+    const privateKeyMode = parseFileMode(options.privateKeyFileMode, PRIVATE_KEY_FILE_MODE);
+    const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
+    const exportPassword = pkiSync.syncCredentials?.exportPassword;
+
+    const failedUploads: Array<{ name: string; error: string }> = [];
+    const failedRemovals: Array<{ name: string; error: string }> = [];
+    const skippedCertificates: Array<{ name: string; reason: string }> = [];
+    // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
+    // just rewrote under the same name, and tells the post-sync command what landed.
+    const deliveredPaths = new Set<string>();
+    const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
+    let uploaded = 0;
+    let removed = 0;
+
+    const sshConfig = buildSshConfig(pkiSync);
+
+    const healthCheck = await runLinuxServerHealthCheckCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+    if (healthCheck && didHealthCheckFail(healthCheck)) {
+      logger.info(
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: health check failed, delivered nothing (${buildHealthCheckCommandFailureMessage(healthCheck)})`
+      );
+      return buildHealthCheckFailureSyncResult(certificateMap, healthCheck);
+    }
+
+    await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
+      const sftp = await openSftp(client);
+      await removeStaleTempFiles(sftp, config.destinationPath);
+
+      for (const [baseName, certData] of Object.entries(certificateMap)) {
+        const { cert, privateKey, certificateChain, certificateId } = certData;
+
+        if (!cert) {
+          skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
+        // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
+        const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+        if (keyRequired && !privateKey) {
+          failedUploads.push({
+            name: baseName,
+            error:
+              "Private key is required but is not available for this certificate (for example, it was issued from an external CSR)"
+          });
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        try {
+          const files = await exportCertificateForSync({
+            ...exportOptions,
+            certificate: cert,
+            certificateChain,
+            privateKey,
+            password: exportPassword,
+            alias: baseName
+          });
+
+          const writtenPaths: string[] = [];
+          for (const file of files) {
+            const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
+            try {
+              await writeFileAtomic(sftp, filePath, file.content, file.isPrivateKey ? privateKeyMode : certificateMode);
+            } catch (writeErr) {
+              const msg = (writeErr as Error)?.message ?? "";
+              if (NO_SUCH_FILE_ERROR.test(msg)) {
+                throw new PkiSyncError({
+                  message: `Destination directory "${config.destinationPath}" does not exist or is not writable`
+                });
+              }
+              throw writeErr;
+            }
+            await applyOwnership(client, options.owner, options.group, filePath);
+            writtenPaths.push(filePath);
+            deliveredPaths.add(filePath);
+          }
+
+          const primaryPath = writtenPaths[0];
+          deliveredCertificates.push({ paths: writtenPaths, commonName: certData.commonName ?? undefined });
+          if (typeof certificateId === "string") {
+            let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+            if (!record) {
+              [record] = await certificateSyncDAL.addCertificates(pkiSync.id, [
+                { certificateId, externalIdentifier: primaryPath }
+              ]);
+            }
+            if (record) {
+              await certificateSyncDAL.updateById(record.id, {
+                externalIdentifier: primaryPath,
+                syncMetadata: { files: writtenPaths }
+              });
+            }
+          }
+
+          uploaded += 1;
+          logger.info(
+            `Linux Server PKI sync [syncId=${pkiSync.id}]: wrote ${writtenPaths.length} file(s) for "${baseName}"`
+          );
+        } catch (err) {
+          failedUploads.push({ name: baseName, error: (err as Error)?.message ?? "Unknown error" });
+        }
+      }
+
+      // Delete files for certificates no longer active and drop their tracking rows.
+      if (canRemoveCertificates && failedUploads.length === 0) {
+        const reconciliation = await reconcileLinuxServerRemovals({
+          sftp,
+          pkiSync,
+          certificateMap,
+          deliveredPaths,
+          certificateSyncDAL
+        });
+        removed += reconciliation.removed;
+        failedRemovals.push(...reconciliation.failedRemovals);
+      } else if (canRemoveCertificates) {
+        logger.info(
+          `Linux Server PKI sync [syncId=${pkiSync.id}]: skipped certificate removal because ${failedUploads.length} certificate(s) failed to deliver`
+        );
+      }
+    });
+
+    const postSyncCommandPlan = buildPostSyncCommandPlan({
+      command: options.postSyncCommand,
+      destinationDirectory: config.destinationPath,
+      deliveredPaths,
+      deliveredCertificates,
+      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+    });
+    const postSyncCommand = postSyncCommandPlan
+      ? await runLinuxServerPostSyncCommand({
+          syncId: pkiSync.id,
+          plan: postSyncCommandPlan,
+          sshConfig,
+          gatewayServices: { gatewayV2Service, gatewayPoolService }
+        })
+      : undefined;
+
+    return {
+      uploaded,
+      removed: removed > 0 ? removed : undefined,
+      failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
+      skipped: skippedCertificates.length,
+      healthCheck,
+      postSyncCommand,
+      details: {
+        failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
+        failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,
+        skippedCertificates: skippedCertificates.length > 0 ? skippedCertificates : undefined
+      }
+    };
+  };
+
+  const removeCertificates = async (
+    pkiSync: TPkiSyncWithCredentials,
+    certificateNames: string[],
+    deps?: {
+      certificateSyncDAL?: Pick<TCertificateSyncDALFactory, "findByPkiSyncId">;
+      certificateMap?: TCertificateMap;
+    }
+  ): Promise<void> => {
+    if (certificateNames.length === 0) return;
+
+    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+    const pathsToRemove = new Set<string>();
+    const certificateIdsToUntrack: string[] = [];
+
+    for (const certName of certificateNames) {
+      const certificateId = deps?.certificateMap?.[certName]?.certificateId;
+      const record = certificateId ? existingSyncRecords.find((r) => r.certificateId === certificateId) : undefined;
+      if (!certificateId || !record) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      certificateIdsToUntrack.push(certificateId);
+      const files = (record.syncMetadata as TSyncMetadata)?.files;
+      if (files?.length) {
+        files.forEach((f) => pathsToRemove.add(f));
+      } else if (record.externalIdentifier) {
+        pathsToRemove.add(record.externalIdentifier);
+      }
+    }
+
+    if (pathsToRemove.size > 0) {
+      const sshConfig = buildSshConfig(pkiSync);
+      await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
+        const sftp = await openSftp(client);
+        for (const filePath of pathsToRemove) {
+          await unlinkIfExists(sftp, filePath);
+          logger.info(`Linux Server PKI sync [syncId=${pkiSync.id}]: removed "${filePath}"`);
+        }
+      });
+    }
+
+    // Untrack the removed certificates so they are no longer reported as synced and not re-delivered.
+    if (certificateIdsToUntrack.length > 0) {
+      await certificateSyncDAL.removeCertificates(pkiSync.id, certificateIdsToUntrack);
+    }
+  };
+
+  const runHealthCheck = (pkiSync: THealthCheckTarget, certificateMap: TCertificateMap) =>
+    runLinuxServerHealthCheckCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+
+  return { syncCertificates, removeCertificates, runHealthCheck };
+};

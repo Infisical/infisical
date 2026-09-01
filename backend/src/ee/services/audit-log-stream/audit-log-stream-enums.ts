@@ -1,9 +1,12 @@
+export const REDACTED_CREDENTIAL_VALUE = "******";
+
 export enum LogProvider {
   Azure = "azure",
   Cribl = "cribl",
   Custom = "custom",
   Datadog = "datadog",
-  Splunk = "splunk"
+  Splunk = "splunk",
+  SumoLogic = "sumo-logic"
 }
 
 export enum StreamMode {

@@ -48,6 +48,12 @@ type Kind = "user" | "identity" | "group";
 
 type Option = { value: string; label: string };
 
+const formatMemberOptionLabel = (option: Option, meta: { context: "menu" | "value" }) => (
+  <span className={meta.context === "value" ? "block max-w-[22rem] truncate" : "block truncate"}>
+    {option.label}
+  </span>
+);
+
 export const AddSignerMemberModal = ({
   isOpen,
   onOpenChange,
@@ -223,6 +229,7 @@ export const AddSignerMemberModal = ({
                 value={valueForKind}
                 onChange={(selected) => setSelected((selected as Option[] | null) ?? [])}
                 placeholder="Pick..."
+                formatOptionLabel={formatMemberOptionLabel}
               />
             </FieldContent>
           </Field>

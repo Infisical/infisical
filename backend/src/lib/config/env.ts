@@ -37,6 +37,14 @@ const zodStrBool = z
   .optional()
   .transform((val) => val === "true");
 
+/**
+ * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
+ * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
+ * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan, and
+ * as the scan lock TTL headroom so the lock outlives any scan the reaper would consider healthy.
+ */
+export const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
+
 const databaseReadReplicaSchema = z
   .object({
     DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
@@ -55,6 +63,7 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
+    DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -158,6 +167,32 @@ const envSchema = z
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
     DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
+    DB_POOL_MIN: z.coerce.number().int().min(0).default(0).describe("Minimum primary Postgres pool connections"),
+    DB_POOL_MAX: z.coerce.number().int().min(1).default(10).describe("Maximum primary Postgres pool connections"),
+    DB_REPLICA_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum pool connections per Postgres read replica"),
+    DB_REPLICA_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum pool connections per Postgres read replica"),
+    AUDIT_LOGS_DB_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum audit log Postgres pool connections"),
+    AUDIT_LOGS_DB_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum audit log Postgres pool connections"),
     BCRYPT_SALT_ROUND: z.number().optional(), // note(daniel): this is deprecated, use SALT_ROUNDS instead. only keeping this for backwards compatibility.
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
@@ -165,6 +200,9 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
+    // A convergence window, not a rollback window: it lets instances that have not restarted onto the
+    // new key keep booting, and covers a new key that turns out to be lost. Then the old key is gone.
+    KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
@@ -238,6 +276,10 @@ const envSchema = z
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
+    // Secrets activation nudge tuning. Controls the org size/age window in which the
+    // member-invite activation banner appears.
+    SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
+    SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
@@ -313,13 +355,53 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
+    SECRET_SCANNING_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed"),
+    SECRET_SCANNING_CLONE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `git clone` invocation before its process group is killed"),
+    SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(2048)
+      .describe(
+        "Soft memory ceiling (GOMEMLIMIT) handed to the Go scanner process. The runtime GCs harder as it approaches the limit rather than growing. Set to 0 to disable."
+      ),
+    SECRET_SCANNING_CPU_THREADS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(1)
+      .describe(
+        "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
+      ),
+    SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5120)
+      .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
+    SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(60 * 60 * 1000)
+      .describe(
+        "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined."
+      ),
     // LICENSE
+    // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
-    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
-    LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
 
     // GENERIC
@@ -386,6 +468,7 @@ const envSchema = z
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -400,6 +483,11 @@ const envSchema = z
 
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
+
+    // Forces outbound requests made through the SSRF-safe HTTP client to use
+    // direct egress (axios `proxy: false`), so the resolved-and-pinned target
+    // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
@@ -512,6 +600,33 @@ const envSchema = z
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
+  .superRefine((data, ctx) => {
+    (
+      [
+        ["DB_POOL_MIN", "DB_POOL_MAX"],
+        ["DB_REPLICA_POOL_MIN", "DB_REPLICA_POOL_MAX"],
+        ["AUDIT_LOGS_DB_POOL_MIN", "AUDIT_LOGS_DB_POOL_MAX"]
+      ] as const
+    ).forEach(([minKey, maxKey]) => {
+      if (data[minKey] > data[maxKey]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [minKey],
+          message: `${minKey} (${data[minKey]}) must be less than or equal to ${maxKey} (${data[maxKey]}).`
+        });
+      }
+    });
+
+    const scanBudgetMs =
+      data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS;
+    if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS <= scanBudgetMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"],
+        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS plus ${SECRET_SCANNING_SCAN_OVERHEAD_MS}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+      });
+    }
+  })
   .transform((data) => ({
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
@@ -520,9 +635,8 @@ const envSchema = z
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
-    // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY),
-    isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
+    // Only cloud holds the License Server service key; self-hosted authenticates with a license key.
+    isCloud: Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),
@@ -685,7 +799,9 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     readReplicas: parsedEnv.data.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
-    }))
+    })),
+    pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
+    replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
   };
 };
 

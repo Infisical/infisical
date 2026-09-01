@@ -11,6 +11,7 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
@@ -288,6 +289,9 @@ describe("CertificateProfileService", () => {
       certificateBodyDAL: mockCertificateBodyDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
+      certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
+      certificateAuthorityCertDAL: { find: vi.fn() } as never,
+      hsmConnectorService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
@@ -716,14 +720,14 @@ describe("CertificateProfileService", () => {
         profileId: "profile-123",
         offset: 10,
         limit: 5,
-        status: "active",
+        status: CertStatus.ACTIVE,
         search: "example"
       });
 
       expect(mockCertificateProfileDAL.getCertificatesByProfile).toHaveBeenCalledWith("profile-123", {
         offset: 10,
         limit: 5,
-        status: "active",
+        status: CertStatus.ACTIVE,
         search: "example"
       });
     });
@@ -924,14 +928,14 @@ describe("CertificateProfileService", () => {
         const result = await service.getProfileCertificates({
           ...mockActor,
           profileId: "profile-123",
-          status: "active"
+          status: CertStatus.ACTIVE
         });
 
         expect(result).toEqual(activeCerts);
         expect(mockCertificateProfileDAL.getCertificatesByProfile).toHaveBeenCalledWith("profile-123", {
           offset: 0,
           limit: 20,
-          status: "active",
+          status: CertStatus.ACTIVE,
           search: undefined
         });
       });

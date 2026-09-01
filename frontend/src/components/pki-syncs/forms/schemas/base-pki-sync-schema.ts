@@ -1,5 +1,14 @@
 import { AnyZodObject, z } from "zod";
 
+export const HOST_COMMAND_MAX_LENGTH = 8192;
+
+export const HostCommandSchema = z
+  .string()
+  .trim()
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
+  .nullish()
+  .transform((command) => command || null);
+
 export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined>(
   additionalSyncOptions?: T
 ) => {

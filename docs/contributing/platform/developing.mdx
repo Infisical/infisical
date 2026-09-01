@@ -32,6 +32,31 @@ docker compose -f docker-compose.dev.yml up --build --force-recreate
 
 Once all the services have spun up, browse to http://localhost:8080.
 
+#### If the backend image fails to build
+
+The backend dev image is built on top of a prebuilt toolchain image (SoftHSM2, Oracle Instant
+Client, and two OpenSSL builds) that we publish to GHCR, so you don't have to spend ~15 minutes
+compiling it. The build pulls `ghcr.io/infisical/backend-fips-toolchain:main` by default.
+
+If that pull fails (GHCR outage, no network, or you're working on the toolchain itself), build
+it locally once and point the backend build at it:
+
+```bash
+# Build the toolchain from source. Takes ~15 minutes.
+docker build -f backend/Dockerfile.fips-toolchain -t fips-toolchain:local backend
+
+# Point the backend build at your local copy by adding this to your .env
+echo 'TOOLCHAIN_IMAGE=fips-toolchain:local' >> .env
+```
+
+Then start the stack as usual. Putting it in `.env` matters: the start command above uses
+`--build`, so a one-off `TOOLCHAIN_IMAGE=... docker compose build` would be ignored on the next
+`up --build` and you'd be back to a failing GHCR pull.
+
+You only have to redo the first step if `backend/Dockerfile.fips-toolchain` changes. If you
+already have a working backend image and don't pass `--build`, a GHCR outage won't affect you
+at all.
+
 #### Local SMTP with Mailhog
 
 The dev Docker Compose includes [Mailhog](https://github.com/mailhog/MailHog), a local SMTP server that captures all outgoing emails. This is useful for testing email-based flows like user invitations, password resets, and other notifications without sending real emails.
@@ -50,7 +75,7 @@ The `.env.dev.example` file already includes the SMTP variables pre-configured f
 
 To view captured emails, open the Mailhog web UI at [http://localhost:8025](http://localhost:8025).
 
-#### Queue Management with BullBoard
+#### Queue management with BullBoard
 
 The dev Docker Compose includes [BullBoard](https://github.com/felixmosh/bull-board), a web UI for monitoring and managing BullMQ job queues. This is useful for debugging async job processing, viewing queue status, and inspecting failed jobs during development.
 
@@ -73,7 +98,7 @@ docker compose -f docker-compose.dev.yml down
 
 We use [Mintlify](https://mintlify.com/) for our docs.
 
-#### Install Mint CLI.
+#### Install mint CLI.
 
 ```bash
 npm i -g mint

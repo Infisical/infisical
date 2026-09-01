@@ -52,7 +52,7 @@ RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/dist ./
 
-USER non-root-user
+USER 1001
 
 ##
 ## BACKEND
@@ -171,10 +171,34 @@ COPY --from=backend-prod-deps /app/node_modules ./node_modules
 
 RUN mkdir frontend-build
 
+# OpenSSL 3.5.6 supplies the PQC (ML-DSA / SLH-DSA) algorithms the certificate
+# stack needs. It is built here rather than in the production stage so the
+# toolchain it requires does not ship in the runtime image.
+FROM base AS openssl-pqc-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    perl \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp/openssl-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-build
+
 # Production stage
 FROM base AS production
 
-# Runtime dependencies + build tools needed for PQC OpenSSL build
+# Runtime dependencies only. The PQC OpenSSL toolchain lives in
+# openssl-pqc-builder; nothing here compiles.
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     bash \
@@ -182,10 +206,6 @@ RUN apt-get update && apt-get install -y \
     git \
     unixodbc \
     freetds-bin \
-    wget \
-    perl \
-    build-essential \
-    libssl-dev \
     openssh-client \
     libaio1t64 \
     smbclient \
@@ -196,12 +216,13 @@ RUN apt-get update && apt-get install -y \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u3 \
     libc-bin=2.41-12+deb13u3 \
-    libssl3t64=3.5.6-1~deb13u1 \
+    libssl3t64=3.5.7-1~deb13u2 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
+    libsqlite3-0=3.46.1-7+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
@@ -215,18 +236,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
-# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
-# Installed to /opt/openssl-pqc so it does not conflict with the system OpenSSL.
-WORKDIR /tmp/openssl-build
-RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
-    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
-    && tar -xf openssl-3.5.6.tar.gz \
-    && cd openssl-3.5.6 \
-    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
-    && make -j"$(nproc)" \
-    && make install_sw \
-    && cd / \
-    && rm -rf /tmp/openssl-build
+# PQC OpenSSL, built in openssl-pqc-builder. Consumed as a self-contained
+# prefix by lib/crypto/pqc (bin/openssl plus lib64:lib on the load path).
+COPY --from=openssl-pqc-builder /opt/openssl-pqc /opt/openssl-pqc
 
 WORKDIR /
 
@@ -298,6 +310,7 @@ ENV TELEMETRY_ENABLED true
 EXPOSE 8080
 EXPOSE 443
 
-USER non-root-user
+# Use numeric UID so Kubernetes can verify the image runs as non-root
+USER 1001
 
 CMD ["./standalone-entrypoint.sh"]

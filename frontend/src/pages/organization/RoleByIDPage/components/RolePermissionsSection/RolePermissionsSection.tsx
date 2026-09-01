@@ -14,7 +14,10 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
-import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  PermissionScope
+} from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 
 import {
   formRolePermission2API,
@@ -156,12 +159,18 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   <GeneralPermissionPolicies
                     key={`org-role-${roleId}-permission-${subject}`}
                     subject={subject as OrgPermissionSubjects}
+                    subjectScope={PermissionScope.Organization}
                     title={config.title}
                     description={config.description}
                     actions={config.actions}
                     isDisabled={!isCustomRole}
                     isConditional={false}
                     isOpen={openPolicies.includes(subject)}
+                    onPolicyAdded={() =>
+                      setOpenPolicies((prev) =>
+                        prev.includes(subject) ? prev : [...prev, subject]
+                      )
+                    }
                     onRemoveLastRule={
                       isCustomRole
                         ? () => {

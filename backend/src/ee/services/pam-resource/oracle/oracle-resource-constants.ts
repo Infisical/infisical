@@ -1,1 +1,0 @@
-export const ORACLE_TLS_PROBE_TIMEOUT_MS = 10 * 1000;

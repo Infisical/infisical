@@ -39,7 +39,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentById({
         actorId: req.permission.id,
@@ -90,7 +90,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentBySlug({
         actorId: req.permission.id,
@@ -136,7 +136,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(ENVIRONMENTS.CREATE.projectId)
       }),
       body: z.object({
-        name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
+        name: z.string().trim().min(1).max(255).describe(ENVIRONMENTS.CREATE.name),
         position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
         slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug)
       }),
@@ -212,7 +212,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         slug: slugSchema({ max: 64 }).optional().describe(ENVIRONMENTS.UPDATE.slug),
-        name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
+        name: z.string().trim().min(1).max(255).optional().describe(ENVIRONMENTS.UPDATE.name),
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),
       response: {

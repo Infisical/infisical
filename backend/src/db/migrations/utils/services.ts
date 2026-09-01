@@ -13,13 +13,16 @@ import { additionalPrivilegeDALFactory } from "@app/services/additional-privileg
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -29,6 +32,7 @@ type TDependencies = {
   envConfig: TMigrationEnvConfig;
   db: Knex;
   keyStore: TKeyStoreFactory;
+  skipHsmLicenseCheck?: boolean;
 };
 
 type THsmServiceDependencies = {
@@ -49,7 +53,12 @@ export const getMigrationHsmService = async ({ envConfig }: THsmServiceDependenc
   return { hsmService };
 };
 
-export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }: TDependencies) => {
+export const getMigrationEncryptionServices = async ({
+  envConfig,
+  db,
+  keyStore,
+  skipHsmLicenseCheck = true
+}: TDependencies) => {
   // ----- DAL dependencies -----
   const orgDAL = orgDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -60,11 +69,14 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const identityDAL = identityDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
+  const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(db);
+  const kmsKekHistoryDAL = kmsKekHistoryDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const groupDAL = groupDALFactory(db);
+  const secretFolderDAL = secretFolderDALFactory(db);
 
   // ----- Service dependencies -----
   const permissionService = permissionServiceFactory({
@@ -76,7 +88,8 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     userDAL,
     identityDAL,
     additionalPrivilegeDAL,
-    groupDAL
+    groupDAL,
+    secretFolderDAL
   });
 
   const licenseService = licenseServiceFactory({
@@ -95,7 +108,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    licenseService
+    licenseService: skipHsmLicenseCheck ? undefined : licenseService
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key
@@ -117,16 +130,19 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
+    kmsLegacyEncryptionKeyDAL,
+    kmsKekHistoryDAL,
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore,
     envConfig
   });
 
-  await kmsService.startService(hsmStatus);
+  await kmsService.startService(hsmStatus, { skipRotationState: true });
 
   return { kmsService, hsmService };
 };

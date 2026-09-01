@@ -6,5 +6,7 @@ export const CHEF_PKI_SYNC_LIST_OPTION = {
   connection: AppConnection.Chef,
   destination: PkiSync.Chef,
   canImportCertificates: false,
-  canRemoveCertificates: true
+  canRemoveCertificates: true,
+  canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false
 } as const;

@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";
@@ -81,36 +79,96 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
 
 TableRow.displayName = "TableRow";
 
+type TableSortDirection = "ascending" | "descending" | "none";
+type TableColumnVariant = "default" | "action";
+
+const nextTableSortDirection: Record<TableSortDirection, TableSortDirection> = {
+  none: "ascending",
+  ascending: "descending",
+  descending: "none"
+};
+
 function TableHead({
   className,
+  children,
   isTruncatable,
+  variant = "default",
+  "aria-sort": ariaSort,
+  onSortChange,
+  sortDirection = "none",
   ...props
-}: React.ComponentProps<"th"> & { isTruncatable?: boolean }) {
+}: React.ComponentProps<"th"> & {
+  isTruncatable?: boolean;
+  onSortChange?: (direction: TableSortDirection) => void;
+  sortDirection?: TableSortDirection;
+  variant?: TableColumnVariant;
+}) {
   return (
     <th
       data-slot="table-head"
+      data-variant={variant}
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
-        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg]:size-4",
+        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
+        onSortChange && "p-0",
         isTruncatable && "truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
+      aria-sort={onSortChange ? sortDirection : ariaSort}
       {...props}
-    />
+    >
+      {onSortChange ? (
+        <button
+          type="button"
+          data-slot="table-head-sort-trigger"
+          className="flex h-[30px] w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-4"
+          onClick={() => onSortChange(nextTableSortDirection[sortDirection])}
+        >
+          {children}
+        </button>
+      ) : (
+        children
+      )}
+    </th>
+  );
+}
+
+function TableHeadLabel({
+  className,
+  children,
+  trailing,
+  ...props
+}: React.ComponentProps<"div"> & { trailing?: React.ReactNode }) {
+  return (
+    <div
+      data-slot="table-head-label"
+      className={cn("flex min-w-0 items-center gap-1", className)}
+      {...props}
+    >
+      <span className="min-w-0 truncate">{children}</span>
+      {trailing}
+    </div>
   );
 }
 
 function TableCell({
   className,
   isTruncatable,
+  variant = "default",
   ...props
-}: React.ComponentProps<"td"> & { isTruncatable?: boolean }) {
+}: React.ComponentProps<"td"> & {
+  isTruncatable?: boolean;
+  variant?: TableColumnVariant;
+}) {
   return (
     <td
       data-slot="table-cell"
+      data-variant={variant}
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
@@ -131,4 +189,16 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   );
 }
 
-export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow };
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  type TableColumnVariant,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow,
+  type TableSortDirection
+};

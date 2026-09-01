@@ -122,7 +122,3 @@ const generateAcmPassphraseInternal = customAlphabet(
   32
 );
 export const generateAcmPassphrase = (): string => generateAcmPassphraseInternal();
-
-// Strip hyphens from the certificate UUID to produce a 32-char token that
-// satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
-export const buildIdempotencyToken = (certificateId: string) => certificateId.split("-").join("").slice(0, 32);

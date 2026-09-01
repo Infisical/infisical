@@ -16,16 +16,16 @@ graph TD
     A2[External Private CA<br>e.g. AWS Private CA, Venafi] --> Infisical
 ```
 
-## Types of External CAs
+## Types of external CAs
 
 | Type | Examples | Use Case |
 |------|----------|----------|
 | **External Public CAs** | Let's Encrypt, DigiCert, Sectigo | Public-facing services with browser trust |
-| **External Private CAs** | AWS Private CA, Venafi, Azure ADCS | Internal services, cloud-hosted or on-prem |
+| **External Private CAs** | AWS Private CA, Venafi, Microsoft ADCS | Internal services, cloud-hosted or on-prem |
 
 Infisical can act as an ACME client, allowing integration with any [ACME-compatible CA](/documentation/platform/pki/ca/acme-ca).
 
-## Supported External CAs
+## Supported external CAs
 
 ### Public CAs
 
@@ -56,8 +56,11 @@ Infisical can act as an ACME client, allowing integration with any [ACME-compati
   <Card title="AWS Private CA" icon="aws" href="/documentation/platform/pki/ca/aws-pca">
     Cloud-native private certificate management via AWS PCA.
   </Card>
-  <Card title="Azure ADCS" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
-    Microsoft Active Directory Certificate Services integration.
+  <Card title="Microsoft ADCS" icon="microsoft" href="/documentation/platform/pki/ca/adcs">
+    Microsoft AD CS over MS-WCCE through an Infisical Gateway.
+  </Card>
+  <Card title="Azure ADCS (Web Enrollment)" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
+    Microsoft AD CS over HTTPS web enrollment.
   </Card>
   <Card title="Venafi TLS Protect Cloud" icon="cloud" href="/documentation/platform/pki/ca/venafi">
     Venafi's cloud-based certificate management platform.
@@ -79,7 +82,7 @@ Infisical can act as an ACME client, allowing integration with any [ACME-compati
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Internal CA" icon="building-columns" href="/documentation/platform/pki/ca/private-ca">

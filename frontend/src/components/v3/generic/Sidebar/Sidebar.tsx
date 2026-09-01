@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
@@ -38,7 +36,7 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope = "org" | "sub-org" | "project" | "admin";
+type SidebarScope = "org" | "sub-org" | "project" | "pam" | "admin";
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
 
@@ -198,14 +196,15 @@ function Sidebar({
               data-mobile="true"
               className={cn(
                 "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
-                scope === "project" && "from-project/5",
+                (scope === "project" || scope === "pam") && "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
               )}
               style={
                 {
-                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE
+                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                  ...(scope === "pam" ? { "--color-project": "#ed3453" } : {})
                 } as React.CSSProperties
               }
               side={side}
@@ -233,12 +232,17 @@ function Sidebar({
             className={cn(
               "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              scope === "project" && "from-project/5",
+              (scope === "project" || scope === "pam") && "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",
               className
             )}
+            style={
+              scope === "pam"
+                ? ({ "--color-project": "#ed3453" } as React.CSSProperties)
+                : undefined
+            }
             {...props}
           >
             {children}
@@ -376,7 +380,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
       {...props}
@@ -643,6 +647,7 @@ const sidebarMenuButtonVariants = cva(
         org: "data-active:border-l-org data-active:[&_svg]:text-org",
         "sub-org": "data-active:border-l-sub-org data-active:[&_svg]:text-sub-org",
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
+        pam: "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },
@@ -656,20 +661,23 @@ const sidebarMenuButtonVariants = cva(
 
 function SidebarMenuButton({
   asChild = false,
+  closeOnMobile = false,
   isActive = false,
   variant = "default",
   size = "default",
   scope: scopeProp,
   tooltip,
   className,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean;
+  closeOnMobile?: boolean;
   isActive?: boolean;
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const contextScope = useSidebarScope();
   const scope = scopeProp ?? contextScope;
 
@@ -680,6 +688,12 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive || undefined}
       className={cn(sidebarMenuButtonVariants({ variant, size, scope }), className)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (closeOnMobile && isMobile) {
+          setOpenMobile(false);
+        }
+      }}
       {...props}
     />
   );

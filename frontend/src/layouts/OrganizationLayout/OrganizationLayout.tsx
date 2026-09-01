@@ -35,7 +35,7 @@ export const OrganizationLayout = () => {
     <>
       <Banner />
       <SidebarProvider
-        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
         <Navbar />
         <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -48,8 +48,8 @@ export const OrganizationLayout = () => {
             {!isLoading && !isInsideProject && <NetworkHealthBanner />}
             <div
               className={twMerge(
-                "flex-1 overflow-x-hidden bg-bunker-800 dark:scheme-dark",
-                isInsideProject ? "overflow-y-hidden" : "overflow-y-auto px-12 pt-10 pb-4"
+                "flex-1 overflow-x-hidden dark:scheme-dark",
+                isInsideProject ? "overflow-y-hidden" : "overflow-y-auto px-6 py-10 md:px-12"
               )}
             >
               <Outlet />

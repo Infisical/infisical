@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { validatePasswordResetAuthorization } from "@app/services/auth/auth-fns";
@@ -17,7 +18,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "resetPassword",
       body: z.object({
-        newPassword: z.string().trim()
+        newPassword: PasswordPolicySchema
       })
     },
     handler: async (req) => {
@@ -39,7 +40,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       operationId: "resetUserPassword",
       body: z.object({
         oldPassword: z.string().trim(),
-        newPassword: z.string().trim()
+        newPassword: PasswordPolicySchema
       })
     },
     config: {

@@ -15,11 +15,51 @@ import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
-  CertSignatureAlgorithm
+  CertSignatureAlgorithm,
+  CertSubjectAlternativeNameType,
+  domainComponentsSchema,
+  pkiDescriptionSchema,
+  subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SubjectAltNameDefaultsSchema = z
+  .array(
+    z.object({
+      type: z.nativeEnum(CertSubjectAlternativeNameType),
+      value: z.string().trim().min(1)
+    })
+  )
+  .optional();
+
+// Subject defaults are stored as jsonb on the profile but are copied verbatim onto the certificate
+// request at issuance time, where each attribute lands in a varchar(255) column — so they carry the
+// same bound as an explicitly supplied subject attribute.
+const CertificateProfileDefaultsSchema = z
+  .object({
+    ttlDays: z.number().int().positive().optional(),
+    commonName: subjectAttributeSchema.optional(),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+    signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+    keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+    extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    basicConstraints: z
+      .object({
+        isCA: z.boolean(),
+        pathLength: z.number().int().min(0).optional()
+      })
+      .optional(),
+    organization: subjectAttributeSchema.optional(),
+    organizationalUnit: subjectAttributeSchema.optional(),
+    country: subjectAttributeSchema.optional(),
+    state: subjectAttributeSchema.optional(),
+    locality: subjectAttributeSchema.optional(),
+    subjectAltNames: SubjectAltNameDefaultsSchema,
+    domainComponents: domainComponentsSchema.optional()
+  })
+  .nullish();
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -39,7 +79,9 @@ const CertificateProfileDefaultsResponseSchema = z
     organizationalUnit: z.string().optional(),
     country: z.string().optional(),
     state: z.string().optional(),
-    locality: z.string().optional()
+    locality: z.string().optional(),
+    subjectAltNames: SubjectAltNameDefaultsSchema,
+    domainComponents: z.array(z.string()).optional()
   })
   .nullish();
 
@@ -67,7 +109,7 @@ export const registerCertificateProfilesRouter = async (
             .min(1)
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
-          description: z.string().max(1000).optional(),
+          description: pkiDescriptionSchema.optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
           estConfig: z
@@ -104,27 +146,7 @@ export const registerCertificateProfilesRouter = async (
             .optional()
             .describe(openApiHidden()),
           externalConfigs: ExternalConfigUnionSchema,
-          defaults: z
-            .object({
-              ttlDays: z.number().int().positive().optional(),
-              commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional(),
-              organization: z.string().optional(),
-              organizationalUnit: z.string().optional(),
-              country: z.string().optional(),
-              state: z.string().optional(),
-              locality: z.string().optional()
-            })
-            .nullish()
+          defaults: CertificateProfileDefaultsSchema
         })
         .refine(
           (data) => {
@@ -236,7 +258,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.createProfile({
         actor: req.permission.type,
@@ -268,6 +290,7 @@ export const registerCertificateProfilesRouter = async (
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId,
           issuerType: certificateProfile.issuerType
         }
       });
@@ -305,7 +328,8 @@ export const registerCertificateProfilesRouter = async (
                 status: z.string(),
                 name: z.string(),
                 isExternal: z.boolean().optional(),
-                externalType: z.string().nullable().optional()
+                externalType: z.string().nullable().optional(),
+                keyAlgorithm: z.string().nullable().optional()
               })
               .optional(),
             metrics: z
@@ -362,7 +386,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { profiles, totalCount } = await server.services.certificateProfile.listProfiles({
         actor: req.permission.type,
@@ -414,7 +438,8 @@ export const registerCertificateProfilesRouter = async (
                 status: z.string(),
                 name: z.string(),
                 isExternal: z.boolean().optional(),
-                externalType: z.string().nullable().optional()
+                externalType: z.string().nullable().optional(),
+                keyAlgorithm: z.string().nullable().optional()
               })
               .optional(),
             certificatePolicy: z
@@ -466,7 +491,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileByIdWithConfigs({
         actor: req.permission.type,
@@ -514,7 +539,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileBySlug({
         actor: req.permission.type,
@@ -550,7 +575,7 @@ export const registerCertificateProfilesRouter = async (
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
             .optional(),
-          description: z.string().max(1000).nullable().optional(),
+          description: pkiDescriptionSchema.nullable().optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).optional(),
           estConfig: z
@@ -587,27 +612,7 @@ export const registerCertificateProfilesRouter = async (
             .optional()
             .describe(openApiHidden()),
           externalConfigs: ExternalConfigUnionSchema,
-          defaults: z
-            .object({
-              ttlDays: z.number().int().positive().optional(),
-              commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional(),
-              organization: z.string().optional(),
-              organizationalUnit: z.string().optional(),
-              country: z.string().optional(),
-              state: z.string().optional(),
-              locality: z.string().optional()
-            })
-            .nullish()
+          defaults: CertificateProfileDefaultsSchema
         })
         .refine(
           (data) => {
@@ -659,7 +664,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.updateProfile({
         actor: req.permission.type,
@@ -679,6 +684,17 @@ export const registerCertificateProfilesRouter = async (
             certificateProfileId: certificateProfile.id,
             name: certificateProfile.slug
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateProfileUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId,
+          profileId: certificateProfile.id
         }
       });
 
@@ -708,7 +724,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.deleteProfile({
         actor: req.permission.type,
@@ -735,7 +751,8 @@ export const registerCertificateProfilesRouter = async (
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId
         }
       });
 
@@ -779,7 +796,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificates = await server.services.certificateProfile.getProfileCertificates({
         actor: req.permission.type,
@@ -817,7 +834,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const response = await server.services.certificateProfile.getLatestActiveCertificateBundle({
         actor: req.permission.type,

@@ -71,7 +71,7 @@ export const ExternalCaSection = () => {
   };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
         <CardTitle>
           External Certificate Authorities
@@ -93,7 +93,7 @@ export const ExternalCaSection = () => {
                 isDisabled={!isAllowed}
               >
                 <PlusIcon />
-                Create CA
+                Create External CA
               </Button>
             )}
           </ProjectPermissionCan>

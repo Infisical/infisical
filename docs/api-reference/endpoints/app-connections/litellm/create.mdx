@@ -1,0 +1,62 @@
+---
+title: "Create"
+openapi: "POST /api/v1/app-connections/litellm"
+---
+
+<Note>
+    Check out the configuration docs for [LiteLLM Connections](/integrations/app-connections/litellm) to learn how to obtain the required credentials.
+</Note>
+
+Creates a LiteLLM app connection using a management-capable API key. The connection can then be used for [LiteLLM API Key secret rotations](/documentation/platform/secret-rotation/litellm-api-key).
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the connection. |
+| `method` | string | Yes | Must be `"api-key"`. |
+| `projectId` | string (UUID) | Yes | The project ID to attach the connection to. |
+| `credentials.apiKey` | string | Yes | A management-capable LiteLLM API key (the proxy master key or an admin/management key). |
+| `credentials.instanceUrl` | string | Yes | The base URL of your LiteLLM instance (e.g. `https://litellm.example.com`). |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/app-connections/litellm \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-litellm-connection",
+    "method": "api-key",
+    "projectId": "<project-id>",
+    "credentials": {
+      "apiKey": "<YOUR-LITELLM-MANAGEMENT-API-KEY>",
+      "instanceUrl": "https://litellm.example.com"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "appConnection": {
+    "id": "<connection-id>",
+    "name": "my-litellm-connection",
+    "projectId": "<project-id>",
+    "description": null,
+    "version": 1,
+    "orgId": "<org-id>",
+    "createdAt": "<ISO8601>",
+    "updatedAt": "<ISO8601>",
+    "isPlatformManagedCredentials": false,
+    "credentialsHash": "...",
+    "app": "litellm",
+    "method": "api-key",
+    "credentials": {
+      "instanceUrl": "https://litellm.example.com"
+    }
+  }
+}
+```

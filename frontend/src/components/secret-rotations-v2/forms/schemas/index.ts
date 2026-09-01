@@ -15,15 +15,22 @@ import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/typ
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
+import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token-rotation-schema";
+import { CloudflareR2AccessKeyRotationSchema } from "./cloudflare-r2-access-key-rotation-schema";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key-rotation-schema";
+import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
+import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
+import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
+import { OpenAIServiceAccountRotationSchema } from "./openai-service-account-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
+import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
@@ -48,11 +55,18 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema,
+        LiteLLMApiKeyRotationSchema,
+        OpenAIServiceAccountRotationSchema,
         HpIloRotationSchema,
         SupabaseApiKeyRotationSchema,
         SalesforceOauthCredentialsRotationSchema,
         DatadogApplicationKeySecretRotationSchema,
-        ConvexAccessKeyRotationSchema
+        DatadogApiKeyRotationSchema,
+        ConvexAccessKeyRotationSchema,
+        FireworksApiKeyRotationSchema,
+        SnowflakeUserKeyPairRotationSchema,
+        CloudflareApiTokenRotationSchema,
+        CloudflareR2AccessKeyRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

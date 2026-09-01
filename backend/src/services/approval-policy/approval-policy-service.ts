@@ -76,7 +76,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import { createApprovalRequestWithSteps, notifyApproversForStep } from "./approval-request-fns";
+import { createApprovalRequestWithSteps, notifyStepApprovers } from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -130,7 +130,12 @@ export const approvalPolicyServiceFactory = ({
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
-    notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+    notifyStepApprovers(step, request, {
+      userGroupMembershipDAL,
+      notificationService,
+      userDAL,
+      smtpService
+    });
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;
@@ -144,6 +149,20 @@ export const approvalPolicyServiceFactory = ({
         return cached;
       }
     };
+  };
+
+  // A request attributes its requester to exactly one column: a user or a machine identity.
+  // Actor ids are unique across orgs but an actor can hold tokens for several, and a requester
+  // match skips the permission check, so the token's org has to match too.
+  const $isRequester = (
+    request: { organizationId: string; requesterId?: string | null; machineIdentityId?: string | null },
+    actor: OrgServiceActor
+  ) => {
+    if (request.organizationId !== actor.orgId) return false;
+
+    return actor.type === ActorType.IDENTITY
+      ? request.machineIdentityId === actor.id
+      : request.requesterId === actor.id;
   };
 
   const $decorateRequest = async <
@@ -1017,7 +1036,7 @@ export const approvalPolicyServiceFactory = ({
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
-    const isRequester = request.requesterId === actor.id;
+    const isRequester = $isRequester(request, actor);
 
     // Check if user is an eligible approver for any step
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
@@ -1165,6 +1184,10 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
     }
 
+    if (policyType === ApprovalPolicyType.CertCodeSigning && request.requesterId === actor.id) {
+      throw new ForbiddenRequestError({ message: "You cannot approve your own signing request" });
+    }
+
     const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
     if (hasApproved) {
       throw new BadRequestError({ message: "You have already approved this request" });
@@ -1216,9 +1239,7 @@ export const approvalPolicyServiceFactory = ({
             tx
           );
 
-          if (nextStep.notifyApprovers) {
-            nextStepToNotifyInner = nextStep;
-          }
+          nextStepToNotifyInner = nextStep;
         } else {
           // All steps completed
           const completedReq = await approvalRequestDAL.updateById(
@@ -1396,7 +1417,7 @@ export const approvalPolicyServiceFactory = ({
       const userGroupIds = await ctx.getUserGroupIds();
 
       return requests.filter((request) => {
-        if (request.requesterId === actor.id) return true;
+        if ($isRequester(request, actor)) return true;
         return request.steps.some((step) =>
           step.approvers.some(
             (approver) =>
@@ -1450,7 +1471,7 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Request is not pending" });
     }
 
-    if (request.requesterId !== actor.id) {
+    if (!$isRequester(request, actor)) {
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
     }
 

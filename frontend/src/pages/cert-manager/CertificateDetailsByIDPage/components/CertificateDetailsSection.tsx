@@ -26,18 +26,18 @@ type Props = {
 // Preserve list for key usage terms that need special formatting
 // These terms have acronyms or specific capitalization that shouldn't be converted from camelCase
 const KEY_USAGE_DISPLAY_MAP: Record<string, string> = {
-  cRLSign: "CRL Sign"
+  cRLSign: "CRL Sign",
+  crl_sign: "CRL Sign"
 };
 
 export const CertificateDetailsSection = ({ certificateId }: Props) => {
   const { data, isLoading } = useGetCertificateById(certificateId);
 
-  // Format key usage names, checking preserve list first
   const formatKeyUsage = (usage: string): string => {
     if (KEY_USAGE_DISPLAY_MAP[usage]) {
       return KEY_USAGE_DISPLAY_MAP[usage];
     }
-    return toTitleCase(camelCaseToSpaces(usage));
+    return toTitleCase(camelCaseToSpaces(usage).replace(/_/g, " "));
   };
 
   if (isLoading) {
@@ -122,6 +122,22 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                 </DetailGroup>
               </div>
             )}
+            <Detail>
+              <DetailLabel>Domain Components</DetailLabel>
+              <DetailValue>
+                {certificate.subject?.domainComponents?.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {certificate.subject.domainComponents.map((dc) => (
+                      <Badge key={dc} variant="neutral">
+                        {dc}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
+              </DetailValue>
+            </Detail>
             <Detail>
               <DetailLabel>Subject Alternative Names</DetailLabel>
               <DetailValue>

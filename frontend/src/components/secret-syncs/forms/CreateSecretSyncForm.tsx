@@ -214,6 +214,7 @@ export const CreateSecretSyncForm = ({
   const { hasDuplicate } = useDuplicateDestinationCheck({
     destination,
     projectId: currentProject?.id || "",
+    connectionId: watch("connection")?.id,
     enabled: true,
     destinationConfig: watch("destinationConfig")
   });

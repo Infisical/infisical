@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "lucide-react";
+import { ImportIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -151,7 +151,7 @@ export const CertificatesSection = ({
         {applicationId && canImportIntoApplication && (
           <CardAction>
             <Button variant="outline" onClick={() => handlePopUpOpen("certificateImport")}>
-              <ArrowRightIcon className="mr-1.5 size-4" />
+              <ImportIcon />
               Import
             </Button>
           </CardAction>
@@ -168,7 +168,7 @@ export const CertificatesSection = ({
                   onClick={() => handlePopUpOpen("certificateImport")}
                   disabled={!isAllowed}
                 >
-                  <ArrowRightIcon className="mr-1.5 size-4" />
+                  <ImportIcon />
                   Import
                 </Button>
               )}
@@ -201,7 +201,11 @@ export const CertificatesSection = ({
           onFormatSelected={handleCertificateExport}
         />
         <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRenewalModal
+          popUp={popUp}
+          applicationName={applicationName}
+          handlePopUpToggle={handlePopUpToggle}
+        />
         <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateManagePkiSyncsModal
           popUp={popUp.managePkiSyncs}

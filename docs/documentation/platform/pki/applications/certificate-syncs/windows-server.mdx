@@ -1,0 +1,309 @@
+---
+title: "Windows Server"
+sidebarTitle: "Windows Server"
+description: "Deploy certificates to Windows servers over WinRM."
+---
+
+import CommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/command-variables.mdx";
+import HealthCheckFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/health-check-flow.mdx";
+import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
+
+Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the Windows Server destination.
+</Info>
+
+## Prerequisites
+
+- A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-command) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
+- The connection user must be able to write to the destination directory
+
+<Note>
+  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with. HTTPS is also supported.
+</Note>
+
+## Create a Windows Server sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **Windows Server** option.
+
+        3. Configure the **Destination**:
+            - **Windows (WinRM) Connection**: The WinRM Connection used to reach the server.
+            - **Destination Directory**: The absolute Windows drive path where certificate files are written, for example `C:\certs`. It is created if it does not exist. The path cannot contain `..` segments or consecutive separators.
+
+        4. Configure the **Sync Options**:
+            - **Export Format**: Choose **PKCS#12** to write a single password-protected `.pfx` bundle, or **PEM** to write separate certificate, chain, and key files.
+            - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
+            - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file) and skip the separate chain file.
+            - **File Permissions**: Optionally grant Windows users or groups (for example a service account) Read, Modify, or Full Control on the delivered files, so you can restrict who reads the private key. Rules are added on top of the destination folder's inherited permissions.
+            - **PKCS#12 Password**: Required when the export format is PKCS#12. It protects the delivered bundle.
+            - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
+            - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
+            - **Enable Removal of Certificates**: Delete the delivered files from the server when a certificate is removed from the sync, revoked, or expired.
+            - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
+
+        5. Configure the **Commands**, or leave them empty:
+            - **Health check**: A PowerShell command run on the server before any certificate is written, to confirm the host is ready, for example `Get-Service W3SVC | Where-Object Status -ne 'Running' | ForEach-Object { throw "W3SVC is not running" }`. A failure stops the sync, so nothing is delivered. See [health check](#health-check).
+            - **Post-sync command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. See [post-sync command](#post-sync-command).
+
+        6. Configure the **Details**:
+            - **Name**: The name of your sync.
+            - **Description**: Optional description.
+
+        7. Select which certificates should be synced.
+
+        8. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create a **Windows Server Certificate Sync**, make an API request to the [Create Windows Server PKI Sync](/api-reference/endpoints/pki/syncs/windows-server/create) endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/windows-server \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-windows-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "isAutoSyncEnabled": true,
+            "certificateIds": ["550e8400-e29b-41d4-a716-446655440000"],
+            "credentials": {
+                "exportPassword": "a-strong-password"
+            },
+            "syncOptions": {
+                "exportFormat": "pkcs12",
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "{{commonName}}",
+                "healthCheckCommand": "if (-not (Test-Path {{certificateDirectory}})) { throw \"destination folder is missing\" }",
+                "postSyncCommand": "Restart-Service -Name W3SVC"
+            },
+            "destinationConfig": {
+                "destinationPath": "C:\\certs"
+            }
+        }'
+        ```
+    </Tab>
+</Tabs>
+
+## Export formats
+
+The file extension is set by the export format, not by the name schema. The name schema only provides the base file name.
+
+**PKCS#12** writes a single password-protected `.pfx` bundle that contains the certificate, chain, and private key.
+
+**PEM** writes the certificate, chain, and private key (when included) as separate files. The certificate and chain files use the extension you select, either `.pem` (default) or `.crt`.
+
+For a certificate whose common name is `app.example.com`, synced to `C:\certs` with the default `{{commonName}}` name schema, the delivered files are:
+
+```text
+PKCS#12
+  C:\certs\app.example.com.pfx
+
+PEM (.pem extension)
+  C:\certs\app.example.com.pem        certificate
+  C:\certs\app.example.com.chain.pem  chain
+  C:\certs\app.example.com.key        private key (when included)
+```
+
+## How it works
+
+When syncing certificates, Infisical asks the Gateway to open a WinRM session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically so a reader never sees a partially written certificate or key.
+
+## Removing certificates
+
+When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
+
+## Commands
+
+A sync can run two optional commands as PowerShell on the target server:
+
+- A **health check** runs before any certificate is written and gates the delivery, for example `if ((Get-Service W3SVC).Status -ne "Running") { throw "W3SVC is not running" }`.
+- A **post-sync command** runs after the delivery has finished, so the service that uses the certificate picks up the new file, for example `Restart-Service -Name W3SVC`.
+
+Set each on the sync's **Commands** step. Leaving a field empty means nothing runs, so neither has a separate toggle. Both accept a whole script, so several steps can run in one go: put each on its own line. Both run with `$ErrorActionPreference` set to `Stop`, so a failing cmdlet is enough to fail the command.
+
+<Note>
+  Your Gateway runs both commands, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
+
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. A command longer than 2048 characters needs **v0.43.124 or later**, because earlier Gateways cap it at 2048 and reject the sync even though the form accepted the command. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+</Note>
+
+### Available variables
+
+<CommandVariables />
+
+### Length limit
+
+Each command is limited to 8192 characters, counted as you write it, before variables are substituted. For anything longer, put the logic in a script file on the server and have the command call that script.
+
+Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or later. See the Gateway version note above.
+
+### Least privilege
+
+Both commands run as the account the WinRM Connection authenticates with, so constraining that account bounds what either can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
+
+Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right cannot be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical does not block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
+
+Only Application Admins can set either command, so treat that role as access to the target server.
+
+### Health check
+
+A sync can only tell you the host was not ready once it has already tried. If the destination folder was renamed or the service that owns the certificate is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+
+A health check moves that discovery earlier. The Gateway runs it on the target server before any certificate is written. If it fails, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs.
+
+The same check also runs on its own once a day, so a host that stops being ready between syncs is reported when it happens rather than at the next renewal.
+
+Write a check that answers a question rather than one that changes something. Testing that the folder exists or that a service is running is a good check. Creating the folder or starting the service is work for the post-sync command.
+
+<HealthCheckFlow />
+
+<Steps>
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
+  </Step>
+  <Step title="Write the check">
+    Use `throw "reason"` when you want to say why the host is not ready:
+
+    ```powershell
+    if (-not (Test-Path {{certificateDirectory}})) { throw "destination folder is missing" }
+    if ((Get-Service W3SVC).Status -ne "Running") { throw "W3SVC is not running" }
+    ```
+
+    To check every certificate the run would write instead of one, split `{{certificateFiles}}` on newlines and loop over it:
+
+    ```powershell
+    {{certificateFiles}} -split "`n" | ForEach-Object { if (-not (Test-Path (Split-Path $_ -Parent))) { throw "missing folder for $_" } }
+    ```
+  </Step>
+  <Step title="Test it, then save the sync">
+    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{pkcs12Password}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
+
+    Save the sync once the check passes. On a real run, a failing check fails the sync without delivering anything, and the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Post-sync command
+
+Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
+
+It runs once per sync run that delivers at least one file. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+
+<PostSyncCommandFlow />
+
+<Steps>
+  <Step title="Open the sync's Commands step">
+    Edit the sync and select **Commands**.
+  </Step>
+  <Step title="Write the command">
+    Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
+
+    ```powershell
+    Import-PfxCertificate -FilePath {{certificatePath}} -CertStoreLocation Cert:\LocalMachine\My -Password (ConvertTo-SecureString {{pkcs12Password}} -AsPlainText -Force)
+    ```
+  </Step>
+  <Step title="Save and trigger a sync">
+    Save the sync, then trigger it. If the command fails, the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Command FAQ
+
+<AccordionGroup>
+  <Accordion title="When exactly does each command run?">
+    The health check runs before anything else in a sync run, in its own WinRM session, before the one Infisical would deliver with. It also runs once a day on its own, whether or not a sync is due.
+
+    The post-sync command runs after every file in the run has been delivered and after any removals, so the server is in its final state before the service restarts. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
+  </Accordion>
+  <Accordion title="What happens when a command fails?">
+    Either way the sync is marked failed and the reason appears as the sync's last error. A silent failure is reported as a failure: the script stops on the first error, and a native command's own non-zero exit code is passed through. A command that fails is reported, not repeated.
+
+    What is left on the host differs. When the **health check** fails, every certificate in the run is reported as skipped with that same reason, so it is clear nothing reached the host, and files already on the server from an earlier run are left exactly as they are, because the sync never wrote or deleted anything. When the **post-sync command** fails, the delivered files stay in place, because they were written before the command ran.
+  </Accordion>
+  <Accordion title="How do I fail a command deliberately?">
+    Use `throw "reason"`, in either field. Avoid `exit`: PowerShell stops the script there before it can report its result, so the command is failed with a message saying the outcome could not be read rather than with your reason.
+  </Accordion>
+  <Accordion title="Can I run several commands, and what happens if one of them fails?">
+    Yes, in either field. Write one per line.
+
+    A failing **cmdlet** (`Copy-Item`, `Restart-Service`, and so on) stops the script and fails the sync wherever it appears, because the script runs with `$ErrorActionPreference` set to `Stop`. A failing **external executable** is different: only the last statement decides the outcome, so an earlier `.exe` that fails is not noticed. That is deliberate, because a non-zero exit is routine for some tools (`findstr` returns 1 when nothing matched, `robocopy` returns 1 when it copied files) and those should not fail a sync. Check the ones you care about yourself:
+
+    ```powershell
+    netsh.exe http show sslcert
+    if ($LASTEXITCODE -ne 0) { throw "netsh failed with $LASTEXITCODE" }
+    Restart-Service -Name W3SVC
+    ```
+  </Accordion>
+  <Accordion title="Is there a time limit?">
+    Yes, and it differs by command: 15 seconds for the health check, 30 seconds for the post-sync command. Both are enforced by the Gateway, and running out of time counts as a failure.
+
+    The check's limit is deliberately much shorter, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer, and give a post-sync command that needs longer than thirty seconds a script on the server that starts the work in the background.
+
+    On Windows the limit bounds how long Infisical waits, not the host. WinRM gives no way to cancel a command once it has started, so a command that hangs is reported as a timeout and the sync fails, but the command itself keeps running on the server until it finishes. This is the other reason to keep a check to a cheap question rather than real work.
+  </Accordion>
+  <Accordion title="Can a command run twice for the same certificate?">
+    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service restart is.
+  </Accordion>
+  <Accordion title="Does a failed health check get retried?">
+    Not within the run. A host that is not ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
+  </Accordion>
+  <Accordion title="Where do I see the result of the daily health check?">
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+  </Accordion>
+  <Accordion title="Can I use the health check to prepare the host instead of just checking it?">
+    You can, since it is a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
+  </Accordion>
+</AccordionGroup>
+
+## Security
+
+Delivery runs over the Gateway inside your network, so traffic never crosses the public internet, and the certificate stays encrypted in transit in both connection modes:
+
+<Note>
+  - **HTTP mode (default)** encrypts the certificate on the wire with NTLM message sealing and needs no server certificate to manage. This is the zero-configuration posture most Windows hosts already ship with.
+  - **HTTPS mode** adds TLS, so the Gateway also verifies the host's identity and encrypts the full session. Keep certificate verification enabled so it only connects to a host presenting a valid, trusted certificate.
+</Note>
+
+## Using synced certificates with IIS centralized certificate store
+
+IIS can serve a synced PKCS#12 certificate directly from a local folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
+
+<Note>
+  - **Export format**: PKCS#12. CCS reads `.pfx` files only.
+  - **Destination Directory**: the folder IIS CCS is configured to read.
+  - **Certificate Name Schema**: use `{{commonName}}` so each file is named `<hostname>.pfx`. CCS matches the incoming request hostname to the file name.
+  - **PKCS#12 Password**: must match the private key password configured on the IIS Centralized Certificate Store. IIS uses that one password to open every `.pfx` in the folder.
+</Note>
+
+These are IIS requirements, configured once on the Windows host (the CCS feature, its store folder, and the store account). Infisical only delivers the `.pfx`. IIS is responsible for loading and serving it.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I import certificates from a Windows server back into Infisical?">
+    No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Linux Server" icon="linux" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">
+    Deploy certificates to Linux servers over SSH.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

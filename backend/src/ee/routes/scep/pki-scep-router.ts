@@ -130,7 +130,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
         profileId: z.string().uuid()
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, res) => {
       const { profileId } = req.params;
 
@@ -172,7 +172,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
         profileId: z.string().uuid()
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, res) => {
       const { applicationId, profileId } = req.params;
 

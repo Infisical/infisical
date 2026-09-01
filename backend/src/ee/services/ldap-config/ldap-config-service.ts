@@ -12,7 +12,7 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -28,12 +28,15 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -81,6 +84,7 @@ type TLdapConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<
@@ -99,13 +103,15 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -118,11 +124,13 @@ export const ldapConfigServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   projectKeyDAL,
+  alertChannelRecipientDAL,
   projectDAL,
   projectBotDAL,
   userGroupMembershipDAL,
   userDAL,
   userAliasDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -130,7 +138,8 @@ export const ldapConfigServiceFactory = ({
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -495,10 +504,7 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
@@ -553,6 +559,7 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
+      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -600,7 +607,13 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.LDAP);
+          await throwOnPlanSeatLimitReached({
+            licenseService,
+            orgId,
+            identityLimit,
+            tx,
+            aliasType: UserAliasType.LDAP
+          });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
@@ -646,14 +659,15 @@ export const ldapConfigServiceFactory = ({
     let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
       if (groups && !isStaleAlias) {
-        const ldapGroupIdsToBePartOf = (
-          await ldapGroupMapDAL.find({
-            ldapConfigId,
-            $in: {
-              ldapGroupCN: groups.map((group) => group.cn)
-            }
-          })
-        ).map((groupMap) => groupMap.groupId);
+        const allLdapGroupMaps = await ldapGroupMapDAL.find({
+          ldapConfigId
+        });
+
+        // cn equality in LDAP is case-insensitive (caseIgnoreMatch).
+        const userLdapGroupCns = new Set(groups.map((group) => group.cn.toLowerCase()));
+        const ldapGroupIdsToBePartOf = allLdapGroupMaps
+          .filter((groupMap) => userLdapGroupCns.has(groupMap.ldapGroupCN.toLowerCase()))
+          .map((groupMap) => groupMap.groupId);
 
         const groupsToBePartOf = await groupDAL.find({
           orgId,
@@ -662,10 +676,6 @@ export const ldapConfigServiceFactory = ({
           }
         });
         const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
-
-        const allLdapGroupMaps = await ldapGroupMapDAL.find({
-          ldapConfigId
-        });
 
         const ldapGroupIdsCurrentlyPartOf = (
           await userGroupMembershipDAL.find({
@@ -691,6 +701,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
+              usageMeteringService,
               tx
             });
           }
@@ -713,6 +724,9 @@ export const ldapConfigServiceFactory = ({
               userGroupMembershipDAL,
               membershipGroupDAL,
               projectKeyDAL,
+              additionalPrivilegeDAL,
+              usageMeteringService,
+              alertChannelRecipientDAL,
               tx
             });
           }
@@ -887,7 +901,19 @@ export const ldapConfigServiceFactory = ({
     const groupSearchFilter = `(cn=${ldapGroupCN})`;
     const groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
 
-    if (!groups.some((g) => g.cn === ldapGroupCN)) {
+    // cn equality in LDAP is case-insensitive (caseIgnoreMatch). Prefer an exact-case
+    // match; fall back to a case-variant only when it is unambiguous, since distinct
+    // groups in different containers can have CNs differing only by case.
+    const candidateGroups = groups.filter((g) => g.cn.toLowerCase() === ldapGroupCN.toLowerCase());
+    const distinctCns = new Set(candidateGroups.map((g) => g.cn));
+    const matchedGroup =
+      candidateGroups.find((g) => g.cn === ldapGroupCN) ?? (distinctCns.size === 1 ? candidateGroups[0] : undefined);
+    if (!matchedGroup) {
+      if (distinctCns.size > 1) {
+        throw new BadRequestError({
+          message: `Multiple LDAP groups match CN '${ldapGroupCN}' case-insensitively: ${[...distinctCns].join(", ")}. Enter the exact CN of the intended group.`
+        });
+      }
       throw new NotFoundError({
         message: "Failed to find LDAP Group CN"
       });
@@ -902,7 +928,7 @@ export const ldapConfigServiceFactory = ({
 
     const groupMap = await ldapGroupMapDAL.create({
       ldapConfigId,
-      ldapGroupCN,
+      ldapGroupCN: matchedGroup.cn,
       groupId: group.id
     });
 

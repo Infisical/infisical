@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -9,7 +9,6 @@ import {
   GitPullRequestClosedIcon,
   GitPullRequestIcon,
   HourglassIcon,
-  InfoIcon,
   KeyRoundIcon,
   MessageSquareIcon,
   ShieldAlertIcon,
@@ -72,11 +71,16 @@ import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/st
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 
-export const generateCommitText = (commits: { op: CommitType }[] = [], isReplicated = false) => {
+export const generateCommitText = (
+  commits: { op: CommitType }[] = [],
+  isReplicated = false,
+  showChangeRequestIcon = false
+) => {
   if (isReplicated) {
     return (
       <span className="flex items-center">
-        <Badge variant="info">
+        <Badge variant="info" iconPosition={showChangeRequestIcon ? "left" : undefined}>
+          {showChangeRequestIcon && <GitPullRequestIcon />}
           {commits.length} Secret{commits.length > 1 ? "s" : ""} Pending Import
         </Badge>
       </span>
@@ -98,9 +102,14 @@ export const generateCommitText = (commits: { op: CommitType }[] = [], isReplica
 
   return (
     <span className="flex items-center gap-1.5">
-      {changeBadges.map(({ label, count, variant }) => (
-        <Badge key={label} variant={variant}>
-          {count} {label}
+      {changeBadges.map(({ label, count, variant }, index) => (
+        <Badge
+          key={label}
+          variant={variant}
+          iconPosition={showChangeRequestIcon && index === 0 ? "left" : undefined}
+        >
+          {showChangeRequestIcon && index === 0 && <GitPullRequestIcon />}
+          {label} {count}
         </Badge>
       ))}
     </span>
@@ -127,6 +136,29 @@ const getReviewStatusBadge = (status?: ApprovalStatus) => {
       <HourglassIcon />
       Pending
     </Badge>
+  );
+};
+
+const TruncatedSecretPath = ({ value }: { value: string }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={(next) => {
+        const el = ref.current;
+        const isTruncated = !!el && el.scrollWidth > el.clientWidth;
+        setOpen(next && isTruncated);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <div ref={ref} className="truncate text-sm text-foreground">
+          {value}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs break-words">{value}</TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -184,7 +216,10 @@ export const SecretApprovalRequestChanges = ({
 
   const { mutateAsync: performSecretApprovalMerge } = usePerformSecretApprovalRequestMerge();
 
-  const handleReview = async (status: ApprovalStatus) => {
+  const handleReview = async (
+    status: ApprovalStatus,
+    { notify = true }: { notify?: boolean } = {}
+  ) => {
     if (!secretApprovalRequestDetails) return;
     await updateSecretApprovalRequestStatus({
       id: approvalRequestId,
@@ -192,10 +227,12 @@ export const SecretApprovalRequestChanges = ({
       comment,
       projectId
     });
-    createNotification({
-      type: "success",
-      text: `Successfully ${status} the request`
-    });
+    if (notify) {
+      createNotification({
+        type: "success",
+        text: `Successfully ${status} the request`
+      });
+    }
     setComment("");
     setIsReviewPopoverOpen(false);
   };
@@ -204,8 +241,17 @@ export const SecretApprovalRequestChanges = ({
     if (!secretApprovalRequestDetails) return;
     try {
       setWillMerge(true);
-      await handleReview(ApprovalStatus.APPROVED);
-      await performSecretApprovalMerge({ projectId, id: secretApprovalRequestDetails.id });
+      await handleReview(ApprovalStatus.APPROVED, { notify: false });
+      await performSecretApprovalMerge({
+        projectId,
+        id: secretApprovalRequestDetails.id,
+        environment: secretApprovalRequestDetails.environment,
+        secretPath: secretApprovalRequestDetails.secretPath
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully merged the request"
+      });
     } catch {
       // Approval or merge failed, error already shown via mutation
     } finally {
@@ -302,17 +348,12 @@ export const SecretApprovalRequestChanges = ({
       };
     }
 
-    return {
-      variant: "info" as const,
-      icon: <InfoIcon />,
-      title: isReplicated
-        ? `A secret import in this environment has pending changes from its source at ${importSource}. Approving will add them to that import.`
-        : "These secret changes are pending approval. Approving will apply them to the target environment and path."
-    };
+    return null;
   };
   const changesStatusAlert = getChangesStatusAlert();
 
   const committerUser = secretApprovalRequestDetails?.committerUser;
+  const committerIdentity = secretApprovalRequestDetails?.committerIdentity;
   const environmentName = secretApprovalRequestDetails
     ? (currentProject?.environments.find(
         (env) => env.slug === secretApprovalRequestDetails.environment
@@ -367,35 +408,48 @@ export const SecretApprovalRequestChanges = ({
       </Field>
       <div className="flex gap-2">
         <ButtonGroup>
-          <Button
-            variant="project"
-            size="sm"
-            isPending={isApproving && !willMerge}
-            isDisabled={actionInFlight}
-            onClick={() => handleReview(ApprovalStatus.APPROVED)}
-          >
-            <CheckIcon />
-            Approve
-          </Button>
-          {isMergableUponApprove && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  variant="project"
-                  size="sm"
-                  aria-label="More approval options"
-                  isDisabled={actionInFlight}
-                >
-                  <ChevronDownIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[80]">
-                <DropdownMenuItem onClick={handleApproveAndMerge}>
-                  <GitMergeIcon />
-                  Approve & Merge
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {isMergableUponApprove ? (
+            <>
+              <Button
+                variant="project"
+                size="sm"
+                isPending={willMerge}
+                isDisabled={actionInFlight}
+                onClick={handleApproveAndMerge}
+              >
+                <GitMergeIcon />
+                Approve & Merge
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant="project"
+                    size="sm"
+                    aria-label="More approval options"
+                    isDisabled={actionInFlight}
+                  >
+                    <ChevronDownIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[80]">
+                  <DropdownMenuItem onClick={() => handleReview(ApprovalStatus.APPROVED)}>
+                    <CheckIcon />
+                    Approve
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Button
+              variant="project"
+              size="sm"
+              isPending={isApproving && !willMerge}
+              isDisabled={actionInFlight}
+              onClick={() => handleReview(ApprovalStatus.APPROVED)}
+            >
+              <CheckIcon />
+              Approve
+            </Button>
           )}
         </ButtonGroup>
         <Button
@@ -460,7 +514,7 @@ export const SecretApprovalRequestChanges = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
+      <SheetContent className="@container flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2 pr-8">
             Change Request
@@ -482,6 +536,8 @@ export const SecretApprovalRequestChanges = ({
                   <>
                     {committerUser.firstName} ({committerUser.email})
                   </>
+                ) : committerIdentity ? (
+                  <>{committerIdentity.name} (Machine Identity)</>
                 ) : (
                   "Deleted User"
                 )}
@@ -506,8 +562,8 @@ export const SecretApprovalRequestChanges = ({
             </Empty>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="flex w-96 shrink-0 flex-col gap-6 overflow-hidden border-r border-border p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @4xl:flex-row @4xl:overflow-hidden">
+            <div className="flex w-full shrink-0 flex-col gap-6 border-b border-border p-4 @4xl:w-96 @4xl:overflow-hidden @4xl:border-r @4xl:border-b-0">
               <DetailGroup className="shrink-0">
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
@@ -552,11 +608,13 @@ export const SecretApprovalRequestChanges = ({
                 </Detail>
                 <Detail>
                   <DetailLabel>Secret Path</DetailLabel>
-                  <DetailValue className="truncate">
-                    {secretApprovalRequestDetails.isReplicated
-                      ? approvalSecretPath
-                      : formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                  </DetailValue>
+                  <TruncatedSecretPath
+                    value={
+                      secretApprovalRequestDetails.isReplicated
+                        ? approvalSecretPath
+                        : formatReservedPaths(secretApprovalRequestDetails.secretPath)
+                    }
+                  />
                 </Detail>
                 {secretApprovalRequestDetails.commitMessage && (
                   <Detail>
@@ -637,11 +695,13 @@ export const SecretApprovalRequestChanges = ({
               {reviewControls}
             </div>
 
-            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <Alert variant={changesStatusAlert.variant}>
-                {changesStatusAlert.icon}
-                <AlertTitle>{changesStatusAlert.title}</AlertTitle>
-              </Alert>
+            <div className="flex thin-scrollbar flex-none flex-col gap-4 overflow-visible p-4 @4xl:min-h-0 @4xl:flex-1 @4xl:overflow-y-auto">
+              {changesStatusAlert && (
+                <Alert variant={changesStatusAlert.variant}>
+                  {changesStatusAlert.icon}
+                  <AlertTitle>{changesStatusAlert.title}</AlertTitle>
+                </Alert>
+              )}
               <div>
                 <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
                   <KeyRoundIcon className="size-4 text-accent" />
@@ -684,6 +744,8 @@ export const SecretApprovalRequestChanges = ({
               statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
               enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
               bypassReason={secretApprovalRequestDetails.bypassReason}
+              environment={secretApprovalRequestDetails.environment}
+              secretPath={secretApprovalRequestDetails.secretPath}
             />
           </SheetFooter>
         )}

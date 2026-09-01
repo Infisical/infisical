@@ -3,11 +3,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 export const PROJECT_TYPE_PATH: Record<ProjectType, string> = {
   [ProjectType.SecretManager]: "secret-management",
   [ProjectType.CertificateManager]: "cert-manager",
-  [ProjectType.SSH]: "ssh",
   [ProjectType.KMS]: "kms",
   [ProjectType.PAM]: "pam",
-  [ProjectType.SecretScanning]: "secret-scanning",
-  [ProjectType.AI]: "ai"
+  [ProjectType.SecretScanning]: "secret-scanning"
 };
 
 export type SubmenuItem = {
@@ -34,10 +32,9 @@ export type NavItem = {
   pathSuffix: string;
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
+  badgeVariant?: "warning" | "danger" | "pam";
   hidden?: boolean;
   submenu?: Submenu;
-  /** For SSH CA permission gating */
-  permissionCheck?: boolean;
   /** Query params to append to the link and use for active state matching */
   search?: Record<string, string>;
   /** When true, this item is also active when the path matches but search keys are absent from the URL */

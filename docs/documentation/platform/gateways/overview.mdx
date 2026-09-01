@@ -1,14 +1,22 @@
 ---
-title: "Gateway Overview"
-sidebarTitle: "Overview"
-description: "How to access private network resources from Infisical"
+title: "Networking"
+description: "Let Infisical reach systems that are not exposed to the internet."
+sidebarTitle: "Networking"
+icon: "network-wired"
 ---
 
-![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
+Some of the systems Infisical connects to are not reachable from the internet: a database in a private subnet, an on-premises appliance, a server behind a corporate firewall. This section covers the two pieces that make those reachable, without opening an inbound port.
 
-The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment.
-This is particularly useful when Infisical isn't hosted within the same network as the resources it needs to reach.
-This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
+<CardGroup cols={2}>
+  <Card title="Gateways" icon="server" href="/documentation/platform/gateways/gateway-deployment">
+    A lightweight service you run inside your own network, next to the resources Infisical needs to reach. It only makes outbound connections, so no inbound firewall rules are needed.
+  </Card>
+  <Card title="Relays" icon="route" href="/documentation/platform/gateways/relay-deployment/overview">
+    The routing layer between Infisical and your gateways. Passes encrypted traffic through without storing or inspecting it. Use the managed relays, or run your own closer to your infrastructure.
+  </Card>
+</CardGroup>
+
+If the target is already reachable and you would rather not run a gateway, you can instead allow [Infisical's IP addresses](/documentation/setup/networking) through your firewall.
 
 <Info>
   Gateway is a paid feature available under the Enterprise Tier for Infisical
@@ -17,75 +25,24 @@ This method keeps your resources fully protected from external access while enab
   license.
 </Info>
 
-## Core Components
+## How it works
 
-The Gateway system consists of two primary components working together to enable secure network access:
+The gateway system uses SSH reverse tunnels, so connectivity works without changing inbound firewall rules:
 
-<Tabs>
-  <Tab title="Gateway" icon="server">
-  A Gateway is a lightweight service that you deploy within your own network infrastructure to provide secure access to your private resources. Think of it as a secure bridge between Infisical and your internal systems.
+![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
-  Gateways must be deployed within the same network where your target resources are located, with direct network connectivity to the private resources you want Infisical to access.
-  For different networks, regions, or isolated environments, you'll need to deploy separate gateways.
+1. **Registration.** The gateway opens an outbound SSH reverse tunnel to a relay, using an SSH certificate issued by Infisical.
+2. **Persistent connection.** The gateway holds that TCP connection open, giving Infisical a channel it can send requests down.
+3. **Request routing.** When Infisical needs one of your resources, the request travels through the relay and into the tunnel that is already established.
+4. **Resource access.** The gateway receives the request and connects to your private resource on Infisical's behalf.
 
-  **Core Functions:**
-  - **Network Placement**: Deployed within your VPCs, data centers, or on-premises infrastructure where your private resources live
-  - **Connection Model**: Only makes outbound connections to Infisical's relay servers, so no inbound firewall rules are needed
-  - **Security Method**: Uses SSH reverse tunnels with certificate-based authentication for maximum security
-  - **Resource Access**: Acts as a proxy to connect Infisical to your private databases, APIs, and other services
-  </Tab>
+## Health checks
 
-  <Tab title="Relay Server" icon="route">
-  A Relay Server is the routing infrastructure that enables secure communication between the Infisical platform and your deployed gateways. It acts as an intermediary that never sees your actual data.
+Gateways send a heartbeat every 3 minutes, each carrying a TTL that says how long the gateway should be treated as healthy. If no heartbeat arrives before the TTL expires, the gateway is marked unhealthy. Relays send hourly heartbeats and are marked unhealthy if one is missed.
 
-  **Core Functions:**
-  - **Traffic Routing**: Routes encrypted traffic between the Infisical platform and your gateways without storing or inspecting the data
-  - **Network Isolation**: Enables secure communication without requiring direct network connections between Infisical and your private infrastructure
-  - **Authentication Management**: Validates SSH certificates and manages secure routing between authenticated gateways
+Infisical notifies all organization admins of unhealthy gateways and relays by email and in-app notification.
 
-  **Deployment Options:**
-  To reduce operational overhead, Infisical Cloud (US/EU) provides managed relay infrastructure, though organizations can also deploy their own relays for reduced latency.
-  - **Infisical Managed**: Use pre-deployed relays in select regions, shared across all Infisical Cloud organizations. Each organization traffic is isolated and encrypted.
-  - **Self-Deployed**: Deploy your own dedicated relay servers geographically close to your infrastructure for reduced latency.
-  </Tab>
-</Tabs>
+## High availability
 
-## How It Works
-
-The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connectivity:
-
-1. **Gateway Registration**: The gateway establishes an outbound SSH reverse tunnel to a relay server using SSH certificates issued by Infisical
-2. **Persistent Connection**: The gateway maintains an open TCP connection with the relay server, creating a secure channel for incoming requests
-3. **Request Routing**: When Infisical needs to access your resources, requests are routed through the relay server to the already-established gateway connection
-4. **Resource Access**: The gateway receives the routed requests and connects to your private resources on behalf of Infisical
-
-## Health Check
-
-To monitor their operational status, gateways transmit heartbeats every 3 minutes. Each heartbeat includes a TTL (time-to-live) indicating how long the gateway should be considered healthy. If no successful heartbeat is received before the TTL expires, the gateway is marked as unhealthy. Relays continue to transmit hourly heartbeats and are considered unhealthy if a heartbeat is not received within one hour.
-
-Infisical automatically notifies all organization admins of unhealthy gateway or relay statuses through email and in-app notifications.
-
-## High Availability with Gateway Pools
-
-For production workloads, you can group multiple gateways into a **Gateway Pool** to provide automatic failover. When a gateway in a pool goes down, the platform routes through a healthy member automatically. See [Gateway Pools](/documentation/platform/gateways/gateway-pools) for details.
-
-## Getting Started
-
-Ready to set up your gateway? Follow the guides below.
-
-<Columns cols={2}>
-  <Card title="Gateway Deployment" href="/documentation/platform/gateways/gateway-deployment">
-    Deploy and configure your gateway within your network infrastructure.
-  </Card>
-  <Card title="Gateway Pools" href="/documentation/platform/gateways/gateway-pools">
-    Set up high availability with gateway pools for automatic failover.
-  </Card>
-</Columns>
-<Columns cols={2}>
-  <Card title="Relay Deployment" href="/documentation/platform/gateways/relay-deployment">
-    Set up relay servers if using self-deployed infrastructure.
-  </Card>
-  <Card title="Security Architecture" href="/documentation/platform/gateways/security">
-    Learn about the security model and implementation best practices.
-  </Card>
-</Columns>
+- **Relay failover.** Gateways set to select a relay automatically will move to a healthy relay if the current one becomes unreachable. No configuration needed.
+- **Gateway pools.** For production, group gateways into a [pool](/documentation/platform/gateways/gateway-pools) so the platform routes through a healthy member when one goes down.

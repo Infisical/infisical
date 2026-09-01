@@ -1,12 +1,31 @@
-import { useState } from "react";
-import ReactCodeInput from "react-code-input";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  VerificationCodeForm
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   useRequestEmailChangeOTP,
@@ -24,27 +43,6 @@ const emailSchema = z
 
 export type EmailFormData = z.infer<typeof emailSchema>;
 
-const otpInputProps = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield" as const,
-    width: "45px",
-    borderRadius: "6px",
-    fontSize: "18px",
-    height: "45px",
-    padding: "0",
-    paddingLeft: "0",
-    paddingRight: "0",
-    backgroundColor: "#262626",
-    color: "white",
-    border: "1px solid #404040",
-    textAlign: "center" as const,
-    outlineColor: "#8ca542",
-    borderColor: "#404040"
-  }
-};
-
 type OtpStep = "currentEmail" | "newEmail";
 
 export const ChangeEmailSection = () => {
@@ -54,6 +52,14 @@ export const ChangeEmailSection = () => {
   const [otpStep, setOtpStep] = useState<OtpStep | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
   const [typedOTP, setTypedOTP] = useState("");
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    },
+    []
+  );
 
   const emailForm = useForm<EmailFormData>({
     defaultValues: { newEmail: "" },
@@ -108,7 +114,7 @@ export const ChangeEmailSection = () => {
     setOtpStep("currentEmail");
 
     createNotification({
-      text: "Verification code sent to your current email address. Check your inbox!",
+      text: "Verification code sent to your current email address.",
       type: "success"
     });
   };
@@ -135,7 +141,7 @@ export const ChangeEmailSection = () => {
     setOtpStep("newEmail");
 
     createNotification({
-      text: "Confirmed. A second verification code has been sent to your new email address.",
+      text: "Confirmed. Check the inbox of your new email address to continue.",
       type: "success"
     });
   };
@@ -164,105 +170,118 @@ export const ChangeEmailSection = () => {
     resetFlow();
     clearSession();
 
-    setTimeout(() => {
+    redirectTimer.current = setTimeout(() => {
       navigate({ to: "/login" });
     }, 2000);
   };
 
   const isOtpModalOpen = otpStep !== null;
   const otpRecipient = otpStep === "currentEmail" ? (user?.email ?? "") : pendingEmail;
-  const otpSubTitle =
+  const otpDescription =
     otpStep === "currentEmail"
-      ? `Enter the 6-digit code sent to your current email: ${otpRecipient}`
-      : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
+      ? "Enter the 6-digit code sent to your current email."
+      : "Enter the 6-digit code sent to your new email.";
   const otpTitle =
     otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
-  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
   return (
     <>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change email</h2>
-
-        <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
-          <div className="max-w-md">
+      <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
+        <Card className="gap-0 overflow-hidden p-0">
+          <CardHeader className="p-6">
+            <CardTitle className="font-alliance">Change Email</CardTitle>
+            <CardDescription>
+              Verify both your current and new email addresses. A successful change signs you out.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-md px-6 pb-6">
             <Controller
               control={emailForm.control}
               name="newEmail"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="New email address"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText={
-                    hasEmailAuth
-                      ? "Your email authentication method is currently enabled and will remain active after changing your email."
-                      : "Email authentication method will be automatically enabled after changing your email. You may disable email authentication after logging in with your new email if needed."
-                  }
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="new-email-address">New email address</FieldLabel>
                   <Input
+                    id="new-email-address"
                     {...field}
                     placeholder="Enter new email address"
                     type="email"
-                    className="bg-mineshaft-800"
+                    autoComplete="email"
+                    aria-invalid={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldDescription>
+                    {hasEmailAuth
+                      ? "Email authentication remains enabled after the change."
+                      : "Email authentication will be enabled automatically. You can change it after signing in with your new email."}
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
-          </div>
-          <Button
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isRequestingOTP}
-            isDisabled={isRequestingOTP || !isEmailValid(watchedEmail)}
-          >
-            Send Verification Code
-          </Button>
-          <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            We&apos;ll first send a 6-digit code to your current email to confirm the change. After
-            you approve, a second code will be sent to your new email to finalize it.
-          </p>
-        </form>
-      </div>
+          </CardContent>
+          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
+            <Button
+              type="submit"
+              variant="neutral"
+              size="sm"
+              isPending={isRequestingOTP}
+              isDisabled={!isEmailValid(watchedEmail) || isOtpModalOpen}
+            >
+              Send verification code
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
 
-      <Modal
-        isOpen={isOtpModalOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) closeOtpModal();
+      <Dialog
+        open={isOtpModalOpen}
+        onOpenChange={(open) => {
+          if (!open && !isOtpSubmitLoading) closeOtpModal();
         }}
       >
-        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
-          <div className="flex flex-col items-center space-y-4">
-            <div className="flex justify-center">
-              <ReactCodeInput
-                key={otpStep ?? "closed"}
-                name="otp-input"
-                inputMode="tel"
-                type="text"
-                fields={6}
-                onChange={setTypedOTP}
-                value={typedOTP}
-                {...otpInputProps}
-                className="mb-4"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button colorSchema="secondary" variant="outline" onClick={closeOtpModal}>
+        <DialogContent
+          className="sm:max-w-md"
+          onEscapeKeyDown={(event) => isOtpSubmitLoading && event.preventDefault()}
+          onInteractOutside={(event) => isOtpSubmitLoading && event.preventDefault()}
+          showCloseButton={!isOtpSubmitLoading}
+        >
+          <DialogHeader>
+            <DialogTitle>{otpTitle}</DialogTitle>
+            <DialogDescription>
+              {otpDescription} <span className="font-medium text-foreground">{otpRecipient}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <VerificationCodeForm
+            key={otpStep ?? "closed"}
+            name="email-change-verification-code"
+            value={typedOTP}
+            onChange={setTypedOTP}
+            onSubmit={onOtpSubmit}
+            submitVariant="neutral"
+            isPending={isOtpSubmitLoading}
+          >
+            {otpStep === "newEmail" && (
+              <p className="text-center text-xs text-muted">
+                Didn&apos;t get a code? If the new address already belongs to another Infisical
+                account, we&apos;ve sent it an email explaining why the change can&apos;t be
+                completed.
+              </p>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeOtpModal}
+                isDisabled={isOtpSubmitLoading}
+              >
                 Cancel
               </Button>
-              <Button
-                onClick={onOtpSubmit}
-                isLoading={isOtpSubmitLoading}
-                isDisabled={typedOTP.length !== 6 || isOtpSubmitLoading}
-              >
-                {otpButtonLabel}
-              </Button>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
+            </DialogFooter>
+          </VerificationCodeForm>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

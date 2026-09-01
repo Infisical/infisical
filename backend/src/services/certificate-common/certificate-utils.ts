@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
@@ -78,12 +79,7 @@ export const bufferToString = (data: Buffer | string): string => {
 
 export const buildCertificateSubjectFromTemplate = (
   request: Record<string, unknown>,
-  templateAttributes?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>
+  templateAttributes?: TSubjectRule[]
 ): Record<string, string | undefined> => {
   const subject: Record<string, string> = {};
   const attributeMap: Record<string, string> = {
@@ -96,6 +92,12 @@ export const buildCertificateSubjectFromTemplate = (
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {
+    Object.entries(attributeMap).forEach(([attrType, requestKey]) => {
+      const value = request[requestKey];
+      if (value && typeof value === "string") {
+        subject[attrType] = value;
+      }
+    });
     return subject;
   }
 
@@ -128,19 +130,22 @@ const validateValueAgainstPatterns = (value: string, patterns: string[]): boolea
     return false;
   }
 
+  const normalizedValue = value.toLowerCase();
+
   for (const pattern of patterns) {
+    const normalizedPattern = pattern.toLowerCase();
     if (isWildcardPattern(pattern)) {
       try {
-        const regex = createWildcardRegex(pattern);
-        if (regex.test(value)) {
+        const regex = createWildcardRegex(normalizedPattern);
+        if (regex.test(normalizedValue)) {
           return true;
         }
       } catch {
-        if (pattern === value) {
+        if (normalizedPattern === normalizedValue) {
           return true;
         }
       }
-    } else if (pattern === value) {
+    } else if (normalizedPattern === normalizedValue) {
       return true;
     }
   }
@@ -176,7 +181,7 @@ export const buildSubjectAlternativeNamesFromTemplate = (
     }
 
     if (templateSan.denied && validateValueAgainstPatterns(san.value, templateSan.denied)) {
-      throw new Error(`SAN value '${san.value}' is explicitly denied for type '${san.type}'`);
+      throw new BadRequestError({ message: `SAN value '${san.value}' is explicitly denied for type '${san.type}'` });
     }
 
     const isRequired = templateSan.required && validateValueAgainstPatterns(san.value, templateSan.required);
@@ -185,7 +190,7 @@ export const buildSubjectAlternativeNamesFromTemplate = (
     if (isRequired || isAllowed || (!templateSan.allowed && !templateSan.required)) {
       allowedSans.push(san.value);
     } else {
-      throw new Error(`SAN value '${san.value}' is not allowed for type '${san.type}'`);
+      throw new BadRequestError({ message: `SAN value '${san.value}' is not allowed for type '${san.type}'` });
     }
   });
 

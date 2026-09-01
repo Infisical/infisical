@@ -202,6 +202,15 @@ describe("sanitizeCertificateNameValue", () => {
   test("no-op without a destination", () => {
     expect(sanitizeCertificateNameValue("app.example.com")).toBe("app.example.com");
   });
+
+  test("strips path separators for server destinations so a common name cannot escape the directory", () => {
+    // A malicious common name must not be able to introduce path separators into the on-disk file name.
+    expect(sanitizeCertificateNameValue("../../etc/cron.d/evil", PkiSync.LinuxServer)).toBe("..-..-etc-cron.d-evil");
+    expect(sanitizeCertificateNameValue("..\\..\\Windows\\evil", PkiSync.WindowsServer)).toBe("..-..-Windows-evil");
+    // Dots are kept so legitimate FQDNs survive.
+    expect(sanitizeCertificateNameValue("app.example.com", PkiSync.LinuxServer)).toBe("app.example.com");
+    expect(sanitizeCertificateNameValue("app.example.com", PkiSync.WindowsServer)).toBe("app.example.com");
+  });
 });
 
 describe("buildManagedCertificateNameRegexSource", () => {
@@ -245,5 +254,14 @@ describe("certificateNameSchemaHasFreeTextPlaceholder", () => {
       false
     );
     expect(certificateNameSchemaHasFreeTextPlaceholder(undefined)).toBe(false);
+  });
+});
+
+describe("sanitizeCertificateNameValue for GCP Certificate Manager", () => {
+  // GCP requires lowercase, but stripping letters here would destroy them instead of the
+  // destination lowercasing them, turning "API.Example.com" into hyphens.
+  test("keeps letters and replaces only disallowed characters", () => {
+    expect(sanitizeCertificateNameValue("API.Example.com", PkiSync.GcpCertificateManager)).toBe("API-Example-com");
+    expect(sanitizeCertificateNameValue("web_app", PkiSync.GcpCertificateManager)).toBe("web-app");
   });
 });

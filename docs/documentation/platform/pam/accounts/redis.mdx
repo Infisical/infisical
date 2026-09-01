@@ -1,0 +1,84 @@
+---
+title: "Redis accounts"
+sidebarTitle: "Redis"
+description: "Add and connect to Redis databases."
+---
+
+Redis accounts let you manage access to your Redis databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+## Creating an account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Redis [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `cache-primary`) |
+    | **Host** | Redis host |
+    | **Port** | Redis port (default: 6379) |
+    | **SSL Enabled** | Enable SSL/TLS for the connection |
+    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
+    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+  </Step>
+  <Step title="Enter credentials">
+    | Field | Description |
+    |-------|-------------|
+    | **Username** | Redis ACL username. Use `default` for the default user (also works with a legacy `requirepass` password on Redis 6+) |
+    | **Password** | Redis password. Optional, leave blank for an unauthenticated Redis server |
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides a browser-based Redis console where you type commands the same way you would in `redis-cli`.
+
+    To connect:
+    1. Go to **Privileged Access Management → Accounts**
+    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
+    3. Click **Connect in Browser**
+
+    Type `quit` or `exit` to end the session.
+
+    Web Access is built for interactive use. Very long replies are shortened, and commands that stream results, such as `SUBSCRIBE` and `MONITOR`, are only available through the CLI.
+
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your preferred Redis client.
+
+    ```bash
+    infisical pam access my-folder/cache-primary
+    ```
+
+    The command outputs the local port to connect to. Then use `redis-cli` or any Redis client:
+    ```bash
+    redis-cli -h 127.0.0.1 -p <port>
+    ```
+
+    No password needed since the proxy handles authentication.
+
+    **Flags:**
+    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+    - `--reason <reason>` — provide an access reason (if required by template)
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="MongoDB Accounts" icon="database" href="/documentation/platform/pam/accounts/mongodb">
+    Add MongoDB database accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

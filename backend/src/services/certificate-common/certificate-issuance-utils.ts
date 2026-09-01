@@ -5,7 +5,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { CertKeyAlgorithm, CertKeyType, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsageNameToOID,
+  CertKeyAlgorithm,
+  CertKeyType,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -14,8 +19,14 @@ import {
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType, CertSubjectAlternativeNameType } from "./certificate-constants";
+import {
+  CERT_SUBJECT_ALTERNATIVE_NAMES,
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType
+} from "./certificate-constants";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -24,28 +35,13 @@ import {
   convertKeyUsageArrayToLegacy
 } from "./certificate-utils";
 
-/**
- * Parses a TTL string (e.g., "30d", "24h", "60m") and returns the equivalent in days
- */
 export const parseTtlToDays = (ttl: string): number => {
-  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
-  if (!match) {
-    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
+  const durationMs = ms(ttl);
+  if (!durationMs || durationMs <= 0) {
+    throw new BadRequestError({ message: `Invalid TTL '${ttl}'. Use a duration such as '30d', '12h', or '1y'.` });
   }
 
-  const [, value, unit] = match;
-  const numValue = parseInt(value, 10);
-
-  switch (unit) {
-    case "d":
-      return numValue;
-    case "h":
-      return Math.ceil(numValue / 24);
-    case "m":
-      return Math.ceil(numValue / (24 * 60));
-    default:
-      throw new BadRequestError({ message: `Unsupported TTL unit: ${unit}` });
-  }
+  return Math.ceil(durationMs / (24 * 60 * 60 * 1000));
 };
 
 /**
@@ -100,6 +96,31 @@ export const calculateFinalRenewBeforeDays = (
   return isValidRenewalTiming(renewBeforeDays, certificateExpiryDate) ? renewBeforeDays : undefined;
 };
 
+export const resolveRenewedCertificateRenewBeforeDays = ({
+  apiConfig,
+  previousRenewBeforeDays,
+  ttl,
+  notAfter
+}: {
+  apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number };
+  previousRenewBeforeDays?: number | null;
+  ttl: string;
+  notAfter: Date;
+}): number | undefined => {
+  const desiredRenewBeforeDays =
+    (apiConfig?.autoRenew ? apiConfig.renewBeforeDays : undefined) ?? previousRenewBeforeDays ?? undefined;
+  if (!desiredRenewBeforeDays) {
+    return undefined;
+  }
+
+  const renewBeforeDays = calculateRenewalThreshold(desiredRenewBeforeDays, parseTtlToDays(ttl));
+  if (!renewBeforeDays) {
+    return undefined;
+  }
+
+  return isValidRenewalTiming(renewBeforeDays, notAfter) ? renewBeforeDays : undefined;
+};
+
 /**
  * Resolves the effective API enrollment config for auto-renew.
  * When an applicationId is present, the application-profile junction's config takes
@@ -152,6 +173,31 @@ export const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, ope
 };
 
 /**
+ * A CA signs with its own key, so it can only produce signatures of that key's family. PQC keys are
+ * their own signature algorithm and require an exact match.
+ */
+export const isSignatureAlgorithmCompatibleWithCaKey = (
+  signatureAlgorithm: string,
+  caKeyAlgorithm: string
+): boolean => {
+  if (signatureAlgorithm.startsWith("ML-DSA") || signatureAlgorithm.startsWith("SLH-DSA")) {
+    return signatureAlgorithm === caKeyAlgorithm;
+  }
+
+  const parts = signatureAlgorithm.split("-");
+
+  if (caKeyAlgorithm.startsWith("RSA")) {
+    return parts.includes(CertKeyType.RSA);
+  }
+
+  if (caKeyAlgorithm.startsWith("EC")) {
+    return parts.includes(CertKeyType.ECDSA);
+  }
+
+  return false;
+};
+
+/**
  * Validates that the CA's key algorithm is compatible with the template's signature algorithms
  */
 export const validateAlgorithmCompatibility = (
@@ -172,28 +218,9 @@ export const validateAlgorithmCompatibility = (
   }
 
   const compatibleAlgorithms =
-    template.algorithms?.signature?.filter((sigAlg: string) => {
-      // PQC: key algorithm = signature algorithm, so require exact match
-      if (sigAlg.startsWith("ML-DSA") || sigAlg.startsWith("SLH-DSA")) {
-        return sigAlg === caKeyAlgorithm;
-      }
-
-      const parts = sigAlg.split("-");
-      if (parts.length === 0) {
-        return false;
-      }
-      const keyType = parts[parts.length - 1];
-
-      if (caKeyAlgorithm.startsWith("RSA")) {
-        return keyType === CertKeyType.RSA;
-      }
-
-      if (caKeyAlgorithm.startsWith("EC")) {
-        return keyType === CertKeyType.ECDSA;
-      }
-
-      return false;
-    }) || [];
+    template.algorithms?.signature?.filter((sigAlg: string) =>
+      isSignatureAlgorithmCompatibleWithCaKey(sigAlg, caKeyAlgorithm)
+    ) || [];
 
   if (compatibleAlgorithms.length === 0) {
     throw new BadRequestError({
@@ -276,6 +303,12 @@ export const detectSanType = (value: string): { type: CertSubjectAlternativeName
 
 export type TSelfSignedCertificateRequest = {
   commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
   keyUsages?: CertKeyUsageType[];
   extendedKeyUsages?: CertExtendedKeyUsageType[];
   altNames?: Array<{
@@ -288,12 +321,7 @@ export type TSelfSignedCertificateRequest = {
 };
 
 export type TCertificatePolicy = {
-  subject?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: string;
     allowed?: string[];
@@ -322,12 +350,14 @@ export const generateSelfSignedCertificate = async ({
   certificateRequest,
   policy,
   effectiveSignatureAlgorithm,
-  effectiveKeyAlgorithm
+  effectiveKeyAlgorithm,
+  existingKeyPair
 }: {
   certificateRequest: TSelfSignedCertificateRequest;
   policy?: TCertificatePolicy | null;
   effectiveSignatureAlgorithm: CertSignatureAlgorithm;
   effectiveKeyAlgorithm: CertKeyAlgorithm;
+  existingKeyPair?: CryptoKeyPair;
 }): Promise<TSelfSignedCertificateResult> => {
   const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
   const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
@@ -351,7 +381,9 @@ export const generateSelfSignedCertificate = async ({
 
   const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
   const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
-  const keyPair = await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+  const keyPair =
+    existingKeyPair ??
+    (await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]));
 
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
@@ -370,12 +402,13 @@ export const generateSelfSignedCertificate = async ({
 
   const serialNumber = createSerialNumber();
   const dn = createDistinguishedName({
-    commonName: certificateSubject.common_name,
-    organization: certificateSubject.organization,
-    ou: certificateSubject.organizational_unit,
-    country: certificateSubject.country,
-    province: certificateSubject.state_or_province_name,
-    locality: certificateSubject.locality_name
+    commonName: certificateRequest.commonName,
+    organization: certificateRequest.organization,
+    ou: certificateRequest.organizationalUnit,
+    country: certificateRequest.country,
+    province: certificateRequest.state,
+    locality: certificateRequest.locality,
+    domainComponents: certificateRequest.domainComponents
   });
 
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
@@ -399,7 +432,7 @@ export const generateSelfSignedCertificate = async ({
         ? [
             new x509.ExtendedKeyUsageExtension(
               (convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || []).map(
-                (eku) => x509.ExtendedKeyUsage[eku]
+                (eku) => CertExtendedKeyUsageNameToOID[eku]
               ),
               false
             )
@@ -409,20 +442,13 @@ export const generateSelfSignedCertificate = async ({
         ? [
             new x509.SubjectAlternativeNameExtension(
               certificateRequest.altNames?.map((san) => {
-                switch (san.type) {
-                  case CertSubjectAlternativeNameType.DNS_NAME:
-                    return { type: "dns" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.IP_ADDRESS:
-                    return { type: "ip" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.EMAIL:
-                    return { type: "email" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.URI:
-                    return { type: "url" as const, value: san.value };
-                  default:
-                    throw new BadRequestError({
-                      message: `Unsupported Subject Alternative Name type: ${san.type as string}`
-                    });
+                const generalNameType = CERT_SUBJECT_ALTERNATIVE_NAMES[san.type]?.generalNameType;
+                if (!generalNameType) {
+                  throw new BadRequestError({
+                    message: `Unsupported Subject Alternative Name type: ${san.type as string}`
+                  });
                 }
+                return { type: generalNameType, value: san.value };
               }) || [],
               false
             )
@@ -450,3 +476,7 @@ export const generateSelfSignedCertificate = async ({
     subjectAlternativeNames: certificateRequest.altNames || []
   };
 };
+
+// Strip hyphens from a UUID to produce a 32-char token that
+// satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
+export const buildIdempotencyToken = (id: string) => id.split("-").join("").slice(0, 32);

@@ -19,3 +19,14 @@ export enum DigiCertPollOutcome {
   Pending = "pending",
   Failed = "failed"
 }
+
+export enum CodeSigningOrderStatus {
+  Pending = "pending",
+  NeedsApproval = "needs_approval",
+  Processing = "processing",
+  Issued = "issued",
+  Rejected = "rejected",
+  Canceled = "canceled",
+  Expired = "expired",
+  Revoked = "revoked"
+}
