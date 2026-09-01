@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import {
   TImmutableDBKeys,
   TSecretApprovalPolicies,
@@ -88,6 +90,7 @@ export type TDispatchSecretApprovalRequestCreateSideEffectsDTO = {
   environment: string;
   secretPath: string;
   secretKeys: string[];
+  tx?: Knex;
 } & Omit<TProjectPermission, "actorAuthMethod">;
 
 export type TMergeSecretApprovalRequestDTO = {

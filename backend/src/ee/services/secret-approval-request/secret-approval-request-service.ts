@@ -1982,7 +1982,8 @@ export const secretApprovalRequestServiceFactory = ({
     secretKeys,
     actor,
     actorId,
-    actorOrgId
+    actorOrgId,
+    tx
   }: TDispatchSecretApprovalRequestCreateSideEffectsDTO) => {
     const user =
       actor === ActorType.IDENTITY
@@ -2032,9 +2033,13 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     try {
-      const createdRequest = await secretApprovalRequestDAL.transaction((tx) =>
-        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
-      );
+      // A caller-supplied transaction has not committed yet, so the reads have to go through it
+      // to see the request at all, and to avoid checking out a second connection while it is open.
+      const createdRequest = tx
+        ? await secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+        : await secretApprovalRequestDAL.transaction((innerTx) =>
+            secretApprovalRequestDAL.findById(secretApprovalRequest.id, innerTx)
+          );
       if (createdRequest) {
         await $queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Created,
@@ -2042,7 +2047,8 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           environmentName: env.name,
-          secretPath
+          secretPath,
+          tx
         });
       } else {
         logger.warn(
@@ -2050,6 +2056,8 @@ export const secretApprovalRequestServiceFactory = ({
         );
       }
     } catch (error) {
+      if (tx) throw error;
+
       logger.error(
         error,
         `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
@@ -2563,7 +2571,8 @@ export const secretApprovalRequestServiceFactory = ({
         secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
         actor,
         actorId,
-        actorOrgId
+        actorOrgId,
+        tx: providedTx
       });
     }
 
