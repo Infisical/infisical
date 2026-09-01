@@ -38,7 +38,7 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
     
     ![Create Template Button](/images/platform/identities/auth-templates/create-template-button.png)
     
-    Select the authentication method you want to create a template for (currently supports LDAP Auth and Kubernetes Auth).
+    Select the authentication method you want to create a template for (currently supports LDAP Auth, Kubernetes Auth, and OIDC Auth).
   </Step>
   
   <Step title="Configure template settings">
@@ -76,6 +76,21 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
 
         <Note>
           You can read more about Kubernetes Auth configuration in the [Kubernetes Auth documentation](/documentation/platform/identities/kubernetes-auth).
+        </Note>
+      </Tab>
+      <Tab title="OIDC Auth Template">
+        **For OIDC Auth templates**, configure the following fields:
+
+        - **Template Name**: A descriptive name for your template
+        - **OIDC Discovery URL**: The URL used to retrieve the OpenID Connect configuration from the identity provider, without the `/.well-known/openid-configuration` suffix. For example, `https://token.actions.githubusercontent.com`.
+        - **Issuer**: The unique identifier of the identity provider issuing the JWT, checked against the token's `iss` claim.
+        - **Audiences**: An optional comma-separated list of values the token's `aud` claim must match. For providers like GitHub Actions, this is constant across your organization (for example, `https://github.com/your-org`), which makes it a good fit for the template.
+        - **CA Certificate**: An optional PEM-encoded CA certificate used for secure communication with the identity provider endpoints, for providers behind a private certificate authority.
+
+        Subject, claims, claim metadata mappings, and access token settings are not part of the template. They are configured per identity, since they define which workloads may authenticate as each specific identity. When attaching an OIDC template, each identity must set a subject or at least one claim binding.
+
+        <Note>
+          You can read more about OIDC Auth configuration in the [OIDC Auth documentation](/documentation/platform/identities/oidc-auth/general).
         </Note>
       </Tab>
     </Tabs>
