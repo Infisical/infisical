@@ -473,7 +473,7 @@ export const EncryptionKeyRotationSection = () => {
                   className="text-xs font-normal text-label"
                 >
                   <span>
-                    Applying this key removes{" "}
+                    Applying this key removes the key labeled{" "}
                     {generatedKey.removesExpiringKey.label ? (
                       <span className="font-mono text-foreground">
                         {generatedKey.removesExpiringKey.label}
@@ -481,7 +481,7 @@ export const EncryptionKeyRotationSection = () => {
                     ) : (
                       "the key still expiring from an earlier rotation"
                     )}
-                    , any instances that started on this removed key will fail. The current active
+                    . Any instance that started on this removed key will fail. The current active
                     key will not be removed, it will become the new expiring key.
                   </span>
                 </Label>
