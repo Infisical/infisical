@@ -231,6 +231,7 @@ export const RequestsPage = () => {
         <div className="mx-auto flex flex-col text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
+              className="mb-6"
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
               description="Review pending approval requests across your applications and signers"

@@ -1048,7 +1048,9 @@ export const PROJECTS = {
     defaultProduct: "The default product in which the project will open",
     secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
     enforceEncryptedSecretManagerSecretMetadata:
-      "Enable or disable enforcement of encrypted secret metadata for the project."
+      "Enable or disable enforcement of encrypted secret metadata for the project.",
+    auditLogsRetentionDays:
+      "The number of days to retain audit logs for. Can only be set on self-hosted and dedicated instances, and cannot exceed the retention period included in your plan."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."

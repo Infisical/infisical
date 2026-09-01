@@ -4,8 +4,9 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "@app/components/v2/Lottie";
 import { cn } from "@app/components/v3/utils";
+
+import { Loader } from "../Loader";
 
 const iconButtonVariants = cva(
   cn(
@@ -101,9 +102,10 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <>
         {children}
         {isPending && (
-          <Lottie
-            icon={variant === "default" ? "infisical_loading_bw" : "infisical_loading_white"}
-            isAutoPlay
+          <Loader
+            aria-hidden
+            variant={variant === "default" ? "inverse" : "default"}
+            size="xs"
             className={twMerge(
               "absolute rounded-xl",
               size === "2xs" && "w-5",
@@ -123,6 +125,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
+        aria-busy={isPending || undefined}
         disabled={isPending || disabled || isDisabled}
         {...props}
       >
