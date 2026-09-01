@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
@@ -8,6 +9,16 @@ import { identityAuthTemplateServiceFactory } from "./identity-auth-template-ser
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ isDevelopmentMode: false, ALLOW_INTERNAL_IP_CONNECTIONS: false })
+}));
+
+// every other host in the suite is a literal IP, which skips resolution entirely, so a
+// blanket rejection only ever fires for the unresolvable case below
+vi.mock("node:dns/promises", () => ({
+  default: {
+    lookup: vi.fn(() =>
+      Promise.reject(Object.assign(new Error("getaddrinfo ENOTFOUND idp.invalid"), { code: "ENOTFOUND" }))
+    )
+  }
 }));
 
 const ORG_ID = "org-id";
@@ -314,6 +325,20 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
     });
 
     await expect(patchTemplate(service, { boundAudiences: "aud" })).rejects.toThrow("Local IPs not allowed as URL");
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("reports an unresolvable discovery host as a client error rather than a 500", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    const error = await patchTemplate(service, { oidcDiscoveryUrl: "https://idp.invalid" }).catch(
+      (err: unknown) => err
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toContain(
+      "Could not resolve the host of the OIDC discovery URL 'https://idp.invalid'"
+    );
     expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
   });
 

@@ -270,6 +270,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           metadata: {
             identityId: identityOidcAuth.identityId,
             templateId: identityOidcAuth.templateId,
+            templateName: identityOidcAuth.templateName,
             oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
             caCert: identityOidcAuth.caCert,
             boundIssuer: identityOidcAuth.boundIssuer,
@@ -400,6 +401,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           metadata: {
             identityId: identityOidcAuth.identityId,
             templateId: identityOidcAuth.templateId,
+            templateName: identityOidcAuth.templateName,
             oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
             caCert: identityOidcAuth.caCert,
             boundIssuer: identityOidcAuth.boundIssuer,

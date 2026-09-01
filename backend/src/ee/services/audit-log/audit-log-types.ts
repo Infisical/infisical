@@ -2214,6 +2214,7 @@ interface AddIdentityOidcAuthEvent {
   metadata: {
     identityId: string;
     templateId?: string | null;
+    templateName?: string;
     oidcDiscoveryUrl: string;
     caCert: string;
     boundIssuer: string;

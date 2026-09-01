@@ -770,7 +770,12 @@ export const identityOidcAuthServiceFactory = ({
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
-    return { ...identityOidcAuth, orgId: identityMembershipOrg.scopeOrgId, caCert: resolvedCaCert };
+    return {
+      ...identityOidcAuth,
+      orgId: identityMembershipOrg.scopeOrgId,
+      caCert: resolvedCaCert,
+      templateName: template?.name
+    };
   };
 
   const updateOidcAuth = async (dto: TUpdateOidcAuthDTO) => {
@@ -972,11 +977,19 @@ export const identityOidcAuthServiceFactory = ({
       ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
       : "";
 
+    // a re-asserted or untouched link skips the load above, so resolve the name the audit
+    // log needs rather than leaving the reader with a bare uuid
+    const linkedTemplate =
+      updatedOidcAuth.templateId && template?.id !== updatedOidcAuth.templateId
+        ? await identityAuthTemplateDAL.findByIdAndOrgId(updatedOidcAuth.templateId, identityMembershipOrg.scopeOrgId)
+        : template;
+
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
     return {
       ...updatedOidcAuth,
       orgId: identityMembershipOrg.scopeOrgId,
-      caCert: updatedCACert
+      caCert: updatedCACert,
+      templateName: updatedOidcAuth.templateId ? linkedTemplate?.name : undefined
     };
   };
 

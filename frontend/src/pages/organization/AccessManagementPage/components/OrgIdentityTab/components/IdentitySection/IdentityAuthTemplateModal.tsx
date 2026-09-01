@@ -125,8 +125,21 @@ const schema = z
             code: z.ZodIssueCode.custom,
             message: "OIDC discovery URL must be a valid URL"
           });
+        } else {
+          const { search, hash } = new URL(data.oidcDiscoveryUrl);
+          if (search || hash) {
+            ctx.addIssue({
+              path: ["oidcDiscoveryUrl"],
+              code: z.ZodIssueCode.custom,
+              message: "Please remove the query string or fragment."
+            });
+          }
         }
-        if (data.oidcDiscoveryUrl.endsWith("/.well-known/openid-configuration")) {
+        // the server strips trailing slashes before it checks, so match it or the two
+        // disagree on ".../.well-known/openid-configuration/"
+        if (
+          data.oidcDiscoveryUrl.replace(/\/+$/, "").endsWith("/.well-known/openid-configuration")
+        ) {
           ctx.addIssue({
             path: ["oidcDiscoveryUrl"],
             code: z.ZodIssueCode.custom,

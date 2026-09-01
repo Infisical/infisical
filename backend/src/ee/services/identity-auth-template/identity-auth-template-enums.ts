@@ -28,6 +28,8 @@ export const TEMPLATE_VALIDATION_MESSAGES = {
     DISCOVERY_URL_REQUIRED: "OIDC discovery URL is required",
     DISCOVERY_URL_WELL_KNOWN_SUFFIX:
       "Remove the /.well-known/openid-configuration suffix from the OIDC discovery URL. Infisical appends it automatically.",
+    DISCOVERY_URL_QUERY_OR_FRAGMENT:
+      "Remove the query string or fragment from the OIDC discovery URL. Infisical appends /.well-known/openid-configuration to it, which would land inside them.",
     ISSUER_REQUIRED: "Issuer is required"
   }
 } as const;

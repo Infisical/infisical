@@ -106,6 +106,19 @@ export const identityAuthTemplateServiceFactory = ({
     return { ...template, templateFields: redacted } as TSanitizedIdentityAuthTemplate;
   };
 
+  // blockLocalAndPrivateIpAddresses lets a DNS failure escape as-is, so a typo'd or
+  // not-yet-published discovery host would 500 instead of telling the author what to fix
+  const $validateOidcDiscoveryHost = async (oidcDiscoveryUrl: string) => {
+    try {
+      await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message: `Could not resolve the host of the OIDC discovery URL '${oidcDiscoveryUrl}'. Check the URL and that the host resolves from Infisical.`
+      });
+    }
+  };
+
   // audit the platform-driven rewrite of linked identities; runs after the propagation
   // transaction commits so the tx never waits on Redis, chunked to bound concurrency
   const $templatePropagationEvent = (
@@ -346,7 +359,7 @@ export const identityAuthTemplateServiceFactory = ({
     if (authMethod === IdentityAuthTemplateMethod.OIDC) {
       // parity with the identity attach flow: a template-authored discovery URL must not
       // let the backend dial local or private addresses
-      await blockLocalAndPrivateIpAddresses((templateFields as TOidcTemplateFields).oidcDiscoveryUrl);
+      await $validateOidcDiscoveryHost((templateFields as TOidcTemplateFields).oidcDiscoveryUrl);
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -512,7 +525,7 @@ export const identityAuthTemplateServiceFactory = ({
       // every propagation rather than only when the patch touches it (login re-validates
       // before dialing, but the template must never store a URL its author could not
       // have set directly)
-      await blockLocalAndPrivateIpAddresses(merged.oidcDiscoveryUrl);
+      await $validateOidcDiscoveryHost(merged.oidcDiscoveryUrl);
       oidcPropagationData = {
         oidcDiscoveryUrl: merged.oidcDiscoveryUrl,
         boundIssuer: merged.boundIssuer,

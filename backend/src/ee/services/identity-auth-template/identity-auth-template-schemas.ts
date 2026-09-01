@@ -70,10 +70,20 @@ export const oidcTemplateFieldsSchema = z.object({
     .url()
     .min(1, TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_REQUIRED)
     .max(2048)
-    // the login flow appends the suffix itself, so a URL stored with it would fetch
-    // <url>/.well-known/openid-configuration/.well-known/openid-configuration and fail
-    // at every login; the identity attach route predates this check, but a template is
-    // authored once and copied everywhere, so it must not store the broken form
+    // the login flow builds the document URL by string concatenation, so anything that
+    // cannot carry a trailing path segment breaks every login: a query or fragment would
+    // swallow the suffix (<url>?a=b/.well-known/openid-configuration). The identity attach
+    // route predates these checks, but a template is authored once and copied everywhere,
+    // so it must not store a form that cannot work
+    .refine((val) => {
+      const parsed = new URL(val);
+      return !parsed.search && !parsed.hash;
+    }, TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_QUERY_OR_FRAGMENT)
+    // a trailing slash concatenates to a double slash, which providers that route on the
+    // exact path (Keycloak realms, for one) 404. Normalized rather than rejected: pasting
+    // a URL with one is not a mistake worth failing the form over
+    .transform((val) => val.replace(/\/+$/, ""))
+    // checked after the strip so the trailing-slash spelling is caught too
     .refine(
       (val) => !val.endsWith("/.well-known/openid-configuration"),
       TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_WELL_KNOWN_SUFFIX
@@ -122,9 +132,13 @@ export const kubernetesTemplateFieldsResponseSchema = kubernetesTemplateFieldsBa
     hasTokenReviewerJwt: z.boolean().describe("Whether a token reviewer JWT is stored for this template")
   });
 
-// OIDC templates hold no write-only credentials, so the response is the stored shape;
-// audiences are re-declared as a plain string so the response schema carries no transform
+// OIDC templates hold no write-only credentials, so the response is the stored shape.
+// The two normalized fields are re-declared as plain strings so no request-side transform
+// or refinement runs on serialization and one stored row cannot fail a list response
 export const oidcTemplateFieldsResponseSchema = oidcTemplateFieldsSchema.extend({
+  oidcDiscoveryUrl: z
+    .string()
+    .describe("The URL used to retrieve the OpenID Connect configuration from the identity provider"),
   boundAudiences: z
     .string()
     .default("")
