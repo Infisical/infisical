@@ -138,6 +138,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           message: `KMS ${algorithm} key can only be used with ${algorithm} signing algorithm`
         });
       }
+      return true
     }
 
     if (!((isED25519Key && isED25519Algorithm) || (isRsaKey && isRsaAlgorithm) || (isEccKey && isEccAlgorithm))) {

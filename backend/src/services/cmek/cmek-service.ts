@@ -4,6 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { isOpenSSLExtAvailable } from "@app/lib/crypto/ed25519/openssl-ext";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -298,7 +299,11 @@ export const cmekServiceFactory = ({
 
     if (encryptionAlgorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519) {
       return {
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("ed25519")),
+        signingAlgorithms: Object.values(SigningAlgorithm).filter(
+          (signingAlgorithm) =>
+            signingAlgorithm.toLowerCase().startsWith("ed25519") &&
+            (signingAlgorithm !== SigningAlgorithm.ED25519_PH_SHA_512 || isOpenSSLExtAvailable())
+        ),
         projectId: key.projectId
       };
     }
