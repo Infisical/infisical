@@ -151,6 +151,7 @@
     "@storybook/addon-docs": "^9.1.9",
     "@storybook/react-vite": "^9.1.9",
     "storybook": "^9.1.19",
+    "storybook-addon-tag-badges": "^2.0.4",
     "@stylistic/eslint-plugin": "^2.12.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@tanstack/eslint-plugin-router": "^1.87.6",

@@ -4,15 +4,16 @@ import {
   Primary,
   Stories,
   Subtitle,
-  Title
+  Title,
+  useOf
 } from "@storybook/addon-docs/blocks";
-import { useParameter } from "storybook/preview-api";
 
 import type { ComponentDeprecation } from "../deprecation";
 import { DeprecationNotice } from "./DeprecationNotice";
 
 const ComponentDeprecationNotice = () => {
-  const deprecation = useParameter<ComponentDeprecation>("deprecation");
+  const { preparedMeta } = useOf("meta", ["meta"]);
+  const deprecation = preparedMeta.parameters.deprecation as ComponentDeprecation | undefined;
 
   return deprecation ? <DeprecationNotice className="mb-6" deprecation={deprecation} /> : null;
 };
