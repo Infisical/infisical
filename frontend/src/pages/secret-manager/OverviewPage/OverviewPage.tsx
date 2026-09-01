@@ -347,7 +347,13 @@ const OverviewPageContent = () => {
   });
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
-  const secretRowsStartRef = useRef<HTMLTableRowElement>(null);
+  // The row marking where the virtualized secret rows begin, held as state rather than a ref so
+  // that the effect measuring its offset re-runs the moment it mounts. It only exists in the
+  // loaded branch of the table body, and tableView is already "table" while that branch still
+  // renders skeletons, so an effect keyed on tableView never sees the row appear.
+  const [secretRowsStartElement, setSecretRowsStartElement] = useState<HTMLTableRowElement | null>(
+    null
+  );
   const secretManagerScrollContainer = useSecretManagerScrollContainer();
   const { currentProject, projectId } = useProject();
   const { user } = useUser();
@@ -2817,28 +2823,40 @@ const OverviewPageContent = () => {
     getItemKey: (index) => mergedSecKeys[index]
   });
 
+  const measureSecretRowsScrollMargin = useCallback(() => {
+    const scrollElement = secretManagerScrollContainer;
+    if (!secretRowsStartElement || !scrollElement) return;
+
+    const next =
+      secretRowsStartElement.getBoundingClientRect().top -
+      scrollElement.getBoundingClientRect().top +
+      scrollElement.scrollTop;
+    setSecretRowsScrollMargin((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+  }, [secretRowsStartElement, secretManagerScrollContainer]);
+
+  // Everything that sits between the top of the scroll container and the secret rows moves their
+  // origin when its height changes: the selection panel appearing, the card header wrapping, the
+  // import, folder, dynamic secret, rotation, honey token and proxied service blocks arriving.
+  // Most of that leaves the table's own box and the scroll container's box untouched, so measure
+  // on every commit and leave the observer to catch the reflows that land without a render. The
+  // measurement is scroll-independent, and the setter ignores sub-pixel differences, so this
+  // settles in a single extra render rather than looping.
   useLayoutEffect(() => {
-    const startElement = secretRowsStartRef.current;
+    measureSecretRowsScrollMargin();
+  });
+
+  useLayoutEffect(() => {
     const scrollElement = secretManagerScrollContainer;
     const tableElement = tableRef.current;
-    if (!startElement || !scrollElement || !tableElement) return undefined;
+    if (!secretRowsStartElement || !scrollElement || !tableElement) return undefined;
 
-    const measure = () => {
-      const next =
-        startElement.getBoundingClientRect().top -
-        scrollElement.getBoundingClientRect().top +
-        scrollElement.scrollTop;
-      setSecretRowsScrollMargin((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
-    };
-
-    measure();
-    const resizeObserver = new ResizeObserver(measure);
+    const resizeObserver = new ResizeObserver(measureSecretRowsScrollMargin);
     resizeObserver.observe(tableElement);
     resizeObserver.observe(scrollElement);
 
     // eslint-disable-next-line consistent-return
     return () => resizeObserver.disconnect();
-  }, [secretManagerScrollContainer, tableView]);
+  }, [secretManagerScrollContainer, secretRowsStartElement, measureSecretRowsScrollMargin]);
 
   const secretVirtualItems = secretRowVirtualizer.getVirtualItems();
   const secretRowsTotalSize = secretRowVirtualizer.getTotalSize();
@@ -3740,7 +3758,7 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
-                          <tr ref={secretRowsStartRef} aria-hidden>
+                          <tr ref={setSecretRowsStartElement} aria-hidden>
                             <td
                               colSpan={secretRowsSpacerCols}
                               style={{ height: 0, padding: 0, border: 0 }}
