@@ -516,14 +516,16 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
-  // Select all only covers the options matching the current search, so a filtered
-  // list toggles what is on screen instead of the entire option set.
+  // Select all only covers the visible result set. External-search consumers
+  // provide an already-filtered list, so do not apply the local filter again.
   const selectAllOptions = React.useMemo(
     () =>
       isSelectAll
-        ? items.filter((option) => !isOptionDisabled?.(option) && filter(option, search))
+        ? items.filter(
+            (option) => !isOptionDisabled?.(option) && (!shouldFilter || filter(option, search))
+          )
         : [],
-    [filter, isOptionDisabled, isSelectAll, items, search]
+    [filter, isOptionDisabled, isSelectAll, items, search, shouldFilter]
   );
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
