@@ -3935,7 +3935,8 @@ export const registerRoutes = async (
     folderService,
     folderDAL,
     projectEnvDAL,
-    secretV2BridgeService
+    secretV2BridgeService,
+    secretApprovalRequestService
   });
 
   // setup the communication with license key server

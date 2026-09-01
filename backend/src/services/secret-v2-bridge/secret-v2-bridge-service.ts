@@ -2178,21 +2178,25 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    const secrets = await secretDAL.find({
-      folderId,
-      type: SecretType.Shared,
-      $in: {
-        [`${TableName.SecretV2}.key` as "key"]: deduplicatedSecrets.map((el) => el.secretKey)
-      }
-    });
+    const secrets = await secretDAL.find(
+      {
+        folderId,
+        type: SecretType.Shared,
+        $in: {
+          [`${TableName.SecretV2}.key` as "key"]: deduplicatedSecrets.map((el) => el.secretKey)
+        }
+      },
+      { tx: providedTx }
+    );
     if (secrets.length)
       throw new BadRequestError({
         message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
       });
 
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
-    );
+    // requestMemoize can hand back a value read outside a caller-supplied transaction, so it is bypassed here
+    const project = providedTx
+      ? await projectDAL.findById(projectId, providedTx)
+      : await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId));
     await scanSecretPolicyViolations(
       projectId,
       secretPath,
@@ -2205,12 +2209,15 @@ export const secretV2BridgeServiceFactory = ({
       environment,
       envId: folder.envId,
       secretPath,
-      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
+      tx: providedTx
     });
 
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
-    const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
+    const tags = sanitizedTagIds.length
+      ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, providedTx)
+      : [];
     if (tags.length !== sanitizedTagIds.length)
       throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
@@ -2240,13 +2247,13 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
     });
-    await $validateSecretReferences(projectId, permission, secretReferences);
+    await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
     const {
       encryptor: secretManagerEncryptor,
       decryptor: secretManagerDecryptor,
       generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
 
     const executeBulkInsert = async (tx: Knex) => {
       const inputSecretsWithBlindIndex = await Promise.all(

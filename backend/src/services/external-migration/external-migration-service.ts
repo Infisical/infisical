@@ -20,9 +20,11 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
+import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -171,6 +173,10 @@ type TExternalMigrationServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "transaction" | "findByManySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretCreateSideEffects">;
+  secretApprovalRequestService: Pick<
+    TSecretApprovalRequestServiceFactory,
+    "dispatchSecretApprovalRequestCreateSideEffects"
+  >;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -190,7 +196,8 @@ export const externalMigrationServiceFactory = ({
   folderService,
   folderDAL,
   projectEnvDAL,
-  secretV2BridgeService
+  secretV2BridgeService,
+  secretApprovalRequestService
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -528,18 +535,6 @@ export const externalMigrationServiceFactory = ({
       }
     }
 
-    const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
-      [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath }))
-    );
-
-    if (!baseFolder) {
-      throw new NotFoundError({
-        message: `Folder with path '${basePath}' in environment with slug '${environment}' not found`
-      });
-    }
-
-    const pathsToCreate = candidatePaths.filter((_, idx) => !candidateFolders[idx]);
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -549,27 +544,40 @@ export const externalMigrationServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    $assertVaultImportCreatePermissions({
-      permission,
-      environment,
-      pathsToCreate,
-      units
-    });
-
-    const foldersToCreate = pathsToCreate
-      .map((pathToCreate) => {
-        const segments = pathToCreate.split("/").filter(Boolean);
-        return {
-          name: segments[segments.length - 1],
-          path: `/${segments.slice(0, -1).join("/")}`,
-          environment
-        };
-      })
-      .sort((a, b) => a.path.split("/").filter(Boolean).length - b.path.split("/").filter(Boolean).length);
-
     const unitsWithSecrets = units.filter(({ secrets }) => secrets.length);
 
     const results = await folderDAL.transaction(async (tx) => {
+      const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
+        [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath })),
+        tx
+      );
+
+      if (!baseFolder) {
+        throw new NotFoundError({
+          message: `Folder with path '${basePath}' in environment with slug '${environment}' not found`
+        });
+      }
+
+      const pathsToCreate = candidatePaths.filter((_, idx) => !candidateFolders[idx]);
+
+      $assertVaultImportCreatePermissions({
+        permission,
+        environment,
+        pathsToCreate,
+        units
+      });
+
+      const foldersToCreate = pathsToCreate
+        .map((pathToCreate) => {
+          const segments = pathToCreate.split("/").filter(Boolean);
+          return {
+            name: segments[segments.length - 1],
+            path: `/${segments.slice(0, -1).join("/")}`,
+            environment
+          };
+        })
+        .sort((a, b) => a.path.split("/").filter(Boolean).length - b.path.split("/").filter(Boolean).length);
+
       if (foldersToCreate.length) {
         await folderService.createManyFolders({
           projectId,
@@ -629,6 +637,28 @@ export const externalMigrationServiceFactory = ({
         })
       )
     );
+
+    for (const { folderPath, secrets, approval } of approvedResults) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
+          secretApprovalRequest: approval,
+          projectId,
+          environment,
+          secretPath: folderPath,
+          secretKeys: secrets.map(({ secretKey }) => secretKey),
+          actor: actor.type,
+          actorId: actor.id,
+          actorOrgId: actor.orgId
+        });
+      } catch (error) {
+        // the change requests are already committed, so a failed notification must not fail the import
+        logger.error(
+          error,
+          `Failed to notify approvers of Vault import change request [requestId=${approval.id}] [secretPath=${folderPath}]`
+        );
+      }
+    }
 
     await Promise.all(
       approvedResults.map(({ folderPath, secrets, approval }) =>

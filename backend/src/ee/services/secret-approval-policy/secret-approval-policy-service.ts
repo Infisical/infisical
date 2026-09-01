@@ -635,8 +635,8 @@ export const secretApprovalPolicyServiceFactory = ({
     return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx);
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
-    const policies = await findEnvPolicies(projectId, environment);
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const policies = await findEnvPolicies(projectId, environment, tx);
     if (!policies.length) return;
     return resolvePolicyForPath(policies, removeTrailingSlash(path));
   };

@@ -2199,7 +2199,7 @@ export const secretServiceFactory = ({
     }
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
+    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath, tx);
 
     if (tx && !shouldUseSecretV2Bridge) {
       throw new BadRequestError({
@@ -2237,6 +2237,7 @@ export const secretServiceFactory = ({
           actorOrgId,
           actorAuthMethod,
           trx: tx,
+          skipPostProcessing,
           data: {
             [SecretOperations.Create]: inputSecrets.map((el) => ({
               tagIds: el.tagIds,

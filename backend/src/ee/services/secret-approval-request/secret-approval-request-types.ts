@@ -1,4 +1,9 @@
-import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
+import {
+  TImmutableDBKeys,
+  TSecretApprovalPolicies,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsSecrets
+} from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -77,6 +82,13 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
     [SecretOperations.Delete]?: { secretKey: string }[];
   };
 } & TProjectPermission;
+
+export type TDispatchSecretApprovalRequestCreateSideEffectsDTO = {
+  secretApprovalRequest: TSecretApprovalRequests & { commits: { id: string }[] };
+  environment: string;
+  secretPath: string;
+  secretKeys: string[];
+} & Omit<TProjectPermission, "actorAuthMethod">;
 
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
