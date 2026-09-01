@@ -2058,7 +2058,9 @@ export const secretApprovalRequestServiceFactory = ({
         }))
       );
       if (secrets.length)
-        throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+        throw new BadRequestError({
+          message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+        });
 
       secretsToValidate.push(...createdSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
 

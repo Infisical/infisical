@@ -362,7 +362,9 @@ export const secretV2BridgeServiceFactory = ({
       folderId
     });
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
-      throw new BadRequestError({ message: "Secret already exists" });
+      throw new BadRequestError({
+        message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
+      });
 
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal && !doesSecretExist) {
@@ -2184,7 +2186,9 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     if (secrets.length)
-      throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+      throw new BadRequestError({
+        message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+      });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
