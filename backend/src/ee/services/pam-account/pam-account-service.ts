@@ -248,6 +248,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
 
+    const { decryptor } = await getProjectCipher(projectId);
+    const revealableById = new Map(
+      accounts.map((a) => [
+        a.id,
+        hasRevealableCredential(
+          a.accountType as PamAccountType,
+          JSON.parse(decryptor({ cipherTextBlob: a.encryptedCredentials }).toString("utf-8")) as Record<string, unknown>
+        )
+      ])
+    );
+
     const [accessStatusMap, credentialAccessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] =
       await Promise.all([
         deps.pamAccessRequestService.getAccessStatusBatch(
@@ -297,7 +308,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         accessibilityIssues,
         isStale: a.isStale,
         requiresApproval,
-        supportsCredentialReveal: hasRevealableCredential(a.accountType as PamAccountType),
+        supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
