@@ -11,7 +11,7 @@ export const GeneralPage = () => {
   const { data: serverConfig } = useGetServerConfig();
 
   return (
-    <div className="h-full bg-background text-foreground">
+    <div className="h-full text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>

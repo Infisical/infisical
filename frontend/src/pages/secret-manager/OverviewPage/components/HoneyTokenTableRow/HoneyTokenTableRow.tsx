@@ -1,19 +1,24 @@
 import { subject } from "@casl/ability";
 import {
-  AsteriskIcon,
   BanIcon,
   ChevronDownIcon,
+  ClipboardCheckIcon,
+  CopyIcon,
   EditIcon,
-  ExternalLinkIcon,
+  EllipsisIcon,
   HexagonIcon,
-  InfoIcon
+  InfoIcon,
+  ListIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
-  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   IconButton,
   Table,
   TableBody,
@@ -30,7 +35,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { useToggle } from "@app/hooks";
+import { useTimedReset, useToggle } from "@app/hooks";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
@@ -42,6 +47,9 @@ const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Revoked]: "neutral"
 };
 
+const ACTION_BUTTON_CLASS_NAME =
+  "overflow-hidden border-0 transition-all duration-300 motion-reduce:transition-none [@media(hover:hover)]:w-0 [@media(hover:hover)]:group-hover:w-7 [@media(hover:hover)]:group-focus-within:w-7";
+
 type Props = {
   honeyTokenName: string;
   environments: { name: string; slug: string }[];
@@ -50,10 +58,7 @@ type Props = {
   tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
-  onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
-  isSelected: boolean;
-  onToggleHoneyTokenSelect: (honeyTokenName: string) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -64,12 +69,10 @@ export const HoneyTokenTableRow = ({
   tableWidth,
   onEdit,
   onRevoke,
-  onViewCredentials,
-  onViewDetails,
-  isSelected,
-  onToggleHoneyTokenSelect
+  onViewDetails
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -95,99 +98,91 @@ export const HoneyTokenTableRow = ({
     return (
       <div
         className={twMerge(
-          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          "pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5 opacity-100 transition-all duration-300 motion-reduce:transition-none",
+          "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:gap-0 [@media(hover:hover)]:opacity-0",
+          "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:gap-1 [@media(hover:hover)]:group-hover:opacity-100",
+          "[@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:gap-1 [@media(hover:hover)]:group-focus-within:opacity-100"
         )}
       >
         <Tooltip>
-          <TooltipTrigger>
+          <TooltipTrigger asChild>
             <IconButton
               variant="ghost"
               size="xs"
-              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              className={ACTION_BUTTON_CLASS_NAME}
+              aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
-              <ExternalLinkIcon />
+              <ListIcon />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent>View details</TooltipContent>
         </Tooltip>
-        <ProjectPermissionCan
-          I={ProjectPermissionHoneyTokenActions.ReadCredentials}
-          a={subject(ProjectPermissionSub.HoneyTokens, {
-            environment: honeyToken.environment.slug,
-            secretPath: honeyToken.folder.path
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!isAllowed || isRevoked}
-                  onClick={() => onViewCredentials(honeyToken)}
-                >
-                  <AsteriskIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>View credentials</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionHoneyTokenActions.Edit}
-          a={subject(ProjectPermissionSub.HoneyTokens, {
-            environment: honeyToken.environment.slug,
-            secretPath: honeyToken.folder.path
-          })}
-          renderTooltip
-          allowedLabel="Edit"
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!isAllowed || isRevoked}
-                  onClick={() => onEdit(honeyToken)}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        {honeyToken.status !== HoneyTokenStatus.Revoked && (
-          <ProjectPermissionCan
-            I={ProjectPermissionHoneyTokenActions.Revoke}
-            a={subject(ProjectPermissionSub.HoneyTokens, {
-              environment: honeyToken.environment.slug,
-              secretPath: honeyToken.folder.path
-            })}
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger>
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
-                    onClick={() => onRevoke(honeyToken)}
+        {isRevoked ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                className={twMerge(
+                  ACTION_BUTTON_CLASS_NAME,
+                  "cursor-not-allowed opacity-50 hover:bg-transparent"
+                )}
+                aria-label={`More actions unavailable for ${honeyToken.name}`}
+                aria-disabled
+              >
+                <EllipsisIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>Revoked honey tokens cannot be edited.</TooltipContent>
+          </Tooltip>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                className={ACTION_BUTTON_CLASS_NAME}
+                aria-label={`More actions for ${honeyToken.name}`}
+              >
+                <EllipsisIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <ProjectPermissionCan
+                I={ProjectPermissionHoneyTokenActions.Edit}
+                a={subject(ProjectPermissionSub.HoneyTokens, {
+                  environment: honeyToken.environment.slug,
+                  secretPath: honeyToken.folder.path
+                })}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem isDisabled={!isAllowed} onSelect={() => onEdit(honeyToken)}>
+                    <EditIcon />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionHoneyTokenActions.Revoke}
+                a={subject(ProjectPermissionSub.HoneyTokens, {
+                  environment: honeyToken.environment.slug,
+                  secretPath: honeyToken.folder.path
+                })}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    variant="danger"
                     isDisabled={!isAllowed}
+                    onSelect={() => onRevoke(honeyToken)}
                   >
                     <BanIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Revoke</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
+                    Revoke
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     );
@@ -200,7 +195,10 @@ export const HoneyTokenTableRow = ({
     return (
       <>
         {tokenInfo && (
-          <Badge variant="neutral" className="mx-2.5">
+          <Badge
+            variant="neutral"
+            className="mx-2.5 bg-[color-mix(in_srgb,var(--color-neutral)_15%,var(--color-container))]"
+          >
             <img
               src={`/images/integrations/${tokenInfo.image}`}
               style={{ width: "11px" }}
@@ -233,39 +231,27 @@ export const HoneyTokenTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(
+          "group hover:z-10",
+          isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10"
+        )}
       >
         <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
-          <Checkbox
-            variant="project"
-            id={`checkbox-${honeyTokenName}`}
-            isChecked={isSelected}
-            onCheckedChange={() => {
-              onToggleHoneyTokenSelect(honeyTokenName);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className={twMerge("hidden group-hover:flex", isSelected && "flex")}
-          />
           {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon
-              className={twMerge("block", "group-hover:!hidden", isSelected && "!hidden")}
-            />
+            <ChevronDownIcon className="block" />
           ) : (
             <HexagonIcon
               className={twMerge(
-                "group-hover:!hidden",
-                isSelected && "!hidden",
-                isTriggered && "text-red",
-                !isTriggered && !isAllRevoked && "text-yellow",
-                isAllRevoked && "text-mineshaft-400"
+                isTriggered && "text-danger",
+                !isTriggered && !isAllRevoked && "text-warning",
+                isAllRevoked && "text-muted"
               )}
             />
           )}
@@ -274,6 +260,7 @@ export const HoneyTokenTableRow = ({
           className={twMerge(
             !isSingleEnvView && "sticky left-10 z-10 border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
@@ -281,12 +268,19 @@ export const HoneyTokenTableRow = ({
         >
           {isSingleEnvView && singleEnvToken ? (
             <div className="relative flex w-full items-center">
-              <span className="truncate">{honeyTokenName}</span>
+              <span
+                className={twMerge(
+                  "truncate",
+                  singleEnvToken.status === HoneyTokenStatus.Revoked && "text-muted"
+                )}
+              >
+                {honeyTokenName}
+              </span>
               {renderHoneyTokenInlineDetails(singleEnvToken)}
               <div
                 className={twMerge(
-                  "ml-auto flex items-center transition-[margin] duration-300",
-                  "group-hover:mr-32"
+                  "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
+                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
@@ -296,7 +290,38 @@ export const HoneyTokenTableRow = ({
               </div>
             </div>
           ) : (
-            honeyTokenName
+            <span className={twMerge(isAllRevoked && "text-muted")}>{honeyTokenName}</span>
+          )}
+          {!isSingleEnvView && (
+            <div
+              className={twMerge(
+                "absolute top-1/2 right-[3px] z-20 -translate-y-1/2",
+                "flex items-center rounded-md border border-border bg-container-hover p-0.5 shadow-md",
+                "pointer-events-auto opacity-100 transition-all duration-300 motion-reduce:transition-none",
+                "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0",
+                "[@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100",
+                "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
+              )}
+            >
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    aria-label={`Copy honey token name ${honeyTokenName}`}
+                    className={ACTION_BUTTON_CLASS_NAME}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigator.clipboard.writeText(honeyTokenName);
+                      setIsNameCopied(true);
+                    }}
+                  >
+                    {isNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy Honey Token Name</TooltipContent>
+              </Tooltip>
+            </div>
           )}
         </TableCell>
         {environments.length > 1 &&
@@ -343,15 +368,28 @@ export const HoneyTokenTableRow = ({
                       const honeyToken = getHoneyTokenByName(slug, honeyTokenName)!;
 
                       return (
-                        <TableRow key={slug} className="group relative hover:z-10">
+                        <TableRow
+                          key={slug}
+                          className={twMerge(
+                            "group relative hover:z-10",
+                            honeyToken.status === HoneyTokenStatus.Triggered &&
+                              "bg-danger/5 hover:bg-danger/10"
+                          )}
+                        >
                           <TableCell colSpan={2}>
                             <div className="relative flex w-full items-center">
-                              <span>{envName}</span>
+                              <span
+                                className={twMerge(
+                                  honeyToken.status === HoneyTokenStatus.Revoked && "text-muted"
+                                )}
+                              >
+                                {envName}
+                              </span>
                               {renderHoneyTokenInlineDetails(honeyToken)}
                               <div
                                 className={twMerge(
-                                  "ml-auto flex items-center transition-[margin] duration-300",
-                                  "group-hover:mr-32"
+                                  "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
+                                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}
