@@ -9,6 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -51,7 +52,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
+import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -75,6 +76,7 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgDAL: Pick<
     TOrgDALFactory,
@@ -118,6 +120,7 @@ export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFacto
 
 export const ldapConfigServiceFactory = ({
   ldapConfigDAL,
+  auditLogService,
   ldapGroupMapDAL,
   orgDAL,
   groupDAL,
@@ -746,6 +749,19 @@ export const ldapConfigServiceFactory = ({
         userAliasDAL
       }));
     }
+
+    user = await syncSsoUserProfile({
+      user,
+      userAlias,
+      assertedEmail: sanitizedEmail,
+      assertedFirstName: firstName,
+      assertedLastName: lastName,
+      orgId,
+      isAuthEnforced: Boolean(organization.authEnforced),
+      userDAL,
+      userAliasDAL,
+      auditLogService
+    });
 
     if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({

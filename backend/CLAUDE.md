@@ -421,6 +421,41 @@ audit-log entitlement, so on those deployments only the `logger.info` line survi
 Do not special-case this event past the retention gate; treat the application log as the floor and
 the audit event as the addition for licensed instances.
 
+### Profile Sync From The IdP (SSO-enforced orgs)
+
+An IdP keyed on a stable identifier lets someone change mailbox and display name without changing
+who they are, so our copy of both goes stale: notification mail goes to an address that no longer
+exists, and every audit entry written from then on records it. `syncSsoUserProfile`
+(`src/services/user-alias/user-alias-fns.ts`) carries the asserted email and name onto the account,
+and is called from all three login services right after `ensureSsoAccountVerified`, outside the
+caller's transaction, with its result flowing into the session.
+
+The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+is the org saying the IdP is authoritative for identity, which is the same claim that already skips
+email verification at signup. The verified alias is the proof that the IdP controls *this* account:
+an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
+catch, and reading that as a rename would let a stale alias rewrite somebody else's account. One
+consequence to know: a legacy unverified alias whose email changed before its next login is stale,
+so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
+
+Two invariants:
+
+- **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
+  already had; a throw locks the person out of an org that has no other way in. Every failure path
+  returns the unchanged user.
+- **It never renames onto an occupied address.** `users.username` is globally unique and the row is
+  global rather than org-scoped, so the asserted address may already be a personal signup or an
+  unmerged duplicate. The conflict is recorded (`SSO_USER_PROFILE_SYNC_CONFLICT`) and the email is
+  left alone; the name still syncs. The preceding read is not a lock, so a unique violation lands on
+  the same path.
+
+SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
+rejected every email change outright, which left the data stale *and* put the provisioning job in a
+permanent error state (Entra quarantines after repeated failures). Both now accept the change under
+the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
+`409 uniqueness` rather than a constraint-shaped 500. Self-service email change
+(`user-service.ts`) is refused for the same orgs, since the next login would overwrite it anyway.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:

@@ -668,4 +668,145 @@ describe("SCIM v1 Router", () => {
       }
     );
   });
+
+  describe("Provisioned email changes", () => {
+    const seedUser = async (db: Knex, label: string) => {
+      const [user] = await db(TableName.Users)
+        .insert({
+          email: `scim-email-${label}@${TEST_DOMAIN}`,
+          username: `scim-email-${label}@${TEST_DOMAIN}`,
+          isGhost: false,
+          isEmailVerified: true,
+          authMethods: ["email"]
+        })
+        .returning("*");
+      createdUserIds.push(user.id);
+
+      const [membership] = await db(TableName.Membership)
+        .insert({
+          actorUserId: user.id,
+          scopeOrgId: ORG_ID,
+          scope: AccessScope.Organization,
+          isActive: true
+        })
+        .returning("*");
+      createdMembershipIds.push(membership.id);
+
+      await db(TableName.MembershipRole).insert({ membershipId: membership.id, role: "member" });
+
+      const [alias] = await db(TableName.UserAliases)
+        .insert({
+          userId: user.id,
+          orgId: ORG_ID,
+          aliasType: "saml",
+          externalId: `scim-email-ext-${label}`,
+          emails: [user.username]
+        })
+        .returning("*");
+
+      return { user, membership, alias };
+    };
+
+    // Entra addresses the mailbox through a filter path rather than an index.
+    const patchEmail = (membershipId: string, newEmail: string) =>
+      testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}`, "content-type": "application/scim+json" },
+        payload: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [{ op: "replace", path: 'emails[type eq "work"].value', value: newEmail }]
+        })
+      });
+
+    const putUser = (membershipId: string, externalId: string, newEmail: string) =>
+      testServer.inject({
+        method: "PUT",
+        url: `/api/v1/scim/Users/${membershipId}`,
+        headers: { authorization: `Bearer ${scimToken}`, "content-type": "application/scim+json" },
+        payload: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: externalId,
+          name: { givenName: "Robert", familyName: "Smith" },
+          emails: [{ primary: true, value: newEmail }],
+          active: true
+        })
+      });
+
+    afterEach(async () => {
+      await getDb()(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: false });
+    });
+
+    test("should reject an email change when the org does not enforce SSO", async () => {
+      const db = getDb();
+      const label = `norename-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label);
+
+      const res = await patchEmail(membership.id, `renamed-${label}@${TEST_DOMAIN}`);
+
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).mutability).toBe("immutable");
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username");
+      expect(row.username).toBe(user.username);
+    });
+
+    test("should apply a PATCH email change when the org enforces SSO", async () => {
+      const db = getDb();
+      const label = `patch-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership, alias } = await seedUser(db, label);
+      const newEmail = `renamed-${label}@${TEST_DOMAIN}`;
+
+      await db(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: true });
+
+      const res = await patchEmail(membership.id, newEmail);
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.payload).emails[0].value).toBe(newEmail);
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
+      expect(row.username).toBe(newEmail);
+      expect(row.email).toBe(newEmail);
+
+      // The old address stays on the alias so a login in flight from before the rename still resolves.
+      const [aliasRow] = await db(TableName.UserAliases).where({ id: alias.id }).select("emails");
+      expect(aliasRow.emails).toEqual([user.username, newEmail]);
+    });
+
+    test("should apply a PUT email change when the org enforces SSO", async () => {
+      const db = getDb();
+      const label = `put-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label);
+      const newEmail = `renamed-${label}@${TEST_DOMAIN}`;
+
+      await db(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: true });
+
+      const res = await putUser(membership.id, `scim-email-ext-${label}`, newEmail);
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.payload).emails[0].value).toBe(newEmail);
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
+      expect(row.username).toBe(newEmail);
+      expect(row.email).toBe(newEmail);
+    });
+
+    test("should report a conflict when the new address is already another account", async () => {
+      const db = getDb();
+      const label = `conflict-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label);
+      const { user: occupant } = await seedUser(db, `occupant-${label}`);
+
+      await db(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: true });
+
+      const res = await patchEmail(membership.id, occupant.username);
+
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).scimType).toBe("uniqueness");
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username");
+      expect(row.username).toBe(user.username);
+    });
+  });
+
 });

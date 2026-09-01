@@ -46,10 +46,11 @@ If your required identity provider is not shown in the list above, please reach 
 
 ## SSO enforcement
 
-When you enforce SAML or OIDC SSO for your organization, members can only access Infisical by logging in through your identity provider. Enforcement has two additional effects tied to your [verified email domain(s)](/documentation/platform/email-domain):
+When you enforce SAML or OIDC SSO for your organization, members can only access Infisical by logging in through your identity provider. Enforcement has three additional effects tied to your [verified email domain(s)](/documentation/platform/email-domain):
 
 - **Email & password signup is blocked for your verified domain(s).** Once SSO is enforced, new email/password accounts can no longer be created for addresses on your verified domain(s). The verified domain and IdP are authoritative, so allowing a competing password account would reopen an account-takeover vector.
 - **Email verification is skipped for SSO sign-ins.** Because the verified domain and IdP already prove ownership of the email, Infisical skips the additional email-verification step that normally applies to SSO logins (see the FAQ below).
+- **Email addresses and names come from your identity provider.** Each SSO login updates the member's email address and name to match the assertion. Someone renamed in your identity provider keeps their Infisical account and their access, and later notifications and audit log entries carry the new address. Members can't change their own email address while enforcement is on.
 
 <Warning>
   Before enforcing SSO, make sure a break-glass organization admin already has a password and SSO bypass access. After enforcement is enabled, the signup block prevents creating new password accounts for the domain.
@@ -76,6 +77,13 @@ This portal is accessible at `/login/admin` (e.g., https://app.infisical.com/log
         verification step upon their first login.
 
         To skip this step, [enforce SSO](#sso-enforcement) for your organization. Enforcement requires a [verified email domain](/documentation/platform/email-domain), so the domain and your identity provider are already authoritative for that email.
+    </Accordion>
+    <Accordion title="What happens when a member's email address changes in my identity provider?">
+        With SSO enforcement on, the next login updates that member's Infisical email address and name to match the assertion. The account, its memberships, and its access are unchanged, and audit log entries written from then on carry the new address. Entries written earlier keep the address that was current when they were recorded.
+
+        If your organization provisions through [SCIM](/documentation/platform/scim/overview), the change arrives on the provisioning job instead, without waiting for the member to log in.
+
+        When another Infisical account already uses the new address, Infisical leaves the email address as it is and records the conflict in the audit log. Remove or merge the other account, and the change applies on the next login.
     </Accordion>
     <Accordion title="Why do I get redirected to SSO when trying to use the Admin Login Portal?">
         You are likely being redirected because you do not have email authentication mode enabled, or you're not an **Organization Admin**. This portal requires **Organization Admin** status and direct credential login (email and password). **Server Admin** status alone is insufficient.

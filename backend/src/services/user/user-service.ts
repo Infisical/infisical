@@ -268,7 +268,12 @@ export const userServiceFactory = ({
     return updatedUser;
   };
 
-  const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
+  /**
+   * Returns why this account's email is managed elsewhere, or null when the user owns it. SCIM
+   * provisions the address from the directory; SSO enforcement makes the IdP authoritative for it
+   * and overwrites whatever is set here on the next login, so offering the change would be a lie.
+   */
+  const $getManagedEmailReason = async (userId: string, tx?: Knex) => {
     const userOrgs = await membershipUserDAL.find(
       {
         actorUserId: userId,
@@ -278,13 +283,21 @@ export const userServiceFactory = ({
     );
 
     if (userOrgs.length === 0) {
-      return false;
+      return null;
     }
 
     const orgIds = userOrgs.map((membership) => membership.scopeOrgId);
     const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
 
-    return organizations.some((org) => org.scimEnabled);
+    if (organizations.some((org) => org.scimEnabled)) {
+      return "Email changes are disabled because SCIM is enabled for one or more of your organizations";
+    }
+
+    if (organizations.some((org) => org.authEnforced)) {
+      return "Email changes are disabled because one or more of your organizations enforce SSO. Your email address is managed by your identity provider.";
+    }
+
+    return null;
   };
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
@@ -314,12 +327,9 @@ export const userServiceFactory = ({
         });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "RequestEmailChangeOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(userId, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "RequestEmailChangeOTP" });
       }
 
       // Availability of the requested address is deliberately NOT checked here: step 1
@@ -363,12 +373,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "VerifyCurrentEmailOTP" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "VerifyCurrentEmailOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(userId, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "VerifyCurrentEmailOTP" });
       }
 
       let tokenData;
@@ -443,12 +450,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "You are part of an organization that has SCIM enabled, and email changes are not allowed",
-          name: "UpdateUserEmail"
-        });
+      const managedEmailReason = await $getManagedEmailReason(userId, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "UpdateUserEmail" });
       }
 
       // Validate OTP and get the new email from token aliasId field
