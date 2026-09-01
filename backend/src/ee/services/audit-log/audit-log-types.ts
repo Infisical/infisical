@@ -35,6 +35,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -846,6 +847,7 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+  IMPORT_VAULT_SECRETS = "import-vault-secrets",
 
   // OAuth 2.0 authorization server clients
   CREATE_OAUTH_CLIENT = "create-oauth-client",
@@ -6818,6 +6820,23 @@ interface ExternalMigrationDeleteEvent {
     provider: string;
   };
 }
+
+interface ImportVaultSecretsEvent {
+  type: EventType.IMPORT_VAULT_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    vaultNamespace: string;
+    vaultSecretPaths: string[];
+    connectionId: string;
+    keepVaultStructure: boolean;
+    status: ExternalMigrationImportStatus;
+    importedSecretCount: number;
+    approvalRequiredSecretCount: number;
+    importedPaths?: string[];
+    approvalRequiredPaths?: string[];
+  };
+}
 interface CreateOauthClientEvent {
   type: EventType.CREATE_OAUTH_CLIENT;
   metadata: {
@@ -7833,6 +7852,7 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | ImportVaultSecretsEvent
   | CreateOauthClientEvent
   | UpdateOauthClientEvent
   | DeleteOauthClientEvent

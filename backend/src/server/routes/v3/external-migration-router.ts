@@ -1,6 +1,7 @@
 import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -303,7 +304,26 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         ...req.body
       });
 
-      // TODO: add audit log
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.IMPORT_VAULT_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            vaultNamespace: req.body.vaultNamespace,
+            vaultSecretPaths: req.body.vaultSecretPaths,
+            connectionId: req.body.connectionId,
+            keepVaultStructure: req.body.keepVaultStructure,
+            status: result.status,
+            importedSecretCount: result.importedSecretCount,
+            approvalRequiredSecretCount: result.approvalRequiredSecretCount,
+            importedPaths: result.importedPaths,
+            approvalRequiredPaths: result.approvalRequiredPaths
+          }
+        }
+      });
 
       return result;
     }

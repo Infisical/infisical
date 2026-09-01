@@ -422,6 +422,7 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+  IMPORT_VAULT_SECRETS = "import-vault-secrets",
 
   // Gateway
   GATEWAY_CREATE = "gateway-create",

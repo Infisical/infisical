@@ -656,7 +656,9 @@ export const externalMigrationServiceFactory = ({
         ? ExternalMigrationImportStatus.ApprovalRequired
         : ExternalMigrationImportStatus.Imported,
       importedPaths: writtenResults.map(({ folderPath }) => folderPath),
-      approvalRequiredPaths: approvedResults.map(({ folderPath }) => folderPath)
+      approvalRequiredPaths: approvedResults.map(({ folderPath }) => folderPath),
+      importedSecretCount: writtenResults.reduce((count, { secrets }) => count + secrets.length, 0),
+      approvalRequiredSecretCount: approvedResults.reduce((count, { secrets }) => count + secrets.length, 0)
     };
   };
 
@@ -776,10 +778,18 @@ export const externalMigrationServiceFactory = ({
           }
         });
 
-        return { status: ExternalMigrationImportStatus.ApprovalRequired };
+        return {
+          status: ExternalMigrationImportStatus.ApprovalRequired,
+          importedSecretCount: 0,
+          approvalRequiredSecretCount: Object.keys(vaultSecrets).length
+        };
       }
 
-      return { status: ExternalMigrationImportStatus.Imported };
+      return {
+        status: ExternalMigrationImportStatus.Imported,
+        importedSecretCount: Object.keys(vaultSecrets).length,
+        approvalRequiredSecretCount: 0
+      };
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to import Vault secrets. ${error instanceof Error ? error.message : "Unknown error"}`
