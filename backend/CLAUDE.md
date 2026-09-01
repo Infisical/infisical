@@ -461,7 +461,11 @@ rejected every email change outright, which left the data stale *and* put the pr
 permanent error state (Entra quarantines after repeated failures). Both now accept the change under
 the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
 `409 uniqueness` rather than a constraint-shaped 500. Self-service email change
-(`user-service.ts`) is refused for the same orgs, since the next login would overwrite it anyway.
+(`user-service.ts`) is refused when the next login would overwrite it anyway, which
+`$getManagedEmailReason` narrows to the case that actually would: the account's own address sits on a
+domain one of its SSO-enforced orgs has verified. Membership in an enforced org is not the test, since
+the user row is global and an address outside that org's domains is one `syncSsoUserProfile` will not
+touch. SCIM stays a blanket refusal, because the directory provisions the address either way.
 
 ### Permission System (CASL)
 

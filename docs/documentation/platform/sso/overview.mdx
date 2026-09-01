@@ -50,7 +50,7 @@ When you enforce SAML or OIDC SSO for your organization, members can only access
 
 - **Email & password signup is blocked for your verified domain(s).** Once SSO is enforced, new email/password accounts can no longer be created for addresses on your verified domain(s). The verified domain and IdP are authoritative, so allowing a competing password account would reopen an account-takeover vector.
 - **Email verification is skipped for SSO sign-ins.** Because the verified domain and IdP already prove ownership of the email, Infisical skips the additional email-verification step that normally applies to SSO logins (see the FAQ below).
-- **Email addresses and names come from your identity provider.** Each SSO login updates the member's email address and name to match the assertion. Someone renamed in your identity provider keeps their Infisical account and their access, and later notifications and audit log entries carry the new address. Members can't change their own email address while enforcement is on.
+- **Email addresses and names come from your identity provider.** Each SSO login updates the member's email address and name to match the assertion. Someone renamed in your identity provider keeps their Infisical account and their access, and later notifications and audit log entries carry the new address. Members on one of your verified domains can't change their own email address while enforcement is on.
 
 <Warning>
   Before enforcing SSO, make sure a break-glass organization admin already has a password and SSO bypass access. After enforcement is enabled, the signup block prevents creating new password accounts for the domain.

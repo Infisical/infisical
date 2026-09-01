@@ -1313,7 +1313,8 @@ export const registerRoutes = async (
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    emailDomainDAL
   });
 
   const totpService = totpServiceFactory({
