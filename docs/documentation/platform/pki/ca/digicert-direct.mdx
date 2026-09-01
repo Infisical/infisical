@@ -10,6 +10,10 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 - **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`).
 - **Code Signing** — issues OV (`code_signing`) and EV (`code_signing_ev`) code-signing certificates against a CSR. The signing key must live on an HSM.
 
+<Note>
+  The product is fixed on the CA and applies to every certificate that CA issues. Each product allows a different range of subject values, and DigiCert checks those values when the order is placed, not when you create the request. For example, `ssl_wildcard` takes only a wildcard common name such as `*.example.com`. To issue a different shape of certificate, create a second CA on another product.
+</Note>
+
 ## Prerequisites
 
 - A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.

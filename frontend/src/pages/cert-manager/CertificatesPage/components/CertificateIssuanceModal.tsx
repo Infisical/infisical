@@ -728,6 +728,19 @@ export const CertificateIssuanceModal = ({
             <p className="mb-4 text-xs text-mineshaft-400">{EXTERNAL_CA_TEMPLATE_HINT}</p>
           )}
 
+          {(currentStepKey === "subject" || currentStepKey === "csr") && digicertProductNameId && (
+            <Alert variant="info" className="mb-4">
+              <InfoIcon />
+              <AlertDescription>
+                <p>
+                  This profile orders through the DigiCert{" "}
+                  <span className="font-mono">{digicertProductNameId}</span> product, which rejects
+                  unsupported subject values when the order is placed.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {currentStepKey === "csr" && (
             <Controller
               control={control}
@@ -763,20 +776,6 @@ export const CertificateIssuanceModal = ({
                 </Field>
               )}
             />
-          )}
-
-          {currentStepKey === "subject" && digicertProductNameId && (
-            <Alert variant="info" className="mb-4">
-              <InfoIcon />
-              <AlertDescription>
-                <p>
-                  This profile orders through the DigiCert{" "}
-                  <span className="font-mono">{digicertProductNameId}</span> product, set on the
-                  issuing CA. Subject values the product does not accept are rejected when the order
-                  is placed.
-                </p>
-              </AlertDescription>
-            </Alert>
           )}
 
           {currentStepKey === "subject" && constraints.shouldShowSubjectSection && (
