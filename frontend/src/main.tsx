@@ -5,6 +5,7 @@ import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
+import { initPostHog } from "./components/analytics/posthog";
 import { Lottie } from "./components/v2";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
@@ -29,6 +30,7 @@ import "./translation";
 // for passing in lng and translations on init/
 
 initializePlatform();
+initPostHog();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);

@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
@@ -134,6 +135,7 @@ export default function UserInfoStep({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    captureSignupCompleted("email");
 
     const userOrgs = await fetchOrganizations();
     const orgId = userOrgs[0]?.id;
