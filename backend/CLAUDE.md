@@ -226,9 +226,8 @@ judgment. Two adjustments to that rule, both small enough to enumerate:
   body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
   and the two `memberships/details` routes. All five check a CASL read ability.
 - **A read that hands back credential material loses it**, because the point of closing administration is
-  that a third-party application should not end up holding the org's secrets. Six routes:
+  that a third-party application should not end up holding the org's secrets. Five routes:
   `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
-  `GET /v1/auth/ldap-auth/identities/:identityId` (`bindPass`),
   `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
   `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
   an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a
@@ -335,6 +334,93 @@ never becomes a synchronous dependency of the middleware's own request path. The
 (rejections evicted, in-flight promise shared, expiry rebuilding the SSRF-pinned agent) are documented in
 `oauth-token-exchange-fns.ts`.
 
+### Resolving Users From Provisioning Identifiers
+
+Every invite / removal path resolves a person by `users.username` (which always equals their email),
+never by `users.email` and never by a join. An external provisioning system, though, often knows
+people only by the identifier its IdP asserts, a UPN like `m249913@one.example.com` rather than the
+mailbox `robert@example.com`. SSO login already records that identifier as
+`user_aliases.externalId`, so the two are reconcilable without making `username` diverge from
+`email`.
+
+`resolveUsersBySsoExternalId` in `src/services/user-alias/user-alias-fns.ts` is the one place that
+does it, backed by `userAliasDAL.findBySsoExternalIds`. Callers run it **only after an exact
+`username` lookup has missed**, so an alias can never shadow a real account. It is wired into
+`$getUsers` (`membership-user-service.ts`, the single funnel for org, project, and cert-manager
+invites), `project-membership-service.ts` (removal and membership read-back), and PAM's
+`addProductUserMembers`.
+
+Four invariants, each load-bearing:
+
+- **Scope by `orgId` *and* `aliasType`.** `user_aliases.orgId` is NULL for the global
+  google/github/gitlab aliases, so `whereIn("orgId", ...)` excludes them outright and the
+  `ORG_SCOPED_USER_ALIAS_TYPES` filter is the second lock. Without both, an org admin could name a
+  user in another tenant.
+- **Match `externalId` exactly, never folded.** It is a case-sensitive identifier (OIDC Core defines
+  `sub` that way, as does SAML for nameID) and is stored verbatim, so folding case could collapse two
+  distinct IdP subjects onto one identifier. The known consequence: because both invite routes
+  lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
+  mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
+  input validation so the exact identifier survives to the query, not loosening the comparison.
+  `adoptProvisionedShadowUser` does not fold either. It derives its lookup key with `sanitizeEmail`
+  because it searches the `users.username` namespace, where lowercase is canonical, but it then
+  **refuses any identifier that is not already canonical** rather than adopting on the folded match.
+  It once did adopt, and that was a real hole: a subject differing only by case is a different
+  subject, so it could take over the placeholder provisioned for another one and inherit its grants.
+  Folding bought nothing anyway, since the alias written afterwards is verbatim and this exact-match
+  lookup could never find it again, stranding the grant where provisioning cannot manage it.
+- **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
+  org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
+  users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
+  granting access to the wrong person. Several aliases on the *same* user are not a conflict.
+- **Dedupe resolved users by `id`.** An identifier now reaches a user by either their username or
+  their alias, so one request can name the same person twice. Undeduped, that violates
+  `membership_unique_user_org` and surfaces as a 500.
+
+A related case sits on the login side: provisioning can name someone before they have ever logged
+in, leaving a placeholder account keyed on the identifier instead of the mailbox.
+`adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
+and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
+human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
+(any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
+anything without a membership in the org doing the login.
+
+One case is a refusal to *log in* rather than a refusal to adopt: a placeholder whose membership in
+the login org is **inactive**. Declining is not neutral there, because the caller reads a `null` as
+"no placeholder" and creates a second account with a fresh active membership, handing a deactivated
+person their org back (`selectOrganization` then accepts it). So the inactive check is resolved
+before every remaining decline — the alias check and the cross-tenant check both sit after it — and
+it throws the same `ForbiddenRequestError` an already-aliased deactivated member gets.
+
+It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
+family, and that one is the security-critical check rather than a tidiness one. The username lookup
+that finds the placeholder is global, so a second tenant that invited the same identifier shares the
+row; adopting it would hand the login org's IdP subject that tenant's memberships, and
+`selectOrganization` accepts a membership in any status (promoting `Invited` to `Accepted` on
+arrival), so nothing downstream stops the inherited access from being used. A project membership
+always implies an org membership in the same org, so the org-scope check covers project access too.
+
+Adoption also recovers from a unique violation on `users.username`, because the caller's preceding
+read is not a lock. That recovery has to run inside a savepoint (`tx.transaction()`, which knex
+compiles to `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` on the same connection): Postgres aborts the whole
+transaction on a constraint violation, so an unscoped retry would fail with `25P02`, taking the
+caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
+branches and are deliberately not wired up.
+
+Because adoption rewrites an existing account's `username` and `email`, it emits an
+`OIDC_PROVISIONED_PLACEHOLDER_ADOPTED` audit event carrying the before and after, not just an
+application log: if one of the refusal checks above ever regresses, the audit trail is what makes it
+findable. That event must never fire on the unique-violation recovery path, where the returned user
+is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
+line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
+it.
+
+That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
+`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+Do not special-case this event past the retention gate; treat the application log as the floor and
+the audit event as the addition for licensed instances.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:
@@ -349,11 +435,13 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpack
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
 - **Long-lived data payload** (10m TTL) in Redis — holds the full permission blob plus a fingerprint hash.
-- On marker expiry, a lightweight **fingerprint query** (`getPermissionFingerprint` in `permission-dal.ts`) runs (1 DB read). If the fingerprint matches the cached payload, the marker is reset; otherwise, a full data re-fetch occurs.
+- On marker expiry, a lightweight **fingerprint** is computed (`getProjectPermissionFingerprint` in `permission-fns.ts`: the `getPermissionFingerprint` query in `permission-dal.ts` plus the project's folder-permission version counter). If it matches the cached payload, the marker is reset; otherwise, a full data re-fetch occurs.
 - The fingerprint covers **both project-scoped and org-scoped** memberships for the actor, so org-level changes (e.g. SSO bypass grant/revoke, org role edits) also trigger cache invalidation.
 - `filterTemporary` in `flattenActiveRolesFromMemberships` runs on every request as a real-time safety net — it filters out expired temporary access regardless of cache state, so access revocation for timed roles/privileges is immediate.
-- **No explicit cache invalidation calls exist.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed.
+- **Membership and role changes need no explicit invalidation call.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed. Folder grants are the one exception: they are covered by a version counter that writers must bump (see Folder RBAC below).
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
+
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. Only `getProjectPermission` evaluates folder grants; audits and `getProjectPermissions` do not yet. The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request.
 
 ### Request-Scoped Memoization
 
@@ -605,6 +693,57 @@ Two properties make the TTL safe to rely on:
 **Every bound above is silent when it bites, so all four limits are instrumented** (`recordProductAnalytics*Metric` in `lib/telemetry/metrics.ts`, labelled by event type only — the bucket id would multiply the series by 30). The retention trim reports how many entries it aged out, the parse step reports what it could not read back, and each drained shard reports the backlog it left behind, measured with `XLEN` after the drain trim (skipped entirely when OTel collection is off, since that round trip buys nothing else). Backlog is the leading signal: it rises before retention drops start, and a shard sitting near the `MAXLEN` cap is also shedding entries on write, which nothing can count. **Do not change one of these limits without reading those metrics first** — that is what they exist for, and the operator-facing version is in `docs/self-hosting/guides/monitoring-telemetry.mdx`.
 
 Nothing reads the pre-stream `telemetry-event-*` keys, so a deploy that changes this layout drops whatever is still buffered. That is acceptable for product analytics, and it is the reason there is no migration path to maintain.
+
+### Instance Root Encryption Key (rotation)
+
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config`, which wraps everything else. It is
+rotatable, and three invariants hold that up.
+
+**The sentinel row always holds the active key.** `kms_root_config` can hold up to three rows, but
+`KMS_ROOT_CONFIG_UUID` is always the current one. That id is no longer "the config row", it is a
+compatibility handle: an app version predating rotation looks the row up by id and knows nothing about
+staged keys or retained copies, so keeping the active key there is what lets such a version boot. New
+code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, staged, retained), so
+`kekLabel` is never a lookup key. It exists on both tables purely as a human label, derived from the key so
+an operator can recompute it and match an archived key to a backup; nothing resolves a row by it.
+
+**A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/root-key/rotations` writes
+a *staged* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
+delete. `$resolveRootKey` promotes it on the first boot that decrypts it: the sentinel takes the new
+ciphertext, the old one moves to a retained copy, and **every** staged row is dropped (an abandoned staged
+row is a live working key, so a replaced staged key left in someone's clipboard must not be able to promote
+itself later). There is no rollback after promotion, only the retention window during which the old key still
+boots.
+
+**The legacy tier is pinned, not rotated.** `project_bots`, `user_encryption_keys.serverEncryptedPrivateKey`,
+`secret_blind_indexes` and `org_bots` encrypt straight from the env var. `kms_legacy_encryption_keys` snapshots
+those env values under the root key at boot, and `crypto.ts` / `encryption.ts` read the snapshot instead of
+`process.env`, which is what decouples that tier from the environment. The snapshot holds **both** the
+post-FIPS-relabel values (used for writes, so ciphertext is unchanged) and the pre-relabel ones (tried on
+decrypt, because the relabel at `env.ts:746-748` overwrites its target unconditionally). That tier
+is never rotated; `infisical.legacy_root_key.usage` is the evidence for when it can be deleted.
+
+Consequences worth knowing:
+
+- **A migration must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`.** Migrations run
+  before `kmsService.startService`, so they cannot reach the snapshot and fall back to `process.env`, which on
+  a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
+  ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
+  explaining why they are safe.
+- **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
+  rotation before the first was completed would otherwise leave an older wrapper of the root key that
+  `getRootKey` never reports (it returns only the newest), so an operator removing "the previous key" is
+  told the rotation is finished while a leaked older `ENCRYPTION_KEY` still opens the database. The cost is that an
+  instance two rotations behind cannot restart; staging a key warns about that and deliberately does not
+  block, since an operator responding to a leak has to be able to rotate again immediately.
+- **`updateEncryptionStrategy` refuses while a rotation is in flight.** A switch to HSM would not otherwise be
+  enforced, since a pod with the old env key would still trial-decrypt a retained software copy and boot
+  without touching the device.
+- **`lastResolvedAt` can prove presence, never absence.** An instance stamps it at boot only when it resolves a
+  *superseded* row, which is positive evidence a straggler still holds that key and makes both the
+  expiring-key delete and the GC decline. An instance that never restarts never stamps, so the retention window is what covers it.
+  That is the deliberate limit: getting it wrong costs an instance that fails its next restart with an error
+  naming the key it needs, not lost data.
 
 ### Database Configuration
 

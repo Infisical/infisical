@@ -21,7 +21,8 @@ import {
   LayersIcon,
   LockIcon,
   SettingsIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -30,8 +31,7 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
-  RevokeHoneyTokenModal,
-  ViewHoneyTokenCredentialsModal
+  RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -48,18 +48,13 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
-import {
-  Button as ButtonV2,
-  DeleteActionModal,
-  Modal,
-  ModalContent,
-  PageHeader
-} from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -74,6 +69,7 @@ import {
   CardHeader,
   Checkbox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -82,6 +78,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Pagination,
   Sheet,
   SheetContent,
@@ -104,6 +101,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
@@ -112,6 +110,7 @@ import {
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -202,16 +201,18 @@ import {
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
-import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
+import {
+  getDestinationSecretPath,
+  getSecretLocation
+} from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/replicateSecrets";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
-import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
@@ -224,7 +225,9 @@ import {
   useBatchModeActions
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
+import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
@@ -235,6 +238,7 @@ import {
   DynamicSecretTableRow,
   EmptyResourceDisplay,
   EnvironmentSelect,
+  FolderAccessSheet,
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
@@ -269,8 +273,7 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation",
-  HONEY_TOKEN = "honeyToken"
+  SECRET_ROTATION = "secretRotation"
 }
 
 export enum RowType {
@@ -388,12 +391,10 @@ const OverviewPageContent = () => {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
-    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   }>({
     [EntryType.FOLDER]: {},
     [EntryType.SECRET]: {},
-    [EntryType.SECRET_ROTATION]: {},
-    [EntryType.HONEY_TOKEN]: {}
+    [EntryType.SECRET_ROTATION]: {}
   });
 
   const {
@@ -419,8 +420,7 @@ const OverviewPageContent = () => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
       [EntryType.SECRET]: {},
-      [EntryType.SECRET_ROTATION]: {},
-      [EntryType.HONEY_TOKEN]: {}
+      [EntryType.SECRET_ROTATION]: {}
     });
   }, []);
 
@@ -445,35 +445,6 @@ const OverviewPageContent = () => {
   const isMoreEnvironmentsAllowed = subscription?.environmentLimit
     ? userAvailableEnvs.length < subscription.environmentLimit
     : true;
-  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionDynamicSecretActions.CreateRootCredential,
-      subject(ProjectPermissionSub.DynamicSecrets, {
-        environment: env.slug,
-        secretPath,
-        metadata: ["*"]
-      })
-    )
-  );
-  const userAvailableSecretRotationEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-  const userAvailableSecretImportEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretImports, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -587,6 +558,32 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
+  const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
+  const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.slug,
+        secretPath,
+        metadata: ["*"]
+      })
+    )
+  );
+  const visibleSecretRotationEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionSecretRotationActions.Create,
+      subject(ProjectPermissionSub.SecretRotation, {
+        environment: env.slug,
+        secretPath
+      })
+    )
+  );
+  const visibleSecretImportEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
+    )
+  );
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -596,32 +593,73 @@ const OverviewPageContent = () => {
     setIsSingleEnvSecretsVisible.off();
   }, [singleVisibleEnv?.slug]);
 
-  const secretSubject = subject(ProjectPermissionSub.Secrets, {
-    environment: singleEnvSlug,
-    secretPath,
-    secretName: "*",
-    secretTags: ["*"]
-  });
+  // folder-scoped grants condition every rule on environment + secretPath, and CASL ignores
+  // conditions when the check is against a bare subject type, so each gate below must evaluate a
+  // concrete entity per environment in view
+  const canSecretActionInVisibleEnv = (action: ProjectPermissionSecretActions) =>
+    visibleEnvs.some((env) =>
+      permission.can(
+        action,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: env.slug,
+          secretPath,
+          secretName: "*",
+          secretTags: ["*"]
+        })
+      )
+    );
 
-  const canReadSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject) ||
-      permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject)
-    : true;
+  const canFolderActionInVisibleEnv = (action: ProjectPermissionActions) =>
+    visibleEnvs.some((env) =>
+      permission.can(
+        action,
+        subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
+      )
+    );
 
-  const canEditSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Edit, secretSubject)
-    : true;
+  const canReadSecrets =
+    canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeSecret) ||
+    canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeAndReadValue);
 
-  const canDeleteSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Delete, secretSubject)
-    : true;
+  const canEditSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Edit);
 
-  const canCreateSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.Create, secretSubject)
-    : true;
+  const canDeleteSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Delete);
+
+  const canCreateSecrets = canSecretActionInVisibleEnv(ProjectPermissionSecretActions.Create);
+
+  const canCreateFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Create);
+
+  const canEditFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Edit);
+
+  const canDeleteFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Delete);
+
+  const canCreateHoneyTokens = visibleEnvs.some((env) =>
+    permission.can(
+      ProjectPermissionHoneyTokenActions.Create,
+      subject(ProjectPermissionSub.HoneyTokens, { environment: env.slug, secretPath })
+    )
+  );
+
+  const appConnectionImportEnv =
+    visibleEnvs.find((env) =>
+      permission.can(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: env.slug,
+          secretPath,
+          secretName: "*",
+          secretTags: ["*"]
+        })
+      )
+    ) ?? visibleEnvs[0];
 
   const canUseAppConnectionImport = useCanUseProjectAppConnectionImport(
-    singleVisibleEnv ? secretSubject : ProjectPermissionSub.Secrets
+    subject(ProjectPermissionSub.Secrets, {
+      environment: appConnectionImportEnv?.slug ?? "",
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
   );
 
   const { data: vaultAppConnections = [] } = useListAvailableAppConnections(
@@ -764,6 +802,33 @@ const OverviewPageContent = () => {
   const { folderNamesAndDescriptions, getFolderByNameAndEnv, isFolderPresentInEnv } =
     useFolderOverview(folders);
 
+  const [folderAccessTarget, setFolderAccessTarget] = useState<{
+    folderPath: string;
+  } | null>(null);
+  const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
+
+  const canManageFolderAccessAt = useCallback(
+    (environment: string, folderPath: string) =>
+      permission.can(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: folderPath })
+      ),
+    [permission]
+  );
+  // the backend authorizes a grant against the target folder's own path, so a child row is checked
+  // at its own path while the toolbar button is checked at the folder the user is currently inside
+  const childFolderPath = useCallback(
+    (folderName: string) => `${secretPath === "/" ? "" : secretPath}/${folderName}`,
+    [secretPath]
+  );
+  const canManageFolderAccessInRow = useCallback(
+    (folderName: string) =>
+      isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, childFolderPath(folderName)),
+    [isSingleEnvView, singleEnvSlug, canManageFolderAccessAt, childFolderPath]
+  );
+  const canManageCurrentFolderAccess =
+    isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, secretPath);
+
   const {
     dynamicSecretNames,
     isDynamicSecretPresentInEnv,
@@ -899,6 +964,7 @@ const OverviewPageContent = () => {
     string,
     { value: string; comments: string[] }
   > | null>(null);
+  const [isReplicateCopying, setIsReplicateCopying] = useState(false);
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
@@ -936,7 +1002,6 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials",
     "createEnvironment"
   ] as const);
 
@@ -976,6 +1041,31 @@ const OverviewPageContent = () => {
     const env = userAvailableEnvs.find((el) => el.slug === envSlug);
     setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
+
+  const ensureFolderRbacPlan = useCallback(() => {
+    if (subscription?.secretsFolderRbac) return true;
+    handlePopUpOpen("upgradePlan", {
+      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
+    });
+    return false;
+  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
+
+  const handleFolderAccessOpen = useCallback(
+    (folderName: string) => {
+      if (!ensureFolderRbacPlan()) return;
+      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+      if (!folder) return;
+      setFolderAccessTarget({
+        folderPath: childFolderPath(folderName)
+      });
+    },
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+  );
+
+  const handleCurrentFolderAccessOpen = useCallback(() => {
+    if (!ensureFolderRbacPlan()) return;
+    setIsCurrentFolderAccessOpen(true);
+  }, [ensureFolderRbacPlan]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -1101,15 +1191,15 @@ const OverviewPageContent = () => {
     }
   };
 
-  // Replicate Secrets Logic
   const replicateCreateCount = (
     (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.create || []
   ).length;
-  const replicateUpdateCount = (
-    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update || []
-  ).length;
+  const replicateConflictingSecrets =
+    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update || [];
+  const replicateUpdateCount = replicateConflictingSecrets.length;
   const isReplicateNonConflicting = !replicateUpdateCount;
-  const isReplicateSubmitting = isCreatingSecrets || isUpdatingSecrets;
+  const isReplicateSubmitting = isReplicateCopying || isCreatingSecrets || isUpdatingSecrets;
+  const replicateDestinationEnvironment = singleVisibleEnv?.name ?? singleVisibleEnv?.slug ?? "";
 
   const handleParsedEnvMultiFolder = async (envByPath: TParsedFolderEnv) => {
     if (Object.keys(envByPath).length === 0) {
@@ -1126,17 +1216,7 @@ const OverviewPageContent = () => {
 
       await Promise.all(
         Object.entries(envByPath).map(async ([folderPath, boardSecrets]) => {
-          let normalizedPath = folderPath;
-
-          if (normalizedPath === "/") {
-            normalizedPath = secretPath;
-          } else {
-            const baseSecretPath = secretPath.endsWith("/") ? secretPath.slice(0, -1) : secretPath;
-            const cleanFolderPath = folderPath.startsWith("/")
-              ? folderPath.substring(1)
-              : folderPath;
-            normalizedPath = `${baseSecretPath}/${cleanFolderPath}`;
-          }
+          const normalizedPath = getDestinationSecretPath(secretPath, folderPath);
 
           const secretFolderKeys = Object.keys(boardSecrets);
 
@@ -1333,10 +1413,20 @@ const OverviewPageContent = () => {
     });
 
     handlePopUpClose("confirmReplicateUpload");
+    handlePopUpClose("replicateFolder");
     createNotification({
       type: "success",
-      text: "Successfully replicated secrets"
+      text: "Secrets copied"
     });
+  };
+
+  const handleConfirmReplicateImport = async () => {
+    setIsReplicateCopying(true);
+    try {
+      await handleSaveReplicateImport();
+    } finally {
+      setIsReplicateCopying(false);
+    }
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
@@ -1553,25 +1643,18 @@ const OverviewPageContent = () => {
       environment: string;
       isForced?: boolean;
     };
-    try {
-      await deleteDynamicSecret.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        name,
-        isForced
-      });
-      handlePopUpClose("deleteDynamicSecret");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to delete dynamic secret"
-      });
-    }
+    await deleteDynamicSecret.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      name,
+      isForced
+    });
+    handlePopUpClose("deleteDynamicSecret");
+    createNotification({
+      type: "success",
+      text: "Dynamic secret deleted"
+    });
   };
 
   const handleSecretImportDelete = async () => {
@@ -2205,6 +2288,7 @@ const OverviewPageContent = () => {
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
 
+    setSearchFilter("");
     navigate({
       search: (prev) => ({
         ...updateOverviewSecretPath(
@@ -2263,14 +2347,12 @@ const OverviewPageContent = () => {
     [filter, navigate, tagFilter]
   );
 
+  const hasSelectableRows = Boolean(
+    secrets?.length || folders?.length || secretRotationNames?.length
+  );
+
   const allRowsSelectedOnPage = useMemo(() => {
-    if (
-      !secrets?.length &&
-      !folders?.length &&
-      !secretRotationNames?.length &&
-      !honeyTokenNames?.length
-    )
-      return { isChecked: false, isIndeterminate: false };
+    if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
     if (
       (!secrets?.length ||
@@ -2278,22 +2360,19 @@ const OverviewPageContent = () => {
       (!folders?.length ||
         folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name])) &&
       (!secretRotationNames?.length ||
-        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name])) &&
-      (!honeyTokenNames?.length ||
-        honeyTokenNames?.every((name) => selectedEntries[EntryType.HONEY_TOKEN][name]))
+        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
       secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
       folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name]) ||
-      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name]) ||
-      honeyTokenNames?.some((name) => selectedEntries[EntryType.HONEY_TOKEN][name])
+      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name])
     )
       return { isChecked: true, isIndeterminate: true };
 
     return { isChecked: false, isIndeterminate: false };
-  }, [selectedEntries, secrets, folders, secretRotationNames, honeyTokenNames]);
+  }, [selectedEntries, secrets, folders, secretRotationNames, hasSelectableRows]);
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string) => {
@@ -2311,8 +2390,6 @@ const OverviewPageContent = () => {
             resource = getSecretByKey(env.slug, key);
           } else if (type === EntryType.FOLDER) {
             resource = getFolderByNameAndEnv(key, env.slug);
-          } else if (type === EntryType.HONEY_TOKEN) {
-            resource = getHoneyTokenByName(env.slug, key);
           } else {
             resource = getSecretRotationByName(env.slug, key);
           }
@@ -2323,13 +2400,7 @@ const OverviewPageContent = () => {
 
       setSelectedEntries(newChecks);
     },
-    [
-      selectedEntries,
-      getFolderByNameAndEnv,
-      getSecretByKey,
-      getSecretRotationByName,
-      getHoneyTokenByName
-    ]
+    [selectedEntries, getFolderByNameAndEnv, getSecretByKey, getSecretRotationByName]
   );
 
   // folders move one at a time from the inline row action. build the per-env record (same shape the
@@ -2387,19 +2458,6 @@ const OverviewPageContent = () => {
           const resource = getSecretRotationByName(env.slug, rotationName);
 
           if (resource) newChecks[EntryType.SECRET_ROTATION][rotationName][env.slug] = resource;
-        }
-      });
-
-      honeyTokenNames?.forEach((honeyTokenName) => {
-        if (allRowsSelectedOnPage.isChecked) {
-          delete newChecks[EntryType.HONEY_TOKEN][honeyTokenName];
-        } else {
-          if (!newChecks[EntryType.HONEY_TOKEN][honeyTokenName])
-            newChecks[EntryType.HONEY_TOKEN][honeyTokenName] = {};
-
-          const resource = getHoneyTokenByName(env.slug, honeyTokenName);
-
-          if (resource) newChecks[EntryType.HONEY_TOKEN][honeyTokenName][env.slug] = resource;
         }
       });
     });
@@ -2564,11 +2622,7 @@ const OverviewPageContent = () => {
     if (userAvailableEnvs.length === 0) return "no-environments" as const;
     if (isTagFilterEmpty) return "tag-filter-empty" as const;
     if (isTableEmpty) {
-      const cannotCreate = permission.cannot(
-        ProjectPermissionSecretActions.Create,
-        ProjectPermissionSub.Secrets
-      );
-      if (isTableFiltered || searchFilter || cannotCreate) return "filter-empty" as const;
+      if (isTableFiltered || searchFilter || !canCreateSecrets) return "filter-empty" as const;
       return "add-first-secret" as const;
     }
     return "table" as const;
@@ -2583,6 +2637,12 @@ const OverviewPageContent = () => {
 
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
     | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretLeaseCreateData = popUp.createDynamicSecretLease?.data as
+    | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretDeleteData = popUp.deleteDynamicSecret?.data as
+    | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
 
   return (
@@ -2655,16 +2715,35 @@ const OverviewPageContent = () => {
           <CardHeader>
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
-                <EnvironmentSelect
-                  selectedEnvs={filteredEnvs}
-                  setSelectedEnvs={setFilteredEnvs}
-                  isDisabled={
-                    isBatchModeActive &&
-                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                  }
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  {canManageCurrentFolderAccess && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="Manage Access"
+                          className="relative"
+                          size="md"
+                          variant="outline"
+                          onClick={handleCurrentFolderAccessOpen}
+                        >
+                          <UsersIcon />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Manage Access</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <EnvironmentSelect
+                    selectedEnvs={filteredEnvs}
+                    setSelectedEnvs={setFilteredEnvs}
+                    isDisabled={
+                      isBatchModeActive &&
+                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                    }
+                  />
+                </div>
                 <FolderBreadcrumb secretPath={secretPath} />
               </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (
                   <DownloadEnvButton
@@ -2769,15 +2848,18 @@ const OverviewPageContent = () => {
                       });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
-                    isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
-                    isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isDyanmicSecretAvailable={visibleDynamicSecretEnvs.length > 0}
+                    isSecretRotationAvailable={visibleSecretRotationEnvs.length > 0}
                     isHoneyTokenAvailable
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
-                    isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
+                    isSecretImportAvailable={visibleSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
                     hasDopplerConnection={hasDopplerConnection}
+                    canCreateSecrets={canCreateSecrets}
+                    canCreateFolders={canCreateFolders}
+                    canCreateHoneyTokens={canCreateHoneyTokens}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                     onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
@@ -2948,6 +3030,7 @@ const OverviewPageContent = () => {
                     handlePopUpOpen("importSecrets");
                   }}
                   onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                  canCreateSecrets={canCreateSecrets}
                 />
               </div>
             )}
@@ -2965,7 +3048,7 @@ const OverviewPageContent = () => {
                         >
                           <Checkbox
                             variant="project"
-                            isDisabled={totalCount === 0 || hasPendingBatchChanges}
+                            isDisabled={!hasSelectableRows || hasPendingBatchChanges}
                             id="checkbox-select-all-rows"
                             isChecked={allRowsSelectedOnPage.isChecked}
                             isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
@@ -3295,6 +3378,10 @@ const OverviewPageContent = () => {
                                 onToggleFolderDelete={(name: string) =>
                                   handlePopUpOpen("deleteFolder", { name })
                                 }
+                                onToggleFolderAccess={handleFolderAccessOpen}
+                                canManageFolderAccess={canManageFolderAccessInRow(folderName)}
+                                canEditFolder={canEditFolders}
+                                canDeleteFolder={canDeleteFolders}
                                 pendingAction={folderPendingAction}
                                 onBatchRevert={handleBatchFolderRevert}
                                 isSelectionDisabled={hasPendingBatchChanges}
@@ -3385,16 +3472,9 @@ const OverviewPageContent = () => {
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
-                              isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
-                              onToggleHoneyTokenSelect={() =>
-                                toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
-                              }
                               onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                               onRevoke={(honeyToken) =>
                                 handlePopUpOpen("revokeHoneyToken", honeyToken)
-                              }
-                              onViewCredentials={(honeyToken) =>
-                                handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                               }
                               onViewDetails={(honeyToken) =>
                                 setDetailsDrawerHoneyTokenId(honeyToken.id)
@@ -3568,23 +3648,25 @@ const OverviewPageContent = () => {
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environments={userAvailableDynamicSecretEnvs}
+        environments={visibleDynamicSecretEnvs}
         secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp.dynamicSecretLeases.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+      <Dialog
+        open={popUp.dynamicSecretLeases.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("dynamicSecretLeases", isOpen)}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center space-x-2">
-              <p>Dynamic secret leases</p>
-              <Badge variant="neutral">{dynamicSecretLeaseData?.name}</Badge>
-            </div>
-          }
-          subTitle="Revoke or renew your secret leases"
-          className="max-w-3xl"
-        >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex min-w-0 items-center gap-2 pr-6">
+              <span>Dynamic Secret Leases</span>
+              {dynamicSecretLeaseData?.name && (
+                <Badge variant="neutral" isTruncatable>
+                  {dynamicSecretLeaseData.name}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Revoke or renew active leases.</DialogDescription>
+          </DialogHeader>
           {dynamicSecretLeaseData && (
             <DynamicSecretLease
               dynamicSecret={dynamicSecretLeaseData}
@@ -3599,64 +3681,94 @@ const OverviewPageContent = () => {
               environment={dynamicSecretLeaseData.environment}
             />
           )}
-        </ModalContent>
-      </Modal>
-      <Modal
+        </DialogContent>
+      </Dialog>
+      <EditDynamicSecretForm
         isOpen={popUp.editDynamicSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}
-      >
-        <ModalContent title="Edit dynamic secret" className="max-w-3xl">
-          <EditDynamicSecretForm
-            onClose={() => handlePopUpClose("editDynamicSecret")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={popUp.createDynamicSecretLease.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}
-      >
-        <ModalContent title="Provision lease">
-          <CreateDynamicSecretLease
-            provider={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.type
-            }
-            onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
-        isOpen={popUp.deleteDynamicSecret.isOpen}
-        deleteKey={
-          (popUp.deleteDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        onToggle={(state) => handlePopUpToggle("editDynamicSecret", state)}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
         }
-        title={
-          (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
-            ? "Do you want to force delete this dynamic secret?"
-            : "Do you want to delete this dynamic secret?"
+        secretPath={secretPath}
+        environment={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.environment
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
-        onDeleteApproved={handleDynamicSecretDelete}
       />
+      <Dialog
+        open={popUp.createDynamicSecretLease.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createDynamicSecretLease", isOpen)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Provision Lease</DialogTitle>
+            <DialogDescription>
+              Generate temporary credentials from this dynamic secret.
+            </DialogDescription>
+          </DialogHeader>
+          {dynamicSecretLeaseCreateData && (
+            <DialogBody className="flex flex-col overflow-visible">
+              <CreateDynamicSecretLease
+                provider={dynamicSecretLeaseCreateData.type}
+                onClose={() => handlePopUpClose("createDynamicSecretLease")}
+                projectSlug={projectSlug}
+                dynamicSecretName={dynamicSecretLeaseCreateData.name}
+                secretPath={secretPath}
+                environment={dynamicSecretLeaseCreateData.environment}
+              />
+            </DialogBody>
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={popUp.deleteDynamicSecret.isOpen}
+        confirmationValue={dynamicSecretDeleteData?.name}
+        onOpenChange={(isOpen) => {
+          if (!deleteDynamicSecret.isPending) handlePopUpToggle("deleteDynamicSecret", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {dynamicSecretDeleteData?.isForced
+                ? `Force Delete ${dynamicSecretDeleteData.name}?`
+                : `Delete ${dynamicSecretDeleteData?.name ?? "Dynamic Secret"}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dynamicSecretDeleteData?.isForced
+                ? "This removes the dynamic secret and its leases from Infisical without revoking them in the external provider. This cannot be undone."
+                : "This deletes the dynamic secret configuration and revokes its active leases. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{
+              disabled: deleteDynamicSecret.isPending,
+              placeholder: `Type ${dynamicSecretDeleteData?.name ?? "the dynamic secret name"} here`
+            }}
+            onConfirm={() => {
+              if (!deleteDynamicSecret.isPending) {
+                handleDynamicSecretDelete().catch(() => undefined);
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deleteDynamicSecret.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deleteDynamicSecret.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDynamicSecretDelete().catch(() => undefined);
+              }}
+            >
+              {dynamicSecretDeleteData?.isForced ? "Force Delete" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={popUp.deleteSecretImport.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
@@ -3721,7 +3833,7 @@ const OverviewPageContent = () => {
       />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
-        environments={userAvailableSecretRotationEnvs}
+        environments={visibleSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
@@ -3796,12 +3908,6 @@ const OverviewPageContent = () => {
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
       />
-      <ViewHoneyTokenCredentialsModal
-        isOpen={popUp.viewHoneyTokenCredentials.isOpen}
-        honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
-        projectId={projectId}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
-      />
       {commitHistoryEnv && (
         <CommitHistorySheet
           isOpen
@@ -3847,71 +3953,69 @@ const OverviewPageContent = () => {
         }}
       />
       <ReplicateFolderFromBoard
+        destinationEnvironment={replicateDestinationEnvironment}
+        destinationPath={secretPath}
         isOpen={popUp.replicateFolder.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
         onParsedEnv={handleParsedEnvMultiFolder}
-        environment={singleVisibleEnv?.slug ?? ""}
         environments={userAvailableEnvs}
         projectId={projectId}
-        secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp?.confirmReplicateUpload?.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("confirmReplicateUpload", open)}
+      <AlertDialog
+        open={popUp?.confirmReplicateUpload?.isOpen}
+        onOpenChange={(open) => {
+          if (!isReplicateSubmitting) handlePopUpToggle("confirmReplicateUpload", open);
+        }}
       >
-        <ModalContent
-          title="Confirm Secret Upload"
-          footerContent={[
-            <ButtonV2
-              isLoading={isReplicateSubmitting}
-              isDisabled={isReplicateSubmitting}
-              colorSchema={isReplicateNonConflicting ? "primary" : "danger"}
-              key="overwrite-btn"
-              onClick={handleSaveReplicateImport}
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isReplicateNonConflicting ? "Replicate Secrets" : "Overwrite Existing Secrets"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isReplicateNonConflicting
+                ? `Replicate ${replicateCreateCount} ${replicateCreateCount === 1 ? "secret" : "secrets"} to ${replicateDestinationEnvironment} at ${secretPath}.`
+                : `${replicateUpdateCount} ${replicateUpdateCount === 1 ? "secret already exists" : "secrets already exist"} in ${replicateDestinationEnvironment}. Replicating will replace the values at the destination paths below${replicateCreateCount > 0 ? ` and create ${replicateCreateCount} new ${replicateCreateCount === 1 ? "secret" : "secrets"}` : ""}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {!isReplicateNonConflicting && (
+            <ul
+              aria-label="Secrets that will be overwritten"
+              className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-danger/20 bg-danger/5 p-3"
             >
-              {isReplicateNonConflicting ? "Upload" : "Overwrite"}
-            </ButtonV2>,
-            <ButtonV2
-              key="keep-old-btn"
-              className="ml-4"
-              onClick={() => handlePopUpClose("confirmReplicateUpload")}
-              variant="outline_bg"
-              isDisabled={isReplicateSubmitting}
-            >
-              Cancel
-            </ButtonV2>
-          ]}
-        >
-          {isReplicateNonConflicting ? (
-            <div>
-              Are you sure you want to import {replicateCreateCount} secret
-              {replicateCreateCount > 1 ? "s" : ""} to this environment?
-            </div>
-          ) : (
-            <div className="flex flex-col text-gray-300">
-              <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
-                {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
-                  ?.map((sec) => sec.secretKey)
-                  .join(", ")}
-              </div>
-              <div className="mt-6">
-                Are you sure you want to overwrite these secrets
-                {replicateCreateCount > 0
-                  ? ` and import ${replicateCreateCount} new
-                one${replicateCreateCount > 1 ? "s" : ""}`
-                  : ""}
-                ?
-              </div>
-            </div>
+              {replicateConflictingSecrets.map((secret) => {
+                const location = getSecretLocation(
+                  secret.secretPath ?? secretPath,
+                  secret.secretKey
+                );
+
+                return (
+                  <li key={location} className="truncate font-mono text-xs text-foreground">
+                    {location}
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </ModalContent>
-      </Modal>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isReplicateSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant={isReplicateNonConflicting ? "project" : "danger"}
+              isPending={isReplicateSubmitting}
+              isDisabled={isReplicateSubmitting}
+              onClick={(event) => {
+                event.preventDefault();
+                handleConfirmReplicateImport().catch(() => undefined);
+              }}
+            >
+              {isReplicateNonConflicting ? "Replicate secrets" : "Replicate and overwrite"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <VaultSecretImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
-        environment={singleEnvSlug}
-        secretPath={secretPath}
         appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
@@ -3965,6 +4069,28 @@ const OverviewPageContent = () => {
         }
         onComplete={() => handlePopUpClose("moveFolder")}
       />
+      {folderAccessTarget && (
+        <FolderAccessSheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setFolderAccessTarget(null);
+          }}
+          projectId={projectId}
+          environmentSlug={singleEnvSlug}
+          folderPath={folderAccessTarget.folderPath}
+          environmentName={singleEnvName}
+        />
+      )}
+      {isCurrentFolderAccessOpen && (
+        <FolderAccessSheet
+          isOpen
+          onOpenChange={setIsCurrentFolderAccessOpen}
+          projectId={projectId}
+          environmentSlug={singleEnvSlug}
+          folderPath={secretPath}
+          environmentName={singleEnvName}
+        />
+      )}
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

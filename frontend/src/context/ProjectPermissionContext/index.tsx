@@ -21,6 +21,8 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionProxiedServiceActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "./types";

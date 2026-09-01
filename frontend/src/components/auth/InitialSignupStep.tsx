@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ import {
   FieldSeparator,
   Input
 } from "@app/components/v3";
+import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
@@ -43,7 +45,11 @@ export default function InitialSignupStep({
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<HCaptcha>(null);
   const isEmailValid = z.string().email().safeParse(email).success;
+
+  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -70,8 +76,19 @@ export default function InitialSignupStep({
       return;
     }
 
-    const { cooldownSeconds } = await mutateAsync({ email: normalizedEmail });
-    incrementStep(normalizedEmail, cooldownSeconds);
+    try {
+      const { cooldownSeconds } = await mutateAsync({
+        email: normalizedEmail,
+        captchaToken: requiresCaptcha ? captchaToken : undefined
+      });
+      incrementStep(normalizedEmail, cooldownSeconds);
+    } finally {
+      // hCaptcha tokens are single-use, so a retry with a stale one is rejected server-side.
+      if (requiresCaptcha) {
+        captchaRef.current?.resetCaptcha();
+        setCaptchaToken("");
+      }
+    }
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
@@ -155,13 +172,24 @@ export default function InitialSignupStep({
                 className="h-10"
                 isError={emailError}
               />
+              {envConfig.CAPTCHA_SITE_KEY && (
+                <div className="flex justify-center [&>div]:!w-full">
+                  <HCaptcha
+                    theme="dark"
+                    sitekey={envConfig.CAPTCHA_SITE_KEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken("")}
+                    ref={captchaRef}
+                  />
+                </div>
+              )}
               <Button
                 type="submit"
                 onClick={handleEmailSignup}
                 variant="project"
                 size="lg"
                 isFullWidth
-                isDisabled={!isEmailValid || isPending}
+                isDisabled={!isEmailValid || isPending || (requiresCaptcha && !captchaToken)}
                 isPending={isPending}
               >
                 Continue with Email

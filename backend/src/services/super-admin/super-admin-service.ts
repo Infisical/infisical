@@ -474,6 +474,13 @@ export const superAdminServiceFactory = ({
       envOverridesUpdated = true;
     }
 
+    if (!Object.values(updatedData).some((value) => value !== undefined)) {
+      throw new BadRequestError({
+        message:
+          "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
+      });
+    }
+
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     try {

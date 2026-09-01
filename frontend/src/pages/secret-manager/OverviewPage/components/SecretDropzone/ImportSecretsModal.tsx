@@ -550,7 +550,7 @@ const ImportSecretsContent = ({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell isTruncatable className="w-1/2 font-mono text-xs">
+                      <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
                         {isVisible ? (
                           secretData.value || <span className="text-muted">EMPTY</span>
                         ) : (

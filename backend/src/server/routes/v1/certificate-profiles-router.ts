@@ -328,7 +328,9 @@ export const registerCertificateProfilesRouter = async (
                 status: z.string(),
                 name: z.string(),
                 isExternal: z.boolean().optional(),
-                externalType: z.string().nullable().optional()
+                externalType: z.string().nullable().optional(),
+                productNameId: z.string().nullable().optional(),
+                keyAlgorithm: z.string().nullable().optional()
               })
               .optional(),
             metrics: z
@@ -437,7 +439,9 @@ export const registerCertificateProfilesRouter = async (
                 status: z.string(),
                 name: z.string(),
                 isExternal: z.boolean().optional(),
-                externalType: z.string().nullable().optional()
+                externalType: z.string().nullable().optional(),
+                productNameId: z.string().nullable().optional(),
+                keyAlgorithm: z.string().nullable().optional()
               })
               .optional(),
             certificatePolicy: z

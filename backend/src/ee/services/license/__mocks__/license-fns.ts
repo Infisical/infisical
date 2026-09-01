@@ -45,7 +45,8 @@ export const getDefaultOnPremFeatures = () => {
     honeyTokens: false,
     honeyTokenLimit: 0,
     gatewayPool: false,
-    fips: true
+    fips: true,
+    secretsFolderRbac: true
   };
 };
 

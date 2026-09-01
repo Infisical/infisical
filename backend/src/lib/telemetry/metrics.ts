@@ -10,6 +10,7 @@ import type { Knex } from "knex";
 
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { getAgentPoolStats } from "@app/lib/validator/agent-pool";
 
 import { getConfig } from "../config/env";
 
@@ -417,10 +418,72 @@ export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: bo
   }
 };
 
+// -- safeRequest HTTPS agent pool (InfisicalCore meter) ----------------------------------------
+// The pool is bounded, so a 201st distinct TLS signature costs the least recently used entry its
+// connection. Non-zero for a sustained window means the cap is too low and should be raised.
+export const safeRequestAgentEvictionCounter = infisicalCoreMeter.createCounter(
+  "infisical.safe_request.agent_eviction.count",
+  {
+    description:
+      "Agents evicted from the safeRequest connection pool because it was at capacity. Non-zero for a sustained window means raise AGENT_CACHE_MAX.",
+    unit: "{eviction}"
+  }
+);
+
+export const recordSafeRequestAgentEvictionMetric = () => {
+  if (!isTelemetryEnabled()) return;
+  safeRequestAgentEvictionCounter.add(1);
+};
+
 export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.core.http.error.count", {
   description: "API errors with bounded error classification. Labels limited to InfisicalCore View allowlist.",
   unit: "{error}"
 });
+
+// -- Signup abuse (InfisicalCore meter) -------------------------------------------------------------
+
+export enum EmailDispatchPurpose {
+  SIGNUP = "signup",
+  ACCOUNT_RECOVERY = "account-recovery"
+}
+
+export enum EmailDispatchMailboxProvider {
+  GOOGLE = "google",
+  OTHER = "other"
+}
+
+export enum EmailDispatchAddressForm {
+  CANONICAL = "canonical",
+  ALIASED = "aliased"
+}
+
+export enum EmailDispatchOutcome {
+  SENT = "sent",
+  EXISTING_ACCOUNT = "existing-account",
+  NO_RECIPIENT = "no-recipient",
+  MAILBOX_CAPPED = "mailbox-capped",
+  CAPTCHA_REJECTED = "captcha-rejected"
+}
+
+export enum EmailDispatchDimension {
+  SOURCE = "source",
+  MAILBOX = "mailbox"
+}
+
+export const emailDispatchRequestCounter = infisicalCoreMeter.createCounter("infisical.email_dispatch.request.count", {
+  description:
+    "Requests to the unauthenticated endpoints that mail a caller-chosen address, by purpose, mailbox provider, address form, and outcome.",
+  unit: "{request}"
+});
+
+export const emailDispatchDistinctCounter = infisicalCoreMeter.createCounter(
+  "infisical.email_dispatch.distinct.count",
+  {
+    description:
+      "First sighting of a source host or target mailbox within the current abuse window. Compare against the request count to separate a broad campaign from a burst against a few targets.",
+    unit: "{entity}"
+  }
+);
 
 // Rate limit metric. Wired in error-handler.ts on RateLimitError.
 export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisical.rate_limit.exceeded.count", {
@@ -762,5 +825,48 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numUsed?.() ?? 0, { "db.pool.state": "used" });
     result.observe(pool.numFree?.() ?? 0, { "db.pool.state": "free" });
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
+  });
+
+  // safeRequest agent pool: an in-memory Map size, so it's cheap to observe on every export.
+  // Read alongside infisical.safe_request.agent_eviction.count — size pinned at max with a
+  // non-zero eviction rate is the signal that the cap is too low.
+  const agentPoolGauge = meter.createObservableGauge("infisical.safe_request.agent_pool.size", {
+    description: "Agents currently held in the safeRequest connection pool.",
+    unit: "{agent}"
+  });
+
+  agentPoolGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    const { size, max } = getAgentPoolStats();
+    result.observe(size, { "pool.max": String(max) });
+  });
+};
+
+// -- Legacy root-key usage (InfisicalCore meter) -----------------------------------------------------
+// The pre-KMS tier pins the instance root encryption key, so it can never be rotated while anything
+// still uses it. This counter is the evidence for when that tier can be deleted.
+export const legacyRootKeyUsageCounter = infisicalCoreMeter.createCounter("infisical.legacy_root_key.usage", {
+  description:
+    "Reads and writes that still use the instance root encryption key directly instead of the KMS envelope, by surface."
+});
+
+export type LegacyRootKeySurface =
+  | "project_bot"
+  | "user_private_key"
+  | "blind_index"
+  | "external_migration"
+  | "org_bot"
+  | "project_ghost_user";
+
+export const recordLegacyRootKeyUsageMetric = (params: {
+  operation: "encrypt" | "decrypt";
+  surface: LegacyRootKeySurface;
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    legacyRootKeyUsageCounter.add(1, {
+      "legacy_key.operation": params.operation,
+      "legacy_key.surface": params.surface
+    });
   });
 };

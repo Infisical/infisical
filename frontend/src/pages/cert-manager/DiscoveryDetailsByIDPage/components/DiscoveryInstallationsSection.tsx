@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
-import { Lottie } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -13,6 +12,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Loader,
   Pagination,
   Table,
   TableBody,
@@ -58,7 +58,7 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
       <CardContent className="p-0">
         {isPending && (
           <div className="flex h-40 w-full items-center justify-center">
-            <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+            <Loader />
           </div>
         )}
         {!isPending && installations.length === 0 && (

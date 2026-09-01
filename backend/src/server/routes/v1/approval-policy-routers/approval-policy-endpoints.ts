@@ -81,7 +81,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.create(
         policyType,
@@ -138,7 +138,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policies, projectId } = await server.services.approvalPolicy.list(
         policyType,
@@ -182,7 +182,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
@@ -223,7 +223,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.updateById(
         req.params.policyId,
@@ -280,7 +280,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
         req.params.policyId,
@@ -337,7 +337,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
@@ -462,7 +462,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
@@ -642,7 +642,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
 
@@ -683,7 +683,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
@@ -727,7 +727,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 
@@ -809,7 +809,7 @@ export const registerApprovalPolicyEndpoints = ({
         200: checkPolicyMatchResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.approvalPolicy.checkPolicyMatch(policyType, req.body, req.permission);
 

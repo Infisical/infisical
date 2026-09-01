@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
@@ -29,14 +28,40 @@ type Props = {
   honeyToken?: TDashboardHoneyToken;
 };
 
-const FORM_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
+type FormTab = {
+  name: string;
+  key: string;
+  shortDescription: string;
+  title: string;
+  subtitle: string;
+  fields: (keyof THoneyTokenForm)[];
+};
+
+const FORM_TABS: FormTab[] = [
   {
     name: "Configuration",
     key: "configuration",
+    shortDescription: "Environment",
+    title: "Choose where to plant it",
+    subtitle: "Select the environment where Infisical should store the decoy credentials.",
     fields: ["environment"]
   },
-  { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
-  { name: "Details", key: "details", fields: ["name", "description"] }
+  {
+    name: "Mapping",
+    key: "mapping",
+    shortDescription: "Secret keys",
+    title: "Map the generated credentials",
+    subtitle: "Choose the secret keys that will receive each decoy credential field.",
+    fields: ["secretsMapping"]
+  },
+  {
+    name: "Details",
+    key: "details",
+    shortDescription: "Name and description",
+    title: "Add honey token details",
+    subtitle: "Give this honey token a clear name and an optional description.",
+    fields: ["name", "description"]
+  }
 ];
 
 export const HoneyTokenForm = ({
@@ -107,7 +132,7 @@ export const HoneyTokenForm = ({
             : "Token was created, but stack is not deployed yet.",
           callToAction: (
             <Link
-              className="inline-flex h-7 items-center rounded border border-mineshaft-500 px-2 text-xs text-primary transition-colors hover:bg-mineshaft-700 hover:text-primary"
+              className="inline-flex h-7 items-center rounded border border-border px-2 text-xs text-foreground transition-colors hover:bg-container-hover"
               to="/organizations/$orgId/projects/secret-management/product-settings"
               params={{ orgId: currentOrg.id }}
             >
@@ -222,61 +247,90 @@ export const HoneyTokenForm = ({
     return isEnabled;
   };
 
+  const handleStepChange = (index: number) => {
+    isTabEnabled(index).then((isEnabled) => {
+      if (isEnabled) setSelectedTabIndex(index);
+    });
+  };
+
+  const currentStep = formTabs[selectedTabIndex];
+
+  const formFields = (
+    <>
+      {currentStep.key === "configuration" && (
+        <HoneyTokenConfigurationFields environments={environments} />
+      )}
+      {currentStep.key === "mapping" && <HoneyTokenMappingFields />}
+      {currentStep.key === "details" && <HoneyTokenDetailsFields />}
+    </>
+  );
+
+  const displayedStepNumber = selectedTabIndex + 1;
+  const totalSteps = formTabs.length;
+
   return (
-    <form className="flex max-h-[75vh] flex-col">
-      <div className="min-h-0 flex-1">
-        <FormProvider {...formMethods}>
-          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-              {formTabs.map((tab, index) => (
-                <Tab
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const isEnabled = await isTabEnabled(index);
-                    setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                  }}
-                  className={({ selected }) =>
-                    `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
-                    }`
-                  }
-                  key={tab.key}
-                >
-                  {index + 1}. {tab.name}
-                </Tab>
-              ))}
-            </Tab.List>
-            <Tab.Panels>
-              {!isUpdate && (
-                <Tab.Panel>
-                  <HoneyTokenConfigurationFields environments={environments} />
-                </Tab.Panel>
-              )}
-              <Tab.Panel>
-                <HoneyTokenMappingFields />
-              </Tab.Panel>
-              <Tab.Panel>
-                <HoneyTokenDetailsFields />
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
-        </FormProvider>
-      </div>
-      <div className="flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 pt-4">
-        <Button
-          onClick={handleNext}
-          isPending={isSubmitting || isValidating}
-          isDisabled={isSubmitting || isValidating}
-          variant={isFinalStep ? "org" : "outline"}
-        >
-          {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
-        </Button>
-        <Button onClick={handlePrev} variant="outline">
-          Back
-        </Button>
-      </div>
-    </form>
+    <FormProvider {...formMethods}>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => event.preventDefault()}>
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <aside className="hidden w-60 shrink-0 flex-col border-r border-border px-5 py-6 md:flex">
+            <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+              Setup steps
+            </p>
+            <Stepper
+              activeStep={selectedTabIndex}
+              orientation="vertical"
+              onStepChange={handleStepChange}
+              nonLinear
+            >
+              <StepperList aria-label="Honey token setup progress">
+                {formTabs.map((tab, index) => (
+                  <StepperStep
+                    key={tab.key}
+                    index={index}
+                    title={tab.name}
+                    description={tab.shortDescription}
+                    disabled={isSubmitting || isValidating}
+                  />
+                ))}
+              </StepperList>
+            </Stepper>
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+            <div className="border-b border-border px-4 py-4 md:hidden">
+              <p className="text-xs font-medium text-muted">
+                Step {displayedStepNumber} of {totalSteps}: {currentStep.name}
+              </p>
+            </div>
+            <div className="flex w-full max-w-3xl flex-col gap-y-2 px-4 py-6 md:px-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+              </div>
+              {formFields}
+            </div>
+          </div>
+        </div>
+      </form>
+      <SheetFooter className="flex-col items-stretch border-t sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs text-muted">
+          Step {displayedStepNumber} of {totalSteps}
+        </span>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+          <Button className="w-full sm:w-fit" onClick={handlePrev} variant="outline">
+            Back
+          </Button>
+          <Button
+            onClick={handleNext}
+            isPending={isSubmitting || isValidating}
+            isDisabled={isSubmitting || isValidating}
+            className="w-full sm:w-fit"
+            variant={isFinalStep ? "org" : "outline"}
+          >
+            {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
+          </Button>
+        </div>
+      </SheetFooter>
+    </FormProvider>
   );
 };

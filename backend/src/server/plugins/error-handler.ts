@@ -8,6 +8,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ConflictError,
   CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
@@ -41,6 +42,7 @@ enum JWTErrors {
 enum HttpStatusCodes {
   BadRequest = 400,
   NotFound = 404,
+  Conflict = 409,
   Unauthorized = 401,
   Forbidden = 403,
   UnprocessableContent = 422,
@@ -71,6 +73,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     const isExpectedClientError =
       error instanceof BadRequestError ||
       error instanceof NotFoundError ||
+      error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
       error instanceof ForbiddenError ||
       error instanceof ForbiddenRequestError ||
@@ -213,6 +216,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name,
         details: error.details
       });
+    } else if (error instanceof ConflictError) {
+      void res
+        .status(HttpStatusCodes.Conflict)
+        .send({ reqId: req.id, statusCode: HttpStatusCodes.Conflict, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)

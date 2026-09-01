@@ -6,7 +6,7 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { BaseHealthCheckTestSchema, HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
 
@@ -57,7 +57,8 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
     .max(32)
     .refine((v) => POSIX_NAME.test(v), { message: "Group must be a valid Linux group name" })
     .optional(),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -129,4 +130,9 @@ export const LinuxServerPkiSyncListItemSchema = z.object({
   destination: z.literal(PkiSync.LinuxServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const LinuxServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
+  destinationConfig: LinuxServerPkiSyncConfigSchema,
+  syncOptions: LinuxServerPkiSyncOptionsSchema.partial()
 });

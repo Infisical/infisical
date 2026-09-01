@@ -15,18 +15,32 @@ import {
 } from "./snowflakeContract";
 
 const snowflakeConnectionFields = [
-  { name: "inputs.accountId", type: "text", label: "Account Identifier", layout: "half" },
+  {
+    name: "inputs.accountId",
+    type: "text",
+    label: "Account Identifier",
+    placeholder: "my-account",
+    layout: "half"
+  },
   {
     name: "inputs.orgId",
     type: "text",
     label: "Organization Identifier",
+    placeholder: "my-organization",
     layout: "half"
   },
-  { name: "inputs.username", type: "text", label: "User", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "INFISICAL_USER",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Programmatic Access Token",
+    placeholder: "Enter programmatic access token",
     description:
       "The programmatic access token used to authenticate with Snowflake. A user password is still accepted, but Snowflake is phasing out password authentication.",
     autoComplete: "new-password",

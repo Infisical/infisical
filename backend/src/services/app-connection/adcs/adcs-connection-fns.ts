@@ -80,9 +80,7 @@ export const executeAdcsGatewayOperation = async <T>(
       }),
     {
       protocol: GatewayProxyProtocol.Adcs,
-      relayHost: connectionDetails.relayHost,
-      gateway: connectionDetails.gateway,
-      relay: connectionDetails.relay
+      ...connectionDetails
     }
   );
 

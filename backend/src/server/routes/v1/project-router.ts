@@ -516,7 +516,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .array(z.string())
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
-        pitVersionLimit: z.number().min(1).max(100).optional()
+        pitVersionLimit: z.number().min(1).max(100).optional(),
+        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -541,7 +542,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
           pitVersionLimit: req.body.pitVersionLimit,
-          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata,
+          auditLogsRetentionDays: req.body.auditLogsRetentionDays
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -1274,7 +1276,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema.extend({ hasPrivateKey: z.boolean() })),
+          certificates: z.array(CertificatesSchema.omit({ orderId: true }).extend({ hasPrivateKey: z.boolean() })),
           totalCount: z.number()
         })
       }
@@ -1365,7 +1367,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificates: z.array(
-            CertificatesSchema.extend({
+            CertificatesSchema.omit({ orderId: true }).extend({
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),

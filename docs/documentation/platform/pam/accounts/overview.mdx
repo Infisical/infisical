@@ -66,13 +66,15 @@ Go to **Privileged Access Management → Accounts**, find the account, and click
 
 ### CLI access
 
-Run the CLI command to start a local proxy:
+Run the CLI command for the account:
 
 ```bash
 infisical pam access <folder>/<account>
 ```
 
-The command outputs the local port to connect to. Then connect with your preferred client (psql, pgAdmin, ssh, etc.) against `localhost` using that port. The proxy handles authentication automatically.
+For SSH accounts this connects you straight to a shell on the server. Add `--proxy` if you would rather point your own SSH client at a local port.
+
+Every other account type starts a local proxy and outputs the port to connect to. Then connect with your preferred client (psql, pgAdmin, etc.) against `localhost` using that port. The proxy handles authentication automatically.
 
 **Flags:**
 
