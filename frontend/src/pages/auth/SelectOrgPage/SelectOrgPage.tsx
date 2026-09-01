@@ -12,6 +12,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
+import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ChevronRight, Search } from "lucide-react";
@@ -38,7 +39,12 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { isOrgAccessRevokedError, refreshOrgListsOnAccessRevoked } from "@app/helpers/organization";
+import {
+  isOrgAccessRevokedError,
+  notifyOrgSelectionFailed,
+  ORG_ACCESS_REVOKED_ERROR,
+  refreshOrgListsOnAccessRevoked
+} from "@app/helpers/organization";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -138,7 +144,11 @@ export const SelectOrgPage = () => {
   } = search;
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
-  const selectOrg = useSelectOrganization();
+  // OrgAccessRevoked is toasted with tailored copy below, so keep the global
+  // MutationCache.onError from adding a second, generic toast for it
+  const selectOrg = useSelectOrganization({
+    handledErrorCodes: [ORG_ACCESS_REVOKED_ERROR]
+  });
   const { data: user, isPending: userLoading } = useGetUser();
   const logout = useLogoutUser();
 
@@ -253,19 +263,27 @@ export const SelectOrgPage = () => {
       token = result.token;
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
-    } catch (error: any) {
+    } catch (error) {
       await refreshOrgListsOnAccessRevoked(queryClient, error);
 
-      if (error?.response?.data?.error === "SmtpError") {
-        // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
-        await handleLogout();
-        return;
-      }
-      const message = error?.response?.data?.message || "Failed to select organization.";
-      createNotification({ text: message, type: "error" });
       if (isOrgAccessRevokedError(error)) {
+        notifyOrgSelectionFailed(
+          error,
+          subOrgId ? org.subOrganizations.find((sub) => sub.id === subOrgId)?.name : org.name
+        );
+        // drops the stale org from the picker's list
         await router.invalidate();
+      } else if (axios.isAxiosError<{ error?: string }>(error)) {
+        // Global MutationCache.onError already toasted this failure.
+        if (error.response?.data?.error === "SmtpError") {
+          await handleLogout();
+        }
+      } else {
+        // A non-axios rejection reaches no toast handler; session expiry has already been
+        // reported by the request interceptor.
+        console.error(error);
       }
+
       return;
     }
 

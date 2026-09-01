@@ -165,34 +165,36 @@ export const OrgSubOrgsTab = () => {
   useResetPageHelper({ setPage, offset, totalCount });
 
   const handleLoginSubOrg = async (subOrgId: string) => {
+    let selection: Awaited<ReturnType<typeof selectOrganization>>;
     try {
-      const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-        organizationId: subOrgId
-      });
-
-      if (isMfaEnabled) {
-        SecurityClient.setMfaToken(token);
-        if (mfaMethod) {
-          setRequiredMfaMethod(mfaMethod);
-        }
-        toggleShowMfa.on();
-        setMfaSuccessCallback(() => async () => {
-          await handleLoginSubOrg(subOrgId);
-        });
-        return;
-      }
-
-      SecurityClient.setToken(token);
-      queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-      await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-      await navigateUserToOrg({ navigate, organizationId: subOrgId });
+      selection = await selectOrganization({ organizationId: subOrgId });
     } catch (error) {
-      refreshOrgListsOnAccessRevoked(queryClient, error);
+      await refreshOrgListsOnAccessRevoked(queryClient, error);
       notifyOrgSelectionFailed(
         error,
         paginatedSubOrgs.find((subOrg) => subOrg.id === subOrgId)?.name
       );
+      return;
     }
+
+    const { token, isMfaEnabled, mfaMethod } = selection;
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => async () => {
+        await handleLoginSubOrg(subOrgId);
+      });
+      return;
+    }
+
+    SecurityClient.setToken(token);
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+    await navigateUserToOrg({ navigate, organizationId: subOrgId });
   };
 
   const handleOpenEditModal = (subOrg: TSubOrganization) => {

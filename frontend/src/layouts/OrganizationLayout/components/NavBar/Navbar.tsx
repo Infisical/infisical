@@ -208,43 +208,47 @@ export const Navbar = () => {
 
     if (organizationId === currentOrg.id) return;
 
+    let selection: Awaited<ReturnType<typeof selectOrganization>>;
     try {
-      const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
-
-      if (isMfaEnabled) {
-        SecurityClient.setMfaToken(token);
-        if (mfaMethod) {
-          setRequiredMfaMethod(mfaMethod);
-        }
-        toggleShowMfa.on();
-        setMfaSuccessCallback(() => async () => {
-          await handleOrgSelection({ organizationId, onSuccess });
-        });
-        return;
-      }
-
-      SecurityClient.setToken(token);
-      queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-      queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-      queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
-      queryClient.removeQueries({ queryKey: appConnectionKeys.all });
-
-      await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-      await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
-
-      await navigateUserToOrg({ navigate, organizationId, navigateTo });
-      queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
-
-      if (onSuccess) {
-        await onSuccess();
-      }
+      selection = await selectOrganization({ organizationId });
     } catch (error) {
-      refreshOrgListsOnAccessRevoked(queryClient, error);
+      await refreshOrgListsOnAccessRevoked(queryClient, error);
       notifyOrgSelectionFailed(
         error,
         orgs?.find((org) => org.id === organizationId)?.name ??
           subOrganizations.find((subOrg) => subOrg.id === organizationId)?.name
       );
+      return;
+    }
+
+    const { token, isMfaEnabled, mfaMethod } = selection;
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => async () => {
+        await handleOrgSelection({ organizationId, onSuccess });
+      });
+      return;
+    }
+
+    SecurityClient.setToken(token);
+    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
+
+    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
+
+    await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
+
+    if (onSuccess) {
+      await onSuccess();
     }
   };
 

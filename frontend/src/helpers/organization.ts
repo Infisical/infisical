@@ -5,12 +5,14 @@ import { createNotification } from "@app/components/notifications";
 import { organizationKeys } from "@app/hooks/api/organization/queries";
 import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 
+export const ORG_ACCESS_REVOKED_ERROR = "OrgAccessRevoked";
+
 // select-organization answers 403 for enforced SSO as well as for revoked membership, so the
 // error name is the only thing that tells them apart
 export const isOrgAccessRevokedError = (error: unknown) =>
   axios.isAxiosError<{ error?: string }>(error) &&
   error.response?.status === 403 &&
-  error.response.data?.error === "OrgAccessRevoked";
+  error.response.data?.error === ORG_ACCESS_REVOKED_ERROR;
 
 export const refreshOrgListsOnAccessRevoked = async (queryClient: QueryClient, error: unknown) => {
   if (!isOrgAccessRevokedError(error)) return;

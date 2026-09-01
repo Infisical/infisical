@@ -74,9 +74,12 @@ export const selectOrganization = async (data: SelectOrganizationParams) => {
   return res;
 };
 
-export const useSelectOrganization = () => {
+export const useSelectOrganization = ({
+  handledErrorCodes
+}: { handledErrorCodes?: string[] } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: handledErrorCodes?.length ? { handledErrorCodes } : undefined,
     mutationFn: async (details: SelectOrganizationParams) => {
       const data = await selectOrganization(details);
 
