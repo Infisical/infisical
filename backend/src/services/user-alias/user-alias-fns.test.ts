@@ -329,6 +329,7 @@ type TAuditLogArg = { orgId: string; event: { type: string; metadata: Record<str
 const makeDeps = ({
   conflictingUser = null as TUsers | null,
   updateError = null as Error | null,
+  emailUpdateError = null as Error | null,
   orgVerifiedDomains = ["example.com"] as string[]
 } = {}) => {
   const updatedRows: Record<string, unknown>[] = [];
@@ -336,6 +337,7 @@ const makeDeps = ({
     findOne: vi.fn().mockResolvedValue(conflictingUser),
     updateById: vi.fn().mockImplementation((id: string, update: Record<string, unknown>) => {
       if (updateError) throw updateError;
+      if (emailUpdateError && update.username) throw emailUpdateError;
       updatedRows.push(update);
       return { ...makeUser(), ...update };
     }),
@@ -439,6 +441,7 @@ describe("syncSsoUserProfile", () => {
     expect(user.username).toBe("old@example.com");
     expect(user.firstName).toBe("Bob");
     expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+    expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: "new@example.com" });
     const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
     expect(audited.event.type).toBe("sso-user-profile-sync-conflict");
     expect(audited.event.metadata.conflictingUserId).toBe("user-2");
@@ -461,6 +464,24 @@ describe("syncSsoUserProfile", () => {
     expect(user.username).toBe("old@example.com");
     const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
     expect(audited.event.type).toBe("sso-user-profile-sync-conflict");
+  });
+
+  test("keeps the name when the address is taken between the check and the write", async () => {
+    const deps = makeDeps({
+      emailUpdateError: new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation } })
+    });
+    const user = await sync({ assertedEmail: "new@example.com", assertedFirstName: "Bob" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows).toEqual([{ firstName: "Bob" }]);
+
+    const [conflict] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(conflict.event.type).toBe("sso-user-profile-sync-conflict");
+    const [synced] = deps.auditLogService.createAuditLog.mock.calls[1];
+    expect(synced.event.type).toBe("sso-user-profile-synced");
+    expect(synced.event.metadata.newEmail).toBeUndefined();
+    expect(synced.event.metadata.newFirstName).toBe("Bob");
   });
 
   test("never fails the login on an unexpected database error", async () => {

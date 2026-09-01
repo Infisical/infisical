@@ -212,18 +212,18 @@ export const syncSsoUserProfile = async ({
     }
   }
 
-  try {
-    const updatedUser = await userDAL.transaction(async (tx) => {
+  const writeProfile = (applyEmail: boolean) =>
+    userDAL.transaction(async (tx) => {
       const nextUser = await userDAL.updateById(
         user.id,
         {
           ...nameChanges,
-          ...(isEmailApplied ? { email: assertedUsername, username: assertedUsername } : {})
+          ...(applyEmail ? { email: assertedUsername, username: assertedUsername } : {})
         },
         tx
       );
 
-      if (isEmailApplied) {
+      if (applyEmail) {
         await userAliasDAL.updateById(
           userAlias.id,
           { emails: unique([...(userAlias.emails ?? []), assertedUsername]) },
@@ -234,43 +234,56 @@ export const syncSsoUserProfile = async ({
       return nextUser;
     });
 
-    logger.info(
-      { userId: user.id, orgId, externalId: userAlias.externalId, isEmailApplied },
-      `Synced SSO profile from the identity provider [userId=${user.id}] [orgId=${orgId}]`
-    );
-
-    await auditLogService
-      .createAuditLog({
-        actor: { type: ActorType.PLATFORM, metadata: {} },
-        orgId,
-        event: {
-          type: EventType.SSO_USER_PROFILE_SYNCED,
-          metadata: {
-            userId: user.id,
-            aliasType: userAlias.aliasType,
-            externalId: userAlias.externalId,
-            ...(isEmailApplied ? { previousEmail: user.username, newEmail: assertedUsername } : {}),
-            ...(nameChanges.firstName
-              ? { previousFirstName: user.firstName, newFirstName: nameChanges.firstName }
-              : {}),
-            ...(nameChanges.lastName ? { previousLastName: user.lastName, newLastName: nameChanges.lastName } : {})
-          }
-        }
-      })
-      .catch((err) => {
-        logger.error(err, `Failed to audit SSO profile sync for user ${user.id} in org ${orgId}`);
-      });
-
-    return updatedUser;
+  let updatedUser: TUsers;
+  try {
+    updatedUser = await writeProfile(isEmailApplied);
   } catch (err) {
-    if (err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation) {
-      await logConflict();
+    if (
+      !(err instanceof DatabaseError) ||
+      (err.error as { code?: string })?.code !== DatabaseErrorCode.UniqueViolation
+    ) {
+      logger.error(err, `Failed to sync SSO profile for user ${user.id} in org ${orgId}`);
       return user;
     }
 
-    logger.error(err, `Failed to sync SSO profile for user ${user.id} in org ${orgId}`);
-    return user;
+    await logConflict();
+    isEmailApplied = false;
+    if (!isNameChanged) return user;
+
+    try {
+      updatedUser = await writeProfile(false);
+    } catch (nameErr) {
+      logger.error(nameErr, `Failed to sync SSO profile name for user ${user.id} in org ${orgId}`);
+      return user;
+    }
   }
+
+  logger.info(
+    { userId: user.id, orgId, externalId: userAlias.externalId, isEmailApplied },
+    `Synced SSO profile from the identity provider [userId=${user.id}] [orgId=${orgId}]`
+  );
+
+  await auditLogService
+    .createAuditLog({
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      orgId,
+      event: {
+        type: EventType.SSO_USER_PROFILE_SYNCED,
+        metadata: {
+          userId: user.id,
+          aliasType: userAlias.aliasType,
+          externalId: userAlias.externalId,
+          ...(isEmailApplied ? { previousEmail: user.username, newEmail: assertedUsername } : {}),
+          ...(nameChanges.firstName ? { previousFirstName: user.firstName, newFirstName: nameChanges.firstName } : {}),
+          ...(nameChanges.lastName ? { previousLastName: user.lastName, newLastName: nameChanges.lastName } : {})
+        }
+      }
+    })
+    .catch((err) => {
+      logger.error(err, `Failed to audit SSO profile sync for user ${user.id} in org ${orgId}`);
+    });
+
+  return updatedUser;
 };
 
 type TResolveAliasUserIdsDTO = {

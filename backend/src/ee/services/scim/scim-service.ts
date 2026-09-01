@@ -645,7 +645,7 @@ export const scimServiceFactory = ({
     if (!assertedEmail) return null;
 
     const newEmail = sanitizeEmail(assertedEmail);
-    if (newEmail === user.email && newEmail === user.username) return null;
+    if (newEmail === user.email || newEmail === user.username) return null;
 
     if (!org.authEnforced) {
       throw new ScimRequestError({
@@ -667,7 +667,16 @@ export const scimServiceFactory = ({
       });
     }
 
-    await verifyEmailDomainOwnership({ email: newEmail, orgId: org.id, emailDomainDAL });
+    try {
+      await verifyEmailDomainOwnership({ email: newEmail, orgId: org.id, emailDomainDAL });
+    } catch (err) {
+      throw new ScimRequestError({
+        detail: `'${newEmail}' is not on a verified email domain for this organization. Add and verify the domain in Infisical, then retry.`,
+        status: 400,
+        scimType: "invalidValue",
+        error: err
+      });
+    }
 
     const conflictingUser = await userDAL.findOne({ username: newEmail });
     if (conflictingUser && conflictingUser.id !== user.id) {
@@ -684,9 +693,15 @@ export const scimServiceFactory = ({
   /**
    * The conflict check above is a read, not a lock, so a concurrent login or invite can take the
    * address first. Report that as the conflict it is instead of a 500 carrying a constraint name.
+   * Only where a rename was actually attempted: the transaction writes other rows too, and calling
+   * an unrelated unique violation an email conflict would send the IdP chasing the wrong address.
    */
-  const $toScimEmailConflictError = (err: unknown, newEmail: string) => {
-    if (err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation) {
+  const $toScimEmailConflictError = (err: unknown, newEmail: string | null) => {
+    if (
+      newEmail &&
+      err instanceof DatabaseError &&
+      (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+    ) {
       return new ScimRequestError({
         detail: `An Infisical account already exists for '${newEmail}'. Remove or merge that account before changing this user's email.`,
         status: 409,
@@ -820,7 +835,7 @@ export const scimServiceFactory = ({
         );
       });
     } catch (err) {
-      throw $toScimEmailConflictError(err, newEmail ?? "");
+      throw $toScimEmailConflictError(err, newEmail);
     }
 
     return scimUser;
@@ -944,7 +959,7 @@ export const scimServiceFactory = ({
         );
       });
     } catch (err) {
-      throw $toScimEmailConflictError(err, newEmail ?? "");
+      throw $toScimEmailConflictError(err, newEmail);
     }
 
     return buildScimUser({

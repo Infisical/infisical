@@ -670,10 +670,10 @@ describe("SCIM v1 Router", () => {
   });
 
   describe("Provisioned email changes", () => {
-    const seedUser = async (db: Knex, label: string) => {
+    const seedUser = async (db: Knex, label: string, email?: string) => {
       const [user] = await db(TableName.Users)
         .insert({
-          email: `scim-email-${label}@${TEST_DOMAIN}`,
+          email: email ?? `scim-email-${label}@${TEST_DOMAIN}`,
           username: `scim-email-${label}@${TEST_DOMAIN}`,
           isGhost: false,
           isEmailVerified: true,
@@ -791,6 +791,49 @@ describe("SCIM v1 Router", () => {
       expect(row.email).toBe(newEmail);
     });
 
+    test("should apply an unrelated PATCH when the stored email and username have drifted", async () => {
+      const db = getDb();
+      const label = `drift-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label, `drifted-${label}@${TEST_DOMAIN}`);
+
+      const res = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/scim/Users/${membership.id}`,
+        headers: { authorization: `Bearer ${scimToken}`, "content-type": "application/scim+json" },
+        payload: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [{ op: "replace", path: "active", value: false }]
+        })
+      });
+
+      // Deprovisioning names no mailbox, so it must not trip the immutable-email refusal.
+      expect(res.statusCode).toBe(200);
+
+      const [row] = await db(TableName.Membership).where({ id: membership.id }).select("isActive");
+      expect(row.isActive).toBe(false);
+
+      const [userRow] = await db(TableName.Users).where({ id: user.id }).select("username");
+      expect(userRow.username).toBe(user.username);
+    });
+
+    test("should reject an address outside the organization's verified domains", async () => {
+      const db = getDb();
+      const label = `unverified-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label);
+
+      await db(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: true });
+
+      const res = await patchEmail(membership.id, `renamed-${label}@not-verified.local`);
+
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.payload);
+      expect(body.scimType).toBe("invalidValue");
+      expect(body.schemas).toContain("urn:ietf:params:scim:api:messages:2.0:Error");
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username");
+      expect(row.username).toBe(user.username);
+    });
+
     test("should report a conflict when the new address is already another account", async () => {
       const db = getDb();
       const label = `conflict-${crypto.randomUUID().slice(0, 8)}`;
@@ -808,5 +851,4 @@ describe("SCIM v1 Router", () => {
       expect(row.username).toBe(user.username);
     });
   });
-
 });
