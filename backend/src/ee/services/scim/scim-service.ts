@@ -781,7 +781,7 @@ export const scimServiceFactory = ({
     const newEmail = await $resolveScimEmailChange({
       org,
       user,
-      assertedEmail: scimUser.emails?.[0]?.value
+      assertedEmail: (scimUser.emails?.find((email) => email.primary) ?? scimUser.emails?.[0])?.value
     });
 
     await verifyEmailDomainOwnership({

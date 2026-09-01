@@ -850,5 +850,41 @@ describe("SCIM v1 Router", () => {
       const [row] = await db(TableName.Users).where({ id: user.id }).select("username");
       expect(row.username).toBe(user.username);
     });
+
+    test("should take the primary address when the assertion carries several", async () => {
+      const db = getDb();
+      const label = `multi-${crypto.randomUUID().slice(0, 8)}`;
+      const { user, membership } = await seedUser(db, label);
+      const primaryEmail = `renamed-${label}@${TEST_DOMAIN}`;
+      const secondaryEmail = `alias-${label}@${TEST_DOMAIN}`;
+
+      await db(TableName.Organization).where({ id: ORG_ID }).update({ authEnforced: true });
+
+      const res = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/scim/Users/${membership.id}`,
+        headers: { authorization: `Bearer ${scimToken}`, "content-type": "application/scim+json" },
+        payload: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [
+            {
+              op: "replace",
+              path: "emails",
+              // The mailbox we key on is not first, which is what the PUT handler already accounts for.
+              value: [
+                { primary: false, value: secondaryEmail, type: "home" },
+                { primary: true, value: primaryEmail, type: "work" }
+              ]
+            }
+          ]
+        })
+      });
+
+      expect(res.statusCode).toBe(200);
+
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
+      expect(row.username).toBe(primaryEmail);
+      expect(row.email).toBe(primaryEmail);
+    });
   });
 });
