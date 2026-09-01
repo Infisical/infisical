@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { FileBadge, Plus, Tags, Trash2 } from "lucide-react";
+import { FileBadge, InfoIcon, Plus, Tags, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Empty,
   EmptyContent,
@@ -56,6 +58,8 @@ import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import { useCertificatePolicy } from "./useCertificatePolicy";
+import { usePolicyGuidance } from "./usePolicyGuidance";
+import { ValidityField } from "./ValidityField";
 
 enum RequestMethod {
   MANAGED = "managed",
@@ -314,6 +318,7 @@ export const CertificateIssuanceModal = ({
     watch,
     setValue,
     trigger,
+    clearErrors,
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -362,6 +367,11 @@ export const CertificateIssuanceModal = ({
   const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
   isAwsPcaProfileRef.current = isAwsPcaProfile;
 
+  const digicertProductNameId =
+    externalCaType === CaType.DIGICERT
+      ? actualSelectedProfile?.certificateAuthority?.productNameId
+      : undefined;
+
   const { data: policyData } = useGetCertificatePolicyById({
     policyId: actualSelectedProfile?.certificatePolicyId || "",
     applicationId
@@ -381,6 +391,17 @@ export const CertificateIssuanceModal = ({
     setValue,
     watch
   );
+
+  const policy = usePolicyGuidance({
+    policy: policyData,
+    watch,
+    clearErrors,
+    isSubjectSectionShown: constraints.shouldShowSubjectSection,
+    isSanSectionShown: constraints.shouldShowSanSection,
+    isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
+    isValidityEvaluated: !isAdcsProfile,
+    resetKey: actualSelectedProfileId
+  });
 
   const resetAllState = useCallback(() => {
     resetConstraints();
@@ -405,7 +426,12 @@ export const CertificateIssuanceModal = ({
     stepKeys,
     stepFields: STEP_FIELDS,
     invalidMessage: "Please fix the highlighted fields before requesting.",
-    validateStep: (fields) => trigger(fields as (keyof FormData)[])
+    validateStep: async (fields) => {
+      // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
+      policy.reveal(fields);
+      if (!(await trigger(fields as (keyof FormData)[]))) return false;
+      return policy.findBlockedFields(fields).length === 0;
+    }
   });
 
   const steps = useMemo(() => stepKeys.map((key) => STEP_META[key]), [stepKeys]);
@@ -447,7 +473,9 @@ export const CertificateIssuanceModal = ({
   }, [popUp?.issueCertificate?.isOpen, profileId, cert, setValue]);
 
   useEffect(() => {
-    if (popUp?.issueCertificate?.isOpen) setStep(0);
+    if (popUp?.issueCertificate?.isOpen) {
+      setStep(0);
+    }
   }, [popUp?.issueCertificate?.isOpen]);
 
   const onFormSubmit = useCallback(
@@ -465,6 +493,20 @@ export const CertificateIssuanceModal = ({
       if (!formProfileId) {
         createNotification({
           text: "Please select a certificate profile.",
+          type: "error"
+        });
+        return;
+      }
+
+      // Reachable when a step was skipped or its values changed after it was cleared. Reveal the
+      // whole offending step, so the finding is visible wherever in it the requester lands.
+      const [blockedField] = policy.findBlockedFields(stepKeys.flatMap((key) => STEP_FIELDS[key]));
+      if (blockedField) {
+        const blockedStep = stepKeys.findIndex((key) => STEP_FIELDS[key].includes(blockedField));
+        policy.reveal(blockedStep >= 0 ? STEP_FIELDS[stepKeys[blockedStep]] : [blockedField]);
+        if (blockedStep >= 0) setStep(blockedStep);
+        createNotification({
+          text: "Resolve the policy violations before requesting this certificate.",
           type: "error"
         });
         return;
@@ -550,7 +592,9 @@ export const CertificateIssuanceModal = ({
       isAdcsProfile,
       handlePopUpToggle,
       navigate,
-      resetAllState
+      resetAllState,
+      stepKeys,
+      setStep
     ]
   );
 
@@ -684,6 +728,19 @@ export const CertificateIssuanceModal = ({
             <p className="mb-4 text-xs text-muted">{EXTERNAL_CA_TEMPLATE_HINT}</p>
           )}
 
+          {(currentStepKey === "subject" || currentStepKey === "csr") && digicertProductNameId && (
+            <Alert variant="info" className="mb-4">
+              <InfoIcon />
+              <AlertDescription>
+                <p>
+                  This profile orders through the DigiCert{" "}
+                  <span className="font-mono">{digicertProductNameId}</span> product, which rejects
+                  unsupported subject values when the order is placed.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {currentStepKey === "csr" && (
             <Controller
               control={control}
@@ -732,6 +789,9 @@ export const CertificateIssuanceModal = ({
               rowErrors={rowErrorsOf(
                 (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
               )}
+              policyRows={policy.subject.rows}
+              policyNotices={policy.subject.notices}
+              revealPolicyErrors={policy.isRevealed("subjectAttributes")}
             />
           )}
 
@@ -746,22 +806,20 @@ export const CertificateIssuanceModal = ({
               rowErrors={rowErrorsOf(
                 (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
               )}
+              policyRows={policy.sans.rows}
+              policyNotices={policy.sans.notices}
+              revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
           )}
 
           {(currentStepKey === "csr" || currentStepKey === "options") && !isAdcsProfile && (
-            <Controller
+            <ValidityField
               control={control}
-              name="ttl"
-              render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel>
-                    Time to Live (TTL) <span className="text-danger">*</span>
-                  </FieldLabel>
-                  <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(error)} />
-                  <FieldError errors={[error]} />
-                </Field>
-              )}
+              className="mb-4"
+              label="Time to Live (TTL)"
+              hint={policy.ttlHint}
+              policyError={policy.ttlError}
+              revealPolicyError={policy.isRevealed("ttl")}
             />
           )}
 

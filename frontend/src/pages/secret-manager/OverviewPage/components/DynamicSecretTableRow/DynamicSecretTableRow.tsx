@@ -2,6 +2,7 @@ import { subject } from "@casl/ability";
 import {
   AlertTriangleIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   EditIcon,
   FileKeyIcon,
   FingerprintIcon,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { dynamicSecretProviderRegistry } from "@app/components/dynamic-secrets";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -27,43 +29,9 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
-import {
-  DynamicSecretProviders,
-  DynamicSecretStatus,
-  TDynamicSecret
-} from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
-
-const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
-  [DynamicSecretProviders.SqlDatabase]: "SQL Database",
-  [DynamicSecretProviders.Cassandra]: "Cassandra",
-  [DynamicSecretProviders.AwsIam]: "AWS IAM",
-  [DynamicSecretProviders.Redis]: "Redis",
-  [DynamicSecretProviders.AwsElastiCache]: "AWS ElastiCache",
-  [DynamicSecretProviders.AwsMemoryDb]: "AWS MemoryDB",
-  [DynamicSecretProviders.MongoAtlas]: "Mongo Atlas",
-  [DynamicSecretProviders.ElasticSearch]: "Elastic Search",
-  [DynamicSecretProviders.MongoDB]: "Mongo DB",
-  [DynamicSecretProviders.RabbitMq]: "RabbitMQ",
-  [DynamicSecretProviders.AzureEntraId]: "Azure Entra ID",
-  [DynamicSecretProviders.AzureSqlDatabase]: "Azure SQL Database",
-  [DynamicSecretProviders.Ldap]: "LDAP",
-  [DynamicSecretProviders.SapHana]: "SAP HANA",
-  [DynamicSecretProviders.Snowflake]: "Snowflake",
-  [DynamicSecretProviders.Totp]: "TOTP",
-  [DynamicSecretProviders.SapAse]: "SAP ASE",
-  [DynamicSecretProviders.Kubernetes]: "Kubernetes",
-  [DynamicSecretProviders.Vertica]: "Vertica",
-  [DynamicSecretProviders.GcpIam]: "GCP IAM",
-  [DynamicSecretProviders.Github]: "GitHub",
-  [DynamicSecretProviders.Clickhouse]: "ClickHouse",
-  [DynamicSecretProviders.Couchbase]: "Couchbase",
-  [DynamicSecretProviders.Milvus]: "Milvus",
-  [DynamicSecretProviders.Ssh]: "SSH",
-  [DynamicSecretProviders.IbmApiConnect]: "IBM API Connect",
-  [DynamicSecretProviders.Tailscale]: "Tailscale"
-};
 
 type DynamicSecretWithEnv = TDynamicSecret & { environment: string };
 
@@ -112,18 +80,23 @@ export const DynamicSecretTableRow = ({
 
   const renderStatusIndicator = (dynamicSecret: DynamicSecretWithEnv) => {
     if (!dynamicSecret.status) return null;
+    const statusLabel = dynamicSecret.statusDetails || dynamicSecret.status;
+    const visibleStatusLabel =
+      dynamicSecret.status === DynamicSecretStatus.Deleting ? "Revoking" : "Deletion Failed";
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <AlertTriangleIcon
-            className={twMerge(
-              "ml-2 size-4",
-              dynamicSecret.status === DynamicSecretStatus.Deleting ? "text-warning" : "text-danger"
-            )}
-          />
+          <Badge
+            aria-label={`Dynamic secret status: ${statusLabel}`}
+            className="ml-2"
+            variant={dynamicSecret.status === DynamicSecretStatus.Deleting ? "warning" : "danger"}
+          >
+            <AlertTriangleIcon aria-hidden="true" />
+            {visibleStatusLabel}
+          </Badge>
         </TooltipTrigger>
-        <TooltipContent>{dynamicSecret.statusDetails || dynamicSecret.status}</TooltipContent>
+        <TooltipContent>{statusLabel}</TooltipContent>
       </Tooltip>
     );
   };
@@ -132,13 +105,7 @@ export const DynamicSecretTableRow = ({
     const isRevoking = dynamicSecret.status === DynamicSecretStatus.Deleting;
 
     return (
-      <div
-        className={twMerge(
-          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
-        )}
-      >
+      <div className="flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5 shadow-md">
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.Lease}
           a={subject(ProjectPermissionSub.DynamicSecrets, {
@@ -149,11 +116,12 @@ export const DynamicSecretTableRow = ({
         >
           {(isAllowed) => (
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <IconButton
+                  aria-label="View leases"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="border-0"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -177,11 +145,12 @@ export const DynamicSecretTableRow = ({
         >
           {(isAllowed) => (
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <IconButton
+                  aria-label="Generate lease"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="border-0"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -205,11 +174,12 @@ export const DynamicSecretTableRow = ({
         >
           {(isAllowed) => (
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <IconButton
+                  aria-label="Edit dynamic secret"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="border-0"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -234,11 +204,12 @@ export const DynamicSecretTableRow = ({
           >
             {(isAllowed) => (
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <IconButton
+                    aria-label="Force delete dynamic secret"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    className="border-0 hover:text-danger"
                     isDisabled={!isAllowed}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -263,11 +234,12 @@ export const DynamicSecretTableRow = ({
         >
           {(isAllowed) => (
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <IconButton
+                  aria-label="Delete dynamic secret"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className="border-0 hover:text-danger"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -298,8 +270,19 @@ export const DynamicSecretTableRow = ({
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
-          {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon />
+          {!isSingleEnvView ? (
+            <IconButton
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${dynamicSecretName}`}
+              aria-expanded={isExpanded}
+              variant="ghost-muted"
+              size="2xs"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsExpanded.toggle();
+              }}
+            >
+              {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+            </IconButton>
           ) : (
             <FingerprintIcon className="text-dynamic-secret" />
           )}
@@ -314,10 +297,10 @@ export const DynamicSecretTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvDynamicSecret ? (
-            <div className="relative flex w-full items-center">
+            <div className="relative flex w-full items-center pr-40">
               <span className="truncate">{dynamicSecretName}</span>
               <Badge variant="neutral" className="ml-2">
-                {DYNAMIC_SECRET_PROVIDER_NAMES[singleEnvDynamicSecret.type]}
+                {dynamicSecretProviderRegistry.requireDefinition(singleEnvDynamicSecret.type).label}
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
@@ -393,10 +376,14 @@ export const DynamicSecretTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell colSpan={2}>
-                            <div className="relative flex w-full flex-wrap items-center">
+                            <div className="relative flex w-full flex-wrap items-center pr-40">
                               <span>{envName}</span>
                               <Badge variant="neutral" className="ml-2">
-                                {DYNAMIC_SECRET_PROVIDER_NAMES[dynamicSecret.type]}
+                                {
+                                  dynamicSecretProviderRegistry.requireDefinition(
+                                    dynamicSecret.type
+                                  ).label
+                                }
                               </Badge>
                               {renderStatusIndicator(dynamicSecret)}
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">

@@ -3,8 +3,9 @@ import { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
-import { Lottie } from "@app/components/v2/Lottie";
 import { cn } from "@app/components/v3/utils";
+
+import { Loader } from "../Loader";
 
 const buttonVariants = cva(
   cn(
@@ -102,9 +103,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) : (
       <>
         {_children}
-        {isPending && (
-          <Lottie icon="infisical_loading_white" isAutoPlay className="absolute w-8 rounded-xl" />
-        )}
+        {isPending && <Loader aria-hidden size="sm" className="absolute rounded-xl" />}
       </>
     );
 
@@ -115,6 +114,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-variant={variant}
         data-size={size}
         type={type}
+        aria-busy={isPending || undefined}
         disabled={isDisabled || isPending}
         className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
         {...props}

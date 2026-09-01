@@ -43,6 +43,7 @@ export const DiscoveryPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
+          className="mb-6"
           scope={ProjectType.CertificateManager}
           title={
             <span className="inline-flex items-center gap-x-2">

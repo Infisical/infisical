@@ -21,18 +21,44 @@ import {
 } from "./mongoDbContract";
 
 const mongoDbConnectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
-  { name: "inputs.port", type: "number", label: "Port", isOptional: true, layout: "half" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "mongodb.example.com",
+    layout: "half"
+  },
+  {
+    name: "inputs.port",
+    type: "number",
+    label: "Port",
+    placeholder: "27017",
+    isOptional: true,
+    layout: "half"
+  },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "admin",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   },
-  { name: "inputs.database", type: "text", label: "Database" },
-  { name: "inputs.ca", type: "secret", label: "CA (SSL)", isOptional: true }
+  { name: "inputs.database", type: "text", label: "Database", placeholder: "admin" },
+  {
+    name: "inputs.ca",
+    type: "secret",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true
+  }
 ] satisfies readonly TDynamicSecretProviderField<TMongoDbCreateValues | TMongoDbEditValues>[];
 
 const usernameTemplateField = [

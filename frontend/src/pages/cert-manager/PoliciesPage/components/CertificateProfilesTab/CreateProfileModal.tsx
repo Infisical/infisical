@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Control, Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { FileBadge } from "lucide-react";
+import { Check, ChevronRight, FileBadge, ShieldCheck } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -32,12 +32,12 @@ import {
   StepperStep,
   TextArea
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
 import { CaType } from "@app/hooks/api/ca/enums";
 import {
   useGetAdcsTemplates,
@@ -75,7 +75,11 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
-import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import {
+  CERTIFICATE_POLICY_STEPS,
+  CertificatePolicyWizard,
+  CertificatePolicyWizardHandle
+} from "../CertificatePoliciesTab/CreatePolicyModal";
 import { PolicyConstraints, ProfileDefaultsStep } from "./CreateProfileModal/ProfileDefaultsStep";
 import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
@@ -459,6 +463,49 @@ const buildFormValuesFromProfile = (
   defaults: convertDefaultsToForm(sourceProfile.defaults)
 });
 
+const getSubStepStatus = (index: number, activeStep: number) => {
+  if (index < activeStep) return "complete";
+  if (index === activeStep) return "current";
+  return "pending";
+};
+
+const PolicySubSteps = ({ activeStep, onCancel }: { activeStep: number; onCancel: () => void }) => (
+  <li className="-mt-6 mb-8 ml-3.5 border-l border-border pl-5">
+    <p className="mb-3 text-[10px] font-medium tracking-wider text-muted uppercase">New policy</p>
+    <ol className="flex flex-col gap-y-2.5">
+      {CERTIFICATE_POLICY_STEPS.map((s, i) => {
+        const status = getSubStepStatus(i, activeStep);
+        return (
+          <li key={s.name} className="flex items-center gap-2.5">
+            <span
+              className={cn(
+                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-medium",
+                status === "complete" && "border-success bg-success/10 text-success",
+                status === "current" && "border-warning bg-warning/10 text-warning",
+                status === "pending" && "border-border bg-mineshaft-800 text-muted"
+              )}
+            >
+              {status === "complete" ? <Check className="size-2.5" strokeWidth={3} /> : i + 1}
+            </span>
+            <span
+              className={cn("text-xs", status === "pending" ? "text-muted" : "text-foreground")}
+            >
+              {s.name}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+    <button
+      type="button"
+      onClick={onCancel}
+      className="mt-4 cursor-pointer text-left text-xs text-muted underline-offset-2 hover:text-foreground hover:underline"
+    >
+      Use an existing policy
+    </button>
+  </li>
+);
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -480,7 +527,9 @@ export const CreateProfileModal = ({
     orgId?: string;
     projectId?: string;
   };
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
+  const [policyStepIndex, setPolicyStepIndex] = useState<number | null>(null);
+  const [isPolicySubmitting, setIsPolicySubmitting] = useState(false);
+  const policyWizardRef = useRef<CertificatePolicyWizardHandle>(null);
   const queryClient = useQueryClient();
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
@@ -548,6 +597,7 @@ export const CreateProfileModal = ({
           }
   });
 
+  const watchedSlug = watch("slug");
   const watchedIssuerType = watch("issuerType");
   const watchedCertificateAuthorityId = watch("certificateAuthorityId");
   const watchedPolicyId = watch("certificatePolicyId");
@@ -845,13 +895,42 @@ export const CreateProfileModal = ({
   };
 
   const handleClose = () => {
-    handlePopUpToggle("createPolicy", false);
+    setPolicyStepIndex(null);
     reset();
     setSelectedStepIndex(0);
     onClose();
   };
 
   const isSubmitting = createProfile.isPending || updateProfile.isPending;
+
+  const isPolicyWizardOpen = policyStepIndex !== null;
+  const isFinalPolicyStep = policyStepIndex === CERTIFICATE_POLICY_STEPS.length - 1;
+  const activePolicyStep = isPolicyWizardOpen ? CERTIFICATE_POLICY_STEPS[policyStepIndex] : null;
+  const draftPolicyName = watchedSlug ? `${watchedSlug}-policy` : "";
+  const goBackInPolicy = () => {
+    setPolicyStepIndex((prev) => (prev === null || prev === 0 ? null : prev - 1));
+  };
+
+  const goNextInPolicy = async () => {
+    if (!isFinalPolicyStep) {
+      await policyWizardRef.current?.goNext();
+      return;
+    }
+    setIsPolicySubmitting(true);
+    try {
+      await policyWizardRef.current?.submit();
+    } finally {
+      setIsPolicySubmitting(false);
+    }
+  };
+
+  const handlePolicyCreated = async (createdPolicy: TCertificatePolicy) => {
+    await queryClient.refetchQueries({
+      queryKey: ["list-certificate-policies", currentProject?.id]
+    });
+    setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
+    setPolicyStepIndex(null);
+  };
 
   return (
     <Sheet
@@ -862,7 +941,7 @@ export const CreateProfileModal = ({
         }
       }}
     >
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1260px]">
         <SheetHeader className="border-b border-border">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -879,14 +958,22 @@ export const CreateProfileModal = ({
                       : "Create Certificate Profile"}
                   <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
                 </div>
-                <p className="text-sm leading-4 text-muted">
-                  {/* eslint-disable-next-line no-nested-ternary */}
-                  {isEdit
-                    ? `Update configuration for ${profile?.slug}`
-                    : isClone
-                      ? `Create a new profile based on ${profile?.slug}`
-                      : "Define the CA and policy used to issue certificates from this profile"}
-                </p>
+                {isPolicyWizardOpen ? (
+                  <p className="flex items-center gap-1 text-sm leading-4 font-normal text-muted">
+                    <span>{currentStep.name}</span>
+                    <ChevronRight className="h-3 w-3 shrink-0" />
+                    <span>New certificate policy</span>
+                  </p>
+                ) : (
+                  <p className="text-sm leading-4 text-muted">
+                    {/* eslint-disable-next-line no-nested-ternary */}
+                    {isEdit
+                      ? `Update configuration for ${profile?.slug}`
+                      : isClone
+                        ? `Create a new profile based on ${profile?.slug}`
+                        : "Define the CA and policy used to issue certificates from this profile"}
+                  </p>
+                )}
               </div>
             </div>
           </SheetTitle>
@@ -902,262 +989,306 @@ export const CreateProfileModal = ({
                 activeStep={selectedStepIndex}
                 orientation="vertical"
                 onStepChange={(i) => {
-                  if (i < selectedStepIndex) setSelectedStepIndex(i);
+                  if (!isPolicyWizardOpen && i < selectedStepIndex) setSelectedStepIndex(i);
                 }}
               >
                 <StepperList>
-                  {steps.map((s, i) => (
-                    <StepperStep
-                      key={s.key}
-                      index={i}
-                      title={s.name}
-                      description={s.shortDescription}
-                    />
-                  ))}
+                  {steps.flatMap((s, i) => {
+                    const stepNode = (
+                      <StepperStep
+                        key={s.key}
+                        index={i}
+                        title={s.name}
+                        description={s.shortDescription}
+                      />
+                    );
+
+                    if (!isPolicyWizardOpen || s.key !== "issuer") return [stepNode];
+
+                    return [
+                      stepNode,
+                      <PolicySubSteps
+                        key="policy-sub-steps"
+                        activeStep={policyStepIndex}
+                        onCancel={() => setPolicyStepIndex(null)}
+                      />
+                    ];
+                  })}
                 </StepperList>
               </Stepper>
             </aside>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
-                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
-              </div>
-
-              {currentStep.key === "details" && (
-                <div className="space-y-5">
-                  <Controller
-                    control={control}
-                    name="slug"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>
-                          Name <span className="text-danger">*</span>
-                        </FieldLabel>
-                        <FieldContent>
-                          <Input
-                            {...field}
-                            placeholder="your-profile-name"
-                            isError={Boolean(error)}
-                          />
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name="description"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>Description</FieldLabel>
-                        <FieldContent>
-                          <TextArea
-                            {...field}
-                            value={field.value ?? ""}
-                            placeholder="Enter profile description"
-                            rows={3}
-                            isError={Boolean(error)}
-                          />
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
+            {isPolicyWizardOpen ? (
+              <CertificatePolicyWizard
+                ref={policyWizardRef}
+                step={policyStepIndex}
+                onStepChange={setPolicyStepIndex}
+                onComplete={handlePolicyCreated}
+                defaultName={draftPolicyName}
+                nameDescription="Pre-filled from the profile name. Edit if this policy will be shared."
+                banner={
+                  <div className="mb-4 flex items-center gap-2 text-xs text-muted">
+                    <ShieldCheck className="size-3.5 shrink-0" />
+                    <span>
+                      Defining the policy for <span className="text-accent">{watchedSlug}</span>
+                    </span>
+                  </div>
+                }
+              />
+            ) : (
+              <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
                 </div>
-              )}
 
-              {currentStep.key === "issuer" && (
-                <div className="space-y-5">
-                  <Controller
-                    control={control}
-                    name="issuerType"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>
-                          Issuer Type <span className="text-danger">*</span>
-                        </FieldLabel>
-                        <FieldContent>
-                          <Select
-                            value={value}
-                            onValueChange={(next) => {
-                              if (next === IssuerType.SELF_SIGNED) {
-                                setValue("certificateAuthorityId", "");
-                                setValue("externalConfigs", undefined);
-                              }
-                              onChange(next);
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              <SelectItem value={IssuerType.CA}>Certificate Authority</SelectItem>
-                              <SelectItem value={IssuerType.SELF_SIGNED}>Self-Signed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FieldDescription>
-                            Certificate Authority issues from an existing CA in your organization,
-                            which is the standard path for production use. Self-Signed produces
-                            standalone certificates with no CA chain, suitable for testing or
-                            one-off identities only.
-                          </FieldDescription>
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-
-                  {watchedIssuerType === IssuerType.CA && (
+                {currentStep.key === "details" && (
+                  <div className="space-y-5">
                     <Controller
                       control={control}
-                      name="certificateAuthorityId"
-                      render={({ field: { onChange, value }, fieldState: { error } }) => {
-                        const hasCas = certificateAuthorities.length > 0;
-                        return (
-                          <Field>
-                            <FieldLabel>
-                              Certificate Authority <span className="text-danger">*</span>
-                            </FieldLabel>
-                            <FieldContent>
-                              <FilterableSelect
-                                value={certificateAuthorities.find((ca) => ca.id === value) || null}
-                                onChange={(selectedCaValue) => {
-                                  let nextCaId = "";
-                                  if (Array.isArray(selectedCaValue)) {
-                                    nextCaId = selectedCaValue[0]?.id || "";
-                                  } else if (
-                                    selectedCaValue &&
-                                    typeof selectedCaValue === "object" &&
-                                    "id" in selectedCaValue
-                                  ) {
-                                    nextCaId = selectedCaValue.id || "";
-                                  }
-                                  if (nextCaId !== value) {
-                                    // Templates are per-CA; a stale hidden template would
-                                    // fail step validation for non-ADCS issuers.
-                                    setValue("externalConfigs", undefined);
-                                  }
-                                  onChange(nextCaId);
-                                }}
-                                getOptionLabel={(ca) => ca.name}
-                                getOptionValue={(ca) => ca.id}
-                                options={certificateAuthorities}
-                                groupBy={hasCas ? "groupType" : undefined}
-                                getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
-                                placeholder="Select a certificate authority"
-                                isError={Boolean(error)}
-                                className="w-full"
-                              />
-                              <FieldError errors={[error]} />
-                              {!hasCas && (
-                                <FieldDescription className="text-warning">
-                                  No certificate authorities available.{" "}
-                                  <Link
-                                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
-                                    params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                                    className="underline hover:text-warning"
-                                  >
-                                    Create one in Certificate Authorities
-                                  </Link>
-                                </FieldDescription>
-                              )}
-                            </FieldContent>
-                          </Field>
-                        );
-                      }}
+                      name="slug"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>
+                            Name <span className="text-danger">*</span>
+                          </FieldLabel>
+                          <FieldContent>
+                            <Input
+                              {...field}
+                              placeholder="your-profile-name"
+                              isError={Boolean(error)}
+                            />
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
                     />
-                  )}
 
-                  {isAzureAdcsCa && (
-                    <ExternalCaTemplateSelect
+                    <Controller
                       control={control}
-                      templates={azureAdcsTemplatesData?.templates || []}
-                      valueKey="id"
-                      placeholder="Select an Azure ADCS certificate template"
+                      name="description"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>Description</FieldLabel>
+                          <FieldContent>
+                            <TextArea
+                              {...field}
+                              value={field.value ?? ""}
+                              placeholder="Enter profile description"
+                              rows={3}
+                              isError={Boolean(error)}
+                            />
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
                     />
-                  )}
+                  </div>
+                )}
 
-                  {isAdcsCa && (
-                    <ExternalCaTemplateSelect
+                {currentStep.key === "issuer" && (
+                  <div className="space-y-5">
+                    <Controller
                       control={control}
-                      templates={adcsTemplatesData?.templates || []}
-                      valueKey="name"
-                      placeholder="Select an ADCS certificate template"
+                      name="issuerType"
+                      render={({ field: { onChange, value }, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>
+                            Issuer Type <span className="text-danger">*</span>
+                          </FieldLabel>
+                          <FieldContent>
+                            <Select
+                              value={value}
+                              onValueChange={(next) => {
+                                if (next === IssuerType.SELF_SIGNED) {
+                                  setValue("certificateAuthorityId", "");
+                                  setValue("externalConfigs", undefined);
+                                }
+                                onChange(next);
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                <SelectItem value={IssuerType.CA}>Certificate Authority</SelectItem>
+                                <SelectItem value={IssuerType.SELF_SIGNED}>Self-Signed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FieldDescription>
+                              Certificate Authority issues from an existing CA in your organization,
+                              which is the standard path for production use. Self-Signed produces
+                              standalone certificates with no CA chain, suitable for testing or
+                              one-off identities only.
+                            </FieldDescription>
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
                     />
-                  )}
 
-                  <Controller
-                    control={control}
-                    name="certificatePolicyId"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>
-                          Certificate Policy <span className="text-danger">*</span>
-                        </FieldLabel>
-                        <FieldContent>
-                          <FilterableSelect
-                            value={certificatePolicies.find((p) => p.id === value) ?? null}
-                            onChange={(newValue) => {
-                              const selected = newValue as SingleValue<PolicyOption>;
-                              if (selected?.id === "_create") {
-                                handlePopUpOpen("createPolicy");
-                                return;
-                              }
-                              onChange(selected?.id || "");
-
-                              setValue("defaults", undefined);
-                            }}
-                            options={policyOptions}
-                            getOptionLabel={(option) => option.name}
-                            getOptionValue={(option) => option.id}
-                            placeholder={
-                              certificatePolicies.length === 0 && !canCreatePolicy
-                                ? "No certificate policies available"
-                                : "Select a certificate policy"
-                            }
-                            isError={Boolean(error)}
-                            components={{ Option: CertificatePolicyOption }}
-                            className="w-full"
-                          />
-                          <FieldDescription>
-                            The rules that govern certificates issued from this profile: allowed
-                            key/signature algorithms, key usages, TTL bounds, and subject
-                            constraints.
-                          </FieldDescription>
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
+                    {watchedIssuerType === IssuerType.CA && (
+                      <Controller
+                        control={control}
+                        name="certificateAuthorityId"
+                        render={({ field: { onChange, value }, fieldState: { error } }) => {
+                          const hasCas = certificateAuthorities.length > 0;
+                          return (
+                            <Field>
+                              <FieldLabel>
+                                Certificate Authority <span className="text-danger">*</span>
+                              </FieldLabel>
+                              <FieldContent>
+                                <FilterableSelect
+                                  value={
+                                    certificateAuthorities.find((ca) => ca.id === value) || null
+                                  }
+                                  onChange={(selectedCaValue) => {
+                                    let nextCaId = "";
+                                    if (Array.isArray(selectedCaValue)) {
+                                      nextCaId = selectedCaValue[0]?.id || "";
+                                    } else if (
+                                      selectedCaValue &&
+                                      typeof selectedCaValue === "object" &&
+                                      "id" in selectedCaValue
+                                    ) {
+                                      nextCaId = selectedCaValue.id || "";
+                                    }
+                                    if (nextCaId !== value) {
+                                      // Templates are per-CA; a stale hidden template would
+                                      // fail step validation for non-ADCS issuers.
+                                      setValue("externalConfigs", undefined);
+                                    }
+                                    onChange(nextCaId);
+                                  }}
+                                  getOptionLabel={(ca) => ca.name}
+                                  getOptionValue={(ca) => ca.id}
+                                  options={certificateAuthorities}
+                                  groupBy={hasCas ? "groupType" : undefined}
+                                  getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
+                                  placeholder="Select a certificate authority"
+                                  isError={Boolean(error)}
+                                  className="w-full"
+                                />
+                                <FieldError errors={[error]} />
+                                {!hasCas && (
+                                  <FieldDescription className="text-warning">
+                                    No certificate authorities available.{" "}
+                                    <Link
+                                      to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                                      params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                                      className="underline hover:text-warning"
+                                    >
+                                      Create one in Certificate Authorities
+                                    </Link>
+                                  </FieldDescription>
+                                )}
+                              </FieldContent>
+                            </Field>
+                          );
+                        }}
+                      />
                     )}
-                  />
-                </div>
-              )}
 
-              {currentStep.key === "certificate-defaults" && (
-                <ProfileDefaultsStep
-                  control={control}
-                  watch={watch}
-                  setValue={setValue}
-                  policyConstraints={policyConstraints}
-                  isAwsAcmPublicCa={isAwsAcmPublicCa}
-                  isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
-                  caKeyAlgorithm={caKeyAlgorithm}
-                />
-              )}
-            </div>
+                    {isAzureAdcsCa && (
+                      <ExternalCaTemplateSelect
+                        control={control}
+                        templates={azureAdcsTemplatesData?.templates || []}
+                        valueKey="id"
+                        placeholder="Select an Azure ADCS certificate template"
+                      />
+                    )}
+
+                    {isAdcsCa && (
+                      <ExternalCaTemplateSelect
+                        control={control}
+                        templates={adcsTemplatesData?.templates || []}
+                        valueKey="name"
+                        placeholder="Select an ADCS certificate template"
+                      />
+                    )}
+
+                    <Controller
+                      control={control}
+                      name="certificatePolicyId"
+                      render={({ field: { onChange, value }, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>
+                            Certificate Policy <span className="text-danger">*</span>
+                          </FieldLabel>
+                          <FieldContent>
+                            <FilterableSelect
+                              value={certificatePolicies.find((p) => p.id === value) ?? null}
+                              onChange={(newValue) => {
+                                const selected = newValue as SingleValue<PolicyOption>;
+                                if (selected?.id === "_create") {
+                                  setPolicyStepIndex(0);
+                                  return;
+                                }
+                                onChange(selected?.id || "");
+
+                                setValue("defaults", undefined);
+                              }}
+                              options={policyOptions}
+                              getOptionLabel={(option) => option.name}
+                              getOptionValue={(option) => option.id}
+                              placeholder={
+                                certificatePolicies.length === 0 && !canCreatePolicy
+                                  ? "No certificate policies available"
+                                  : "Select a certificate policy"
+                              }
+                              isError={Boolean(error)}
+                              components={{ Option: CertificatePolicyOption }}
+                              className="w-full"
+                            />
+                            <FieldDescription>
+                              The rules that govern certificates issued from this profile: allowed
+                              key/signature algorithms, key usages, TTL bounds, and subject
+                              constraints.
+                            </FieldDescription>
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {currentStep.key === "certificate-defaults" && (
+                  <ProfileDefaultsStep
+                    control={control}
+                    watch={watch}
+                    setValue={setValue}
+                    policyConstraints={policyConstraints}
+                    isAwsAcmPublicCa={isAwsAcmPublicCa}
+                    isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
+                    caKeyAlgorithm={caKeyAlgorithm}
+                  />
+                )}
+              </div>
+            )}
 
             <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
               <div className="mb-auto">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Step {selectedStepIndex + 1} · {currentStep.rightLabel}
+                    {activePolicyStep
+                      ? `Step ${selectedStepIndex + 1}.${(policyStepIndex ?? 0) + 1} · ${activePolicyStep.rightLabel}`
+                      : `Step ${selectedStepIndex + 1} · ${currentStep.rightLabel}`}
                   </p>
-                  <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
+                  <DocumentationLinkBadge
+                    href={
+                      activePolicyStep
+                        ? PkiDocsUrls.settings.policies
+                        : PkiDocsUrls.settings.profiles
+                    }
+                  />
                 </div>
                 <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {currentStep.rightDescription}
+                  {activePolicyStep
+                    ? activePolicyStep.rightDescription
+                    : currentStep.rightDescription}
                 </p>
               </div>
             </aside>
@@ -1167,14 +1298,32 @@ export const CreateProfileModal = ({
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
-                Step {selectedStepIndex + 1} of {steps.length}
+                {isPolicyWizardOpen
+                  ? `Profile step ${selectedStepIndex + 1} of ${steps.length} · Policy step ${(policyStepIndex ?? 0) + 1} of ${CERTIFICATE_POLICY_STEPS.length}`
+                  : `Step ${selectedStepIndex + 1} of ${steps.length}`}
               </span>
-              {selectedStepIndex > 0 && (
-                <Button type="button" variant="outline" onClick={goBack}>
+              {(selectedStepIndex > 0 || isPolicyWizardOpen) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={isPolicyWizardOpen ? goBackInPolicy : goBack}
+                >
                   Back
                 </Button>
               )}
-              {isFinalStep ? (
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {isPolicyWizardOpen ? (
+                <Button
+                  key="policy-cta"
+                  type="button"
+                  variant="project"
+                  isPending={isPolicySubmitting}
+                  isDisabled={isPolicySubmitting}
+                  onClick={goNextInPolicy}
+                >
+                  {isFinalPolicyStep ? "Create Policy" : "Continue"}
+                </Button>
+              ) : isFinalStep ? (
                 <Button
                   key="submit-cta"
                   type="button"
@@ -1204,18 +1353,6 @@ export const CreateProfileModal = ({
           </div>
         </form>
       </SheetContent>
-
-      <CreatePolicyModal
-        isOpen={popUp.createPolicy.isOpen}
-        onClose={() => handlePopUpToggle("createPolicy", false)}
-        onComplete={async (createdPolicy) => {
-          await queryClient.refetchQueries({
-            queryKey: ["list-certificate-policies", currentProject?.id]
-          });
-          setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
-          handlePopUpToggle("createPolicy", false);
-        }}
-      />
     </Sheet>
   );
 };

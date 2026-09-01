@@ -1,35 +1,54 @@
 import { subject } from "@casl/ability";
-import {
-  faClose,
-  faFileContract,
-  faRepeat,
-  faTrash,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
+import { CircleXIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 
+import { dynamicSecretProviderRegistry } from "@app/components/dynamic-secrets";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertTitle,
   Button,
-  DeleteActionModal,
-  EmptyState,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Modal,
-  ModalContent,
+  Skeleton,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
-import { DynamicSecretProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
 import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
@@ -44,12 +63,6 @@ type Props = {
   onClose: () => void;
 };
 
-const DYNAMIC_SECRETS_WITHOUT_RENEWAL = [
-  DynamicSecretProviders.Github,
-  DynamicSecretProviders.Ssh,
-  DynamicSecretProviders.Tailscale
-];
-
 export const DynamicSecretLease = ({
   projectSlug,
   dynamicSecretName,
@@ -63,7 +76,12 @@ export const DynamicSecretLease = ({
     "deleteSecret",
     "renewSecret"
   ] as const);
-  const { data: leases, isPending: isLeaseLoading } = useGetDynamicSecretLeases({
+  const {
+    data: leases,
+    isPending: isLeaseLoading,
+    isError: isLeaseError,
+    refetch: refetchLeases
+  } = useGetDynamicSecretLeases({
     projectSlug,
     environmentSlug: environment,
     path: secretPath,
@@ -88,167 +106,235 @@ export const DynamicSecretLease = ({
     handlePopUpClose("deleteSecret");
     createNotification({
       type: "success",
-      text: "Successfully deleted lease"
+      text: isForced ? "Lease deleted" : "Lease revoked"
     });
   };
 
-  const canRenew = !DYNAMIC_SECRETS_WITHOUT_RENEWAL.includes(dynamicSecret.type);
+  const canRenew = dynamicSecretProviderRegistry.requireLeaseCapabilities(
+    dynamicSecret.type
+  ).supportsRenewal;
+  const selectedLease = popUp.deleteSecret.data as
+    | { leaseId: string; isForced?: boolean }
+    | undefined;
+
+  const handleDeleteConfirmation = () => {
+    if (deleteDynamicSecretLease.isPending) return;
+    handleDynamicSecretDeleteLease().catch(() => undefined);
+  };
+
+  const permissionSubject = subject(ProjectPermissionSub.DynamicSecrets, {
+    environment,
+    secretPath,
+    metadata: dynamicSecret.metadata
+  });
 
   return (
-    <div>
-      <TableContainer>
-        <Table className="bg-foreground/10">
-          <THead>
-            <Tr>
-              <Td>Lease ID</Td>
-              <Td>Expire At</Td>
-              <Td />
-            </Tr>
-          </THead>
-          <TBody>
-            {!isLeaseLoading && leases?.length === 0 && (
-              <tr>
-                <td colSpan={3}>
-                  <EmptyState title="No leases found" icon={faFileContract}>
-                    <Button
-                      onClick={onClickNewLease}
-                      className="mt-4"
-                      colorSchema="primary"
-                      size="sm"
-                    >
-                      New Lease
-                    </Button>
-                  </EmptyState>
-                </td>
-              </tr>
-            )}
-            {(leases || []).map(({ id, expireAt, status, statusDetails }) => (
-              <Tr key={id}>
-                <Td>
-                  {id}
-                  {Boolean(status) && (
-                    <Tooltip content={statusDetails || status || ""}>
-                      <FontAwesomeIcon className="ml-2 text-warning" icon={faWarning} />
-                    </Tooltip>
-                  )}
-                </Td>
-                <Td>
-                  <Tooltip content={format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}>
-                    <span className="capitalize">
-                      {formatDistance(new Date(expireAt), new Date())}
-                    </span>
-                  </Tooltip>
-                </Td>
-                <Td>
-                  <div className="flex items-center space-x-4">
-                    {canRenew && (
-                      <ProjectPermissionCan
-                        I={ProjectPermissionDynamicSecretActions.Lease}
-                        a={subject(ProjectPermissionSub.DynamicSecrets, {
-                          environment,
-                          secretPath,
-                          metadata: dynamicSecret.metadata
-                        })}
-                        renderTooltip
-                        allowedLabel="Renew"
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            ariaLabel="renew-lease"
-                            variant="plain"
-                            size="sm"
-                            className="p-0"
-                            isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
-                          >
-                            <FontAwesomeIcon icon={faRepeat} size="lg" />
-                          </IconButton>
-                        )}
-                      </ProjectPermissionCan>
-                    )}
-                    <ProjectPermissionCan
-                      I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, {
-                        environment,
-                        secretPath,
-                        metadata: dynamicSecret.metadata
-                      })}
-                      renderTooltip
-                      allowedLabel="Delete"
-                    >
-                      {(isAllowed) => (
-                        <IconButton
-                          ariaLabel="delete-folder"
-                          variant="plain"
-                          size="md"
-                          className="p-0"
-                          isDisabled={!isAllowed}
-                          onClick={() => handlePopUpOpen("deleteSecret", { leaseId: id })}
-                        >
-                          <FontAwesomeIcon icon={faClose} size="lg" />
-                        </IconButton>
+    <>
+      <DialogBody className="flex flex-col gap-4">
+        {isLeaseError && (
+          <Alert variant="danger">
+            <CircleXIcon />
+            <AlertTitle>Could not load leases.</AlertTitle>
+            <AlertDescription>
+              Try loading the dynamic secret leases again.
+              <AlertAction>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => refetchLeases().catch(() => undefined)}
+                >
+                  Retry
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isLeaseError && !isLeaseLoading && leases?.length === 0 && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No leases found</EmptyTitle>
+              <EmptyDescription>
+                Provision a lease to generate temporary credentials from this dynamic secret.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <ProjectPermissionCan
+                I={ProjectPermissionDynamicSecretActions.Lease}
+                a={permissionSubject}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="project"
+                    size="sm"
+                    onClick={onClickNewLease}
+                    isDisabled={!isAllowed}
+                  >
+                    New Lease
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+            </EmptyContent>
+          </Empty>
+        )}
+
+        {!isLeaseError && (isLeaseLoading || Boolean(leases?.length)) && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Lease ID</TableHead>
+                <TableHead>Expires At</TableHead>
+                <TableHead variant="action" aria-label="Actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLeaseLoading &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TableRow key={`lease-loading-${index + 1}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell variant="action">
+                      <Skeleton className="ml-auto size-7" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {(leases || []).map(({ id, expireAt, status, statusDetails }) => (
+                <TableRow key={id}>
+                  <TableCell className="max-w-80 font-mono">
+                    <div className="flex min-w-0 items-center">
+                      <span className="truncate">{id}</span>
+                      {Boolean(status) && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-2 inline-flex shrink-0 rounded-xs text-warning outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label="Lease warning"
+                            >
+                              <TriangleAlertIcon className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {statusDetails || status || "Lease warning"}
+                          </TooltipContent>
+                        </Tooltip>
                       )}
-                    </ProjectPermissionCan>
-                    {status === DynamicSecretLeaseStatus.FailedDeletion && (
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="capitalize">
+                          {formatDistance(new Date(expireAt), new Date())}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell variant="action">
+                    <div className="flex items-center justify-end gap-1">
+                      {canRenew && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionDynamicSecretActions.Lease}
+                          a={permissionSubject}
+                          renderTooltip
+                          allowedLabel="Renew lease"
+                        >
+                          {(isAllowed) => (
+                            <IconButton
+                              aria-label="Renew lease"
+                              variant="ghost-muted"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
+                            >
+                              <RefreshCwIcon />
+                            </IconButton>
+                          )}
+                        </ProjectPermissionCan>
+                      )}
                       <ProjectPermissionCan
                         I={ProjectPermissionDynamicSecretActions.Lease}
-                        a={subject(ProjectPermissionSub.DynamicSecrets, {
-                          environment,
-                          secretPath,
-                          metadata: dynamicSecret.metadata
-                        })}
+                        a={permissionSubject}
                         renderTooltip
-                        allowedLabel="Force Delete. This action will remove the secret from internal storage, but it will remain in external systems."
+                        allowedLabel="Revoke lease"
                       >
                         {(isAllowed) => (
                           <IconButton
-                            ariaLabel="delete-folder"
-                            variant="plain"
-                            size="md"
-                            className="p-0 text-danger"
+                            aria-label="Revoke lease"
+                            variant="ghost-muted"
+                            size="xs"
                             isDisabled={!isAllowed}
-                            onClick={() =>
-                              handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })
-                            }
+                            onClick={() => handlePopUpOpen("deleteSecret", { leaseId: id })}
                           >
-                            <FontAwesomeIcon icon={faTrash} />
+                            <Trash2Icon />
                           </IconButton>
                         )}
                       </ProjectPermissionCan>
-                    )}
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-          </TBody>
-        </Table>
-      </TableContainer>
-      {!isLeaseLoading && Boolean(leases?.length) && (
-        <div className="mt-6 flex items-center space-x-4">
+                      {status === DynamicSecretLeaseStatus.FailedDeletion && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionDynamicSecretActions.Lease}
+                          a={permissionSubject}
+                          renderTooltip
+                          allowedLabel="Force delete lease. This removes the lease from Infisical without revoking it in the external provider."
+                        >
+                          {(isAllowed) => (
+                            <IconButton
+                              aria-label="Force delete lease"
+                              variant="danger"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                              onClick={() =>
+                                handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })
+                              }
+                            >
+                              <Trash2Icon />
+                            </IconButton>
+                          )}
+                        </ProjectPermissionCan>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </DialogBody>
+
+      {!isLeaseLoading && !isLeaseError && Boolean(leases?.length) && (
+        <DialogFooter>
+          <Button onClick={onClose} variant="ghost" size="sm">
+            Close
+          </Button>
           <ProjectPermissionCan
             I={ProjectPermissionDynamicSecretActions.Lease}
-            a={subject(ProjectPermissionSub.DynamicSecrets, {
-              environment,
-              secretPath,
-              metadata: dynamicSecret.metadata
-            })}
+            a={permissionSubject}
           >
             {(isAllowed) => (
-              <Button onClick={onClickNewLease} size="xs" isDisabled={!isAllowed}>
+              <Button onClick={onClickNewLease} variant="project" size="sm" isDisabled={!isAllowed}>
                 New Lease
               </Button>
             )}
           </ProjectPermissionCan>
-          <Button onClick={onClose} variant="plain" colorSchema="secondary" size="xs">
-            Close
-          </Button>
-        </div>
+        </DialogFooter>
       )}
-      <Modal
-        isOpen={popUp.renewSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("renewSecret", state)}
+
+      <Dialog
+        open={popUp.renewSecret.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("renewSecret", isOpen)}
       >
-        <ModalContent title="Renew Lease">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renew Lease</DialogTitle>
+            <DialogDescription>Extend this lease by a new TTL.</DialogDescription>
+          </DialogHeader>
           <RenewDynamicSecretLease
             onClose={() => handlePopUpClose("renewSecret")}
             projectSlug={projectSlug}
@@ -258,15 +344,54 @@ export const DynamicSecretLease = ({
             secretPath={secretPath}
             environment={environment}
           />
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
-        isOpen={popUp.deleteSecret.isOpen}
-        deleteKey="delete"
-        title="Do you want to delete this lease?"
-        onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
-        onDeleteApproved={handleDynamicSecretDeleteLease}
-      />
-    </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={popUp.deleteSecret.isOpen}
+        confirmationValue="delete"
+        onOpenChange={(isOpen) => {
+          if (!deleteDynamicSecretLease.isPending) handlePopUpToggle("deleteSecret", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {selectedLease?.isForced ? "Force Delete Lease?" : "Revoke Lease?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedLease?.isForced
+                ? "This removes the lease from Infisical without revoking it in the external provider. This cannot be undone."
+                : "This revokes the temporary credentials and deletes the lease. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{
+              disabled: deleteDynamicSecretLease.isPending,
+              placeholder: "Type delete here"
+            }}
+            onConfirm={handleDeleteConfirmation}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deleteDynamicSecretLease.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deleteDynamicSecretLease.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteConfirmation();
+              }}
+            >
+              {selectedLease?.isForced ? "Force Delete" : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

@@ -15,14 +15,27 @@ import {
 } from "./sapAseContract";
 
 const sapAseCreateConnectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "ase.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.database", type: "text", label: "Database" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half" },
+  { name: "inputs.database", type: "text", label: "Database", placeholder: "app_db" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "sa",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   }

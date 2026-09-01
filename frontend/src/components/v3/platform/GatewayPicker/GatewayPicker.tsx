@@ -125,7 +125,7 @@ export const GatewayPicker = ({
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-default rounded bg-project/20 px-1.5 py-0.5 text-[10px] font-semibold text-project">
+                    <span className="cursor-default rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-semibold text-info">
                       HA
                     </span>
                   </TooltipTrigger>
@@ -181,7 +181,7 @@ export const GatewayPicker = ({
                   to="/organizations/$orgId/networking"
                   params={{ orgId: currentOrg.id }}
                   target="_blank"
-                  className="text-foreground underline underline-offset-2 hover:text-project"
+                  className="text-foreground underline underline-offset-2 hover:text-info"
                 >
                   Set one up
                 </Link>{" "}

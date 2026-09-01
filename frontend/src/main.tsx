@@ -5,6 +5,10 @@ import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
+// Load-bearing import: the entry module pulling in this barrel is what keeps
+// @app/context in the entry chunk. Pointing this at a deeper path re-partitions
+// the chunks and breaks module init order, which took the app down on boot.
+// Neither lint nor typecheck catches it, so only a real build does.
 import { Lottie } from "./components/v2";
 import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";

@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "../Lottie";
+import { Loader } from "../../v3/generic/Loader";
 
 type Props = {
   children: ReactNode;
@@ -188,17 +188,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           })
         )}
         disabled={isDisabled}
+        aria-busy={isLoading || undefined}
         {...props}
       >
         {isLoading && (
-          <Lottie
-            icon={
-              variant === "solid" && colorSchema === "primary"
-                ? "infisical_loading_bw"
-                : "infisical_loading"
-            }
-            isAutoPlay
-            className="absolute w-8 rounded-xl opacity-80 shadow-xs"
+          <Loader
+            aria-hidden
+            variant={variant === "solid" && colorSchema === "primary" ? "inverse" : "brand"}
+            size="sm"
+            className="absolute rounded-xl opacity-80 shadow-xs"
           />
         )}
         {leftIcon && (
