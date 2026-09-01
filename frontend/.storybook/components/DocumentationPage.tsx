@@ -15,7 +15,7 @@ const ComponentDeprecationNotice = () => {
   const { preparedMeta } = useOf("meta", ["meta"]);
   const deprecation = preparedMeta.parameters.deprecation as ComponentDeprecation | undefined;
 
-  return deprecation ? <DeprecationNotice className="mb-6" deprecation={deprecation} /> : null;
+  return deprecation ? <DeprecationNotice className="mb-4" deprecation={deprecation} /> : null;
 };
 
 export const DocumentationPage = () => (

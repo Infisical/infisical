@@ -61,18 +61,15 @@ const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
 );
 
 const componentDeprecation = defineComponentDeprecation({
-  reason:
-    "FilterableSelect remains available only for grouped options and advanced react-select compatibility.",
   replacement: "Combobox",
-  migration:
-    "Migrate searchable single- and multi-select consumers when they do not depend on grouped options or react-select-specific customization."
+  guidance: "FilterableSelect is being kept for feature parity until migration is complete."
 });
 
 /**
- * `FilterableSelect` is a deprecated react-select compatibility wrapper.
- * Use `Combobox` for searchable single or multi selection over a known set of
- * options. Retain `FilterableSelect` only for grouped options or advanced
- * react-select customization that `Combobox` does not yet support.
+ * `FilterableSelect` is the v3 react-select-based dropdown for searchable
+ * single or multi selection over a known set of options. Reach for it when the
+ * option list is too long for the Radix-based `Select` (which has no search)
+ * but doesn't need users to add new entries — for that, see `CreatableSelect`.
  *
  * Pass options as `{ label, value }[]`. Use `isMulti` for multi-select; pass
  * `groupBy` (a key on each option) and optionally `getGroupHeaderLabel` to
@@ -111,7 +108,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Compatibility example for a searchable single-select. New consumers should use `Combobox`; retain this wrapper only when migration is blocked by react-select-specific behavior."
+          "Baseline single-select with a searchable list. Type in the field to filter options; click or hit Enter to select. Reach for this over the Radix-based `Select` whenever the option list is long enough that a user would want search."
       }
     }
   },

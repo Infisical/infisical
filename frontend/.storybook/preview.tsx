@@ -4,7 +4,7 @@ import type { Preview } from "@storybook/react-vite";
 
 import { initializePlatform } from "../src/lib/fn/platform";
 import { DocumentationPage } from "./components";
-import { DeprecationDecorator, DocumentDecorator, RouterDecorator } from "./decorators";
+import { DocumentDecorator, RouterDecorator } from "./decorators";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -18,7 +18,7 @@ initializePlatform();
 setWasmUrl(lottieWasmUrl);
 
 const preview: Preview = {
-  decorators: [DeprecationDecorator, DocumentDecorator, RouterDecorator],
+  decorators: [DocumentDecorator, RouterDecorator],
   parameters: {
     options: {
       storySort: {
