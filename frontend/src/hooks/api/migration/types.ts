@@ -45,6 +45,7 @@ export type TImportVaultSecretsDTO = {
   environment: string;
   secretPath: string;
   vaultNamespace: string;
+  mountPath: string;
   vaultSecretPaths: string[];
   connectionId: string;
   keepVaultStructure: boolean;

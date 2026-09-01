@@ -275,6 +275,12 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         environment: z.string(),
         secretPath: z.string(),
         vaultNamespace: z.string(),
+        mountPath: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .describe("The Vault KV secrets engine the selected paths belong to, e.g. 'kv' or 'apps/kv'."),
         vaultSecretPaths: z.array(z.string().max(255)).min(1).max(100),
         connectionId: z.string().uuid(),
         keepVaultStructure: z
@@ -313,6 +319,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
             environment: req.body.environment,
             secretPath: req.body.secretPath,
             vaultNamespace: req.body.vaultNamespace,
+            mountPath: req.body.mountPath,
             vaultSecretPaths: req.body.vaultSecretPaths,
             connectionId: req.body.connectionId,
             keepVaultStructure: req.body.keepVaultStructure,

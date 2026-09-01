@@ -58,6 +58,7 @@ import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-serv
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TUserDALFactory } from "../user/user-dal";
 import {
+  assertVaultPathsWithinMount,
   buildVaultFolderImportPlan,
   decryptEnvKeyDataFn,
   getDopplerSecrets,
@@ -599,6 +600,7 @@ export const externalMigrationServiceFactory = ({
     projectId,
     environment,
     secretPath,
+    mountPath,
     secretsPerPath,
     auditLogInfo
   }: {
@@ -606,10 +608,11 @@ export const externalMigrationServiceFactory = ({
     projectId: string;
     environment: string;
     secretPath: string;
+    mountPath: string;
     secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[];
     auditLogInfo: AuditLogInfo;
   }) => {
-    const units: TVaultFolderImportUnit[] = buildVaultFolderImportPlan({ secretPath, secretsPerPath });
+    const units: TVaultFolderImportUnit[] = buildVaultFolderImportPlan({ secretPath, mountPath, secretsPerPath });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) {
@@ -750,6 +753,7 @@ export const externalMigrationServiceFactory = ({
     environment,
     secretPath,
     vaultNamespace,
+    mountPath,
     vaultSecretPaths,
     connectionId,
     keepVaultStructure,
@@ -760,6 +764,7 @@ export const externalMigrationServiceFactory = ({
     environment: string;
     secretPath: string;
     vaultNamespace: string;
+    mountPath: string;
     vaultSecretPaths: string[];
     connectionId: string;
     keepVaultStructure: boolean;
@@ -777,8 +782,11 @@ export const externalMigrationServiceFactory = ({
 
     const uniqueVaultSecretPaths = Array.from(new Set(vaultSecretPaths));
 
+    assertVaultPathsWithinMount({ mountPath, vaultSecretPaths: uniqueVaultSecretPaths });
+
     const secretsPerPath = await getHCVaultSecretsForPaths(
       vaultNamespace,
+      mountPath,
       uniqueVaultSecretPaths,
       connection,
       gatewayService,
@@ -791,6 +799,7 @@ export const externalMigrationServiceFactory = ({
         projectId,
         environment,
         secretPath,
+        mountPath,
         secretsPerPath,
         auditLogInfo
       });

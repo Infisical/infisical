@@ -42,6 +42,12 @@ export type THCVaultMount = {
   version?: string | null;
 };
 
+export type TResolvedKvMount = {
+  mountSegments: string[];
+  mountUrlPath: string;
+  kvVersion: "1" | "2";
+};
+
 export type THCVaultAuthMountResponse = {
   data: {
     [key: string]: {

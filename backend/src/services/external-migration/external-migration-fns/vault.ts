@@ -616,32 +616,58 @@ type TVaultMappedPath = {
   relativeSegments: string[];
 };
 
-const validateVaultFolderImportPaths = (
-  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[]
-): TVaultMappedPath[] => {
-  // the secrets engine is the leading segment and is dropped from the folder tree, so paths from two of them
-  // would silently merge into one folder
-  const secretsEngines = new Set(
-    secretsPerPath.map(({ vaultSecretPath }) => vaultSecretPath.split("/").filter(Boolean)[0]).filter(Boolean)
-  );
+export const toVaultPathSegments = (path: string) => path.split("/").filter(Boolean);
 
-  if (secretsEngines.size > 1) {
+export const assertVaultPathsWithinMount = ({
+  mountPath,
+  vaultSecretPaths
+}: {
+  mountPath: string;
+  vaultSecretPaths: string[];
+}): string[] => {
+  const mountSegments = toVaultPathSegments(mountPath);
+
+  if (!mountSegments.length) {
     throw new BadRequestError({
-      message: `Cannot import: preserving the Vault structure requires every selected path to come from a single vault secrets engine, but paths from ${
-        secretsEngines.size
-      } were selected (${[...secretsEngines]
-        .map((secretsEngine) => `'${secretsEngine}'`)
-        .join(", ")}). Import one secrets engine at a time.`
+      message: "Cannot import: no Vault secrets engine was selected. Select the secrets engine the paths belong to."
     });
   }
+
+  const pathsOutsideMount = vaultSecretPaths.filter((vaultSecretPath) => {
+    const segments = toVaultPathSegments(vaultSecretPath);
+    return !mountSegments.every((mountSegment, idx) => segments[idx] === mountSegment);
+  });
+
+  if (pathsOutsideMount.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths are not inside the '${mountSegments.join(
+        "/"
+      )}' secrets engine: ${pathsOutsideMount
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Select paths from the secrets engine you are importing, or import one secrets engine at a time.`
+    });
+  }
+
+  return mountSegments;
+};
+
+const validateVaultFolderImportPaths = (
+  mountPath: string,
+  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[]
+): TVaultMappedPath[] => {
+  const mountSegments = assertVaultPathsWithinMount({
+    mountPath,
+    vaultSecretPaths: secretsPerPath.map(({ vaultSecretPath }) => vaultSecretPath)
+  });
 
   const mountOnlyPaths: string[] = [];
   const pathsWithInvalidFolderNames: string[] = [];
   const mappedPaths: TVaultMappedPath[] = [];
 
   for (const { vaultSecretPath, secrets } of secretsPerPath) {
-    // vault paths arrive as "{mount}/{path}"; the mount is dropped so the folder tree mirrors the path only
-    const [, ...relativeSegments] = vaultSecretPath.split("/").filter(Boolean);
+    // the mount can itself be nested, so every one of its segments is dropped and the folder tree
+    // mirrors only the path inside the secrets engine
+    const relativeSegments = toVaultPathSegments(vaultSecretPath).slice(mountSegments.length);
 
     if (!relativeSegments.length) {
       mountOnlyPaths.push(vaultSecretPath);
@@ -679,13 +705,15 @@ const validateVaultFolderImportPaths = (
 
 export const buildVaultFolderImportPlan = ({
   secretPath,
+  mountPath,
   secretsPerPath
 }: {
   secretPath: string;
+  mountPath: string;
   secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[];
 }): TVaultFolderImportUnit[] => {
-  const infisicalBasePath = secretPath.split("/").filter(Boolean);
-  const mappedPaths = validateVaultFolderImportPaths(secretsPerPath);
+  const infisicalBasePath = toVaultPathSegments(secretPath);
+  const mappedPaths = validateVaultFolderImportPaths(mountPath, secretsPerPath);
 
   return mappedPaths.map(({ vaultSecretPath, secrets, relativeSegments }) => ({
     folderPath: `/${[...infisicalBasePath, ...relativeSegments].join("/")}`,

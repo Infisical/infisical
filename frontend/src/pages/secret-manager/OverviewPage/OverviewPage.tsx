@@ -1078,6 +1078,7 @@ const OverviewPageContent = () => {
   const handleVaultImport = async ({
     vaultPaths,
     namespace,
+    mountPath,
     connectionId,
     keepVaultStructure
   }: TVaultSecretImportArgs) => {
@@ -1086,6 +1087,7 @@ const OverviewPageContent = () => {
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
+      mountPath,
       vaultSecretPaths: vaultPaths,
       connectionId,
       keepVaultStructure

@@ -11,6 +11,7 @@ describe("Vault import preview", () => {
     const { rows, invalidPaths } = buildVaultImportPreview({
       selectedPaths: ["kv/prod/db"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -22,6 +23,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/new-path", "kv/new-path/api"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -32,6 +34,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/teste/belinha", "kv/prod/db"],
       destinationPath: "/",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -42,6 +45,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/new-path", "kv/new-path/api"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -62,6 +66,7 @@ describe("Vault import preview", () => {
     const { rows, headline, invalidPaths } = buildVaultImportPreview({
       selectedPaths: ["kv/prod/db", "kv/teste"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: false
     });
 
@@ -78,6 +83,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/prod/db", "kv/teste", "kv/new-path"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: false
     });
 
@@ -98,6 +104,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/prod/db", "kv/teste"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -111,11 +118,13 @@ describe("Vault import preview", () => {
     const onePath = buildVaultImportPreview({
       selectedPaths: ["kv/prod/db"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
     const manyPaths = buildVaultImportPreview({
       selectedPaths: ["kv/prod", "kv/teste"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -127,6 +136,7 @@ describe("Vault import preview", () => {
     const { headline } = buildVaultImportPreview({
       selectedPaths: ["kv/prod", "kv/my.app"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -137,6 +147,7 @@ describe("Vault import preview", () => {
     const { rows, headline } = buildVaultImportPreview({
       selectedPaths: ["kv/prod"],
       destinationPath: "/one/two/three/four/five",
+      mountPath: "kv",
       keepVaultStructure: false
     });
 
@@ -151,6 +162,7 @@ describe("Vault import preview", () => {
     const { rows } = buildVaultImportPreview({
       selectedPaths: ["kv/prod"],
       destinationPath: "/one/two/three",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -161,6 +173,7 @@ describe("Vault import preview", () => {
     const { rows, invalidPaths } = buildVaultImportPreview({
       selectedPaths: ["kv", "kv/prod"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -172,6 +185,7 @@ describe("Vault import preview", () => {
     const { invalidPaths } = buildVaultImportPreview({
       selectedPaths: ["kv/my.app", "kv/my app", "kv/my-app_1"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: true
     });
 
@@ -182,9 +196,33 @@ describe("Vault import preview", () => {
     const { invalidPaths } = buildVaultImportPreview({
       selectedPaths: ["kv/my.app"],
       destinationPath: "/newww",
+      mountPath: "kv",
       keepVaultStructure: false
     });
 
     assert.deepEqual(invalidPaths, []);
+  });
+  it("drops every segment of a nested secrets engine", () => {
+    const { rows, invalidPaths } = buildVaultImportPreview({
+      selectedPaths: ["apps/kv/prod/db"],
+      destinationPath: "/newww",
+      mountPath: "apps/kv",
+      keepVaultStructure: true
+    });
+
+    assert.deepEqual(folderNames(rows), ["/newww", "prod/", "db/"]);
+    assert.deepEqual(invalidPaths, []);
+  });
+
+  it("rejects paths from a sibling nested secrets engine", () => {
+    const { rows, invalidPaths } = buildVaultImportPreview({
+      selectedPaths: ["apps/kv1/db", "apps/kv2/db"],
+      destinationPath: "/newww",
+      mountPath: "apps/kv1",
+      keepVaultStructure: true
+    });
+
+    assert.deepEqual(invalidPaths, ["apps/kv2/db"]);
+    assert.deepEqual(folderNames(rows), ["/newww", "db/"]);
   });
 });

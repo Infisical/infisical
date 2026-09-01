@@ -16,6 +16,7 @@ export type TVaultImportPreview = {
 type TBuildVaultImportPreviewArgs = {
   selectedPaths: string[];
   destinationPath: string;
+  mountPath: string;
   keepVaultStructure: boolean;
 };
 
@@ -52,6 +53,7 @@ const createNode = (): TFolderNode => ({ children: new Map(), sources: [] });
 export const buildVaultImportPreview = ({
   selectedPaths,
   destinationPath,
+  mountPath,
   keepVaultStructure
 }: TBuildVaultImportPreviewArgs): TVaultImportPreview => {
   const fullDestination = `/${toSegments(destinationPath).join("/")}`;
@@ -90,11 +92,17 @@ export const buildVaultImportPreview = ({
   const root = createNode();
   let folderCount = 0;
 
+  const mountSegments = toSegments(mountPath);
+
   selectedPaths.forEach((vaultPath) => {
-    // the secrets engine leads the path and is dropped, matching buildVaultFolderImportPlan
-    const [, ...relativeSegments] = toSegments(vaultPath);
+    // the secrets engine can itself be nested, so all of its segments are dropped, matching
+    // buildVaultFolderImportPlan
+    const segments = toSegments(vaultPath);
+    const isWithinMount = mountSegments.every((segment, index) => segments[index] === segment);
+    const relativeSegments = segments.slice(mountSegments.length);
 
     if (
+      !isWithinMount ||
       !relativeSegments.length ||
       relativeSegments.some((segment) => !VALID_FOLDER_SEGMENT.test(segment))
     ) {

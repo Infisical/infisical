@@ -44,6 +44,7 @@ import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 export type TVaultSecretImportArgs = {
   vaultPaths: string[];
   namespace: string;
+  mountPath: string;
   connectionId: string;
   keepVaultStructure: boolean;
 };
@@ -156,8 +157,14 @@ const Content = ({
   const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
   const preview = useMemo(
-    () => buildVaultImportPreview({ selectedPaths, destinationPath, keepVaultStructure }),
-    [selectedPaths, destinationPath, keepVaultStructure]
+    () =>
+      buildVaultImportPreview({
+        selectedPaths,
+        destinationPath,
+        mountPath: mountPath ?? "",
+        keepVaultStructure
+      }),
+    [selectedPaths, destinationPath, mountPath, keepVaultStructure]
   );
   const { invalidPaths } = preview;
 
@@ -184,8 +191,12 @@ const Content = ({
       });
       return;
     }
+    if (!mountPath) {
+      createNotification({ type: "error", text: "Please select a secrets engine" });
+      return;
+    }
 
-    onImport({ vaultPaths: selectedPaths, namespace, connectionId, keepVaultStructure });
+    onImport({ vaultPaths: selectedPaths, namespace, mountPath, connectionId, keepVaultStructure });
     onClose();
   };
 
