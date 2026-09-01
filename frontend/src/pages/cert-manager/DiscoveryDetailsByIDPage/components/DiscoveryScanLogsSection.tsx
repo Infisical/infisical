@@ -3,7 +3,7 @@ import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { Lottie, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -15,6 +15,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Loader,
   Pagination,
   Table,
   TableBody,
@@ -76,7 +77,7 @@ export const DiscoveryScanLogsSection = ({
       <CardContent className="p-0">
         {isPending && (
           <div className="flex h-40 w-full items-center justify-center">
-            <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+            <Loader />
           </div>
         )}
         {!isPending && scans.length === 0 && (

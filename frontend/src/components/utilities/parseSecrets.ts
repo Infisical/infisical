@@ -1,5 +1,10 @@
+import { isMap, isNode, isScalar, isSeq, parseDocument } from "yaml";
+
 const LINE =
   /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+
+const decodeSource = (src: ArrayBuffer | string) =>
+  typeof src === "string" ? src : new TextDecoder("utf-8").decode(src);
 
 /**
  * Return text that is the buffer parsed
@@ -89,89 +94,53 @@ export const parseJson = (src: ArrayBuffer | string) => {
 };
 
 /**
- * Parses simple flat YAML with support for multiline strings using |, |-, and >.
+ * Parses a flat YAML document into secrets. Block scalars, folding, chomping,
+ * quoting and comments are all handled by the parser, so multiline values keep
+ * their line breaks. Nested maps and sequences are stringified, matching parseJson.
+ * Throws on invalid YAML so callers can fall back to another format or report it.
  * @param {ArrayBuffer | string} src
  * @returns {Record<string, { value: string, comments: string[] }>}
  */
 export function parseYaml(src: ArrayBuffer | string) {
   const result: Record<string, { value: string; comments: string[] }> = {};
 
-  const content = src.toString().replace(/\r\n?/g, "\n");
-  const lines = content.split("\n");
-
-  let i = 0;
-  let comments: string[] = [];
-
-  while (i < lines.length) {
-    const line = lines[i].trim();
-
-    // Collect comment
-    if (line.startsWith("#")) {
-      comments.push(line.slice(1).trim());
-      i += 1; // move to next line
-    } else {
-      // Match key: value or key: |, key: >, etc.
-      const keyMatch = lines[i].match(/^([\w.-]+)\s*:\s*(.*)$/);
-      if (keyMatch) {
-        const [, key, rawValue] = keyMatch;
-        let value = rawValue.trim();
-
-        // Multiline string handling
-        if (value === "|-" || value === "|" || value === ">") {
-          const isFolded = value === ">";
-
-          const baseIndent = lines[i + 1]?.match(/^(\s*)/)?.[1]?.length ?? 0;
-          const collectedLines: string[] = [];
-
-          i += 1; // move to first content line
-
-          while (i < lines.length) {
-            const current = lines[i];
-            const currentIndent = current.match(/^(\s*)/)?.[1]?.length ?? 0;
-
-            if (current.trim() === "" || currentIndent >= baseIndent) {
-              collectedLines.push(current.slice(baseIndent));
-              i += 1; // move to next line
-            } else {
-              break;
-            }
-          }
-
-          if (isFolded) {
-            // Join lines with space for `>` folded style
-            value = collectedLines.map((l) => l.trim()).join(" ");
-          } else {
-            // Keep lines with newlines for `|` and `|-`
-            value = collectedLines.join("\n");
-          }
-        } else {
-          // Inline value — strip quotes and inline comment
-          const commentIndex = value.indexOf(" #");
-          if (commentIndex !== -1) {
-            value = value.slice(0, commentIndex).trim();
-          }
-
-          // Remove surrounding quotes
-          if (
-            (value.startsWith('"') && value.endsWith('"')) ||
-            (value.startsWith("'") && value.endsWith("'"))
-          ) {
-            value = value.slice(1, -1);
-          }
-
-          i += 1; // advance to next line
-        }
-
-        result[key] = {
-          value,
-          comments: [...comments]
-        };
-        comments = []; // reset
-      } else {
-        i += 1; // skip unknown line
-      }
-    }
+  const doc = parseDocument(decodeSource(src));
+  if (doc.errors.length) {
+    throw new Error(doc.errors[0].message);
   }
+
+  const root = doc.contents;
+  if (!isMap(root)) {
+    return result;
+  }
+
+  root.items.forEach((pair) => {
+    const keyNode = pair.key;
+    if (!isScalar(keyNode)) {
+      return;
+    }
+
+    const key = String(keyNode.value ?? "").trim();
+    if (!key) {
+      return;
+    }
+
+    const valueNode = pair.value;
+    let value = "";
+    if (isMap(valueNode) || isSeq(valueNode)) {
+      value = JSON.stringify(valueNode.toJSON());
+    } else if (isScalar(valueNode) && valueNode.value !== null && valueNode.value !== undefined) {
+      value = String(valueNode.value);
+    }
+
+    const comments = [keyNode.commentBefore, isNode(valueNode) ? valueNode.comment : null]
+      .filter((comment): comment is string => Boolean(comment))
+      .flatMap((comment) => comment.split("\n"))
+      .map((comment) => comment.trim())
+      .filter(Boolean);
+
+    result[key] = { value, comments };
+  });
 
   return result;
 }
@@ -197,12 +166,7 @@ export function parseCsvToMatrix(src: ArrayBuffer | string): {
   matrix: string[][];
   delimiter: CsvDelimiter;
 } {
-  let csvContent: string;
-  if (typeof src === "string") {
-    csvContent = src;
-  } else {
-    csvContent = new TextDecoder("utf-8").decode(src);
-  }
+  const csvContent = decodeSource(src);
 
   const separator = detectSeparator(csvContent);
   const normalized = csvContent.replace(/\r\n?/g, "\n");
@@ -247,3 +211,43 @@ export function parseCsvToMatrix(src: ArrayBuffer | string): {
 
   return { matrix, delimiter: separator };
 }
+
+export type TParsedSecrets = Record<string, { value: string; comments: string[] }>;
+
+// A "key: |" / "key: >" header is the one construct .env cannot express, so it is
+// checked before the .env assignment test: an assignment can legitimately appear
+// inside a block scalar's body, which is why that test rejects indented lines.
+const YAML_BLOCK_SCALAR = /^[^\s#][^\n]*:[ \t]*[|>][-+]?\d*[ \t]*(?:#.*)?$/m;
+const DOTENV_ASSIGNMENT = /^(?:export\s+)?[\w.:-]+\s*=/m;
+
+const parseOrNull = (parse: () => TParsedSecrets) => {
+  try {
+    const parsed = parse();
+    return Object.keys(parsed).length ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Detects the format of pasted secrets (.json, .yml or .env) and parses it.
+ */
+export const parsePastedSecrets = (value: string): TParsedSecrets => {
+  const json = parseOrNull(() => parseJson(value));
+  if (json) {
+    return json;
+  }
+
+  if (YAML_BLOCK_SCALAR.test(value)) {
+    const yaml = parseOrNull(() => parseYaml(value));
+    if (yaml) {
+      return yaml;
+    }
+  }
+
+  if (DOTENV_ASSIGNMENT.test(value)) {
+    return parseDotEnv(value);
+  }
+
+  return parseOrNull(() => parseYaml(value)) ?? parseDotEnv(value);
+};
