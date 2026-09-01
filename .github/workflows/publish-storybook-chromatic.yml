@@ -9,6 +9,7 @@ on:
       - "frontend/src/index.css"
       - "frontend/.storybook/**"
       - "frontend/package-lock.json"
+      - ".github/workflows/publish-storybook-chromatic.yml"
 
 jobs:
   chromatic:
