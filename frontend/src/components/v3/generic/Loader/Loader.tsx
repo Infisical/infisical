@@ -1,6 +1,6 @@
 import { type ComponentProps, useEffect, useRef } from "react";
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useReducedMotionConfig } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 
 import { cn } from "../../utils";
 
@@ -36,7 +36,9 @@ function Loader({
   variant = "default",
   ...props
 }: LoaderProps) {
-  const prefersReducedMotion = Boolean(useReducedMotionConfig());
+  // `useReducedMotionConfig` reads `MotionConfig`, which defaults to `"never"` and so
+  // always reports false here; the app mounts no provider, so read the media query directly.
+  const prefersReducedMotion = Boolean(useReducedMotion());
   const animationRef = useRef<DotLottie | null>(null);
 
   useEffect(() => {

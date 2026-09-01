@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MotionConfig } from "framer-motion";
 import { RefreshCwIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "../Button";
@@ -129,18 +128,11 @@ export const VariantBrand: Story = {
 
 export const ReducedMotion: Story = {
   name: "State: Reduced Motion",
-  decorators: [
-    (Story) => (
-      <MotionConfig reducedMotion="always">
-        <Story />
-      </MotionConfig>
-    )
-  ],
   parameters: {
     docs: {
       description: {
         story:
-          "Forces the operating system's reduced-motion state so the loader can be reviewed without changing local accessibility settings. The mark remains on its fully drawn first frame while the loading status semantics stay available to assistive technology."
+          "Reflects the viewer's own `prefers-reduced-motion` setting, so it keeps animating unless reduced motion is enabled on this machine. With the preference on, the mark remains on its fully drawn first frame while the loading status semantics stay available to assistive technology."
       }
     }
   }
