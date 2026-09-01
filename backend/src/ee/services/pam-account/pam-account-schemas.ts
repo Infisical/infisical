@@ -1331,6 +1331,17 @@ export const isCredentialConfigured = (
   });
 };
 
+export const revealedCredentialsSchema = (accountType: TSupportedAccountType) => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType];
+  return config.sanitizedCredentials.extend(
+    Object.fromEntries(
+      fieldsFromSchema(config.credentials, config.ui)
+        .filter((field) => field.secret)
+        .map((field) => [field.key, z.string().optional()])
+    )
+  );
+};
+
 export const noRevealableCredentialMessage = (accountName: string) =>
   `Account '${accountName}' has no stored credential to reveal. Its authentication method brokers access per session instead.`;
 

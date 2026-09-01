@@ -7,7 +7,8 @@ import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
   PamAccountAccessibilityIssue,
-  PamAccountTypeMetadataSchema
+  PamAccountTypeMetadataSchema,
+  revealedCredentialsSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import {
@@ -87,6 +88,23 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
 const SanitizedAccountDetailSchema = z.discriminatedUnion(
   "accountType",
   accountDetailVariants as [(typeof accountDetailVariants)[number], ...(typeof accountDetailVariants)[number][]]
+);
+
+const accountCredentialVariants = Object.keys(ACCOUNT_TYPE_CONFIGS).map((accountType) =>
+  z.object({
+    accountType: z.literal(accountType as TSupportedAccountType),
+    credentials: revealedCredentialsSchema(accountType as TSupportedAccountType).describe(
+      "The account's stored credentials, secrets included"
+    )
+  })
+);
+
+const PamAccountCredentialsSchema = z.discriminatedUnion(
+  "accountType",
+  accountCredentialVariants as [
+    (typeof accountCredentialVariants)[number],
+    ...(typeof accountCredentialVariants)[number][]
+  ]
 );
 
 const toPascalCase = (s: string) =>
@@ -773,10 +791,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           .describe("A verified MFA session ID. Required when the template requires MFA.")
       }),
       response: {
-        200: z.object({
-          accountType: z.string().describe("The account's platform type"),
-          credentials: z.record(z.unknown()).describe("The account's stored credentials, secrets included")
-        })
+        200: PamAccountCredentialsSchema
       }
     },
     config: { rateLimit: writeLimit },
@@ -812,7 +827,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { accountType: result.accountType, credentials: result.credentials };
+      return { accountType: result.accountType, credentials: result.credentials } as unknown as z.infer<
+        typeof PamAccountCredentialsSchema
+      >;
     }
   });
 
