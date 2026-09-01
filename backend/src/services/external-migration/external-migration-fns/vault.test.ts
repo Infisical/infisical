@@ -230,7 +230,7 @@ describe("assertVaultFolderImportSecretCount", () => {
 
     expect(() => assertVaultFolderImportSecretCount(plan)).toThrowError(BadRequestError);
     expect(() => assertVaultFolderImportSecretCount(plan)).toThrowError(
-      new RegExp(`Cannot import 1025 secrets.*at most ${MAX_VAULT_FOLDER_IMPORT_SECRETS} secrets`)
+      `Cannot import 1025 secrets while preserving Vault structure. Import at most ${MAX_VAULT_FOLDER_IMPORT_SECRETS} secrets`
     );
   });
 });
