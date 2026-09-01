@@ -1,4 +1,5 @@
 import { MongoAbility, subject } from "@casl/ability";
+import pLimit from "p-limit";
 
 import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
@@ -77,8 +78,13 @@ import {
   TImportDopplerSecretsDTO,
   TImportEnvKeyDataDTO,
   TImportVaultDataDTO,
+  TVaultFolderImportApprovalResult,
   TVaultFolderImportResult
 } from "./external-migration-types";
+
+const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
+// each notification is a KMS decrypt plus Slack/Teams and SMTP delivery, so it is paced lower
+const VAULT_IMPORT_NOTIFICATION_CONCURRENCY = 5;
 
 const $findFolderPathsDeniedCreate = ({
   permission,
@@ -494,6 +500,100 @@ export const externalMigrationServiceFactory = ({
     return listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, mountPath, gatewayDetails);
   };
 
+  // every failure here is logged rather than thrown: the import has committed, so a side effect that
+  // fails must not report the whole import as failed
+  const $dispatchVaultImportSideEffects = async ({
+    actor,
+    projectId,
+    environment,
+    environmentName,
+    auditLogInfo,
+    writtenResults,
+    approvedResults
+  }: {
+    actor: OrgServiceActor;
+    projectId: string;
+    environment: string;
+    environmentName: string;
+    auditLogInfo: AuditLogInfo;
+    writtenResults: TVaultFolderImportResult[];
+    approvedResults: TVaultFolderImportApprovalResult[];
+  }) => {
+    const sideEffectLimit = pLimit(VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY);
+    const notificationLimit = pLimit(VAULT_IMPORT_NOTIFICATION_CONCURRENCY);
+
+    await Promise.all(
+      writtenResults.map(({ folderPath, secrets }) =>
+        sideEffectLimit(async () => {
+          try {
+            await secretV2BridgeService.dispatchSecretCreateSideEffects({
+              projectId,
+              orgId: actor.orgId,
+              actor: actor.type,
+              actorId: actor.id,
+              environmentSlug: environment,
+              environmentName,
+              secretPath: folderPath,
+              secretKeys: secrets.map(({ secretKey }) => secretKey)
+            });
+          } catch (error) {
+            logger.error(
+              error,
+              `Failed to dispatch Vault import secret side effects [secretPath=${folderPath}] [projectId=${projectId}]`
+            );
+          }
+        })
+      )
+    );
+
+    await Promise.all(
+      approvedResults.map(({ folderPath, secrets, approval }) =>
+        notificationLimit(async () => {
+          try {
+            await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
+              secretApprovalRequest: approval,
+              projectId,
+              environment,
+              secretPath: folderPath,
+              secretKeys: secrets.map(({ secretKey }) => secretKey),
+              actor: actor.type,
+              actorId: actor.id,
+              actorOrgId: actor.orgId
+            });
+          } catch (error) {
+            logger.error(
+              error,
+              `Failed to notify approvers of Vault import change request [requestId=${approval.id}] [secretPath=${folderPath}]`
+            );
+          }
+        })
+      )
+    );
+
+    await Promise.all(
+      approvedResults.map(({ folderPath, secrets, approval }) =>
+        sideEffectLimit(() =>
+          auditLogService.createAuditLog({
+            projectId,
+            ...auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerUserId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug,
+                secretPath: folderPath,
+                environment,
+                secrets: secrets.map(({ secretKey }) => ({ secretKey })),
+                eventType: SecretApprovalEvent.CreateMany
+              }
+            }
+          })
+        )
+      )
+    );
+  };
+
   const $importVaultSecretsPreservingStructure = async ({
     actor,
     projectId,
@@ -623,63 +723,15 @@ export const externalMigrationServiceFactory = ({
     );
 
     // the writes have committed, so the per-folder side effects can no longer reference an uncommitted row
-    await Promise.all(
-      writtenResults.map(({ folderPath, secrets }) =>
-        secretV2BridgeService.dispatchSecretCreateSideEffects({
-          projectId,
-          orgId: actor.orgId,
-          actor: actor.type,
-          actorId: actor.id,
-          environmentSlug: env.slug,
-          environmentName: env.name,
-          secretPath: folderPath,
-          secretKeys: secrets.map(({ secretKey }) => secretKey)
-        })
-      )
-    );
-
-    for (const { folderPath, secrets, approval } of approvedResults) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
-          secretApprovalRequest: approval,
-          projectId,
-          environment,
-          secretPath: folderPath,
-          secretKeys: secrets.map(({ secretKey }) => secretKey),
-          actor: actor.type,
-          actorId: actor.id,
-          actorOrgId: actor.orgId
-        });
-      } catch (error) {
-        // the change requests are already committed, so a failed notification must not fail the import
-        logger.error(
-          error,
-          `Failed to notify approvers of Vault import change request [requestId=${approval.id}] [secretPath=${folderPath}]`
-        );
-      }
-    }
-
-    await Promise.all(
-      approvedResults.map(({ folderPath, secrets, approval }) =>
-        auditLogService.createAuditLog({
-          projectId,
-          ...auditLogInfo,
-          event: {
-            type: EventType.SECRET_APPROVAL_REQUEST,
-            metadata: {
-              committedBy: approval.committerUserId,
-              secretApprovalRequestId: approval.id,
-              secretApprovalRequestSlug: approval.slug,
-              secretPath: folderPath,
-              environment,
-              secrets: secrets.map(({ secretKey }) => ({ secretKey })),
-              eventType: SecretApprovalEvent.CreateMany
-            }
-          }
-        })
-      )
-    );
+    await $dispatchVaultImportSideEffects({
+      actor,
+      projectId,
+      environment,
+      environmentName: env.name,
+      auditLogInfo,
+      writtenResults,
+      approvedResults
+    });
 
     return {
       status: approvedResults.length

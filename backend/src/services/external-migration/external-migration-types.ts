@@ -152,3 +152,7 @@ export type TVaultFolderImportResult = {
     { type: SecretProtectionType.Approval }
   >["approval"];
 };
+
+export type TVaultFolderImportApprovalResult = TVaultFolderImportResult & {
+  approval: NonNullable<TVaultFolderImportResult["approval"]>;
+};
