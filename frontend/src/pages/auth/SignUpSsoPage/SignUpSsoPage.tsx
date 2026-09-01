@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { captureSignupCompleted } from "@app/components/analytics/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
@@ -74,6 +75,7 @@ export const SignupSsoPage = () => {
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    captureSignupCompleted("sso");
 
     createNotification({
       text: "Successfully verified",
