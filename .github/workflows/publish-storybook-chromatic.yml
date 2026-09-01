@@ -11,6 +11,10 @@ on:
       - "frontend/package-lock.json"
       - ".github/workflows/publish-storybook-chromatic.yml"
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   chromatic:
     name: Publish
@@ -41,9 +45,53 @@ jobs:
         run: npm ci
         working-directory: frontend
       - name: 🎨 Publish to Chromatic
+        id: chromatic
         uses: chromaui/action@2a0b63f30233c48591844a46d451b9cf68128186 # v18.7.2
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: frontend
           onlyChanged: true
           exitZeroOnChanges: true
+      - name: 💬 Comment Storybook preview
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          STORYBOOK_URL: ${{ steps.chromatic.outputs.storybookUrl }}
+          CHROMATIC_BUILD_URL: ${{ steps.chromatic.outputs.buildUrl }}
+        with:
+          retries: 3
+          script: |
+            const marker = "<!-- chromatic-storybook-preview -->";
+            const head = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = [
+              marker,
+              "## Storybook preview",
+              "",
+              `📚 [Open Storybook](${process.env.STORYBOOK_URL})`,
+              "",
+              `[🔍 View Chromatic build details](${process.env.CHROMATIC_BUILD_URL})`,
+              "",
+              `Updated for \`${head}\`.`
+            ].join("\n");
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+            const existing = comments.find(
+              (comment) => comment.user?.login === "github-actions[bot]" && comment.body?.startsWith(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
