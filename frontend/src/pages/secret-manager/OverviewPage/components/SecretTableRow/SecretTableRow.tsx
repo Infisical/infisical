@@ -319,7 +319,7 @@ export const SecretTableRow = ({
               {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
                 <HexagonIcon
                   className={twMerge(
-                    "absolute right-2 bottom-2 !size-2.5 text-honey-token",
+                    "absolute right-2 bottom-2 !size-2.5 text-warning",
                     !isSelectionDisabled && "group-hover:!hidden",
                     isSelected && "!hidden"
                   )}
@@ -641,7 +641,7 @@ export const SecretTableRow = ({
                               {secret?.isHoneyTokenSecret && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <HexagonIcon className="size-4 text-honey-token" />
+                                    <HexagonIcon className="size-4 text-warning" />
                                   </TooltipTrigger>
                                   <TooltipContent>Honey Token secret</TooltipContent>
                                 </Tooltip>

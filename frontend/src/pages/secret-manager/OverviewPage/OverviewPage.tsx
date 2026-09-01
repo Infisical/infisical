@@ -31,8 +31,7 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
-  RevokeHoneyTokenModal,
-  ViewHoneyTokenCredentialsModal
+  RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -267,8 +266,7 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation",
-  HONEY_TOKEN = "honeyToken"
+  SECRET_ROTATION = "secretRotation"
 }
 
 export enum RowType {
@@ -376,12 +374,10 @@ const OverviewPageContent = () => {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
-    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   }>({
     [EntryType.FOLDER]: {},
     [EntryType.SECRET]: {},
-    [EntryType.SECRET_ROTATION]: {},
-    [EntryType.HONEY_TOKEN]: {}
+    [EntryType.SECRET_ROTATION]: {}
   });
   const lastSelectedEntryRef = useRef<{ type: EntryType; key: string } | null>(null);
 
@@ -409,8 +405,7 @@ const OverviewPageContent = () => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
       [EntryType.SECRET]: {},
-      [EntryType.SECRET_ROTATION]: {},
-      [EntryType.HONEY_TOKEN]: {}
+      [EntryType.SECRET_ROTATION]: {}
     });
   }, []);
 
@@ -1026,7 +1021,6 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials",
     "createEnvironment"
   ] as const);
 
@@ -2345,14 +2339,12 @@ const OverviewPageContent = () => {
     });
   }, []);
 
+  const hasSelectableRows = Boolean(
+    secrets?.length || folders?.length || secretRotationNames?.length
+  );
+
   const allRowsSelectedOnPage = useMemo(() => {
-    if (
-      !secrets?.length &&
-      !folders?.length &&
-      !secretRotationNames?.length &&
-      !honeyTokenNames?.length
-    )
-      return { isChecked: false, isIndeterminate: false };
+    if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
     if (
       (!secrets?.length ||
@@ -2360,22 +2352,19 @@ const OverviewPageContent = () => {
       (!folders?.length ||
         folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name])) &&
       (!secretRotationNames?.length ||
-        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name])) &&
-      (!honeyTokenNames?.length ||
-        honeyTokenNames?.every((name) => selectedEntries[EntryType.HONEY_TOKEN][name]))
+        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
       secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
       folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name]) ||
-      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name]) ||
-      honeyTokenNames?.some((name) => selectedEntries[EntryType.HONEY_TOKEN][name])
+      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name])
     )
       return { isChecked: true, isIndeterminate: true };
 
     return { isChecked: false, isIndeterminate: false };
-  }, [selectedEntries, secrets, folders, secretRotationNames, honeyTokenNames]);
+  }, [selectedEntries, secrets, folders, secretRotationNames, hasSelectableRows]);
 
   const selectableRows = useMemo(
     () => [
@@ -2384,10 +2373,9 @@ const OverviewPageContent = () => {
         key
       })),
       ...secretRotationNames.map((key) => ({ type: EntryType.SECRET_ROTATION, key })),
-      ...honeyTokenNames.map((key) => ({ type: EntryType.HONEY_TOKEN, key })),
       ...mergedSecKeys.map((key) => ({ type: EntryType.SECRET, key }))
     ],
-    [mergedFolderNamesAndDescriptions, secretRotationNames, honeyTokenNames, mergedSecKeys]
+    [mergedFolderNamesAndDescriptions, secretRotationNames, mergedSecKeys]
   );
 
   const toggleSelectedEntry = useCallback(
@@ -2413,8 +2401,7 @@ const OverviewPageContent = () => {
           ...currentSelections,
           [EntryType.FOLDER]: { ...currentSelections[EntryType.FOLDER] },
           [EntryType.SECRET]: { ...currentSelections[EntryType.SECRET] },
-          [EntryType.SECRET_ROTATION]: { ...currentSelections[EntryType.SECRET_ROTATION] },
-          [EntryType.HONEY_TOKEN]: { ...currentSelections[EntryType.HONEY_TOKEN] }
+          [EntryType.SECRET_ROTATION]: { ...currentSelections[EntryType.SECRET_ROTATION] }
         };
 
         if (!isShiftKey && currentSelections[type][key]) {
@@ -2435,12 +2422,6 @@ const OverviewPageContent = () => {
               const resource = getFolderByNameAndEnv(entry.key, env.slug);
               if (resource) newChecks[EntryType.FOLDER][entry.key][env.slug] = resource;
             });
-          } else if (entry.type === EntryType.HONEY_TOKEN) {
-            newChecks[EntryType.HONEY_TOKEN][entry.key] = {};
-            userAvailableEnvs.forEach((env) => {
-              const resource = getHoneyTokenByName(env.slug, entry.key);
-              if (resource) newChecks[EntryType.HONEY_TOKEN][entry.key][env.slug] = resource;
-            });
           } else {
             newChecks[EntryType.SECRET_ROTATION][entry.key] = {};
             userAvailableEnvs.forEach((env) => {
@@ -2460,8 +2441,7 @@ const OverviewPageContent = () => {
       userAvailableEnvs,
       getFolderByNameAndEnv,
       getSecretByKey,
-      getSecretRotationByName,
-      getHoneyTokenByName
+      getSecretRotationByName
     ]
   );
 
@@ -2520,19 +2500,6 @@ const OverviewPageContent = () => {
           const resource = getSecretRotationByName(env.slug, rotationName);
 
           if (resource) newChecks[EntryType.SECRET_ROTATION][rotationName][env.slug] = resource;
-        }
-      });
-
-      honeyTokenNames?.forEach((honeyTokenName) => {
-        if (allRowsSelectedOnPage.isChecked) {
-          delete newChecks[EntryType.HONEY_TOKEN][honeyTokenName];
-        } else {
-          if (!newChecks[EntryType.HONEY_TOKEN][honeyTokenName])
-            newChecks[EntryType.HONEY_TOKEN][honeyTokenName] = {};
-
-          const resource = getHoneyTokenByName(env.slug, honeyTokenName);
-
-          if (resource) newChecks[EntryType.HONEY_TOKEN][honeyTokenName][env.slug] = resource;
         }
       });
     });
@@ -3000,7 +2967,7 @@ const OverviewPageContent = () => {
                       >
                         <Checkbox
                           variant="project"
-                          isDisabled={totalCount === 0 || hasPendingBatchChanges}
+                          isDisabled={!hasSelectableRows || hasPendingBatchChanges}
                           id="checkbox-select-all-rows"
                           isChecked={allRowsSelectedOnPage.isChecked}
                           isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
@@ -3422,16 +3389,9 @@ const OverviewPageContent = () => {
                             getHoneyTokenByName={getHoneyTokenByName}
                             tableWidth={tableWidth}
                             key={`overview-ht-${honeyTokenName}-${index + 1}`}
-                            isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
-                            onToggleHoneyTokenSelect={(_, isShiftKey) =>
-                              toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName, isShiftKey)
-                            }
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
-                            }
-                            onViewCredentials={(honeyToken) =>
-                              handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                             }
                             onViewDetails={(honeyToken) =>
                               setDetailsDrawerHoneyTokenId(honeyToken.id)
@@ -3920,12 +3880,6 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
-      />
-      <ViewHoneyTokenCredentialsModal
-        isOpen={popUp.viewHoneyTokenCredentials.isOpen}
-        honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
-        projectId={projectId}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet

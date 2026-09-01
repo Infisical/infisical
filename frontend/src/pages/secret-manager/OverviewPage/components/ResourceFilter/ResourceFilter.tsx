@@ -44,7 +44,7 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
   {
     type: "honeyToken",
     label: "Honey Tokens",
-    icon: <HexagonIcon className="text-honey-token" />
+    icon: <HexagonIcon className="text-warning" />
   },
   {
     type: "proxiedService",
