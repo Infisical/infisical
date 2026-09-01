@@ -180,6 +180,11 @@ export const Navbar = () => {
 
   const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
 
+  // isActive is membership state, and only the membership-scoped list endpoints return it. rootOrg
+  // falls back to currentOrg, which comes from GET /organization/:id and never carries the field, so
+  // read the membership out of the list instead of off rootOrg.
+  const rootOrgMembership = orgs?.find((org) => org.id === rootOrg.id);
+
   useEffect(() => {
     if (isModalIntrusive) {
       setShowCardDeclinedModal(true);
@@ -476,6 +481,12 @@ export const Navbar = () => {
                         >
                           <Check className={!isSubOrganization ? "opacity-100" : "opacity-0"} />
                           <span className="truncate">{rootOrg.name}</span>
+                          {rootOrgMembership?.isActive === false && (
+                            <Badge variant="neutral" className="ml-auto">
+                              <CircleSlash />
+                              Inactive
+                            </Badge>
+                          )}
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
