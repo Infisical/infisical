@@ -3,7 +3,6 @@ import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm
 import type { Preview } from "@storybook/react-vite";
 
 import { initializePlatform } from "../src/lib/fn/platform";
-import { DocumentationPage } from "./components";
 import { DocumentDecorator, RouterDecorator } from "./decorators";
 
 import "@fontsource/inter/400.css";
@@ -32,8 +31,7 @@ const preview: Preview = {
       }
     },
     docs: {
-      backgroundColor: "var(--background)",
-      page: DocumentationPage
+      backgroundColor: "var(--background)"
     },
     a11y: {
       test: "todo"

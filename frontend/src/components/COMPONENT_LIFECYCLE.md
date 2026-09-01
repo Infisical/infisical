@@ -36,7 +36,7 @@ Statuses are lifecycle decisions, not folder labels:
 
 | Status | Families | Evidence and next action |
 | --- | --- | --- |
-| Currently deprecated | ReactSelect/FilterableSelect | Typed Storybook metadata, the `deprecated` tag, Canvas and Docs notices, and the TypeScript annotation point to `Combobox` with explicit parity exceptions. |
+| Currently deprecated | ReactSelect/FilterableSelect | The `deprecated` Storybook tag and TypeScript annotation point to `Combobox`; the component remains available for feature parity until migration is complete. |
 | Deprecate after blocker | ReactSelect/CreatableSelect | Inline creation is supported production behavior that `Combobox` does not implement. |
 | Retained intentionally | Accordion, Alert, AlertDialog, AnimatedCollapse, Badge, Blur, Breadcrumb, Button, ButtonGroup, Calendar, Card, Checkbox, CodeBlock, ColorPicker, Combobox, Command, CopyButton, DataGrid, Detail, Dialog, Dropdown, DurationInput, Empty, Field, FileDropzone, HoverCard, IconButton, Input, InputGroup, Item, Label, Loader, Pagination, Popover, RadioGroup, ScrollableContent, Select, SelectedActionBar, Separator, Sheet, Sidebar, Skeleton, Spinner, Stepper, Switch, Table, Tabs, TextArea, Toast, Tooltip | Exported supported families. `CopyButton`, `DataGrid`, and `Sidebar` have no discovered story; that is documentation debt, not deprecation evidence. |
 

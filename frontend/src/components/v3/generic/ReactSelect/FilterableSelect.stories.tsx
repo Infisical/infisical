@@ -3,7 +3,6 @@ import { components, OptionProps } from "react-select";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { InfoIcon } from "lucide-react";
 
-import { defineComponentDeprecation } from "../../../../../.storybook/deprecation";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../Field";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import { FilterableSelect } from "./FilterableSelect";
@@ -60,11 +59,6 @@ const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
   </components.Option>
 );
 
-const componentDeprecation = defineComponentDeprecation({
-  replacement: "Combobox",
-  guidance: "FilterableSelect is being kept for feature parity until migration is complete."
-});
-
 /**
  * `FilterableSelect` is the v3 react-select-based dropdown for searchable
  * single or multi selection over a known set of options. Reach for it when the
@@ -84,8 +78,7 @@ const meta = {
   title: "Generic/FilterableSelect",
   component: FilterableSelect,
   parameters: {
-    layout: "centered",
-    deprecation: componentDeprecation
+    layout: "centered"
   },
   tags: ["autodocs", "deprecated"],
   decorators: [
