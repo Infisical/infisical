@@ -1,9 +1,11 @@
-import { useReducer, useRef } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import {
+  buildVaultImportPreview,
   VaultConnectionAndNamespaceFields,
-  VaultFieldLabel
+  VaultFieldLabel,
+  VaultImportPreview
 } from "@app/components/external-migrations";
 import {
   createVaultImportSelection,
@@ -16,9 +18,12 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Combobox,
   Field,
+  FieldContent,
   FieldDescription,
+  FieldLabel,
   Sheet,
   SheetClose,
   SheetContent,
@@ -34,17 +39,26 @@ import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
 
+export type TVaultSecretImportArgs = {
+  vaultPaths: string[];
+  namespace: string;
+  connectionId: string;
+  keepVaultStructure: boolean;
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
+  destinationPath: string;
+  onImport: (args: TVaultSecretImportArgs) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
+  destinationPath: string;
+  onImport: (args: TVaultSecretImportArgs) => void;
 };
 
 const MAX_PATH_LENGTH = 30;
@@ -76,15 +90,16 @@ const renderWildcardPath = (path: string) => {
   );
 };
 
-const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
+const Content = ({ onClose, appConnections, destinationPath, onImport }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
+  const [keepVaultStructure, setKeepVaultStructure] = useState(false);
   const [state, dispatch] = useReducer(
     vaultImportSelectionReducer<string[]>,
     appConnections.map(({ id }) => id),
     createVaultImportSelection<string[]>
   );
   const { connectionId, mountPath, namespace } = state;
-  const selectedPaths = state.selection ?? [];
+  const selectedPaths = useMemo(() => state.selection ?? [], [state.selection]);
   const activeConnectionId = hasAppConnections ? (connectionId ?? undefined) : undefined;
   const shouldFetchMounts = Boolean(namespace && activeConnectionId);
   const shouldFetchPaths = Boolean(namespace && mountPath && activeConnectionId);
@@ -118,6 +133,12 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
   });
   const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
+  const preview = useMemo(
+    () => buildVaultImportPreview({ selectedPaths, destinationPath, keepVaultStructure }),
+    [selectedPaths, destinationPath, keepVaultStructure]
+  );
+  const { invalidPaths } = preview;
+
   const handleImport = () => {
     if (!selectedPaths.length) {
       createNotification({
@@ -142,7 +163,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
       return;
     }
 
-    onImport(selectedPaths, namespace, connectionId);
+    onImport({ vaultPaths: selectedPaths, namespace, connectionId, keepVaultStructure });
     onClose();
   };
 
@@ -230,6 +251,57 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
           </FieldDescription>
         </Field>
 
+        <Field
+          orientation="horizontal"
+          className="rounded-md border border-border bg-container px-3.5 py-3"
+        >
+          <Checkbox
+            id="vault-secret-import-keep-structure"
+            variant="project"
+            isChecked={keepVaultStructure}
+            onCheckedChange={(checked) => setKeepVaultStructure(checked === true)}
+          />
+          <FieldContent>
+            <FieldLabel htmlFor="vault-secret-import-keep-structure" className="cursor-pointer">
+              Preserve folder structure
+            </FieldLabel>
+            <FieldDescription>
+              Create folders inside Infisical, matching the selected Vault secret&apos;s path.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        {invalidPaths.length > 0 && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>
+              {invalidPaths.length} secret path
+              {invalidPaths.length > 1 ? "s cannot become folders" : " cannot become a folder"}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                Infisical folder names allow only letters, numbers, dashes and underscores. Rename
+                the following {invalidPaths.length > 1 ? "paths" : "path"} in Vault, or import
+                without preserving the folder structure.
+              </p>
+              <div className="mt-2 flex flex-wrap items-start gap-1">
+                {invalidPaths.map((path) => (
+                  <Badge
+                    isTruncatable
+                    key={path}
+                    variant="warning"
+                    className="font-mono text-foreground/80"
+                  >
+                    {path}
+                  </Badge>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedPaths.length > 0 && <VaultImportPreview preview={preview} />}
+
         {skippedWildcardPaths.length > 0 && (
           <Alert variant="warning">
             <TriangleAlertIcon />
@@ -295,7 +367,10 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
           variant="project"
           onClick={handleImport}
           isDisabled={
-            !selectedPaths.length || mountsQuery.isLoading || vaultSecretPathsQuery.isLoading
+            !selectedPaths.length ||
+            invalidPaths.length > 0 ||
+            mountsQuery.isLoading ||
+            vaultSecretPathsQuery.isLoading
           }
         >
           Import Secrets
@@ -309,6 +384,7 @@ export const VaultSecretImportModal = ({
   isOpen,
   onOpenChange,
   appConnections,
+  destinationPath,
   onImport
 }: Props) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -329,6 +405,7 @@ export const VaultSecretImportModal = ({
         <Content
           onClose={() => onOpenChange(false)}
           appConnections={appConnections}
+          destinationPath={destinationPath}
           onImport={onImport}
         />
       </SheetContent>

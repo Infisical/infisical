@@ -47,6 +47,13 @@ export type TImportVaultSecretsDTO = {
   vaultNamespace: string;
   vaultSecretPaths: string[];
   connectionId: string;
+  keepVaultStructure: boolean;
+};
+
+export type TImportVaultSecretsResponse = {
+  status: ExternalMigrationImportStatus;
+  importedPaths?: string[];
+  approvalRequiredPaths?: string[];
 };
 
 export type VaultKubernetesAuthRole = {
