@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet";
 import { KeyRound } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import {
@@ -21,8 +22,9 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useServerConfig
+  useSubscription
 } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -32,7 +34,8 @@ import { ProjectTemplatesSection } from "./project-templates/ProjectTemplatesSec
 export const ProductSettingsPage = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
-  const { config } = useServerConfig();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const handleToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
@@ -50,6 +53,11 @@ export const ProductSettingsPage = () => {
 
   const handleCrossProjectSharingToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
+
+    if (state && !subscription?.crossProjectSecretSharing) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
 
     await updateOrg({
       orgId: currentOrg.id,
@@ -111,31 +119,29 @@ export const ProductSettingsPage = () => {
                       )}
                     </OrgPermissionCan>
                   </Field>
-                  {config.isCrossProjectSecretSharingEnabled && (
-                    <Field orientation="horizontal">
-                      <FieldContent>
-                        <FieldTitle>Cross-project secret sharing</FieldTitle>
-                        <FieldDescription>
-                          When enabled, allows secret imports and secret references to target
-                          folders and secrets from other projects within the same organization.
-                        </FieldDescription>
-                      </FieldContent>
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.Settings}
-                      >
-                        {(isAllowed) => (
-                          <Switch
-                            id="allow-cross-project-secret-sharing"
-                            variant="project"
-                            checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
-                            onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
-                            disabled={!isAllowed || isPending}
-                          />
-                        )}
-                      </OrgPermissionCan>
-                    </Field>
-                  )}
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>Cross-project secret sharing</FieldTitle>
+                      <FieldDescription>
+                        When enabled, allows secret imports and secret references to target
+                        folders and secrets from other projects within the same organization.
+                      </FieldDescription>
+                    </FieldContent>
+                    <OrgPermissionCan
+                      I={OrgPermissionActions.Edit}
+                      a={OrgPermissionSubjects.Settings}
+                    >
+                      {(isAllowed) => (
+                        <Switch
+                          id="allow-cross-project-secret-sharing"
+                          variant="project"
+                          checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
+                          onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
+                          disabled={!isAllowed || isPending}
+                        />
+                      )}
+                    </OrgPermissionCan>
+                  </Field>
                 </FieldGroup>
               </CardContent>
             </Card>
@@ -149,6 +155,11 @@ export const ProductSettingsPage = () => {
           </div>
         </div>
       </div>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Cross-project secret sharing is not available on your current plan. Upgrade to enable secret imports and references across projects."
+      />
     </>
   );
 };
