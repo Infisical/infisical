@@ -14,6 +14,7 @@ import {
   TAddPamProductGroupMemberDTO,
   TAddPamProductIdentityMemberDTO,
   TAddPamProductUserMemberDTO,
+  TBreakGlassPamAccessRequestDTO,
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
@@ -825,13 +826,35 @@ export const useRevokePamAccessRequest = () => {
   });
 };
 
+export const useBreakGlassPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, bypassReason }: TBreakGlassPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/access-requests/${requestId}/break-glass`,
+        { bypassReason }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
 export const useSetPamApprovalConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folderId, steps, notificationConfigs }: TSetPamApprovalConfigDTO) => {
+    mutationFn: async ({
+      folderId,
+      steps,
+      notificationConfigs,
+      breakGlassApprovers
+    }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps, notificationConfigs }
+        { steps, notificationConfigs, breakGlassApprovers }
       );
       return data;
     },

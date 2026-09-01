@@ -6163,6 +6163,7 @@ interface PamApprovalConfigUpdateEvent {
     policyId: string | null;
     stepCount: number;
     notificationConfigCount?: number;
+    breakGlassApproverCount?: number;
   };
 }
 
@@ -6394,6 +6395,8 @@ interface PamAccessPolicyBypassedEvent {
     requestId: string;
     grantId: string;
     granteeUserId: string;
+    accountId?: string;
+    folderId?: string;
     resourceName?: string;
     accountName?: string;
     accessDuration: string;

@@ -339,6 +339,8 @@ export type TAccessiblePamAccount = {
   requireReason?: boolean;
   accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
+  pendingRequestId: string | null;
+  canBreakGlass: boolean;
   disabledReason?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -700,6 +702,8 @@ export type TPamAccessRequest = {
   host?: string;
   grantExpiresAt?: string | null;
   grantStatus?: string | null;
+  isBreakGlass?: boolean;
+  bypassReason?: string | null;
 };
 
 export type TPamNotificationConfig = {
@@ -717,6 +721,7 @@ export type TPamApprovalConfig = {
     integration: string;
     integrationSlug: string;
   })[];
+  breakGlassApprovers: { type: PamApproverType; id: string }[];
 };
 
 export type TPamAccessGrant = {
@@ -749,10 +754,16 @@ export type TRevokePamAccessRequestDTO = {
   requestId: string;
 };
 
+export type TBreakGlassPamAccessRequestDTO = {
+  requestId: string;
+  bypassReason: string;
+};
+
 export type TSetPamApprovalConfigDTO = {
   folderId: string;
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
   notificationConfigs?: TPamNotificationConfig[];
+  breakGlassApprovers?: { type: PamApproverType; id: string }[];
 };

@@ -34,10 +34,16 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   <Step title="Configure policies">
     | Option | What it does |
     |--------|--------------|
+    | **Require Approval** | Users must request and be granted [access](/documentation/platform/pam/access-requests/overview) before connecting |
+    | **Allow Break-Glass** | Named responders can clear their own request without an approver, for emergencies |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
+
+    <Note>
+      **Allow Break-Glass** needs **Require Approval** on the same template, and it stays off until a Folder Admin names the responders on the folder's **Approvals** tab. See [break-glass access](/documentation/platform/pam/access-requests/overview#break-glass-access).
+    </Note>
 
     <Note>
       **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.

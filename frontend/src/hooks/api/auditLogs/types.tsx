@@ -948,6 +948,8 @@ interface PamAccessPolicyBypassedEvent {
     requestId: string;
     grantId: string;
     granteeUserId: string;
+    accountId?: string;
+    folderId?: string;
     resourceName?: string;
     accountName?: string;
     accessDuration: string;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, Clock, ShieldCheck, X } from "lucide-react";
+import { Check, Clock, ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
@@ -130,6 +130,26 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
       >
         <div className="flex h-full flex-1 flex-col p-6">
           <div className="flex flex-1 flex-col gap-6">
+            {request?.isBreakGlass && (
+              <div className="flex gap-2.5 rounded-md border border-danger/40 bg-danger/5 p-4">
+                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    Approval bypassed with break-glass
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {request.requesterName} granted themselves this access without waiting for an
+                    approver.
+                  </p>
+                  {request.bypassReason && (
+                    <p className="mt-2 text-xs text-foreground">
+                      <span className="text-muted">Reason:</span> {request.bypassReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {isPending && (
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>

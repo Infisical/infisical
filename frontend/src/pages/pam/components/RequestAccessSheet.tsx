@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -6,6 +6,7 @@ import {
   GitBranch,
   ListChecks,
   Send,
+  ShieldAlert,
   User as UserIcon,
   Users as UsersIcon
 } from "lucide-react";
@@ -15,6 +16,11 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -33,6 +39,7 @@ import {
   PamApproverType,
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
+  useBreakGlassPamAccessRequest,
   useCreatePamAccessRequest,
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
@@ -140,7 +147,10 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
 export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
+  const breakGlass = useBreakGlassPamAccessRequest();
+  const [bypassReason, setBypassReason] = useState("");
   const isPending = account?.accessStatus === PamAccessStatus.Pending;
+  const canBreakGlass = Boolean(account?.canBreakGlass && account?.pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
   const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
 
@@ -155,8 +165,28 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
   });
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) reset();
+    if (!open) {
+      reset();
+      setBypassReason("");
+    }
     onOpenChange(open);
+  };
+
+  const onBreakGlass = () => {
+    if (!account?.pendingRequestId) return;
+    breakGlass.mutate(
+      { requestId: account.pendingRequestId, bypassReason: bypassReason.trim() },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Access granted. The approvers you skipped have been notified.",
+            type: "success"
+          });
+          setBypassReason("");
+          onOpenChange(false);
+        }
+      }
+    );
   };
 
   const onSubmit = (data: FormData) => {
@@ -197,6 +227,46 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
               <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
             </div>
             <ApprovalWorkflow accountId={account?.id} isPending />
+            {canBreakGlass && (
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle className="text-base">
+                    <ShieldAlert className="size-4 shrink-0 text-danger" />
+                    Break glass
+                  </CardTitle>
+                  <CardDescription>
+                    Grant yourself access now without waiting for an approver. Use this only in an
+                    emergency: the approvers above are notified immediately and the reason you give
+                    is recorded in the audit log.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <Field>
+                    <FieldLabel>
+                      Reason <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        rows={3}
+                        value={bypassReason}
+                        onChange={(e) => setBypassReason(e.target.value)}
+                        placeholder="Why can this not wait for an approver?"
+                      />
+                      <FieldDescription>At least 10 characters.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                  <Button
+                    variant="danger"
+                    className="self-end"
+                    isDisabled={bypassReason.trim().length < 10}
+                    isPending={breakGlass.isPending}
+                    onClick={onBreakGlass}
+                  >
+                    Break glass
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">

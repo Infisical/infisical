@@ -1697,6 +1697,7 @@ export const registerRoutes = async (
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -1957,6 +1958,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
@@ -3544,8 +3546,6 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL
   });
-
-  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
 
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,

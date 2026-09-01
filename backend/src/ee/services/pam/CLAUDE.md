@@ -129,6 +129,17 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
+the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in
+`approval_policy_bypassers`. Neither alone is sufficient, and an empty bypasser list means **nobody** —
+the shared `approval-policy-service` treats an empty list as everybody, which is the opposite rule, so do
+not reuse its predicate. `allow-break-glass` resolves to false without `requires-approval`, since there is
+then no approval to skip. Saving the folder config keeps the policy's `enforcementLevel` in step with the
+list (`soft` when non-empty), and omitting `breakGlassApprovers` entirely leaves the stored list alone so a
+steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
+`bypassReason`, and `PAM_ACCESS_POLICY_BYPASSED` must carry `accountId`/`folderId` or the event is hidden
+from folder and account auditors (see the audit-log gotcha under Permissions).
+
 ## Discovery
 
 `pam-discovery/`: a **source** (a credential account + gateway) scans and stages **discovered accounts**

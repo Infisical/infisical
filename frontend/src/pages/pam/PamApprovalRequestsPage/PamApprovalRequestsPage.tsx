@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
+import { FolderOpen, SearchIcon, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
@@ -78,7 +78,15 @@ const RequestRow = ({
         {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
       </TableCell>
       <TableCell>
-        <Badge variant={status.variant}>{status.label}</Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant={status.variant}>{status.label}</Badge>
+          {request.isBreakGlass && (
+            <Badge variant="danger">
+              <ShieldAlert className="mr-1 size-3" />
+              Break-glass
+            </Badge>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );

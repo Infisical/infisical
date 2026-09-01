@@ -7,6 +7,7 @@ describe("getApplicablePolicies", () => {
   test("returns the universal policies for any account type", () => {
     const keys = getApplicablePolicies(PamAccountType.Postgres).map((p) => p.key);
     expect(keys).toContain(PamPolicyType.RequireMfa);
+    expect(keys).toContain(PamPolicyType.AllowBreakGlass);
     expect(keys).toContain(PamPolicyType.RequireReason);
     expect(keys).toContain(PamPolicyType.MaxSessionDuration);
   });
@@ -88,6 +89,7 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
+    allowBreakGlass: false,
     requireReason: false,
     requireMfa: false,
     maxSessionDurationSeconds: null
@@ -111,7 +113,13 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.RequireMfa]: true,
         [PamPolicyType.MaxSessionDuration]: 3600
       })
-    ).toEqual({ requiresApproval: false, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
+    ).toEqual({
+      requiresApproval: false,
+      allowBreakGlass: false,
+      requireReason: true,
+      requireMfa: true,
+      maxSessionDurationSeconds: 3600
+    });
   });
 
   test("resolves each policy independently of the others", () => {
@@ -123,6 +131,22 @@ describe("resolveAccessControls", () => {
       ...DEFAULTS,
       maxSessionDurationSeconds: 60
     });
+  });
+
+  test("break-glass only resolves alongside the approval it exists to skip", () => {
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowBreakGlass]: true
+      }).allowBreakGlass
+    ).toBe(true);
+    expect(resolveAccessControls({ [PamPolicyType.AllowBreakGlass]: true }).allowBreakGlass).toBe(false);
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowBreakGlass]: "true"
+      }).allowBreakGlass
+    ).toBe(false);
   });
 
   test("treats the boolean gates as strict: only literal true enables them", () => {

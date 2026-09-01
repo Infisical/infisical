@@ -54,7 +54,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
               approvers: z.array(ApproverSchema)
             })
           ),
-          notificationConfigs: z.array(NotificationConfigResponseSchema)
+          notificationConfigs: z.array(NotificationConfigResponseSchema),
+          breakGlassApprovers: z.array(ApproverSchema)
         })
       }
     },
@@ -82,7 +83,12 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
       }),
       body: z.object({
         steps: z.array(StepSchema).max(1),
-        notificationConfigs: z.array(NotificationConfigSchema).max(10).optional()
+        notificationConfigs: z.array(NotificationConfigSchema).max(10).optional(),
+        breakGlassApprovers: z
+          .array(ApproverSchema)
+          .max(20)
+          .optional()
+          .describe("Users and groups allowed to self-approve their own request. Omitted or empty means nobody.")
       }),
       response: {
         200: z.object({
@@ -97,6 +103,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         projectId: req.internalPamProjectId,
         steps: req.body.steps,
         notificationConfigs: req.body.notificationConfigs,
+        breakGlassApprovers: req.body.breakGlassApprovers,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -113,7 +120,8 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
             folderId: req.params.folderId,
             policyId: result.policyId,
             stepCount: result.stepCount,
-            notificationConfigCount: result.notificationConfigCount
+            notificationConfigCount: result.notificationConfigCount,
+            breakGlassApproverCount: result.breakGlassApproverCount
           }
         }
       });

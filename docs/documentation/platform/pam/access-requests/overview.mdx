@@ -102,6 +102,68 @@ graph LR
 
 Rejected, expired, and revoked requests stay in the list so the audit trail stays complete.
 
+## Break-glass access
+
+Break-glass access lets a named responder clear their own pending request without an approver. Every approver who was skipped is notified immediately.
+
+It grants no standing access. The responder still files a request, still gives a reason, and still gets a time-boxed grant. The only thing that changes is who signs it off.
+
+### The two switches
+
+Break-glass needs two switches on, and a different person owns each one:
+
+- The **Product Admin** turns on **Allow Break-Glass** on the [template](/documentation/platform/pam/templates/overview). This sets which accounts can ever be broken into.
+- The **Folder Admin** names the break-glass approvers on the folder's **Approvals** tab. This sets who can do it.
+
+An empty break-glass list means nobody, not everybody, so the template policy on its own changes nothing until a Folder Admin names someone.
+
+<Note>
+  **Allow Break-Glass** does nothing without **Require Approval** on the same template. Break-glass skips an approval, so an account that never needed one has nothing to skip.
+</Note>
+
+```mermaid
+graph TD
+    T["Product Admin<br/>turns on Allow Break-Glass<br/>on the template"]
+    F["Folder Admin<br/>names break-glass approvers<br/>on the Approvals tab"]
+    B["Responder can break glass"]
+
+    T --> B
+    F --> B
+```
+
+### Setting it up
+
+<Steps>
+  <Step title="Turn on the template policy (Product Admin)">
+    Go to **Privileged Access Management → Account Templates**, open the template, and turn on **Allow Break-Glass** alongside **Require Approval**.
+  </Step>
+  <Step title="Name the responders (Folder Admin)">
+    Open the folder, go to its **Approvals** tab, and add users or groups under **Break-Glass Approvers**.
+
+    Break-glass approvers must be members of the folder, same as ordinary approvers, so the picker only offers people who already belong to it. Keep the list to your on-call responders rather than everyone who might need the account.
+  </Step>
+</Steps>
+
+### Breaking glass
+
+A break-glass approver files a request the usual way, with a reason and a duration. While it's pending, the request sheet offers **Break glass** below the approval workflow.
+
+Breaking glass takes a second reason, at least 10 characters, for why this can't wait for an approver. Select **Break glass** and the grant opens straight away, for the duration the request asked for.
+
+Nothing else about the grant changes. It expires on the same clock, a Folder Admin can revoke it the same way, and sessions on it are recorded like any other.
+
+### What happens next
+
+Every use of break-glass:
+
+- Emails every approver who was skipped, with the reason given
+- Notifies them in the app
+- Posts to the folder's Slack channels, if you've configured notifications on the folder
+- Writes a **PAM Access Policy Bypassed** entry to the [audit log](/documentation/platform/pam/auditing) with the reason, the account, the folder, and how many approvers were skipped
+- Marks the request with a **Break-glass** badge, in the folder's request history and in the approver's own queue
+
+The badge and the audit entry are permanent.
+
 ## Requests from AI agents
 
 An agent requests access on the same terms as a person, but from the [CLI](/cli/commands/pam-agentic) instead of the dashboard. A request from an agent running as a machine identity shows the identity's name in place of a requester's email; one from an agent you started yourself is filed under your own name.
@@ -129,6 +191,18 @@ When an agent reaches for a gated account, the request is filed for it automatic
   </Accordion>
   <Accordion title="Who can revoke access once it is granted?">
     A Folder Admin. Revoking ends an active request right away and cuts off access before its duration runs out. Any active session using that access is terminated immediately.
+  </Accordion>
+  <Accordion title="Can a machine identity or an AI agent break glass?">
+    No. Only users can be named as break-glass approvers, the same rule that keeps a machine identity from being an ordinary approver.
+  </Accordion>
+  <Accordion title="Can someone break glass on another person's request?">
+    No. Break-glass clears your own pending request and nothing else.
+  </Accordion>
+  <Accordion title="Does break-glass give longer or wider access than an approval?">
+    No. The grant is the one the request asked for: same duration, same account, same expiry. A Folder Admin can revoke it early, and sessions on it are recorded like any other. The only difference is that no approver signed it off.
+  </Accordion>
+  <Accordion title="What happens if the account moves or the folder's policy changes mid-request?">
+    Infisical runs the same checks it runs for an approval, and refuses rather than granting access under a folder's old rules. That covers an account that moved to another folder or was removed, and a folder whose approvers were cleared. You'll also lose the ability to break glass if you're dropped from the folder, or from its break-glass list, while your request is pending.
   </Accordion>
   <Accordion title="Do changes to a folder's approvers apply to requests already in flight?">
     Removing an approver takes effect right away: someone dropped from the folder's approvers can no longer act on a request that is still pending. Adding an approver does not reach back into requests already in flight, so a pending request can only be cleared by the approvers it had when it was created. An approved request is already granted and keeps its access until it expires or is revoked, whatever changes afterward.

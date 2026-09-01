@@ -16,6 +16,7 @@ PAM logs every action — who accessed what, who changed what, and when. This au
 | **Templates** | Template created, updated, deleted |
 | **Memberships** | Membership added, updated, removed |
 | **Product Access** | Product member added, removed, role changed |
+| **[Access requests](/documentation/platform/pam/access-requests/overview)** | Request filed, reviewed, revoked, approval policy bypassed |
 
 Each event includes:
 - **Timestamp** — when it happened
@@ -54,6 +55,8 @@ Audit logs are retained according to your organization's policy. Events are immu
 **Change tracking** — Filter by event type to see configuration changes (template updates, membership changes).
 
 **Activity reports** — Filter by actor to see everything a specific user or machine identity did.
+
+**Break-glass review**: Filter for **PAM Access Policy Bypassed** to see every grant that skipped an approver, with the reason given. Each entry names the account, the folder, and how many approvers were skipped.
 
 ## Next steps
 

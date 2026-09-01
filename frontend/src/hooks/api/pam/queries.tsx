@@ -213,6 +213,8 @@ export type TPamAccountListItem = {
   requireReason: boolean;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
+  pendingRequestId: string | null;
+  canBreakGlass: boolean;
   permissions: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"];
   createdAt: string;
   updatedAt: string;
