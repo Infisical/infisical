@@ -78,7 +78,7 @@ type TTestEventFields = {
   secretPath?: string;
 };
 
-const TEST_EVENT_MESSAGE = "This is a test message from Infisical.";
+const TEST_EVENT_MESSAGE = "This is a test message from Infisical webhooks.";
 
 // Keyed by webhook type rather than switched on, so a new WebhookType fails the type check here
 // until it has a body its provider accepts. Slack rejects a body without `text` with 400 no_text.
