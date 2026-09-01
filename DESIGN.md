@@ -244,6 +244,12 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Loader`](frontend/src/components/v3/generic/Loader/Loader.tsx)              | Branded loading animation — pending controls and page waits.     |
 | [`PageLoader`](frontend/src/components/v3/platform/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
 
+**Reduced motion.** When the operating system requests reduced motion, `Loader`
+and `PageLoader` hold the animation on its first frame instead of looping. The
+mark stays fully visible either way, because these Lotties animate only a
+trim-path offset over an always-drawn mark. `role="status"` is present in both
+states, so the wait is still announced.
+
 #### Atoms & domain
 
 | Component                                                                                                         | Reach for this when…                                                                  |

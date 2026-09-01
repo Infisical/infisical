@@ -9,7 +9,7 @@ export const EnvironmentPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>

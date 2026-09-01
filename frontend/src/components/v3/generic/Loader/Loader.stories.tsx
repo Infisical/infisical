@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MotionConfig } from "framer-motion";
 import { RefreshCwIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "../Button";
@@ -27,9 +26,15 @@ import { Loader } from "./Loader";
  * height follows the asset. `className` merges through `cn` and wins, so a
  * call site sitting between steps (`w-24` for `PageLoader`) can set its own
  * width without a new size.
- * When the operating system requests reduced motion, the player remains on the
- * fully drawn first frame while the status semantics continue to announce the
- * pending state.
+ *
+ * When the operating system requests reduced motion, the player holds the fully
+ * drawn first frame instead of looping, and the `role="status"` semantics keep
+ * announcing the pending state. There is no story for that state, because the
+ * component reads the `prefers-reduced-motion` media query directly and this
+ * Storybook has no addon that can emulate a media feature, so no decorator can
+ * force it. Review it either by turning on the operating system's reduce-motion
+ * setting, or in Chrome DevTools: open the command menu, run "Show Rendering",
+ * and set "Emulate CSS media feature prefers-reduced-motion" to `reduce`.
  */
 const meta = {
   title: "Generic/Loader",
@@ -122,25 +127,6 @@ export const VariantBrand: Story = {
       description: {
         story:
           "The colored mark. Reserve it for brand-forward moments: the router's own pending state before the product chrome exists, full-screen `ContentLoader` waits, and connection tests that stand in for the product itself. Do not use it as a generic accent inside routine product UI."
-      }
-    }
-  }
-};
-
-export const ReducedMotion: Story = {
-  name: "State: Reduced Motion",
-  decorators: [
-    (Story) => (
-      <MotionConfig reducedMotion="always">
-        <Story />
-      </MotionConfig>
-    )
-  ],
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Forces the operating system's reduced-motion state so the loader can be reviewed without changing local accessibility settings. The mark remains on its fully drawn first frame while the loading status semantics stay available to assistive technology."
       }
     }
   }
