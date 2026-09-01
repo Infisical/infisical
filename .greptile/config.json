@@ -31,6 +31,12 @@
       "rule": "Database migrations must never depend on the license or feature flags, directly or transitively. Migrations run before the license service initializes, so any plan/entitlement/feature-flag lookup returns its default value instead of the deployment's real one, and a migration that branches on that value silently takes the wrong path and can corrupt data. (Real incident: a migration used getMigrationEncryptionServices, whose HSM check is license-gated; with the license uninitialized the flag read as off, so data was nearly re-encrypted with the wrong key.) Flag any migration that: reads the license service (licenseServiceFactory, licenseService, getPlan, entitlement/feature-set lookups); reads a feature flag (getFeatureFlag or any flag-provider call); or calls a shared helper that does either check internally without the option that skips it (e.g. getMigrationEncryptionServices without skipHsmLicenseCheck: true, or isHsmActiveAndEnabled given a licenseService). Migrations may only branch on DB state and env config (e.g. the kms_root_config encryption strategy).",
       "severity": "high",
       "scope": ["backend/src/db/migrations/**"]
+    },
+    {
+      "id": "no-duplicate-error-toast-in-mutation-handlers",
+      "rule": "Frontend mutation failures are already reported to the user once, globally: the QueryClient in frontend/src/hooks/api/reactQuery.tsx wires MutationCache.onError to onRequestError, which shows a toast with the server error message for every useMutation failure. Do not add a second error createNotification in a mutation's catch, onError, or mutateAsync call site, because the user then sees two toasts for one failure. Local error handling may still restore optimistic state, keep a dialog open, or run other control flow, as long as it displays no notification. Two things are not violations: a raw exported API function called outside useMutation bypasses MutationCache entirely and needs its own onRequestError(error) call, so check which form the call site uses; and a tailored message is set with meta: { handledErrorCodes: [...] } on the mutation, which silences the global toast for those ApiErrorTypes codes and lets the call site render its own.",
+      "severity": "medium",
+      "scope": ["frontend/src/**"]
     }
   ]
 }
