@@ -123,8 +123,8 @@ export const ProductSettingsPage = () => {
                     <FieldContent>
                       <FieldTitle>Cross-project secret sharing</FieldTitle>
                       <FieldDescription>
-                        When enabled, allows secret imports and secret references to target
-                        folders and secrets from other projects within the same organization.
+                        When enabled, allows secret imports and secret references to target folders
+                        and secrets from other projects within the same organization.
                       </FieldDescription>
                     </FieldContent>
                     <OrgPermissionCan
