@@ -185,9 +185,8 @@ export const orgDALFactory = (db: TDbClient) => {
         ? (`${TableName.Membership}.actorUserId` as const)
         : (`${TableName.Membership}.actorIdentityId` as const);
 
-      // Embedded in two queries below, so it must be a factory: one builder shared between them
-      // would carry mutable state across. The explicit return type collapses the two branches,
-      // which knex's whereIn overloads cannot resolve as a union.
+      // A factory, not a shared builder: knex builders carry mutable state, and the explicit return
+      // type collapses the two branches knex's whereIn overloads cannot resolve as a union.
       const actorGroupIdsSubquery = (): Knex.QueryBuilder =>
         isUserActor
           ? conn(TableName.Groups)
@@ -215,50 +214,49 @@ export const orgDALFactory = (db: TDbClient) => {
         }
       };
 
-      const buildBaseQuery = () => {
+      const subOrgIdsSubquery = (): Knex.QueryBuilder =>
+        conn(TableName.Organization)
+          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+          .select(db.ref("id").withSchema(TableName.Organization));
+
+      // distinctOn keeps this to one membership per sub-org, so joining it cannot fan the result
+      // out; ordering the direct row first makes the isActive we surface the one
+      // findEffectiveOrgMembership gates on, rather than an arbitrary group row.
+      const actorMembershipSubquery = (): Knex.QueryBuilder =>
+        conn(TableName.Membership)
+          .distinctOn(`${TableName.Membership}.scopeOrgId`)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery())
+          .andWhere(whereActorIsMember)
+          .orderBy(`${TableName.Membership}.scopeOrgId`)
+          .orderByRaw("?? IS NULL ASC", [directActorColumn])
+          .select(
+            db.ref("scopeOrgId").withSchema(TableName.Membership),
+            db.ref("isActive").withSchema(TableName.Membership)
+          )
+          .as("actorMembership");
+
+      const applyMembershipJoin = (qb: Knex.QueryBuilder) => {
         if (dto.isAccessible) {
-          const subOrgIdsSubquery = conn(TableName.Organization)
-            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-            .select(db.ref("id").withSchema(TableName.Organization));
-
-          const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
-            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
-            .andWhere(whereActorIsMember)
-            .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
-
-          return conn(TableName.Organization)
-            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-            .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery);
+          void qb.innerJoin(actorMembershipSubquery(), "actorMembership.scopeOrgId", `${TableName.Organization}.id`);
+        } else {
+          void qb.leftJoin(actorMembershipSubquery(), "actorMembership.scopeOrgId", `${TableName.Organization}.id`);
         }
-
-        return conn(TableName.Organization).where(`${TableName.Organization}.rootOrgId`, dto.orgId);
       };
 
-      const baseQuery = buildBaseQuery();
+      const baseQuery = conn(TableName.Organization).where(`${TableName.Organization}.rootOrgId`, dto.orgId);
       if (dto.search)
         void baseQuery.whereILike(`${TableName.Organization}.name`, `%${sanitizeSqlLikeString(dto.search)}%`);
 
-      // distinctOn yields exactly one membership per sub-org, so the leftJoin below cannot fan the
-      // result out; ordering the direct row first makes the isActive we surface the one
-      // findEffectiveOrgMembership gates on, rather than an arbitrary group row.
-      const actorMembershipSubquery = conn(TableName.Membership)
-        .distinctOn(`${TableName.Membership}.scopeOrgId`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .andWhere(whereActorIsMember)
-        .orderBy(`${TableName.Membership}.scopeOrgId`)
-        .orderByRaw("?? IS NULL ASC", [directActorColumn])
-        .select(
-          db.ref("scopeOrgId").withSchema(TableName.Membership),
-          db.ref("isActive").withSchema(TableName.Membership)
-        )
-        .as("actorMembership");
+      const countQuery = baseQuery.clone();
+      applyMembershipJoin(countQuery);
+
+      const orgsQuery = baseQuery.clone();
+      applyMembershipJoin(orgsQuery);
 
       const [totalResult, orgs] = await Promise.all([
-        baseQuery.clone().count({ count: "*" }).first(),
-        baseQuery
-          .clone()
-          .leftJoin(actorMembershipSubquery, "actorMembership.scopeOrgId", `${TableName.Organization}.id`)
+        countQuery.count({ count: "*" }).first(),
+        orgsQuery
           .select(selectAllTableCols(TableName.Organization))
           .select(db.ref("isActive").withSchema("actorMembership"))
           .orderBy(`${TableName.Organization}.${orderBy}`, orderDirection)
