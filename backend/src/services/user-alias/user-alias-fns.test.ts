@@ -326,7 +326,11 @@ const makeAlias = (overrides: Partial<TUserAliases> = {}) =>
 
 type TAuditLogArg = { orgId: string; event: { type: string; metadata: Record<string, unknown> } };
 
-const makeDeps = ({ conflictingUser = null as TUsers | null, updateError = null as Error | null } = {}) => {
+const makeDeps = ({
+  conflictingUser = null as TUsers | null,
+  updateError = null as Error | null,
+  orgVerifiedDomains = ["example.com"] as string[]
+} = {}) => {
   const updatedRows: Record<string, unknown>[] = [];
   const userDAL = {
     findOne: vi.fn().mockResolvedValue(conflictingUser),
@@ -338,11 +342,18 @@ const makeDeps = ({ conflictingUser = null as TUsers | null, updateError = null 
     transaction: vi.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb({}))
   };
   const userAliasDAL = { updateById: vi.fn().mockResolvedValue(undefined) };
+  const emailDomainDAL = {
+    findOne: vi
+      .fn()
+      .mockImplementation(({ domain }: { domain: string }) =>
+        orgVerifiedDomains.includes(domain) ? { id: "domain-1", domain } : undefined
+      )
+  };
   const auditLogService = {
     createAuditLog: vi.fn<(arg: TAuditLogArg) => Promise<void>>().mockResolvedValue(undefined)
   };
 
-  return { userDAL, userAliasDAL, auditLogService, updatedRows };
+  return { userDAL, userAliasDAL, emailDomainDAL, auditLogService, updatedRows };
 };
 
 const sync = (args: Record<string, unknown>, deps: ReturnType<typeof makeDeps>) =>
@@ -354,6 +365,7 @@ const sync = (args: Record<string, unknown>, deps: ReturnType<typeof makeDeps>) 
     isAuthEnforced: true,
     userDAL: deps.userDAL,
     userAliasDAL: deps.userAliasDAL,
+    emailDomainDAL: deps.emailDomainDAL,
     auditLogService: deps.auditLogService,
     ...args
   } as Parameters<typeof syncSsoUserProfile>[0]);
@@ -457,5 +469,23 @@ describe("syncSsoUserProfile", () => {
 
     expect(user.username).toBe("old@example.com");
     expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("skips the email but keeps the name when the org does not own the address being replaced", async () => {
+    const deps = makeDeps({ orgVerifiedDomains: ["new-corp.com"] });
+    const user = await sync({ assertedEmail: "renamed@new-corp.com", assertedFirstName: "Bob" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+  });
+
+  test("skips the email when the org does not own the address being written", async () => {
+    const deps = makeDeps({ orgVerifiedDomains: ["example.com"] });
+    const user = await sync({ assertedEmail: "renamed@elsewhere.com" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.userDAL.findOne).not.toHaveBeenCalled();
   });
 });

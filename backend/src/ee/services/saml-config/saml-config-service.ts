@@ -809,6 +809,7 @@ export const samlConfigServiceFactory = ({
       isAuthEnforced: Boolean(organization.authEnforced),
       userDAL,
       userAliasDAL,
+      emailDomainDAL,
       auditLogService
     });
 

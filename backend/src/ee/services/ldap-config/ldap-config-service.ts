@@ -760,6 +760,7 @@ export const ldapConfigServiceFactory = ({
       isAuthEnforced: Boolean(organization.authEnforced),
       userDAL,
       userAliasDAL,
+      emailDomainDAL,
       auditLogService
     });
 

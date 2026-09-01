@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { AccessScope, TableName, TUserAliases, TUsers } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { verifyEmailDomainOwnership } from "@app/ee/services/email-domain/email-domain-fns";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -107,6 +109,7 @@ type TSyncSsoUserProfileDTO = {
   isAuthEnforced: boolean;
   userDAL: Pick<TUserDALFactory, "findOne" | "updateById" | "transaction">;
   userAliasDAL: Pick<TUserAliasDALFactory, "updateById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -138,6 +141,7 @@ export const syncSsoUserProfile = async ({
   isAuthEnforced,
   userDAL,
   userAliasDAL,
+  emailDomainDAL,
   auditLogService
 }: TSyncSsoUserProfileDTO): Promise<TUsers> => {
   if (!isAuthEnforced || !userAlias.isEmailVerified) return user;
@@ -182,6 +186,24 @@ export const syncSsoUserProfile = async ({
 
   let isEmailApplied = isEmailChanged;
   if (isEmailChanged) {
+    const isOrgOwnedRename = await Promise.all([
+      verifyEmailDomainOwnership({ email: user.username, orgId, emailDomainDAL }),
+      verifyEmailDomainOwnership({ email: assertedUsername, orgId, emailDomainDAL })
+    ])
+      .then(() => true)
+      .catch(() => false);
+
+    if (!isOrgOwnedRename) {
+      isEmailApplied = false;
+      logger.warn(
+        { userId: user.id, orgId, externalId: userAlias.externalId },
+        `Skipped SSO email sync, the organization does not own both addresses [userId=${user.id}] [orgId=${orgId}]`
+      );
+      if (!isNameChanged) return user;
+    }
+  }
+
+  if (isEmailApplied) {
     const conflictingUser = await userDAL.findOne({ username: assertedUsername });
     if (conflictingUser && conflictingUser.id !== user.id) {
       isEmailApplied = false;

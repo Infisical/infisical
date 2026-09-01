@@ -443,6 +443,13 @@ Two invariants:
 - **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
   already had; a throw locks the person out of an org that has no other way in. Every failure path
   returns the unchanged user.
+- **It only renames an address the org owns, onto another address the org owns.** Both halves are
+  checked in the helper against the org's verified domains. The user row is global rather than
+  org-scoped, so without the first half an org could rename an account that merely carries one of
+  its aliases and rewrite the identity every other org of that user sees. Every login path
+  establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
+  verified *for this org*, and the alias branch runs it against the existing account's username),
+  so the helper's copy is there to keep the rename from outliving those checks.
 - **It never renames onto an occupied address.** `users.username` is globally unique and the row is
   global rather than org-scoped, so the asserted address may already be a personal signup or an
   unmerged duplicate. The conflict is recorded (`SSO_USER_PROFILE_SYNC_CONFLICT`) and the email is

@@ -554,6 +554,7 @@ export const oidcConfigServiceFactory = ({
       isAuthEnforced: Boolean(organization.authEnforced),
       userDAL,
       userAliasDAL,
+      emailDomainDAL,
       auditLogService
     });
 
