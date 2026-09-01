@@ -100,6 +100,7 @@
     "protobufjs": "^7.5.6",
     "form-data": "^4.0.6",
     "find-my-way": "^9.7.0",
+    "body-parser": "^1.20.6",
     "shell-quote": "^1.9.0",
     "websocket-driver": "^0.7.5"
   },
