@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
-import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
+import { parsePastedSecrets } from "@app/components/utilities/parseSecrets";
 import { TextArea } from "@app/components/v3";
 import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
@@ -39,12 +39,7 @@ export const PasteSecretsContent = ({ onParsedSecrets, onDirtyChange }: ContentP
   }, [isDirty, onDirtyChange]);
 
   const onSubmit = ({ value }: TForm) => {
-    let env: TParsedEnv;
-    try {
-      env = parseJson(value);
-    } catch {
-      env = parseDotEnv(value);
-    }
+    const env = parsePastedSecrets(value);
 
     if (!Object.keys(env).length) {
       setError("value", {

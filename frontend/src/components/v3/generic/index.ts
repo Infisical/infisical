@@ -30,6 +30,7 @@ export * from "./InputGroup";
 export * from "./Item";
 export * from "./Kbd";
 export * from "./Label";
+export * from "./Loader";
 export * from "./Pagination";
 export * from "./Popover";
 export * from "./RadioGroup";
