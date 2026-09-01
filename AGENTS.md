@@ -26,6 +26,14 @@ Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` 
 
 When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design system — colors, typography, components, and voice.
 
+## Code Review Rules
+
+Flag these when reviewing a diff:
+
+- An error toast added in a `catch` or `onError` on a `useMutation` call, which duplicates the one `MutationCache.onError` already showed. See [frontend/CLAUDE.md](frontend/CLAUDE.md) for the raw-function versus hook distinction, and for `meta.handledErrorCodes` as the supported route to a tailored message.
+- A `try` block that wraps post-success work together with the operation itself, so a throw after the operation already succeeded is reported to the user as a failure.
+- An async call left unawaited where the following line depends on it having settled.
+
 ## Issue and PR Guidelines
 
 - Never create a GitHub issue.
