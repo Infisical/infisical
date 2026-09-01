@@ -2834,22 +2834,19 @@ const OverviewPageContent = () => {
     setSecretRowsScrollMargin((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
   }, [secretRowsStartElement, secretManagerScrollContainer]);
 
-  // Everything that sits between the top of the scroll container and the secret rows moves their
-  // origin when its height changes: the selection panel appearing, the card header wrapping, the
-  // import, folder, dynamic secret, rotation, honey token and proxied service blocks arriving.
-  // Most of that leaves the table's own box and the scroll container's box untouched, so measure
-  // on every commit and leave the observer to catch the reflows that land without a render. The
-  // measurement is scroll-independent, and the setter ignores sub-pixel differences, so this
-  // settles in a single extra render rather than looping.
-  useLayoutEffect(() => {
-    measureSecretRowsScrollMargin();
-  });
-
+  // Measure once the sentinel is mounted, then leave the observer to track it. Everything that
+  // moves the sentinel also resizes the table's own box or the scroll container's: rows arriving
+  // in the blocks above it grow the table, and the card header rewrapping is a response to the
+  // width the observer is already watching. The selection panel is portalled and fixed, so it
+  // never moves the sentinel at all. Re-measuring on every commit instead would make this the
+  // one unconditional setState scheduled from a layout effect, which React counts as a nested
+  // update: any commit that moves the sentinel would then schedule the next one without bound.
   useLayoutEffect(() => {
     const scrollElement = secretManagerScrollContainer;
     const tableElement = tableRef.current;
     if (!secretRowsStartElement || !scrollElement || !tableElement) return undefined;
 
+    measureSecretRowsScrollMargin();
     const resizeObserver = new ResizeObserver(measureSecretRowsScrollMargin);
     resizeObserver.observe(tableElement);
     resizeObserver.observe(scrollElement);
