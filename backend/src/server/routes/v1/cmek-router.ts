@@ -716,6 +716,15 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                     message: `algorithm must be an HMAC algorithm for generate-verify-mac keys`
                   });
                 }
+                if (
+                  data.keyUsage === KmsKeyUsage.KEY_AGREEMENT &&
+                  !Object.values(EccNistKeyAlgorithm).includes(algorithm as EccNistKeyAlgorithm)
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `algorithm must be a valid key agreement algorithm for key-agreement keys`
+                  });
+                }
                 if (!isBase64(data.keyMaterial)) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,

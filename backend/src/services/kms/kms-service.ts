@@ -263,7 +263,7 @@ export const kmsServiceFactory = ({
       if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
         throw new BadRequestError({
           message:
-            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
+            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify, MAC, or key-agreement key, create a new key and update your applications to use it."
         });
       }
 
@@ -962,9 +962,9 @@ export const kmsServiceFactory = ({
       let secret: string;
       try {
         secret = service.deriveSharedSecret(publicKey, kmsKey).toString("base64");
-      } catch {
+      } catch (err) {
         throw new BadRequestError({
-          message: "Invalid public key. Expected a DER-encoded SubjectPublicKeyInfo (SPKI) public key."
+          message: `Invalid public key: ${(err as Error).message}. Expected a DER-encoded SubjectPublicKeyInfo (SPKI) public key.`
         });
       }
 
