@@ -48,18 +48,13 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
-import {
-  Button as ButtonV2,
-  DeleteActionModal,
-  Modal,
-  ModalContent,
-  PageHeader
-} from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -74,6 +69,7 @@ import {
   CardHeader,
   Checkbox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -210,6 +206,10 @@ import { CreateSecretImportForm } from "../SecretDashboardPage/components/Action
 import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
+import {
+  getDestinationSecretPath,
+  getSecretLocation
+} from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/replicateSecrets";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
@@ -964,6 +964,7 @@ const OverviewPageContent = () => {
     string,
     { value: string; comments: string[] }
   > | null>(null);
+  const [isReplicateCopying, setIsReplicateCopying] = useState(false);
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
@@ -1190,15 +1191,15 @@ const OverviewPageContent = () => {
     }
   };
 
-  // Replicate Secrets Logic
   const replicateCreateCount = (
     (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.create || []
   ).length;
-  const replicateUpdateCount = (
-    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update || []
-  ).length;
+  const replicateConflictingSecrets =
+    (popUp.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update || [];
+  const replicateUpdateCount = replicateConflictingSecrets.length;
   const isReplicateNonConflicting = !replicateUpdateCount;
-  const isReplicateSubmitting = isCreatingSecrets || isUpdatingSecrets;
+  const isReplicateSubmitting = isReplicateCopying || isCreatingSecrets || isUpdatingSecrets;
+  const replicateDestinationEnvironment = singleVisibleEnv?.name ?? singleVisibleEnv?.slug ?? "";
 
   const handleParsedEnvMultiFolder = async (envByPath: TParsedFolderEnv) => {
     if (Object.keys(envByPath).length === 0) {
@@ -1215,17 +1216,7 @@ const OverviewPageContent = () => {
 
       await Promise.all(
         Object.entries(envByPath).map(async ([folderPath, boardSecrets]) => {
-          let normalizedPath = folderPath;
-
-          if (normalizedPath === "/") {
-            normalizedPath = secretPath;
-          } else {
-            const baseSecretPath = secretPath.endsWith("/") ? secretPath.slice(0, -1) : secretPath;
-            const cleanFolderPath = folderPath.startsWith("/")
-              ? folderPath.substring(1)
-              : folderPath;
-            normalizedPath = `${baseSecretPath}/${cleanFolderPath}`;
-          }
+          const normalizedPath = getDestinationSecretPath(secretPath, folderPath);
 
           const secretFolderKeys = Object.keys(boardSecrets);
 
@@ -1422,10 +1413,20 @@ const OverviewPageContent = () => {
     });
 
     handlePopUpClose("confirmReplicateUpload");
+    handlePopUpClose("replicateFolder");
     createNotification({
       type: "success",
-      text: "Successfully replicated secrets"
+      text: "Secrets copied"
     });
+  };
+
+  const handleConfirmReplicateImport = async () => {
+    setIsReplicateCopying(true);
+    try {
+      await handleSaveReplicateImport();
+    } finally {
+      setIsReplicateCopying(false);
+    }
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
@@ -1642,25 +1643,18 @@ const OverviewPageContent = () => {
       environment: string;
       isForced?: boolean;
     };
-    try {
-      await deleteDynamicSecret.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        name,
-        isForced
-      });
-      handlePopUpClose("deleteDynamicSecret");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to delete dynamic secret"
-      });
-    }
+    await deleteDynamicSecret.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      name,
+      isForced
+    });
+    handlePopUpClose("deleteDynamicSecret");
+    createNotification({
+      type: "success",
+      text: "Dynamic secret deleted"
+    });
   };
 
   const handleSecretImportDelete = async () => {
@@ -2643,6 +2637,12 @@ const OverviewPageContent = () => {
 
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
     | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretLeaseCreateData = popUp.createDynamicSecretLease?.data as
+    | (TDynamicSecret & { environment: string })
+    | undefined;
+  const dynamicSecretDeleteData = popUp.deleteDynamicSecret?.data as
+    | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
 
   return (
@@ -3651,20 +3651,22 @@ const OverviewPageContent = () => {
         environments={visibleDynamicSecretEnvs}
         secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp.dynamicSecretLeases.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+      <Dialog
+        open={popUp.dynamicSecretLeases.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("dynamicSecretLeases", isOpen)}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center space-x-2">
-              <p>Dynamic secret leases</p>
-              <Badge variant="neutral">{dynamicSecretLeaseData?.name}</Badge>
-            </div>
-          }
-          subTitle="Revoke or renew your secret leases"
-          className="max-w-3xl"
-        >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex min-w-0 items-center gap-2 pr-6">
+              <span>Dynamic Secret Leases</span>
+              {dynamicSecretLeaseData?.name && (
+                <Badge variant="neutral" isTruncatable>
+                  {dynamicSecretLeaseData.name}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Revoke or renew active leases.</DialogDescription>
+          </DialogHeader>
           {dynamicSecretLeaseData && (
             <DynamicSecretLease
               dynamicSecret={dynamicSecretLeaseData}
@@ -3679,64 +3681,94 @@ const OverviewPageContent = () => {
               environment={dynamicSecretLeaseData.environment}
             />
           )}
-        </ModalContent>
-      </Modal>
-      <Modal
+        </DialogContent>
+      </Dialog>
+      <EditDynamicSecretForm
         isOpen={popUp.editDynamicSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}
-      >
-        <ModalContent title="Edit dynamic secret" className="max-w-3xl">
-          <EditDynamicSecretForm
-            onClose={() => handlePopUpClose("editDynamicSecret")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={popUp.createDynamicSecretLease.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}
-      >
-        <ModalContent title="Provision lease">
-          <CreateDynamicSecretLease
-            provider={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.type
-            }
-            onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
-        isOpen={popUp.deleteDynamicSecret.isOpen}
-        deleteKey={
-          (popUp.deleteDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        onToggle={(state) => handlePopUpToggle("editDynamicSecret", state)}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
         }
-        title={
-          (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
-            ? "Do you want to force delete this dynamic secret?"
-            : "Do you want to delete this dynamic secret?"
+        secretPath={secretPath}
+        environment={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.environment
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
-        onDeleteApproved={handleDynamicSecretDelete}
       />
+      <Dialog
+        open={popUp.createDynamicSecretLease.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createDynamicSecretLease", isOpen)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Provision Lease</DialogTitle>
+            <DialogDescription>
+              Generate temporary credentials from this dynamic secret.
+            </DialogDescription>
+          </DialogHeader>
+          {dynamicSecretLeaseCreateData && (
+            <DialogBody className="flex flex-col overflow-visible">
+              <CreateDynamicSecretLease
+                provider={dynamicSecretLeaseCreateData.type}
+                onClose={() => handlePopUpClose("createDynamicSecretLease")}
+                projectSlug={projectSlug}
+                dynamicSecretName={dynamicSecretLeaseCreateData.name}
+                secretPath={secretPath}
+                environment={dynamicSecretLeaseCreateData.environment}
+              />
+            </DialogBody>
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={popUp.deleteDynamicSecret.isOpen}
+        confirmationValue={dynamicSecretDeleteData?.name}
+        onOpenChange={(isOpen) => {
+          if (!deleteDynamicSecret.isPending) handlePopUpToggle("deleteDynamicSecret", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {dynamicSecretDeleteData?.isForced
+                ? `Force Delete ${dynamicSecretDeleteData.name}?`
+                : `Delete ${dynamicSecretDeleteData?.name ?? "Dynamic Secret"}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dynamicSecretDeleteData?.isForced
+                ? "This removes the dynamic secret and its leases from Infisical without revoking them in the external provider. This cannot be undone."
+                : "This deletes the dynamic secret configuration and revokes its active leases. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{
+              disabled: deleteDynamicSecret.isPending,
+              placeholder: `Type ${dynamicSecretDeleteData?.name ?? "the dynamic secret name"} here`
+            }}
+            onConfirm={() => {
+              if (!deleteDynamicSecret.isPending) {
+                handleDynamicSecretDelete().catch(() => undefined);
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deleteDynamicSecret.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deleteDynamicSecret.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDynamicSecretDelete().catch(() => undefined);
+              }}
+            >
+              {dynamicSecretDeleteData?.isForced ? "Force Delete" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={popUp.deleteSecretImport.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
@@ -3921,66 +3953,66 @@ const OverviewPageContent = () => {
         }}
       />
       <ReplicateFolderFromBoard
+        destinationEnvironment={replicateDestinationEnvironment}
+        destinationPath={secretPath}
         isOpen={popUp.replicateFolder.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
         onParsedEnv={handleParsedEnvMultiFolder}
-        environment={singleVisibleEnv?.slug ?? ""}
         environments={userAvailableEnvs}
         projectId={projectId}
-        secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp?.confirmReplicateUpload?.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("confirmReplicateUpload", open)}
+      <AlertDialog
+        open={popUp?.confirmReplicateUpload?.isOpen}
+        onOpenChange={(open) => {
+          if (!isReplicateSubmitting) handlePopUpToggle("confirmReplicateUpload", open);
+        }}
       >
-        <ModalContent
-          title="Confirm Secret Upload"
-          footerContent={[
-            <ButtonV2
-              isLoading={isReplicateSubmitting}
-              isDisabled={isReplicateSubmitting}
-              colorSchema={isReplicateNonConflicting ? "primary" : "danger"}
-              key="overwrite-btn"
-              onClick={handleSaveReplicateImport}
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isReplicateNonConflicting ? "Replicate Secrets" : "Overwrite Existing Secrets"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isReplicateNonConflicting
+                ? `Replicate ${replicateCreateCount} ${replicateCreateCount === 1 ? "secret" : "secrets"} to ${replicateDestinationEnvironment} at ${secretPath}.`
+                : `${replicateUpdateCount} ${replicateUpdateCount === 1 ? "secret already exists" : "secrets already exist"} in ${replicateDestinationEnvironment}. Replicating will replace the values at the destination paths below${replicateCreateCount > 0 ? ` and create ${replicateCreateCount} new ${replicateCreateCount === 1 ? "secret" : "secrets"}` : ""}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {!isReplicateNonConflicting && (
+            <ul
+              aria-label="Secrets that will be overwritten"
+              className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-danger/20 bg-danger/5 p-3"
             >
-              {isReplicateNonConflicting ? "Upload" : "Overwrite"}
-            </ButtonV2>,
-            <ButtonV2
-              key="keep-old-btn"
-              className="ml-4"
-              onClick={() => handlePopUpClose("confirmReplicateUpload")}
-              variant="outline_bg"
-              isDisabled={isReplicateSubmitting}
-            >
-              Cancel
-            </ButtonV2>
-          ]}
-        >
-          {isReplicateNonConflicting ? (
-            <div>
-              Are you sure you want to import {replicateCreateCount} secret
-              {replicateCreateCount > 1 ? "s" : ""} to this environment?
-            </div>
-          ) : (
-            <div className="flex flex-col text-gray-300">
-              <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
-                {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
-                  ?.map((sec) => sec.secretKey)
-                  .join(", ")}
-              </div>
-              <div className="mt-6">
-                Are you sure you want to overwrite these secrets
-                {replicateCreateCount > 0
-                  ? ` and import ${replicateCreateCount} new
-                one${replicateCreateCount > 1 ? "s" : ""}`
-                  : ""}
-                ?
-              </div>
-            </div>
+              {replicateConflictingSecrets.map((secret) => {
+                const location = getSecretLocation(
+                  secret.secretPath ?? secretPath,
+                  secret.secretKey
+                );
+
+                return (
+                  <li key={location} className="truncate font-mono text-xs text-foreground">
+                    {location}
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </ModalContent>
-      </Modal>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isReplicateSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant={isReplicateNonConflicting ? "project" : "danger"}
+              isPending={isReplicateSubmitting}
+              isDisabled={isReplicateSubmitting}
+              onClick={(event) => {
+                event.preventDefault();
+                handleConfirmReplicateImport().catch(() => undefined);
+              }}
+            >
+              {isReplicateNonConflicting ? "Replicate secrets" : "Replicate and overwrite"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <VaultSecretImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
