@@ -6,4 +6,4 @@ ignorecase: true
 vocab: false
 tokens:
   - '(?<!-)click(?:s|ed|ing)?(?: on)?(?!-)'
-  - '(?<!-)tap(?:s|ped|ping)?(?!-)'
+  - '(?<!-)tap(?:s|ped|ping)?(?: on)?(?!-)'

@@ -270,7 +270,7 @@ Aim to keep the peak comfortably under `max_connections`, leaving headroom for m
 your own `psql` sessions. If you're close to the limit, **lower `DB_POOL_MAX`** rather than raising
 `max_connections`: each PostgreSQL connection costs memory on the server, and a large number of mostly-idle
 connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
-and raising it's the right move.
+and raising it is the right move.
 
 <Tip>
   Prefer scaling reads with `DB_READ_REPLICAS` over enlarging the primary pool. A connection pooler such as

@@ -153,7 +153,7 @@ Only Application Admins can set either command, so treat that role as access to 
 
 ### Health check
 
-A sync can only tell you the host wasn't ready once it has already tried. If the destination directory was renamed or the service that owns it's stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+A sync can only tell you the host wasn't ready once it has already tried. If the destination directory was renamed or the service that owns it is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
 
 A health check moves that discovery earlier. It runs on the target server before any certificate is written. If it exits non-zero, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs.
 

@@ -201,7 +201,7 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 - **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and moves it to the replacement when the certificate changes. This requires the Default scope.
 
 <Warning>
-  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP doesn't consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names don't include it's rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
+  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP doesn't consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names don't include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
 
   For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname. Leave the hostname empty to serve the certificate as the map's primary entry, which has no coverage requirement.
 </Warning>
