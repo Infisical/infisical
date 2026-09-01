@@ -158,7 +158,7 @@ export const ProductSettingsPage = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Cross-project secret sharing is not available on your current plan. Upgrade to continue using it."
+        text="Cross-project secret sharing is not available on your plan. Upgrade to the Infisical Pro plan to enable this feature."
       />
     </>
   );
