@@ -89,7 +89,7 @@ export const EncryptionKeyRotationSection = () => {
     return (
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Root encryption key</CardTitle>
+          <CardTitle>Root Encryption Keys</CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="warning">
@@ -146,7 +146,7 @@ export const EncryptionKeyRotationSection = () => {
     <>
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Root encryption keys</CardTitle>
+          <CardTitle>Root Encryption Keys</CardTitle>
           <CardDescription>
             Rotate the key that protects every secret in this instance. Every key is kept here after
             it is removed, so you can tell which archived key a restored backup needs.
@@ -155,7 +155,7 @@ export const EncryptionKeyRotationSection = () => {
             <CardAction>
               <Button size="lg" onClick={handleGenerate} isPending={isCreating}>
                 <PlusIcon />
-                Generate new key
+                Generate New Key
               </Button>
             </CardAction>
           )}
@@ -190,7 +190,7 @@ export const EncryptionKeyRotationSection = () => {
                     className="cursor-pointer underline underline-offset-4 hover:text-foreground"
                     onClick={() => setIsDeactivateOpen(true)}
                   >
-                    Deactivate now
+                    Deactivate Now
                   </button>
                 </p>
               </AlertDescription>
@@ -203,7 +203,7 @@ export const EncryptionKeyRotationSection = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Label</TableHead>
-                    <TableHead>Active from</TableHead>
+                    <TableHead>Active From</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead variant="action" className="pr-3" />
                   </TableRow>
@@ -222,7 +222,7 @@ export const EncryptionKeyRotationSection = () => {
                       <TableCell>
                         <Badge variant="info">
                           <CircleDashedIcon />
-                          Staged, not applied
+                          Staged, Not Applied
                         </Badge>
                       </TableCell>
                       <TableCell variant="action" className="pr-3">
@@ -333,7 +333,7 @@ export const EncryptionKeyRotationSection = () => {
         >
           <AlertDialogContent className="sm:max-w-xl!">
             <AlertDialogHeader>
-              <AlertDialogTitle>Deactivate the previous key</AlertDialogTitle>
+              <AlertDialogTitle>Deactivate the Previous Key</AlertDialogTitle>
               <AlertDialogDescription>
                 The key{" "}
                 {rootKey.expiring.label ? (
@@ -412,7 +412,7 @@ export const EncryptionKeyRotationSection = () => {
                 isPending={isRemoving}
                 onClick={handleRemoveExpiring}
               >
-                Deactivate key
+                Deactivate Key
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -422,7 +422,7 @@ export const EncryptionKeyRotationSection = () => {
       <Dialog open={Boolean(generatedKey)} onOpenChange={(open) => !open && setGeneratedKey(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Copy your new encryption key</DialogTitle>
+            <DialogTitle>Copy Your New Encryption Key</DialogTitle>
             <DialogDescription>
               This is the only time it will be shown. If you lose it before applying it, discard it
               and generate another.
@@ -501,7 +501,7 @@ export const EncryptionKeyRotationSection = () => {
               isDisabled={Boolean(generatedKey?.removesExpiringKey) && !acceptsKeyReplacement}
               onClick={() => setGeneratedKey(null)}
             >
-              I have stored the key
+              I Have Stored the Key
             </Button>
           </DialogFooter>
         </DialogContent>
