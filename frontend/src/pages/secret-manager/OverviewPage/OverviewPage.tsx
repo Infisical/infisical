@@ -202,7 +202,6 @@ import {
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
-import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
@@ -215,7 +214,6 @@ import { VaultSecretImportModal } from "../SecretDashboardPage/components/Action
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
-import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
@@ -228,7 +226,9 @@ import {
   useBatchModeActions
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
+import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
