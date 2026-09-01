@@ -3,6 +3,7 @@ import { components, OptionProps } from "react-select";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { InfoIcon } from "lucide-react";
 
+import { defineComponentDeprecation } from "../../../../../.storybook/deprecation";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../Field";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import { FilterableSelect } from "./FilterableSelect";
@@ -59,11 +60,19 @@ const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
   </components.Option>
 );
 
+const componentDeprecation = defineComponentDeprecation({
+  reason:
+    "FilterableSelect remains available only for grouped options and advanced react-select compatibility.",
+  replacement: "Combobox",
+  migration:
+    "Migrate searchable single- and multi-select consumers when they do not depend on grouped options or react-select-specific customization."
+});
+
 /**
- * `FilterableSelect` is the v3 react-select-based dropdown for searchable
- * single or multi selection over a known set of options. Reach for it when the
- * option list is too long for the Radix-based `Select` (which has no search)
- * but doesn't need users to add new entries — for that, see `CreatableSelect`.
+ * `FilterableSelect` is a deprecated react-select compatibility wrapper.
+ * Use `Combobox` for searchable single or multi selection over a known set of
+ * options. Retain `FilterableSelect` only for grouped options or advanced
+ * react-select customization that `Combobox` does not yet support.
  *
  * Pass options as `{ label, value }[]`. Use `isMulti` for multi-select; pass
  * `groupBy` (a key on each option) and optionally `getGroupHeaderLabel` to
@@ -78,9 +87,10 @@ const meta = {
   title: "Generic/FilterableSelect",
   component: FilterableSelect,
   parameters: {
-    layout: "centered"
+    layout: "centered",
+    deprecation: componentDeprecation
   },
-  tags: ["autodocs"],
+  tags: ["autodocs", "deprecated"],
   decorators: [
     (Story) => (
       <div className="h-52 w-96">
@@ -101,7 +111,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Baseline single-select with a searchable list. Type in the field to filter options; click or hit Enter to select. Reach for this over the Radix-based `Select` whenever the option list is long enough that a user would want search."
+          "Compatibility example for a searchable single-select. New consumers should use `Combobox`; retain this wrapper only when migration is blocked by react-select-specific behavior."
       }
     }
   },

@@ -6,6 +6,9 @@ const config: StorybookConfig = {
     "../src/components/v3/**/*.stories.@(js|jsx|mjs|ts|tsx)"
   ],
   addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+  tags: {
+    deprecated: {}
+  },
   framework: {
     name: "@storybook/react-vite",
     options: {}
