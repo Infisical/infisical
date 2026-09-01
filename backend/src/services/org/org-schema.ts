@@ -42,8 +42,6 @@ export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
   // derived from the active SAML/OIDC config, not a column
   orgAuthMethod: z.string(),
   userJoinedAt: z.date().optional().nullable(),
-  // optional, not because the column is nullable, but so a client generated from this schema still
-  // accepts a response from a deployment that predates the field
   isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive),
   subOrganizations: OrganizationsSchema.pick({
     id: true,
