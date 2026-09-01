@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -216,10 +217,16 @@ export const orgServiceFactory = ({
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
+    const agentVaultProjects = await projectDAL.find(
+      { orgId: data.id, type: ProjectType.AgentVault },
+      { sort: [["createdAt", "desc"]], limit: 1 }
+    );
+
     return {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
-      pamProjectId: pamProjects[0]?.id ?? null
+      pamProjectId: pamProjects[0]?.id ?? null,
+      agentVaultProjectId: agentVaultProjects[0]?.id ?? null
     };
   };
 
@@ -712,6 +719,15 @@ export const orgServiceFactory = ({
       );
 
       await bootstrapPamProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
+      await bootstrapAgentVaultProject(
         {
           orgId: org.id,
           adminUserIds: userId ? [userId] : []

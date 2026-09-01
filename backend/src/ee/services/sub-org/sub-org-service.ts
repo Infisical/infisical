@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -112,6 +113,16 @@ export const subOrgServiceFactory = ({
       );
 
       await bootstrapPamProject(
+        {
+          orgId: org.id,
+          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
+          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
+      await bootstrapAgentVaultProject(
         {
           orgId: org.id,
           adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
