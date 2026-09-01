@@ -206,6 +206,9 @@ RUN apt-get update && apt-get install -y \
     git \
     unixodbc \
     freetds-bin \
+    # the ECS container health check shells out to wget; dropping it fails the
+    # probe with exit 127 even while the server is serving /api/status fine
+    wget \
     openssh-client \
     libaio1t64 \
     smbclient \
