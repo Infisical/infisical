@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
-import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
+import { parsePastedSecrets } from "@app/components/utilities/parseSecrets";
 import {
   Button,
   Dialog,
@@ -47,12 +47,7 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
   } = useForm<TForm>({ defaultValues: { value: "" }, resolver: zodResolver(formSchema) });
 
   const onSubmit = ({ value }: TForm) => {
-    let env: TParsedEnv;
-    try {
-      env = parseJson(value);
-    } catch {
-      env = parseDotEnv(value);
-    }
+    const env = parsePastedSecrets(value);
 
     if (!Object.keys(env).length) {
       setError("value", {
