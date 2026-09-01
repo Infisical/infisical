@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from "node:crypto";
+
 import {
   createKeyAgreementKey,
   createKmsProject,
@@ -102,6 +104,42 @@ describe("KMS Key Agreement", async () => {
     expect(res.statusCode).toBe(422);
     const payload = res.json();
     expect(payload.message[0].message).toMatch(/key agreement algorithm/i);
+  });
+
+  test.each([
+    { declaredAlgorithm: "ECC_NIST_P384", keyCurve: "prime256v1", expectedCurve: "P-384" },
+    { declaredAlgorithm: "ECC_NIST_P521", keyCurve: "secp384r1", expectedCurve: "P-521" }
+  ])("Reject importing a $keyCurve key declared as $declaredAlgorithm", async ({ declaredAlgorithm, keyCurve, expectedCurve }) => {
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: keyCurve });
+    const res = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/kms/keys/bulk-import",
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        projectId,
+        keys: [
+          {
+            name: `invalid-${declaredAlgorithm.toLowerCase()}`,
+            keyUsage: "key-agreement",
+            algorithm: declaredAlgorithm,
+            keyMaterial: privateKey.export({ format: "pem", type: "pkcs8" }).toString("base64")
+          }
+        ]
+      }
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      keys: [],
+      errors: [
+        {
+          name: `invalid-${declaredAlgorithm.toLowerCase()}`,
+          message: `Key material does not match the declared algorithm. Expected an EC ${expectedCurve} key.`
+        }
+      ]
+    });
   });
 
   test("Reject deriving a shared secret with a key that is not a key-agreement key", async () => {

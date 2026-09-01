@@ -685,10 +685,20 @@ export const kmsServiceFactory = ({
               message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
             });
           }
-        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
-          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
+        } else if (
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256 ||
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P384 ||
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P521
+        ) {
+          const expectedCurve = {
+            [AsymmetricKeyAlgorithm.ECC_NIST_P256]: { name: "prime256v1", label: "P-256" },
+            [AsymmetricKeyAlgorithm.ECC_NIST_P384]: { name: "secp384r1", label: "P-384" },
+            [AsymmetricKeyAlgorithm.ECC_NIST_P521]: { name: "secp521r1", label: "P-521" }
+          }[algorithm];
+
+          if (keyType !== "ec" || keyDetails?.namedCurve !== expectedCurve.name) {
             throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
+              message: `Key material does not match the declared algorithm. Expected an EC ${expectedCurve.label} key.`
             });
           }
         }
