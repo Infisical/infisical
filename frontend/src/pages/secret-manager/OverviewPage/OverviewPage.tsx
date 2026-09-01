@@ -2655,6 +2655,7 @@ const OverviewPageContent = () => {
     mergedSecKeys.length > secKeys.length ||
     mergedFolderNamesAndDescriptions.some((f) => f.pendingAction === PendingAction.Create);
   const isTableEmpty = totalCount === 0 && !hasPendingCreates && !isOverviewPending;
+  const isLastPage = offset + perPage >= totalCount;
   const isTagFilterEmpty =
     activeTagSlugs.length > 0 &&
     mergedSecKeys.length === 0 &&
@@ -3496,6 +3497,7 @@ const OverviewPageContent = () => {
                         />
                         {visibleEnvs.length > 0 &&
                           canCreateSecretsInAllVisibleEnvs &&
+                          isLastPage &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
                               autoQueueOnBlur={isBatchModeActive}
