@@ -375,6 +375,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         reason: req.body.reason,
         duration: req.body.duration,
         mfaSessionId: req.body.mfaSessionId,
+        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
         targetHost: req.body.targetHost
       });
@@ -465,6 +466,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
+        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         selectedHost: req.body.selectedHost
       });
 

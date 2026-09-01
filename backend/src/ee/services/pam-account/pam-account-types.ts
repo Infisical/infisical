@@ -49,6 +49,7 @@ export type TGetPamAccountCredentialsDTO = {
   actorEmail: string;
   reason?: string;
   mfaSessionId?: string;
+  tokenVersionId?: string;
 };
 
 export type TListPamAccountsDTO = {

@@ -437,6 +437,7 @@ export const pamSessionServiceFactory = ({
     reason,
     duration,
     mfaSessionId,
+    tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
     targetHost
   }: {
@@ -450,6 +451,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
   }) => {
@@ -483,7 +485,14 @@ export const pamSessionServiceFactory = ({
       }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: actor.actorId,
+          orgId: actor.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 

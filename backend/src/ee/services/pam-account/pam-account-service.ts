@@ -375,6 +375,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     actorEmail,
     reason,
     mfaSessionId,
+    tokenVersionId,
     ...ctx
   }: TGetPamAccountCredentialsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
@@ -440,7 +441,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: ctx.actorId, orgId: ctx.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: ctx.actorId,
+          orgId: ctx.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 

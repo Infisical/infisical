@@ -800,6 +800,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorEmail: isUserSessionAuth(req.auth) ? (req.auth.user.email ?? "") : "",
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
+        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
