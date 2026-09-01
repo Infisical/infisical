@@ -26,6 +26,9 @@ import { Loader } from "./Loader";
  * height follows the asset. `className` merges through `cn` and wins, so a
  * call site sitting between steps (`w-24` for `PageLoader`) can set its own
  * width without a new size.
+ * When the operating system requests reduced motion, the player remains on the
+ * fully drawn first frame while the status semantics continue to announce the
+ * pending state.
  */
 const meta = {
   title: "Generic/Loader",
@@ -65,7 +68,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The in-product default: the white mark at `md`. Use it on any dark product surface — a `Card` body waiting on a fetch, a section that owns its own loading state. The animation loops for as long as the wait lasts; it carries no progress information, so pair it with copy when the wait is long enough to need explaining."
+          "The in-product default: the white mark at `md`. Use it on any dark product surface — a `Card` body waiting on a fetch, a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
       }
     }
   }

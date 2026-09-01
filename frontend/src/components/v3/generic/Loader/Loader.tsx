@@ -1,5 +1,6 @@
-import type { ComponentProps } from "react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { type ComponentProps, useEffect, useRef } from "react";
+import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useReducedMotion } from "framer-motion";
 
 import { cn } from "../../utils";
 
@@ -35,6 +36,17 @@ function Loader({
   variant = "default",
   ...props
 }: LoaderProps) {
+  const prefersReducedMotion = Boolean(useReducedMotion());
+  const animationRef = useRef<DotLottie | null>(null);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      animationRef.current?.stop();
+    } else {
+      animationRef.current?.play();
+    }
+  }, [prefersReducedMotion]);
+
   return (
     <div
       role="status"
@@ -43,10 +55,20 @@ function Loader({
       className={cn(sizeStyles[size], className)}
       {...props}
     >
-      {/* No hover play/stop: an indeterminate loader must keep running for as long as
-          the wait lasts. Stopping on mouseout is hover-to-play *icon* behavior; on a
-          loader it parks the mark on a static frame that reads as a hung page. */}
-      <DotLottieReact src={animationSources[variant]} loop autoplay className="h-full w-full" />
+      {/* The reduced-motion state intentionally stops at the fully drawn first frame,
+          preserving the loading indicator without continuous animation. */}
+      <DotLottieReact
+        dotLottieRefCallback={(animation) => {
+          animationRef.current = animation;
+          if (prefersReducedMotion) {
+            animation?.stop();
+          }
+        }}
+        src={animationSources[variant]}
+        loop
+        autoplay={!prefersReducedMotion}
+        className="h-full w-full"
+      />
     </div>
   );
 }
