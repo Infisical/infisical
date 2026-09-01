@@ -167,6 +167,27 @@ export const newProjectMembershipGroupFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipGroupDAL.getGroupById({
+      scopeData: dto.scopeData,
+      groupId: dto.selector.groupId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+        ignoreUnresolvedRoles: true
+      });
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        opSubject: ProjectPermissionSub.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged group"
+      });
+    }
+
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       scope.value
@@ -220,7 +241,9 @@ export const newProjectMembershipGroupFactory = ({
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+        ignoreUnresolvedRoles: true
+      });
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
         requestMemoKeys.orgFindById(dto.permission.orgId),
         () => orgDAL.findById(dto.permission.orgId)

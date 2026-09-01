@@ -127,6 +127,27 @@ export const newOrgMembershipIdentityFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: dto.scopeData,
+      identityId: dto.selector.identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionIdentityActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Identity,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged identity"
+      });
+    }
+
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
@@ -192,7 +213,9 @@ export const newOrgMembershipIdentityFactory = ({
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId);
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+        ignoreUnresolvedRoles: true
+      });
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
         requestMemoKeys.orgFindById(dto.permission.orgId),
         () => orgDAL.findById(dto.permission.orgId)

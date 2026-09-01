@@ -1190,7 +1190,9 @@ export const orgServiceFactory = ({
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
     if (!targetRoles.length) return;
 
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
       orgDAL.findById(orgId)
     );

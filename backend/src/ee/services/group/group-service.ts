@@ -1025,7 +1025,9 @@ export const groupServiceFactory = ({
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
@@ -1121,7 +1123,9 @@ export const groupServiceFactory = ({
       });
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
@@ -1214,7 +1218,9 @@ export const groupServiceFactory = ({
     }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
@@ -1289,7 +1295,9 @@ export const groupServiceFactory = ({
       });
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );

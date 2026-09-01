@@ -241,7 +241,9 @@ export const newProjectMembershipUserFactory = ({
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+        ignoreUnresolvedRoles: true
+      });
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
         opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
@@ -302,7 +304,9 @@ export const newProjectMembershipUserFactory = ({
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     if (!targetRoles.length) return;
 
-    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value);
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)

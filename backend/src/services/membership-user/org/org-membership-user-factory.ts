@@ -324,11 +324,31 @@ export const newOrgMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
+    const targetMembership = await membershipUserDAL.getUserById({
+      scopeData: dto.scopeData,
+      userId: dto.selector.userId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      for (const targetPermission of targetPermissions) {
+        assertPermissionBoundary(
+          permission,
+          targetPermission.permission,
+          "Failed to change the roles of a more privileged org member"
+        );
+      }
+    }
+
     if (dto.data.roles.length) {
       const permissionRoles = await permissionService.getOrgPermissionByRoles(
         dto.data.roles.map((el) => el.role),
         dto.permission.orgId
       );
+
       for (const permissionRole of permissionRoles) {
         assertPermissionBoundary(
           permission,
@@ -357,7 +377,9 @@ export const newOrgMembershipUserFactory = ({
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     if (!targetRoles.length) return;
 
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)

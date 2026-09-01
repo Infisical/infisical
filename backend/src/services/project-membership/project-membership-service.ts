@@ -412,7 +412,9 @@ export const projectMembershipServiceFactory = ({
       await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id))
     );
     if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, projectId);
+      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
+        ignoreUnresolvedRoles: true
+      });
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
         orgDAL.findById(actorOrgId)
       );
