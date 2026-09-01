@@ -1,8 +1,8 @@
 import { Helmet } from "react-helmet";
 import { KeyRound } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import {
