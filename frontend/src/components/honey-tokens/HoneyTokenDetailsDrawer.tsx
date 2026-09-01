@@ -59,7 +59,7 @@ type Props = {
   onClose: () => void;
 };
 
-const DrawerContent = ({
+const HoneyTokenDetailsContent = ({
   honeyTokenId,
   projectId
 }: {
@@ -173,74 +173,70 @@ const DrawerContent = ({
             </div>
           </div>
         </div>
+      </SheetHeader>
 
-        <div className="flex flex-wrap items-center gap-4 rounded-md bg-container p-2 text-xs text-muted">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon size={13} />
-                <span>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="shaded" iconPosition="left">
+                  <CalendarIcon size={13} />
                   Created {formatDistanceToNow(new Date(honeyToken.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              {format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
-            </TooltipContent>
-          </Tooltip>
-          {honeyToken.environment && (
-            <div className="flex items-center gap-1.5">
-              <MapPinIcon size={13} />
-              <span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                {format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
+              </TooltipContent>
+            </Tooltip>
+            {honeyToken.environment && (
+              <Badge variant="shaded" iconPosition="left">
+                <MapPinIcon size={13} />
                 {honeyToken.environment.name}
                 {honeyToken.folder?.path && honeyToken.folder.path !== "/"
                   ? ` — ${honeyToken.folder.path}`
                   : ""}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <HexagonIcon size={13} />
-            <span>
+              </Badge>
+            )}
+            <Badge variant="shaded" iconPosition="left">
+              <HexagonIcon size={13} />
               {honeyToken.openEvents} open event{honeyToken.openEvents !== 1 && "s"}
-            </span>
+            </Badge>
+            <Badge variant="shaded" iconPosition="left">
+              <ClockIcon size={13} />
+              Active for {formatDistanceToNow(new Date(honeyToken.createdAt))}
+            </Badge>
           </div>
-          <div className="flex items-center gap-1.5">
-            <ClockIcon size={13} />
-            <span>Active for {formatDistanceToNow(new Date(honeyToken.createdAt))}</span>
-          </div>
+
+          {isRevoked && (
+            <Alert variant="info">
+              <BanIcon />
+              <AlertTitle>Honey token revoked</AlertTitle>
+              <AlertDescription>
+                The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
+                token record and its events are preserved for audit purposes.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isTriggered && (
+            <Alert variant="warning">
+              <AlertTriangle />
+              <AlertTitle>What to do now?</AlertTitle>
+              <AlertDescription className="gap-2">
+                <p>
+                  If this is a false alarm, reset the honey token to return it to active status and
+                  hide past events.
+                </p>
+                <p>
+                  If this activity is suspicious, follow your company&apos;s incident response plan,
+                  rotate any real secrets stored alongside the honey token, then revoke and replace
+                  the honey token.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
-      </SheetHeader>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {isRevoked && (
-          <Alert variant="info">
-            <BanIcon />
-            <AlertTitle>Honey token revoked</AlertTitle>
-            <AlertDescription>
-              The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
-              token record and its events are preserved for audit purposes.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isTriggered && (
-          <Alert variant="warning">
-            <AlertTriangle />
-            <AlertTitle>What to do now?</AlertTitle>
-            <AlertDescription className="gap-2">
-              <p>
-                If this is a false alarm, reset the honey token to return it to active status and
-                hide past events.
-              </p>
-              <p>
-                If this activity is suspicious, follow your company&apos;s incident response plan,
-                rotate any real secrets stored alongside the honey token, then revoke and replace
-                the honey token.
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
 
         {!isRevoked && (
           <ProjectPermissionCan
@@ -396,7 +392,7 @@ export const HoneyTokenDetailsDrawer = ({ projectId, honeyTokenId, onClose }: Pr
     >
       <SheetContent className="flex h-full flex-col gap-y-0 overflow-hidden sm:max-w-3xl">
         {isOpen && honeyTokenId && (
-          <DrawerContent honeyTokenId={honeyTokenId} projectId={projectId} />
+          <HoneyTokenDetailsContent honeyTokenId={honeyTokenId} projectId={projectId} />
         )}
       </SheetContent>
     </Sheet>
