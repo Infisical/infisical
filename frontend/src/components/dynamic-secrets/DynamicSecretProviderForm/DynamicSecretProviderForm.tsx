@@ -12,11 +12,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
@@ -375,17 +375,20 @@ export const DynamicSecretProviderForm = <
                       <FieldLabel htmlFor="dynamic-secret-environment">
                         {commonFields?.environment?.label ?? "Environment"}
                       </FieldLabel>
-                      <FilterableSelect<TDynamicSecretFormEnvironment>
-                        inputId="dynamic-secret-environment"
+                      <Combobox<TDynamicSecretFormEnvironment>
+                        id="dynamic-secret-environment"
                         options={environments}
                         value={(field.value as TDynamicSecretFormEnvironment | undefined) ?? null}
                         onBlur={field.onBlur}
-                        onChange={field.onChange}
+                        onValueChange={field.onChange}
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.slug}
                         placeholder="Select the environment to create the secret in..."
+                        searchPlaceholder="Search environments..."
+                        searchAriaLabel="Search environments"
                         isDisabled={commonFields?.environment?.isDisabled}
                         isError={Boolean(error)}
+                        modal
                         aria-describedby={
                           [
                             commonFields?.environment?.description

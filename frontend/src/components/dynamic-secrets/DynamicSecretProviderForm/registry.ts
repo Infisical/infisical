@@ -1,5 +1,6 @@
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { getDynamicSecretProviderRuntimeMetadata } from "./runtimeMetadata";
 import type { TDynamicSecretProviderDefinition } from "./types";
 
 export type TRegisteredDynamicSecretProviderDefinition = TDynamicSecretProviderDefinition<
@@ -106,6 +107,26 @@ export const createDynamicSecretProviderRegistry = (
       return definition;
     },
     getLabel: (provider: DynamicSecretProviders) => definitions.get(provider)?.label,
+    getPresentation: (provider: DynamicSecretProviders) =>
+      definitions.has(provider)
+        ? getDynamicSecretProviderRuntimeMetadata(provider).presentation
+        : undefined,
+    requirePresentation: (provider: DynamicSecretProviders) => {
+      if (!definitions.has(provider)) {
+        throw new Error(`Dynamic-secret provider "${provider}" is not registered.`);
+      }
+      return getDynamicSecretProviderRuntimeMetadata(provider).presentation;
+    },
+    getLeaseCapabilities: (provider: DynamicSecretProviders) =>
+      definitions.has(provider)
+        ? getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities
+        : undefined,
+    requireLeaseCapabilities: (provider: DynamicSecretProviders) => {
+      if (!definitions.has(provider)) {
+        throw new Error(`Dynamic-secret provider "${provider}" is not registered.`);
+      }
+      return getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities;
+    },
     getDocsSlug: (provider: DynamicSecretProviders) =>
       DYNAMIC_SECRET_PROVIDER_DOCS_SLUG[provider] ?? provider
   });

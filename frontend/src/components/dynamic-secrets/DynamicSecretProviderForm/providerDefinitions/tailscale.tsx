@@ -49,13 +49,21 @@ const TailscaleFields = () => {
       name: "inputs.tailnet",
       type: "text",
       label: "Tailnet",
+      placeholder: "example.com or -",
       description: "Use '-' for the token owner's default tailnet, or provide a tailnet name."
     },
-    { name: "inputs.description", type: "text", label: "Description", isOptional: true },
+    {
+      name: "inputs.description",
+      type: "text",
+      label: "Description",
+      placeholder: "Infisical dynamic access",
+      isOptional: true
+    },
     {
       name: "inputs.tags",
       type: "text",
       label: "Tags",
+      placeholder: "tag:ci,tag:prod",
       isOptional: true,
       description: "Comma-separated ACL tags (for example, tag:ci, tag:prod)."
     }
@@ -67,15 +75,23 @@ const TailscaleFields = () => {
             name: "inputs.auth.apiKey",
             type: "secret",
             label: "API Key",
+            placeholder: "tskey-api-...",
             autoComplete: "new-password"
           }
         ] as const)
       : ([
-          { name: "inputs.auth.clientId", type: "text", label: "Client ID", layout: "half" },
+          {
+            name: "inputs.auth.clientId",
+            type: "text",
+            label: "Client ID",
+            placeholder: "Enter OAuth client ID",
+            layout: "half"
+          },
           {
             name: "inputs.auth.clientSecret",
             type: "secret",
             label: "Client Secret",
+            placeholder: "Enter OAuth client secret",
             autoComplete: "new-password",
             layout: "half"
           }
@@ -98,6 +114,7 @@ const TailscaleFields = () => {
               name: "inputs.scopes",
               type: "text",
               label: "Scopes",
+              placeholder: "devices:core,users:read",
               description: "Comma-separated OAuth scopes."
             }
           ]}
@@ -110,10 +127,22 @@ const TailscaleFields = () => {
               name: "inputs.issuer",
               type: "text",
               label: "Issuer",
+              placeholder: "https://issuer.example.com",
               description: "HTTPS URL of the OIDC issuer trusted for token exchange."
             },
-            { name: "inputs.subject", type: "text", label: "Subject" },
-            { name: "inputs.audience", type: "text", label: "Audience", isOptional: true }
+            {
+              name: "inputs.subject",
+              type: "text",
+              label: "Subject",
+              placeholder: "service-account@example.com"
+            },
+            {
+              name: "inputs.audience",
+              type: "text",
+              label: "Audience",
+              placeholder: "tailscale",
+              isOptional: true
+            }
           ]}
         />
       )}

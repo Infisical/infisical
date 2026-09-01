@@ -72,11 +72,18 @@ const connectionFields = [
     layout: "half"
   },
   { name: "inputs.port", type: "number", label: "Port", placeholder: "19530", layout: "half" },
-  { name: "inputs.username", type: "text", label: "Username", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "Username",
+    placeholder: "root",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   },
@@ -101,6 +108,7 @@ const trailingFields = [
     name: "inputs.ca",
     type: "textarea",
     label: "CA Certificate",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
     isOptional: true,
     description: "PEM-encoded CA certificate used to verify the Milvus server.",
     rows: 3

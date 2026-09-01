@@ -39,18 +39,32 @@ const rabbitMqConnectionFields = [
     description: "The port on which the RabbitMQ management plugin is running. Default is 15672.",
     layout: "half"
   },
-  { name: "inputs.username", type: "text", label: "Username", layout: "half" },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "Username",
+    placeholder: "admin",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter management password",
     autoComplete: "new-password",
     layout: "half"
   }
 ] satisfies readonly TDynamicSecretProviderField<TRabbitMqFormValues>[];
 
 const advancedFields = [
-  { name: "inputs.ca", type: "textarea", label: "CA (SSL)", isOptional: true, rows: 3 },
+  {
+    name: "inputs.ca",
+    type: "textarea",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true,
+    rows: 3
+  },
   {
     name: "usernameTemplate",
     type: "text",

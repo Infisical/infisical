@@ -16,6 +16,9 @@ import {
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
+import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
+
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);
   if (!match) return templateTtl;
@@ -35,6 +38,13 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
       return templateTtl;
   }
 };
+
+type PolicyRow = { type: string; value: string };
+
+const isSameRows = (current: PolicyRow[] | undefined, next: PolicyRow[]): boolean =>
+  Boolean(current) &&
+  current!.length === next.length &&
+  current!.every((row, index) => row.type === next[index].type && row.value === next[index].value);
 
 const parseTtlToMs = (ttl: string): number => {
   const match = ttl.match(/^(\d+)([dhmy])$/);
@@ -307,6 +317,7 @@ export const useCertificatePolicy = (
       }
 
       // Pre-populate SANs from profile defaults or reset when profile changes
+      let nextSans: SubjectAltName[] = watch("subjectAltNames") ?? [];
       if (profileChanged) {
         if (
           defaults?.subjectAltNames &&
@@ -314,34 +325,42 @@ export const useCertificatePolicy = (
           defaults.subjectAltNames.length > 0
         ) {
           // Filter to only allowed SAN types
-          const filteredSans = defaults.subjectAltNames.filter(
-            (san: { type: CertSubjectAlternativeNameType; value: string }) =>
-              newConstraints.allowedSanTypes.includes(san.type)
+          nextSans = defaults.subjectAltNames.filter((san: SubjectAltName) =>
+            newConstraints.allowedSanTypes.includes(san.type)
           );
-          setValue("subjectAltNames", filteredSans.length > 0 ? filteredSans : []);
         } else {
-          setValue("subjectAltNames", []);
+          nextSans = [];
         }
       }
 
       const currentSubjectAttrs = watch("subjectAttributes");
+      let nextSubjectAttrs: SubjectAttribute[] = currentSubjectAttrs ?? [];
       if (profileChanged || !currentSubjectAttrs || currentSubjectAttrs.length === 0) {
         if (newConstraints.allowedSubjectAttributeTypes.length === 0) {
-          setValue("subjectAttributes", []);
+          nextSubjectAttrs = [];
         } else if (defaultSubjectAttrs.length > 0) {
           // Filter to only allowed attribute types
           const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
             newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
           );
-          const subjectValue =
+          nextSubjectAttrs =
             filteredDefaults.length > 0
               ? filteredDefaults
               : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
-          setValue("subjectAttributes", subjectValue);
         } else {
-          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
-          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
+          nextSubjectAttrs = [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
         }
+      }
+
+      // Seed the rows the policy requires so they are visible as fields from the start. Writing an
+      // identical value would still hand the form a new array, and the guidance hook reads those
+      // identities as an edit and clears the findings the requester is looking at.
+      const seeded = withRequiredRows(buildPolicyRules(templateData), nextSubjectAttrs, nextSans);
+      if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
+        setValue("subjectAltNames", seeded.subjectAltNames);
+      }
+      if (!isSameRows(currentSubjectAttrs, seeded.subjectAttributes)) {
+        setValue("subjectAttributes", seeded.subjectAttributes);
       }
 
       // Set isCA if template requires it
