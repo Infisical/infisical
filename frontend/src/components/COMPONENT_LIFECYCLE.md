@@ -15,6 +15,15 @@ Statuses are lifecycle decisions, not folder labels:
 - **Retained intentionally:** the API is supported or has distinct ownership.
 - **Unused/removal tracked separately:** zero-consumer candidates belong in cleanup work, not this deprecation pass.
 
+## Deprecating a component
+
+1. Verify a supported replacement covers representative consumers; otherwise record the blocker below.
+2. Add `@deprecated` to the exported API with the replacement and migration limits.
+3. Add the literal `deprecated` tag to the component's Storybook meta.
+4. Update this ledger and run frontend validation plus the Storybook build.
+
+Keep migrations and removals in separate work.
+
 ## V2 audit
 
 | Status | Families | Evidence and next action |
