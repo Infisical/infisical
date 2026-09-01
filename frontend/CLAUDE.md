@@ -57,6 +57,10 @@ The `QueryClient` sets these global defaults for all queries:
 
 Mutation failures are reported globally by `MutationCache.onError` using the server error message. Do not add another error `createNotification` in a mutation `catch` or `onError`, because it produces duplicate toasts. Local error handling may still restore optimistic state, keep a dialog open, or perform other control flow without displaying a second notification.
 
+That global handler only fires for failures that go through `useMutation`. Raw exported API functions bypass `MutationCache` entirely. `selectOrganization` (`src/hooks/api/auth/queries.tsx`) is exported both raw and as `useSelectOrganization`, and its raw callers in router `beforeLoad` get no toast unless they call `onRequestError(error)` themselves, as `src/pages/auth/SelectOrgPage/route.tsx` does. Check which form a call site uses before adding or removing error UI.
+
+To show a tailored message instead of the global one, do not add a second toast. Set `meta: { handledErrorCodes: [...] }` on the mutation: `onRequestError` matches those against the response body's `error` field (`ApiErrorTypes` values, not HTTP status) and stays silent, leaving the call site to render its own message. See `useUpdateServerConfig` in `src/hooks/api/admin/mutation.ts`.
+
 When adding new queries, consider whether the default 60s staleTime is appropriate:
 - For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
