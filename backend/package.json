@@ -89,7 +89,7 @@
     "tar": "^7.5.11",
     "flatted": "^3.4.2",
     "@octokit/request-error": "^5.1.1",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.5",
     "undici": "^7.29.0",
     "eslint-plugin-import": {
       "minimatch": "^3.1.2"
@@ -99,6 +99,7 @@
     "path-to-regexp": "^8.4.0",
     "protobufjs": "^7.5.6",
     "form-data": "^4.0.6",
+    "find-my-way": "^9.7.0",
     "shell-quote": "^1.9.0",
     "websocket-driver": "^0.7.5"
   },
