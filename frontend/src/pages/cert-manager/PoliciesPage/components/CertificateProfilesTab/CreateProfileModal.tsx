@@ -1299,7 +1299,7 @@ export const CreateProfileModal = ({
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
                 {isPolicyWizardOpen
-                  ? `Profile step ${selectedStepIndex + 1} · policy ${(policyStepIndex ?? 0) + 1} of ${CERTIFICATE_POLICY_STEPS.length}`
+                  ? `Profile step ${selectedStepIndex + 1} of ${steps.length} · Policy step ${(policyStepIndex ?? 0) + 1} of ${CERTIFICATE_POLICY_STEPS.length}`
                   : `Step ${selectedStepIndex + 1} of ${steps.length}`}
               </span>
               {(selectedStepIndex > 0 || isPolicyWizardOpen) && (
