@@ -272,10 +272,10 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       operationId: "importVaultSecretsV3",
       body: z.object({
         projectId: z.string(),
-        environment: z.string().max(64),
-        secretPath: z.string().max(1024),
-        vaultNamespace: z.string().max(256),
-        vaultSecretPaths: z.array(z.string().max(1024)).min(1).max(500),
+        environment: z.string(),
+        secretPath: z.string(),
+        vaultNamespace: z.string(),
+        vaultSecretPaths: z.array(z.string().max(255)).min(1).max(500),
         connectionId: z.string().uuid(),
         keepVaultStructure: z
           .boolean()

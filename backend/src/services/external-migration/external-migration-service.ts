@@ -780,6 +780,8 @@ export const externalMigrationServiceFactory = ({
 
         return {
           status: ExternalMigrationImportStatus.ApprovalRequired,
+          importedPaths: [],
+          approvalRequiredPaths: [secretPath],
           importedSecretCount: 0,
           approvalRequiredSecretCount: Object.keys(vaultSecrets).length
         };
@@ -787,6 +789,8 @@ export const externalMigrationServiceFactory = ({
 
       return {
         status: ExternalMigrationImportStatus.Imported,
+        importedPaths: [secretPath],
+        approvalRequiredPaths: [],
         importedSecretCount: Object.keys(vaultSecrets).length,
         approvalRequiredSecretCount: 0
       };
