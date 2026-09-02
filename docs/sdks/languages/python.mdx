@@ -703,7 +703,11 @@ decrypted_data = client.kms.decrypt_data(
 
 ### `folders`
 
-This sub-class handles operations related to folders:
+This sub-class handles operations related to [folders](/documentation/platform/folder):
+
+<Note>
+  `update_folder` and `delete_folder` require `infisicalsdk` version 1.0.17 or newer.
+</Note>
 
 #### List folders
 
@@ -762,3 +766,52 @@ folder = client.folders.get_folder_by_id(
 
 **Returns:**
 - `SingleFolderResponseItem`: The response containing the folder details.
+#### Update folder
+
+```python
+updated_folder = client.folders.update_folder(
+    folder_id="<folder-id>",
+    name="backend-api",
+    project_id="<project-id>",
+    environment_slug="dev",
+    path="/", # Optional
+    description="Secrets for the backend service" # Optional
+)
+```
+
+**Parameters:**
+- `folder_id` (str): The ID of the folder to update. Folders can only be updated by ID, so use `list_folders` to look the ID up if you only know the name.
+- `name` (str): The new name of the folder. This is required, so pass the folder's current name to leave it unchanged.
+- `project_id` (str): The ID of your project.
+- `environment_slug` (str): The slug of the environment the folder is in.
+- `path` (str, optional): The parent path the folder is in. Defaults to `/`.
+- `description` (str, optional): A new description for the folder. Omitting it leaves the existing description unchanged, so it cannot be used to clear one.
+
+**Returns:**
+- `UpdateFolderResponseItem`: The response containing the updated folder.
+
+#### Delete folder
+
+```python
+deleted_folder = client.folders.delete_folder(
+    folder_id_or_name="backend",
+    project_id="<project-id>",
+    environment_slug="dev",
+    path="/", # Optional
+    force_delete=False # Optional
+)
+```
+
+**Parameters:**
+- `folder_id_or_name` (str): The ID or the name of the folder to delete.
+- `project_id` (str): The ID of your project.
+- `environment_slug` (str): The slug of the environment the folder is in.
+- `path` (str, optional): The parent path the folder is in. Defaults to `/`.
+- `force_delete` (bool, optional): Whether to delete the folder even when it still contains secrets or subfolders. Defaults to `False`.
+
+<Warning>
+  Setting `force_delete` to `True` removes every secret and subfolder inside the folder along with it.
+</Warning>
+
+**Returns:**
+- `DeleteFolderResponseItem`: The response containing the deleted folder. Unlike the other folder responses, it does not include a `path` field.

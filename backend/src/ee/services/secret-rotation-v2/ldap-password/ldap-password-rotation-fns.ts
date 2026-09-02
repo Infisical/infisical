@@ -23,6 +23,7 @@ import {
   normalizeLdapUrl,
   TLdapConnection
 } from "@app/services/app-connection/ldap";
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { generatePassword } from "../shared/utils";
 import {
@@ -110,7 +111,15 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsService,
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService,
+  passwordValidationContext
+) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;
@@ -148,7 +157,9 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     if (!credentials.url.startsWith("ldaps")) throw new Error("Password Rotation requires an LDAPS connection");
 
     const isConnectionRotation = credentials.dn === dn;
-    const password = generatePassword(passwordRequirements);
+    const password = passwordValidationContext?.constraints?.length
+      ? generatePasswordWithConstraints(passwordValidationContext.constraints)
+      : generatePassword(passwordRequirements);
 
     const rotationContext = {
       targetDn: dn,

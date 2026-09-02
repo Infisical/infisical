@@ -45,6 +45,7 @@ import {
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
 import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -587,10 +588,13 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
+  PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
   PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
+  OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -853,6 +857,7 @@ export enum EventType {
   DELETE_OAUTH_CLIENT = "delete-oauth-client",
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+  OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -896,6 +901,11 @@ export enum EventType {
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
   DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
 
+  // Secret folder access (folder RBAC)
+  CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
+  UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access",
+
   // Alerts
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
@@ -937,6 +947,7 @@ interface UserActorMetadata {
   username: string;
   permission?: Record<string, unknown>;
   authMethod?: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
@@ -1607,6 +1618,7 @@ interface AddIdentityKubernetesAuthEvent {
   type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
   metadata: {
     identityId: string;
+    templateId?: string | null;
     kubernetesHost: string;
     allowedNamespaces: string;
     allowedNames: string;
@@ -1628,6 +1640,7 @@ interface UpdateIdentityKubernetesAuthEvent {
   type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
     kubernetesHost?: string;
     allowedNamespaces?: string;
     allowedNames?: string;
@@ -1635,6 +1648,8 @@ interface UpdateIdentityKubernetesAuthEvent {
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    templateId?: string | null;
+    templateName?: string;
   };
 }
 
@@ -2077,6 +2092,7 @@ interface UpdateIdentityLdapAuthEvent {
   type: EventType.UPDATE_IDENTITY_LDAP_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2084,6 +2100,7 @@ interface UpdateIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url?: string;
     templateId?: string | null;
+    templateName?: string;
     lockoutEnabled?: boolean;
     lockoutThreshold?: number;
     lockoutDurationSeconds?: number;
@@ -4572,6 +4589,7 @@ interface CreatePkiSyncEvent {
     connectionId?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
+    hasHealthCheckCommand?: boolean;
   };
 }
 
@@ -4582,6 +4600,7 @@ interface UpdatePkiSyncEvent {
     name: string;
     applicationId?: string;
     hasPostSyncCommand?: boolean;
+    hasHealthCheckCommand?: boolean;
   };
 }
 
@@ -4602,6 +4621,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    healthCheck?: { command: string; result?: THealthCheckCommandResult };
     postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
@@ -4613,6 +4633,28 @@ interface PkiSyncImportCertificatesEvent {
     importMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+  };
+}
+
+interface PkiSyncTestHealthCheckEvent {
+  type: EventType.PKI_SYNC_TEST_HEALTH_CHECK;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    destination: string;
+    command: string;
+    result?: THealthCheckCommandResult;
+  };
+}
+
+interface PkiSyncHealthCheckEvent {
+  type: EventType.PKI_SYNC_HEALTH_CHECK;
+  metadata: {
+    syncId: string;
+    syncName: string;
+    destination: string;
+    command: string;
+    result?: THealthCheckCommandResult;
   };
 }
 
@@ -4930,6 +4972,16 @@ interface OidcGroupMembershipMappingRemoveUserEvent {
     userId: string;
     userEmail: string;
     userGroupsClaim: string[];
+  };
+}
+
+interface OidcProvisionedPlaceholderAdoptedEvent {
+  type: EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED;
+  metadata: {
+    userId: string;
+    externalId: string;
+    previousUsername: string;
+    newUsername: string;
   };
 }
 
@@ -6804,6 +6856,10 @@ interface CreateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6813,6 +6869,10 @@ interface UpdateOauthClientEvent {
     clientDbId: string;
     clientId: string;
     name: string;
+    grantTypes: string[];
+    accessTokenTTL: number;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 
@@ -6839,6 +6899,18 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+  };
+}
+
+interface OauthClientTokenExchangeEvent {
+  type: EventType.OAUTH_CLIENT_TOKEN_EXCHANGE;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    clientName: string;
+    subjectUserId: string;
+    subjectExternalId: string;
+    tokenVersionId: string;
   };
 }
 
@@ -7126,6 +7198,36 @@ interface DeleteProjectFolderGrantEvent {
     environment: string;
     secretPath: string;
   };
+}
+
+export interface SecretFolderAccessEventMetadata {
+  folderAccessId: string;
+  folderId: string;
+  environment: string;
+  secretPath: string;
+  permission: string;
+  userId?: string;
+  identityId?: string;
+  isTemporary: boolean;
+  temporaryMode?: string;
+  temporaryRange?: string;
+  temporaryAccessStartTime?: string;
+  temporaryAccessEndTime?: string;
+}
+
+interface CreateSecretFolderAccessEvent {
+  type: EventType.CREATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface UpdateSecretFolderAccessEvent {
+  type: EventType.UPDATE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
+}
+
+interface DeleteSecretFolderAccessEvent {
+  type: EventType.DELETE_SECRET_FOLDER_ACCESS;
+  metadata: SecretFolderAccessEventMetadata;
 }
 
 interface CreateAlertEvent {
@@ -7525,6 +7627,8 @@ export type Event =
   | DeletePkiSyncEvent
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
+  | PkiSyncHealthCheckEvent
+  | PkiSyncTestHealthCheckEvent
   | PkiSyncRemoveCertificatesEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
@@ -7560,6 +7664,7 @@ export type Event =
   | RemovePkiSignerMemberEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
+  | OidcProvisionedPlaceholderAdoptedEvent
   | CreateKmipClientEvent
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent
@@ -7768,6 +7873,7 @@ export type Event =
   | DeleteOauthClientEvent
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
+  | OauthClientTokenExchangeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
@@ -7809,4 +7915,7 @@ export type Event =
   | UpdateGroupProjectMembershipEvent
   | RemoveGroupFromProjectEvent
   | CreateProjectFolderGrantEvent
-  | DeleteProjectFolderGrantEvent;
+  | DeleteProjectFolderGrantEvent
+  | CreateSecretFolderAccessEvent
+  | UpdateSecretFolderAccessEvent
+  | DeleteSecretFolderAccessEvent;

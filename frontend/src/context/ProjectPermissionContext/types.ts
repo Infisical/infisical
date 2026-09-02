@@ -78,7 +78,8 @@ export enum ProjectPermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetHealthCheckCommand = "set-health-check-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -301,6 +302,10 @@ export enum ProjectPermissionProjectFolderGrantActions {
 
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
+}
+
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
 }
 
 export type MemberManagementSubjectFields = {
@@ -537,6 +542,13 @@ export type ProjectPermissionSet =
     ]
   | [
       ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionSecretFolderActions,
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)

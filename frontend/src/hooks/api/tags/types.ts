@@ -20,6 +20,13 @@ export type CreateTagDTO = {
 
 export type DeleteTagDTO = { tagID: string; projectId: string };
 
+export type UpdateTagDTO = {
+  tagID: string;
+  projectId: string;
+  tagSlug: string;
+  tagColor: string;
+};
+
 export type SecretTags = {
   id: string;
   slug: string;

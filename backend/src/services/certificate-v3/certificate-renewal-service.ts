@@ -237,9 +237,12 @@ export const certificateRenewalServiceFactory = ({
       renewedFromCertificateId?: string;
       renewBeforeDays?: number;
       applicationId?: string | null;
+      orderId?: string;
     } = isRenewalLinkPreset
       ? {}
       : { profileId: originalCert.profileId || null, renewedFromCertificateId: originalCert.id };
+
+    if (originalCert.orderId) renewalUpdate.orderId = originalCert.orderId;
 
     if (finalRenewBeforeDays !== undefined) renewalUpdate.renewBeforeDays = finalRenewBeforeDays;
     if (originalCert.applicationId) renewalUpdate.applicationId = originalCert.applicationId;
@@ -538,7 +541,8 @@ export const certificateRenewalServiceFactory = ({
 
     if (!originalCert.profileId) {
       throw new ForbiddenRequestError({
-        message: "Only certificates issued from a profile can be renewed"
+        message:
+          "This certificate is not linked to a certificate profile, so it cannot be renewed. The profile it was issued from may have been deleted."
       });
     }
 

@@ -346,12 +346,33 @@ export type TAdminInitEvent = {
   };
 };
 
+/**
+ * Where a signup came from, as a value the analytics layer can group on. `attributionSource` stays
+ * as-is for the historical queries built on it, including its `"Team Invite"` sentinel.
+ */
+export enum SignupSource {
+  TeamInvite = "team_invite",
+  SelfServe = "self_serve"
+}
+
+/**
+ * How we know the attribution: `UserProvided` is an answer the person typed, `SystemDerived` is one
+ * the signup flow already knew. Without it the two are only separable by matching the sentinel, so
+ * every attribution measure has to exclude invites instead of counting them.
+ */
+export enum SignupAttributionType {
+  UserProvided = "user_provided",
+  SystemDerived = "system_derived"
+}
+
 export type TUserSignedUpEvent = {
   event: PostHogEventTypes.UserSignedUp;
   properties: {
     username: string;
     email: string;
     attributionSource?: string;
+    attributionType?: SignupAttributionType;
+    signupSource?: SignupSource;
     signupMethod?: string;
   };
 };
@@ -392,6 +413,7 @@ export type TSignupAttributionProvidedEvent = {
   event: PostHogEventTypes.SignupAttributionProvided;
   properties: {
     attributionSource: string;
+    attributionType?: SignupAttributionType;
   };
 };
 

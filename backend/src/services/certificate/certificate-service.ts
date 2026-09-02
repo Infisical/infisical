@@ -87,6 +87,7 @@ type TCertificateServiceFactoryDep = {
     | "create"
     | "findById"
     | "findWithFullDetails"
+    | "findLatestRenewalOf"
     | "updateById"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -271,6 +272,34 @@ export const certificateServiceFactory = ({
       }
     }
 
+    const resolvedRenewalId = await certificateDAL.findLatestRenewalOf(cert);
+    let latestRenewalCertificateId: string | null = null;
+
+    if (resolvedRenewalId) {
+      const renewal = await certificateDAL.findById(resolvedRenewalId);
+
+      if (renewal) {
+        const renewalMetadataRows = await resourceMetadataDAL.find({ certificateId: renewal.id });
+        const renewalReadSubject = subject(ProjectPermissionSub.Certificates, {
+          commonName: renewal.commonName,
+          altNames: renewal.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: renewal.serialNumber,
+          metadata: renewalMetadataRows.map(({ key, value }) => ({ key, value: value || "" }))
+        });
+
+        const canReadRenewal =
+          permission.can(ProjectPermissionCertificateActions.Read, renewalReadSubject) ||
+          (await $canActOnCertViaApplication(renewal, ResourcePermissionCertificateActions.Read, {
+            type: actor,
+            id: actorId,
+            authMethod: actorAuthMethod,
+            orgId: actorOrgId
+          }));
+
+        if (canReadRenewal) latestRenewalCertificateId = renewal.id;
+      }
+    }
+
     return {
       cert: {
         ...cert,
@@ -280,6 +309,7 @@ export const certificateServiceFactory = ({
         caName,
         profileName,
         applicationName,
+        latestRenewalCertificateId,
         metadata: certMetadata
       }
     };
@@ -391,7 +421,25 @@ export const certificateServiceFactory = ({
 
     let deletedCert;
     try {
-      deletedCert = await certificateDAL.deleteById(cert.id);
+      deletedCert = await certificateDAL.transaction(async (tx) => {
+        const successors = await certificateDAL.find({ renewedFromCertificateId: cert.id }, { tx });
+
+        await certificateDAL.update(
+          { renewedFromCertificateId: cert.id },
+          { renewedFromCertificateId: cert.renewedFromCertificateId ?? null },
+          tx
+        );
+
+        if (cert.renewedFromCertificateId && successors.length > 0) {
+          await certificateDAL.updateById(
+            cert.renewedFromCertificateId,
+            { renewedByCertificateId: successors[0].id },
+            tx
+          );
+        }
+
+        return certificateDAL.deleteById(cert.id, tx);
+      });
     } catch (err) {
       const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;
       if (innerError?.code === "23503") {

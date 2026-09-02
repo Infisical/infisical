@@ -302,12 +302,18 @@ import {
   TKmsKeyImportMeta,
   TKmsKeyImportMetaInsert,
   TKmsKeyImportMetaUpdate,
+  TKmsKekHistory,
+  TKmsKekHistoryInsert,
+  TKmsKekHistoryUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
   TKmsKeyVersions,
   TKmsKeyVersionsInsert,
   TKmsKeyVersionsUpdate,
+  TKmsLegacyEncryptionKeys,
+  TKmsLegacyEncryptionKeysInsert,
+  TKmsLegacyEncryptionKeysUpdate,
   TKmsRootConfig,
   TKmsRootConfigInsert,
   TKmsRootConfigUpdate,
@@ -1424,6 +1430,16 @@ declare module "knex/types/tables" {
       TKmsRootConfig,
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
+    >;
+    [TableName.KmsLegacyEncryptionKey]: KnexOriginal.CompositeTableType<
+      TKmsLegacyEncryptionKeys,
+      TKmsLegacyEncryptionKeysInsert,
+      TKmsLegacyEncryptionKeysUpdate
+    >;
+    [TableName.KmsKekHistory]: KnexOriginal.CompositeTableType<
+      TKmsKekHistory,
+      TKmsKekHistoryInsert,
+      TKmsKekHistoryUpdate
     >;
     [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
     [TableName.InternalKmsKeyVersion]: KnexOriginal.CompositeTableType<

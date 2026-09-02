@@ -21,6 +21,7 @@ import { isBase64 } from "../../base64";
 import { getConfig, TEnvConfig } from "../../config/env";
 import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
+import { getLegacyDecryptionCandidates, getLegacyEncryptionSnapshot, TLegacyKeySnapshot } from "../legacy-key";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
 import type {
@@ -468,7 +469,9 @@ const cryptographyFactory = () => {
         data: string,
         appCfgOverride?: Pick<TEnvConfig, "ROOT_ENCRYPTION_KEY" | "ENCRYPTION_KEY">
       ) => {
-        const appCfg = appCfgOverride || getConfig();
+        // Snapshot over environment, so an ENCRYPTION_KEY rotation cannot strand these rows. It holds
+        // the same values, so ciphertext is unchanged. The fallback covers migrations and early boot.
+        const appCfg = getLegacyEncryptionSnapshot() || appCfgOverride || getConfig();
         const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg.ENCRYPTION_KEY;
 
@@ -520,41 +523,60 @@ const cryptographyFactory = () => {
       }: Omit<TDecryptSymmetricInput, "key" | "keySize"> & {
         keyEncoding: SecretKeyEncoding;
       }) => {
-        const appCfg = getConfig();
-        // the or gate is used used in migration
-        const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
-        const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+        const $attempt = (snapshot: TLegacyKeySnapshot) => {
+          const { ROOT_ENCRYPTION_KEY: rootEncryptionKey, ENCRYPTION_KEY: encryptionKey } = snapshot;
+
+          if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
+            return symmetric().decrypt({
+              key: rootEncryptionKey,
+              iv,
+              tag,
+              ciphertext,
+              keySize: SymmetricKeySize.Bits256
+            }) as T;
+          }
+          if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
+            return symmetric().decrypt({
+              key: encryptionKey,
+              iv,
+              tag,
+              ciphertext,
+              keySize: SymmetricKeySize.Bits128
+            }) as T;
+          }
+          throw new CryptographyError({ message: "Missing both encryption keys" });
+        };
+
+        // Current first, then pre-FIPS-relabel: the relabel can drop an operator-set
+        // ROOT_ENCRYPTION_KEY that existing rows were written under.
+        const candidates = getLegacyDecryptionCandidates();
+        if (!candidates.length) {
+          const appCfg = getConfig();
+          // the or gate is used used in migration
+          candidates.push({
+            ROOT_ENCRYPTION_KEY: appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY,
+            ENCRYPTION_KEY: appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY
+          });
+        }
 
         // Sanity check
-        if (!rootEncryptionKey && !encryptionKey) {
+        if (!candidates.some((candidate) => candidate.ROOT_ENCRYPTION_KEY || candidate.ENCRYPTION_KEY)) {
           throw new CryptographyError({
             message: "Tried to decrypt with instance root encryption key, but no root encryption key is set."
           });
         }
 
-        if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-          const data = symmetric().decrypt({
-            key: rootEncryptionKey,
-            iv,
-            tag,
-            ciphertext,
-            keySize: SymmetricKeySize.Bits256
-          });
-          return data as T;
+        let lastError: unknown;
+        for (const candidate of candidates) {
+          try {
+            return $attempt(candidate);
+          } catch (err) {
+            lastError = err;
+          }
         }
-        if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-          const data = symmetric().decrypt({
-            key: encryptionKey,
-            iv,
-            tag,
-            ciphertext,
-            keySize: SymmetricKeySize.Bits128
-          });
-          return data as T;
-        }
-        throw new CryptographyError({
-          message: "Missing both encryption keys"
-        });
+        throw lastError instanceof Error
+          ? lastError
+          : new CryptographyError({ message: "Failed to decrypt with instance root encryption key" });
       };
 
       return {

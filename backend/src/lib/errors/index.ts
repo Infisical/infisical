@@ -118,6 +118,22 @@ export class BadRequestError extends Error {
   }
 }
 
+/**
+ * The tunnel to the gateway could never be established, so nothing reached the target and the
+ * operation is safe to retry against a different pool member. Any failure raised once the tunnel is
+ * up must NOT use this class: the target may have already applied a partial change.
+ */
+export class GatewayTransportError extends BadRequestError {
+  gatewayId?: string;
+
+  constructor({ message, gatewayId }: { message?: string; gatewayId?: string }) {
+    // Deliberately keeps the BadRequest name so the serialised `error` field is unchanged for
+    // callers. Retry decisions use instanceof, never the name.
+    super({ message: message ?? "Failed to reach the gateway" });
+    this.gatewayId = gatewayId;
+  }
+}
+
 export class RateLimitError extends Error {
   constructor({ message }: { message?: string }) {
     super(message || "Rate limit exceeded");
@@ -133,6 +149,18 @@ export class NotFoundError extends Error {
   constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
     super(message ?? "The requested entity is not found");
     this.name = name || "NotFound";
+    this.error = error;
+  }
+}
+
+export class ConflictError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message ?? "The request conflicts with the current state of the resource");
+    this.name = name || "Conflict";
     this.error = error;
   }
 }

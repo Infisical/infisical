@@ -246,7 +246,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({

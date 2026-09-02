@@ -4,7 +4,7 @@ import type { Agent as HttpsAgent } from "node:https";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildSsrfSafeAgent, safeRequest, validateAndPinUrl } from "./safe-request";
+import { buildSsrfSafeAgent, getSharedHttpsAgent, safeRequest, validateAndPinUrl } from "./safe-request";
 
 type MockedRequestFn = (config: unknown) => Promise<{
   data: unknown;
@@ -334,6 +334,106 @@ describe("safe-request SSRF helpers", () => {
         expect(result.err.code).toBe("ENOTFOUND");
         expect(result.err.hostname).toBe("example.com");
       });
+    });
+  });
+
+  describe("getSharedHttpsAgent (pooling + eviction)", () => {
+    const CA_A = "-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----";
+    const CA_B = "-----BEGIN CERTIFICATE-----\nBBB\n-----END CERTIFICATE-----";
+
+    it("returns the same agent for an identical ca / rejectUnauthorized / servername signature", () => {
+      const first = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "k8s.example.com" });
+      const second = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "k8s.example.com" });
+      expect(second).toBe(first);
+    });
+
+    it("returns a distinct agent when the CA differs, so a rotated CA is never served from the old pool entry", () => {
+      const withCaA = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "k8s.example.com" });
+      const withCaB = getSharedHttpsAgent({ ca: CA_B, rejectUnauthorized: true, servername: "k8s.example.com" });
+      expect(withCaB).not.toBe(withCaA);
+      expect(withCaB.options.ca).toBe(CA_B);
+    });
+
+    it("returns a distinct agent when rejectUnauthorized or servername differ", () => {
+      const base = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "k8s.example.com" });
+      expect(getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: false, servername: "k8s.example.com" })).not.toBe(
+        base
+      );
+      expect(getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "other.example.com" })).not.toBe(
+        base
+      );
+      expect(getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true })).not.toBe(base);
+    });
+
+    it("keeps connections alive and bounds sockets, so repeat TokenReviews reuse one connection", () => {
+      const agent = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "keepalive.example.com" });
+      expect(agent.options.keepAlive).toBe(true);
+      expect(agent.maxSockets).toBe(50);
+      expect(agent.maxFreeSockets).toBe(10);
+    });
+
+    it("destroys the least recently used agent on eviction rather than dropping the reference", () => {
+      const victim = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "victim.example.com" });
+      const destroySpy = vi.spyOn(victim, "destroy");
+
+      // A dropped keepAlive agent is never collected (its idle sockets keep it
+      // reachable) and holds an fd per pooled socket, so eviction must destroy it.
+      for (let i = 0; i < 250; i += 1) {
+        getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: `evict-${i}.example.com` });
+      }
+
+      expect(destroySpy).toHaveBeenCalled();
+    });
+
+    it("leaves an agent with a request still on it undestroyed, closing it on release instead", () => {
+      const busy = getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: "busy.example.com" });
+      const destroySpy = vi.spyOn(busy, "destroy");
+      const idleSocket = { destroy: vi.fn() };
+      // One socket mid-request, one idle. The pool is process-wide, so evicting on
+      // another caller's traffic must not reset the request already on the wire.
+      (busy as any).sockets = { "busy.example.com:443:": [{}] };
+      (busy as any).freeSockets = { "busy.example.com:443:": [idleSocket] };
+
+      for (let i = 0; i < 250; i += 1) {
+        getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: `busy-evict-${i}.example.com` });
+      }
+
+      expect(destroySpy).not.toHaveBeenCalled();
+      expect(idleSocket.destroy).toHaveBeenCalled();
+      // Zero free slots means the in-flight socket closes on release rather than
+      // returning to a pool that can no longer reach it.
+      expect(busy.maxFreeSockets).toBe(0);
+    });
+
+    it("warns when the pool runs at capacity, without ever logging the CA in the cache key", async () => {
+      const { logger } = await import("@app/lib/logger");
+      // The warn is throttled, so move past the window rather than depending on
+      // which earlier test last warned.
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 3_600_000);
+      (logger.warn as any).mockClear();
+
+      for (let i = 0; i < 250; i += 1) {
+        getSharedHttpsAgent({ ca: CA_A, rejectUnauthorized: true, servername: `warn-${i}.example.com` });
+      }
+
+      expect(logger.warn).toHaveBeenCalled();
+      const line = (logger.warn as any).mock.calls[0][0] as string;
+      expect(line).toContain("agent pool at capacity");
+      expect(line).not.toContain("BEGIN CERTIFICATE");
+      nowSpy.mockRestore();
+    });
+
+    it("keeps a recently used agent alive while colder entries are evicted", () => {
+      const hot = getSharedHttpsAgent({ ca: CA_B, rejectUnauthorized: true, servername: "hot.example.com" });
+      const hotDestroy = vi.spyOn(hot, "destroy");
+
+      for (let i = 0; i < 150; i += 1) {
+        getSharedHttpsAgent({ ca: CA_B, rejectUnauthorized: true, servername: `lru-${i}.example.com` });
+        // Touch the hot entry so it stays at the recent end of the pool.
+        expect(getSharedHttpsAgent({ ca: CA_B, rejectUnauthorized: true, servername: "hot.example.com" })).toBe(hot);
+      }
+
+      expect(hotDestroy).not.toHaveBeenCalled();
     });
   });
 

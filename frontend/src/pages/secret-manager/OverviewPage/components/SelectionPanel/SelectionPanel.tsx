@@ -21,7 +21,6 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -42,8 +41,7 @@ import {
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation",
-  HONEY_TOKEN = "honeyToken"
+  SECRET_ROTATION = "secretRotation"
 }
 
 type Props = {
@@ -53,7 +51,6 @@ type Props = {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
-    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   };
   importedBy?: ProjectSecretsImportedBy[] | null;
   usedBySecretSyncs?: UsedBySecretSyncs[];
@@ -83,7 +80,6 @@ export const SelectionPanel = ({
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
   const selectedRotationCount = Object.keys(selectedEntries.secretRotation).length;
-  const selectedHoneyTokenCount = Object.keys(selectedEntries.honeyToken).length;
   const isManagedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
     Object.values(record).some((secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret)
   );
@@ -91,8 +87,7 @@ export const SelectionPanel = ({
     Object.values(record).some((secret) => secret.isHoneyTokenSecret)
   );
 
-  const selectedCount =
-    selectedFolderCount + selectedKeysCount + selectedRotationCount + selectedHoneyTokenCount;
+  const selectedCount = selectedFolderCount + selectedKeysCount + selectedRotationCount;
 
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
@@ -305,16 +300,14 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  const hasHoneyTokenSelected = isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
-
   // folders are moved one at a time from the inline row action, so bulk move only handles
   // secrets and rotations
   const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
   const shouldShowMove = shouldShowDelete && hasMovableSelection;
 
-  const isMoveDisabled = hasHoneyTokenSelected || areFoldersSelected;
+  const isMoveDisabled = isHoneyTokenSelected || areFoldersSelected;
   let moveDisabledReason = "";
-  if (hasHoneyTokenSelected) {
+  if (isHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
   } else if (areFoldersSelected) {
     moveDisabledReason = "Folders cannot be moved via multi-select";
@@ -335,13 +328,12 @@ export const SelectionPanel = ({
   const isDuplicateDisabled =
     areFoldersSelected ||
     isHoneyTokenSelected ||
-    Boolean(selectedHoneyTokenCount) ||
     areRotationsSelected ||
     isManagedSecretSelected ||
     duplicateSourceEnvSlugs.size > 1;
 
   let duplicateDisabledReason = "Folders cannot be duplicated";
-  if (isHoneyTokenSelected || Boolean(selectedHoneyTokenCount)) {
+  if (isHoneyTokenSelected) {
     duplicateDisabledReason = "Honey token secrets cannot be duplicated";
   } else if (areRotationsSelected || isManagedSecretSelected) {
     duplicateDisabledReason = "Rotated secrets cannot be duplicated";

@@ -151,7 +151,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
 RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
@@ -160,7 +160,7 @@ RUN mkdir frontend-build
 FROM base AS production
 
 # Install all required runtime packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
     automake \
@@ -189,12 +189,13 @@ RUN apt-get update && apt-get install -y \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u3 \
     libc-bin=2.41-12+deb13u3 \
-    libssl3t64=3.5.6-1~deb13u2 \
+    libssl3t64=3.5.7-1~deb13u2 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
+    libsqlite3-0=3.46.1-7+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage

@@ -1,0 +1,105 @@
+---
+title: "Folder-level access controls"
+description: "Grant users and machine identities a specific role inside a single folder."
+---
+
+Folder-level access controls assign a role to a user or machine identity on a single [folder](/documentation/platform/folder). Inside that folder, the grant replaces whatever their project roles would otherwise allow, so it can widen access or narrow it.
+
+<Info>
+  Folder-level access controls are a paid feature.
+
+If you're using Infisical Cloud, then they're available under the **Pro plan**.
+If you're self-hosting Infisical, contact sales@infisical.com to purchase a license.
+
+</Info>
+
+## How folder access works
+
+When you give a single user or machine identity a role on a folder, that role takes precedence over their [project role](./role-based-access-controls). You can use folder access to:
+
+- Give someone access to a single folder their project role doesn't reach.
+- Hold someone to a lower role inside a sensitive folder.
+- Hand out short-lived access for an incident or a one-off task.
+
+A folder role only applies to the exact folder you set it on.
+
+<Warning>
+  Folder access is not recursive. If you have a certain role on `/payments`, the same role doesn't automatically apply to `/payments/keys`. Inside a subfolder, the user or identity falls back to
+  whatever their project roles allow.
+</Warning>
+
+## Folder access roles
+
+There are five different folder access roles, listed here from least to most privileged. Each role includes everything the roles before it allow.
+
+| Role            | What it allows                                                                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **List**        | See secret names and metadata without their values. Read secret imports, tags, and the configuration of secret syncs, secret rotations, and honey tokens.             |
+| **Read**        | Everything in List, plus reading secret values, viewing commit history, generating dynamic secret leases, and subscribing to secret events.                           |
+| **Edit**        | Everything in Read, plus creating, editing, and deleting secrets and secret imports.                                                                                  |
+| **Manage**      | Everything in Edit, plus managing secret rotations, dynamic secret root credentials, honey tokens, and secret syncs, including reading the credentials they generate. |
+| **Full Access** | Everything in Manage, plus deleting subfolders of this folder and granting or revoking access to it. This role doesn't grant access to delete the folder itself, because deleting a folder is authorized on its parent.                                     |
+
+<Warning>
+  If you move or rename a folder, it keeps the same role. Deleting the folder removes the role permanently.
+</Warning>
+
+## Granting folder access
+
+<Steps>
+  <Step title="Open the folder access sheet" titleSize="h3">
+    Navigate to your project's **Secrets** page and select an environment. You can set access on the folder you're currently viewing, or on any folder in the list. To set access on the current folder, select the members icon next to the environment selector.
+
+    ![Open folder access from the environment view](/images/platform/access-controls/folder-rbac/open-folder-access-from-environment.png)
+
+    To set access on a folder in the list, hover over its row and select the members icon that appears.
+
+    ![Open folder access from a folder row](/images/platform/access-controls/folder-rbac/open-folder-access-from-folder-row.png)
+
+  </Step>
+  <Step title="Review and set access for current members" titleSize="h3">
+    The **Manage Permissions** sheet lists everyone who can already reach this folder through their project roles. Anyone whose access comes from a project role rather than a grant shows an **Access from project role** selector, and hovering over it names their roles.
+
+    ![Manage Permissions sheet](/images/platform/access-controls/folder-rbac/manage-permissions-sheet.png)
+
+    Use the dropdown on any row to set their folder role. The same menu lets you add temporary access or remove access. Project admins appear as having full access on all folders and cannot be given a folder grant.
+
+    ![Folder role dropdown](/images/platform/access-controls/folder-rbac/folder-role-dropdown.png)
+
+  </Step>
+  <Step title="Add access" titleSize="h3">
+    Select **Add Access** and pick the user or machine identity you want to assign a role to. This list includes project identities who have no access to this folder at all. Choose a role, optionally set a duration under **Temporary access**, then select **Add Access** to save.
+
+    ![Add Access sheet](/images/platform/access-controls/folder-rbac/add-folder-access-sheet.png)
+
+  </Step>
+  <Step title="Check the result" titleSize="h3">
+
+    If a user/identity's usual project permissions would change after being granted the folder access role, that user/identity is marked with **Overrides project role**:
+
+    ![Overrides project role badge](/images/platform/access-controls/folder-rbac/overrides-project-role-badge.png)
+
+    Each row now shows their role in a dropdown, which you can use to change or remove it later.
+
+    ![Folder access list](/images/platform/access-controls/folder-rbac/folder-access-list.png)
+
+  </Step>
+</Steps>
+
+## Setting temporary access
+
+Access can be time-bound so you can choose a duration when you add it, or open the role dropdown on an existing row and set one there. The row then shows how long is left, and once the window elapses the access stops applying immediately and the user or identity falls back to their project roles.
+
+![Remaining time on a temporary grant](/images/platform/access-controls/folder-rbac/temporary-access-remaining-time.png)
+
+<Note>
+  Full Access cannot be temporary. A Full Access holder can grant folder
+  access to other people, and those accesses would outlive their own expiration.
+  Grant Full Access permanently, or use Manage for time-bound access.
+</Note>
+
+## Reviewing folder access
+
+To see every folder a user or machine identity has been granted access to, go to your project's **Access Control** page and open that user/identity. The Folder Access lists each grant with its folder, environment, role, and duration, and lets you change or revoke it.
+
+![Folder access on a user's detail page](/images/platform/access-controls/folder-rbac/user-folder-access-details.png)

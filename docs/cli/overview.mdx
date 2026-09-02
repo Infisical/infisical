@@ -1,7 +1,11 @@
 ---
 title: 'Install'
 description: "Infisical's CLI is one of the best ways to manage environments and secrets. Install it here"
+sidebarTitle: "CLI"
+icon: "terminal"
 ---
+
+import InstallCli from "/snippets/cli/install-cli.mdx";
 
 <Warning>
   **Action required for Linux users.** The Infisical CLI Linux package repository has moved from Cloudsmith to `artifacts-cli.infisical.com`. The Cloudsmith repository stops serving on **September 16, 2026**. Machines still pointed at the old URL will fail to install or update. See the [migration guide](/cli/cloudsmith-migration) for step-by-step instructions.
@@ -12,131 +16,33 @@ You can use it across various environments, whether it's local development, CI/C
 
 ## Installation
 
-<Tabs>
-  <Tab title="MacOS">
-  	Use [brew](https://brew.sh/) package manager
+Install the CLI with the package manager for your operating system.
 
-    	```bash
-    	brew install infisical/get-cli/infisical
-    	```
+<InstallCli />
 
-    	### Updates
+<Tip>
+  When you install the CLI in a production environment, pin it to a specific version so that the version stays the same across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
+</Tip>
 
-    	```bash
-    	brew update && brew upgrade infisical
-    	```
-  </Tab>
-  <Tab title="Windows">
+## Update the CLI
 
-	<Accordion title="Scoop package manager">
-		Use [Scoop](https://scoop.sh/) package manager
+<CodeGroup>
 
-		```bash
-		scoop bucket add org https://github.com/Infisical/scoop-infisical.git
-		```
+```bash macOS
+brew update && brew upgrade infisical
+```
 
-			```bash
-			scoop install infisical
-			```
+```bash Windows (Scoop)
+scoop update infisical
+```
 
-		### Updates
+```bash npm
+npm update -g @infisical/cli
+```
 
-		```bash
-		scoop update infisical
-		```
-	</Accordion>
+</CodeGroup>
 
-	<Accordion title="Winget package manager">
-		Use [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) package manager
-
-		```bash
-		winget install infisical
-		```
-	</Accordion>
-
-  </Tab>
-  <Tab title="NPM">
-      Use [NPM](https://www.npmjs.com/) package manager
-
-    	```bash
-      npm install -g @infisical/cli
-    	```
-
-    	### Updates
-
-    	```bash
-    	npm update -g @infisical/cli
-    	```
-  </Tab>
-	 <Tab title="Alpine">
-	 Install prerequisite
-		```bash
-		apk add --no-cache bash sudo wget
-		```
-
-    	Add Infisical repository
-    	```bash
-    	wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
-    	```
-
-    	Then install CLI
-    	```bash
-    	apk update && sudo apk add infisical
-    	```
-		###
-		<Tip>
-			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
-		</Tip>
-   </Tab>
-	 <Tab title="RedHat/CentOs/Amazon">
-	 Add Infisical repository
-		```bash
-		curl -1sLf \
-		'https://artifacts-cli.infisical.com/setup.rpm.sh' \
-		| sudo -E bash
-		```
-
-    	Then install CLI
-    	```bash
-    	sudo yum install infisical
-    	```
-		###
-		<Tip>
-			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
-		</Tip>
-   </Tab>
-	 <Tab title="Debian/Ubuntu">
-
-	 	Add Infisical repository 
-			
-		```bash
-		curl -1sLf \
-		'https://artifacts-cli.infisical.com/setup.deb.sh' \
-		| sudo -E bash
-		```
-
-    	Then install CLI
-    	```bash
-    	sudo apt-get update && sudo apt-get install -y infisical
-    	```
-	###
-	<Tip>
-		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
-	</Tip>
-   </Tab>
-	<Tab title="Arch Linux">
-		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
-			
-		```bash
-		yay -S infisical-bin
-		```
-
-	###
-	<Tip>
-		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
-	</Tip>
-   </Tab>
-</Tabs>
+On Linux, update the CLI with the package manager you installed it with.
 
 ## Quick usage guide
 <Card color="#00A300" href="./usage">

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { matchesAllowedEmailDomain } from "@app/lib/validator";
+import { matchesAllowedEmailDomain, normalizeEmail } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -13,7 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -23,13 +23,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "beginEmailSignupV3",
       body: z.object({
-        email: z.string().email().trim()
+        email: z.string().trim().email().max(255),
+        captchaToken: z.string().trim().max(5000).optional()
       }),
       response: {
         200: z.object({
@@ -56,7 +60,11 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           });
         }
       }
-      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess(email);
+      const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess({
+        email,
+        ip: req.realIp,
+        captchaToken: req.body.captchaToken
+      });
       return { message: `Sent an email verification code to ${email}`, cooldownSeconds };
     }
   });
@@ -66,15 +74,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) =>
-          (req.body as { email?: string })?.email?.trim()?.toLowerCase().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "verifyEmailSignupV3",
       body: z.object({
-        email: z.string().email().trim(),
-        code: z.string().trim()
+        email: z.string().trim().email().max(255),
+        code: z.string().trim().length(6)
       }),
       response: {
         200: z.object({
@@ -135,7 +145,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, authMethod, organizationId, isInvitedUser } =
+      const { user, accessToken, refreshToken, authMethod, organizationId, invitingOrgId, isInvitedUser } =
         await server.services.signup.completeAccount({
           ...req.body,
           ip: req.realIp,
@@ -155,14 +165,25 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
 
       const bodyAttributionSource = "attributionSource" in req.body ? req.body.attributionSource : undefined;
+      let attributionType: SignupAttributionType | undefined;
+      if (isInvitedUser) {
+        attributionType = SignupAttributionType.SystemDerived;
+      } else if (bodyAttributionSource) {
+        attributionType = SignupAttributionType.UserProvided;
+      }
+      // Invited signups create no org of their own, so fall back to the inviting org. The
+      // OrganizationCreated event below stays on `organizationId`, which is only set when one was created.
+      const signupOrganizationId = organizationId ?? invitingOrgId;
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
-        ...(organizationId ? { organizationId } : {}),
+        ...(signupOrganizationId ? { organizationId: signupOrganizationId } : {}),
         properties: {
           username: user.username,
           email: user.email ?? "",
           attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource,
+          ...(attributionType ? { attributionType } : {}),
+          signupSource: isInvitedUser ? SignupSource.TeamInvite : SignupSource.SelfServe,
           signupMethod: isInvitedUser ? "invite" : authMethod
         }
       });
@@ -307,7 +328,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           distinctId,
           ...(organizationId ? { organizationId } : {}),
           properties: {
-            attributionSource: req.body.attributionSource
+            attributionSource: req.body.attributionSource,
+            attributionType: SignupAttributionType.UserProvided
           }
         });
       }
