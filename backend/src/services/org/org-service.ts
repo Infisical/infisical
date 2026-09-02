@@ -866,6 +866,21 @@ export const orgServiceFactory = ({
     if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
+    const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
+    if (targetRoles.length) {
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      for (const targetPermission of targetPermissions) {
+        assertPermissionBoundary(
+          permission,
+          targetPermission.permission,
+          "Failed to change the roles of a more privileged org member"
+        );
+      }
+    }
+
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     let userRole = role;
     let userRoleId: string | null = null;

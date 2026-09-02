@@ -21,7 +21,7 @@ import crypto from "node:crypto";
 
 import { packRules } from "@casl/ability/extra";
 
-import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
 const adminHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
@@ -208,6 +208,109 @@ describe("Privilege boundary on project membership downgrade", () => {
       headers: adminHeaders(),
       body: { roles: [{ role: ProjectMembershipRole.NoAccess }] }
     });
+    expect(res.statusCode).toBe(200);
+  });
+});
+
+describe("Privilege boundary on org membership downgrade", () => {
+  // PATCH /api/v2/organizations/:orgId/memberships/:membershipId updates a member through
+  // org-service rather than through the scoped membership factory, and it only bounded the role
+  // being ASSIGNED. Downgrading an Admin to no-access, or deactivating them, assigns nothing the
+  // boundary could reject, so it was a way around both the update guard and the removal boundary:
+  // downgrade first, then remove the now-weaker member.
+  let actor: { identityId: string; token: string };
+  let adminTarget: { userId: string; membershipId: string };
+
+  const roleSlug = `e2e-org-downgrader-${crypto.randomUUID()}`;
+
+  const patchMembership = (membershipId: string, body: Record<string, unknown>, headers: Record<string, string>) =>
+    testServer.inject({
+      method: "PATCH",
+      url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${membershipId}`,
+      headers,
+      body
+    });
+
+  const giveOrgAdminMembership = async (userId: string) => {
+    const [membership] = await testDb(TableName.Membership)
+      .insert({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorUserId: userId })
+      .returning("id");
+    const membershipId = (membership as { id: string }).id;
+    await testDb(TableName.MembershipRole).insert({ membershipId, role: OrgMembershipRole.Admin });
+    return membershipId;
+  };
+
+  beforeAll(async () => {
+    // member edit+delete and nothing else: the actor can legitimately reach the route, yet holds
+    // strictly less than the org Admin it is pointed at.
+    const [role] = await testDb(TableName.Role)
+      .insert({
+        name: roleSlug,
+        slug: roleSlug,
+        orgId: seedData1.organization.id,
+        permissions: JSON.stringify(packRules([{ subject: "member", action: ["read", "edit", "delete"] }] as never))
+      })
+      .returning("id");
+
+    actor = await createActorIdentity(`e2e-org-downgrade-actor-${crypto.randomUUID()}`);
+    const actorMembership = await testDb(TableName.Membership)
+      .where({
+        actorIdentityId: actor.identityId,
+        scope: AccessScope.Organization,
+        scopeOrgId: seedData1.organization.id
+      })
+      .first();
+    const actorMembershipId = (actorMembership as { id: string }).id;
+    await testDb(TableName.MembershipRole).where({ membershipId: actorMembershipId }).delete();
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: actorMembershipId,
+      role: OrgMembershipRole.Custom,
+      customRoleId: (role as { id: string }).id
+    });
+
+    const target = await createTargetUser("org-downgrade");
+    adminTarget = { userId: target.userId, membershipId: await giveOrgAdminMembership(target.userId) };
+  });
+
+  afterAll(async () => {
+    await setNewPrivilegeSystem(true);
+    await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/identities/${actor.identityId}`,
+      headers: adminHeaders()
+    });
+    await testDb(TableName.Membership).where({ actorUserId: adminTarget.userId }).delete();
+    await testDb(TableName.Users).where({ id: adminTarget.userId }).delete();
+    await testDb(TableName.Role).where({ slug: roleSlug }).delete();
+  });
+
+  describe.each([
+    { label: "legacy", newSystem: false },
+    { label: "new", newSystem: true }
+  ])("$label privilege system", ({ newSystem }) => {
+    beforeAll(async () => {
+      await setNewPrivilegeSystem(newSystem);
+    });
+
+    test("downgrading a more privileged member to no-access is bounded", async () => {
+      const res = await patchMembership(
+        adminTarget.membershipId,
+        { role: OrgMembershipRole.NoAccess },
+        asIdentity(actor.token)
+      );
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged org member");
+    });
+
+    test("deactivating a more privileged member is bounded", async () => {
+      const res = await patchMembership(adminTarget.membershipId, { isActive: false }, asIdentity(actor.token));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged org member");
+    });
+  });
+
+  test("regression: an admin can still downgrade an org Admin to no-access", async () => {
+    const res = await patchMembership(adminTarget.membershipId, { role: OrgMembershipRole.NoAccess }, adminHeaders());
     expect(res.statusCode).toBe(200);
   });
 });
