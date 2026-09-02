@@ -868,6 +868,10 @@ Enough to stop two engineers building two different APIs. Everything is wrapped 
 //     is unknown or merely not granted, so this is not the existence oracle the 404 rule above avoids
 
 // POST /sessions/:sessionId/revoke   → 200 { session: { id, revokedAt } }, idempotent
+
+// GET /access-bundles/:accessBundleId/live-session-count
+← 200 { "liveSessionCount": 3 }   // drives the delete confirm (§1.8 point 6). Counts distinct
+//     sessions carrying the bundle that are neither revoked nor expired
 ```
 
 **Status codes match the repo, not this section's first draft.** Every write returns **200** with the
@@ -893,7 +897,9 @@ Rules the shapes do not carry:
   could revoke any other member's live session, which the CASL action on its own does permit.
 - **`GET /sessions`** takes `scope=mine|all` (default `mine`, `all` is admin-only, checked in the
   service), `status=active|revoked|expired` derived from the two columns, and `limit`/`offset`
-  (20 default, 100 max).
+  (20 default, 100 max). Each row carries a pre-rendered **`actorName`** (`identityName ?? userUsername`),
+  not a nested user or identity object — the frontend has no display rule to apply here. There is no
+  server-side search parameter.
 - **Auth modes**: every human route is `verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])`.
   **Not `AuthMode.OAUTH`** — `backend/CLAUDE.md` closes delegated tokens to administration writes, and
   bundle, member and proxy management are administration. `GET /project` may add OAUTH, as PAM's does.
@@ -2005,10 +2011,10 @@ the later bundle's credential goes to `api.foo.com`, whatever the order.
 
 ### Phase 3 checklist
 
-- [ ] Product registration: `ProjectType.AgentVault`, `--color-product-av`, `helpers/project.ts`, `PROJECT_TYPE_PATH`, `PROJECT_NAV_COMPONENT`, `PRODUCT_STYLES`, `projectToEventsMap`, `RoleTemplates`, `ProjectTypePermissionSubjects`, `ProjectPermissionSubjects.ts`. **Not** the three visibility arrays
-- [ ] `av` variant on the ten components, `Tabs` four edits, both `PageHeader` scope maps, `Sidebar` five spots using `var(--color-product-av)`
-- [ ] `useImplicitProjectId()` replacing the `pamProjectId` hardcode in both contexts; `isOrgScopedProduct()` replacing the four path sniffs
-- [ ] Routes block with `index(...)`, `layout.tsx` + `AgentVaultLayout`, `AgentVaultNav`, the thin `route-agent-vault.tsx` wrappers, Audit Logs wrapper, Access Control through the generic page
+- [x] Product registration: `ProjectType.AgentVault`, `--color-product-av`, `helpers/project.ts`, `PROJECT_TYPE_PATH`, `PROJECT_NAV_COMPONENT`, `PRODUCT_STYLES`, `projectToEventsMap`, `RoleTemplates`, `ProjectTypePermissionSubjects`, `ProjectPermissionSubjects.ts`. **Not** the three visibility arrays. `projectToEventsMap` lands with the audit enums on the next line
+- [x] `av` variant on the ten components, `Tabs` four edits, both `PageHeader` scope maps, `Sidebar` five spots using `var(--color-product-av)`
+- [x] `useImplicitProjectId()` replacing the `pamProjectId` hardcode in both contexts; `isOrgScopedProduct()` replacing the four path sniffs
+- [x] Routes block with `index(...)`, `layout.tsx` + `AgentVaultLayout`, `AgentVaultNav`, the thin `route-agent-vault.tsx` wrappers, Audit Logs wrapper, Access Control through the generic page
 - [ ] `hooks/api/agentVault/` queries, mutations, types, enums; audit enums and `eventToNameMap`
 - [ ] Sessions page with scope switch, status filter, `Never` made obvious, revoke dialog; Access Bundles list and detail with member card gated on role; all three empty states from §3.4
 - [ ] Connection sheet: four steps via `Stepper`, `useWizardSteps` ported, template picker with `caveat` / `docsUrl` added to the catalog and correction 4 applied, live "Sends:" preview, one form for create and edit
@@ -2357,6 +2363,11 @@ will "correct" the plan back into a bug.
 | 14 | `credentialConfig jsonb` can carry a DB default | **It cannot.** `scripts/generate-schema-types.ts`'s `getZodDefaultValue` returns the bare string `"z.string()"` for `jsonb`, which is concatenated onto the type and emits `z.unknown()z.string()` — a parse error. No existing table has a jsonb default, so the bug has never fired. The column is `NOT NULL` with no default; the service always writes it. Same trap for `smallint`, which `getZodPrimitiveType` does not handle at all — `position` is `integer` |
 | 15 | The proxy must zero credential bytes on eviction | **No.** Dropped in review — see §2.5. It raced with in-flight requests and defended a door next to an open one |
 | 16 | `resolve` can let permission errors surface as they are | **No.** A removed actor is a 403 from `getProjectPermission`; the proxy treats a 403 as "Infisical unreachable" and keeps serving for five polls. Map `ProjectMembershipNotFound` to 401 — see §2.2 |
+| 17 | The `index(...)` in §3.2 can point at `AgentVaultSessionsPage/route.tsx` | **It cannot.** A route file exports exactly one `Route`, and the Vite plugin imports one per entry. The index is `redirects/agent-vault-index-redirect.tsx`, exactly as PAM's `/access` index is a redirect shim (`routes.ts:361`) |
+| 18 | The URL helpers in §3.1 and the routes block in §3.2 are separate pieces of work | **They are one commit.** Giving `getProjectBaseURL` / `getProjectHomePage` an Agent Vault arm widens their literal return type, and TanStack checks it against the generated route tree, so `type:check` fails until the routes exist. Note `getProjectHomePage(type, environments)` takes two arguments; org-scoped callers pass `[]` |
+| 19 | Access Control just needs a thin `route-agent-vault.tsx` wrapper | **Not quite.** The generic page renders its Users / Machine Identities / Groups tabs only when `hasTabs` (cert manager and secret manager); every other type relies on the sidebar submenu, which PAM opts out of. Agent Vault joins the `hasTabs` branch and takes the `ProjectNav.tsx:73` early return, or those two tabs are unreachable — which is where the backend's "Add them under Access Control first" error sends people |
+| 20 | `OverflowBadgeList` can render the stacked connection icons in §3.2's screen 2 | **It cannot.** Its `getLabel` returns a string and it has no icon slot. The bundle row shows template *names* as `av` badges; brand images appear on the detail page's connection rows, where there is room |
+| 21 | The `LogsSection.tsx:337` gate should be bypassed for Agent Vault as it is for PAM | **No.** PAM bypasses it because PAM has its own product permission model. The Agent Vault admin role holds `AuditLogs.read` (§1.3), so the generic gate passes for an admin and correctly shows the access-restricted dialog to a member. Only the `" in this project"` copy arm at `:149` changes |
 | 13 | `projectId` FK columns are `uuid` | **`projects.id` is `varchar(36)`** (`20231212110939_project.ts:9`), not uuid. Every `projectId` FK in the schema uses `t.string("projectId", 36)`, as `pam-account-dependencies-rework.ts:16` does |
 
 ---
