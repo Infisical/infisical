@@ -17,7 +17,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   Skeleton,
@@ -90,18 +89,23 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          {members.length > 0 && (
-            <InputGroup>
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search members..."
-              />
-            </InputGroup>
-          )}
+          <div className="flex items-center gap-2">
+            {members.length > 0 && (
+              <InputGroup className="flex-1">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search members..."
+                />
+              </InputGroup>
+            )}
+            <Button variant="av" className="ml-auto shrink-0" onClick={() => setIsAddOpen(true)}>
+              Grant Access
+            </Button>
+          </div>
 
           {isPending && <Skeleton className="h-16 w-full" />}
 
@@ -152,15 +156,6 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
             </Table>
           )}
         </div>
-
-        <SheetFooter className="border-t">
-          <Button variant="av" onClick={() => setIsAddOpen(true)}>
-            Grant Access
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Done
-          </Button>
-        </SheetFooter>
 
         {accessBundle && (
           <AddMemberDialog
