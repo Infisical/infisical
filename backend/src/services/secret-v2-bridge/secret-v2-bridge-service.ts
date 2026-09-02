@@ -2324,8 +2324,8 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder?.environment.slug ?? environment,
-        environmentName: folder?.environment.name ?? environment,
+        environmentSlug: folder.environment.slug,
+        environmentName: folder.environment.name,
         secretKeys: newSecrets.map((el) => el.key)
       });
     }

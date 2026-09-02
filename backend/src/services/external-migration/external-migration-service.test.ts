@@ -64,7 +64,7 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
     },
     appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({ id: "connection-1" }) },
-    projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", name: "Production" }) },
+    projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: ENVIRONMENT, name: "Production" }) },
     folderDAL: {
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({}))),
       findByManySecretPath: vi.fn((query: { secretPath: string }[]) =>
@@ -210,13 +210,13 @@ describe("importVaultSecrets preserving the Vault structure", () => {
     expect(deps.secretService.createManySecretsRaw).toHaveBeenCalledWith(
       expect.objectContaining({
         secretPath: "/base/app",
-        folder: { id: "folder-/base/app", envId: "env-1" }
+        folder: { id: "folder-/base/app", envId: "env-1", environment: { slug: ENVIRONMENT, name: "Production" } }
       })
     );
     expect(deps.secretService.createManySecretsRaw).toHaveBeenCalledWith(
       expect.objectContaining({
         secretPath: "/base/app/db",
-        folder: { id: "folder-/base/app/db", envId: "env-1" }
+        folder: { id: "folder-/base/app/db", envId: "env-1", environment: { slug: ENVIRONMENT, name: "Production" } }
       })
     );
   });

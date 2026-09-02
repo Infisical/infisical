@@ -308,7 +308,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   projectId?: string;
   projectSlug?: string;
   environment: string;
-  folder?: Pick<TSecretFolders, "id" | "envId">;
+  folder?: Pick<TSecretFolders, "id" | "envId"> & { environment: { slug: string; name: string } };
   secrets: {
     secretKey: string;
     secretValue: string;

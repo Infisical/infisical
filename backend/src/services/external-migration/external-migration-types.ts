@@ -169,7 +169,7 @@ export type TVaultImportSideEffectsJobPayload = {
       id: string;
       policyId: string;
       slug: string;
-      committerUserId: string | null;
+      committerUserId?: string | null;
       commits: { id: string }[];
     };
   }[];

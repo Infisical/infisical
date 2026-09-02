@@ -133,7 +133,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId: string;
   environment: string;
-  folder?: Pick<TSecretFolders, "id" | "envId">;
+  folder?: Pick<TSecretFolders, "id" | "envId"> & { environment: { slug: string; name: string } };
   secrets: {
     secretKey: string;
     secretValue: string;

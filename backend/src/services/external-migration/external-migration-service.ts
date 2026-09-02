@@ -574,11 +574,12 @@ export const externalMigrationServiceFactory = ({
         })
         .sort((a, b) => a.path.split("/").filter(Boolean).length - b.path.split("/").filter(Boolean).length);
 
-      const folderByPath = new Map<string, { id: string; envId: string }>();
-      folderByPath.set(basePath, baseFolder);
+      const folderEnvironment = { slug: env.slug, name: env.name };
+      const folderByPath = new Map<string, { id: string; envId: string; environment: typeof folderEnvironment }>();
+      folderByPath.set(basePath, { ...baseFolder, environment: folderEnvironment });
       candidatePaths.forEach((candidatePath, idx) => {
         const existing = candidateFolders[idx];
-        if (existing) folderByPath.set(candidatePath, existing);
+        if (existing) folderByPath.set(candidatePath, { ...existing, environment: folderEnvironment });
       });
 
       if (foldersToCreate.length) {
@@ -598,7 +599,7 @@ export const externalMigrationServiceFactory = ({
         );
         pathsToCreate.forEach((pathToCreate, idx) => {
           const created = createdFolders[idx];
-          if (created) folderByPath.set(pathToCreate, created);
+          if (created) folderByPath.set(pathToCreate, { ...created, environment: folderEnvironment });
         });
       }
 
