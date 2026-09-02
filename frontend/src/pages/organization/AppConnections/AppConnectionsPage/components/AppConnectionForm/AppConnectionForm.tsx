@@ -678,15 +678,19 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   );
 };
 
-type Props = { onCancel: () => void; projectId?: string } & Pick<FormProps, "onComplete"> &
+type Props = {
+  onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  projectId?: string;
+} & Pick<FormProps, "onComplete"> &
   (
     | { app: AppConnection; appConnection?: undefined }
     | { app?: undefined; appConnection: TAppConnection }
   );
-export const AppConnectionForm = ({ onCancel, projectId, ...props }: Props) => {
+export const AppConnectionForm = ({ onCancel, onDirtyChange, projectId, ...props }: Props) => {
   const { app, appConnection } = props;
 
-  const contextValue = useMemo(() => ({ onCancel }), [onCancel]);
+  const contextValue = useMemo(() => ({ onCancel, onDirtyChange }), [onCancel, onDirtyChange]);
 
   return (
     <AppConnectionFormProvider value={contextValue}>

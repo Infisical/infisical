@@ -28,7 +28,7 @@ import {
 } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -98,6 +98,8 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
     control,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 

@@ -59,7 +59,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -173,6 +173,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const { subscription } = useSubscription();
 
