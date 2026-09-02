@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, PackageIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -140,6 +140,7 @@ export const CreateSessionSheet = ({
                       className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2"
                     >
                       <span className="w-4 font-mono text-xs text-muted">{index + 1}</span>
+                      <PackageIcon className="size-4 shrink-0 text-muted" />
                       <span className="flex-1 truncate text-sm">{bundle.name}</span>
                       <span className="text-xs text-accent">
                         {bundle.connectionCount} connection
@@ -182,6 +183,12 @@ export const CreateSessionSheet = ({
                 placeholder="Add access bundle"
                 searchPlaceholder="Search access bundles..."
                 emptyMessage="No access bundles left to add."
+                renderOption={(bundle) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <PackageIcon className="size-4 shrink-0 text-muted" />
+                    <span className="truncate">{bundle.name}</span>
+                  </span>
+                )}
                 isDisabled={selectedIds.length >= MAX_SESSION_BUNDLES}
                 onValueChange={(bundle) => setSelectedIds([...selectedIds, bundle.id])}
               />
