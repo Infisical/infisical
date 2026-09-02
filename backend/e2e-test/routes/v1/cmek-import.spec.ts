@@ -344,6 +344,22 @@ describe("CMEK key-material import", () => {
     expect(JSON.parse(verification.payload).macValid).toBe(true);
   });
 
+  test("imports a minimum-length HMAC-SHA-256 key", async () => {
+    const key = await createKey(
+      "e2e-hmac-minimum-length",
+      KmsKeyUsage.GENERATE_VERIFY_MAC,
+      HmacAlgorithm.HMAC_SHA_256,
+      true
+    );
+    const material = Buffer.alloc(16, 1);
+
+    const imported = await importMaterial(key.id, material, KeyWrapAlgorithm.RSAES_OAEP_SHA_256);
+    expect(imported.statusCode, imported.payload).toBe(200);
+
+    const mac = await request("POST", `/api/v1/kms/keys/${key.id}/generate-mac`, { data });
+    expect(mac.statusCode, mac.payload).toBe(200);
+  });
+
   test("imports RSA material and verifies a signature", async () => {
     const rsaSource = await createKey(
       "e2e-import-rsa-source",

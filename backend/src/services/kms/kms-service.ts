@@ -228,10 +228,9 @@ export const kmsServiceFactory = ({
     }
 
     if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
-      const expectedLength = hmacService(algorithm as HmacAlgorithm).getKeyByteLength();
-      if (key.length !== expectedLength) {
+      if (key.length < MIN_HMAC_IMPORT_KEY_BYTE_LENGTH || key.length > MAX_HMAC_IMPORT_KEY_BYTE_LENGTH) {
         throw new BadRequestError({
-          message: `Invalid HMAC key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+          message: `Invalid HMAC key material length. Expected between ${MIN_HMAC_IMPORT_KEY_BYTE_LENGTH} and ${MAX_HMAC_IMPORT_KEY_BYTE_LENGTH} bytes, got ${key.length}.`
         });
       }
       return;
