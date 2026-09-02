@@ -80,44 +80,42 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>{isUpdate ? "Edit Access Bundle" : "Create Access Bundle"}</DialogTitle>
-            <DialogDescription>
-              An access bundle groups the connections an agent may use. You grant the bundle, not
-              the individual connections.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isUpdate ? "Edit Access Bundle" : "Create Access Bundle"}</DialogTitle>
+          <DialogDescription>
+            An access bundle groups the connections an agent may use. You grant the bundle, not the
+            individual connections.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="flex flex-col gap-4">
-            <Controller
-              control={control}
-              name="name"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Name</FieldLabel>
-                  <FieldContent>
-                    <Input {...field} placeholder="on-call-infrastructure" />
-                    <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="description"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Description</FieldLabel>
-                  <FieldContent>
-                    <TextArea {...field} rows={2} placeholder="Paging, metrics, issue tracking" />
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Name</FieldLabel>
+                <FieldContent>
+                  <Input {...field} placeholder="on-call-infrastructure" />
+                  <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="description"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Description</FieldLabel>
+                <FieldContent>
+                  <TextArea {...field} rows={2} placeholder="Paging, metrics, issue tracking" />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
