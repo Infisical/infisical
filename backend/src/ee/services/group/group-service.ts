@@ -291,6 +291,22 @@ export const groupServiceFactory = ({
       );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
+      const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+      if (targetRoles.length) {
+        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+          ignoreUnresolvedRoles: true
+        });
+
+        assertRoleSetBoundary({
+          shouldUseNewPrivilegeSystem,
+          opActions: OrgPermissionGroupActions.GrantPrivileges,
+          opSubject: OrgPermissionSubjects.Groups,
+          actorPermission: permission,
+          targetPermissions,
+          baseMessage: "Failed to change the roles of a more privileged group"
+        });
+      }
+
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
