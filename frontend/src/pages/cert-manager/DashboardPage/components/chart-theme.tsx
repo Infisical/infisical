@@ -33,6 +33,7 @@ export const formatShare = (count: number, total: number) => {
   if (total <= 0) return "0%";
   const share = (count / total) * 100;
   if (share > 0 && share < 1) return "<1%";
+  if (share > 99 && share < 100) return ">99%";
   return `${Math.round(share)}%`;
 };
 

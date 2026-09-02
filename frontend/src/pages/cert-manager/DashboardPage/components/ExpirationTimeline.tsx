@@ -16,7 +16,7 @@ import {
 } from "@app/components/v3";
 import type { TExpirationBucket } from "@app/hooks/api/certificates";
 
-import { CHART_COLORS, CHART_COLORS_HEX, formatShare } from "./chart-theme";
+import { CHART_COLORS_HEX, formatShare } from "./chart-theme";
 
 type Props = {
   buckets: TExpirationBucket[];
@@ -53,7 +53,6 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
       DONUT_SEGMENTS.map((seg, idx) => ({
         label: seg.label,
         count: seg.sourceBuckets.reduce((sum, key) => sum + (bucketMap.get(key) || 0), 0),
-        color: CHART_COLORS[idx % CHART_COLORS.length],
         segIdx: idx,
         filter: seg.filter
       })),
@@ -132,7 +131,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
             </div>
             <div className="min-w-0 flex-1">
               <div className="space-y-1.5">
-                {chartData.map((item, idx) => {
+                {chartData.map((item) => {
                   const pct = formatShare(item.count, total);
                   return (
                     <button
@@ -145,7 +144,9 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                        style={{
+                          backgroundColor: CHART_COLORS_HEX[item.segIdx % CHART_COLORS_HEX.length]
+                        }}
                       />
                       <Tooltip>
                         <TooltipTrigger asChild>
