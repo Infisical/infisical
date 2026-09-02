@@ -110,46 +110,48 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           )}
 
           {!isPending && members.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Granted</TableHead>
-                  <TableHead variant="action" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <MemberName member={member} />
-                    </TableCell>
-                    <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
-                    <TableCell variant="action">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label={`Actions for ${memberDisplayName(member)}`}
-                          >
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() => setMemberToRemove(member)}
-                          >
-                            Revoke Access
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="p-4">
+              <Table className="overflow-hidden rounded-md border border-border">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Member</TableHead>
+                    <TableHead>Granted</TableHead>
+                    <TableHead variant="action" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {members.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>
+                        <MemberName member={member} />
+                      </TableCell>
+                      <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
+                      <TableCell variant="action">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label={`Actions for ${memberDisplayName(member)}`}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setMemberToRemove(member)}
+                            >
+                              Revoke Access
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
 
