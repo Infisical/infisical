@@ -18,6 +18,8 @@ Some of it needs judgment rather than a mechanical check. The deadlock rules can
 
 If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
 
+**Use the `docs-screenshots` skill for any work involving docs images** (`.agents/skills/docs-screenshots/`). Screenshots come from a shared, already-populated self-hosted instance rather than a fresh one, and the skill carries the SSH access, the capture harness, and the resolution the images have to match.
+
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
 Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` for the whole site; the `Check docs style` CI check runs the branch variant). It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide. A clean run is not a substitute for reading the guide: the judgment calls it cannot check are the ones that matter most. Vale cannot see prose indented inside Mintlify components, so a clean run is not evidence that nested content was checked, and two rules report below error level so they never change the exit code.
