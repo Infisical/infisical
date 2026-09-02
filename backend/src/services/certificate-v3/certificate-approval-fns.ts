@@ -537,11 +537,11 @@ export const certificateApprovalServiceFactory = (
     if (effectiveBasicConstraints) {
       mappedReconstructedRequest.basicConstraints = effectiveBasicConstraints;
     }
+    mappedReconstructedRequest.customExtensions = toRequestCustomExtensions(certRequest.customExtensions);
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions }
+      mappedReconstructedRequest
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -729,8 +729,7 @@ export const certificateApprovalServiceFactory = (
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions }
+      mappedReconstructedRequest
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -1126,8 +1125,7 @@ export const certificateApprovalServiceFactory = (
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         targetProfile.certificatePolicyId,
-        mappedCertificateRequest,
-        { profileCustomExtensions: targetProfile.defaults?.customExtensions }
+        mappedCertificateRequest
       );
 
       if (!validationResult.isValid) {

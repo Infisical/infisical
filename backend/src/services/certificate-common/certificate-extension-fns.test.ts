@@ -151,6 +151,17 @@ describe("resolveCustomExtensions", () => {
     expect(extensions).toEqual([]);
   });
 
+  it("resolves only what the request carries when no profile declarations are supplied", () => {
+    const { extensions, errors } = resolveCustomExtensions({
+      declarations: undefined,
+      rules: null,
+      requestExtensions: [{ oid: SID_OID, value: SID, critical: false }]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions.map((extension) => extension.oid)).toEqual([SID_OID]);
+  });
+
   it("treats a null rule list as unconstrained, matching an unset jsonb column", () => {
     const { errors } = resolveCustomExtensions({ declarations: [declareSid], rules: null });
 
