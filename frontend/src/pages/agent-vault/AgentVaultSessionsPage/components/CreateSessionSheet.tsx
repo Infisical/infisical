@@ -233,11 +233,14 @@ export const CreateSessionSheet = ({
             <Alert key={`${overlap.earlier}-${overlap.later}`} variant="warning">
               <TriangleAlertIcon />
               <AlertTitle>
-                {overlap.earlier} and {overlap.later} both cover {overlap.patterns.join(", ")}
+                {overlap.earlier} and {overlap.later} overlap
               </AlertTitle>
               <AlertDescription>
-                {overlap.earlier} wins because it is first. An exact host in a later bundle still
-                beats a wildcard in an earlier one.
+                <p>
+                  Both cover <span className="font-mono">{overlap.patterns.join(", ")}</span>.{" "}
+                  {overlap.earlier} wins because it is first. An exact host in a later bundle still
+                  beats a wildcard in an earlier one.
+                </p>
               </AlertDescription>
             </Alert>
           ))}
