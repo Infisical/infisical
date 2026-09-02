@@ -39,14 +39,13 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 const credentialSummary = (connection: TAgentVaultConnection) => {
   const { credential } = connection;
-  if (credential.type === AgentVaultCredentialType.Bearer) {
-    return `Bearer · ${credential.headerName}`;
-  }
-  if (credential.type === AgentVaultCredentialType.Basic) {
-    return `Basic · ${credential.username}`;
-  }
+  if (credential.type === AgentVaultCredentialType.Bearer) return "Bearer";
+  if (credential.type === AgentVaultCredentialType.Basic) return "Basic";
   return "Pass-through";
 };
+
+// 443 is the only port the grammar accepts without saying so, and every row would carry it.
+const displayHost = (host: string) => host.trim().replace(/:443$/, "");
 
 type Props = {
   accessBundleId: string;
@@ -166,7 +165,7 @@ export const ConnectionsCard = ({
                         key={host}
                         className="rounded border border-border bg-container px-1.5 py-0.5 font-mono text-xs"
                       >
-                        {host.trim()}
+                        {displayHost(host)}
                       </span>
                     ))}
                   </div>
