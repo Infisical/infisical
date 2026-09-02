@@ -162,7 +162,6 @@ export const pamWebAccessServiceFactory = ({
     auditLogInfo,
     reason,
     mfaSessionId,
-    tokenVersionId,
     selectedHost
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);

@@ -468,7 +468,6 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
-        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         selectedHost: req.body.selectedHost
       });
 
