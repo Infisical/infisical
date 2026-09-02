@@ -36,6 +36,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -82,7 +83,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const productLabel =
+    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
   const {
     data: members,
@@ -207,7 +210,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
     }
     createNotification({
-      text: `Successfully added user to ${isCertManager ? productLabel : "the project"}`,
+      text: `Successfully added user to ${isStandaloneProduct ? productLabel : "the project"}`,
       type: "success"
     });
     handlePopUpToggle("addMember", false);
@@ -262,8 +265,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {isCertManager
-              ? "Add Members to Certificate Manager"
+            {isStandaloneProduct
+              ? `Add Members to ${productLabel}`
               : (t("section.members.add-dialog.add-member-to-project") as string)}
           </DialogTitle>
           <DialogDescription>{t("section.members.add-dialog.user-will-email")}</DialogDescription>
