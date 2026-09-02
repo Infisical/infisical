@@ -241,7 +241,7 @@ const ssoPermissionSchema = z
 
 export const formSchema = z.object({
   name: z.string().trim(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
   slug: z
     .string()
     .trim()
