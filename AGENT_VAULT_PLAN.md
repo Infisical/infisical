@@ -39,7 +39,7 @@ Keep this current. It is the first thing the next session reads.
 
 | Phase | Commit state | Notes |
 | --- | --- | --- |
-| 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests green (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests green. Invariant 11 (custom role resolves to member) is covered by the dispatch arm but not yet by a test — see the note below |
+| 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests, 3 role-dispatch tests — all green. Invariants 1, 3, 11 and 13 covered |
 | 2 — backend proxy endpoints + `av proxy` | not started | |
 | 3 — frontend | not started | |
 | 4 — backend tail, `av run`, docs, visibility commit | not started | |
