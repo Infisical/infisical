@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, PackageIcon, XIcon } from "lucide-react";
 
+import { ConnectionIconStack } from "@app/components/agent-vault/ConnectionIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -123,8 +124,8 @@ export const CreateSessionSheet = ({
         <SheetHeader>
           <SheetTitle>Create Session</SheetTitle>
           <SheetDescription>
-            An agent running with this session reaches the hosts in these access bundles and
-            nothing else.
+            An agent running with this session reaches the hosts in these access bundles and nothing
+            else.
           </SheetDescription>
         </SheetHeader>
 
@@ -142,10 +143,7 @@ export const CreateSessionSheet = ({
                       <span className="w-4 font-mono text-xs text-muted">{index + 1}</span>
                       <PackageIcon className="size-4 shrink-0 text-muted" />
                       <span className="flex-1 truncate text-sm">{bundle.name}</span>
-                      <span className="text-xs text-accent">
-                        {bundle.connectionCount} connection
-                        {bundle.connectionCount === 1 ? "" : "s"}
-                      </span>
+                      <ConnectionIconStack hostPatterns={bundle.hostPatterns} maxVisible={3} />
                       <IconButton
                         variant="ghost"
                         size="xs"
@@ -226,7 +224,6 @@ export const CreateSessionSheet = ({
               )}
             </FieldContent>
           </Field>
-
         </div>
 
         <SheetFooter className="border-t">

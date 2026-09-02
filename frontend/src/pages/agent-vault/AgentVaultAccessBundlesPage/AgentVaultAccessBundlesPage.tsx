@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PackageIcon, SearchIcon } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
+import { ConnectionIconStack } from "@app/components/agent-vault/ConnectionIconStack";
 import {
   Button,
   Card,
@@ -26,7 +27,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  OverflowBadgeList,
   PageHeader,
   Select,
   SelectContent,
@@ -42,7 +42,6 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
-import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -55,16 +54,6 @@ enum SortOption {
   Name = "name",
   Connections = "connections"
 }
-
-// The connection labels are re-derived from the stored host patterns rather than persisted, so a
-// bundle edited by hand still reads correctly.
-const connectionLabels = (bundle: TAgentVaultAccessBundleListItem) => [
-  ...new Set(
-    bundle.hostPatterns.map(
-      (pattern) => findTemplateForHostPattern(pattern)?.name ?? pattern.split(":")[0]
-    )
-  )
-];
 
 export const AgentVaultAccessBundlesPage = () => {
   const { t } = useTranslation();
@@ -219,18 +208,7 @@ export const AgentVaultAccessBundlesPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {bundle.connectionCount === 0 ? (
-                        <span className="text-muted">&mdash;</span>
-                      ) : (
-                        <div className="max-w-72">
-                          <OverflowBadgeList
-                            items={connectionLabels(bundle)}
-                            getKey={(label) => label}
-                            getLabel={(label) => label}
-                            getVariant={() => "av"}
-                          />
-                        </div>
-                      )}
+                      <ConnectionIconStack hostPatterns={bundle.hostPatterns} />
                     </TableCell>
                     <TableCell>
                       {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}

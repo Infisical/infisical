@@ -10,8 +10,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge,
   DeleteConfirmDialog,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,11 +31,11 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-
-import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { AgentVaultCredentialType, useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+
+import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 const credentialSummary = (connection: TAgentVaultConnection) => {
   const { credential } = connection;
