@@ -34,6 +34,7 @@ import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
 import { registerOnaSyncRouter } from "./ona-sync-router";
 import { registerOvhSyncRouter } from "./ovh-sync-router";
+import { registerPortainerSyncRouter } from "./portainer-sync-router";
 import { registerQoverySyncRouter } from "./qovery-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
@@ -78,6 +79,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,
   [SecretSync.Supabase]: registerSupabaseSyncRouter,
   [SecretSync.Rundeck]: registerRundeckSyncRouter,
+  [SecretSync.Portainer]: registerPortainerSyncRouter,
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
   [SecretSync.Checkly]: registerChecklySyncRouter,

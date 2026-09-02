@@ -2940,6 +2940,10 @@ export const AppConnections = {
       instanceUrl: "The Rundeck instance URL to connect to.",
       apiToken: "The API token used to authenticate with Rundeck."
     },
+    PORTAINER: {
+      instanceUrl: "The Portainer instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Portainer."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },

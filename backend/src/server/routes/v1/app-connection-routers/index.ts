@@ -61,6 +61,7 @@ import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
+import { registerPortainerConnectionRouter } from "./portainer-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
@@ -165,6 +166,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
+    [AppConnection.Portainer]: registerPortainerConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,

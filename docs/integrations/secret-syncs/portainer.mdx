@@ -1,0 +1,161 @@
+---
+title: "Portainer sync"
+description: "Learn how to configure a Portainer Sync for Infisical."
+---
+
+**Prerequisites:**
+
+        - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+        - Create a [Portainer Connection](/integrations/app-connections/portainer)
+
+Infisical syncs secrets to the environment variables of a Portainer stack.
+
+<Note>
+    **How the stack is updated depends on its type.**
+
+    - **Git-backed stacks**: variables are written to the stack's Git configuration. The running
+      containers are left untouched, and the new values take effect on the stack's next deployment
+      (either an auto-update poll or a manual redeploy).
+    - **File-based stacks**: Portainer requires the compose file on every update, so Infisical
+      resubmits the current file unchanged along with the variables. This re-deploys the stack.
+
+    If you need variables to land without restarting anything, use a Git-backed stack.
+</Note>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click the **Add Sync** button, then choose **Portainer** as the destination.
+        ![Choose Portainer Destination](/images/secret-syncs/portainer/step-1.png)
+
+        2. Configure the **Source** to specify where secrets should be retrieved from, then click **Continue**.
+        ![Configure Source](/images/secret-syncs/portainer/step-2.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        3. Configure the **Destination** to specify where secrets should be deployed, then click **Continue**.
+        ![Configure Destination](/images/secret-syncs/portainer/step-3.png)
+
+            - **Portainer Connection**: The Portainer Connection to authenticate with.
+            - **Environment**: The Portainer environment (endpoint) that hosts the stack.
+            - **Stack**: The stack whose environment variables should be updated.
+
+        4. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Continue**.
+        ![Configure Initial Sync](/images/secret-syncs/portainer/step-4.png)
+
+            - **Overwrite Destination Secrets**: Infisical writes its secrets to the stack. No variables are imported back.
+            - **Import Destination Secrets - Prioritize Infisical Values**: Existing stack variables are imported into Infisical first; where a key exists on both sides, the Infisical value wins.
+            - **Import Destination Secrets - Prioritize Portainer Values**: Same as above, but the stack's value wins on conflicts.
+
+        5. Configure the **Sync Options** to control how secrets are written, then click **Continue**.
+        ![Configure Sync Options](/images/secret-syncs/portainer/step-5.png)
+
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove variables from the stack during a sync. Enable this if you intend to manage some variables manually outside of Infisical.
+            - **Auto-Sync on Changes**: If enabled, secrets are automatically synced whenever they change in the source. Turn off to sync manually only.
+            - **Customize Key Names**: Add a prefix or suffix so Infisical can identify which variables in the stack it manages — anything else is left untouched.
+
+        <Warning>
+            A Portainer stack stores its variables as a single list, so a sync rewrites that whole list.
+            Without a key schema, every existing variable on the stack is treated as managed by this sync
+            and may be removed once it leaves the source. Use **Customize Key Names** or **Disable Secret
+            Deletion** to preserve variables set outside of Infisical.
+        </Warning>
+
+        6. Configure the **Details** of your Portainer Sync, then click **Continue**.
+        ![Configure Details](/images/secret-syncs/portainer/step-6.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Portainer Sync configuration, then click **Create Sync**.
+        ![Review Configuration](/images/secret-syncs/portainer/step-7.png)
+
+        8. Your Portainer Sync is created and will begin syncing your secrets to the destination.
+        ![Sync Created](/images/secret-syncs/portainer/step-8.png)
+
+    </Tab>
+    <Tab title="API">
+        To create a **Portainer Sync**, make an API request to the [Create Portainer Sync](/api-reference/endpoints/secret-syncs/portainer/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/secret-syncs/portainer \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-portainer-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "prod",
+            "secretPath": "/my-secrets",
+            "isEnabled": true,
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination"
+            },
+            "destinationConfig": {
+                "environmentId": 1,
+                "stackId": 4
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-portainer-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "portainer",
+                    "name": "my-portainer-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "prod",
+                    "name": "Production",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "portainer",
+                "destinationConfig": {
+                    "environmentId": 1,
+                    "stackId": 4
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

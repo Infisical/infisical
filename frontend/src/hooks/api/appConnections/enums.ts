@@ -75,6 +75,7 @@ export enum AppConnection {
   Convex = "convex",
   TriggerDev = "trigger-dev",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
