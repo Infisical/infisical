@@ -212,6 +212,9 @@ export const ProjectTemplateEditRoleForm = ({
                   key={`project-permission-${subject}`}
                   isDisabled={isDisabled}
                   isOpen={openPolicies.includes(subject)}
+                  onPolicyAdded={() =>
+                    setOpenPolicies((prev) => (prev.includes(subject) ? prev : [...prev, subject]))
+                  }
                   isConditional={isConditionalSubjects(subject)}
                 >
                   {renderConditionalComponents(subject, isDisabled)}

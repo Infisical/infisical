@@ -3,9 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, DialogFooter, Field, FieldFeedback, FieldLabel, Input } from "@app/components/v3";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -86,24 +85,30 @@ export const RenewDynamicSecretLease = ({
         name="ttl"
         defaultValue={dynamicSecret.defaultTTL}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={<TtlFormLabel label="TTL" />}
-            isError={Boolean(error?.message)}
-            errorText={error?.message}
-            helperText="The existing expiration time will be extended by the TTL"
-          >
-            <Input {...field} />
-          </FormControl>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="renew-lease-ttl">TTL</FieldLabel>
+            <Input
+              {...field}
+              id="renew-lease-ttl"
+              isError={Boolean(error)}
+              aria-describedby="renew-lease-ttl-feedback"
+            />
+            <FieldFeedback
+              id="renew-lease-ttl-feedback"
+              description="The existing expiration time will be extended by this TTL."
+              error={error?.message}
+            />
+          </Field>
         )}
       />
-      <div className="mt-4 flex items-center space-x-4">
-        <Button type="submit" isLoading={isSubmitting}>
-          Renew
-        </Button>
-        <Button variant="outline_bg" onClick={onClose}>
+      <DialogFooter>
+        <Button variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-      </div>
+        <Button type="submit" variant="project" size="sm" isPending={isSubmitting}>
+          Renew Lease
+        </Button>
+      </DialogFooter>
     </form>
   );
 };

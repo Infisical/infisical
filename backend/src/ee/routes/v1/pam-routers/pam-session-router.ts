@@ -11,6 +11,7 @@ import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -74,7 +75,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ sessions: SanitizedSessionSchema.array(), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
         req.internalPamProjectId,
@@ -105,7 +106,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ session: SanitizedSessionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
         actor: req.permission.type,
@@ -149,7 +150,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
+      const result = await server.services.pamSession.getSessionCredentials(
+        req.params.sessionId,
+        req.permission.id,
+        req.permission.orgId
+      );
 
       if (result.sessionStarted) {
         await server.services.auditLog.createAuditLog({
@@ -246,7 +251,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ session: SanitizedSessionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { session, projectId, accountName } = await server.services.pamSession.terminateSession(
         req.params.sessionId,
@@ -341,11 +346,11 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       let actorEmail = "";
       let actorName = "";
-      if (req.auth.authMode === AuthMode.JWT) {
+      if (isUserSessionAuth(req.auth)) {
         actorEmail = req.auth.user.email ?? "";
         actorName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
       } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
@@ -444,10 +449,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         200: z.object({ ticket: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      if (req.auth.authMode !== AuthMode.JWT) {
-        throw new BadRequestError({ message: "Web access requires JWT authentication" });
+      if (!isUserSessionAuth(req.auth)) {
+        throw new BadRequestError({ message: "Web access requires user authentication" });
       }
 
       const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
@@ -457,6 +462,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actor: req.permission,
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        tokenVersionId: req.auth.tokenVersionId,
+        accessVersion: req.auth.token.accessVersion,
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
@@ -545,6 +552,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
             accountType: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
+            tokenVersionId: z.string().uuid().optional(),
+            accessVersion: z.number().optional(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
             selectedHost: z.string().nullable().optional(),
@@ -564,6 +573,15 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           connection.off("message", preAuthHandler);
           connection.close(4001, "Invalid or expired ticket");
           return;
+        }
+
+        if (payload.tokenVersionId && payload.accessVersion !== undefined) {
+          await server.services.authToken.validateUserSessionFreshness({
+            userId,
+            tokenVersionId: payload.tokenVersionId,
+            accessVersion: payload.accessVersion,
+            readFromPrimary: true
+          });
         }
 
         await server.services.pamWebAccess.handleWebSocketConnection({

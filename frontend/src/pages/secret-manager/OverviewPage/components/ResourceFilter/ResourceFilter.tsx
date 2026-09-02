@@ -44,7 +44,7 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
   {
     type: "honeyToken",
     label: "Honey Tokens",
-    icon: <HexagonIcon className="text-yellow-700" />
+    icon: <HexagonIcon className="text-warning" />
   },
   {
     type: "proxiedService",
@@ -77,16 +77,21 @@ export function ResourceFilter({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="outline-0">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton className="relative" size="md" variant={isActive ? "project" : "outline"}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              aria-label="Filter resources"
+              className="relative"
+              size="md"
+              variant={isActive ? "project" : "outline"}
+            >
               <FilterIcon />
             </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Filter resources</TooltipContent>
-        </Tooltip>
-      </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Filter resources</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <ResourceFilterMenuContent
           resourceTypes={OVERVIEW_RESOURCE_TYPES}

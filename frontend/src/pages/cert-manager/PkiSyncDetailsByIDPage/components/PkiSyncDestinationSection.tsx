@@ -11,6 +11,7 @@ import {
   AzureKeyVaultPkiSyncDestinationSection,
   ChefPkiSyncDestinationSection,
   F5BigIpPkiSyncDestinationSection,
+  GcpCertificateManagerPkiSyncDestinationSection,
   KempLoadMasterPkiSyncDestinationSection,
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
@@ -43,6 +44,9 @@ export const PkiSyncDestinationSection = ({ pkiSync }: Props) => {
       break;
     case PkiSync.Chef:
       DestinationComponents = <ChefPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.GcpCertificateManager:
+      DestinationComponents = <GcpCertificateManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.NetScaler:
       DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;

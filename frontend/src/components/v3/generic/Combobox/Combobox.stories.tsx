@@ -218,6 +218,39 @@ export const Multiple: Story = {
   render: () => <MultipleRender />
 };
 
+const SelectAllRender = () => {
+  const [value, setValue] = useState<(typeof PROJECTS)[number][]>([]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-select-all-projects">Projects</FieldLabel>
+      <StoryCombobox
+        id="combobox-select-all-projects"
+        multiple
+        isSelectAll
+        options={PROJECTS}
+        value={value}
+        onValueChange={(options) => setValue(options)}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select projects..."
+        searchPlaceholder="Search projects..."
+        searchAriaLabel="Search projects"
+        clearAriaLabel="Clear all projects"
+      />
+    </Field>
+  );
+};
+
+/**
+ * `isSelectAll` adds a toggle above the option list that selects every option
+ * matching the current search, then clears that same set once all are selected.
+ */
+export const SelectAll: Story = {
+  name: "Multiple: Select All",
+  render: () => <SelectAllRender />
+};
+
 const SingleLineRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 12));
 
@@ -373,6 +406,19 @@ export const States: Story = {
           id="combobox-disabled"
           options={ENVIRONMENTS}
           value={ENVIRONMENTS[0]}
+          onValueChange={() => undefined}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          isDisabled
+        />
+      </Field>
+      <Field data-disabled="true">
+        <FieldLabel htmlFor="combobox-disabled-projects">Projects</FieldLabel>
+        <StoryCombobox
+          id="combobox-disabled-projects"
+          multiple
+          options={PROJECTS}
+          value={PROJECTS.slice(0, 2)}
           onValueChange={() => undefined}
           getOptionValue={(option) => option.id}
           getOptionLabel={(option) => option.name}

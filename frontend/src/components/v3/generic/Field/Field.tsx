@@ -114,7 +114,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 const fieldLabelVariants = cva(
   cn(
-    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50 [--control-variant-color:var(--color-primary)] [--control-variant-border-color:var(--color-border)]",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
     "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
@@ -127,11 +127,11 @@ const fieldLabelVariants = cva(
       variant: {
         default: "has-[[data-state=checked]]:bg-container!", // uses base styling
         project:
-          "has-[[data-state=checked]]:border-project/30 has-[[data-state=checked]]:bg-project/5!",
-        org: "has-[[data-state=checked]]:border-org/30 has-[[data-state=checked]]:bg-org/5!",
+          "has-[[data-state=checked]]:border-project/30 has-[[data-state=checked]]:bg-project/5! [--control-variant-color:var(--color-project)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-project)_30%,transparent)]",
+        org: "has-[[data-state=checked]]:border-org/30 has-[[data-state=checked]]:bg-org/5! [--control-variant-color:var(--color-org)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-org)_30%,transparent)]",
         "sub-org":
-          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!",
-        pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5!"
+          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5! [--control-variant-color:var(--color-sub-org)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-sub-org)_30%,transparent)]",
+        pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5! [--control-variant-color:var(--color-product-pam)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_30%,transparent)]"
       },
       size: {
         default: "text-xs",

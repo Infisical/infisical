@@ -3,11 +3,13 @@
 }
 
 .chat-assistant-floating-input {
-  display: none !important;
+  visibility: hidden !important;
 }
 
 #sidebar li > a.text-primary {
-  background-color: #f7f7f6;
+  background-color: #fbfde9;
+  border-left-color: #dbf530;
+  color: #5f7000;
 }
 
 #header {
@@ -571,6 +573,7 @@ a.ifx-steps__label:hover {
 .ifx-card {
   --ifx-ink: #6f6f6f;
   --ifx-accent: #dbf530;
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -667,6 +670,17 @@ a.ifx-card:hover .ifx-card__icon {
 a.ifx-card__title {
   align-self: flex-start;
   text-decoration: none;
+}
+
+div.ifx-card a.ifx-card__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+div.ifx-card a:not(.ifx-card__title) {
+  position: relative;
+  z-index: 1;
 }
 
 .ifx-card__chevron {
@@ -942,4 +956,276 @@ a.ifx-card__title:hover .ifx-card__chevron {
   .ifx-home__hero-aside {
     align-self: stretch;
   }
+}
+
+[data-component-part="field-name"] {
+  position: relative;
+}
+
+[data-component-part="field-name"]::after {
+  content: "Click to copy";
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #18181b;
+  color: #ffffff;
+  font: 500 0.75rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-component-part="field-name"]:hover::after,
+[data-component-part="field-name"]:focus-visible::after {
+  visibility: visible;
+}
+
+[data-component-part="field-name"][data-copy-state="copied"]::after {
+  content: "Copied";
+  visibility: visible;
+}
+
+/* Section header in the sidebar.
+   Each dropdown item hoists its landing page above every group in docs.json, so
+   it renders as the first <ul class="sidebar-group"> with a single <li> and no
+   collapse <button>. It reads as a section label; when the reader is actually on
+   that page it takes the #header treatment from doc pages, so the yellow rule
+   keeps meaning "you are here". Depends on Mintlify's sidebar markup; recheck
+   after an upgrade. */
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) {
+  margin-bottom: 1rem;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  /* transparent rule reserves the 2px so nothing shifts when it becomes active */
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 16px !important;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #101114;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: #dbf530;
+  background-color: #f7f7f6;
+}
+
+#sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  color: #101114;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a {
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
+  border-left-color: #dbf530;
+  background-color: #101114;
+  color: #f3f3f4;
+}
+
+.dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a svg {
+  color: #f3f3f4;
+}
+
+.ifx-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.125rem;
+  white-space: nowrap;
+}
+
+.ifx-tag--neutral {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+
+.dark .ifx-tag--neutral {
+  background-color: rgba(55,65,81,.35);
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+.ifx-tag--blue {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.dark .ifx-tag--blue {
+  background-color: rgba(30,58,138,.35);
+  color: #93c5fd;
+  border-color: #1e40af;
+}
+
+.ifx-tag--cyan {
+  background-color: #cffafe;
+  color: #0e7490;
+  border-color: #a5f3fc;
+}
+
+.dark .ifx-tag--cyan {
+  background-color: rgba(22,78,99,.35);
+  color: #67e8f9;
+  border-color: #155e75;
+}
+
+.ifx-tag--violet {
+  background-color: #ede9fe;
+  color: #6d28d9;
+  border-color: #ddd6fe;
+}
+
+.dark .ifx-tag--violet {
+  background-color: rgba(76,29,149,.35);
+  color: #c4b5fd;
+  border-color: #5b21b6;
+}
+
+.ifx-tag--fuchsia {
+  background-color: #fae8ff;
+  color: #a21caf;
+  border-color: #f5d0fe;
+}
+
+.dark .ifx-tag--fuchsia {
+  background-color: rgba(112,26,117,.35);
+  color: #f0abfc;
+  border-color: #86198f;
+}
+
+.ifx-tag--indigo {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.dark .ifx-tag--indigo {
+  background-color: rgba(49,46,129,.35);
+  color: #a5b4fc;
+  border-color: #3730a3;
+}
+
+.ifx-tag--teal {
+  background-color: #ccfbf1;
+  color: #0f766e;
+  border-color: #99f6e4;
+}
+
+.dark .ifx-tag--teal {
+  background-color: rgba(19,78,74,.35);
+  color: #5eead4;
+  border-color: #115e59;
+}
+
+.ifx-tag--orange {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.dark .ifx-tag--orange {
+  background-color: rgba(124,45,18,.35);
+  color: #fdba74;
+  border-color: #9a3412;
+}
+
+.ifx-tag--slate {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.dark .ifx-tag--slate {
+  background-color: rgba(51,65,85,.35);
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+.ifx-tag--sky {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.dark .ifx-tag--sky {
+  background-color: rgba(12,74,110,.35);
+  color: #7dd3fc;
+  border-color: #075985;
+}
+
+.ifx-tag--emerald {
+  background-color: #d1fae5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.dark .ifx-tag--emerald {
+  background-color: rgba(6,78,59,.35);
+  color: #6ee7b7;
+  border-color: #065f46;
+}
+
+.ifx-tag--amber {
+  background-color: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.dark .ifx-tag--amber {
+  background-color: rgba(120,53,15,.35);
+  color: #fcd34d;
+  border-color: #92400e;
+}
+
+.ifx-tag--rose {
+  background-color: #ffe4e6;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.dark .ifx-tag--rose {
+  background-color: rgba(136,19,55,.35);
+  color: #fda4af;
+  border-color: #9f1239;
+}
+
+.ifx-tag--lime {
+  background-color: #ecfccb;
+  color: #4d7c0f;
+  border-color: #d9f99d;
+}
+
+.dark .ifx-tag--lime {
+  background-color: rgba(54,83,20,.35);
+  color: #bef264;
+  border-color: #3f6212;
+}
+
+.ifx-tag--purple {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.dark .ifx-tag--purple {
+  background-color: rgba(88,28,135,.35);
+  color: #d8b4fe;
+  border-color: #6b21a8;
 }

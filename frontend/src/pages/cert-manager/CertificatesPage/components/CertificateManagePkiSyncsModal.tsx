@@ -21,12 +21,13 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
-  PkiSync,
   useAddCertificatesToPkiSync,
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
@@ -103,7 +104,7 @@ export const CertificateManagePkiSyncsModal = ({
           projectId: currentProject.id,
           applicationName
         },
-        search: { selectedTab: "syncs" }
+        search: { selectedTab: ApplicationTab.Syncs }
       });
     } else {
       navigate({
@@ -118,17 +119,6 @@ export const CertificateManagePkiSyncsModal = ({
       });
     }
     handleClose();
-  };
-
-  const getDestinationDisplayName = (destination: string) => {
-    switch (destination) {
-      case PkiSync.AzureKeyVault:
-        return "Azure Key Vault";
-      case PkiSync.AwsCertificateManager:
-        return "AWS Certificate Manager";
-      default:
-        return destination;
-    }
   };
 
   useEffect(() => {
@@ -271,9 +261,9 @@ export const CertificateManagePkiSyncsModal = ({
                       <Td className="w-1/2 max-w-0">
                         <div
                           className="truncate capitalize"
-                          title={getDestinationDisplayName(sync.destination)}
+                          title={PKI_SYNC_MAP[sync.destination].name}
                         >
-                          {getDestinationDisplayName(sync.destination)}
+                          {PKI_SYNC_MAP[sync.destination].name}
                         </div>
                       </Td>
                     </Tr>

@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
 
-import { EncryptionPageForm } from "./components";
+import { EncryptionKeyRotationSection, EncryptionPageForm } from "./components";
 
 export const EncryptionPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-background text-foreground">
+    <div className="h-full text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>
@@ -21,6 +21,7 @@ export const EncryptionPage = () => {
             description="Manage encryption settings for your Infisical instance."
           />
           <EncryptionPageForm />
+          <EncryptionKeyRotationSection />
         </div>
       </div>
     </div>

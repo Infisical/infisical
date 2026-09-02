@@ -55,6 +55,8 @@ export type TCertificateProfile = {
     name: string;
     isExternal?: boolean;
     externalType?: string | null;
+    productNameId?: string | null;
+    keyAlgorithm?: string | null;
   };
 };
 
@@ -66,6 +68,8 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     name: string;
     isExternal?: boolean;
     externalType?: string | null;
+    productNameId?: string | null;
+    keyAlgorithm?: string | null;
   };
   certificatePolicy?: {
     id: string;

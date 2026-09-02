@@ -28,7 +28,8 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
     updateSchema: UpdateAwsElasticLoadBalancerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });
@@ -63,7 +64,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, region } = req.query;
 
@@ -113,7 +114,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, region, loadBalancerArn } = req.query;
 
@@ -149,7 +150,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { certificateId } = req.body;
@@ -197,7 +198,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 

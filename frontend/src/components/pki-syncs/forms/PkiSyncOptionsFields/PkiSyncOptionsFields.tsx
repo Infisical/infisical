@@ -10,6 +10,7 @@ import { AwsSecretsManagerSyncOptions } from "./AwsSecretsManagerSyncOptions";
 import { AzureKeyVaultSyncOptions } from "./AzureKeyVaultSyncOptions";
 import { ChefSyncOptions } from "./ChefSyncOptions";
 import { F5BigIpSyncOptions } from "./F5BigIpSyncOptions";
+import { GcpCertificateManagerSyncOptions } from "./GcpCertificateManagerSyncOptions";
 import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
 import { LinuxServerSyncOptions } from "./LinuxServerSyncOptions";
 import { NameSchemaHoverCard } from "./NameSchemaHoverCard";
@@ -34,6 +35,8 @@ const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolea
       return <AwsSecretsManagerSyncOptions />;
     case PkiSync.Chef:
       return <ChefSyncOptions />;
+    case PkiSync.GcpCertificateManager:
+      return <GcpCertificateManagerSyncOptions />;
     case PkiSync.NetScaler:
       return <NetScalerSyncOptions />;
     case PkiSync.F5BigIp:

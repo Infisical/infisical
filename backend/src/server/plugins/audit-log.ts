@@ -4,7 +4,7 @@ import fp from "fastify-plugin";
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent === undefined) {
@@ -57,6 +57,9 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.USER,
         metadata: {
           ...(req.auth.authMethod ? { authMethod: req.auth.authMethod } : {}),
+          ...(req.auth.authMode === AuthMode.OAUTH && req.auth.oauthClientId
+            ? { oauthClientId: req.auth.oauthClientId }
+            : {}),
           email: req.auth.user.email,
           username: req.auth.user.username,
           userId: req.permission.id

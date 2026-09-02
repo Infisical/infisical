@@ -9,7 +9,7 @@
 # -- `#Foo` is loaded as a regex, not ignored.
 #
 # A term that legitimately appears in more than one case belongs in
-# ../accepted/accept.txt instead, or it will produce false positives.
+# ../any-case/accept.txt instead, or it will produce false positives.
 
 # --- Infisical ---
 Infisical
@@ -170,6 +170,7 @@ signtool
 DevOps
 BigQuery
 Cloud SQL
+Cloud Run
 Cloud 66
 
 # --- Git, CI/CD, PaaS, SaaS ---
@@ -584,6 +585,8 @@ lastName
 firstName
 givenName
 stripPrefix
+trimSuffix
+rsync
 demo_mount
 db_owner
 data_writer
@@ -615,3 +618,7 @@ dcr
 als
 ua
 iss
+
+# --- Surfaced by the code-signing pages ---
+# Vale strips a trailing `'s`, so the possessive needs no separate entry.
+MSBuild

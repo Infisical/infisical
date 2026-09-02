@@ -15,7 +15,9 @@ This guide defines how to write user-facing documentation for Infisical.
 9. **Be consistent** — Use the same terms throughout.
 10. **Structure by purpose** — Guides, concepts, overviews, and references have different shapes.
 11. **Use sentence case** — Write page titles, sidebar titles, and headings in sentence case.
-12. **Run the linter** — `make lint-docs` checks the mechanical rules in this guide.
+12. **Rewrite the sentences** — Say it once, in your own voice. Read every sentence out loud.
+13. **Bold is for UI** — Bold marks buttons, menus, and fields. Use "select", not "click" or "tap".
+14. **Run the linter** — `make lint-docs-branch` checks the mechanical rules in this guide.
 
 ---
 
@@ -139,11 +141,13 @@ Use `<Tabs>` when there are multiple ways to accomplish something:
 Use callouts to highlight important information:
 
 ```mdx
-<Note>Prerequisites or important context.</Note>
+<Note>Important context that applies to a specific part of the page.</Note>
 <Warning>Destructive actions or irreversible changes.</Warning>
 <Tip>Helpful suggestions or best practices.</Tip>
 <Info>Additional context that's good to know.</Info>
 ```
+
+Don't use callouts for page-level prerequisites. Put them under a `## Prerequisites` heading instead.
 
 ### Navigation
 
@@ -252,6 +256,90 @@ Documentation should read like instructions from a knowledgeable colleague: dire
 - Keep sentences and paragraphs concise
 - Explain jargon on first use
 
+### Don't give human verbs to things that aren't human
+
+A path, a policy, or a property doesn't say, know, understand, or want anything. Name the actor and the behavior.
+
+**Instead of:** A grant on `/payments` says nothing about `/payments/keys`.
+
+**Write:** If you have a role on `/payments`, that role does not automatically apply to `/payments/keys`.
+
+### Say what a thing is, in one clause
+
+Define a field or a concept plainly. If a second clause has to explain the first, the first clause isn't doing any work.
+
+**Instead of:** The `scope` property defines the boundary within which a grant is considered valid.
+
+**Write:** `scope` is the folder path the grant applies to.
+
+### Say it once
+
+Cut sentences that restate the previous sentence in new words. Keep the one that carries new information.
+
+**Instead of:** Access is granted per folder. Each folder carries its own access list. Because access is defined at the folder level, permissions on one folder do not carry over to another.
+
+**Write:** Access is granted per folder, so permissions on one folder don't carry over to another.
+
+### Keep pronouns next to what they refer to
+
+If a reader has to scan backwards to work out what "it" or "they" points at, repeat the noun. Repeating a word costs less than a reparse.
+
+**Instead of:** Add the service token to the project, then open the environment settings and confirm that it is active.
+
+**Write:** Add the service token to the project, then open the environment settings and confirm the token is active.
+
+### Give every transitive verb its object
+
+A verb like request, create, return, send, or apply has to say what. Drop the object and the reader has to guess, and the gap often marks a detail the writer had not settled yet.
+
+**Instead of:** You create the service in your Infisical dashboard, and the agent requests.
+
+**Write:** You create the service in your Infisical dashboard, and the agent requests credentials for it.
+
+This usually happens to a sentence that was edited after it was written, losing its tail. Read the second half of every long sentence on its own and check that each verb in it has something to act on.
+
+### Lead with the behavior, not a label for it
+
+Calling something an exception, a special case, or a caveat tells the reader to brace without telling them what for. State the behavior first.
+
+**Instead of:** Folder access is the exception.
+
+**Write:** Folder access doesn't inherit. A role on a parent folder gives no access to the folders inside it.
+
+### Split mid-sentence detours
+
+A clause wedged into the middle of a sentence makes the eye jump back to pick up the thread. Split the sentence, or move the condition to the front.
+
+**Instead of:** The menu adds temporary access and once a grant exists removes folder access.
+
+**Write:** The same menu lets you add temporary access or remove access.
+
+### Name what actually happens
+
+Replace an abstract construction with the system, the input, and the result. Abstraction hides whether the writer knew the mechanism.
+
+**Instead of:** Permissions are evaluated against the resource hierarchy.
+
+**Write:** Infisical checks the exact folder path you asked for, and only that path.
+
+### Use contractions
+
+Write "it's", "don't", "you'll", and "can't". Full forms read stiff and slow the sentence down for no gain.
+
+**Instead of:** It is not possible to recover a deleted secret. You will need to create it again.
+
+**Write:** You can't recover a deleted secret, so you'll need to create it again.
+
+Vale flags the common full forms as suggestions.
+
+### Read it out loud
+
+Read every sentence out loud before you submit it. If you wouldn't say it to a colleague standing next to you, rewrite it. This one test catches most of the rules above.
+
+**Instead of:** Access removal is reflected within the propagation window.
+
+**Write:** Access is removed within 60 seconds.
+
 ### Use sentence case for titles and headings
 
 Always use sentence case for:
@@ -329,18 +417,16 @@ If new content doesn't fit the existing flow, consider whether it belongs on thi
 
 If a page assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed — state it at the top. Readers shouldn't get stuck halfway through because they missed an unstated requirement.
 
-Use an `<Info>` callout for a short prerequisite list:
+Use a `## Prerequisites` section before the main content, even when the list is short:
 
 ```mdx
-<Info>
-Prerequisites:
+## Prerequisites
 
 - An Infisical account
 - A [Gateway](/documentation/platform/gateways/overview) that can reach your database
-</Info>
 ```
 
-Use a "Prerequisites" section before the main content when requirements need additional explanation. Reserve `<Note>` for prerequisite details that apply to a specific step rather than the whole page.
+Don't put page-level prerequisites in `<Info>` or other callouts. Reserve `<Note>` for requirement details that apply to a specific step rather than the whole page.
 
 ---
 
@@ -387,6 +473,32 @@ poorly out of context; otherwise the title is used.
 - Brief intro
 - Navigation cards to sub-pages
 
+A landing page that heads a whole section has a further job: it should let a reader
+understand what the section contains without reading the sidebar. Mirror the section's
+structure on the page.
+
+- Open with one or two sentences saying what the section is for. Not a definition of the
+  product, just what a reader will find here.
+- Cover every group in that section's sidebar. How much you expand each one depends on the
+  group:
+  - **One card for the group** when its pages are steps or reference for a single topic. The
+    card points at the group's entry point and the description says what the group is for.
+    Networking does this: one card for Gateways, one for Relays.
+  - **A card per page** when the pages are parallel choices the reader picks between, and
+    seeing all the options is the point. Self-hosting does this for deployment platforms,
+    where a reader is scanning for the one they already run.
+- Give each group its own `##` heading, using the same name as the sidebar, once a section
+  has enough groups that a single card group would run long. A short section can carry them
+  all in one `<CardGroup>` with no headings at all.
+- Card titles should match their sidebar labels so a card and its destination read the same.
+- Put deeper explanation below the cards, not above them. Someone who arrived to navigate
+  should not have to scroll past a concept page to find the links.
+- Detail that only some readers want, such as the reasoning behind a choice, belongs in an
+  `<Accordion>` so it does not push the cards down the page.
+
+See `self-hosting/overview`, `documentation/platform/gateways/overview`, and
+`documentation/platform/identities/overview` for the pattern.
+
 **Reference pages:**
 
 - Structured information (tables, field descriptions)
@@ -396,23 +508,68 @@ Use the structure that best serves the reader for that type of content.
 
 ---
 
+## 11. Formatting and UI conventions
+
+### Bold is for UI, never emphasis
+
+Bold marks something the reader has to find on screen: a button, a menu item, a tab, or a field name. If the prose needs bold to land, rewrite the prose.
+
+A bold label that opens a list item or a paragraph is a label rather than emphasis, so `**Prerequisites:**` is fine. An inline `**Note**:` prefix is not. Use a `<Note>` callout instead.
+
+**Instead of:** This is **important**: rotation only applies to **active** secrets.
+
+**Write:** Rotation only applies to active secrets. Select **Save** to apply the change.
+
+### Format UI labels as bold, not quotes or code
+
+A button, tab, or field name goes in bold. Quotes and code spans are for code, paths, keystrokes, and literal values.
+
+**Instead of:** Click 'Submit', then navigate to `Personal Settings`.
+
+**Write:** Select **Submit**, then go to **Personal settings**.
+
+### Select, not click or tap
+
+Use "select" for any interaction with a control. It covers mouse, touch, and keyboard, and assumes nothing about the reader's device. Gestures with no "select" equivalent keep their own verbs: `right-click` and `double-click`.
+
+**Instead of:** Click the three dot menu, then tap **Add temporary access**.
+
+**Write:** Select the three dot menu, then select **Add temporary access**.
+
+---
+
 ## 12. What Vale enforces
 
-Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs` from the
-repository root before opening a documentation pull request.
+Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs-branch` from
+the repository root before opening a documentation pull request, or `make lint-docs` to check
+every page. The `Check docs style` CI check runs the same rules over the files the pull request
+touched.
 
 Vale cannot see prose indented inside components, which is a large share of this repo. A clean
 run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.
 
 Vale covers the mechanical rules only: sentence case in headings and in the `title` and
 `sidebarTitle` fields, consistent product and vendor spellings, spelling against a curated
-vocabulary, `$` prompts in code blocks, placeholder names like `foo`, and more than two em
-dashes in one paragraph. The `description` frontmatter field is not checked automatically --
-watch for it in review.
+vocabulary, `$` prompts in code blocks, placeholder names like `foo`, more than two em
+dashes in one paragraph, "click" and "tap" where the verb should be "select", and the full
+forms of common contractions. The `description` frontmatter field is not checked
+automatically -- watch for it in review.
+
+Two of those rules do not fail the run yet. `Infisical.UIActions` reports at warning level and
+`Infisical.Contractions` at suggestion level, because the existing pages carry several hundred
+of each and a blocking rule would fail every pull request that touches them. Both are on their
+way to error level once the corpus is clean, so fix them on the pages you touch. Read the
+printed output, not just the exit code.
+
+Nothing checks the two bolding rules in section 11. Whether a given noun is a button that
+should be bold, or prose that should not, needs a reader who knows the product.
 
 Everything else here -- providing context, writing for users, cross-referencing, choosing the
-right component, page structure -- is a judgment call that only a reviewer can make. A clean
-Vale run means nothing was mechanically wrong, not that the page is good.
+right component, page structure, and every sentence-level rule in section 5 -- is a judgment
+call that only a reviewer can make. A clean Vale run means nothing was mechanically wrong, not
+that the page is good.
 
-See `docs/CONTRIBUTING.MD` for how to add a word to the vocabulary, enforce a new spelling,
-or suppress a rule where Vale is wrong.
+Run the `docs-style` skill to get the judgment half checked as well.
+
+See `docs/CONTRIBUTING.MD` for how to invoke that skill, add a word to the vocabulary, enforce
+a new spelling, or suppress a rule where Vale is wrong.

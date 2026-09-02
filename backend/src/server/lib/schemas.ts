@@ -1,6 +1,8 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
+import { TemporaryPermissionMode } from "@app/db/schemas";
+import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 interface SlugSchemaInputs {
@@ -52,3 +54,29 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
  * Usage: z.string().describe(openApiHidden())
  */
 export const openApiHidden = () => JSON.stringify({ "x-hidden": true });
+
+// The shared `type` body field for temporary vs permanent access grants (additional privileges,
+// folder access). Parameterized by the endpoint's api-docs strings so every route documents its
+// own vocabulary while accepting the exact same shape.
+export const temporaryPermissionTypeSchema = (docs: {
+  isTemporary: string;
+  temporaryMode: string;
+  temporaryRange: string;
+  temporaryAccessStartTime: string;
+}) =>
+  z.discriminatedUnion("isTemporary", [
+    z.object({
+      isTemporary: z.literal(false).describe(docs.isTemporary)
+    }),
+    z.object({
+      isTemporary: z.literal(true).describe(docs.isTemporary),
+      temporaryMode: z.nativeEnum(TemporaryPermissionMode).describe(docs.temporaryMode),
+      temporaryRange: z
+        .string()
+        .trim()
+        .max(32)
+        .refine((val) => ms(val) > 0, "Temporary range must be a positive duration such as 30m, 4h or 1d")
+        .describe(docs.temporaryRange),
+      temporaryAccessStartTime: z.string().datetime().describe(docs.temporaryAccessStartTime)
+    })
+  ]);

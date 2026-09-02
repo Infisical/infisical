@@ -19,6 +19,10 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
+}
+
 export enum ProjectPermissionCommitsActions {
   Read = "read",
   PerformRollback = "perform-rollback"
@@ -170,7 +174,8 @@ export enum ProjectPermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetHealthCheckCommand = "set-health-check-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -543,6 +548,13 @@ export type ProjectPermissionSet =
     ]
   | [
       ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionSecretFolderActions,
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
@@ -1705,6 +1717,8 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    // manage-access is deliberately not writable here: it can only be obtained through the
+    // folder access flow (built-in admin role and the full-access folder tier)
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     ),

@@ -72,7 +72,7 @@ export const addRenewedCertificateToSyncs = async (
   tx?: Knex
 ) => {
   try {
-    const pkiSyncIds = await dependencies.certificateSyncDAL.findPkiSyncIdsByCertificateId(oldCertificateId);
+    const pkiSyncIds = await dependencies.certificateSyncDAL.findPkiSyncIdsByCertificateId(oldCertificateId, tx);
 
     if (pkiSyncIds.length === 0) {
       return;
@@ -81,7 +81,8 @@ export const addRenewedCertificateToSyncs = async (
     const addPromises = pkiSyncIds.map(async (pkiSyncId) => {
       const oldCertificateRecord = await dependencies.certificateSyncDAL.findByPkiSyncAndCertificate(
         pkiSyncId,
-        oldCertificateId
+        oldCertificateId,
+        tx
       );
 
       await dependencies.certificateSyncDAL.addCertificates(

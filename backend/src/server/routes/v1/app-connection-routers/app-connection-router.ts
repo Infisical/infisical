@@ -455,7 +455,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: (req) => {
       const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(req.query.projectType);
       return { appConnectionOptions };
@@ -480,7 +480,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
         200: z.object({ appConnections: SanitizedAppConnectionSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
       const appConnections = await server.services.appConnection.listAppConnections(

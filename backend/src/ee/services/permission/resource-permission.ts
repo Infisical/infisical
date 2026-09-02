@@ -100,7 +100,8 @@ export enum ResourcePermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetHealthCheckCommand = "set-health-check-command"
 }
 
 export type ResourcePermissionSet =

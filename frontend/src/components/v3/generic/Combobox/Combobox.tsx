@@ -29,7 +29,7 @@ type ComboboxSharedProps<TOption> = {
   isLoading?: boolean;
   isError?: boolean;
   modal?: boolean;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
   contentClassName?: string;
 };
 
@@ -51,6 +51,7 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
   > & {
     multiple: true;
     singleLine?: boolean;
+    isSelectAll?: boolean;
     value?: readonly TOption[];
     onValueChange: (options: TOption[]) => void;
     onClear?: () => void;
@@ -58,8 +59,13 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
 
 type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultipleProps<TOption>;
 
-const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
-const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
+const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
+const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
+
+// Geometry and typography shared by every popup row, so the select-all action cannot
+// drift from the option rows it sits above.
+const COMBOBOX_ROW_CLASS =
+  "flex min-h-8 cursor-default items-center gap-2 rounded-sm py-1.5 text-sm text-foreground outline-hidden select-none";
 
 const normalizeSearchText = (value: string) =>
   value
@@ -125,6 +131,7 @@ const ComboboxList = <TOption,>({
     <ComboboxPrimitive.List
       aria-label={ariaLabel}
       aria-busy={isLoading || undefined}
+      onWheel={(event) => event.stopPropagation()}
       className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
       style={{ maxHeight }}
     >
@@ -138,7 +145,8 @@ const ComboboxList = <TOption,>({
             value={option}
             disabled={isOptionDisabled?.(option)}
             className={cn(
-              "relative flex min-h-8 cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm text-foreground outline-hidden select-none",
+              COMBOBOX_ROW_CLASS,
+              "relative pr-8 pl-2",
               "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
             )}
           >
@@ -161,13 +169,40 @@ const ComboboxList = <TOption,>({
   </>
 );
 
+type ComboboxSelectAllProps = {
+  areAllSelected: boolean;
+  optionCount: number;
+  onToggle: () => void;
+};
+
+const ComboboxSelectAll = ({ areAllSelected, optionCount, onToggle }: ComboboxSelectAllProps) => (
+  <div className="border-b border-border p-1">
+    <button
+      type="button"
+      // Keep focus on the search input so the popup stays open after toggling.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onToggle}
+      className={cn(
+        COMBOBOX_ROW_CLASS,
+        "w-full justify-between px-2",
+        "hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
+      <span className="truncate">
+        {areAllSelected ? "Clear Selection" : `Select All (${optionCount})`}
+      </span>
+      {areAllSelected && <CheckIcon className="size-4 shrink-0" />}
+    </button>
+  </div>
+);
+
 type ComboboxPopupProps = {
   anchor?: React.RefObject<HTMLElement | null>;
   ariaLabel?: string;
   children: React.ReactNode;
   className?: string;
   initialFocus?: React.RefObject<HTMLElement | null>;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
 };
 
 const ComboboxPopup = ({
@@ -179,7 +214,11 @@ const ComboboxPopup = ({
   portalContainer
 }: ComboboxPopupProps) => (
   <ComboboxPrimitive.Portal
-    container={portalContainer}
+    // Base UI treats an explicit null container as "not yet resolved" and never renders
+    // the popup, so a null (e.g. a ref read before attachment) must degrade to the
+    // document.body default. Prefer passing the RefObject itself: it is resolved lazily
+    // at open time.
+    container={portalContainer ?? undefined}
     data-slot="combobox-portal"
     className="pointer-events-auto"
   >
@@ -305,7 +344,12 @@ const SingleCombobox = <TOption,>({
           {...inputProps}
         />
         {!open && value != null && renderValue && (
-          <span className="pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground">
+          <span
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+              isDisabled && "opacity-50"
+            )}
+          >
             {renderValue(value)}
           </span>
         )}
@@ -374,6 +418,7 @@ const MultipleCombobox = <TOption,>({
   onClear,
   clearAriaLabel = "Clear all selections",
   singleLine = false,
+  isSelectAll = false,
   placeholder = "Select options...",
   searchPlaceholder = "Search...",
   searchAriaLabel = searchPlaceholder,
@@ -404,6 +449,31 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
+  // Select all only covers the options matching the current search, so a filtered
+  // list toggles what is on screen instead of the entire option set.
+  const selectAllOptions = React.useMemo(
+    () =>
+      isSelectAll
+        ? items.filter((option) => !isOptionDisabled?.(option) && filter(option, search))
+        : [],
+    [filter, isOptionDisabled, isSelectAll, items, search]
+  );
+  const areAllOptionsSelected =
+    selectAllOptions.length > 0 &&
+    selectAllOptions.every((option) => selectedValues.has(getOptionValue(option)));
+
+  const handleSelectAllToggle = () => {
+    const selectAllValues = new Set(selectAllOptions.map(getOptionValue));
+
+    onValueChange(
+      areAllOptionsSelected
+        ? selectedOptions.filter((option) => !selectAllValues.has(getOptionValue(option)))
+        : [
+            ...selectedOptions,
+            ...selectAllOptions.filter((option) => !selectedValues.has(getOptionValue(option)))
+          ]
+    );
+  };
 
   return (
     <ComboboxPrimitive.Root<TOption, true>
@@ -477,12 +547,14 @@ const MultipleCombobox = <TOption,>({
                       className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
                     >
                       <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
-                      <ComboboxPrimitive.ChipRemove
-                        aria-label={`Remove ${label}`}
-                        className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <XIcon className="size-3" />
-                      </ComboboxPrimitive.ChipRemove>
+                      {!isDisabled && (
+                        <ComboboxPrimitive.ChipRemove
+                          aria-label={`Remove ${label}`}
+                          className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <XIcon className="size-3" />
+                        </ComboboxPrimitive.ChipRemove>
+                      )}
                     </ComboboxPrimitive.Chip>
                   );
                 })}
@@ -504,7 +576,7 @@ const MultipleCombobox = <TOption,>({
             {...inputProps}
           />
         </div>
-        {value.length > 0 && (
+        {value.length > 0 && !isDisabled && (
           <ComboboxPrimitive.Clear
             aria-label={clearAriaLabel}
             tabIndex={0}
@@ -535,6 +607,13 @@ const MultipleCombobox = <TOption,>({
         className={contentClassName}
         portalContainer={portalContainerProp}
       >
+        {selectAllOptions.length > 0 && (
+          <ComboboxSelectAll
+            areAllSelected={areAllOptionsSelected}
+            optionCount={selectAllOptions.length}
+            onToggle={handleSelectAllToggle}
+          />
+        )}
         <ComboboxList
           emptyMessage={emptyMessage}
           loadingMessage={loadingMessage}

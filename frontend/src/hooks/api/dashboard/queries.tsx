@@ -462,7 +462,9 @@ export const useGetProjectSecretsQuickSearch = (
     secretPath,
     search = "",
     environments,
-    tags
+    tags,
+    limit,
+    offset
   }: TGetDashboardProjectSecretsQuickSearchDTO,
   options?: Omit<
     UseQueryOptions<
@@ -485,7 +487,9 @@ export const useGetProjectSecretsQuickSearch = (
       search,
       projectId,
       environments,
-      tags
+      tags,
+      limit,
+      offset
     }),
     queryFn: () =>
       fetchProjectSecretsQuickSearch({
@@ -493,10 +497,12 @@ export const useGetProjectSecretsQuickSearch = (
         search,
         projectId,
         environments,
-        tags
+        tags,
+        limit,
+        offset
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
-      const { secrets, folders, dynamicSecrets, secretRotations } = data;
+      const { secrets, folders, dynamicSecrets, secretRotations, ...counts } = data;
 
       const groupedFolders = groupBy(folders, (folder) => folder.path);
       const groupedSecrets = groupBy(
@@ -514,6 +520,7 @@ export const useGetProjectSecretsQuickSearch = (
       );
 
       return {
+        ...counts,
         folders: groupedFolders,
         secrets: groupedSecrets,
         dynamicSecrets: groupedDynamicSecrets,
@@ -680,9 +687,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
         blockingType?: FolderMoveBlockingType;
         blockingPath?: string;
       }[] = [];
+      // non-blocking: folders whose subtree carries folder-scoped access policies, surfaced as a warning
+      const seenRbacWarnings = new Set<string>();
+      const foldersWithRbacPolicies: string[] = [];
       results.forEach((result) => {
         const { data } = result;
-        if (data && !data.canMove && !seen.has(data.folderName)) {
+        if (!data) return;
+        if (!data.canMove && !seen.has(data.folderName)) {
           seen.add(data.folderName);
           blockedFolders.push({
             folderName: data.folderName,
@@ -690,9 +701,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
             blockingPath: data.blockingPath
           });
         }
+        if (data.hasRbacPolicies && !seenRbacWarnings.has(data.folderName)) {
+          seenRbacWarnings.add(data.folderName);
+          foldersWithRbacPolicies.push(data.folderName);
+        }
       });
 
-      return { isChecking, canMove, blockedFolders };
+      return { isChecking, canMove, blockedFolders, foldersWithRbacPolicies };
     }
   });
 

@@ -448,5 +448,20 @@ export const convertSecretRotationToValidationRuleProvider = (
   if (type === SecretRotation.PostgresCredentials) {
     return SecretRotationRuleProvider.PostgresCredentials;
   }
+  if (type === SecretRotation.MySqlCredentials) {
+    return SecretRotationRuleProvider.MySqlCredentials;
+  }
+  if (type === SecretRotation.MsSqlCredentials) {
+    return SecretRotationRuleProvider.MsSqlCredentials;
+  }
+  if (type === SecretRotation.OracleDBCredentials) {
+    return SecretRotationRuleProvider.OracleDBCredentials;
+  }
+  if (type === SecretRotation.UnixLinuxLocalAccount) {
+    return SecretRotationRuleProvider.UnixLinuxLocalAccount;
+  }
+  if (type === SecretRotation.LdapPassword) {
+    return SecretRotationRuleProvider.LdapPassword;
+  }
   return null;
 };

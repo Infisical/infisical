@@ -34,28 +34,29 @@ Similar to Git, a commit in Infisical represents a snapshot of changes made to y
 
 ### Accessing commits
 
-From your secrets management interface, you can access the commits functionality by clicking the **Commits Button**. This button is located in the top-right area of your secrets view and shows the number of commits for the current folder (e.g., "4 Commits").
+From your secrets management interface, you can access the commits functionality by selecting the **Commits** button. This button sits at the right of the secrets table header and shows the number of commits for the current folder (e.g., **6 Commits**).
 
 ![Commits Button](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commits-button.png)
 
 ### Commits list view
 
-The commits page displays a comprehensive chronological history of all changes made to your environment and folders:
+The commit history panel displays a comprehensive chronological history of all changes made to your environment and folders:
 
 ![Commits List View](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commits-history.png)
 
-- **Chronological Sorting**: Commits are grouped by date
-- **Commit Information**: Each commit shows:
+- **Chronological sorting**: Commits are grouped by date
+- **Commit information**: Each commit shows:
   - Commit message
   - Author information
-  - Relative timestamp
+  - Timestamp
   - Unique commit hash identifier
-- **Search Functionality**: Use the search bar to quickly find specific commits
-- **Sorting Options**: Sort commits by various criteria using the sort controls
+  - How many resources the commit added, updated, or deleted
+- **Search**: Use the search bar to find a commit by message, secret key, or folder name
+- **Filter and sort**: Narrow the list to a single author with **Author**, and switch between oldest and newest first with the sort control
 
 ### Detailed commit inspection
 
-Clicking on any commit from the list opens a detailed view showing the list of changes made in that commit.
+Selecting any commit from the list opens a detailed view showing the list of changes made in that commit.
 
 ![Detailed Commit Inspection](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commit-changes.png)
 
@@ -63,24 +64,24 @@ Clicking on any commit from the list opens a detailed view showing the list of c
 
 The commit changes details can be grouped into the following categories:
 
-**Folder Changes**
+**Folder changes**
 - Shows folder additions, modifications, or deletions
-- Displays the folder properties changes in JSON format, including:
+- Displays the folder properties that changed, including:
   - Folder name
   - Folder description
 
-**Secret Changes**
+**Secret changes**
 - Lists all secrets that were added, updated, or removed
 - Shows the complete secret configuration including:
   - Secret key and value
   - Comments, tags, and metadata
-  - Encoding settings (e.g., skipMultilineEncoding)
+  - Multi-line encoding
 - Values are displayed with appropriate masking for security
 
-**Visual Indicators**
-- Green "+" indicators show additions
-- Red "-" indicators show deletions
-- Modified content shows both old and new states
+**Visual indicators**
+- Each resource carries an **Added**, **Updated**, or **Deleted** badge
+- The previous state sits in a red panel on the left and the new state in a green panel on the right
+- Select **Expand all to full state** to see every property rather than only the ones that changed
 
 ### Restoration options
 
@@ -103,7 +104,7 @@ This option performs a complete restoration to the selected point in time:
 ![Rollback](../../images/platform/pit-recovery/pit-recovery-revamp/pit-commit-restore.png)
 
 - **Complete State Restoration**: Returns the entire folder to its exact state at the time of this commit
-- **Restore All Child Folders**: If enabled, it'll also restore all nested folders to their exact state at the time of this commit.
+- **Restore all child folders**: If enabled, it'll also restore all nested folders to their exact state at the time of this commit.
 - **Destructive Operation**: Discards ALL changes made after the selected commit
 - **New Commit Creation**: Creates a new commit representing this rollback operation
 - **Use Case**: Ideal when you want to completely undo a series of changes and return to a known good state

@@ -1,14 +1,15 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
-  ChevronsUpDownIcon,
+  ChevronDownIcon,
   ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
+  FilterIcon,
   HourglassIcon,
   LucideIcon,
   PlusIcon,
@@ -27,17 +28,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
+  Combobox,
   DocumentationLinkBadge,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -47,19 +44,15 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Label,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Skeleton,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -96,98 +89,29 @@ import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
 import { RequestAccessModal } from "./components/RequestAccessModal";
 import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
-import { formatAccessDuration, parseAccessDurationMs } from "./AccessApprovalRequest.utils";
+import {
+  formatAccessDuration,
+  getAccessRequestState,
+  parseAccessDurationMs
+} from "./AccessApprovalRequest.utils";
 
-type FilterMenuProps = {
-  className?: string;
-  searchPlaceholder: string;
-  allLabel: string;
-  options: { value: string; label: string }[];
-  value?: string;
-  onChange: (value?: string) => void;
-};
+enum AccessRequestOrderBy {
+  Duration = "duration",
+  Environment = "environment",
+  SecretPath = "secret-path",
+  RequestedBy = "requested-by",
+  RequestedAt = "requested-at"
+}
 
-const FilterMenu = ({
-  className,
-  searchPlaceholder,
-  allLabel,
-  options,
-  value,
-  onChange
-}: FilterMenuProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+type ClosedRequestFilter = Exclude<ReturnType<typeof getAccessRequestState>, "pending">;
 
-  const selectedOption = options.find((option) => option.value === value);
-
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          className={cn("justify-between", className)}
-        >
-          <span className="truncate">{selectedOption ? selectedOption.label : allLabel}</span>
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] p-0">
-        <Command>
-          <CommandInput
-            aria-label={searchPlaceholder}
-            value={inputValue}
-            onValueChange={setInputValue}
-            placeholder={searchPlaceholder}
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {!inputValue && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    forceMount
-                    keywords={[]}
-                    onSelect={() => {
-                      onChange(undefined);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <CheckIcon className={cn("size-4", !value ? "opacity-100" : "opacity-0")} />
-                    {allLabel}
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  keywords={[option.label]}
-                  onSelect={() => {
-                    onChange(value === option.value ? undefined : option.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      "size-4 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+const CLOSED_REQUEST_FILTERS: { label: string; value: ClosedRequestFilter }[] = [
+  { label: "Approved", value: "approved" },
+  { label: "Rejected", value: "rejected" },
+  { label: "Revoked", value: "revoked" },
+  { label: "Expired", value: "expired" },
+  { label: "Policy Deleted", value: "policy-deleted" }
+];
 
 export const AccessApprovalRequest = ({
   projectSlug,
@@ -216,11 +140,19 @@ export const AccessApprovalRequest = ({
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
-    {}
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
+  const membersGroupById = useMemo(
+    () =>
+      members?.reduce<Record<string, TWorkspaceUser>>(
+        (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
+        {}
+      ),
+    [members]
   );
 
   const environmentNamesBySlug = useMemo(
@@ -231,11 +163,38 @@ export const AccessApprovalRequest = ({
       ),
     [currentProject?.environments]
   );
+  const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const requesterOptions = (members ?? []).map(({ user: membershipUser }) => ({
+    value: membershipUser.id,
+    label: membershipUser.username
+  }));
 
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);
-  const [showExpired, setShowExpired] = useState(true);
+  const [closedRequestFilters, setClosedRequestFilters] = useState<ClosedRequestFilter[]>(() =>
+    CLOSED_REQUEST_FILTERS.map(({ value }) => value)
+  );
+  const [sort, setSort] = useState<{
+    column: AccessRequestOrderBy;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>(null);
+  const validEnvFilter =
+    envFilter &&
+    currentProject?.environments &&
+    !currentProject.environments.some(({ slug }) => slug === envFilter)
+      ? undefined
+      : envFilter;
+  const validRequestedByFilter =
+    requestedByFilter &&
+    canReadMembers &&
+    (areMembersPending ||
+      members?.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter))
+      ? requestedByFilter
+      : undefined;
 
   const { data: requestCount } = useGetAccessRequestsCount({
     projectSlug
@@ -251,8 +210,8 @@ export const AccessApprovalRequest = ({
     isPending: areRequestsPending
   } = useGetAccessApprovalRequests({
     projectSlug,
-    authorUserId: requestedByFilter,
-    envSlug: envFilter
+    authorUserId: validRequestedByFilter,
+    envSlug: validEnvFilter
   });
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
@@ -265,37 +224,22 @@ export const AccessApprovalRequest = ({
   };
 
   const isRequestExpired = useCallback((request: TAccessApprovalRequest) => {
-    return (
-      request.status === ApprovalStatus.PENDING &&
-      request.expiresAt &&
-      new Date(request.expiresAt) < new Date()
-    );
+    return getAccessRequestState(request) === "expired";
   }, []);
 
   const filteredRequests = useMemo(() => {
     let accessRequests: typeof requests;
 
     if (statusFilter === "open")
-      accessRequests = requests?.filter(
-        (request) =>
-          !request.policy.deletedAt &&
-          !request.isApproved &&
-          request.status !== ApprovalStatus.REVOKED &&
-          !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
-          !isRequestExpired(request)
-      );
+      accessRequests = requests?.filter((request) => getAccessRequestState(request) === "pending");
     else if (statusFilter === "close")
-      accessRequests = requests?.filter(
-        (request) =>
-          request.policy.deletedAt ||
-          request.isApproved ||
-          request.status === ApprovalStatus.REVOKED ||
-          request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
-          isRequestExpired(request)
-      );
+      accessRequests = requests?.filter((request) => getAccessRequestState(request) !== "pending");
 
-    if (!showExpired && statusFilter === "close") {
-      accessRequests = accessRequests?.filter((request) => !isRequestExpired(request));
+    if (statusFilter === "close") {
+      accessRequests = accessRequests?.filter((request) => {
+        const requestState = getAccessRequestState(request);
+        return requestState !== "pending" && closedRequestFilters.includes(requestState);
+      });
     }
 
     return (
@@ -314,16 +258,99 @@ export const AccessApprovalRequest = ({
         );
       }) ?? []
     );
-  }, [
-    requests,
-    statusFilter,
-    requestedByFilter,
-    envFilter,
-    search,
-    isRequestExpired,
-    showExpired,
-    environmentNamesBySlug
-  ]);
+  }, [requests, statusFilter, search, closedRequestFilters, environmentNamesBySlug]);
+
+  const sortedRequests = useMemo(() => {
+    if (!sort) return filteredRequests;
+
+    const getRequesterName = (request: TAccessApprovalRequest) => {
+      const requester =
+        membersGroupById?.[request.requestedByUserId]?.user || request.requestedByUser;
+
+      return (
+        [requester?.firstName, requester?.lastName].filter(Boolean).join(" ") ||
+        requester?.email ||
+        ""
+      );
+    };
+
+    return [...filteredRequests].sort((requestOne, requestTwo) => {
+      let comparison = 0;
+
+      switch (sort.column) {
+        case AccessRequestOrderBy.Duration:
+          comparison =
+            (requestOne.isTemporary
+              ? (parseAccessDurationMs(requestOne.temporaryRange) ?? 0)
+              : Number.MAX_SAFE_INTEGER) -
+            (requestTwo.isTemporary
+              ? (parseAccessDurationMs(requestTwo.temporaryRange) ?? 0)
+              : Number.MAX_SAFE_INTEGER);
+          break;
+        case AccessRequestOrderBy.Environment:
+          comparison = (
+            environmentNamesBySlug[requestOne.environmentName] ?? requestOne.environmentName
+          ).localeCompare(
+            environmentNamesBySlug[requestTwo.environmentName] ?? requestTwo.environmentName
+          );
+          break;
+        case AccessRequestOrderBy.SecretPath:
+          comparison = (requestOne.policy.secretPath ?? "").localeCompare(
+            requestTwo.policy.secretPath ?? ""
+          );
+          break;
+        case AccessRequestOrderBy.RequestedBy:
+          comparison = getRequesterName(requestOne).localeCompare(getRequesterName(requestTwo));
+          break;
+        case AccessRequestOrderBy.RequestedAt:
+          comparison =
+            new Date(requestOne.createdAt).getTime() - new Date(requestTwo.createdAt).getTime();
+          break;
+        default:
+          break;
+      }
+
+      return sort.direction === "ascending" ? comparison : -comparison;
+    });
+  }, [environmentNamesBySlug, filteredRequests, membersGroupById, sort]);
+
+  const getSortDirection = (column: AccessRequestOrderBy): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSort = (column: AccessRequestOrderBy, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+  };
+
+  const getSortIconClassName = (column: AccessRequestOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
+
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      requestedByFilter &&
+      (!canReadMembers ||
+        (!areMembersPending &&
+          !members?.some(({ user: membershipUser }) => membershipUser.id === requestedByFilter)))
+    ) {
+      setRequestedByFilter(undefined);
+    }
+  }, [areMembersPending, canReadMembers, members, requestedByFilter]);
 
   useResetPageHelper({
     totalCount: filteredRequests.length,
@@ -333,14 +360,15 @@ export const AccessApprovalRequest = ({
 
   const generateRequestDetails = useCallback(
     (request: TAccessApprovalRequest) => {
+      const requestState = getAccessRequestState(request);
       const isReviewedByUser =
         request.reviewers.findIndex(({ userId }) => userId === user.id) !== -1;
-      const isRejectedByAnyone = request.reviewers.some(
-        ({ status }) => status === ApprovalStatus.REJECTED
-      );
+      const isRejectedByAnyone =
+        request.status === ApprovalStatus.REJECTED ||
+        request.reviewers.some(({ status }) => status === ApprovalStatus.REJECTED);
       const isApprover =
         request.policy.approvers.findIndex((el) => el.userId === user.id || "") !== -1;
-      const isAccepted = request.isApproved;
+      const isAccepted = requestState === "approved";
       const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
@@ -359,19 +387,15 @@ export const AccessApprovalRequest = ({
         icon: null
       };
 
-      const isRevoked = request.status === ApprovalStatus.REVOKED;
+      const isRevoked = requestState === "revoked";
+      const isPolicyDeleted = requestState === "policy-deleted";
 
       const isAccessExpired =
         request.privilege &&
         request.isApproved &&
         new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
 
-      const hasRequestExpired =
-        !isAccepted &&
-        !isRejectedByAnyone &&
-        !isRevoked &&
-        request.expiresAt &&
-        new Date(request.expiresAt) < new Date();
+      const hasRequestExpired = requestState === "expired";
 
       if (hasRequestExpired)
         displayData = {
@@ -405,12 +429,18 @@ export const AccessApprovalRequest = ({
           icon: CheckIcon,
           tooltipContent: `Granted ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
         };
-      else if (isRejectedByAnyone)
+      else if (requestState === "rejected")
         displayData = {
           label: "Rejected",
           type: "danger",
           icon: BanIcon,
           tooltipContent: `Rejected ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isPolicyDeleted)
+        displayData = {
+          label: "Policy Deleted",
+          type: "danger",
+          icon: ShieldBanIcon
         };
       else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
@@ -465,7 +495,12 @@ export const AccessApprovalRequest = ({
     [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
   );
 
-  const isFiltered = Boolean(search || envFilter || requestedByFilter);
+  const isFiltered = Boolean(
+    search ||
+      validEnvFilter ||
+      validRequestedByFilter ||
+      (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
+  );
 
   return (
     <>
@@ -518,75 +553,108 @@ export const AccessApprovalRequest = ({
             })()}
           </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col">
-          <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
-            <Tabs
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as "open" | "close")}
-            >
-              <TabsList variant="filled">
-                <TabsTrigger value="open">
-                  <HourglassIcon className="mr-1.5 size-3.5" />
-                  {requestCount?.pendingCount ?? 0} Pending
-                </TabsTrigger>
-                <TabsTrigger value="close">
-                  <CheckIcon className="mr-1.5 size-3.5" />
-                  {requestCount?.finalizedCount ?? 0} Closed
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <div className="flex flex-wrap items-center gap-2 2xl:mr-auto 2xl:flex-nowrap">
-              <InputGroup className="xl:w-[26rem]">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by requesting user or environment..."
-                />
-              </InputGroup>
-              {statusFilter === "close" && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="show-expired-toggle"
-                    variant="project"
-                    size="sm"
-                    checked={showExpired}
-                    onCheckedChange={setShowExpired}
-                  />
-                  <Label
-                    htmlFor="show-expired-toggle"
-                    className="cursor-pointer text-sm font-normal"
-                  >
-                    Show Expired
-                  </Label>
-                </div>
-              )}
-            </div>
-            <FilterMenu
-              className="w-[200px]"
-              searchPlaceholder="Filter environments"
-              allLabel="All Environments"
-              value={envFilter}
-              onChange={setEnvFilter}
-              options={(currentProject?.environments ?? []).map((env) => ({
-                value: env.slug,
-                label: env.name
-              }))}
-            />
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-              <FilterMenu
-                className="w-[220px]"
-                searchPlaceholder="Filter users"
-                allLabel="All Users"
-                value={requestedByFilter}
-                onChange={setRequestedByFilter}
-                options={(members ?? []).map(({ user: membershipUser }) => ({
-                  value: membershipUser.id,
-                  label: membershipUser.username
-                }))}
+        <CardContent className="@container flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+            <InputGroup className="min-w-48 flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by requesting user or environment..."
               />
+            </InputGroup>
+            <div className="flex shrink-0 items-center">
+              {statusFilter === "close" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      aria-label="Filter closed access requests by status"
+                      className="mr-2"
+                      variant={
+                        closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length
+                          ? "project"
+                          : "outline"
+                      }
+                    >
+                      <FilterIcon />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                    {CLOSED_REQUEST_FILTERS.map((filter) => (
+                      <DropdownMenuCheckboxItem
+                        key={filter.value}
+                        checked={closedRequestFilters.includes(filter.value)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setClosedRequestFilters((currentFilters) =>
+                            currentFilters.includes(filter.value)
+                              ? currentFilters.filter((value) => value !== filter.value)
+                              : [...currentFilters, filter.value]
+                          );
+                        }}
+                      >
+                        {filter.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Tabs
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as "open" | "close")}
+              >
+                <TabsList variant="filled">
+                  <TabsTrigger value="open">
+                    <HourglassIcon className="size-3.5" />
+                    Pending {requestCount?.pendingCount ?? 0}
+                  </TabsTrigger>
+                  <TabsTrigger value="close">
+                    <CheckIcon className="size-3.5" />
+                    Closed {requestCount?.finalizedCount ?? 0}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <div className="w-42 shrink-0">
+              <Combobox
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
+                emptyMessage="No results found."
+                placeholder="All Environments"
+              />
+            </div>
+            {canReadMembers && (
+              <div className="w-42 shrink-0">
+                <Combobox
+                  aria-label="Filter users"
+                  className="w-full"
+                  options={requesterOptions}
+                  value={
+                    requesterOptions.find((option) => option.value === requestedByFilter) ?? null
+                  }
+                  onValueChange={(option) => setRequestedByFilter(option.value)}
+                  onClear={() => setRequestedByFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear user filter"
+                  searchPlaceholder="Filter users"
+                  searchAriaLabel="Filter users"
+                  emptyMessage="No results found."
+                  placeholder="All Users"
+                />
+              </div>
             )}
           </div>
           {!areRequestsPending && filteredRequests?.length === 0 && !isFiltered && (
@@ -617,13 +685,63 @@ export const AccessApprovalRequest = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Environment</TableHead>
-                  <TableHead>Secret Path</TableHead>
-                  <TableHead>Requested By</TableHead>
-                  <TableHead>Requested</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(AccessRequestOrderBy.Duration)}
+                    onSortChange={(direction) =>
+                      handleSort(AccessRequestOrderBy.Duration, direction)
+                    }
+                  >
+                    Duration
+                    <ChevronDownIcon
+                      className={getSortIconClassName(AccessRequestOrderBy.Duration)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(AccessRequestOrderBy.Environment)}
+                    onSortChange={(direction) =>
+                      handleSort(AccessRequestOrderBy.Environment, direction)
+                    }
+                  >
+                    Environment
+                    <ChevronDownIcon
+                      className={getSortIconClassName(AccessRequestOrderBy.Environment)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(AccessRequestOrderBy.SecretPath)}
+                    onSortChange={(direction) =>
+                      handleSort(AccessRequestOrderBy.SecretPath, direction)
+                    }
+                  >
+                    Secret Path
+                    <ChevronDownIcon
+                      className={getSortIconClassName(AccessRequestOrderBy.SecretPath)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(AccessRequestOrderBy.RequestedBy)}
+                    onSortChange={(direction) =>
+                      handleSort(AccessRequestOrderBy.RequestedBy, direction)
+                    }
+                  >
+                    Requested By
+                    <ChevronDownIcon
+                      className={getSortIconClassName(AccessRequestOrderBy.RequestedBy)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(AccessRequestOrderBy.RequestedAt)}
+                    onSortChange={(direction) =>
+                      handleSort(AccessRequestOrderBy.RequestedAt, direction)
+                    }
+                  >
+                    Requested
+                    <ChevronDownIcon
+                      className={getSortIconClassName(AccessRequestOrderBy.RequestedAt)}
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,12 +767,12 @@ export const AccessApprovalRequest = ({
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
                   ))}
-                {filteredRequests?.slice(offset, perPage * page).map((request) => {
+                {sortedRequests.slice(offset, perPage * page).map((request) => {
                   const details = generateRequestDetails(request);
                   const StatusIcon = details.displayData.icon;
                   const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
@@ -693,11 +811,9 @@ export const AccessApprovalRequest = ({
                           <Badge variant="neutral">Permanent</Badge>
                         )}
                       </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        {environmentDisplayName}
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        <p className="truncate text-foreground">{request.policy.secretPath}</p>
+                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell title={request.policy.secretPath ?? undefined}>
+                        {request.policy.secretPath}
                       </TableCell>
                       <TableCell>
                         {requester ? (
@@ -766,6 +882,7 @@ export const AccessApprovalRequest = ({
                         </div>
                       </TableCell>
                       <TableCell
+                        variant="action"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
@@ -808,8 +925,8 @@ export const AccessApprovalRequest = ({
             queryClient.invalidateQueries({
               queryKey: accessApprovalKeys.getAccessApprovalRequests(
                 projectSlug,
-                envFilter,
-                requestedByFilter
+                validEnvFilter,
+                validRequestedByFilter
               )
             });
             handlePopUpClose("requestAccess");
