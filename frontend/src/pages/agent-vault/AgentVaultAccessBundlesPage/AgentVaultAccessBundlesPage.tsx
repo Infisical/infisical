@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
-import { MoreHorizontalIcon, PackageIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, MoreHorizontalIcon, PackageIcon, SearchIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionIconStack } from "@app/components/agent-vault/ConnectionIconStack";
@@ -28,11 +29,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -50,7 +46,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
 
-enum SortOption {
+enum SortColumn {
   Name = "name",
   Connections = "connections"
 }
@@ -63,7 +59,8 @@ export const AgentVaultAccessBundlesPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState(SortOption.Name);
+  const [sortColumn, setSortColumn] = useState(SortColumn.Name);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
@@ -80,12 +77,32 @@ export const AgentVaultAccessBundlesPage = () => {
         (bundle.description ?? "").toLowerCase().includes(term)
     );
 
-    return [...filtered].sort((a, b) =>
-      sort === SortOption.Connections
-        ? b.connectionCount - a.connectionCount
+    const ordered = [...filtered].sort((a, b) =>
+      sortColumn === SortColumn.Connections
+        ? a.connectionCount - b.connectionCount
         : a.name.localeCompare(b.name)
     );
-  }, [accessBundles, search, sort]);
+
+    return sortDirection === "ascending" ? ordered : ordered.reverse();
+  }, [accessBundles, search, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    if (direction === "none") {
+      setSortColumn(SortColumn.Name);
+      setSortDirection("ascending");
+      return;
+    }
+
+    setSortColumn(column);
+    setSortDirection(direction);
+  };
+
+  const sortIconClassName = (column: SortColumn) =>
+    twMerge(
+      "transition-transform",
+      sortColumn === column && sortDirection === "descending" && "rotate-180",
+      sortColumn !== column && "opacity-30"
+    );
 
   const isFiltered = Boolean(search.trim());
 
@@ -132,28 +149,17 @@ export const AgentVaultAccessBundlesPage = () => {
             </CardAction>
           )}
         </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <div className="flex-1">
-            <InputGroup>
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search access bundles..."
-              />
-            </InputGroup>
-          </div>
-          <Select value={sort} onValueChange={(value) => setSort(value as SortOption)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value={SortOption.Name}>A–Z</SelectItem>
-              <SelectItem value={SortOption.Connections}>Most connections</SelectItem>
-            </SelectContent>
-          </Select>
+        <CardContent>
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search access bundles..."
+            />
+          </InputGroup>
         </CardContent>
 
         {!isPending && displayedBundles.length === 0 ? (
@@ -169,8 +175,20 @@ export const AgentVaultAccessBundlesPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Connections</TableHead>
+                <TableHead
+                  sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
+                >
+                  Name
+                  <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
+                </TableHead>
+                <TableHead
+                  sortDirection={sortColumn === SortColumn.Connections ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(SortColumn.Connections, direction)}
+                >
+                  Connections
+                  <ChevronDownIcon className={sortIconClassName(SortColumn.Connections)} />
+                </TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead variant="action" />
               </TableRow>
@@ -200,10 +218,10 @@ export const AgentVaultAccessBundlesPage = () => {
                     }
                   >
                     <TableCell>
-                      <div className="flex flex-col">
+                      <div className="flex items-center gap-2.5">
                         <span>{bundle.name}</span>
                         {bundle.description && (
-                          <span className="text-xs text-accent">{bundle.description}</span>
+                          <span className="truncate text-sm text-muted">{bundle.description}</span>
                         )}
                       </div>
                     </TableCell>

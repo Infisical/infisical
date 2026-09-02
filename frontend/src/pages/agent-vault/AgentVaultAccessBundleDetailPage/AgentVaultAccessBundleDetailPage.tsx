@@ -2,22 +2,22 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { PackageIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ChevronLeftIcon, EllipsisIcon, PackageIcon } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionSheet } from "@app/components/agent-vault/ConnectionSheet";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  IconButton,
   PageHeader,
-  PageLoader,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  PageLoader
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import { useGetAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
@@ -78,6 +78,15 @@ export const AgentVaultAccessBundleDetailPage = () => {
         <title>{t("common.head-title", { title: accessBundle.name })}</title>
       </Helmet>
 
+      <Link
+        to="/organizations/$orgId/agent-vault/access-bundles"
+        params={{ orgId: currentOrg.id }}
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
+      >
+        <ChevronLeftIcon size={16} />
+        Access Bundles
+      </Link>
+
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
@@ -85,45 +94,23 @@ export const AgentVaultAccessBundleDetailPage = () => {
         description={accessBundle.description || "No description"}
       >
         {isAdmin && (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  variant="outline"
-                  aria-label="Edit access bundle"
-                  onClick={() => setIsEditOpen(true)}
-                >
-                  <PencilIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit name and description</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  variant="outline"
-                  aria-label="Delete access bundle"
-                  onClick={() => setIsDeleteOpen(true)}
-                >
-                  <Trash2Icon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Delete access bundle</TooltipContent>
-            </Tooltip>
-          </>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Options
+                <EllipsisIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                Edit Access Bundle
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                Delete Access Bundle
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        <Button
-          variant="av"
-          onClick={() =>
-            navigate({
-              to: "/organizations/$orgId/agent-vault/sessions",
-              params: { orgId: currentOrg.id },
-              search: { accessBundleId: accessBundle.id }
-            })
-          }
-        >
-          Create Session
-        </Button>
       </PageHeader>
 
       <div className="flex flex-col gap-4">

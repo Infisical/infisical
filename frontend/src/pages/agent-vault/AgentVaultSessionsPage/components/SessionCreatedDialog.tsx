@@ -11,7 +11,6 @@ import {
 import { TAgentVaultMintedSession } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
-
 import { SessionExpiry } from "./SessionExpiry";
 
 type Props = {
@@ -34,9 +33,9 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
             value={`infisical av run --token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
           />
           <p className="text-xs text-accent">
-            Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of your
-            proxy and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to run,
-            such as <span className="font-mono">claude</span>.
+            Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of
+            your proxy and <span className="font-mono">&lt;agent-command&gt;</span> with the agent
+            to run, such as <span className="font-mono">claude</span>.
           </p>
         </div>
 
