@@ -10,7 +10,13 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
+// PAM and Agent Vault resolve every slug except admin to their member set (see buildProjectPermissionRules),
+// so offering Viewer or No Access there would promise less access than the role grants.
+const ORG_SCOPED_PRODUCT_TYPES = new Set<string>([ProjectType.PAM, ProjectType.AgentVault]);
+const ORG_SCOPED_PRODUCT_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
+
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
+  const isOrgScopedProduct = ORG_SCOPED_PRODUCT_TYPES.has(projectType);
   return [
     {
       id: uuidv4(),
@@ -63,5 +69,10 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ].filter(({ slug, type }) => (type ? type === projectType : true) && (!roleFilter || roleFilter === slug));
+  ].filter(
+    ({ slug, type }) =>
+      (type ? type === projectType : true) &&
+      (!roleFilter || roleFilter === slug) &&
+      (!isOrgScopedProduct || ORG_SCOPED_PRODUCT_ROLE_SLUGS.has(slug))
+  );
 };

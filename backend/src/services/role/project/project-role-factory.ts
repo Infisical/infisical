@@ -1,14 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
-import { v4 as uuidv4 } from "uuid";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import {
-  cryptographicOperatorPermissions,
-  projectAdminPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
-  projectViewerPermission
-} from "@app/ee/services/permission/default-roles";
+import { AccessScope, ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   isCustomProjectRole,
@@ -19,6 +11,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getPredefinedRoles as buildPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TRoleScopeFactory } from "../role-types";
 
@@ -124,61 +117,7 @@ export const newProjectRoleFactory = ({
       projectDAL.findById(scope.value)
     );
     if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
-
-    return [
-      {
-        id: uuidv4(),
-        name: "Admin",
-        slug: ProjectMembershipRole.Admin,
-        permissions: projectAdminPermissions,
-        description: "Full administrative access over a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId
-      },
-      {
-        id: uuidv4(),
-        name: "Member",
-        slug: ProjectMembershipRole.Member,
-        permissions: projectMemberPermissions,
-        description: "Limited read/write role in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId
-      },
-      {
-        id: uuidv4(),
-        name: "Cryptographic Operator",
-        slug: ProjectMembershipRole.KmsCryptographicOperator,
-        permissions: cryptographicOperatorPermissions,
-        description: "Perform cryptographic operations, such as encryption and signing, in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-        type: ProjectType.KMS
-      },
-      {
-        id: uuidv4(),
-        name: "Viewer",
-        slug: ProjectMembershipRole.Viewer,
-        permissions: projectViewerPermission,
-        description: "Only read role in a project",
-        createdAt: new Date(),
-        projectId,
-        updatedAt: new Date()
-      },
-      {
-        id: uuidv4(),
-        name: "No Access",
-        slug: ProjectMembershipRole.NoAccess,
-        permissions: projectNoAccessPermissions,
-        description: "No access to any resources in the project",
-        createdAt: new Date(),
-        projectId,
-        updatedAt: new Date()
-      }
-    ].filter(({ type }) => (type ? type === project.type : true));
+    return buildPredefinedRoles({ projectId: project.id, projectType: project.type as ProjectType });
   };
 
   return {
