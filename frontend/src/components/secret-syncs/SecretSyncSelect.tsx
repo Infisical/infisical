@@ -40,7 +40,7 @@ const ProviderCard = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-accent hover:bg-container-hover/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/15 hover:bg-container-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">

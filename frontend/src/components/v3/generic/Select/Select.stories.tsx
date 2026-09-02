@@ -29,8 +29,8 @@ import {
  * you would for `Input` — the `id` belongs on the **trigger**, not the root.
  *
  * Reach for `Select` when the option list is short and known. For searchable
- * object lists, multi-selects, or grouped options, use `Combobox`. Free-form
- * creation can be composed by adding the current query to the Combobox options.
+ * object lists, multi-selects, or grouped options, use `Combobox`. Creatable
+ * use cases remain on `ReactSelect` until their replacement API is introduced.
  * `Select` is single-value by design.
  */
 const meta = {

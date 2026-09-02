@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -8,6 +9,7 @@ import {
   AlertDescription,
   AlertTitle,
   Combobox,
+  CreatableSelect,
   Field,
   FieldContent,
   FieldDescription,
@@ -57,7 +59,6 @@ export const VercelSyncFields = () => {
 
   const [projectSearch, setProjectSearch] = useState("");
   const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
-  const [branchSearch, setBranchSearch] = useState("");
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentApp = watch("destinationConfig.app");
@@ -148,14 +149,6 @@ export const VercelSyncFields = () => {
       })) ?? [],
     [selectedProject]
   );
-
-  const branchOptions = useMemo(() => {
-    const query = branchSearch.trim();
-    if (!query || previewBranchOptions.some((branch) => branch.id === query)) {
-      return previewBranchOptions;
-    }
-    return [...previewBranchOptions, { id: query, name: query, isNew: true }];
-  }, [branchSearch, previewBranchOptions]);
 
   const isPreviewEnvironment = currentEnv === "preview";
   const isTeamScope = scope === VercelSyncScope.Team;
@@ -427,28 +420,34 @@ export const VercelSyncFields = () => {
                 <Field>
                   <FieldLabel>Vercel Preview Branch (Optional)</FieldLabel>
                   <FieldContent>
-                    <Combobox
+                    <CreatableSelect
                       className="w-full"
                       placeholder="Select a branch..."
                       isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
                       isDisabled={!connectionId || !currentApp}
-                      options={branchOptions}
+                      options={previewBranchOptions}
                       value={
                         value
-                          ? (branchOptions.find((branch) => branch.id === value) ?? {
+                          ? (previewBranchOptions.find((branch) => branch.id === value) ?? {
                               id: value,
                               name: value
                             })
                           : null
                       }
-                      onValueChange={(option) => onChange(option.id)}
-                      onInputValueChange={setBranchSearch}
+                      onChange={(option) =>
+                        onChange((option as SingleValue<{ id: string }>)?.id || "")
+                      }
+                      onCreateOption={onChange}
+                      getNewOptionData={(inputValue) => ({
+                        id: inputValue,
+                        name: `${inputValue} - press Enter`
+                      })}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
-                      renderOption={(option) =>
-                        "isNew" in option ? `${option.name} - press Enter` : option.name
+                      isValidNewOption={(inputValue) =>
+                        inputValue.trim().length > 0 &&
+                        !previewBranchOptions.some((branch) => branch.id === inputValue)
                       }
-                      modal
                     />
                     <FieldError errors={[error]} />
                   </FieldContent>
