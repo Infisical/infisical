@@ -800,6 +800,27 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "vault",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Agent Vault",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/agent-vault/access-bundles",
+                      "documentation/platform/agent-vault/sessions",
+                      "documentation/platform/agent-vault/proxies"
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -1301,6 +1322,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/av",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",

@@ -1,0 +1,65 @@
+---
+title: "Access bundles and connections"
+description: "What a connection sends and where, how bundles group them, and what happens when two connections cover the same host."
+---
+
+A connection is one set of hosts plus the credential the proxy attaches to requests bound for them. An access bundle groups connections and names who may run agents with them. Bundles are what you grant and what a session carries; connections are what the proxy acts on.
+
+<Info>
+  This page is for Agent Vault admins. Only admins create bundles and connections. Members see the bundles granted to them and mint sessions over them.
+</Info>
+
+## Connections
+
+Each connection has a name, a host pattern, and a credential.
+
+### Credential types
+
+| Type             | What the proxy sends                                                                                            | When to use it                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Bearer**       | One header, built as `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.            | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
+| **Basic**        | `Authorization: Basic <base64 of username:password>`.                                                           | APIs behind HTTP basic auth.                                                                |
+| **Pass-through** | Nothing. The request is forwarded unchanged.                                                                    | Only meaningful on a proxy that denies unmatched hosts, where it makes a host reachable without giving it a credential. |
+
+The secret is entered once and never shown again. Editing a connection without entering a new value keeps the stored one, and changing how the header is built asks you to enter the value again.
+
+If the agent's request already carries a header with the same name, the proxy replaces it. The agent is expected to send a placeholder or nothing at all, so this isn't an error, but it's the first thing to suspect when a request you expected to pass through unchanged comes back `401`.
+
+### Host patterns
+
+A host pattern is a comma-separated list of hosts, each optionally with a port:
+
+```text
+api.github.com, uploads.github.com
+*.atlassian.net
+internal-api.example.com:8443
+```
+
+- A host without a port means port `443`. Connections attach credentials only to TLS traffic, so a plain `http://` request to a matched host gets no credential, whatever the pattern says.
+- `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com` and not `a.b.example.com` or `example.com` itself.
+- Paths aren't allowed. A connection covers a host, not a route on it, so `api.example.com/v1` is rejected.
+
+The templates in the connection picker fill in the hosts and header for common services. A few carry a `<your-tenant>` placeholder, such as `<your-tenant>.atlassian.net`, because the wildcard would cover every tenant of that service and a compromised agent could send your credential to a stranger's account. Replace the placeholder with your own tenant before saving.
+
+### When two connections cover one host
+
+Within one bundle, two connections can't share a host. Saving a connection whose pattern already appears in another connection of the same bundle fails, and the error names both connections and the host.
+
+Across bundles, the same host can appear more than once, and Infisical warns you when you save. Which credential goes out then depends on the session that carries both bundles:
+
+1. An exact host beats a wildcard. If one connection covers `api.example.com` and another `*.example.com`, the exact one wins, whatever the bundle order.
+2. For identical patterns, the bundle named first when the session was minted wins.
+
+The proxy never falls back. If the winning connection's credential is rejected with `401` or `403`, the request fails with that status rather than retrying with the next connection.
+
+## Access bundles
+
+A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**.
+
+Bundles are how access is scoped: an agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
+
+<Warning>
+  Deleting a bundle removes it from every live session that carries it. Agents running with those sessions lose the bundle's connections within one poll interval. The delete dialog tells you how many live sessions that affects.
+</Warning>
+
+Removing a member from a bundle, or from Agent Vault itself, has the same effect on their running sessions: the proxy stops attaching that bundle's credentials on its next poll. See [Sessions](/documentation/platform/agent-vault/sessions) for how that re-check works.

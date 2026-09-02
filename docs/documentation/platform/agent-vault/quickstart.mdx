@@ -1,0 +1,84 @@
+---
+title: "Agent Vault quickstart"
+sidebarTitle: "Quickstart"
+description: "Run an agent that makes authenticated GitHub calls without ever holding the token."
+---
+
+By the end of this page an agent on your machine calls the GitHub API through an Agent Vault proxy, and the only thing the agent ever holds is a session token that works nowhere else.
+
+You'll do four things: create an access bundle with one connection, enroll a proxy, mint a session, and run an agent with it. Everything after the first step is the same for a proxy on a server and a proxy on your laptop.
+
+## Prerequisites
+
+- An Infisical organization where you're an Agent Vault admin. Org admins are Agent Vault admins by default.
+- The [Infisical CLI](/cli/overview) installed where the proxy will run and where the agent will run. For this page that can be one machine.
+- A GitHub personal access token to use as the credential. Any token that can call `GET /user` will do.
+
+## 1. Create an access bundle with a connection
+
+In the dashboard, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
+
+Select **Add Connection**. Pick the **GitHub** template, paste your token as the **Value**, and keep the pre-filled hosts. Select **Save**.
+
+The connection now says what the proxy will send: `Authorization: Bearer <your token>` on requests to `api.github.com:443`, and nothing anywhere else.
+
+<Note>
+  The template fills in the hosts and how the header is built. A custom connection lets you set the header name and prefix yourself, for APIs that expect `X-API-Key` or a bare token. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
+</Note>
+
+You're an admin, so you can already mint sessions over this bundle. To let a teammate run agents with it, select **Grant Access** on the bundle and pick their user, machine identity, or group. They have to be a member of Agent Vault first, under **Access Control**.
+
+## 2. Create and enroll a proxy
+
+Go to **Proxies** and select **Create Proxy**. Name it `laptop`, leave **Unmatched Hosts** on **Allow**, and keep the default bypass list. Select **Create Proxy**.
+
+The dialog that follows shows a one-time enrollment token and the command to run. On the machine that will be the proxy:
+
+```bash
+infisical av proxy --enrollment-token <enrollment-token>
+```
+
+The proxy enrolls, generates its own certificate authority, and starts listening on port `17323`. Leave it running. Its status on the Proxies page turns to **Healthy** within a minute.
+
+<Note>
+  The enrollment token is shown once and expires in an hour. Run the same command again on a restart: the proxy remembers it has enrolled and serves without asking Infisical for a new token. For Docker, Kubernetes, and systemd the same dialog has ready-made snippets.
+</Note>
+
+## 3. Run an agent through it
+
+On the machine where the agent runs, point the CLI at the proxy and name the bundle:
+
+```bash
+infisical av run --access-bundle coding-agent --proxy localhost:17323 -- claude
+```
+
+The CLI mints a session over `coding-agent` as you, fetches the proxy's certificate authority, and starts `claude` with its HTTP traffic routed through the proxy. Everything after `--` is the agent's own command. When the agent exits, the CLI revokes the session.
+
+Replace `localhost:17323` with the proxy host's address if the proxy runs somewhere else. The same proxy has a different address from every network, which is why you pass it rather than pick it from a list.
+
+## 4. Verify it works
+
+Inside the agent, ask it to call GitHub:
+
+> Run `curl -sS https://api.github.com/user` and show me the output.
+
+GitHub answers with your profile. The agent sent no `Authorization` header; the proxy added it on the way out. Run the same `curl` outside the agent and GitHub answers `401`, because nothing on your machine holds the token.
+
+Not driving an interactive agent? Run the check directly:
+
+```bash
+infisical av run --access-bundle coding-agent --proxy localhost:17323 -- curl -sS https://api.github.com/user
+```
+
+The CLI prints which hosts the session can reach before the agent starts, so a `401` from GitHub with `api.github.com:443` missing from that list means the bundle no longer covers it, and a `401` with it present means the token itself is wrong.
+
+## Where to go from here
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
+    Mint a session from the dashboard for an agent you don't launch from the CLI, and choose how long it lives.
+  </Card>
+  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
+    Run the proxy on a server, decide what happens to hosts no connection covers, and pin its certificate.
+  </Card>
+</CardGroup>

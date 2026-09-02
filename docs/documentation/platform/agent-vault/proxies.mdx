@@ -1,0 +1,101 @@
+---
+title: "Proxies"
+description: "Enroll a proxy where agent traffic leaves your network, set its traffic policy, and understand how agents come to trust it."
+---
+
+A proxy is the process that attaches credentials. It runs where agent traffic leaves your network: on a server that many agents share, as a sidecar next to one agent, or on your own laptop. You create it in the dashboard, enroll it once from the CLI, and change its settings from the dashboard afterwards.
+
+<Info>
+  This page is for the people who run proxies. Members see the Proxies page too, with each proxy's name, health, and certificate fingerprint, because that's where a fingerprint for pinning comes from.
+</Info>
+
+## Enrolling
+
+Go to **Proxies**, select **Create Proxy**, name it, and select **Create Proxy** again to confirm. The dialog shows a one-time enrollment token, valid for an hour, and the command to run where the proxy will live:
+
+```bash
+infisical av proxy --enrollment-token <enrollment-token>
+```
+
+The proxy generates its own certificate authority, sends the certificate to Infisical, and starts serving on port `17323`. It writes its state to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, and reads it back on the next start. Passing the same enrollment token again on a restart is fine: the proxy recognizes it and serves without re-enrolling, which is what keeps a Kubernetes Deployment from crash-looping when a pod is rescheduled.
+
+The same dialog has snippets for Docker, Kubernetes, and systemd. Select **New Enrollment Token** on a proxy's menu if the token expired before you used it.
+
+<Note>
+  Run `infisical av proxy --port 18000` to listen elsewhere. The default `17323` is chosen so that an Agent Vault proxy and a Secrets Management [Agent Proxy](/documentation/platform/agent-proxy/overview), which listens on `17322`, can share a machine.
+</Note>
+
+## Settings
+
+Every setting lives in Infisical and reaches a running proxy on its next poll, so there are no traffic flags on the command line. Select **Edit Settings** on the proxy's menu to change them.
+
+### Unmatched hosts
+
+What the proxy does with a request to a host no connection in the session covers.
+
+- **Allow**, the default: the request passes through with no credential attached. The proxy still terminates TLS on it, so the agent trusts the proxy's certificate for that host too.
+- **Deny**: the request is rejected with `403`. The agent reaches the hosts in its bundles, the bypass list, and nothing else.
+
+Under **Allow**, a pass-through connection changes nothing, since the host would pass anyway. Under **Deny**, a pass-through connection is how you make a host reachable without giving it a credential.
+
+Private and link-local addresses, such as `169.254.169.254`, are blocked under both settings, so a shared proxy can't be used to reach cloud metadata endpoints or other hosts inside your network.
+
+### Bypass hosts
+
+A comma-separated list of hosts the proxy tunnels through untouched: no TLS termination, no credential, and the unmatched-host setting doesn't apply. New proxies start with a list of package registries, because installers such as `npm`, `pip`, and `cargo` pin certificates and would otherwise fail behind the proxy. Add any other client that pins here.
+
+### Poll interval
+
+How often, in seconds, the proxy re-checks each active session with Infisical and picks up settings changes. The default is 60. Everything on this page and on [Sessions](/documentation/platform/agent-vault/sessions) that says "within one poll interval" means this number.
+
+If Infisical is unreachable, the proxy keeps serving what it last knew for five poll intervals, then stops attaching credentials until it can check again. A session that comes back revoked, expired, or removed is dropped on the poll that says so.
+
+## Certificate trust
+
+The proxy terminates TLS to see the request it's attaching a credential to, so each agent has to trust the proxy's certificate authority. Every proxy has its own; nothing is shared across proxies or with Infisical.
+
+`infisical av run` fetches the certificate from the proxy on every run, writes it to `~/.infisical/agent-vault/ca.pem`, and sets `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` for the agent. On macOS it also adds the certificate to your login keychain, because Go programs such as `gh` and `docker` read the system trust store rather than those variables. You can decline the keychain prompt; only those programs are affected.
+
+This means anything that can answer at the proxy's address can hand the agent a certificate the agent will trust, and the agent will send it the session token. That token then works against the real proxy. Reaching that position needs an attacker already inside your network, which is the accepted trade for not making every agent host carry a copy of the certificate.
+
+The session token also travels in the clear on the hop from the agent to the proxy: `HTTPS_PROXY` is an `http://` URL, and the token rides in the `Proxy-Authorization` header of every request. Keep proxies on networks you control.
+
+### Pinning
+
+To rule out a stand-in proxy, pass the fingerprint from the Proxies page:
+
+```bash
+infisical av run --token <session-token> --proxy <proxy-address> --ca-fingerprint SHA256:9F:2C:... -- claude
+```
+
+The CLI aborts before writing anything if the served certificate doesn't match. Pin when the agent runs on a network you don't fully control, or when the token would be costly to lose. Most deployments inside a private network don't need to.
+
+An agent that isn't launched by the CLI, such as a container that sets `HTTPS_PROXY` itself, needs the certificate mounted and those variables set by whoever builds the container. Fetch it from `http://<proxy-address>/_agent-vault/ca`.
+
+### Re-enrolling
+
+Selecting **New Enrollment Token** and enrolling again replaces the proxy's certificate authority. The proxy keeps its name, settings, and history, and `infisical av run` picks up the new certificate on its next run. Three things hold a copy and break until updated: an explicit `--ca-fingerprint` pin, a Kubernetes Secret or image that carries the old certificate, and a macOS keychain entry that `av run` created earlier. The dialog names all three before you confirm.
+
+## Revoking and deleting
+
+**Revoke Access** on a proxy's menu invalidates its token within one poll interval. Every agent routed through it loses credentials until the proxy is enrolled again. Use it when you believe the proxy host is compromised. **Delete** removes the proxy record; a running process for it stops being able to resolve sessions.
+
+## Checking what a session can reach
+
+The proxy answers on its own address. With a session token in hand:
+
+```bash
+curl -sS -H "X-Infisical-Agent-Session: <session-token>" http://<proxy-address>/_agent-vault/whoami
+```
+
+The response lists each connection the session can use through this proxy, with its hosts and bundle, plus the proxy's unmatched-host setting. Credential values are never included. `infisical av run` prints the same list before starting the agent.
+
+## What the proxy can't carry
+
+Three kinds of traffic don't work through the proxy in this release. Each fails with an explicit error rather than hanging.
+
+- **WebSockets.** Connections that upgrade from HTTP, such as MCP servers over WebSocket, Slack Socket Mode, the OpenAI Realtime API, and `kubectl exec`.
+- **Streams longer than 30 minutes.** A single response that stays open past 30 minutes, such as a long-lived MCP server over server-sent events, is closed at that point.
+- **HTTP/2-only clients.** Clients that refuse to speak HTTP/1.1, including gRPC, Google Cloud SDKs, and Temporal.
+
+Put hosts that need any of these on the bypass list so the agent reaches them directly, without a credential from Agent Vault.

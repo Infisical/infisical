@@ -91,6 +91,44 @@ bundles it is a warning, because the session's bundle order settles it.
 `agent-vault-host-pattern-fixture.json` is the shared contract with the CLI matcher
 (`packages/agentvault/match.go`). Change the rules there, not in a comment.
 
+## The tail that lives outside these folders
+
+**Metering.** `agent_vault_identities` is a seat count (users and machine identities with membership in the
+project), metered beside `pam_identities`: every `usageMeteringService.emit(..., PamIdentities.key)` in a
+generic membership path has an `AgentVaultIdentities` sibling, and the project resolver emits once when it
+bootstraps. A dimension the licence does not price comes back as a 422 the usage queue swallows, so this
+cannot double-charge; it exists so per-product pricing needs no backfill later.
+
+**Retention and `session-expire`.** Expiry needs no sweep, since status is derived and the proxy drops its own
+cache entry. `sweepRetiredSessions` runs inside `DailyResourceCleanup` for two things only: the
+`session-expire` audit event, emitted once per session by advancing a keystore watermark
+(`KeyStorePrefixes.AgentVaultSessionExpireSweep`, one-day look-back on first run), and hard-deleting rows
+30 days past `expiresAt` or `revokedAt` through the two partial indexes. A `never` session is only reaped once
+revoked.
+
+**The org invite.** `grantAgentVaultAccess` on `/invite-org/signup` goes through
+`agent-vault-member/agent-vault-membership-service.ts`, a PAM-shaped `addProductUserMembers` (settled with the
+product owner over calling the generic membership service), so the invite path and the product agree on
+role validation, SSO-alias resolution and metering. The Access Control page itself uses the generic
+membership services, because Agent Vault reuses the generic page.
+
+**Two enums kept 1:1 with `ProjectType`.** `AuditLogStreamProduct.AgentVault`, or a stream narrowed by
+product never receives an Agent Vault event, and the predefined-roles filter in `project-role-fns.ts` that
+returns admin and member only for org-scoped products.
+
+## The CLI
+
+`infisical av proxy` and `infisical av run` live in the CLI repo (`packages/cmd/agent_vault*.go`,
+`packages/agentvault/`). Two things about `av run` are product decisions rather than conveniences:
+
+- **Trust is stateless.** It fetches the proxy's CA from `http://<proxy>/_agent-vault/ca` on every run and
+  trusts it; `--ca-fingerprint` is an optional pin, checked before anything is written. Re-enrolling a proxy
+  therefore needs no action from CLI users; only pins, mounted copies and macOS keychain entries break.
+- **The agent holds nothing from Infisical.** The child gets the session token inside the proxy URL and the CA
+  trust variables, with `INFISICAL_TOKEN` and universal-auth credentials stripped. `--token` is the session
+  token, so the minting identity comes from `--client-id`/`--client-secret`, the access-token env vars, or the
+  keyring login, never from `--token`.
+
 ## The frontend
 
 Pages live in `frontend/src/pages/agent-vault/`, hooks in `frontend/src/hooks/api/agentVault/`, and the

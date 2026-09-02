@@ -1,0 +1,68 @@
+---
+title: "Agent Vault"
+sidebarTitle: "Overview"
+description: "Run AI agents that hold no credentials. A proxy attaches the real credential at the network boundary, and what a running agent may reach lives on the server."
+---
+
+**Agent Vault** lets an AI agent call GitHub, Slack, an LLM provider, or any other HTTP API without ever holding the credential for it. The agent's traffic goes through an Agent Vault proxy, the proxy attaches the real credential on the way out, and Infisical decides on every poll which hosts that agent may still reach.
+
+```text
+             your network                                   public internet
+
++-----------+                  +-------------------+                 +------------------+
+| AI agent  | ---------------> | Agent Vault proxy | --------------> |  api.github.com  |
++-----------+  session token,  +-------------------+  request with   |  api.slack.com   |
+               no credential            |            the credential  |  ...             |
+                                        | asks what this session
+                                        | may reach, every poll
+                                        v
+                                 +-------------+
+                                 |  Infisical  |
+                                 +-------------+
+```
+
+## Why Agent Vault
+
+An agent that holds an API key can be talked into leaking it. Prompt injection, a malicious tool result, or a plain bug is enough. Agent Vault keeps the key out of the agent altogether: the process starts with a session token and a proxy address, and nothing else from Infisical. If the agent is compromised, the attacker gets a token that only works through your proxy, only for the hosts you allowed, and only until you revoke it.
+
+Access is also checked while the agent runs, not only at start. Remove someone from an access bundle and every session they minted over it loses those hosts within one poll interval, without anyone restarting anything.
+
+## What you work with
+
+| Object            | What it is                                                                                                                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Connection**    | One set of hosts and the credential the proxy attaches to requests bound for them, such as `api.github.com` with a bearer token.                                                                                |
+| **Access bundle** | A named group of connections, and the people, machine identities, and groups allowed to run agents with them. Grant a bundle to a team and everyone on it can mint sessions over it.                             |
+| **Session**       | A token an agent runs with. It carries a fixed set of access bundles and an expiry, and it can be revoked at any time. What it can actually reach is re-checked against the bundle grants on every poll.         |
+| **Proxy**         | The process that sits where agent traffic leaves your network. You enroll it once from the CLI, and it fetches its settings and each session's connections from Infisical.                                      |
+
+Agent Vault is org-wide. There is one Agent Vault per organization, and its Access Control page decides who is an admin, who is a member, and which machine identities and groups belong.
+
+## How a request gets its credential
+
+1. An admin creates an access bundle, adds a connection to it, and grants the bundle to a user, machine identity, or group.
+2. Someone with the grant mints a session over the bundle, from the dashboard or with `infisical av run --access-bundle`.
+3. The agent starts with `HTTPS_PROXY` pointing at the proxy and the session token as the proxy password. It never sees the credential.
+4. The proxy asks Infisical which connections the session may use right now, caches the answer for one poll interval, and attaches the credential to every matching request on the way out.
+5. Revoke the session, remove the grant, or let the session expire, and the proxy stops attaching credentials on its next poll.
+
+<Warning>
+  Agent Vault is a different product from the [Agent Proxy](/documentation/platform/agent-proxy/overview) under Secrets Management. The Agent Proxy brokers secrets that live in a project's folders and sandboxes local agents. Agent Vault has its own connections, bundles, sessions, and proxies, and `infisical av run` doesn't sandbox the agent. Both can run on the same machine.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-vault/quickstart">
+    Create a bundle and a connection, enroll a proxy, and run an agent through it.
+  </Card>
+  <Card title="Access bundles and connections" icon="box" href="/documentation/platform/agent-vault/access-bundles">
+    Credential types, host patterns, and what happens when two connections cover one host.
+  </Card>
+  <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
+    Minting, expiry, revocation, and how a running agent loses access.
+  </Card>
+  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
+    Enrollment, traffic policy, certificate trust, and what the proxy can't carry.
+  </Card>
+</CardGroup>

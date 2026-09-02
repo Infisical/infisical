@@ -45,7 +45,7 @@
 (?i)scan
 (?i)flags
 (?i)sub commands
-(?i)infisical (?:agent|agent-proxy|bootstrap|dynamic-secrets|export|gateway|init|kmip|login|pam|relay|reset|run|scan|secrets|service-token|token|user|vault)
+(?i)infisical (?:agent|agent-proxy|av|bootstrap|dynamic-secrets|export|gateway|init|kmip|login|pam|relay|reset|run|scan|secrets|service-token|token|user|vault)
 
 # Acronyms that collide with ordinary English words, shell commands, or
 # Kubernetes units.
@@ -281,6 +281,8 @@ I
 (?i)Infisical Relay
 (?i)Agent Injector
 (?i)Agent Proxy
+(?i)Agent Vault
+(?i)Realtime
 (?i)Secrets Management
 (?i)Certificate Management
 (?i)Privileged Access Management

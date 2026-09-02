@@ -1,0 +1,68 @@
+---
+title: "Sessions"
+description: "Mint a token an agent can run with, decide how long it lives, and understand how a running agent loses access."
+---
+
+A session is the token an agent runs with. It names a fixed set of access bundles, in order, and an expiry. The proxy uses it to ask Infisical which connections the agent may use right now.
+
+## Minting a session
+
+Anyone with a grant on at least one bundle can mint a session, from the dashboard or from the CLI.
+
+<Tabs>
+  <Tab title="Dashboard">
+    Go to **Sessions** and select **Create Session**. Add the bundles the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
+
+    ```bash
+    infisical av run --token <session-token> --proxy <proxy-address> -- claude
+    ```
+
+    Copy it now. Nothing stores the token, and the dialog can't be reopened.
+
+    Use this when the agent runs somewhere the CLI can't log in as you, such as a container or a scheduled job.
+  </Tab>
+  <Tab title="CLI">
+    `infisical av run` mints a session for you when you name the bundles:
+
+    ```bash
+    infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
+    ```
+
+    The CLI authenticates as your login, or as a machine identity if you pass `--client-id` and `--client-secret`. It revokes the session when the agent exits unless you pass `--keep-session`. A session started with `--token` is never revoked by the CLI, because that token isn't the CLI's to kill.
+  </Tab>
+</Tabs>
+
+The Create Session dialog shows every host the session can reach, as the union of its bundles' connections. It says nothing about hosts outside that list, because what happens to them depends on the proxy the agent ends up using. See [Proxies](/documentation/platform/agent-vault/proxies#unmatched-hosts).
+
+### Bundle order
+
+When two chosen bundles cover the same host with identical patterns, the bundle listed first wins. The dialog warns you when that's the case and lets you reorder. An exact host in a later bundle still beats a wildcard in an earlier one; order only decides ties.
+
+### How long a session lives
+
+Pick one of 1 hour, 8 hours, 24 hours, 7 days, or never. Seven days is the default.
+
+**Never** is allowed for every member and is marked in the Sessions list so it stands out. A session that never expires is a standing token that makes a proxy attach production credentials, so revoke it when the agent that used it's gone.
+
+## What a running agent can reach
+
+The bundles on a session are a ceiling set at mint. What the agent can actually reach is re-checked against the current grants on every proxy poll, and it can only shrink:
+
+- Remove someone from a bundle, and every session they minted over it loses that bundle's connections.
+- Remove them from Agent Vault, and their sessions lose everything.
+- Demote an admin to member, and their sessions keep only the bundles they were explicitly granted.
+- Delete a bundle, and it contributes nothing to any session that carried it. The session still shows the bundle's name in the list so you can see what it was.
+
+All of this lands within one poll interval of the proxy, 60 seconds by default, without restarting anything. Nothing caches authorization anywhere else.
+
+## Revoking and expiry
+
+Select the session's menu on the Sessions page and choose **Revoke Session**. The proxy stops attaching credentials for it within one poll interval. Revoking is permanent.
+
+An expired session stops working the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days before deleting them, so you have a month to reconstruct what an agent could reach.
+
+Admins see every session in the organization under **Everyone**; members see only their own.
+
+## Audit trail
+
+Minting, revoking, and expiry each write an audit event, as does every change to a bundle, connection, or proxy. The proxy also records when a session's set of connections changes, so a session that lost a bundle mid-run shows up in the log. Open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
