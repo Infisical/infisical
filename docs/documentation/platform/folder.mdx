@@ -59,6 +59,8 @@ To copy secrets or folders from another path into it, select the chevron next to
 
 Under **Source**, choose the **Environment** and **Root path** to copy from. **Secrets to replicate** then lists everything at or below that path. Select individual secrets, or select a folder to copy the folder and its contents. Turn off **Include secret values** to copy the keys without their values.
 
+**Root path** also decides where the copies land. Infisical strips it from the path of each selected secret and recreates what's left under **Destination**. Replicating `/backend/API_KEY` into `/replicated` gives you `/replicated/backend/API_KEY` when the root path is `/`, and `/replicated/API_KEY` when it's `/backend`.
+
 ![Replicate Secrets panel with a source path and two secrets selected](../../images/platform/folder/replicate-secrets-modal.png)
 
 Select **Replicate**, then select **Replicate secrets** in the dialog that follows.
@@ -66,7 +68,3 @@ Select **Replicate**, then select **Replicate secrets** in the dialog that follo
 ![The replicated secrets in the destination folder](../../images/platform/folder/replicate-secrets-result.png)
 
 Here `LOG_LEVEL` and `PORT` were copied from the root of Development into `/replicated` in Staging.
-
-<Info>
-    **Root path** only controls what **Secrets to replicate** shows. Leave it at `/` to pick from anywhere in the source environment.
-</Info>
