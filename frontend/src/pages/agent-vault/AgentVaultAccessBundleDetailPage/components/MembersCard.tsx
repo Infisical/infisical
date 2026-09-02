@@ -56,8 +56,8 @@ export const MembersCard = ({ accessBundleId, members }: Props) => {
       <CardHeader>
         <CardTitle>Members</CardTitle>
         <CardDescription>
-          Who can mint a session over this bundle. Removing a member takes effect within about a
-          minute.
+          Who can mint a session over this bundle. Removing a member takes effect at the next proxy
+          poll.
         </CardDescription>
         <CardAction>
           <Button variant="av" onClick={() => setIsAddOpen(true)}>

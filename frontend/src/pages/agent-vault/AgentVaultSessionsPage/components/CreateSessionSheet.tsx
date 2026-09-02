@@ -225,10 +225,7 @@ export const CreateSessionSheet = ({
 
         </div>
 
-        <SheetFooter>
-          <Button variant="ghost" onClick={requestDiscard}>
-            Cancel
-          </Button>
+        <SheetFooter className="border-t">
           <Button
             variant="av"
             isDisabled={selectedIds.length === 0}
@@ -236,6 +233,9 @@ export const CreateSessionSheet = ({
             onClick={async () => handleCreate()}
           >
             Create Session
+          </Button>
+          <Button variant="outline" onClick={requestDiscard}>
+            Cancel
           </Button>
         </SheetFooter>
 

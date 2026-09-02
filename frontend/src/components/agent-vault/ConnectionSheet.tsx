@@ -600,7 +600,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             </div>
           </div>
 
-          <SheetFooter>
+          <SheetFooter className="justify-end border-t">
             <Button
               type="button"
               variant="ghost"
