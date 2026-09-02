@@ -22,6 +22,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
+import { getProjectTitle } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
@@ -31,7 +32,12 @@ export const GroupsSection = () => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  // Products without an intermediate project view read as a product, not a project, so they drop
+  // the "Project" wording. Behavioural forks below stay on isCertManager.
+  const isStandaloneProduct =
+    isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const productLabel =
+      isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
   const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
     useDeleteGroupFromWorkspace();
@@ -79,7 +85,7 @@ export const GroupsSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Groups" : `${productLabel} Groups`}
+            {isStandaloneProduct ? "Groups" : `${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
           <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
@@ -95,7 +101,7 @@ export const GroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isCertManager ? "Add Group" : `Add Group to ${productLabel}`}
+                  {isStandaloneProduct ? "Add Group" : `Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>

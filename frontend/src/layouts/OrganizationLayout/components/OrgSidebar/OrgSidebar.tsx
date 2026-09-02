@@ -3,10 +3,12 @@ import { useLocation, useParams } from "@tanstack/react-router";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
+  getOrgScopedProductFromPath,
   hasIntermediateProjectsView,
   parseProjectSlugFromPath,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { OrgNav } from "./OrgNav";
 import { ProjectNav } from "./ProjectNav";
@@ -23,8 +25,8 @@ export const OrgSidebar = () => {
     })
   });
   const { pathname } = useLocation();
-  const isPamRoute = pathname.includes("/pam/");
-  const isInsideProject = Boolean(projectId) || isPamRoute;
+  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  const isInsideProject = Boolean(projectId) || Boolean(orgScopedProduct);
   // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
@@ -33,8 +35,9 @@ export const OrgSidebar = () => {
     !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" = "org";
-  if (isPamRoute) scope = "pam";
+  let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" = "org";
+  if (orgScopedProduct === ProjectType.PAM) scope = "pam";
+  else if (orgScopedProduct === ProjectType.AgentVault) scope = "agent-vault";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 

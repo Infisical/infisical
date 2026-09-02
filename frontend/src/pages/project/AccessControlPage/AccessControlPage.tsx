@@ -45,7 +45,11 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  const hasTabs = isCertManager || isSecretManager;
+  const isAgentVault = currentProject.type === ProjectType.AgentVault;
+  // Products without an intermediate project view read as a product, not a project, so they drop the
+  // "Project" wording and surface users, identities and groups as tabs rather than a sidebar submenu.
+  const isStandaloneProduct = isCertManager || isAgentVault;
+  const hasTabs = isStandaloneProduct || isSecretManager;
 
   const renderTabContent = () => {
     switch (selectedTab) {
@@ -69,9 +73,9 @@ const Page = () => {
         <PageHeader
           className={hasTabs ? "mb-6" : undefined}
           scope={currentProject.type}
-          title={isCertManager ? "Access Control" : "Project Access Control"}
+          title={isStandaloneProduct ? "Access Control" : "Project Access Control"}
           description={
-            isCertManager
+            isStandaloneProduct
               ? "Manage access for users, groups, and machine identities."
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }
@@ -80,7 +84,10 @@ const Page = () => {
         </PageHeader>
         {hasTabs ? (
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-            <TabsList variant="project" aria-label="Project access control sections">
+            <TabsList
+              variant={isAgentVault ? "av" : "project"}
+              aria-label="Project access control sections"
+            >
               <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
               <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities

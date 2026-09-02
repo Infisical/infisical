@@ -5,6 +5,7 @@ export {
 export { useDebounce } from "./useDebounce";
 export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
+export { useImplicitProjectId } from "./useImplicitProjectId";
 export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";
 export { useOnboarding } from "./useOnboarding";

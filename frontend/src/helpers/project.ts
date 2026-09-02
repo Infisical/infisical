@@ -1,4 +1,12 @@
-import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
+import {
+  FileKeyIcon,
+  KeyIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  UsersIcon,
+  VaultIcon
+} from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
@@ -88,7 +96,8 @@ const VALID_PROJECT_SLUGS = new Set<string>([
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ]);
 
 export const urlSlugToProjectType = (slug: string): ProjectType | null => {
@@ -115,6 +124,19 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
 
+// Products that live at /organizations/$orgId/<slug> over a single implicit project, with no
+// $projectId in the URL. Their project id is resolved from the org rather than the route params.
+const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+
+export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
+
+const ORG_SCOPED_PRODUCT_PATH_RE = /^\/organizations\/[^/]+\/(pam|agent-vault)(?:\/|$)/;
+
+export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
+  const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
+  return slug ? urlSlugToProjectType(slug) : null;
+};
+
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
@@ -123,6 +145,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/cert-manager/$projectId";
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
+    case ProjectType.AgentVault:
+      return "/organizations/$orgId/agent-vault" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -140,6 +164,8 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
+    case ProjectType.AgentVault:
+      return "/organizations/$orgId/agent-vault/sessions" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -151,7 +177,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager"
+    [ProjectType.PAM]: "Privileged Access Manager",
+    [ProjectType.AgentVault]: "Agent Vault"
   };
   return titleConvert[type] || type;
 };
@@ -167,7 +194,9 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
+    [ProjectType.AgentVault]:
+      "Run agents with no credentials. A proxy you deploy attaches the real credential at egress and only to the hosts you allow."
   };
   return descriptions[type] ?? "";
 };
@@ -203,7 +232,8 @@ export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SecretScanning]: RadarIcon,
-    [ProjectType.PAM]: UsersIcon
+    [ProjectType.PAM]: UsersIcon,
+    [ProjectType.AgentVault]: VaultIcon
   };
   return iconConvert[type] || KeyIcon;
 };

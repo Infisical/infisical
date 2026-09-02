@@ -93,6 +93,8 @@ import {
 } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
@@ -304,9 +306,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
+  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
+  const isPamScope = orgScopedProduct === ProjectType.PAM;
+  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
   const isProjectScope =
-    isPamScope ||
+    Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
       location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
@@ -344,7 +348,8 @@ export const Navbar = () => {
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
+        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
+        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}

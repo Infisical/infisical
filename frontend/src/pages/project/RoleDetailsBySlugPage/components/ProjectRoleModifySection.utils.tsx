@@ -3485,6 +3485,15 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
+  },
+  [ProjectType.AgentVault]: {
+    ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(true),
+    ...SecretScanningSubject(),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    [ProjectPermissionSub.AppConnections]: false
   }
 };
 
@@ -3917,5 +3926,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       ]
     }
   ],
-  [ProjectType.PAM]: [projectManagerTemplate()]
+  [ProjectType.PAM]: [projectManagerTemplate()],
+  [ProjectType.AgentVault]: [projectManagerTemplate()]
 };

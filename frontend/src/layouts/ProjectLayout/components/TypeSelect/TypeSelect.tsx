@@ -7,8 +7,11 @@ import { Command, CommandGroup, CommandItem, CommandList } from "@app/components
 import { useOrganization } from "@app/context";
 import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
+  getOrgScopedProductFromPath,
+  getProjectHomePage,
   getProjectLucideIcon,
   getProjectTitle,
+  isOrgScopedProduct,
   projectTypeToUrlSlug,
   urlSlugToProjectType
 } from "@app/helpers/project";
@@ -85,9 +88,9 @@ const TypeSelectInner = ({
       return;
     }
 
-    if (type === ProjectType.PAM) {
+    if (isOrgScopedProduct(type)) {
       navigate({
-        to: "/organizations/$orgId/pam/access",
+        to: getProjectHomePage(type, []),
         params: { orgId }
       });
       return;
@@ -113,9 +116,9 @@ const TypeSelectInner = ({
           onClick={() => {
             if (currentType === ProjectType.CertificateManager) {
               navigateToCertManager();
-            } else if (currentType === ProjectType.PAM) {
+            } else if (isOrgScopedProduct(currentType)) {
               navigate({
-                to: "/organizations/$orgId/pam/access",
+                to: getProjectHomePage(currentType, []),
                 params: { orgId: currentOrg?.id || "" }
               });
             } else {
@@ -187,8 +190,9 @@ export const TypeSelect = () => {
     }
   }
 
-  if (!params.projectId && pathname.includes("/pam/")) {
-    return <TypeSelectInner currentType={ProjectType.PAM} />;
+  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  if (!params.projectId && orgScopedProduct) {
+    return <TypeSelectInner currentType={orgScopedProduct} />;
   }
 
   if (params.projectId) {

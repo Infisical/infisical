@@ -37,7 +37,8 @@ const iconButtonVariants = cva(
           "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30",
         danger:
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
-        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
+        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35",
+        av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35"
       },
       size: {
         "2xs": "h-6 w-6 [&>svg]:size-3 rounded-sm [&>svg]:stroke-[1.75]",

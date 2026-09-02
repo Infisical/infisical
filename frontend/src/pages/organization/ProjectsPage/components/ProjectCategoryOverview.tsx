@@ -90,6 +90,13 @@ const PRODUCT_STYLES: Record<
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
+  },
+  [ProjectType.AgentVault]: {
+    iconClassName: "h-4.5 w-4.5 text-product-av",
+    containerClassName:
+      "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-av/60"
   }
 };
 

@@ -24,7 +24,11 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import {
+  getOrgScopedProductFromPath,
+  getProjectHomePage,
+  isOrgScopedProduct
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -126,7 +130,7 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
-    currentWorkspace.type === ProjectType.PAM
+    isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
   }
@@ -274,9 +278,9 @@ export const ProjectSelect = () => {
   const params = useParams({ strict: false });
   const { pathname } = useLocation();
 
-  const isPamRoute = pathname.includes("/pam/");
+  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
 
-  if (!params.projectId && !isPamRoute) {
+  if (!params.projectId && !orgScopedProduct) {
     return null;
   }
 
