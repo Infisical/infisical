@@ -238,8 +238,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                   <Label htmlFor="disable-secret-deletion">Prevent secret deletion</Label>
                   <FieldDescription>
                     Infisical will add and update secrets in {destinationName} but never delete
-                    them. Turn this off to let syncs remove secrets that no longer exist in
-                    Infisical.
+                    them. Turn this off to let syncs remove any secrets in {destinationName} that
+                    are not in Infisical.
                   </FieldDescription>
                 </FieldContent>
                 <Switch
@@ -272,9 +272,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it on</AlertDialogCancel>
+                    <AlertDialogCancel>Keep Protection On</AlertDialogCancel>
                     <AlertDialogAction variant="project" onClick={() => onChange(false)}>
-                      Allow deletion
+                      Allow Deletion
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
