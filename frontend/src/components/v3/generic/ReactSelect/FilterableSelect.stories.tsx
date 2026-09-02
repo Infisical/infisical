@@ -60,6 +60,8 @@ const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
 );
 
 /**
+ * > Deprecated: Use `Combobox` instead.
+ *
  * `FilterableSelect` is the v3 react-select-based dropdown for searchable
  * single or multi selection over a known set of options. Reach for it when the
  * option list is too long for the Radix-based `Select` (which has no search)
