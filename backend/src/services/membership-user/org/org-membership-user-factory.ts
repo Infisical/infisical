@@ -330,29 +330,46 @@ export const newOrgMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
 
-    const targetMembership = await membershipUserDAL.getUserById({
-      scopeData: dto.scopeData,
-      userId: dto.selector.userId
-    });
-    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
 
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
-        ignoreUnresolvedRoles: true
+    const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
+    if (dto.data.roles.length || dto.data.metadata !== undefined)
+      targetOps.push({
+        opAction: OrgPermissionMemberActions.GrantPrivileges,
+        baseMessage: "Failed to change the roles or attributes of a more privileged org member"
+      });
+    if (dto.data.isActive !== undefined)
+      targetOps.push({
+        opAction: OrgPermissionMemberActions.Delete,
+        baseMessage: "Failed to change the activation status of a more privileged org member"
       });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged org member"
+    if (targetOps.length) {
+      const targetMembership = await membershipUserDAL.getUserById({
+        scopeData: dto.scopeData,
+        userId: dto.selector.userId
       });
+      const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+
+      if (targetRoles.length) {
+        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+          ignoreUnresolvedRoles: true
+        });
+
+        for (const { opAction, baseMessage } of targetOps) {
+          assertRoleSetBoundary({
+            shouldUseNewPrivilegeSystem,
+            opActions: opAction,
+            opSubject: OrgPermissionSubjects.Member,
+            actorPermission: permission,
+            targetPermissions,
+            baseMessage
+          });
+        }
+      }
     }
 
     if (dto.data.roles.length) {

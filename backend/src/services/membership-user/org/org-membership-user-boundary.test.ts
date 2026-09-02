@@ -44,16 +44,27 @@ const memberPrivilegeGranter = createMongoAbility<MongoAbility>([
   }
 ]);
 
+// Holds the action that describes changing a member's activation, but not the one for assigning
+// roles. The pair with memberPrivilegeGranter is what pins each operation to its own action.
+const memberDeleter = createMongoAbility<MongoAbility>([
+  {
+    action: [OrgPermissionMemberActions.Read, OrgPermissionMemberActions.Edit, OrgPermissionMemberActions.Delete],
+    subject: OrgPermissionSubjects.Member
+  }
+]);
+
 const createGuard = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
   targetRole = "admin",
-  incomingRole = "member"
+  incomingRole = "member",
+  data
 }: {
   actorPermission: MongoAbility;
   shouldUseNewPrivilegeSystem: boolean;
   targetRole?: string;
   incomingRole?: string;
+  data?: Record<string, unknown>;
 }) => {
   const abilityByRole: Record<string, MongoAbility> = {
     admin,
@@ -85,7 +96,7 @@ const createGuard = ({
       permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
       scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
       selector: { userId: TARGET_USER_ID },
-      data: { roles: [{ role: incomingRole, isTemporary: false }] }
+      data: data ?? { roles: [{ role: incomingRole, isTemporary: false }] }
     } as never);
 };
 
@@ -157,5 +168,92 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
     });
 
     await expect(guard()).resolves.toBeUndefined();
+  });
+
+  // The guard ran one boundary keyed on member:grant-privileges for every field on the route, so a
+  // deactivation was gated on a role-assignment permission. Each operation now keys on the action
+  // that describes it, which for metadata is still grant-privileges: it feeds ABAC.
+  describe("gating follows the operation being performed", () => {
+    test("a metadata-only edit is bounded, because metadata drives ABAC", async () => {
+      // Org member metadata is the {{identity.metadata.*}} attribute source that project policies
+      // interpolate, so rewriting an Admin's metadata rewrites what their roles grant. member:edit
+      // alone must not reach it.
+      const metadataOnly = { roles: [], metadata: [{ key: "team", value: "platform" }] };
+
+      await expect(
+        createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: false, data: metadataOnly })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      await expect(
+        createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true, data: metadataOnly })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      // grant-privileges is the action that reaches it, and only on the new system.
+      await expect(
+        createGuard({
+          actorPermission: memberPrivilegeGranter,
+          shouldUseNewPrivilegeSystem: true,
+          data: metadataOnly
+        })()
+      ).resolves.toBeUndefined();
+
+      // member:delete does not: deactivating a member and rewriting their attributes are different
+      // operations gated on different actions.
+      await expect(
+        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: metadataOnly })()
+      ).rejects.toThrow(PermissionBoundaryError);
+    });
+
+    test("deactivation keys on member:delete, not member:grant-privileges", async () => {
+      const deactivate = { roles: [], isActive: false };
+
+      // Holds grant-privileges but not delete: it can assign roles, and that says nothing about
+      // being allowed to cut off an Admin's access.
+      await expect(
+        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: deactivate })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      await expect(
+        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: deactivate })()
+      ).resolves.toBeUndefined();
+    });
+
+    test("reactivating a privileged member is bounded the same way", async () => {
+      // Restoring an Admin's access is as much a privilege change as removing it, so it cannot be
+      // the ungated direction of the same field.
+      const reactivate = { roles: [], isActive: true };
+
+      await expect(
+        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: reactivate })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      await expect(
+        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: reactivate })()
+      ).resolves.toBeUndefined();
+    });
+
+    test("the legacy system still compares privilege levels, whatever the operation", async () => {
+      // memberDeleter holds the action, which buys it nothing here: it is still weaker than an Admin.
+      await expect(
+        createGuard({
+          actorPermission: memberDeleter,
+          shouldUseNewPrivilegeSystem: false,
+          data: { roles: [], isActive: false }
+        })()
+      ).rejects.toThrow(PermissionBoundaryError);
+    });
+
+    test("a role change and a deactivation in one request need both actions", async () => {
+      const both = { roles: [{ role: "member", isTemporary: false }], isActive: false };
+
+      // Each holds exactly one of the two actions, so neither can do both at once.
+      await expect(
+        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: both })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      await expect(
+        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: both })()
+      ).rejects.toThrow(PermissionBoundaryError);
+    });
   });
 });

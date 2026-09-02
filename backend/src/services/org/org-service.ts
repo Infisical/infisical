@@ -871,20 +871,36 @@ export const orgServiceFactory = ({
       orgDAL.findById(orgId)
     );
 
-    const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
-        ignoreUnresolvedRoles: true
+    const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
+    if (role !== undefined || metadata !== undefined)
+      targetOps.push({
+        opAction: OrgPermissionMemberActions.GrantPrivileges,
+        baseMessage: "Failed to change the roles or attributes of a more privileged org member"
+      });
+    if (isActive !== undefined)
+      targetOps.push({
+        opAction: OrgPermissionMemberActions.Delete,
+        baseMessage: "Failed to change the activation status of a more privileged org member"
       });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged org member"
-      });
+    if (targetOps.length) {
+      const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
+      if (targetRoles.length) {
+        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
+          ignoreUnresolvedRoles: true
+        });
+
+        for (const { opAction, baseMessage } of targetOps) {
+          assertRoleSetBoundary({
+            shouldUseNewPrivilegeSystem,
+            opActions: opAction,
+            opSubject: OrgPermissionSubjects.Member,
+            actorPermission: permission,
+            targetPermissions,
+            baseMessage
+          });
+        }
+      }
     }
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
