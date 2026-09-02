@@ -9,12 +9,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
+
+import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
@@ -88,7 +91,10 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
     <Dialog open={Boolean(enrollment)} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Enrollment Token</DialogTitle>
+          <DialogTitle className="flex items-center gap-x-2">
+            Enrollment Token
+            <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
+          </DialogTitle>
           <DialogDescription>
             Shown once. Copy it now.
             {enrollment &&

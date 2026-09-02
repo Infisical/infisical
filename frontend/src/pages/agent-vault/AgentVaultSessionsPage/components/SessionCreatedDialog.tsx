@@ -6,9 +6,12 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import { TAgentVaultMintedSession } from "@app/hooks/api/agentVault/types";
+
+import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 import { SessionExpiry } from "./SessionExpiry";
 
@@ -21,7 +24,10 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
   <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Session Created</DialogTitle>
+        <DialogTitle className="flex items-center gap-x-2">
+          Session Created
+          <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
+        </DialogTitle>
         <DialogDescription>This command is shown once. Copy it now.</DialogDescription>
       </DialogHeader>
 

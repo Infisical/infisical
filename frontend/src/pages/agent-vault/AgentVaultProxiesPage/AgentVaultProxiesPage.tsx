@@ -25,6 +25,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   CopyButton,
   DeleteConfirmDialog,
   DropdownMenu,
@@ -61,6 +62,7 @@ import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVau
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
@@ -121,7 +123,10 @@ export const AgentVaultProxiesPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Proxies</CardTitle>
+          <CardTitle>
+            Proxies
+            <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
+          </CardTitle>
           <CardDescription>
             An agent points its HTTP traffic at one of these. Settings reach a running proxy within
             one poll interval.

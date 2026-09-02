@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,8 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+
+import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { AgentVaultCredentialType, useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
@@ -104,7 +107,10 @@ export const ConnectionsCard = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Connections</CardTitle>
+        <CardTitle>
+          Connections
+          <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
+        </CardTitle>
         <CardDescription>
           One HTTP target and its credential. The proxy attaches it only to these hosts.
         </CardDescription>

@@ -46,6 +46,7 @@ import {
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 import { slugSchema } from "@app/lib/schemas";
 
 import { ConnectionTemplateSelect } from "./ConnectionTemplateSelect";
@@ -585,7 +586,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                       <AlertDescription>{template.caveat}</AlertDescription>
                     </Alert>
                   )}
-                  <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/agent-vault" />
+                  <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
                   <div className="mt-2 flex flex-col gap-1 text-accent">
                     <div className="text-label">Filled in for you</div>
                     <div className="flex items-center gap-1.5">

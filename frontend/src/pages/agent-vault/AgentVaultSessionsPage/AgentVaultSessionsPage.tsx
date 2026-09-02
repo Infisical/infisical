@@ -13,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,6 +61,7 @@ import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/age
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionSheet } from "./components/CreateSessionSheet";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
@@ -159,7 +161,10 @@ export const AgentVaultSessionsPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sessions</CardTitle>
+          <CardTitle>
+            Sessions
+            <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
+          </CardTitle>
           <CardDescription>
             A session names one actor, the access bundles it carries, and when it expires.
           </CardDescription>

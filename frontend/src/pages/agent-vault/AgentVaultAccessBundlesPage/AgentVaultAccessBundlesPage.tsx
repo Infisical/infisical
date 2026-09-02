@@ -13,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -47,6 +48,7 @@ import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
 
 enum SortOption {
@@ -125,7 +127,10 @@ export const AgentVaultAccessBundlesPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Access Bundles</CardTitle>
+          <CardTitle>
+            Access Bundles
+            <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
+          </CardTitle>
           <CardDescription>
             Each bundle holds the connections an agent may use and the members who can mint a
             session over it.
