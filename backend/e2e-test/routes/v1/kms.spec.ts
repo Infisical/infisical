@@ -123,6 +123,18 @@ describe("KMS V1 Router", () => {
     const { plaintext: decryptedPlaintext } = JSON.parse(decryptResponse.payload) as { plaintext: string };
     expect(Buffer.from(decryptedPlaintext, "base64")).toEqual(plaintext);
 
+    const invalidCiphertextResponse = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/kms/keys/${key.id}/decrypt`,
+      headers: authHeaders,
+      body: { ciphertext: Buffer.alloc(512).toString("base64") }
+    });
+
+    expect(invalidCiphertextResponse.statusCode, invalidCiphertextResponse.payload).toBe(400);
+    expect(JSON.parse(invalidCiphertextResponse.payload)).toMatchObject({
+      message: "Ciphertext cannot be decrypted with this KMS key."
+    });
+
     const rotateResponse = await testServer.inject({
       method: "POST",
       url: `/api/v1/kms/keys/${key.id}/rotate`,

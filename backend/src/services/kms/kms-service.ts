@@ -591,14 +591,14 @@ export const kmsServiceFactory = ({
         const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, embeddedVersion);
         if (decrypted) return decrypted;
 
-        return decryptWithKeyMaterial(cipherTextBlob, kmsKey);
+        throw new BadRequestError({ message: "Ciphertext cannot be decrypted with this KMS key." });
       }
 
       // legacy v01 (or anything not validated as v02): strip the 3-byte suffix and try all available material
       const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
       const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, currentKeyVersion);
       if (decrypted) return decrypted;
-      return decryptWithKeyMaterial(cipherTextBlob, kmsKey);
+      throw new BadRequestError({ message: "Ciphertext cannot be decrypted with this KMS key." });
     };
   };
 
