@@ -5005,7 +5005,7 @@
     },
     {
       "source": "/integrations/framework-integrations",
-      "destination": "/integrations/all"
+      "destination": "/integrations/all?type=Framework"
     }
   ]
 }
