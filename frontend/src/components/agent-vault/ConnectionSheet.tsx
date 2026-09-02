@@ -46,8 +46,8 @@ import {
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
-import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 import { slugSchema } from "@app/lib/schemas";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ConnectionTemplateSelect } from "./ConnectionTemplateSelect";
 

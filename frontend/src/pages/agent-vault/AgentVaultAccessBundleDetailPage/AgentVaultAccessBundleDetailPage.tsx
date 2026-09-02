@@ -6,6 +6,7 @@ import { ChevronLeftIcon, EllipsisIcon, PackageIcon } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionSheet } from "@app/components/agent-vault/ConnectionSheet";
+import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import {
   Button,
   DropdownMenu,
@@ -27,7 +28,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ConnectionsCard } from "./components/ConnectionsCard";
-import { MembersCard } from "./components/MembersCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
   const { t } = useTranslation();
@@ -44,6 +44,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(accessBundleId);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isConnectionSheetOpen, setIsConnectionSheetOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<TAgentVaultConnection | null>(null);
@@ -102,6 +103,9 @@ export const AgentVaultAccessBundleDetailPage = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
+                Manage Access
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
                 Edit Access Bundle
               </DropdownMenuItem>
@@ -113,26 +117,24 @@ export const AgentVaultAccessBundleDetailPage = () => {
         )}
       </PageHeader>
 
-      <div className="flex flex-col gap-4">
-        <ConnectionsCard
-          accessBundleId={accessBundle.id}
-          connections={accessBundle.connections}
-          canManage={isAdmin}
-          onAdd={() => {
-            setConnectionToEdit(null);
-            setIsConnectionSheetOpen(true);
-          }}
-          onEdit={(connection) => {
-            setConnectionToEdit(connection);
-            setIsConnectionSheetOpen(true);
-          }}
-        />
+      <ConnectionsCard
+        accessBundleId={accessBundle.id}
+        connections={accessBundle.connections}
+        canManage={isAdmin}
+        onAdd={() => {
+          setConnectionToEdit(null);
+          setIsConnectionSheetOpen(true);
+        }}
+        onEdit={(connection) => {
+          setConnectionToEdit(connection);
+          setIsConnectionSheetOpen(true);
+        }}
+      />
 
-        {/* The API omits `members` entirely for anyone but an administrator. */}
-        {accessBundle.members && (
-          <MembersCard accessBundleId={accessBundle.id} members={accessBundle.members} />
-        )}
-      </div>
+      <ManageAccessSheet
+        accessBundle={isManageAccessOpen ? accessBundle : null}
+        onOpenChange={setIsManageAccessOpen}
+      />
 
       <ConnectionSheet
         isOpen={isConnectionSheetOpen}

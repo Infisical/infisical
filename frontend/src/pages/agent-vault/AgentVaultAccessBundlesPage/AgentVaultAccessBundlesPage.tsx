@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionIconStack } from "@app/components/agent-vault/ConnectionIconStack";
+import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import {
   Button,
   Card,
@@ -64,6 +65,9 @@ export const AgentVaultAccessBundlesPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
+    null
+  );
+  const [bundleToManage, setBundleToManage] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
 
@@ -229,7 +233,22 @@ export const AgentVaultAccessBundlesPage = () => {
                       <ConnectionIconStack hostPatterns={bundle.hostPatterns} />
                     </TableCell>
                     <TableCell>
-                      {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          className="cursor-pointer underline decoration-muted underline-offset-2 hover:decoration-foreground"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setBundleToManage(bundle);
+                          }}
+                        >
+                          {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
+                        </button>
+                      ) : (
+                        <>
+                          {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell variant="action">
                       {isAdmin && (
@@ -245,6 +264,14 @@ export const AgentVaultAccessBundlesPage = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setBundleToManage(bundle);
+                              }}
+                            >
+                              Manage Access
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -280,6 +307,13 @@ export const AgentVaultAccessBundlesPage = () => {
         }}
         accessBundle={bundleToEdit ?? undefined}
       />
+      <ManageAccessSheet
+        accessBundle={bundleToManage}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setBundleToManage(null);
+        }}
+      />
+
       <DeleteAccessBundleDialog
         accessBundle={bundleToDelete}
         onOpenChange={(isOpen) => {

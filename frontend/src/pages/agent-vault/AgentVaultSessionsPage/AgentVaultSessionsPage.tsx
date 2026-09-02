@@ -80,7 +80,7 @@ export const AgentVaultSessionsPage = () => {
   const [statusFilter, setStatusFilter] = useState<AgentVaultSessionStatus | typeof ALL_STATUSES>(
     ALL_STATUSES
   );
-  const [scope, setScope] = useState(AgentVaultSessionScope.All);
+  const [scope, setScope] = useState(AgentVaultSessionScope.Mine);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
