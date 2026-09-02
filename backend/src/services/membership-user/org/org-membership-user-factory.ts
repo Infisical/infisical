@@ -7,8 +7,8 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { assertPermissionBoundary, assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -103,20 +103,26 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
     if (dto.data.roles.length) {
       const permissionRoles = await permissionService.getOrgPermissionByRoles(
         dto.data.roles.map((el) => el.role),
         dto.permission.orgId
       );
-      for (const permissionRole of permissionRoles) {
-        assertPermissionBoundary(
-          permission,
-          permissionRole.permission,
-          "Cannot grant a role exceeding your own privileges to a new org member"
-        );
-      }
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(dto.permission.orgId),
+        () => orgDAL.findById(dto.permission.orgId)
+      );
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: permissionRoles,
+        baseMessage: "Cannot grant a role exceeding your own privileges to a new org member"
+      });
     }
 
     const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(dto.permission.orgId));
@@ -322,25 +328,31 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
 
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
+
     if (targetRoles.length) {
       const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
         ignoreUnresolvedRoles: true
       });
 
-      for (const targetPermission of targetPermissions) {
-        assertPermissionBoundary(
-          permission,
-          targetPermission.permission,
-          "Failed to change the roles of a more privileged org member"
-        );
-      }
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged org member"
+      });
     }
 
     if (dto.data.roles.length) {
@@ -349,13 +361,14 @@ export const newOrgMembershipUserFactory = ({
         dto.permission.orgId
       );
 
-      for (const permissionRole of permissionRoles) {
-        assertPermissionBoundary(
-          permission,
-          permissionRole.permission,
-          "Cannot grant a role exceeding your own privileges to an existing org member"
-        );
-      }
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: permissionRoles,
+        baseMessage: "Cannot grant a role exceeding your own privileges to an existing org member"
+      });
     }
   };
 
@@ -368,7 +381,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
 
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
@@ -387,7 +400,7 @@ export const newOrgMembershipUserFactory = ({
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionActions.Delete,
+      opActions: OrgPermissionMemberActions.Delete,
       opSubject: OrgPermissionSubjects.Member,
       actorPermission: permission,
       targetPermissions,
@@ -404,7 +417,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   };
 
   const onGetMembershipUserByUserIdGuard: TMembershipUserScopeFactory["onGetMembershipUserByUserIdGuard"] = async (
@@ -418,7 +431,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   };
 
   return {

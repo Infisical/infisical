@@ -17,6 +17,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -268,7 +269,7 @@ const Page = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
+    action: OrgPermissionMemberActions.Read,
     subject: OrgPermissionSubjects.Member,
     accessRestrictedMode: "dialog"
   }

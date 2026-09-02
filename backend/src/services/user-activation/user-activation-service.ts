@@ -1,5 +1,9 @@
 import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { ms } from "@app/lib/ms";
@@ -52,7 +56,7 @@ export const userActivationServiceFactory = ({
       actorAuthMethod,
       scope: OrganizationActionScope.Any
     });
-    if (!permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member)) return noActivation;
+    if (!permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member)) return noActivation;
 
     // 2. The org must be young enough (SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS) or has less than 5 u
     const org = await orgDAL.findById(actorOrgId);

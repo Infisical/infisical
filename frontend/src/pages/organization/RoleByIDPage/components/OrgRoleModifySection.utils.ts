@@ -17,6 +17,7 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSecretsManagementInsightsActions,
@@ -76,6 +77,18 @@ const appConnectionsPermissionSchema = z
 
 const kmipPermissionSchema = z
   .array(z.object({ [OrgPermissionKmipActions.Proxy]: z.boolean().optional() }))
+  .optional();
+
+const memberPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionMemberActions.Read]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Create]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Edit]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Delete]: z.boolean().optional(),
+      [OrgPermissionMemberActions.GrantPrivileges]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const identityPermissionSchema = z
@@ -237,7 +250,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
-      member: generalPermissionSchema,
+      member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
@@ -327,24 +340,29 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     description: "Manage organization member access and role assignments",
     actions: [
       {
-        value: OrgPermissionActions.Read,
+        value: OrgPermissionMemberActions.Read,
         label: "View all members",
         description: "View organization members and their roles"
       },
       {
-        value: OrgPermissionActions.Create,
+        value: OrgPermissionMemberActions.Create,
         label: "Invite members",
         description: "Invite new users to join the organization"
       },
       {
-        value: OrgPermissionActions.Edit,
+        value: OrgPermissionMemberActions.Edit,
         label: "Edit members",
         description: "Modify member roles and access settings"
       },
       {
-        value: OrgPermissionActions.Delete,
+        value: OrgPermissionMemberActions.Delete,
         label: "Remove members",
         description: "Remove members from the organization"
+      },
+      {
+        value: OrgPermissionMemberActions.GrantPrivileges,
+        label: "Grant privileges",
+        description: "Assign and change the roles held by organization members"
       }
     ]
   },

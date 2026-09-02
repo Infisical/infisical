@@ -3,7 +3,7 @@ import { vi } from "vitest";
 
 import { NotFoundError } from "@app/lib/errors";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "./org-permission";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "./org-permission";
 import { permissionServiceFactory } from "./permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "./project-permission";
 
@@ -74,7 +74,7 @@ describe("getOrgPermissionByRoles", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].permission.can(OrgPermissionActions.Delete, OrgPermissionSubjects.Member)).toBe(true);
+    expect(result[0].permission.can(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member)).toBe(true);
   });
 });
 

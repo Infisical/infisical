@@ -21,11 +21,12 @@ import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bo
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
+  OrgPermissionMemberActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { assertPermissionBoundary, assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -259,7 +260,7 @@ export const orgServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
@@ -295,7 +296,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findOrgMembersByUsername(orgId, emails);
 
@@ -852,7 +853,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
 
     const foundMembership = await membershipUserDAL.findOne({
       id: membershipId,
@@ -866,19 +867,24 @@ export const orgServiceFactory = ({
     if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+      orgDAL.findById(orgId)
+    );
+
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
     if (targetRoles.length) {
       const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
         ignoreUnresolvedRoles: true
       });
 
-      for (const targetPermission of targetPermissions) {
-        assertPermissionBoundary(
-          permission,
-          targetPermission.permission,
-          "Failed to change the roles of a more privileged org member"
-        );
-      }
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged org member"
+      });
     }
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
@@ -899,12 +905,15 @@ export const orgServiceFactory = ({
     }
 
     if (role) {
-      const [permissionRole] = await permissionService.getOrgPermissionByRoles([role], orgId);
-      assertPermissionBoundary(
-        permission,
-        permissionRole.permission,
-        "Cannot assign a role exceeding your own privileges to an org member"
-      );
+      const permissionRoles = await permissionService.getOrgPermissionByRoles([role], orgId);
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: permissionRoles,
+        baseMessage: "Cannot assign a role exceeding your own privileges to an org member"
+      });
     }
 
     const updatesToActiveAdmin = role === OrgMembershipRole.Admin && isActive !== false;
@@ -997,7 +1006,7 @@ export const orgServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
     const invitingUser = await userDAL.findOne({ id: actorId });
 
@@ -1180,7 +1189,7 @@ export const orgServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
     if (!membership) {
@@ -1214,7 +1223,7 @@ export const orgServiceFactory = ({
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionActions.Delete,
+      opActions: OrgPermissionMemberActions.Delete,
       opSubject: OrgPermissionSubjects.Member,
       actorPermission: permission,
       targetPermissions,
@@ -1238,7 +1247,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
 
     const membershipToDelete = await membershipUserDAL.findOne({
       id: membershipId,
@@ -1288,7 +1297,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
 
     const membershipsToDelete = await membershipUserDAL.find({
       scope: AccessScope.Organization,
@@ -1343,7 +1352,7 @@ export const orgServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
     if (!membership) {

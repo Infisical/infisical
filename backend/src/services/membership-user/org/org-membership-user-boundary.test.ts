@@ -6,7 +6,7 @@ import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { PermissionBoundaryError } from "@app/lib/errors";
@@ -14,11 +14,10 @@ import { PermissionBoundaryError } from "@app/lib/errors";
 import { newOrgMembershipUserFactory } from "./org-membership-user-factory";
 
 // The org update guard bounds a role change against the roles the target already holds, because a
-// downgrade strips privileges as effectively as a removal does. Unlike the identity and group
-// surfaces, this boundary applies on both privilege systems: the new system replaces a superset
-// check with a dedicated `grant-privileges` action, and OrgPermissionSubjects.Member has no such
-// action. Routing it through validatePrivilegeChangeOperation would collapse it to the
-// `can(edit, member)` the guard's own throwUnlessCan already required, leaving no check at all.
+// downgrade strips privileges as effectively as a removal does. Both privilege systems reject, but
+// for different reasons: the legacy system compares privilege levels, while the new system asks for
+// member:grant-privileges, which is deliberately not implied by the member:edit that the guard's own
+// throwUnlessCan requires.
 
 const ORG_ID = "org-id";
 const TARGET_USER_ID = "target-user-id";
@@ -29,7 +28,20 @@ const member = createMongoAbility<MongoAbility>(orgMemberPermissions);
 // Exactly the grant the guard's throwUnlessCan demands, and nothing more: weaker than the target,
 // so the boundary is the only thing left that can reject it.
 const memberEditorOnly = createMongoAbility<MongoAbility>([
-  { action: [OrgPermissionActions.Read, OrgPermissionActions.Edit], subject: OrgPermissionSubjects.Member }
+  { action: [OrgPermissionMemberActions.Read, OrgPermissionMemberActions.Edit], subject: OrgPermissionSubjects.Member }
+]);
+
+// Still weaker than an Admin target, but now holding the action the new system asks for. This is the
+// pair that separates the two systems: the privilege comparison still rejects it, the action does not.
+const memberPrivilegeGranter = createMongoAbility<MongoAbility>([
+  {
+    action: [
+      OrgPermissionMemberActions.Read,
+      OrgPermissionMemberActions.Edit,
+      OrgPermissionMemberActions.GrantPrivileges
+    ],
+    subject: OrgPermissionSubjects.Member
+  }
 ]);
 
 const createGuard = ({
@@ -79,7 +91,7 @@ const createGuard = ({
 
 describe("onUpdateMembershipUserGuard privilege boundary", () => {
   test("the actor holds member:edit, so the plain permission check is not what rejects it", () => {
-    expect(memberEditorOnly.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Member)).toBe(true);
+    expect(memberEditorOnly.can(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member)).toBe(true);
   });
 
   test("on the legacy system, a weaker actor cannot downgrade an Admin member", async () => {
@@ -119,6 +131,18 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
       createGuard({ actorPermission: admin, shouldUseNewPrivilegeSystem: false })()
     ).resolves.toBeUndefined();
     await expect(createGuard({ actorPermission: admin, shouldUseNewPrivilegeSystem: true })()).resolves.toBeUndefined();
+  });
+
+  test("member:grant-privileges is what the new system keys on, and only the new system", async () => {
+    // Same actor on both runs. The new system accepts it because it holds the action; the legacy
+    // system still rejects it because holding an action says nothing about out-ranking an Admin.
+    await expect(
+      createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true })()
+    ).resolves.toBeUndefined();
+
+    await expect(
+      createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: false })()
+    ).rejects.toThrow(PermissionBoundaryError);
   });
 
   test("it is the target's privileges that reject, not the actor being weak", async () => {
