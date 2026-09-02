@@ -75,24 +75,12 @@ import {
   isValidMemberEmail,
   TApprovalPolicyFormSchema
 } from "./approvalPolicyFormSchema";
+import { getApproverOptionLabel as resolveApproverOptionLabel } from "./approvalPolicyFormUtils";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 import { ApproverOption, ApproverOptionData } from "./ApproverOption";
 
 const getApproverOptionValue = (option: ApproverOptionData) =>
   `${option.type}-${option.id ?? option.username ?? ""}`;
-
-const getApproverOptionLabel = (option: ApproverOptionData) =>
-  option.name ?? option.username ?? option.id ?? "Unknown approver";
-
-const formatApproverOptionLabel = (
-  option: ApproverOptionData,
-  { context }: FormatOptionLabelMeta<ApproverOptionData>
-) =>
-  context === "menu" ? (
-    <ApproverOption option={option} label={getApproverOptionLabel(option)} />
-  ) : (
-    getApproverOptionLabel(option)
-  );
 
 const filterApproverOption = ({ data }: { data: ApproverOptionData }, input: string) => {
   const search = input.trim().toLowerCase();
@@ -386,6 +374,21 @@ const Form = ({
   const approverOptions = useMemo<ApproverOptionData[]>(
     () => [...memberOptions, ...(groupOptions ?? [])],
     [memberOptions, groupOptions]
+  );
+
+  const getApproverOptionLabel = useCallback(
+    (option: ApproverOptionData) => resolveApproverOptionLabel(option, members, groups),
+    [members, groups]
+  );
+
+  const formatApproverOptionLabel = useCallback(
+    (option: ApproverOptionData, { context }: FormatOptionLabelMeta<ApproverOptionData>) =>
+      context === "menu" ? (
+        <ApproverOption option={option} label={getApproverOptionLabel(option)} />
+      ) : (
+        getApproverOptionLabel(option)
+      ),
+    [getApproverOptionLabel]
   );
 
   const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
