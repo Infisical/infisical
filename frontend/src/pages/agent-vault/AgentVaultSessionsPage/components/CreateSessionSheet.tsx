@@ -47,10 +47,7 @@ const MAX_SESSION_BUNDLES = 16;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreated: (
-    session: TAgentVaultMintedSession,
-    bundles: TAgentVaultAccessBundleListItem[]
-  ) => void;
+  onCreated: (session: TAgentVaultMintedSession) => void;
   initialAccessBundleId?: string;
 };
 
@@ -107,7 +104,7 @@ export const CreateSessionSheet = ({
   const handleCreate = async () => {
     const session = await createSession.mutateAsync({ accessBundleIds: selectedIds, ttl });
     createNotification({ text: "Session created", type: "success" });
-    onCreated(session, selectedBundles);
+    onCreated(session);
     onOpenChange(false);
   };
 

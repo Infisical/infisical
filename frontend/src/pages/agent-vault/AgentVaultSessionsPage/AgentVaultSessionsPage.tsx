@@ -56,11 +56,7 @@ import {
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import {
-  TAgentVaultAccessBundleListItem,
-  TAgentVaultMintedSession,
-  TAgentVaultSession
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -108,7 +104,6 @@ export const AgentVaultSessionsPage = () => {
   // Held on the page rather than inside the sheet so closing the sheet does not take the one-time
   // token reveal with it.
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
-  const [mintedBundles, setMintedBundles] = useState<TAgentVaultAccessBundleListItem[]>([]);
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
@@ -359,20 +354,13 @@ export const AgentVaultSessionsPage = () => {
         isOpen={isCreateOpen}
         onOpenChange={handleCreateOpenChange}
         initialAccessBundleId={initialAccessBundleId}
-        onCreated={(session, bundles) => {
-          setMintedSession(session);
-          setMintedBundles(bundles);
-        }}
+        onCreated={setMintedSession}
       />
 
       <SessionCreatedDialog
         session={mintedSession}
-        accessBundles={mintedBundles}
         onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setMintedSession(null);
-            setMintedBundles([]);
-          }
+          if (!isOpen) setMintedSession(null);
         }}
       />
 
