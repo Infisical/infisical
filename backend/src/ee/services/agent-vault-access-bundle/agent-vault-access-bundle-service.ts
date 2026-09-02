@@ -231,17 +231,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultAccessBundleDAL.deleteById(bundle.id);
   };
 
-  // How many live sessions still carry a bundle, so the delete confirm can be specific about what it
-  // takes away rather than implying the deletion is inert.
-  const countLiveSessionsCarrying = async ({ accessBundleId, ...rest }: TGetAccessBundleDTO) => {
-    const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
-    return agentVaultAccessBundleDAL.countLiveSessionsCarrying(bundle.id);
-  };
-
   // Rejects a candidate that shares any normalized host:port with another connection in the same bundle,
   // and warns about the same collision across bundles, where the session's bundle order settles it.
   const checkHostPatternConflicts = async ({
@@ -440,7 +429,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     createAccessBundle,
     updateAccessBundle,
     deleteAccessBundle,
-    countLiveSessionsCarrying,
     createConnection,
     updateConnection,
     deleteConnection,

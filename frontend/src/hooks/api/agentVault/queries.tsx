@@ -21,8 +21,6 @@ export const agentVaultKeys = {
   accessBundles: () => [...agentVaultKeys.all, "access-bundles"] as const,
   accessBundle: (accessBundleId: string) =>
     [...agentVaultKeys.accessBundles(), accessBundleId] as const,
-  liveSessionCount: (accessBundleId: string) =>
-    [...agentVaultKeys.accessBundle(accessBundleId), "live-session-count"] as const,
   // sessions() is the invalidation prefix; sessionList() adds the query parameters. Folding the
   // parameters into one key would put an `undefined` in the prefix, which prefix-matches nothing.
   sessions: () => [...agentVaultKeys.all, "sessions"] as const,
@@ -67,21 +65,6 @@ export const useGetAgentVaultAccessBundle = (accessBundleId: string) =>
       return data.accessBundle;
     },
     enabled: Boolean(accessBundleId)
-  });
-
-export const useGetAgentVaultAccessBundleLiveSessionCount = (
-  accessBundleId: string,
-  enabled = true
-) =>
-  useQuery({
-    queryKey: agentVaultKeys.liveSessionCount(accessBundleId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ liveSessionCount: number }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/live-session-count`
-      );
-      return data.liveSessionCount;
-    },
-    enabled: enabled && Boolean(accessBundleId)
   });
 
 export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) =>

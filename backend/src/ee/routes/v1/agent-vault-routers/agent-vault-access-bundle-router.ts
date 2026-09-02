@@ -218,31 +218,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     }
   });
 
-  // Drives the delete confirmation, which has to say how many running agents the deletion narrows.
-  server.route({
-    method: "GET",
-    url: "/:accessBundleId/live-session-count",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getAgentVaultAccessBundleLiveSessionCount",
-      description: "Count the live sessions carrying an Agent Vault access bundle",
-      tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
-      }),
-      response: { 200: z.object({ liveSessionCount: z.number() }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const liveSessionCount = await server.services.agentVaultAccessBundle.countLiveSessionsCarrying({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId
-      });
-      return { liveSessionCount };
-    }
-  });
-
   server.route({
     method: "POST",
     url: "/:accessBundleId/connections",

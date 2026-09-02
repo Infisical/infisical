@@ -92,31 +92,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // How many live sessions still carry a bundle, so the delete confirm can say so rather than implying
-  // the deletion is inert.
-  const countLiveSessionsCarrying = async (accessBundleId: string, tx?: Knex): Promise<number> => {
-    try {
-      const result = (await (tx || db.replicaNode())(TableName.AgentVaultSessionAccessBundle)
-        .join(
-          TableName.AgentVaultSession,
-          `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
-          `${TableName.AgentVaultSession}.id`
-        )
-        .where(`${TableName.AgentVaultSessionAccessBundle}.accessBundleId`, accessBundleId)
-        .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-        .where((qb) => {
-          void qb
-            .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
-            .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", new Date());
-        })
-        .countDistinct(`${TableName.AgentVaultSession}.id as count`)
-        .first()) as { count: string } | undefined;
-
-      return parseInt(result?.count || "0", 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count live agent vault sessions carrying bundle" });
-    }
-  };
-
-  return { ...orm, findForList, findByIdInProject, countLiveSessionsCarrying };
+  return { ...orm, findForList, findByIdInProject };
 };
