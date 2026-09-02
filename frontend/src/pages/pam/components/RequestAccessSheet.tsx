@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Clock,
   GitBranch,
+  KeyRound,
   ListChecks,
+  Rocket,
   Send,
   User as UserIcon,
   Users as UsersIcon
@@ -13,6 +15,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Field,
@@ -38,6 +43,7 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { AccessTypeBadge } from "./AccessTypeBadge";
 import { useAccountSheetDetails } from "./accountSheetDetails";
 import { PamDetailSheet } from "./PamDetailSheet";
 
@@ -210,6 +216,7 @@ export const RequestAccessSheet = ({
       title={account?.name}
       subtitle={subtitle}
       typeBadge={typeName}
+      badges={<AccessTypeBadge accessType={accessType} />}
       metadata={metadata}
       isDirty={isDirty && !isPending}
     >
@@ -229,6 +236,26 @@ export const RequestAccessSheet = ({
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
             <div className="flex flex-1 flex-col gap-6">
+              {isCredentialRequest ? (
+                <Alert variant="warning">
+                  <KeyRound />
+                  <AlertTitle>You are requesting the stored credential</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can read this account&apos;s password or key directly. That
+                    happens outside a session, so nothing is recorded, and a credential you copy
+                    stays valid until the account is rotated.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="info">
+                  <Rocket />
+                  <AlertTitle>You are requesting session access</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can launch sessions on this account. The credential is
+                    injected for you and never shown, and the session is recorded.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Controller
                 control={control}
                 name="reason"
@@ -261,7 +288,9 @@ export const RequestAccessSheet = ({
                 name="duration"
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel>Requested duration</FieldLabel>
+                    <FieldLabel>
+                      {isCredentialRequest ? "How long you need it" : "Requested duration"}
+                    </FieldLabel>
                     <FieldContent>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="w-full">
@@ -275,6 +304,11 @@ export const RequestAccessSheet = ({
                           ))}
                         </SelectContent>
                       </Select>
+                      <FieldDescription>
+                        {isCredentialRequest
+                          ? "How long you can reveal the credential for. Rotating the account is what actually cuts off a copy."
+                          : "How long you can launch sessions for once approved."}
+                      </FieldDescription>
                     </FieldContent>
                   </Field>
                 )}
@@ -287,7 +321,7 @@ export const RequestAccessSheet = ({
               </Button>
               <Button type="submit" variant="pam" isPending={createRequest.isPending}>
                 <Send className="mr-1.5 size-4" />
-                Submit request
+                {isCredentialRequest ? "Request credentials" : "Request session access"}
               </Button>
             </div>
           </form>
