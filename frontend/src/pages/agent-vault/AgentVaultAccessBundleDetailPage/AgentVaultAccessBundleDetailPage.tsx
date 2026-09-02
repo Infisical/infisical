@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { PackageIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionSheet } from "@app/components/agent-vault/ConnectionSheet";
 import {
   Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   PageHeader,
   PageLoader,
@@ -45,7 +49,28 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [connectionToEdit, setConnectionToEdit] = useState<TAgentVaultConnection | null>(null);
 
   if (isPending) return <PageLoader />;
-  if (!accessBundle) return null;
+  // A 404 here is the backend's answer for both a deleted bundle and a member who has lost the
+  // grant, so the copy covers both rather than guessing.
+  if (!accessBundle) {
+    return (
+      <div className="mx-auto mb-6 w-full max-w-8xl">
+        <Empty frame="dashed">
+          <EmptyHeader>
+            <EmptyTitle>Access bundle not found</EmptyTitle>
+            <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
+          </EmptyHeader>
+          <Button variant="av" asChild>
+            <Link
+              to="/organizations/$orgId/agent-vault/access-bundles"
+              params={{ orgId: currentOrg.id }}
+            >
+              Back to Access Bundles
+            </Link>
+          </Button>
+        </Empty>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">

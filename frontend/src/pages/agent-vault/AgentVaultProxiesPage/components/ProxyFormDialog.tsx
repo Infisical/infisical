@@ -30,6 +30,7 @@ import {
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { slugSchema } from "@app/lib/schemas";
 
 // Package registries are the traffic an agent makes most and the traffic least worth intercepting,
 // so a new proxy starts with them bypassed.
@@ -37,12 +38,7 @@ const DEFAULT_BYPASS_HOSTS =
   "registry.npmjs.org, pypi.org, files.pythonhosted.org, proxy.golang.org, crates.io, static.crates.io";
 
 const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Required")
-    .max(64)
-    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and hyphens only"),
+  name: slugSchema({ max: 64, field: "Name" }),
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
   bypassHosts: z.string().trim().max(1024).optional(),
   pollInterval: z.coerce.number().int().min(10).max(300)

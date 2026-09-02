@@ -25,14 +25,10 @@ import {
   useUpdateAgentVaultAccessBundle
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundle } from "@app/hooks/api/agentVault/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Required")
-    .max(64)
-    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and hyphens only"),
+  name: slugSchema({ max: 64, field: "Name" }),
   description: z.string().trim().max(256).optional()
 });
 

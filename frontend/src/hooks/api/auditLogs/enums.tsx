@@ -7,6 +7,7 @@ export enum ActorType {
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
+  AGENT_VAULT_PROXY = "agentVaultProxy",
   UNKNOWN_USER = "unknownUser"
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { CheckIcon, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -42,43 +43,88 @@ import {
   useCreateAgentVaultConnection,
   useUpdateAgentVaultConnection
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultConflictWarning, TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { onRequestError } from "@app/hooks/api/reactQuery";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 import { ConnectionTemplateSelect } from "./ConnectionTemplateSelect";
 
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Required")
-    .max(64)
-    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and hyphens only"),
-  hostPattern: z
-    .string()
-    .trim()
-    .min(1, "Required")
-    .max(1024)
-    .refine((value) => !value.includes("://"), "Remove the scheme, for example https://")
-    .refine(
-      (value) => !value.includes("/"),
-      "A connection covers a whole host, so remove everything from the first /"
-    )
-    .refine(
-      (value) => value.split(",").every((entry) => entry.trim().length > 0),
-      "Remove the empty entry"
-    )
-    .refine(
-      (value) => value.split(",").every((entry) => entry.trim() !== "*" && entry.trim() !== "*."),
-      "Name specific hosts. A bare wildcard is too broad."
-    ),
-  credentialType: z.nativeEnum(AgentVaultCredentialType),
-  headerName: z.string().trim().max(128).optional(),
-  headerPrefix: z.string().trim().max(64).optional(),
-  username: z.string().trim().max(256).optional(),
-  secret: z.string().max(8192).optional()
-});
+const credentialSettingsDiffer = (
+  data: {
+    credentialType: AgentVaultCredentialType;
+    headerName?: string;
+    headerPrefix?: string;
+    username?: string;
+  },
+  connection: TAgentVaultConnection
+) => {
+  const stored = connection.credential;
+  if (data.credentialType !== stored.type) return true;
+  if (stored.type === AgentVaultCredentialType.Bearer) {
+    return (
+      (data.headerName || "Authorization") !== stored.headerName ||
+      (data.headerPrefix ?? "") !== stored.headerPrefix
+    );
+  }
+  if (stored.type === AgentVaultCredentialType.Basic) return data.username !== stored.username;
+  return false;
+};
 
-type FormData = z.infer<typeof schema>;
+// The secret rules depend on whether a connection already exists: required on create, and on edit
+// required again whenever the settings that govern how it is sent change, because the API replaces
+// the credential as a whole or not at all. Keeping them in the schema means Continue blocks on the
+// step that owns the field and onFormInvalid jumps there, rather than Save failing silently.
+const buildSchema = (connection?: TAgentVaultConnection | null) =>
+  z
+    .object({
+      name: slugSchema({ max: 64, field: "Name" }),
+      hostPattern: z
+        .string()
+        .trim()
+        .min(1, "Required")
+        .max(1024)
+        .refine((value) => !value.includes("://"), "Remove the scheme, for example https://")
+        .refine(
+          (value) => !value.includes("/"),
+          "A connection covers a whole host, so remove everything from the first /"
+        )
+        .refine(
+          (value) => value.split(",").every((entry) => entry.trim().length > 0),
+          "Remove the empty entry"
+        )
+        .refine(
+          (value) =>
+            value.split(",").every((entry) => entry.trim() !== "*" && entry.trim() !== "*."),
+          "Name specific hosts. A bare wildcard is too broad."
+        ),
+      credentialType: z.nativeEnum(AgentVaultCredentialType),
+      headerName: z.string().trim().max(128).optional(),
+      headerPrefix: z.string().trim().max(64).optional(),
+      username: z.string().trim().max(256).optional(),
+      secret: z.string().max(8192).optional()
+    })
+    .superRefine((data, ctx) => {
+      const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
+
+      if (data.credentialType === AgentVaultCredentialType.Basic && !data.username) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["username"], message: "Required" });
+      }
+
+      if (!needsSecret || data.secret) return;
+
+      if (!connection) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+      } else if (credentialSettingsDiffer(data, connection)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["secret"],
+          message: "Enter the secret again to change how it is sent."
+        });
+      }
+    });
+
+type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 const STEP_KEYS = ["template", "credential", "scope", "review"] as const;
 type StepKey = (typeof STEP_KEYS)[number];
@@ -111,7 +157,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
   const [hasPickedTemplate, setHasPickedTemplate] = useState(false);
-  const [warnings, setWarnings] = useState<TAgentVaultConflictWarning[]>([]);
+
+  const schema = useMemo(() => buildSchema(connection), [connection]);
 
   const {
     control,
@@ -144,7 +191,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     if (!isOpen) return;
 
     setStep(0);
-    setWarnings([]);
     setTemplate(null);
     setHasPickedTemplate(isUpdate);
 
@@ -221,16 +267,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
   const onSubmit = async (data: FormData) => {
     const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
-    // On create the secret is required; on edit, leaving it blank keeps the stored one.
-    if (needsSecret && !isUpdate && !data.secret) {
-      setError("secret", { message: "Required" });
-      return;
-    }
-    if (data.credentialType === AgentVaultCredentialType.Basic && !data.username) {
-      setError("username", { message: "Required" });
-      return;
-    }
-
+    // The schema has already required a secret wherever the wire settings changed, so a blank one
+    // here means nothing about the credential moved and the stored secret can stay.
     const keepsStoredSecret = isUpdate && needsSecret && !data.secret;
 
     try {
@@ -254,22 +292,52 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         type: "success"
       });
 
-      if (result.warnings.length > 0) {
-        setWarnings(result.warnings);
-        return;
+      // Cross-bundle overlaps are informational, and the mint sheet shows them again when someone
+      // combines the two bundles, so they go out as toasts rather than holding the sheet open.
+      result.warnings.slice(0, 3).forEach((warning) => {
+        createNotification({
+          type: "warning",
+          title: `${warning.connectionName} in ${warning.accessBundleName} also covers ${warning.patterns.join(", ")}`,
+          text: "If one session carries both bundles, the earlier one wins for those hosts."
+        });
+      });
+      if (result.warnings.length > 3) {
+        createNotification({
+          type: "warning",
+          text: `${result.warnings.length - 3} more connections in other bundles overlap these hosts.`
+        });
       }
+
       onOpenChange(false);
     } catch (error) {
-      // The backend rejects a same-bundle host collision and an invalid pattern; both name the
-      // field the user has to fix, so they are surfaced there rather than only as a toast.
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-        ?.message;
-      if (message?.includes("already covers")) {
-        setError("hostPattern", { message });
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as TApiErrors | undefined)
+        : undefined;
+
+      // The two failures that name the Hosts field land on it, with the wizard moved back to that
+      // step; everything else keeps the repo's standard error handling.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.includes("already covers")
+      ) {
+        setError("hostPattern", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf("scope"));
         return;
       }
-      throw error;
+
+      if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+        const hostIssues = serverResponse.message.filter(
+          (issue) => issue.path[0] === "hostPattern"
+        );
+        if (hostIssues.length > 0) {
+          setError("hostPattern", {
+            type: "server",
+            message: hostIssues.map((issue) => issue.message).join(" ")
+          });
+          setStep(stepKeys.indexOf("scope"));
+        }
+        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+      }
     }
   };
 
@@ -505,22 +573,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   </div>
                 </>
               )}
-
-              {warnings.map((warning) => (
-                <Alert
-                  key={`${warning.accessBundleName}-${warning.connectionName}`}
-                  variant="warning"
-                >
-                  <TriangleAlertIcon />
-                  <AlertTitle>
-                    {warning.connectionName} in {warning.accessBundleName} also covers{" "}
-                    {warning.patterns.join(", ")}
-                  </AlertTitle>
-                  <AlertDescription>
-                    If one session carries both bundles, the earlier one wins for those hosts.
-                  </AlertDescription>
-                </Alert>
-              ))}
             </div>
 
             <div className="flex flex-col gap-3 text-xs">

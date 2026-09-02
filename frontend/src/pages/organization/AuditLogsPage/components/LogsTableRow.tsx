@@ -86,6 +86,9 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           {auditLog.actor.type === ActorType.EST_ACCOUNT && (
             <Tag label="est_profile_id" value={auditLog.actor.metadata.profileId} />
           )}
+          {auditLog.actor.type === ActorType.AGENT_VAULT_PROXY && (
+            <Tag label="proxy_id" value={auditLog.actor.metadata.agentVaultProxyId} />
+          )}
         </div>
       </TableCell>
       <TableCell variant="action">

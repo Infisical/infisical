@@ -70,7 +70,10 @@ export const useDeleteAgentVaultAccessBundle = () => {
 
 export const useCreateAgentVaultConnection = () => {
   const queryClient = useQueryClient();
+  // Host-pattern validation errors are mapped onto the sheet's Hosts field, so the global
+  // Validation Error toast would only duplicate them.
   return useMutation({
+    meta: { skipValidationToast: true },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultConnectionDTO) => {
       const { data } = await apiRequest.post<{
         connection: TAgentVaultConnection;
@@ -87,7 +90,10 @@ export const useCreateAgentVaultConnection = () => {
 
 export const useUpdateAgentVaultConnection = () => {
   const queryClient = useQueryClient();
+  // Host-pattern validation errors are mapped onto the sheet's Hosts field, so the global
+  // Validation Error toast would only duplicate them.
   return useMutation({
+    meta: { skipValidationToast: true },
     mutationFn: async ({
       accessBundleId,
       connectionId,
