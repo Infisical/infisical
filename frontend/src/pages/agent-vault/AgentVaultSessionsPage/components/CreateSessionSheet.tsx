@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
   Combobox,
   DiscardChangesAlertDialog,
@@ -46,30 +43,6 @@ const TTL_LABELS: Record<AgentVaultSessionTtl, string> = {
 };
 
 const MAX_SESSION_BUNDLES = 16;
-
-type TOverlap = {
-  earlier: string;
-  later: string;
-  patterns: string[];
-};
-
-// Host patterns come back already normalised as host:port keys, so an exact string match is the
-// whole test: per the grammar, two patterns are identical, contained or disjoint, and only the
-// identical case is decided by bundle order.
-const findOverlaps = (bundles: TAgentVaultAccessBundleListItem[]): TOverlap[] => {
-  const overlaps: TOverlap[] = [];
-
-  bundles.forEach((earlier, earlierIndex) => {
-    bundles.slice(earlierIndex + 1).forEach((later) => {
-      const shared = earlier.hostPatterns.filter((pattern) => later.hostPatterns.includes(pattern));
-      if (shared.length > 0) {
-        overlaps.push({ earlier: earlier.name, later: later.name, patterns: [...new Set(shared)] });
-      }
-    });
-  });
-
-  return overlaps;
-};
 
 type Props = {
   isOpen: boolean;
@@ -117,18 +90,11 @@ export const CreateSessionSheet = ({
     (bundle) => !selectedIds.includes(bundle.id)
   );
 
-  const overlaps = useMemo(() => findOverlaps(selectedBundles), [selectedBundles]);
-
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({
       isDirty: selectedIds.length > 0,
       onDiscard: () => onOpenChange(false)
     });
-
-  const reachableHosts = useMemo(
-    () => [...new Set(selectedBundles.flatMap((bundle) => bundle.hostPatterns))].sort(),
-    [selectedBundles]
-  );
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -160,8 +126,8 @@ export const CreateSessionSheet = ({
         <SheetHeader>
           <SheetTitle>Create Session</SheetTitle>
           <SheetDescription>
-            A session mints one token. An agent running with it reaches the hosts in these access
-            bundles and nothing else.
+            An agent running with this session reaches the hosts in these access bundles and
+            nothing else.
           </SheetDescription>
         </SheetHeader>
 
@@ -223,27 +189,16 @@ export const CreateSessionSheet = ({
                 onValueChange={(bundle) => setSelectedIds([...selectedIds, bundle.id])}
               />
               <FieldDescription>
-                Order decides which credential wins when two bundles cover the same host. A session
-                carries at most {MAX_SESSION_BUNDLES}.
+                Order decides which credential wins when two bundles cover the same host.
               </FieldDescription>
+              {selectedIds.length >= MAX_SESSION_BUNDLES && (
+                <FieldDescription>
+                  A session carries at most {MAX_SESSION_BUNDLES} access bundles. Remove one to add
+                  another.
+                </FieldDescription>
+              )}
             </FieldContent>
           </Field>
-
-          {overlaps.map((overlap) => (
-            <Alert key={`${overlap.earlier}-${overlap.later}`} variant="warning">
-              <TriangleAlertIcon />
-              <AlertTitle>
-                {overlap.earlier} and {overlap.later} overlap
-              </AlertTitle>
-              <AlertDescription>
-                <p>
-                  Both cover <span className="font-mono">{overlap.patterns.join(", ")}</span>.{" "}
-                  {overlap.earlier} wins because it is first. An exact host in a later bundle still
-                  beats a wildcard in an earlier one.
-                </p>
-              </AlertDescription>
-            </Alert>
-          ))}
 
           <Field>
             <FieldLabel>Expires</FieldLabel>
@@ -262,29 +217,12 @@ export const CreateSessionSheet = ({
               </Select>
               {ttl === AgentVaultSessionTtl.Never && (
                 <FieldDescription>
-                  This token keeps working until someone revokes it.
+                  This session keeps working until someone revokes it.
                 </FieldDescription>
               )}
             </FieldContent>
           </Field>
 
-          {reachableHosts.length > 0 && (
-            <Field>
-              <FieldLabel>Reachable On This Session</FieldLabel>
-              <FieldContent>
-                <div className="flex flex-wrap gap-1.5">
-                  {reachableHosts.map((host) => (
-                    <span
-                      key={host}
-                      className="rounded border border-border bg-container px-1.5 py-0.5 font-mono text-xs"
-                    >
-                      {host}
-                    </span>
-                  ))}
-                </div>
-              </FieldContent>
-            </Field>
-          )}
         </div>
 
         <SheetFooter>
