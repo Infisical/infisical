@@ -319,7 +319,8 @@ export const newProjectMembershipUserFactory = ({
       opSubject: ProjectPermissionSub.Member,
       actorPermission: permission,
       targetPermissions,
-      baseMessage: "Failed to remove a more privileged member from the project"
+      baseMessage: "Failed to remove a more privileged member from the project",
+      subjectFields: { userEmail: targetMembership?.user.email || undefined }
     });
   };
 

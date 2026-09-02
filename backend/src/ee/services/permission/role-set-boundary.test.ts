@@ -5,7 +5,12 @@ import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
 import { assertRoleSetBoundary } from "./permission-fns";
-import { ProjectPermissionIdentityActions, ProjectPermissionSet, ProjectPermissionSub } from "./project-permission";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "./project-permission";
 
 // Regression guard for the privilege-boundary fix on membership removal and role assignment.
 // The bug this replaces was `const [first] = await getOrgPermissionByRoles(roles, orgId)`, which
@@ -142,5 +147,58 @@ describe("assertRoleSetBoundary", () => {
 
     const noDelete = createMongoAbility<MongoAbility<ProjectPermissionSet>>([]);
     expect(() => assertNewSystem(noDelete)).toThrow(PermissionBoundaryError);
+  });
+
+  // The removal guards bound `delete` while passing only `assignableRole`, so a rule scoped to the
+  // resource's own identity (userEmail / groupName / identityId) was evaluated against an absent
+  // field: $eq and $in denied a removal the actor was entitled to, and $glob threw a raw TypeError
+  // out of picomatch as a 500. Every guard now passes the resource field it scopes on.
+  describe("a delete rule scoped to the resource's own identity", () => {
+    const scopedDeleter = (conditions: Record<string, unknown>) =>
+      createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+        [
+          {
+            action: ProjectPermissionMemberActions.Delete,
+            subject: ProjectPermissionSub.Member,
+            conditions
+          }
+        ] as never,
+        { conditionsMatcher }
+      );
+
+    const removeMember = (actorPermission: MongoAbility, userEmail: string | undefined) =>
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem: true,
+        opActions: ProjectPermissionMemberActions.Delete,
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission,
+        targetPermissions: [{ permission: member, role: { slug: "member" } }],
+        baseMessage: "Failed to remove a more privileged member from the project",
+        subjectFields: { userEmail }
+      });
+
+    test.each([{ $eq: "contractor@acme.com" }, { $in: ["contractor@acme.com"] }, { $glob: "*@acme.com" }])(
+      "permits removing a member the condition covers (%j)",
+      (condition) => {
+        expect(() => removeMember(scopedDeleter({ userEmail: condition }), "contractor@acme.com")).not.toThrow();
+      }
+    );
+
+    test.each([{ $eq: "contractor@acme.com" }, { $in: ["contractor@acme.com"] }, { $glob: "*@acme.com" }])(
+      "still rejects removing a member the condition excludes (%j)",
+      (condition) => {
+        expect(() => removeMember(scopedDeleter({ userEmail: condition }), "staff@other.com")).toThrow(
+          PermissionBoundaryError
+        );
+      }
+    );
+
+    test("a target with no email is denied rather than throwing a TypeError", () => {
+      // Users.email is nullable, so the guard passes undefined. picomatch rejects a non-string
+      // input, which reached the client as a 500 instead of a permission error.
+      expect(() => removeMember(scopedDeleter({ userEmail: { $glob: "*@acme.com" } }), undefined)).toThrow(
+        PermissionBoundaryError
+      );
+    });
   });
 });

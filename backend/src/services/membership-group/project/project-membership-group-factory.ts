@@ -256,7 +256,8 @@ export const newProjectMembershipGroupFactory = ({
         opSubject: ProjectPermissionSub.Groups,
         actorPermission: permission,
         targetPermissions,
-        baseMessage: "Failed to remove a more privileged group from the project"
+        baseMessage: "Failed to remove a more privileged group from the project",
+        subjectFields: { groupName: groupDetails.name }
       });
     }
 
