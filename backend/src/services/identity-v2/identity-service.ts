@@ -150,13 +150,21 @@ export const identityV2ServiceFactory = ({
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
         projectDAL.findById(scopeData.projectId)
       );
-      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+      const adminMemberOnlyProductLabels: Partial<Record<ProjectType, string>> = {
+        [ProjectType.CertificateManager]: "Certificate Manager",
+        [ProjectType.PAM]: "PAM",
+        [ProjectType.AgentVault]: "Agent Vault"
+      };
+      const adminMemberOnlyLabel = project?.type
+        ? adminMemberOnlyProductLabels[project.type as ProjectType]
+        : undefined;
+      if (adminMemberOnlyLabel) {
         const invalidRoles = data.roles.filter(
           (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
         );
         if (invalidRoles.length > 0) {
           throw new BadRequestError({
-            message: `${project.type === ProjectType.PAM ? "PAM" : "Certificate Manager"} only supports Admin and Member roles.`
+            message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
           });
         }
       }
@@ -242,8 +250,13 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      // PAM's project membership IS its product membership, so NoAccess would be meaningless there
-      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+      // PAM's and Agent Vault's project membership IS their product membership, so NoAccess would be
+      // meaningless there
+      if (
+        project?.type === ProjectType.CertificateManager ||
+        project?.type === ProjectType.PAM ||
+        project?.type === ProjectType.AgentVault
+      ) {
         projectMemberRole = ProjectMembershipRole.Member;
       }
     }

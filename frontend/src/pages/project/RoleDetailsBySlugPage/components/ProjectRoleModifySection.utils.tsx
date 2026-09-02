@@ -13,6 +13,9 @@ import { z } from "zod";
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -281,6 +284,28 @@ const ApprovalRequestPolicyActionSchema = z.object({
 const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Read]: z.boolean().optional(),
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
+});
+
+const AgentVaultAccessBundlePolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultAccessBundleActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultAccessBundleActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultAccessBundleActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultAccessBundleActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultAccessBundleActions.ManageMembers]: z.boolean().optional()
+});
+
+const AgentVaultSessionPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultSessionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional()
+});
+
+const AgentVaultProxyPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultProxyActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultProxyActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultProxyActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultProxyActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultProxyActions.Revoke]: z.boolean().optional()
 });
 
 const ProjectFolderGrantPolicyActionSchema = z.object({
@@ -812,6 +837,13 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
         ApprovalRequestGrantPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AgentVaultAccessBundles]:
+        AgentVaultAccessBundlePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AgentVaultSessions]:
+        AgentVaultSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AgentVaultProxies]: AgentVaultProxyPolicyActionSchema.array().default(
+        []
+      ),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -2438,6 +2470,89 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.AgentVaultAccessBundles]: {
+    title: "Access Bundles",
+    description: "Manage what an agent can reach and who can reach it",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultAccessBundleActions.Read,
+        description: "View access bundles and their connections"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultAccessBundleActions.Create,
+        description: "Create access bundles and add connections"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        description: "Update access bundles and their credentials"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultAccessBundleActions.Delete,
+        description: "Delete access bundles"
+      },
+      {
+        label: "Manage Members",
+        value: ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        description: "Grant and revoke access to a bundle"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultSessions]: {
+    title: "Sessions",
+    description: "Mint and revoke the tokens agents run with",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultSessionActions.Read,
+        description: "View sessions"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultSessionActions.Create,
+        description: "Mint a session over access bundles you can reach"
+      },
+      {
+        label: "Revoke",
+        value: ProjectPermissionAgentVaultSessionActions.Revoke,
+        description: "Revoke a session"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultProxies]: {
+    title: "Proxies",
+    description: "Manage the egress proxies that attach credentials",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultProxyActions.Read,
+        description: "View proxies, their health and certificate authority fingerprints"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultProxyActions.Create,
+        description: "Register a proxy and issue its enrollment token"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultProxyActions.Edit,
+        description: "Update proxy settings and reissue enrollment tokens"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultProxyActions.Delete,
+        description: "Delete proxies"
+      },
+      {
+        label: "Revoke",
+        value: ProjectPermissionAgentVaultProxyActions.Revoke,
+        description: "Revoke a proxy's access token"
+      }
+    ]
+  },
   [ProjectPermissionSub.ProxiedServices]: {
     title: "Proxied Services",
     description: "Manage proxied services and route agent traffic through them",
@@ -3312,6 +3427,12 @@ const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningConfigs]: enabled
 });
 
+const AgentVaultPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.AgentVaultAccessBundles]: enabled,
+  [ProjectPermissionSub.AgentVaultSessions]: enabled,
+  [ProjectPermissionSub.AgentVaultProxies]: enabled
+});
+
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
 export const ProjectTypePermissionSubjects: Record<
   ProjectType,
@@ -3319,6 +3440,7 @@ export const ProjectTypePermissionSubjects: Record<
 > = {
   [ProjectType.SecretManager]: {
     ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
@@ -3330,6 +3452,7 @@ export const ProjectTypePermissionSubjects: Record<
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(),
     ...KmsPermissionSubjects(true),
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
@@ -3338,6 +3461,7 @@ export const ProjectTypePermissionSubjects: Record<
   },
   [ProjectType.CertificateManager]: {
     ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
@@ -3346,6 +3470,7 @@ export const ProjectTypePermissionSubjects: Record<
   },
   [ProjectType.SecretScanning]: {
     ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(),
     ...SecretScanningSubject(true),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
@@ -3354,6 +3479,7 @@ export const ProjectTypePermissionSubjects: Record<
   },
   [ProjectType.PAM]: {
     ...SharedPermissionSubjects,
+    ...AgentVaultPermissionSubjects(),
     ...SecretScanningSubject(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),

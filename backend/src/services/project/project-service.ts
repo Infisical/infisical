@@ -207,7 +207,8 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.PAM]: "Privileged Access Manager"
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
 };
 
 export const projectServiceFactory = ({
@@ -263,6 +264,14 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
+    // Agent Vault is a per-org singleton created by its own bootstrap, so a second one would be
+    // unreachable: every route resolves the newest project for the org and ignores the rest.
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+      });
+    }
+
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -772,6 +781,14 @@ export const projectServiceFactory = ({
     if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
+    // Same story for Agent Vault: one per org, recreated on next access, and deleting it takes every
+    // access bundle, credential and live session with it.
+    if (project.type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be deleted."
       });
     }
 
@@ -2251,11 +2268,16 @@ export const projectServiceFactory = ({
     const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    // PAM is a per-org singleton with no project-scoped route, unlike other product types
-    const callbackPath =
-      project.type === ProjectType.PAM
-        ? `/organizations/${project.orgId}/pam/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
-        : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
+    // PAM and Agent Vault are per-org singletons with no project-scoped route, unlike other product types
+    const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.PAM]: "pam",
+      [ProjectType.AgentVault]: "agent-vault"
+    };
+    const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
+
+    const callbackPath = orgScopedPath
+      ? `/organizations/${project.orgId}/${orgScopedPath}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
+      : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
 
     const productLabel = PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type as ProjectType] ?? null;
     const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";

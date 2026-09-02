@@ -17,6 +17,8 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
@@ -140,6 +142,12 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
+// Same shape as PAM's: Agent Vault only ever assigns the `admin` / `member` project role slugs, and
+// anything else — `custom` included, which is how additional privileges arrive — resolves to the member
+// set, so a custom role cannot reintroduce project-level power.
+const resolveAgentVaultProjectRoleRules = (role: string) =>
+  role === ProjectMembershipRole.Admin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions;
+
 export const buildProjectPermissionRules = (
   projectUserRoles: TBuildProjectPermissionDTO,
   projectType?: string,
@@ -149,6 +157,7 @@ export const buildProjectPermissionRules = (
     projectUserRoles
       .map(({ role, permissions }) => {
         if (projectType === ProjectType.PAM) return resolvePamProjectRoleRules(role);
+        if (projectType === ProjectType.AgentVault) return resolveAgentVaultProjectRoleRules(role);
 
         switch (role) {
           case ProjectMembershipRole.Admin:

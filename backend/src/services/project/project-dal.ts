@@ -1018,7 +1018,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM])
+        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
         // Project rows of the removed SSH / Agent Sentinel products are left in
         // place (see migration 20260729150000) but must not consume workspace quota.
         .whereNotIn("type", ["ssh", "ai"])

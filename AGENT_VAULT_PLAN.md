@@ -1024,9 +1024,9 @@ the standard `getProjectPermission` + `AuditLogs` check when the resolver return
 Tick in this file and commit at each line. Ordered so every checkpoint leaves a tree that type-checks.
 
 - [x] `AgentVault` in both `ProjectType` enums, six `TableName` entries, bootstrap + resolver + `preValidation` hook, eager bootstrap at org and sub-org create, `agentVaultProjectId` on the org payload (backend and frontend type)
-- [ ] Generic-create block, delete block, billable-count exclusion, `requestProjectAccess` arm, keystore prefix, the rest of the `ProjectType.PAM` grep except the three **[Phase 4]** items
-- [ ] Migration for the six tables and the `resource_auth_methods` column, `generate:schema` run, `folder-scoped-privilege-rules.test.ts` still green
-- [ ] Three subjects in `ProjectPermissionSub` and the V2 union, explicit admin and member sets, dispatch arm, five frontend type maps in §3.1 updated so `type:check` passes
+- [x] Generic-create block, delete block, billable-count exclusion, `requestProjectAccess` arm, keystore prefix, the rest of the `ProjectType.PAM` grep except the three **[Phase 4]** items
+- [x] Migration for the six tables and the `resource_auth_methods` column, `generate:schema` run, `folder-scoped-privilege-rules.test.ts` still green
+- [x] Three subjects in `ProjectPermissionSub` and the V2 union, explicit admin and member sets, dispatch arm, five frontend type maps in §3.1 updated so `type:check` passes
 - [ ] `agent-vault/` shared module: host grammar copied and tightened, shared pattern fixture, conflict detection (intersection, not equality)
 - [ ] `agent-vault-access-bundle/` + `agent-vault-member/`: DAL, service, credential encryption, routers, cleanup service wired into all five call sites
 - [ ] `agent-vault-session/`: mint with reachability + `position`, revoke owner-or-admin, `GET /sessions` scope and status filters

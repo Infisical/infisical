@@ -714,6 +714,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             accountsCount: z.number(),
             accountTemplatesCount: z.number(),
             foldersCount: z.number()
+          }),
+          agentVault: z.object({
+            accessBundlesCount: z.number(),
+            connectionsCount: z.number(),
+            proxiesCount: z.number()
           })
         })
       }

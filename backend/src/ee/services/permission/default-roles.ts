@@ -2,6 +2,9 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -777,6 +780,133 @@ const buildPamProjectMemberPermissionRules = () => {
   return rules;
 };
 
+// Agent Vault product membership is stored as plain project membership (the `admin` / `member` project
+// role slugs), so these two sets are what those slugs mean inside an Agent Vault project. The admin set
+// is written out rather than aliased to projectAdminPermissions: an Agent Vault admin has no business
+// rotating CMEKs or minting service tokens, and aliasing would hand them every secret-manager ability.
+const buildAgentVaultProjectAdminPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can(
+    [
+      ProjectPermissionAgentVaultAccessBundleActions.Read,
+      ProjectPermissionAgentVaultAccessBundleActions.Create,
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionAgentVaultAccessBundleActions.Delete,
+      ProjectPermissionAgentVaultAccessBundleActions.ManageMembers
+    ],
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ],
+    ProjectPermissionSub.AgentVaultSessions
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultProxyActions.Read,
+      ProjectPermissionAgentVaultProxyActions.Create,
+      ProjectPermissionAgentVaultProxyActions.Edit,
+      ProjectPermissionAgentVaultProxyActions.Delete,
+      ProjectPermissionAgentVaultProxyActions.Revoke
+    ],
+    ProjectPermissionSub.AgentVaultProxies
+  );
+
+  can(
+    [
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete,
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionMemberActions.AssumePrivileges
+    ],
+    ProjectPermissionSub.Member
+  );
+
+  can(
+    [
+      ProjectPermissionGroupActions.Create,
+      ProjectPermissionGroupActions.Edit,
+      ProjectPermissionGroupActions.Delete,
+      ProjectPermissionGroupActions.Read,
+      ProjectPermissionGroupActions.GrantPrivileges,
+      ProjectPermissionGroupActions.AssignRole
+    ],
+    ProjectPermissionSub.Groups
+  );
+
+  can(
+    [
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete,
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+      ProjectPermissionIdentityActions.AssumePrivileges,
+      ProjectPermissionIdentityActions.GetToken,
+      ProjectPermissionIdentityActions.CreateToken,
+      ProjectPermissionIdentityActions.DeleteToken,
+      ProjectPermissionIdentityActions.RevokeAuth,
+      ProjectPermissionIdentityActions.EditAuth
+    ],
+    ProjectPermissionSub.Identity
+  );
+
+  [ProjectPermissionSub.Role, ProjectPermissionSub.Settings].forEach((subject) => {
+    can(
+      [
+        ProjectPermissionActions.Read,
+        ProjectPermissionActions.Edit,
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Delete
+      ],
+      subject
+    );
+  });
+
+  can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
+
+  // The Agent Vault audit log page reuses the generic project one, which gates on this.
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  return rules;
+};
+
+// A member reaches bundles through the Agent Vault membership table, not through project role rules, so
+// their project ability is directory visibility plus the two things a member genuinely does: mint and
+// revoke their own sessions, and read a proxy's fingerprint so they can pin it.
+const buildAgentVaultProjectMemberPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can([ProjectPermissionMemberActions.Read], ProjectPermissionSub.Member);
+  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
+  can([ProjectPermissionIdentityActions.Read], ProjectPermissionSub.Identity);
+
+  can([ProjectPermissionAgentVaultAccessBundleActions.Read], ProjectPermissionSub.AgentVaultAccessBundles);
+  can(
+    [
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ],
+    ProjectPermissionSub.AgentVaultSessions
+  );
+  can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
+
+  return rules;
+};
+
 const buildCryptographicOperatorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -1151,6 +1281,8 @@ const buildPamResourceAuditorPermissionRules = () => {
 
 // The product admin owns the PAM project, so it keeps the full project Admin ability it has always had.
 export const pamProjectAdminPermissions = projectAdminPermissions;
+export const agentVaultProjectAdminPermissions = buildAgentVaultProjectAdminPermissionRules();
+export const agentVaultProjectMemberPermissions = buildAgentVaultProjectMemberPermissionRules();
 export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
 export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();

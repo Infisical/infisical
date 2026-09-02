@@ -442,6 +442,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
           return false;
         case ProjectType.PAM:
           return false;
+        case ProjectType.AgentVault:
+          return false;
         default:
           return true;
       }

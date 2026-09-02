@@ -176,6 +176,59 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countAgentVaultAccessBundlesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultAccessBundle)
+        .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultAccessBundle}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultAccessBundlesForOrg" });
+    }
+  };
+
+  const countAgentVaultConnectionsForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultConnection)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultConnection}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultConnection}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultConnectionsForOrg" });
+    }
+  };
+
+  const countAgentVaultProxiesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
+        .join(TableName.Project, `${TableName.AgentVaultProxy}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultProxy}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultProxiesForOrg" });
+    }
+  };
+
   const countPamAccountTemplatesForOrg = async (orgId: string, tx?: Knex) => {
     try {
       const result = (await (tx || db.replicaNode())(TableName.PamAccountTemplate)
@@ -242,6 +295,9 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countPamAccountsForOrg,
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,
+    countAgentVaultAccessBundlesForOrg,
+    countAgentVaultConnectionsForOrg,
+    countAgentVaultProxiesForOrg,
     countProjectsByTypeForOrg
   };
 };
