@@ -31,6 +31,24 @@ import {
   TAlertChannelsUpdate,
   TAlertHistory,
   TAlertHistoryInsert,
+  TAgentVaultAccessBundleMembers,
+  TAgentVaultAccessBundleMembersInsert,
+  TAgentVaultAccessBundleMembersUpdate,
+  TAgentVaultAccessBundles,
+  TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundlesUpdate,
+  TAgentVaultConnections,
+  TAgentVaultConnectionsInsert,
+  TAgentVaultConnectionsUpdate,
+  TAgentVaultProxies,
+  TAgentVaultProxiesInsert,
+  TAgentVaultProxiesUpdate,
+  TAgentVaultSessionAccessBundles,
+  TAgentVaultSessionAccessBundlesInsert,
+  TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessions,
+  TAgentVaultSessionsInsert,
+  TAgentVaultSessionsUpdate,
   TAlertHistoryTarget,
   TAlertHistoryTargetInsert,
   TAlertHistoryTargetUpdate,
@@ -1760,6 +1778,36 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamDomain]: KnexOriginal.CompositeTableType<TPamDomains, TPamDomainsInsert, TPamDomainsUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.AgentVaultAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundles,
+      TAgentVaultAccessBundlesInsert,
+      TAgentVaultAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultConnection]: KnexOriginal.CompositeTableType<
+      TAgentVaultConnections,
+      TAgentVaultConnectionsInsert,
+      TAgentVaultConnectionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleMember]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleMembers,
+      TAgentVaultAccessBundleMembersInsert,
+      TAgentVaultAccessBundleMembersUpdate
+    >;
+    [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessions,
+      TAgentVaultSessionsInsert,
+      TAgentVaultSessionsUpdate
+    >;
+    [TableName.AgentVaultSessionAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionAccessBundles,
+      TAgentVaultSessionAccessBundlesInsert,
+      TAgentVaultSessionAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultProxy]: KnexOriginal.CompositeTableType<
+      TAgentVaultProxies,
+      TAgentVaultProxiesInsert,
+      TAgentVaultProxiesUpdate
+    >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,
       TPamAccountPoliciesInsert,

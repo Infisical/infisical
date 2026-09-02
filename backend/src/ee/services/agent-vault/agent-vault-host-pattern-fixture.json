@@ -1,0 +1,54 @@
+{
+  "$comment": "Shared match fixture for the Agent Vault host grammar. Read by backend/src/ee/services/agent-vault/agent-vault-host-pattern.test.ts and by packages/agentvault/match_test.go in the CLI repo. The Go copy is verbatim; change this one and copy it across, never edit only one.",
+  "match": [
+    { "pattern": "api.github.com", "host": "api.github.com", "port": "443", "expected": true, "why": "exact host, default port on both sides" },
+    { "pattern": "api.github.com", "host": "API.GitHub.com", "port": "443", "expected": true, "why": "host comparison is case-insensitive" },
+    { "pattern": "api.github.com", "host": "api.github.com.", "port": "443", "expected": true, "why": "a trailing dot names the same host" },
+    { "pattern": "api.github.com", "host": "api.github.com", "port": "80", "expected": false, "why": "portless defaults to 443, so plaintext 80 does not match" },
+    { "pattern": "api.github.com", "host": "api.github.com", "port": "8443", "expected": false, "why": "the default port is concrete, not a wildcard" },
+    { "pattern": "api.github.com:8443", "host": "api.github.com", "port": "8443", "expected": true, "why": "an explicit non-443 port is allowed" },
+    { "pattern": "api.github.com", "host": "other.github.com", "port": "443", "expected": false, "why": "exact host does not match a sibling" },
+    { "pattern": "*.github.com", "host": "api.github.com", "port": "443", "expected": true, "why": "wildcard matches exactly one label" },
+    { "pattern": "*.github.com", "host": "a.b.github.com", "port": "443", "expected": false, "why": "wildcard matches one label, not any depth" },
+    { "pattern": "*.github.com", "host": "github.com", "port": "443", "expected": false, "why": "wildcard requires a label to be present" },
+    { "pattern": "*.github.com", "host": "evilgithub.com", "port": "443", "expected": false, "why": "the dot in the suffix is load-bearing" },
+    { "pattern": "*.bar.foo.com", "host": "api.foo.com", "port": "443", "expected": false, "why": "differing label counts are disjoint" },
+    { "pattern": "[::1]", "host": "0:0:0:0:0:0:0:1", "port": "443", "expected": true, "why": "IPv6 forms are compared after expansion" },
+    { "pattern": "[0:0:0:0:0:0:0:1]:8200", "host": "::1", "port": "8200", "expected": true, "why": "same address written the long way" },
+    { "pattern": "[2001:db8::1]", "host": "2001:db8::2", "port": "443", "expected": false, "why": "different addresses" },
+    { "pattern": "10.0.1.5:8200", "host": "10.0.1.5", "port": "8200", "expected": true, "why": "IPv4 literals are plain hosts" },
+    { "pattern": "api.github.com, registry.npmjs.org", "host": "registry.npmjs.org", "port": "443", "expected": true, "why": "a column is a set; any member matching is a match" }
+  ],
+  "reject": [
+    { "pattern": "https://api.github.com", "why": "a scheme is not part of the grammar" },
+    { "pattern": "api.github.com/v1/safe", "why": "paths are rejected: the matcher sees the decoded path and the upstream gets the escaped one" },
+    { "pattern": "api.github.com/", "why": "a bare trailing slash is still a path" },
+    { "pattern": "*", "why": "a credential is always limited to specific hosts" },
+    { "pattern": "api.github.com:0", "why": "port out of range" },
+    { "pattern": "api.github.com:70000", "why": "port out of range" },
+    { "pattern": "api.github.com:https", "why": "port must be numeric" },
+    { "pattern": "[::1", "why": "unclosed IPv6 bracket" },
+    { "pattern": "[not-an-address]", "why": "brackets must contain a valid IPv6 address" },
+    { "pattern": "api.*.github.com", "why": "a wildcard is the leftmost label only" },
+    { "pattern": "api-*.github.com", "why": "no mid-label globs; write-time conflict detection depends on it" },
+    { "pattern": "api.github.com,", "why": "an empty entry is a typo, not an empty set" },
+    { "pattern": "api.github.com, api.github.com:443", "why": "the same normalized pattern listed twice" }
+  ],
+  "normalize": [
+    { "pattern": "API.GitHub.com", "normalized": "api.github.com:443" },
+    { "pattern": "api.github.com.", "normalized": "api.github.com:443" },
+    { "pattern": " api.github.com , registry.npmjs.org:8443 ", "normalized": "api.github.com:443,registry.npmjs.org:8443" },
+    { "pattern": "[::1]", "normalized": "[0000:0000:0000:0000:0000:0000:0000:0001]:443" },
+    { "pattern": "[::ffff:10.0.1.5]:8200", "normalized": "[0000:0000:0000:0000:0000:ffff:0a00:0105]:8200" }
+  ],
+  "relate": [
+    { "a": "api.foo.com", "b": "api.foo.com", "relation": "identical" },
+    { "a": "api.foo.com", "b": "api.foo.com:443", "relation": "identical" },
+    { "a": "api.foo.com", "b": "*.foo.com", "relation": "contained" },
+    { "a": "*.foo.com", "b": "api.foo.com", "relation": "contained" },
+    { "a": "*.foo.com", "b": "*.bar.foo.com", "relation": "disjoint" },
+    { "a": "api.foo.com:443", "b": "api.foo.com:8443", "relation": "disjoint" },
+    { "a": "*.foo.com", "b": "api.foo.com:8443", "relation": "disjoint" },
+    { "a": "api.foo.com", "b": "api.bar.com", "relation": "disjoint" }
+  ]
+}

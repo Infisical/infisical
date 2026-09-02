@@ -98,6 +98,9 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultSessions = "Agent Vault Sessions",
+  AgentVaultProxies = "Agent Vault Proxies",
   KmipServers = "KMIP Servers"
 }
 
@@ -4141,5 +4144,47 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
     force:
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};
+
+export const AGENT_VAULT = {
+  ACCESS_BUNDLE: {
+    accessBundleId: "The ID of the access bundle.",
+    name: "The name of the access bundle.",
+    description: "A description of what this access bundle is for.",
+    connectionCount: "How many connections the access bundle holds.",
+    memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    hostPatterns: "Every host pattern the access bundle's connections cover."
+  },
+  CONNECTION: {
+    connectionId: "The ID of the connection.",
+    name: "The name of the connection.",
+    hostPattern:
+      "A comma-separated set of hosts this connection covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
+    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
+    headerName: "The header the credential is written to. Defaults to Authorization.",
+    headerPrefix:
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY.",
+    username: "The username half of the basic credential.",
+    value: "The secret. Never returned once saved.",
+    password: "The password half of the basic credential. Never returned once saved."
+  },
+  MEMBER: {
+    memberId: "The ID of the access bundle membership.",
+    userId: "The ID of the user to grant the access bundle to.",
+    identityId: "The ID of the machine identity to grant the access bundle to.",
+    groupId: "The ID of the group to grant the access bundle to."
+  },
+  SESSION: {
+    sessionId: "The ID of the session.",
+    accessBundleIds:
+      "The access bundles this session carries, in priority order. The first bundle wins when two cover the same host.",
+    ttl: "How long the session lasts. One of 1h, 8h, 24h, 7d or never.",
+    token: "The session token. Returned once, at mint, and never again.",
+    expiresAt: "When the session expires, or null when it never does.",
+    scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
+    status: "Filter by session status: active, revoked or expired.",
+    limit: "The maximum number of sessions to return.",
+    offset: "How many sessions to skip."
   }
 };
