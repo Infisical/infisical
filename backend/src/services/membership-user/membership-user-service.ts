@@ -10,6 +10,10 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import {
+  AgentVaultMemberKind,
+  TAgentVaultMembershipCleanupServiceFactory
+} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -85,6 +89,10 @@ type TMembershipUserServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
+  agentVaultMembershipCleanupService: Pick<
+    TAgentVaultMembershipCleanupServiceFactory,
+    "cleanupActorAgentVaultMemberships"
+  >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -112,6 +120,7 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
+  agentVaultMembershipCleanupService,
   approvalPolicyDAL,
   emailDomainDAL,
   oidcConfigDAL,
@@ -610,6 +619,15 @@ export const membershipUserServiceFactory = ({
           {
             projectId: dto.scopeData.projectId,
             actorKind: ApplicationMemberKind.User,
+            actorId: dto.selector.userId
+          },
+          tx
+        );
+
+        await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
+          {
+            projectId: dto.scopeData.projectId,
+            actorKind: AgentVaultMemberKind.User,
             actorId: dto.selector.userId
           },
           tx

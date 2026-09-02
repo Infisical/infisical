@@ -748,6 +748,16 @@ export enum EventType {
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
+  AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
+  AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
+  AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
+  AGENT_VAULT_CONNECTION_CREATE = "agent-vault-connection-create",
+  AGENT_VAULT_CONNECTION_UPDATE = "agent-vault-connection-update",
+  AGENT_VAULT_CONNECTION_DELETE = "agent-vault-connection-delete",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -6020,6 +6030,100 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
+interface AgentVaultAccessBundleCreateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleUpdateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    name?: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleDeleteEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultConnectionCreateEvent {
+  type: EventType.AGENT_VAULT_CONNECTION_CREATE;
+  metadata: {
+    accessBundleId: string;
+    connectionId: string;
+    name: string;
+    hostPattern: string;
+    credentialType: string;
+  };
+}
+
+// Records whether the secret was replaced, never the secret itself.
+interface AgentVaultConnectionUpdateEvent {
+  type: EventType.AGENT_VAULT_CONNECTION_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    connectionId: string;
+    name?: string;
+    hostPattern?: string;
+    credentialType?: string;
+    credentialReplaced: boolean;
+  };
+}
+
+interface AgentVaultConnectionDeleteEvent {
+  type: EventType.AGENT_VAULT_CONNECTION_DELETE;
+  metadata: {
+    accessBundleId: string;
+    connectionId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultMemberAddEvent {
+  type: EventType.AGENT_VAULT_MEMBER_ADD;
+  metadata: {
+    accessBundleId: string;
+    memberId: string;
+    userId?: string;
+    identityId?: string;
+    groupId?: string;
+  };
+}
+
+interface AgentVaultMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_MEMBER_REMOVE;
+  metadata: {
+    accessBundleId: string;
+    memberId: string;
+  };
+}
+
+interface AgentVaultSessionMintEvent {
+  type: EventType.AGENT_VAULT_SESSION_MINT;
+  metadata: {
+    sessionId: string;
+    accessBundleIds: string[];
+    expiresAt: string | null;
+  };
+}
+
+interface AgentVaultSessionRevokeEvent {
+  type: EventType.AGENT_VAULT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+  };
+}
+
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
@@ -7751,6 +7855,16 @@ export type Event =
   | PamAccountMemberRemoveEvent
   | PamAccountAccessEvent
   | PamWebAccessSessionTicketCreatedEvent
+  | AgentVaultAccessBundleCreateEvent
+  | AgentVaultAccessBundleUpdateEvent
+  | AgentVaultAccessBundleDeleteEvent
+  | AgentVaultConnectionCreateEvent
+  | AgentVaultConnectionUpdateEvent
+  | AgentVaultConnectionDeleteEvent
+  | AgentVaultMemberAddEvent
+  | AgentVaultMemberRemoveEvent
+  | AgentVaultSessionMintEvent
+  | AgentVaultSessionRevokeEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

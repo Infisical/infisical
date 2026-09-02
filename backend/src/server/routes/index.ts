@@ -23,7 +23,15 @@ import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
+import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { agentVaultConnectionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-connection-dal";
+import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
+import { agentVaultMembershipCleanupServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
+import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
+import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
+import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -871,6 +879,13 @@ export const registerRoutes = async (
     approvalPolicyDAL
   });
 
+  // Built here, beside the shared application-membership reaper, because the four membership services
+  // below take both. Access-bundle grants live in our own table, so the shared reaper cannot see them.
+  const agentVaultAccessBundleMemberDAL = agentVaultAccessBundleMemberDALFactory(db);
+  const agentVaultMembershipCleanupService = agentVaultMembershipCleanupServiceFactory({
+    agentVaultAccessBundleMemberDAL
+  });
+
   const oauthClientDAL = oauthClientDALFactory(db);
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
@@ -893,6 +908,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     projectAccessRequestDAL,
     applicationMembershipCleanupService,
+    agentVaultMembershipCleanupService,
     approvalPolicyDAL,
     emailDomainDAL,
     oidcConfigDAL,
@@ -921,6 +937,7 @@ export const registerRoutes = async (
     groupDAL,
     licenseService,
     applicationMembershipCleanupService,
+    agentVaultMembershipCleanupService,
     projectDAL,
     usageMeteringService,
     alertChannelRecipientDAL,
@@ -1077,6 +1094,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     licenseService,
     applicationMembershipCleanupService,
+    agentVaultMembershipCleanupService,
     projectDAL,
     keyStore,
     usageMeteringService,
@@ -1601,6 +1619,7 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
+    agentVaultMembershipCleanupService,
     usageMeteringService,
     alertChannelRecipientDAL
   });
@@ -1766,6 +1785,28 @@ export const registerRoutes = async (
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
     projectDAL
+  });
+
+  const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
+  const agentVaultConnectionDAL = agentVaultConnectionDALFactory(db);
+  const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
+  const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
+
+  const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
+    agentVaultAccessBundleDAL,
+    agentVaultConnectionDAL,
+    agentVaultAccessBundleMemberDAL,
+    permissionService,
+    kmsService,
+    membershipDAL
+  });
+
+  const agentVaultSessionService = agentVaultSessionServiceFactory({
+    agentVaultSessionDAL,
+    agentVaultSessionAccessBundleDAL,
+    agentVaultAccessBundleDAL,
+    agentVaultAccessBundleMemberDAL,
+    permissionService
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -4097,6 +4138,9 @@ export const registerRoutes = async (
     certManagerProjectResolver,
     pamProjectResolver,
     agentVaultProjectResolver,
+    agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultSession: agentVaultSessionService,
+    agentVaultMembershipCleanup: agentVaultMembershipCleanupService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,

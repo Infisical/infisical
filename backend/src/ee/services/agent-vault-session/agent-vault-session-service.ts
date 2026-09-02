@@ -120,7 +120,7 @@ export const agentVaultSessionServiceFactory = ({
     return {
       session: {
         id: session.id,
-        expiresAt: session.expiresAt,
+        expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
         accessBundles: accessBundleIds.map((id, position) => ({
           id,
