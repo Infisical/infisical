@@ -20,6 +20,7 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -116,13 +117,7 @@ export const AgentVaultProxiesPage = () => {
         icon={RouteIcon}
         title="Proxies"
         description="Where traffic leaves. Each proxy holds its own certificate authority."
-      >
-        {isAdmin && (
-          <Button variant="av" onClick={() => setIsCreateOpen(true)}>
-            Create Proxy
-          </Button>
-        )}
-      </PageHeader>
+      />
 
       <Card>
         <CardHeader>
@@ -131,6 +126,13 @@ export const AgentVaultProxiesPage = () => {
             An agent points its HTTP traffic at one of these. Settings reach a running proxy within
             one poll interval.
           </CardDescription>
+          {isAdmin && (
+            <CardAction>
+              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                Create Proxy
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
 
         {!isPending && (proxies?.length ?? 0) === 0 ? (

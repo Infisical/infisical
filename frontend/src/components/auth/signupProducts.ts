@@ -84,7 +84,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
     type: ProjectType.AgentVault,
     name: "Agent Vault",
     description:
-      "Run AI agents that hold no credentials. A proxy attaches them at the network boundary.",
+      "Run AI agents with the access, context, and capabilities they need to do work.",
     completedDescription: "Everything is ready. Jump in and create your first access bundle.",
     icon: getProjectLucideIcon(ProjectType.AgentVault),
     iconClassName: "text-product-av",

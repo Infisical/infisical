@@ -1,25 +1,19 @@
-import { formatDistanceToNowStrict } from "date-fns";
-import { InfinityIcon } from "lucide-react";
+import { format, formatDistanceToNowStrict } from "date-fns";
 
-import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 type Props = {
   expiresAt: string | null;
 };
 
-// A session with no expiry is a permanent bearer token that makes a proxy attach production
-// credentials, so it is called out rather than rendered as an empty cell.
 export const SessionExpiry = ({ expiresAt }: Props) => {
   if (!expiresAt) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant="warning">
-            <InfinityIcon />
-            Never
-          </Badge>
+          <span className="text-sm">Never</span>
         </TooltipTrigger>
-        <TooltipContent>This token works until someone revokes it.</TooltipContent>
+        <TooltipContent>This session works until it is revoked.</TooltipContent>
       </Tooltip>
     );
   }
@@ -35,7 +29,7 @@ export const SessionExpiry = ({ expiresAt }: Props) => {
           {formatDistanceToNowStrict(expiry, { addSuffix: hasPassed })}
         </span>
       </TooltipTrigger>
-      <TooltipContent>{expiry.toLocaleString()}</TooltipContent>
+      <TooltipContent>{format(expiry, "MMM d, yyyy h:mm a")}</TooltipContent>
     </Tooltip>
   );
 };

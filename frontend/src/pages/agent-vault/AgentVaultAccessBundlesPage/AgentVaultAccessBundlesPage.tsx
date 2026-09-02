@@ -8,6 +8,7 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -120,13 +121,7 @@ export const AgentVaultAccessBundlesPage = () => {
         icon={PackageIcon}
         title="Access Bundles"
         description="What an agent can reach. Grant a bundle to a person, machine identity or group."
-      >
-        {isAdmin && (
-          <Button variant="av" onClick={() => setIsCreateOpen(true)}>
-            Create Access Bundle
-          </Button>
-        )}
-      </PageHeader>
+      />
 
       <Card>
         <CardHeader>
@@ -135,6 +130,13 @@ export const AgentVaultAccessBundlesPage = () => {
             Each bundle holds the connections an agent may use and the members who can mint a
             session over it.
           </CardDescription>
+          {isAdmin && (
+            <CardAction>
+              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                Create Access Bundle
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <div className="flex-1">

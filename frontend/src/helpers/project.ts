@@ -196,7 +196,7 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.PAM]:
       "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
     [ProjectType.AgentVault]:
-      "Run agents with no credentials. A proxy you deploy attaches the real credential at egress and only to the hosts you allow."
+      "Run AI agents with the access, context, and capabilities they need to do work, wherever they operate."
   };
   return descriptions[type] ?? "";
 };

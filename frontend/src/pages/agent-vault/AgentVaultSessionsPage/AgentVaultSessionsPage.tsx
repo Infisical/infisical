@@ -3,18 +3,12 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import {
-  ActivityIcon,
-  BotIcon,
-  MoreHorizontalIcon,
-  SearchIcon,
-  TicketIcon,
-  UserIcon
-} from "lucide-react";
+import { BotIcon, MoreHorizontalIcon, SearchIcon, TicketIcon, UserIcon } from "lucide-react";
 
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -46,9 +40,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tabs,
-  TabsList,
-  TabsTrigger
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import {
@@ -88,7 +82,7 @@ export const AgentVaultSessionsPage = () => {
   const [statusFilter, setStatusFilter] = useState<AgentVaultSessionStatus | typeof ALL_STATUSES>(
     ALL_STATUSES
   );
-  const [scope, setScope] = useState(AgentVaultSessionScope.Mine);
+  const [scope, setScope] = useState(AgentVaultSessionScope.All);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
@@ -165,16 +159,8 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={TicketIcon}
         title="Sessions"
-        description="Tokens agents run with. Each carries a fixed set of access bundles."
-      >
-        <Button
-          variant="av"
-          isDisabled={!hasReachableBundles}
-          onClick={() => setIsCreateSheetOpen(true)}
-        >
-          Create Session
-        </Button>
-      </PageHeader>
+        description="What an agent runs with. Each session carries a fixed set of access bundles."
+      />
 
       <Card>
         <CardHeader>
@@ -182,6 +168,15 @@ export const AgentVaultSessionsPage = () => {
           <CardDescription>
             A session names one actor, the access bundles it carries, and when it expires.
           </CardDescription>
+          <CardAction>
+            <Button
+              variant="av"
+              isDisabled={!hasReachableBundles}
+              onClick={() => setIsCreateSheetOpen(true)}
+            >
+              Create Session
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <div className="flex-1">
@@ -204,29 +199,31 @@ export const AgentVaultSessionsPage = () => {
             }}
           >
             <SelectTrigger>
-              <ActivityIcon className="mr-1.5 size-4 text-muted" />
-              <SelectValue placeholder="All" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
-              <SelectItem value={ALL_STATUSES}>All</SelectItem>
+              <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
               <SelectItem value={AgentVaultSessionStatus.Active}>Active</SelectItem>
               <SelectItem value={AgentVaultSessionStatus.Revoked}>Revoked</SelectItem>
               <SelectItem value={AgentVaultSessionStatus.Expired}>Expired</SelectItem>
             </SelectContent>
           </Select>
           {isAdmin && (
-            <Tabs
+            <Select
               value={scope}
               onValueChange={(value) => {
                 setScope(value as AgentVaultSessionScope);
                 setPage(1);
               }}
             >
-              <TabsList variant="av" aria-label="Session scope">
-                <TabsTrigger value={AgentVaultSessionScope.Mine}>Mine</TabsTrigger>
-                <TabsTrigger value={AgentVaultSessionScope.All}>Everyone</TabsTrigger>
-              </TabsList>
-            </Tabs>
+              <SelectTrigger aria-label="Session scope">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value={AgentVaultSessionScope.All}>All Sessions</SelectItem>
+                <SelectItem value={AgentVaultSessionScope.Mine}>My Sessions</SelectItem>
+              </SelectContent>
+            </Select>
           )}
         </CardContent>
 
@@ -297,7 +294,18 @@ export const AgentVaultSessionsPage = () => {
                         />
                       </div>
                     </TableCell>
-                    <TableCell>{format(new Date(session.createdAt), "MMM d, yyyy")}</TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm">
+                            {format(new Date(session.createdAt), "MMM d, yyyy")}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
                     <TableCell>
                       <SessionExpiry expiresAt={session.expiresAt} />
                     </TableCell>
