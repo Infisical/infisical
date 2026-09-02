@@ -338,12 +338,13 @@ describe("Agent Vault V1 Router", async () => {
         .select("id")) as { id: string }[];
       expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding].sort());
 
-      // The child rows go with the parent.
+      // The child rows go with the parent, and the watermark moves so the next sweep starts here.
       const orphans = await testDb("agent_vault_session_access_bundles").whereIn("sessionId", [
         longExpired,
         longRevoked
       ]);
       expect(orphans).toHaveLength(0);
+      expect(await testKeyStore.getItem("agent-vault-session-expire-sweep")).toBeTruthy();
     });
   });
 
