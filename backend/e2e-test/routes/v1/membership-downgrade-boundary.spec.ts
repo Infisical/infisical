@@ -220,6 +220,7 @@ describe("Privilege boundary on org membership downgrade", () => {
   // downgrade first, then remove the now-weaker member.
   let actor: { identityId: string; token: string };
   let adminTarget: { userId: string; membershipId: string };
+  const targetUserIds: string[] = [];
 
   const roleSlug = `e2e-org-downgrader-${crypto.randomUUID()}`;
 
@@ -231,13 +232,15 @@ describe("Privilege boundary on org membership downgrade", () => {
       body
     });
 
-  const giveOrgAdminMembership = async (userId: string) => {
+  const createAdminTarget = async () => {
+    const { userId } = await createTargetUser("org-downgrade");
     const [membership] = await testDb(TableName.Membership)
       .insert({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorUserId: userId })
       .returning("id");
     const membershipId = (membership as { id: string }).id;
     await testDb(TableName.MembershipRole).insert({ membershipId, role: OrgMembershipRole.Admin });
-    return membershipId;
+    targetUserIds.push(userId);
+    return { userId, membershipId };
   };
 
   beforeAll(async () => {
@@ -268,8 +271,7 @@ describe("Privilege boundary on org membership downgrade", () => {
       customRoleId: (role as { id: string }).id
     });
 
-    const target = await createTargetUser("org-downgrade");
-    adminTarget = { userId: target.userId, membershipId: await giveOrgAdminMembership(target.userId) };
+    adminTarget = await createAdminTarget();
   });
 
   afterAll(async () => {
@@ -279,8 +281,8 @@ describe("Privilege boundary on org membership downgrade", () => {
       url: `/api/v1/identities/${actor.identityId}`,
       headers: adminHeaders()
     });
-    await testDb(TableName.Membership).where({ actorUserId: adminTarget.userId }).delete();
-    await testDb(TableName.Users).where({ id: adminTarget.userId }).delete();
+    await testDb(TableName.Membership).whereIn("actorUserId", targetUserIds).delete();
+    await testDb(TableName.Users).whereIn("id", targetUserIds).delete();
     await testDb(TableName.Role).where({ slug: roleSlug }).delete();
   });
 
@@ -302,10 +304,16 @@ describe("Privilege boundary on org membership downgrade", () => {
       expect(res.json().message).toContain("more privileged org member");
     });
 
-    test("deactivating a more privileged member is bounded", async () => {
-      const res = await patchMembership(adminTarget.membershipId, { isActive: false }, asIdentity(actor.token));
-      expect(res.statusCode).toBe(403);
-      expect(res.json().message).toContain("more privileged org member");
+    test("deactivating a more privileged member follows the removal boundary", async () => {
+      // Deactivation keys on member:delete, so it lands where a removal lands rather than where a
+      // role change does: the new system permits it on the strength of holding that action alone,
+      // the legacy system still compares privilege levels. It gets its own target because it
+      // succeeds on one of the two runs.
+      const target = await createAdminTarget();
+
+      const res = await patchMembership(target.membershipId, { isActive: false }, asIdentity(actor.token));
+      expect(res.statusCode).toBe(newSystem ? 200 : 403);
+      if (!newSystem) expect(res.json().message).toContain("more privileged org member");
     });
   });
 
