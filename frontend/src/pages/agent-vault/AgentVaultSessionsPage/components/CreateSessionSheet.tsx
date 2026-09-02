@@ -143,7 +143,11 @@ export const CreateSessionSheet = ({
                       <span className="w-4 font-mono text-xs text-muted">{index + 1}</span>
                       <PackageIcon className="size-4 shrink-0 text-muted" />
                       <span className="flex-1 truncate text-sm">{bundle.name}</span>
-                      <ConnectionIconStack hostPatterns={bundle.hostPatterns} maxVisible={3} />
+                      <ConnectionIconStack
+                        hostPatterns={bundle.hostPatterns}
+                        maxVisible={3}
+                        emptyPlaceholder={null}
+                      />
                       <IconButton
                         variant="ghost"
                         size="xs"

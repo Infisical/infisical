@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { GlobeIcon, MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
+import { ConnectionIcon } from "@app/components/agent-vault/ConnectionIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -31,7 +32,6 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { AgentVaultCredentialType, useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 
@@ -46,22 +46,6 @@ const credentialSummary = (connection: TAgentVaultConnection) => {
     return `Basic · ${credential.username}`;
   }
   return "Pass-through";
-};
-
-const TemplateIcon = ({ hostPattern }: { hostPattern: string }) => {
-  const template = findTemplateForHostPattern(hostPattern);
-  const [hasImageError, setHasImageError] = useState(false);
-
-  if (!template || hasImageError) return <GlobeIcon className="size-4 shrink-0 text-muted" />;
-
-  return (
-    <img
-      src={`/images/integrations/${template.image}`}
-      alt=""
-      className="size-4 shrink-0"
-      onError={() => setHasImageError(true)}
-    />
-  );
 };
 
 type Props = {
@@ -170,7 +154,7 @@ export const ConnectionsCard = ({
               <TableRow key={connection.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <TemplateIcon hostPattern={connection.hostPattern} />
+                    <ConnectionIcon hostPattern={connection.hostPattern} />
                     {connection.name}
                   </div>
                 </TableCell>
