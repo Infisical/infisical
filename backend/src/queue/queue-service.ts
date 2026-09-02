@@ -44,7 +44,10 @@ import {
   TAppConnectionCredentialRotationSendNotificationJobPayload
 } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
+import {
+  ExternalPlatforms,
+  TVaultImportSideEffectsJobPayload
+} from "@app/services/external-migration/external-migration-types";
 import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
@@ -94,6 +97,7 @@ export enum QueueName {
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  VaultImportSideEffects = "vault-import-side-effects",
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
@@ -148,6 +152,7 @@ export enum QueueJobs {
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
   ServiceTokenStatusUpdate = "service-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  VaultImportSideEffects = "vault-import-side-effects",
   SecretSyncSyncSecrets = "secret-sync-sync-secrets",
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
@@ -386,6 +391,10 @@ export type TQueueJobTypes = {
         encoding: SecretKeyEncoding;
       };
     };
+  };
+  [QueueName.VaultImportSideEffects]: {
+    name: QueueJobs.VaultImportSideEffects;
+    payload: TVaultImportSideEffectsJobPayload;
   };
   [QueueName.AppConnectionSecretSync]:
     | {

@@ -99,6 +99,7 @@ import {
   TCreateSecretDTO,
   TDeleteManySecretDTO,
   TDeleteSecretDTO,
+  TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
   TGetAccessibleSecretsDTO,
   TGetASecretDTO,
@@ -361,7 +362,9 @@ export const secretV2BridgeServiceFactory = ({
       folderId
     });
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
-      throw new BadRequestError({ message: "Secret already exists" });
+      throw new BadRequestError({
+        message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
+      });
 
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal && !doesSecretExist) {
@@ -2093,6 +2096,36 @@ export const secretV2BridgeServiceFactory = ({
     );
   };
 
+  const dispatchSecretCreateSideEffects = async ({
+    projectId,
+    orgId,
+    actor,
+    actorId,
+    environmentSlug,
+    environmentName,
+    secretPath,
+    secretKeys
+  }: TDispatchSecretCreateSideEffectsDTO) => {
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath,
+      projectId,
+      orgId,
+      environmentSlug,
+      environmentName,
+      events: [
+        {
+          type: ProjectEvents.SecretCreate,
+          secretKeys,
+          secretPath,
+          environment: environmentSlug,
+          projectId
+        }
+      ]
+    });
+  };
+
   const createManySecret = async ({
     secretPath,
     actor,
@@ -2101,6 +2134,7 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     environment,
     projectId,
+    folder: providedFolder,
     secrets: inputSecrets,
     tx: providedTx,
     commitChanges,
@@ -2135,7 +2169,9 @@ export const secretV2BridgeServiceFactory = ({
     }
     const deduplicatedSecrets = Array.from(seen.values());
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    // the lookup has to go through a caller-supplied transaction: the folder may have been created in it
+    // and not yet committed, and reading outside it would check out a second connection while it is open.
+    const folder = providedFolder ?? (await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx));
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
@@ -2143,37 +2179,49 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    const secrets = await secretDAL.find({
-      folderId,
-      type: SecretType.Shared,
-      $in: {
-        [`${TableName.SecretV2}.key` as "key"]: deduplicatedSecrets.map((el) => el.secretKey)
-      }
-    });
+    const secrets = await secretDAL.find(
+      {
+        folderId,
+        type: SecretType.Shared,
+        $in: {
+          [`${TableName.SecretV2}.key` as "key"]: deduplicatedSecrets.map((el) => el.secretKey)
+        }
+      },
+      { tx: providedTx }
+    );
     if (secrets.length)
-      throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+      throw new BadRequestError({
+        message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+      });
 
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
-    );
-    await scanSecretPolicyViolations(
-      projectId,
-      secretPath,
-      deduplicatedSecrets,
-      project.secretDetectionIgnoreValues || []
-    );
+    // requestMemoize can hand back a value read outside a caller-supplied transaction, so it is bypassed here
+    const project = providedTx
+      ? await projectDAL.findById(projectId, providedTx)
+      : await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId));
+
+    if (!providedTx) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        deduplicatedSecrets,
+        project.secretDetectionIgnoreValues || []
+      );
+    }
 
     await secretValidationRuleService.validateSecrets({
       projectId,
       environment,
       envId: folder.envId,
       secretPath,
-      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
+      tx: providedTx
     });
 
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
-    const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
+    const tags = sanitizedTagIds.length
+      ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, providedTx)
+      : [];
     if (tags.length !== sanitizedTagIds.length)
       throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
@@ -2203,13 +2251,13 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
     });
-    await $validateSecretReferences(projectId, permission, secretReferences);
+    await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
     const {
       encryptor: secretManagerEncryptor,
       decryptor: secretManagerDecryptor,
       generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
 
     const executeBulkInsert = async (tx: Knex) => {
       const inputSecretsWithBlindIndex = await Promise.all(
@@ -2270,7 +2318,7 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkInsert);
 
     if (!skipPostProcessing) {
-      await secretQueueService.syncSecrets({
+      await dispatchSecretCreateSideEffects({
         actor,
         actorId,
         secretPath,
@@ -2278,15 +2326,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         environmentSlug: folder.environment.slug,
         environmentName: folder.environment.name,
-        events: [
-          {
-            type: ProjectEvents.SecretCreate,
-            secretKeys: newSecrets.map((el) => el.key),
-            secretPath,
-            environment: folder.environment.slug,
-            projectId
-          }
-        ]
+        secretKeys: newSecrets.map((el) => el.key)
       });
     }
 
@@ -3939,6 +3979,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
+    dispatchSecretCreateSideEffects,
     dispatchSecretMoveSideEffects,
     getSecretsCount,
     getSecretsCountMultiEnv,

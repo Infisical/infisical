@@ -9,13 +9,18 @@ This guide helps you migrate from HashiCorp Vault to Infisical. Whether you're m
 Our in-platform migration tooling lets you set up a connection to your Vault instance once, then import specific resources as needed throughout Infisical. Think of it as creating a "bridge" between Vault and Infisical that you can use repeatedly.
 
 **What you can migrate:**
+
 - KV v1 and KV v2 secrets
 - Kubernetes auth method configurations (translated to [Machine Identities](/documentation/platform/identities/machine-identities) in Infisical)
 - Kubernetes secrets engine roles (translated to [Dynamic Secrets](/documentation/platform/dynamic-secrets/kubernetes) in Infisical)
 - Vault policies (translated to [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls))
 
 <Warning>
-  Importing from Vault requires the `Connect` action on `App Connections` and the `Create` action on the relevant subjects. For example, the `Create` action on the `Secrets` subject at the target environment and folder path for KV imports, or the equivalent permission for Machine Identities, Dynamic Secrets, and Roles.
+  Importing from Vault requires the `Connect` action on `App Connections` and
+  the `Create` action on the relevant subjects. For example, the `Create` action
+  on the `Secrets` subject at the target environment and folder path for KV
+  imports, or the equivalent permission for Machine Identities, Dynamic Secrets,
+  and Roles.
 </Warning>
 
 ## Set up your Vault connection
@@ -122,42 +127,78 @@ Before importing anything, you need to establish a secure connection between Inf
 Once your Vault connection is configured, you'll see import options throughout Infisical wherever relevant. The sections below cover each type of resource you can migrate.
 
 <Tip>
-**Migration Strategy:** We recommend migrating one application at a time. Start with a non-critical application to familiarize yourself with the process, then proceed to more important services.
+  **Migration Strategy:** We recommend migrating one application at a time.
+  Start with a non-critical application to familiarize yourself with the
+  process, then proceed to more important services.
 </Tip>
 
 ### Migrating KV secrets
 
-KV secrets are imported into a specific **environment** (e.g., Development, Staging, Production) within a **project**. If you're coming from Vault, think of a project as similar to a KV secret engine dedicated to one application.
+KV secrets are imported into a specific **environment** (e.g., Development, Staging, Production) within a **project**. If you're coming from Vault, think of a project as similar to a KV secrets engine dedicated to one application.
 
 <Info>
-**First time?** You'll need to [create a project](/documentation/platform/project) first. A project in Infisical typically represents a single application or microservice.
+  **First time?** You'll need to [create a
+  project](/documentation/platform/project) first. A project in Infisical
+  typically represents a single application or microservice.
 </Info>
 
 <Warning>
-  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped**, i.e., those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
+  If your Vault token is restricted and cannot list a mount from its root,
+  Infisical discovers the available secret paths from the token's resultant ACL
+  (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard
+  (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and
+  is **skipped**, i.e., those secrets will not be imported. To migrate them,
+  grant the token access to the explicit KV paths instead of relying on `+`.
 </Warning>
 
 **To import secrets from Vault:**
 
 1. Navigate to your project and select a specific environment (e.g., Development, Production)
 2. In the secrets view, click the dropdown icon (caret) next to the **"+ Add Secret"** button
-  ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-caret.png)
-
+   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-caret.png)
 
 3. Select **"Add from HashiCorp Vault"**
-  ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-option.png)
-  
+   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-option.png)
 
-4. In the modal, pick the **App Connection** (project- or organization-scoped Vault connections both appear here), then the **Vault namespace**, then the **Secrets Engine** (KV mount), and finally one or more **Vault secret paths** to import (for example, `secret/app/prod`). Keys are copied using their names from Vault.
-<Note>
- If you select multiple paths and the same key name exists in more than one of them, the import aborts and no secrets are saved.
-</Note>
+4. Pick the **App Connection**, then the **Namespace**, then the **Secrets Engine** that holds the paths you want, and finally one or more entries under **Vault Secret Path**. Keys are copied using their names from Vault.
 
-5. Click **"Import Secrets"**
-  ![Import Vault Secrets](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-modal.png)
+5. (Optional) Select **"Preserve folder structure"** to recreate each Vault path as a folder in Infisical. Leave it unchecked to copy every key from every selected path into the folder you are currently viewing.
 
+   <Note>
+     Importing without preserving the structure aborts if the same key name
+     exists in more than one selected path, and no secrets are saved. Preserving
+     the structure resolves the conflict, because each Vault path gets its own
+     folder.
+   </Note>
 
-The secrets will be imported into your current environment and folder path. If your Vault path has nested paths, you can create [folders](/documentation/platform/folder) in Infisical to maintain a similar structure.
+6. Check the **Preview** to confirm where every secret will land, then click **"Import Secrets"**
+
+The secrets are imported into the environment and folder path you are currently viewing. You can select up to 25 Vault paths per import.
+
+#### Preserving your Vault folder structure
+
+With **"Preserve folder structure"** enabled, each Vault path becomes its own [folder](/documentation/platform/folder), nested under your current path. Otherwise, all selected secrets are imported into the current folder.
+
+The preview reflects the choice, so you can compare both before importing:
+
+<Tabs>
+  <Tab title="Flattened">
+    Every key lands directly in the folder you are viewing. This import runs from
+    the project root, so all six secrets collapse into `/` and the Vault path each
+    one came from is shown only for reference.
+
+    ![Vault import preview without preserving the folder structure](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-flattened.png)
+
+  </Tab>
+  <Tab title="Structure preserved">
+    Each Vault path becomes a folder. This import runs from `/newww`, so
+    `team-a/service-1`, `team-a/service-2`, and `team-b` are recreated beneath it,
+    each holding the secrets from its own Vault path.
+
+    ![Vault import preview with the folder structure preserved](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-preserve-structure.png)
+
+  </Tab>
+</Tabs>
 
 ### Migrating Kubernetes auth method
 
@@ -217,7 +258,9 @@ The form will be automatically populated with the role's configuration including
 </Note>
 
 <Tip>
-  The same **Load from Vault** flow is also available on **Cassandra**, **LDAP**, and **SQL Database** dynamic secrets. Pick the App Connection, Vault namespace, mount, and role to pre-fill the form.
+  The same **Load from Vault** flow is also available on **Cassandra**,
+  **LDAP**, and **SQL Database** dynamic secrets. Pick the App Connection, Vault
+  namespace, mount, and role to pre-fill the form.
 </Tip>
 
 Learn more about how Dynamic Secrets work in Infisical in the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
@@ -226,13 +269,13 @@ Learn more about how Dynamic Secrets work in Infisical in the [Dynamic Secrets d
 
 Infisical can translate your Vault HCL policies into [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls). The table below shows how Vault capabilities map to Infisical permissions:
 
-| Vault Capability | Infisical Permission |
-|-----------------|---------------------|
-| `read` | Read secrets |
-| `list` | Read secrets (list is implicit with read) |
-| `create` | Create secrets |
-| `update` | Edit secrets |
-| `delete` | Delete secrets |
+| Vault Capability | Infisical Permission                      |
+| ---------------- | ----------------------------------------- |
+| `read`           | Read secrets                              |
+| `list`           | Read secrets (list is implicit with read) |
+| `create`         | Create secrets                            |
+| `update`         | Edit secrets                              |
+| `delete`         | Delete secrets                            |
 
 <Note>
   Policy translation is best-effort and provides a starting point based on your
@@ -257,30 +300,29 @@ Infisical can translate your Vault HCL policies into [Infisical project roles](/
 6. Make any adjustments and save
 
 <Tip>
-  **How policy translation works:**
-  - Vault path patterns are analyzed to identify KV secret engines and environments
-  - Vault capabilities (`read`, `list`, `create`, etc.) are mapped to Infisical permissions
-  - Wildcards in paths are converted to glob patterns
-  - Secret paths are preserved for granular access control
-  
-  **Example translation:**
-  ```hcl
-  # Vault policy
-  path "secret/data/app/*" {
-    capabilities = ["read", "list"]
-  }
-  ```
-  
-  Becomes an Infisical role with **read** permission on secrets in the corresponding environment/folder path.
+  **How policy translation works:** Vault path patterns are analyzed to identify
+  KV secret engines and environments. Vault capabilities (`read`, `list`,
+  `create`, etc.) are mapped to Infisical permissions. Wildcards in paths are
+  converted to glob patterns. Secret paths are preserved for granular access
+  control.
 </Tip>
+
+**Example translation:**
+
+```hcl
+# Vault policy
+path "secret/data/app/*" {
+  capabilities = ["read", "list"]
+}
+```
+
+Becomes an Infisical role with **read** permission on secrets in the corresponding environment/folder path.
 
 ## One-time bulk import from Vault
 
 If you want to move an entire Vault organization into Infisical in a single shot (rather than importing resources piecemeal from inside each project) use the **Bulk Data Import** flow. It does not require an App Connection and is intended for initial migrations only. KV Secret Engine is the only supported resource type for bulk import; other resource types (Kubernetes auth, dynamic secrets, policies) must use the per-resource flows described above.
 
-<Warning>
-  Bulk Data Import is restricted to **organization admins**.
-</Warning>
+<Warning>Bulk Data Import is restricted to **organization admins**.</Warning>
 
 **To run a bulk import:**
 
@@ -305,7 +347,11 @@ Once you've imported your secrets and configurations, here's how to start using 
   <Card title="Update Your Applications" icon="code" href="/sdks/overview">
     Replace Vault client libraries with Infisical SDKs in your application code
   </Card>
-  <Card title="Set Up Kubernetes Integration" icon="dharmachakra" href="/integrations/platforms/kubernetes/overview">
+  <Card
+    title="Set Up Kubernetes Integration"
+    icon="dharmachakra"
+    href="/integrations/platforms/kubernetes/overview"
+  >
     Use the Infisical Kubernetes Operator to inject secrets into your pods
   </Card>
 </CardGroup>

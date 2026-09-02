@@ -1,6 +1,9 @@
 import { randomUUID } from "crypto";
+import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
@@ -24,7 +27,13 @@ import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-d
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { importDataIntoInfisicalFn } from "./external-migration-fns";
-import { ExternalPlatforms, TImportInfisicalDataCreate } from "./external-migration-types";
+import {
+  ExternalPlatforms,
+  TImportInfisicalDataCreate,
+  TVaultImportSideEffectsJobPayload
+} from "./external-migration-types";
+
+const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
 
 export type TExternalMigrationQueueFactoryDep = {
   smtpService: TSmtpService;
@@ -42,12 +51,17 @@ export type TExternalMigrationQueueFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath" | "findOne" | "findById">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
-  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
+  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret" | "dispatchSecretCreateSideEffects">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  secretApprovalRequestService: Pick<
+    TSecretApprovalRequestServiceFactory,
+    "dispatchSecretApprovalRequestCreateSideEffects"
+  >;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
@@ -69,7 +83,9 @@ export const externalMigrationQueueFactory = ({
   folderCommitService,
   folderVersionDAL,
   resourceMetadataDAL,
-  notificationService
+  notificationService,
+  secretApprovalRequestService,
+  auditLogService
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
     orgId: string;
@@ -202,7 +218,127 @@ export const externalMigrationQueueFactory = ({
       logger.error(err, "Failed to import data from external source");
     }
   });
+
+  const enqueueVaultImportSideEffects = async (payload: TVaultImportSideEffectsJobPayload) => {
+    await queueService.queue(QueueName.VaultImportSideEffects, QueueJobs.VaultImportSideEffects, payload, {
+      jobId: `vault-import-side-effects-${randomUUID()}`,
+      removeOnComplete: true,
+      removeOnFail: true,
+      attempts: 5,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      }
+    });
+  };
+
+  queueService.start(
+    QueueName.VaultImportSideEffects,
+    async (job) => {
+      const {
+        projectId,
+        environment,
+        environmentName,
+        actor,
+        actorId,
+        actorOrgId,
+        auditLogInfo,
+        writtenFolders,
+        approvedFolders
+      } = job.data;
+
+      const sideEffectLimit = pLimit(VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY);
+
+      await Promise.all(
+        writtenFolders.map(({ folderPath, secretKeys }) =>
+          sideEffectLimit(async () => {
+            try {
+              await secretV2BridgeService.dispatchSecretCreateSideEffects({
+                projectId,
+                orgId: actorOrgId,
+                actor,
+                actorId,
+                environmentSlug: environment,
+                environmentName,
+                secretPath: folderPath,
+                secretKeys
+              });
+            } catch (error) {
+              logger.error(
+                error,
+                `Failed to dispatch Vault import secret side effects [secretPath=${folderPath}] [projectId=${projectId}]`
+              );
+            }
+          })
+        )
+      );
+
+      await Promise.all(
+        approvedFolders.map(({ folderPath, secretKeys, approval }) =>
+          sideEffectLimit(async () => {
+            try {
+              await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
+                secretApprovalRequest: {
+                  id: approval.id,
+                  policyId: approval.policyId,
+                  commits: approval.commits
+                },
+                projectId,
+                environment,
+                secretPath: folderPath,
+                secretKeys,
+                actor,
+                actorId,
+                actorOrgId
+              });
+            } catch (error) {
+              // rethrown so the job's retries apply: a reviewer who never hears about the request is worse than a
+              // duplicate notification, and this is the only delivery attempt left once the import has responded
+              logger.error(
+                error,
+                `Failed to notify approvers of Vault import change request [requestId=${approval.id}] [secretPath=${folderPath}]`
+              );
+              throw error;
+            }
+          })
+        )
+      );
+
+      await Promise.all(
+        approvedFolders.map(({ folderPath, secretKeys, approval }) =>
+          sideEffectLimit(async () => {
+            try {
+              await auditLogService.createAuditLog({
+                projectId,
+                ...auditLogInfo,
+                event: {
+                  type: EventType.SECRET_APPROVAL_REQUEST,
+                  metadata: {
+                    committedBy: approval.committerUserId,
+                    secretApprovalRequestId: approval.id,
+                    secretApprovalRequestSlug: approval.slug,
+                    secretPath: folderPath,
+                    environment,
+                    secrets: secretKeys.map((secretKey) => ({ secretKey })),
+                    eventType: SecretApprovalEvent.CreateMany
+                  }
+                }
+              });
+            } catch (error) {
+              logger.error(
+                error,
+                `Failed to write Vault import change request audit log [requestId=${approval.id}] [secretPath=${folderPath}]`
+              );
+            }
+          })
+        )
+      );
+    },
+    { concurrency: 5 }
+  );
+
   return {
-    startImport
+    startImport,
+    enqueueVaultImportSideEffects
   };
 };

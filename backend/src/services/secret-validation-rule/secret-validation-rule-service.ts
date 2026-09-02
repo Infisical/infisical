@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 import picomatch from "picomatch";
 
 import { ActionProjectType, TSecretValidationRules } from "@app/db/schemas";
@@ -346,25 +347,30 @@ export const secretValidationRuleServiceFactory = ({
     environment,
     envId,
     secretPath,
-    secrets
+    secrets,
+    tx
   }: {
     projectId: string;
     environment: string;
     envId: string;
     secretPath: string;
     secrets: { key: string; value?: string; secretId?: string }[];
+    tx?: Knex;
   }) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, { tx });
     if (!rules.length) return;
 
     // Secret values and rule inputs share the SecretManager data key, so one
     // cipher pair serves both — this runs on every secret write.
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.SecretManager,
+        projectId
+      },
+      tx
+    );
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
@@ -402,7 +408,7 @@ export const secretValidationRuleServiceFactory = ({
           secretIdsToCheck.map((sId) =>
             secretVersionV2BridgeDAL.find(
               { secretId: sId },
-              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS }
+              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS, tx }
             )
           )
         );
