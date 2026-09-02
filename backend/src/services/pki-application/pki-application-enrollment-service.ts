@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -111,6 +112,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -135,6 +137,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
   appConnectionService,
+  licenseService,
   approvalPolicyDAL,
   certificateProfileDAL,
   certificateAuthorityDAL,
@@ -398,6 +401,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
+    // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
+    // an admin can act on it instead of surfacing as a device that silently fails to enroll.
+    const estPlan = await licenseService.getPlan(actorOrgId);
+    if (!estPlan.pkiEst) {
+      throw new BadRequestError({
+        message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
+      });
+    }
 
     if (!config.passphrase || config.passphrase.length < 8) {
       throw new BadRequestError({ message: "EST passphrase must be at least 8 characters." });
@@ -666,6 +678,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
+    const scepPlan = await licenseService.getPlan(actorOrgId);
+    if (!scepPlan.pkiScep) {
+      throw new BadRequestError({
+        message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."
+      });
+    }
 
     const challengeType = config.challengeType ?? ScepChallengeType.STATIC;
     const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
