@@ -289,7 +289,7 @@ export const CopySecretsSecretTree = ({
   onSelectionChange
 }: Props) => {
   const [search, setSearch] = useState("");
-  const [previewFilter, setPreviewFilter] = useState<PreviewFilter>("all");
+  const [previewFilter, setPreviewFilter] = useState<PreviewFilter>("changes");
   const scopedSecrets = useMemo(
     () => filterCopyPreviewSecrets({ secrets, rootPath: sourcePath }),
     [secrets, sourcePath]
