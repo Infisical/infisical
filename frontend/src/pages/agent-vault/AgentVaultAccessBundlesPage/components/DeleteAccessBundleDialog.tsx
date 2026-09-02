@@ -32,7 +32,7 @@ export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted
     liveSessionCount && liveSessionCount > 0
       ? ` ${liveSessionCount} live session${liveSessionCount === 1 ? "" : "s"} ${
           liveSessionCount === 1 ? "carries" : "carry"
-        } it, and ${liveSessionCount === 1 ? "its agent loses" : "their agents lose"} these connections within about a minute.`
+        } it, and ${liveSessionCount === 1 ? "its agent loses" : "their agents lose"} these connections at the next proxy poll.`
       : "";
 
   return (

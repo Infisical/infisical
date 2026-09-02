@@ -210,7 +210,7 @@ export const ConnectionsCard = ({
           if (!isOpen) setConnectionToDelete(null);
         }}
         title={`Delete "${connectionToDelete?.name}"`}
-        description="Agents lose this credential within about a minute. This cannot be undone."
+        description="Agents lose this credential at the next proxy poll. This cannot be undone."
         confirmKey={connectionToDelete?.name ?? ""}
         isPending={deleteConnection.isPending}
         onConfirm={handleDelete}

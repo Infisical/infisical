@@ -353,7 +353,7 @@ export const AgentVaultProxiesPage = () => {
             </AlertDialogMedia>
             <AlertDialogTitle>Revoke &quot;{proxyToRevoke?.name}&quot;</AlertDialogTitle>
             <AlertDialogDescription>
-              Its token stops working within about a minute. Every agent routed through it loses its
+              Its token stops working at its next poll. Every agent routed through it loses its
               credentials until the proxy enrolls again.
             </AlertDialogDescription>
           </AlertDialogHeader>

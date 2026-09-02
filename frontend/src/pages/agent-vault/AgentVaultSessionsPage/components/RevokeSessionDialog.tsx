@@ -40,8 +40,8 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
           </AlertDialogMedia>
           <AlertDialogTitle>Revoke session for &quot;{session?.actorName}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
-            Proxies stop attaching credentials for this session within about a minute. This cannot
-            be undone.
+            Proxies stop attaching credentials for this session at their next poll. This cannot be
+            undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

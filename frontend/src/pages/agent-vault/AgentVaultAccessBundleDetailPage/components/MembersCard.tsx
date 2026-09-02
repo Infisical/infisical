@@ -122,7 +122,7 @@ export const MembersCard = ({ accessBundleId, members }: Props) => {
           if (!isOpen) setMemberToRemove(null);
         }}
         title={`Revoke access for "${memberToRemove ? memberDisplayName(memberToRemove) : ""}"`}
-        description="They lose this bundle, and any live session they hold stops reaching its hosts within about a minute."
+        description="They lose this bundle, and any live session they hold stops reaching its hosts at the next proxy poll."
         confirmKey={memberToRemove ? memberDisplayName(memberToRemove) : ""}
         confirmLabel="Revoke Access"
         isPending={removeMember.isPending}
