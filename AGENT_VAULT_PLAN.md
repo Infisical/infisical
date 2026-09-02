@@ -829,30 +829,36 @@ Enough to stop two engineers building two different APIs. Everything is wrapped 
     "hostPattern": "api.us5.datadoghq.com:443, api.datadoghq.eu:443",
     "credential": { "type": "bearer", "headerName": "DD-API-KEY",
                     "headerPrefix": "", "value": "abc123…" } }
-← 201 { "connection": { "id", "accessBundleId", "name", "hostPattern",
-                        "credential": { "type": "bearer", "headerName", "headerPrefix" } } }
+← 200 { "connection": { "id", "accessBundleId", "name", "hostPattern",
+                        "credential": { "type": "bearer", "headerName", "headerPrefix" } },
+        "warnings": [ { "connectionName", "accessBundleName", "patterns": [ … ] } ] }
 // the secret is never echoed. PATCH takes the same body, all fields optional;
 // an omitted `credential` keeps the stored secret, an empty one is rejected.
 
 // POST /access-bundles/:accessBundleId/members — exactly one of the three ids
 → { "groupId": "g1-2b3c-…" }
-← 201 { "member": { "id", "type": "group"|"user"|"identity",
-                    "groupId"|"userId"|"identityId", "name", "email"?, "createdAt" } }
+← 200 { "member": { "id", "userId"|null, "identityId"|null, "groupId"|null,
+                    "name", "email", "createdAt" } }
 ← 400 zero or more than one id supplied
 ← 409 already a member
 // the actor must already be a member of the Agent Vault project — validate on add, or the
-// grant silently does nothing. DELETE …/members/:memberId → 204.
+// grant silently does nothing. DELETE …/members/:memberId → 200 { member: { id } }.
 
 // POST /sessions
 → { "accessBundleIds": ["b7f3a1c2-…", "b8c4d2e3-…"], "ttl": "7d" }
-← 201 { "session": { "id", "token": "agv_9k2…",        // returned exactly once
+← 200 { "session": { "id", "token": "agv_9k2…",        // returned exactly once
                      "expiresAt": "2026-09-08T04:12:00Z" | null,
                      "accessBundles": [ { "id", "name", "position": 0 } ] } }
 ← 400  naming the first unreachable bundle, never silently dropping it. Same message whether the id
 //     is unknown or merely not granted, so this is not the existence oracle the 404 rule above avoids
 
-// POST /sessions/:sessionId/revoke   → 204, idempotent
+// POST /sessions/:sessionId/revoke   → 200 { session: { id, revokedAt } }, idempotent
 ```
+
+**Status codes match the repo, not this section's first draft.** Every write returns **200** with the
+resource, and a delete returns the deleted object rather than 204 — that is what PAM, cert manager and
+every other product router here do, and a lone 201/204 island would be the deviation. Written down
+because the shapes above originally said 201 and 204.
 
 Rules the shapes do not carry:
 
