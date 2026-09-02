@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
 import handlebars from "handlebars";
 import picomatch from "picomatch";
 import { z } from "zod";
@@ -411,7 +411,9 @@ const assertRoleSetBoundary = ({
 }: TAssertRoleSetBoundaryArg) => {
   const primaryAction = Array.isArray(opActions) ? opActions[0] : opActions;
 
-  for (const target of targetPermissions) {
+  const targets = targetPermissions.length ? targetPermissions : [{ permission: createMongoAbility([]) }];
+
+  for (const target of targets) {
     const boundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       opActions,

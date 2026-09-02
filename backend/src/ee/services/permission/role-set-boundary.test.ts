@@ -45,6 +45,24 @@ describe("assertRoleSetBoundary", () => {
     expect(() => runBoundary(member, [])).not.toThrow();
   });
 
+  test("an empty target role set still requires the action under the new privilege system", () => {
+    // A no-access group resolves to zero roles, but the actor must still hold the action itself.
+    const assertNewSystem = (actorPermission: MongoAbility) =>
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem: true,
+        opActions: ProjectPermissionIdentityActions.Delete,
+        opSubject: ProjectPermissionSub.Identity,
+        actorPermission,
+        targetPermissions: [],
+        baseMessage: "Failed to remove a more privileged identity from the project"
+      });
+
+    expect(() => assertNewSystem(member)).not.toThrow();
+    expect(() => assertNewSystem(createMongoAbility<MongoAbility<ProjectPermissionSet>>([]))).toThrow(
+      PermissionBoundaryError
+    );
+  });
+
   test("the thrown error carries the missing permissions", () => {
     try {
       runBoundary(member, [{ permission: admin }]);
