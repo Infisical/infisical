@@ -72,7 +72,12 @@ import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-accou
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
-import { getSlackSendTargets, parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
+import {
+  escapeMarkdown,
+  getSlackSendTargets,
+  parseNotificationChannels,
+  parseNotificationEvents
+} from "./pam-access-request-fns";
 import {
   TAccessRequestActor,
   TBreakGlassAccessRequestDTO,
@@ -1397,7 +1402,7 @@ export const pamAccessRequestServiceFactory = ({
             orgId,
             type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
             title: "Access approval bypassed",
-            body: `**${request.requesterName ?? "A user"}** used break-glass to self-approve access to **${account.name}**. Reason: "${bypassReason}"`
+            body: `**${escapeMarkdown(request.requesterName ?? "A user")}** used break-glass to self-approve access to **${escapeMarkdown(account.name)}**. Reason: "${escapeMarkdown(bypassReason)}"`
           }))
         );
 
@@ -1600,8 +1605,11 @@ export const pamAccessRequestServiceFactory = ({
       accountType: account.accountType,
       grantId: grant.id,
       policyId: policy.id,
+      policyName: policy.name,
       accountName: account.name,
       folderName: account.folderName,
+      granteeName: request.requesterName,
+      granteeEmail: request.requesterEmail,
       accessDuration: requestData.requestData.duration,
       approverCount: bypassedApproverCount
     };

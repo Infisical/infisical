@@ -343,6 +343,50 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteBypassersBySubject = async (
+    args: {
+      projectId: string;
+      scopeType?: string;
+      scopeId?: string;
+      userId?: string;
+      groupId?: string;
+    },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.userId && !args.groupId) return;
+
+      const conn = tx || db;
+
+      const policyIdsQuery = conn(TableName.ApprovalPolicies).where(
+        `${TableName.ApprovalPolicies}.projectId`,
+        args.projectId
+      );
+
+      if (typeof args.scopeType === "string") {
+        void policyIdsQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+        if (typeof args.scopeId === "string") {
+          void policyIdsQuery.where(`${TableName.ApprovalPolicies}.scopeId`, args.scopeId);
+        }
+      }
+
+      const policyIds = (await policyIdsQuery.select<{ id: string }[]>(`${TableName.ApprovalPolicies}.id`)).map(
+        (p) => p.id
+      );
+      if (policyIds.length === 0) return;
+
+      const deleteQuery = conn(TableName.ApprovalPolicyBypassers).whereIn("policyId", policyIds);
+      if (args.userId) {
+        void deleteQuery.andWhere("userId", args.userId);
+      } else if (args.groupId) {
+        void deleteQuery.andWhere("groupId", args.groupId);
+      }
+      await deleteQuery.delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete bypassers by subject" });
+    }
+  };
+
   const deleteStepApproversBySubject = async (
     args: {
       projectId: string;
@@ -450,6 +494,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     isProjectApprover,
     findScopeIdsWithApprovers,
     deleteStepApproversBySubject,
+    deleteBypassersBySubject,
     deleteUserStepApproversInProjects
   };
 };

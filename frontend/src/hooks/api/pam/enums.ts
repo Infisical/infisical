@@ -153,5 +153,6 @@ export enum PamApproverType {
 export enum PamNotificationEvent {
   AccessRequested = "access-requested",
   AccessRequestApproved = "access-request-approved",
-  AccessRequestDenied = "access-request-denied"
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
 }

@@ -7,6 +7,8 @@ import {
 
 import { PamNotificationEvent } from "../pam/pam-enums";
 
+export const escapeMarkdown = (text: string) => text.replace(/[\\`*_[\]()#+\-!>|~]/g, "\\$&");
+
 const NotificationChannelsSchema = z.array(z.object({ id: z.string(), name: z.string() }));
 const NotificationEventsSchema = z.array(z.nativeEnum(PamNotificationEvent));
 
