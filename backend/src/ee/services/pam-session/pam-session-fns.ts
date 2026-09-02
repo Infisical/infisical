@@ -3,7 +3,7 @@ import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { createGatewayConnection, createRelayConnection, destroyGatewayTunnel } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -104,6 +104,8 @@ export const sendPamSessionCancellationSignal = ({
 }) => {
   void (async () => {
     let relayConn: net.Socket | null = null;
+    let cancelConn: net.Socket | null = null;
+    const tunnelId = sessionId;
     try {
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId,
@@ -124,18 +126,22 @@ export const sendPamSessionCancellationSignal = ({
         relayHost: certs.relayHost,
         clientCertificate: certs.relay.clientCertificate,
         clientPrivateKey: certs.relay.clientPrivateKey,
-        serverCertificateChain: certs.relay.serverCertificateChain
+        serverCertificateChain: certs.relay.serverCertificateChain,
+        tunnelId
       });
-      const cancelConn = await createGatewayConnection(
+      cancelConn = await createGatewayConnection(
         relayConn,
         certs.gateway,
-        GatewayProxyProtocol.PamSessionCancellation
+        GatewayProxyProtocol.PamSessionCancellation,
+        tunnelId
       );
       cancelConn.end();
     } catch (err) {
       logger.error({ sessionId, err }, `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`);
     } finally {
-      relayConn?.destroy();
+      // end() leaves the inner TLS session reading the gateway's close_notify through relayConn, so
+      // the transport must not be destroyed first.
+      destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
     }
   })();
 };
