@@ -117,7 +117,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
           onClick={() =>
             navigate({
               to: "/organizations/$orgId/agent-vault/sessions",
-              params: { orgId: currentOrg.id }
+              params: { orgId: currentOrg.id },
+              search: { accessBundleId: accessBundle.id }
             })
           }
         >

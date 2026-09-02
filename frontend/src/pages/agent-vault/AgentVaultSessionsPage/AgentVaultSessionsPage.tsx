@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   ActivityIcon,
@@ -94,7 +94,23 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
+  const navigate = useNavigate();
+  const { accessBundleId: initialAccessBundleId } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions"
+  });
+  const isCreateOpen = isCreateSheetOpen || Boolean(initialAccessBundleId);
+  const handleCreateOpenChange = (isOpen: boolean) => {
+    setIsCreateSheetOpen(isOpen);
+    if (!isOpen && initialAccessBundleId) {
+      navigate({
+        to: "/organizations/$orgId/agent-vault/sessions",
+        params: { orgId: currentOrg.id },
+        search: {},
+        replace: true
+      });
+    }
+  };
   // Held on the page rather than inside the sheet so closing the sheet does not take the one-time
   // token reveal with it.
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
@@ -154,7 +170,7 @@ export const AgentVaultSessionsPage = () => {
         <Button
           variant="av"
           isDisabled={!hasReachableBundles}
-          onClick={() => setIsCreateOpen(true)}
+          onClick={() => setIsCreateSheetOpen(true)}
         >
           Create Session
         </Button>
@@ -333,7 +349,8 @@ export const AgentVaultSessionsPage = () => {
 
       <CreateSessionSheet
         isOpen={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
+        onOpenChange={handleCreateOpenChange}
+        initialAccessBundleId={initialAccessBundleId}
         onCreated={(session, bundles) => {
           setMintedSession(session);
           setMintedBundles(bundles);
