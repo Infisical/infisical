@@ -1,7 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -15,6 +14,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  PageHeader,
   Pagination,
   Skeleton,
   Table,
@@ -166,7 +166,7 @@ export const KeyVersionsPage = () => {
   }
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="mx-auto flex flex-col justify-between text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <Button
           className="mb-4"

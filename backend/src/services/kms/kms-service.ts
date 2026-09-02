@@ -627,6 +627,7 @@ export const kmsServiceFactory = ({
         },
         tx
       );
+      await kmsImportKeyMaterialTokenDAL.updateById(importToken.id, { isUtilized: true }, tx);
 
       return {
         kmsKeyVersionId: internalKmsKeyVersion.id,

@@ -29,38 +29,44 @@ const createKey = async (name: string, keyUsage: KmsKeyUsage, algorithm: string,
   return JSON.parse(response.payload).key as { id: string };
 };
 
-const importMaterial = async (keyId: string, material: Buffer, wrapAlgorithm: KeyWrapAlgorithm) => {
+type TImportParams = { publicKey: string; token: string };
+
+const getImportParams = async (keyId: string, wrapAlgorithm: KeyWrapAlgorithm) => {
   const paramsResponse = await request("POST", `/api/v1/kms/keys/${keyId}/params-for-import`, {
     wrapKeyEncryptionAlgorithm: AsymmetricKeyAlgorithm.RSA_4096,
     wrapSigningAlgorithm: wrapAlgorithm
   });
   expect(paramsResponse.statusCode, paramsResponse.payload).toBe(200);
-  const params = JSON.parse(paramsResponse.payload) as { publicKey: string; token: string };
+  return JSON.parse(paramsResponse.payload) as TImportParams;
+};
+
+const wrapKeyMaterial = (publicKey: string, material: Buffer, wrapAlgorithm: KeyWrapAlgorithm) => {
   const oaepHash = wrapAlgorithm.endsWith("SHA_256") ? "sha256" : "sha1";
-  let wrappedKeyMaterial: Buffer;
   if (wrapAlgorithm.startsWith("RSAES_OAEP")) {
-    wrappedKeyMaterial = publicEncrypt(
-      { key: params.publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash },
-      material
-    );
-  } else {
-    const aesKek = randomBytes(32);
-    try {
-      const cipher = createCipheriv("id-aes256-wrap-pad", aesKek, AES_KWP_IV);
-      const wrappedMaterial = Buffer.concat([cipher.update(material), cipher.final()]);
-      const wrappedKek = publicEncrypt(
-        { key: params.publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash },
-        aesKek
-      );
-      wrappedKeyMaterial = Buffer.concat([wrappedKek, wrappedMaterial]);
-    } finally {
-      aesKek.fill(0);
-    }
+    return publicEncrypt({ key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash }, material);
   }
-  return request("POST", `/api/v1/kms/keys/${keyId}/import-material`, {
-    token: params.token,
+
+  const aesKek = randomBytes(32);
+  try {
+    const cipher = createCipheriv("id-aes256-wrap-pad", aesKek, AES_KWP_IV);
+    const wrappedMaterial = Buffer.concat([cipher.update(material), cipher.final()]);
+    const wrappedKek = publicEncrypt({ key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash }, aesKek);
+    return Buffer.concat([wrappedKek, wrappedMaterial]);
+  } finally {
+    aesKek.fill(0);
+  }
+};
+
+const importWrappedMaterial = (keyId: string, token: string, wrappedKeyMaterial: Buffer) =>
+  request("POST", `/api/v1/kms/keys/${keyId}/import-material`, {
+    token,
     wrappedKeyMaterial: wrappedKeyMaterial.toString("base64")
   });
+
+const importMaterial = async (keyId: string, material: Buffer, wrapAlgorithm: KeyWrapAlgorithm) => {
+  const params = await getImportParams(keyId, wrapAlgorithm);
+  const wrappedKeyMaterial = wrapKeyMaterial(params.publicKey, material, wrapAlgorithm);
+  return importWrappedMaterial(keyId, params.token, wrappedKeyMaterial);
 };
 
 const exportMaterial = async (keyId: string) => {
@@ -281,6 +287,37 @@ describe("CMEK key-material import", () => {
       [queuedCiphertext, queuedPlaintext],
       [rotatedCiphertext, rotatedPlaintext]
     ]);
+  });
+
+  test("consumes a wrapping token after a subsequent symmetric-key import", async () => {
+    const source = await createKey(
+      "e2e-replayed-token-source",
+      KmsKeyUsage.ENCRYPT_DECRYPT,
+      SymmetricKeyAlgorithm.AES_GCM_256
+    );
+    const target = await createKey(
+      "e2e-replayed-token-target",
+      KmsKeyUsage.ENCRYPT_DECRYPT,
+      SymmetricKeyAlgorithm.AES_GCM_256,
+      true
+    );
+    const material = await exportMaterial(source.id);
+
+    expect((await importMaterial(target.id, material, KeyWrapAlgorithm.RSAES_OAEP_SHA_256)).statusCode).toBe(200);
+
+    const params = await getImportParams(target.id, KeyWrapAlgorithm.RSAES_OAEP_SHA_256);
+    const wrappedKeyMaterial = wrapKeyMaterial(params.publicKey, material, KeyWrapAlgorithm.RSAES_OAEP_SHA_256);
+    const secondImport = await importWrappedMaterial(target.id, params.token, wrappedKeyMaterial);
+    expect(secondImport.statusCode, secondImport.payload).toBe(200);
+    expect(JSON.parse(secondImport.payload).keyVersion).toBe(2);
+
+    const replay = await importWrappedMaterial(target.id, params.token, wrappedKeyMaterial);
+    expect(replay.statusCode, replay.payload).toBe(400);
+    expect(replay.payload).toContain("already been used");
+
+    const versions = await request("GET", `/api/v1/kms/keys/${target.id}/versions?limit=10`);
+    expect(versions.statusCode, versions.payload).toBe(200);
+    expect(JSON.parse(versions.payload).totalCount).toBe(2);
   });
 
   test.each(Object.values(HmacAlgorithm))("imports %s material and verifies a MAC", async (algorithm) => {
