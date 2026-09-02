@@ -106,6 +106,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     name: string;
     isExternal?: boolean;
     externalType?: string;
+    productNameId?: string;
     keyAlgorithm?: string | null;
   };
   certificatePolicy?: {
