@@ -37,6 +37,7 @@ import {
   THostCommandContext,
   toPosixShellLiteral
 } from "../pki-sync-host-command-fns";
+import { describeHostFailure, resolveGatewayLabel, withReachabilityDeadline } from "../pki-sync-host-error-fns";
 import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
@@ -46,7 +47,7 @@ type TLinuxServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
@@ -398,6 +399,14 @@ export const linuxServerPkiSyncFactory = ({
     let removed = 0;
 
     const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
+    const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+    const describeFailure = (error: unknown) =>
+      describeHostFailure({
+        error,
+        host: (pkiSync.destinationConfig as TLinuxServerPkiSyncConfig).host,
+        gatewayLabel,
+        transport: "SSH"
+      });
 
     const healthCheck = await runLinuxServerHealthCheckCommand({
       pkiSync,
@@ -489,7 +498,7 @@ export const linuxServerPkiSyncFactory = ({
             `Linux Server PKI sync [syncId=${pkiSync.id}]: wrote ${writtenPaths.length} file(s) for "${baseName}"`
           );
         } catch (err) {
-          failedUploads.push({ name: baseName, error: (err as Error)?.message ?? "Unknown error" });
+          failedUploads.push({ name: baseName, error: describeFailure(err) });
         }
       }
 
@@ -597,5 +606,22 @@ export const linuxServerPkiSyncFactory = ({
       gatewayServices: { gatewayV2Service, gatewayPoolService, keyStore }
     });
 
-  return { syncCertificates, removeCertificates, runHealthCheck };
+  const testReachability = async (pkiSync: TPkiSyncWithCredentials): Promise<void> => {
+    const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
+    const { host } = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+
+    try {
+      await withReachabilityDeadline(() =>
+        withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async () => undefined)
+      );
+    } catch (err) {
+      const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+      throw new PkiSyncError({
+        shouldRetry: false,
+        message: describeHostFailure({ error: err, host, gatewayLabel, transport: "SSH" })
+      });
+    }
+  };
+
+  return { syncCertificates, removeCertificates, runHealthCheck, testReachability };
 };

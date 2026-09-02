@@ -1,7 +1,8 @@
 import { buildDomainBaseDN } from "@app/lib/ldap/ldap-search-fns";
 
+import { LdapProvider } from "./ldap-connection-enums";
 import { extractDomainFromDN } from "./ldap-connection-fns";
-import { parseLdapBindIdentity } from "./ldap-directory-fns";
+import { assertLdapProviderIsSupported, parseLdapBindIdentity } from "./ldap-directory-fns";
 
 describe("parseLdapBindIdentity", () => {
   test("derives the domain and the UPN local part, which is only a fallback for the logon name", () => {
@@ -74,5 +75,20 @@ describe("buildDomainBaseDN", () => {
 
   test("handles a single-label domain", () => {
     expect(buildDomainBaseDN("corp")).toBe("DC=corp");
+  });
+});
+
+describe("assertLdapProviderIsSupported", () => {
+  it("accepts an Active Directory connection", () => {
+    expect(() => assertLdapProviderIsSupported(LdapProvider.ActiveDirectory, "corp-ad")).not.toThrow();
+  });
+
+  it("refuses a provider that is not Active Directory, naming the connection", () => {
+    expect(() => assertLdapProviderIsSupported("openldap", "corp-ad")).toThrow(/corp-ad/);
+    expect(() => assertLdapProviderIsSupported("openldap", "corp-ad")).toThrow(/Active Directory/);
+  });
+
+  it("accepts an absent provider, which is a connection read without decrypted credentials", () => {
+    expect(() => assertLdapProviderIsSupported(undefined, "corp-ad")).not.toThrow();
   });
 });

@@ -17,6 +17,7 @@ import { logger } from "@app/lib/logger";
 import { UserPrincipalNameRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
+import { LdapProvider } from "./ldap-connection-enums";
 import { executeWithPotentialGateway, extractDomainFromDN } from "./ldap-connection-fns";
 import { TLdapConnectionConfig } from "./ldap-connection-types";
 
@@ -208,6 +209,14 @@ const resolveLdapHostLogin = async (
   return username;
 };
 
+export const assertLdapProviderIsSupported = (provider: string | undefined, connectionName: string) => {
+  if (provider !== undefined && provider !== LdapProvider.ActiveDirectory) {
+    throw new BadRequestError({
+      message: `The LDAP connection '${connectionName}' uses the '${provider}' provider. Certificate syncs read machine and account attributes that only Active Directory provides, so they require an Active Directory connection.`
+    });
+  }
+};
+
 export const resolveLdapBackedHostCredentials = async (
   {
     connection,
@@ -239,6 +248,8 @@ export const resolveLdapBackedHostCredentials = async (
     gatewayPoolId: connection.gatewayPoolId,
     orgId: connection.orgId
   } as unknown as TLdapConnectionConfig;
+
+  assertLdapProviderIsSupported((connection.credentials as { provider?: string }).provider, connection.name);
 
   const username = await resolveLdapHostLogin(config, gatewayServices);
 

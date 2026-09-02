@@ -33,6 +33,7 @@ import {
   THostCommandExecutionResult,
   toPowerShellLiteral
 } from "../pki-sync-host-command-fns";
+import { describeHostFailure, resolveGatewayLabel, withReachabilityDeadline } from "../pki-sync-host-error-fns";
 import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
@@ -42,7 +43,7 @@ type TWindowsServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
@@ -306,6 +307,9 @@ export const windowsServerPkiSyncFactory = ({
     const deliveredPaths = new Set<string>();
     const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
     const target = await buildWinRMTarget(pkiSync, gatewayDeps);
+    const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, target.gatewayId);
+    const describeFailure = (error: unknown) =>
+      describeHostFailure({ error, host: config.host, gatewayLabel, transport: "WinRM" });
     let uploaded = 0;
     let removed = 0;
 
@@ -389,7 +393,7 @@ export const windowsServerPkiSyncFactory = ({
         }
         uploaded += 1;
       } catch (err) {
-        failedUploads.push({ name: baseName, error: (err as Error)?.message ?? "Unknown error" });
+        failedUploads.push({ name: baseName, error: describeFailure(err) });
       }
     }
 
@@ -493,5 +497,22 @@ export const windowsServerPkiSyncFactory = ({
       gatewayDeps
     });
 
-  return { syncCertificates, removeCertificates, runHealthCheck };
+  const testReachability = async (pkiSync: TPkiSyncWithCredentials): Promise<void> => {
+    const target = await buildWinRMTarget(pkiSync, gatewayDeps);
+    const { host } = pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
+
+    try {
+      await withReachabilityDeadline(() =>
+        executeWinRMGatewayOperation({ ...target, endpoint: WinRmRpcEndpoint.Test }, gatewayDeps)
+      );
+    } catch (err) {
+      const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, target.gatewayId);
+      throw new PkiSyncError({
+        shouldRetry: false,
+        message: describeHostFailure({ error: err, host, gatewayLabel, transport: "WinRM" })
+      });
+    }
+  };
+
+  return { syncCertificates, removeCertificates, runHealthCheck, testReachability };
 };

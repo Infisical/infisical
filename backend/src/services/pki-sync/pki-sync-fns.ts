@@ -271,7 +271,7 @@ export const PkiSyncFns = {
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
@@ -414,7 +414,7 @@ export const PkiSyncFns = {
     certificateMap: TCertificateMap,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
@@ -449,6 +449,43 @@ export const PkiSyncFns = {
     }
   },
 
+  testReachability: async (
+    pkiSync: THealthCheckTarget,
+    dependencies: {
+      certificateSyncDAL: TCertificateSyncDALFactory;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
+      gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+      keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+    }
+  ): Promise<void> => {
+    if (pkiSync.destination === PkiSync.LinuxServer) {
+      const linuxServerPkiSync = linuxServerPkiSyncFactory({
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService,
+        keyStore: dependencies.keyStore
+      });
+      await linuxServerPkiSync.testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
+      return;
+    }
+
+    if (pkiSync.destination === PkiSync.WindowsServer) {
+      if (!dependencies.gatewayV2Service) {
+        throw new PkiSyncError({
+          shouldRetry: false,
+          message: "Windows Server sync requires a gateway to reach the host."
+        });
+      }
+      const windowsServerPkiSync = windowsServerPkiSyncFactory({
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService,
+        keyStore: dependencies.keyStore
+      });
+      await windowsServerPkiSync.testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
+    }
+  },
+
   removeCertificates: async (
     pkiSync: TPkiSyncWithCredentials,
     certificateNames: string[],
@@ -458,7 +495,7 @@ export const PkiSyncFns = {
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }

@@ -30,14 +30,9 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
+import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import {
-  PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-  PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
-  PKI_SYNC_CONNECTION_LOCK_RETRY,
-  PkiSyncFailureKind,
-  PkiSyncStatus
-} from "./pki-sync-enums";
+import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import {
@@ -98,7 +93,7 @@ type TPkiSyncQueueFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -156,19 +151,11 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
-  const $tryAdmitConnectionConcurrency = async (connectionId: string, targetHost?: string) => {
-    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId, targetHost),
-      PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-      PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
-    );
+  const $tryAdmitConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
 
-    return count !== -1;
-  };
-
-  const $releaseConnectionConcurrency = async (connectionId: string, targetHost?: string) => {
-    await keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId, targetHost));
-  };
+  const $releaseConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    releasePkiSyncConcurrency(keyStore, connectionId, targetHost);
 
   const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
     buildCertificateMap(pkiSync, {

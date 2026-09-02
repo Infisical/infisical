@@ -35,6 +35,8 @@ export enum PkiSyncFailureKind {
 
 export const PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT = 3;
 
+export const PKI_SYNC_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT = 15;
+
 export const PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S = 15 * 60;
 
 export const PKI_SYNC_CONNECTION_LOCK_RETRY = { retryCount: 10, retryDelay: 3_000, retryJitter: 500 };

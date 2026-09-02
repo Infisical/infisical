@@ -1,5 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { assertLdapProviderIsSupported } from "@app/services/app-connection/ldap/ldap-directory-fns";
 
 import { PkiSync } from "./pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
@@ -9,6 +10,7 @@ type TTargetHostConnection = {
   name: string;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
+  credentials?: unknown;
 };
 
 export type TPkiSyncDeliveryTarget = {
@@ -53,6 +55,11 @@ export const assertTargetHostMatchesConnection = ({
   }
 
   const destinationName = PKI_SYNC_NAME_MAP[destination];
+
+  assertLdapProviderIsSupported(
+    (connection.credentials as { provider?: string } | undefined)?.provider,
+    connection.name
+  );
 
   if (!host) {
     throw new BadRequestError({
