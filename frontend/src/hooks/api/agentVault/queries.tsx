@@ -23,8 +23,11 @@ export const agentVaultKeys = {
     [...agentVaultKeys.accessBundles(), accessBundleId] as const,
   liveSessionCount: (accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(accessBundleId), "live-session-count"] as const,
-  sessions: (params?: TListAgentVaultSessionsDTO) =>
-    [...agentVaultKeys.all, "sessions", params] as const,
+  // sessions() is the invalidation prefix; sessionList() adds the query parameters. Folding the
+  // parameters into one key would put an `undefined` in the prefix, which prefix-matches nothing.
+  sessions: () => [...agentVaultKeys.all, "sessions"] as const,
+  sessionList: (params?: TListAgentVaultSessionsDTO) =>
+    [...agentVaultKeys.sessions(), params] as const,
   proxies: () => [...agentVaultKeys.all, "proxies"] as const
 };
 
@@ -68,7 +71,7 @@ export const useGetAgentVaultAccessBundleLiveSessionCount = (
 
 export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) =>
   useQuery({
-    queryKey: agentVaultKeys.sessions(params),
+    queryKey: agentVaultKeys.sessionList(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         sessions: TAgentVaultSession[];
