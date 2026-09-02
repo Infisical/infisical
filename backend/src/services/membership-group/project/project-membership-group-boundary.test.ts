@@ -8,6 +8,7 @@ import {
   projectNoAccessPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newProjectMembershipGroupFactory } from "./project-membership-group-factory";
@@ -40,6 +41,23 @@ const memberWithGroupEdit = createMongoAbility<MongoAbility>([
     subject: ProjectPermissionSub.Groups
   }
 ] as never);
+
+// Holds groups:edit outright, but may only assign roles to groups whose name the glob reaches --
+// "the-group" is outside it.
+const contractorScopedEditor = createMongoAbility<MongoAbility>(
+  [
+    {
+      action: [ProjectPermissionGroupActions.Read, ProjectPermissionGroupActions.Edit],
+      subject: ProjectPermissionSub.Groups
+    },
+    {
+      action: ProjectPermissionGroupActions.AssignRole,
+      subject: ProjectPermissionSub.Groups,
+      conditions: { groupName: { $glob: "contractor-*" } }
+    }
+  ] as never,
+  { conditionsMatcher }
+);
 
 const createGuard = ({
   actorPermission,
@@ -114,6 +132,12 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
     await expect(createGuard({ actorPermission: admin, shouldUseNewPrivilegeSystem: true })()).resolves.toMatchObject({
       group: { id: GROUP_ID }
     });
+  });
+
+  test("a groupName-scoped actor cannot strip an out-of-scope Admin group down to no-access", async () => {
+    const guard = createGuard({ actorPermission: contractorScopedEditor, shouldUseNewPrivilegeSystem: true });
+
+    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
   });
 
   test("nothing outranks the actor, so an ordinary downgrade is let through", async () => {

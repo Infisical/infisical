@@ -1,5 +1,6 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
+import { conditionsMatcher } from "@app/lib/casl";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
@@ -61,6 +62,56 @@ describe("assertRoleSetBoundary", () => {
     expect(() => assertNewSystem(createMongoAbility<MongoAbility<ProjectPermissionSet>>([]))).toThrow(
       PermissionBoundaryError
     );
+  });
+
+  describe("an actor whose rule is scoped with an assignableRole condition", () => {
+    const scopedActor = (condition: Record<string, unknown>) =>
+      createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+        [
+          {
+            action: ProjectPermissionIdentityActions.AssignRole,
+            subject: ProjectPermissionSub.Identity,
+            conditions: { assignableRole: condition }
+          }
+        ],
+        { conditionsMatcher }
+      );
+
+    const assignRole = (
+      actorPermission: MongoAbility,
+      targetPermissions: { permission: MongoAbility; role?: { slug: string } }[]
+    ) =>
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem: true,
+        opActions: ProjectPermissionIdentityActions.AssignRole,
+        opSubject: ProjectPermissionSub.Identity,
+        actorPermission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged identity",
+        subjectFields: { identityId: "identity-1" }
+      });
+
+    test("passes for a target holding a role the condition covers", () => {
+      const actor = scopedActor({ $in: ["viewer", "member"] });
+      expect(() => assignRole(actor, [{ permission: member, role: { slug: "member" } }])).not.toThrow();
+    });
+
+    test("still rejects a target holding a role the condition excludes", () => {
+      const actor = scopedActor({ $in: ["viewer", "member"] });
+      expect(() => assignRole(actor, [{ permission: admin, role: { slug: "admin" } }])).toThrow(
+        PermissionBoundaryError
+      );
+    });
+
+    test("a $glob condition matches the target role instead of throwing", () => {
+      // Evaluating $glob against an absent assignableRole threw a raw TypeError out of picomatch,
+      // which surfaced as a 500 rather than a permission error.
+      const actor = scopedActor({ $glob: "team-*" });
+      expect(() => assignRole(actor, [{ permission: member, role: { slug: "team-a" } }])).not.toThrow();
+      expect(() => assignRole(actor, [{ permission: member, role: { slug: "admin" } }])).toThrow(
+        PermissionBoundaryError
+      );
+    });
   });
 
   test("the thrown error carries the missing permissions", () => {

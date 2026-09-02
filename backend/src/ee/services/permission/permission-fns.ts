@@ -394,7 +394,7 @@ type TAssertRoleSetBoundaryArg = {
   opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[];
   opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1];
   actorPermission: MongoAbility;
-  targetPermissions: { permission: MongoAbility }[];
+  targetPermissions: { permission: MongoAbility; role?: { slug: string } }[];
   baseMessage: string;
   subjectFields?: Record<string, string | undefined>;
 };
@@ -414,13 +414,15 @@ const assertRoleSetBoundary = ({
   const targets = targetPermissions.length ? targetPermissions : [{ permission: createMongoAbility([]) }];
 
   for (const target of targets) {
+    const targetSubjectFields = target.role ? { ...subjectFields, assignableRole: target.role.slug } : subjectFields;
+
     const boundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       opActions,
       opSubject,
       actorPermission,
       target.permission,
-      subjectFields
+      targetSubjectFields
     );
 
     if (!boundary.isValid)

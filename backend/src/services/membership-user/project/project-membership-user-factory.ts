@@ -250,7 +250,8 @@ export const newProjectMembershipUserFactory = ({
         opSubject: ProjectPermissionSub.Member,
         actorPermission: permission,
         targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged member"
+        baseMessage: "Failed to change the roles of a more privileged member",
+        subjectFields: { userEmail: targetUser.email || undefined }
       });
     }
 

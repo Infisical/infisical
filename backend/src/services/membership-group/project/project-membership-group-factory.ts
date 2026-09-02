@@ -184,7 +184,8 @@ export const newProjectMembershipGroupFactory = ({
         opSubject: ProjectPermissionSub.Groups,
         actorPermission: permission,
         targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged group"
+        baseMessage: "Failed to change the roles of a more privileged group",
+        subjectFields: { groupName: groupDetails.name }
       });
     }
 
