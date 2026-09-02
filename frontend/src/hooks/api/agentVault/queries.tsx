@@ -28,8 +28,23 @@ export const agentVaultKeys = {
   sessions: () => [...agentVaultKeys.all, "sessions"] as const,
   sessionList: (params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(), params] as const,
-  proxies: () => [...agentVaultKeys.all, "proxies"] as const
+  proxies: () => [...agentVaultKeys.all, "proxies"] as const,
+  productIdentities: () => [...agentVaultKeys.all, "product-identities"] as const
 };
+
+// Every identity member rather than a page: the grant picker filters client-side, so a paginated
+// list would leave search unable to find one it never fetched.
+export const useListAgentVaultProductIdentities = (enabled = true) =>
+  useQuery({
+    queryKey: agentVaultKeys.productIdentities(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ identities: { id: string; name: string }[] }>(
+        "/api/v1/agent-vault/memberships/identities"
+      );
+      return data.identities;
+    },
+    enabled
+  });
 
 export const useListAgentVaultAccessBundles = () =>
   useQuery({

@@ -1,6 +1,7 @@
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -15,6 +16,7 @@ import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types"
 
 type TAgentVaultMembershipServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction">;
+  identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -25,6 +27,11 @@ type TAgentVaultMembershipServiceFactoryDep = {
 };
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
+
+export type TListAgentVaultProductIdentitiesDTO = {
+  projectId: string;
+  ctx: TAgentVaultActorContext;
+};
 
 export type TAddAgentVaultProductUserMembersDTO = {
   projectId: string;
@@ -41,6 +48,7 @@ const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembe
 // invite, which grants the org's implicit Agent Vault project by email before the invitee has logged in.
 export const agentVaultMembershipServiceFactory = ({
   membershipDAL,
+  identityDAL,
   membershipRoleDAL,
   projectAccessRequestDAL,
   userDAL,
@@ -193,5 +201,27 @@ export const agentVaultMembershipServiceFactory = ({
     return { memberships, skipped };
   };
 
-  return { addProductUserMembers };
+  // The whole set rather than a page: the grant picker filters client-side, so a page would make
+  // search unable to find an identity it never fetched. Mirrors PAM's product membership listing.
+  const listProductIdentities = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
+    await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const identityIds = memberships.map((m) => m.actorIdentityId).filter((id): id is string => Boolean(id));
+    if (!identityIds.length) return [];
+
+    const identities = await identityDAL.find({ $in: { id: identityIds } });
+    return identities
+      .map((identity) => ({ id: identity.id, name: identity.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  return { addProductUserMembers, listProductIdentities };
 };

@@ -101,6 +101,7 @@ export enum ApiDocsTags {
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
+  AgentVaultMemberships = "Agent Vault Memberships",
   KmipServers = "KMIP Servers"
 }
 
@@ -4174,6 +4175,9 @@ export const AGENT_VAULT = {
     userId: "The ID of the user to grant the access bundle to.",
     identityId: "The ID of the machine identity to grant the access bundle to.",
     groupId: "The ID of the group to grant the access bundle to."
+  },
+  MEMBERSHIP: {
+    identityName: "The name of the machine identity."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",

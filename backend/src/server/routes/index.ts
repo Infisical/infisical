@@ -1828,6 +1828,7 @@ export const registerRoutes = async (
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({
     membershipDAL,
+    identityDAL,
     membershipRoleDAL,
     projectAccessRequestDAL,
     userDAL,

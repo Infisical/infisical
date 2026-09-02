@@ -18,9 +18,11 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useAddAgentVaultAccessBundleMember } from "@app/hooks/api/agentVault";
+import {
+  useAddAgentVaultAccessBundleMember,
+  useListAgentVaultProductIdentities
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
-import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
 
 enum MemberKind {
@@ -60,10 +62,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     currentProject.type,
     { enabled: isOpen }
   );
-  const { data: identityMemberships } = useListProjectIdentityMemberships(
-    { projectId: currentProject.id, projectType: currentProject.type, limit: 100 },
-    { enabled: isOpen }
-  );
+  const { data: identities } = useListAgentVaultProductIdentities(isOpen);
 
   // Anyone already granted the bundle is filtered out, so the 409 the API returns for a duplicate
   // is never reachable from the picker.
@@ -83,8 +82,8 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       }))
       .filter((option) => !grantedIds.has(option.id));
   } else if (kind === MemberKind.Identity) {
-    options = (identityMemberships?.identityMemberships ?? [])
-      .map((membership) => ({ id: membership.identity.id, label: membership.identity.name }))
+    options = (identities ?? [])
+      .map((identity) => ({ id: identity.id, label: identity.name }))
       .filter((option) => !grantedIds.has(option.id));
   } else {
     options = (groupMemberships ?? [])
