@@ -632,7 +632,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:accountId/heartbeat",
+    url: "/:accountId/health",
     schema: {
       operationId: "getPamAccountCredentialHealth",
       description: "Get a PAM account's credential health",
@@ -671,7 +671,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:accountId/heartbeat/check",
+    url: "/:accountId/health/check",
     schema: {
       operationId: "checkPamAccountCredentialHealth",
       description: "Run a credential health check on a PAM account now",

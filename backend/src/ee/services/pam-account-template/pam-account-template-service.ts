@@ -154,8 +154,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
-    // Credential health checking is on for a new template unless the caller says otherwise. Templates that
-    // predate the feature are left alone, so an upgrade never starts signing in to targets on its own.
+    // Credential health checking is on for a new template unless the caller says otherwise.
     const seededSettings: TPamTemplateSettings = {
       ...(settings ?? {}),
       heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG

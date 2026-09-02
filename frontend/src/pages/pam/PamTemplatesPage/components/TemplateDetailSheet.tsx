@@ -346,8 +346,6 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
-              // New templates are seeded on by the API; one with no heartbeat key predates the feature and
-              // must stay off, so an upgrade never starts signing in to targets on its own.
               heartbeatEnabled: heartbeat.enabled ?? false,
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:

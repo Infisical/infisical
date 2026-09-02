@@ -5,7 +5,12 @@ import {
   DEFAULT_HEARTBEAT_CONFIG,
   PamHeartbeatConfigSchema
 } from "../pam-account-template/pam-account-template-schemas";
-import { classifyCloudProbeError, isHeartbeatScheduled } from "./pam-heartbeat-fns";
+import {
+  classifyCloudProbeError,
+  describeFailure,
+  isHeartbeatScheduled,
+  UNCLASSIFIED_FAILURE_NOTE
+} from "./pam-heartbeat-fns";
 
 // Shapes the three federation helpers actually throw: axios (Azure, GCP) and the AWS SDK.
 const axiosError = (status: number) => ({ isAxiosError: true, response: { status } });
@@ -53,5 +58,19 @@ describe("DEFAULT_HEARTBEAT_CONFIG", () => {
     expect(DEFAULT_HEARTBEAT_CONFIG.enabled).toBe(true);
     expect(PamHeartbeatConfigSchema.safeParse(DEFAULT_HEARTBEAT_CONFIG).success).toBe(true);
     expect(isHeartbeatScheduled(DEFAULT_HEARTBEAT_CONFIG)).toBe(true);
+  });
+});
+
+describe("describeFailure", () => {
+  test("leaves a classified failure's message alone", () => {
+    expect(describeFailure("auth", "password authentication failed")).toBe("password authentication failed");
+    expect(describeFailure("transport", "connection refused")).toBe("connection refused");
+  });
+
+  // An old gateway sends no kind, so every failure it reports lands on invalid-credentials.
+  test("says why an unclassified failure reads as a rejection", () => {
+    expect(describeFailure(null, "something went wrong")).toContain(UNCLASSIFIED_FAILURE_NOTE);
+    expect(describeFailure(null, "something went wrong")).toContain("something went wrong");
+    expect(describeFailure(null, undefined)).toBe(UNCLASSIFIED_FAILURE_NOTE);
   });
 });

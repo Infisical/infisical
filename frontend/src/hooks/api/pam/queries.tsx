@@ -320,7 +320,7 @@ export const useGetPamAccountHeartbeat = (accountId?: string, options?: { enable
     queryKey: pamKeys.accountHeartbeat(accountId || ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ heartbeat: TPamAccountHeartbeat }>(
-        `/api/v1/pam/accounts/${accountId}/heartbeat`
+        `/api/v1/pam/accounts/${accountId}/health`
       );
       return data.heartbeat;
     },

@@ -42,6 +42,17 @@ export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartb
   return PamHeartbeatStatus.InvalidCredentials;
 };
 
+// A gateway from before this feature reports no kind at all, so every one of its failures reads as a rejected
+// credential. The status stays on the safe side, but the reason has to say the verdict is the gateway's age
+// rather than an answer from the target.
+export const UNCLASSIFIED_FAILURE_NOTE =
+  "This gateway is too old to tell a rejected credential from an unreachable target. Update the gateway for an accurate result.";
+
+export const describeFailure = (kind: GatewayFailureKind | null, message?: string): string | undefined => {
+  if (kind !== null) return message;
+  return message ? `${message}\n\n${UNCLASSIFIED_FAILURE_NOTE}` : UNCLASSIFIED_FAILURE_NOTE;
+};
+
 // Cloud accounts are brokered over HTTP, so the provider's status says what its prose only hints at. A status
 // at all means the request was answered and the credential judged; 5xx, 408, and 429 are the provider having a
 // bad day rather than a verdict on the credential.

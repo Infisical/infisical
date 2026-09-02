@@ -206,7 +206,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamFolder}.name as folderName`,
         `${TableName.PamAccount}.heartbeatStatus`,
         db.raw(
-          `("${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true') as "heartbeatEnabled"`
+          `("${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true'
+            and "${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'intervalSeconds' is not null) as "heartbeatEnabled"`
         ),
         db.raw(`${staleAccountExistsSql(TableName.PamAccount)} as "isStale"`)
       )
@@ -294,7 +295,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .whereNull(`${TableName.Project}.deleteAfter`)
       .whereNotNull(`${TableName.PamAccount}.nextHeartbeatAt`)
       .where(`${TableName.PamAccount}.nextHeartbeatAt`, "<=", now)
-      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true'`);
+      // Both halves of isHeartbeatScheduled: an enabled config with no interval is manual-only.
+      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'enabled' = 'true'`)
+      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'heartbeat'->>'intervalSeconds' is not null`);
 
   const findAccountsToHeartbeat = async (now: Date, limit: number, tx?: Knex): Promise<TPamAccountDetail[]> => {
     return (await dueHeartbeatQuery(now, tx)
