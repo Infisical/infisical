@@ -72,6 +72,8 @@ import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
 import {
+  isPamSessionLive,
+  pamSessionRemainingSeconds,
   reportPamSessionEnded,
   resolvePamSessionDistinctId,
   sendPamSessionCancellationSignal
@@ -210,7 +212,7 @@ export const pamSessionServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    if (session.status !== PamSessionStatus.Starting && session.status !== PamSessionStatus.Active) {
+    if (!isPamSessionLive(session)) {
       throw new BadRequestError({ message: "Session is not active" });
     }
 
@@ -225,6 +227,7 @@ export const pamSessionServiceFactory = ({
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+    const remainingSeconds = pamSessionRemainingSeconds(session);
 
     if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
       const internalMetadata = parseInternalMetadata(
@@ -242,7 +245,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: `${resolveAccessControls(account.templatePolicies).maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
+          requestedTtl: `${remainingSeconds}s`,
           certType: SshCertType.USER
         });
 
@@ -252,7 +255,6 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.GcpServiceAccount) {
-      const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       credentials.token = await mintGcpAccessToken({
         serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
         authMethod: credentials.authMethod as string,

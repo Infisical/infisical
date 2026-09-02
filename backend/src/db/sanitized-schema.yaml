@@ -349,6 +349,7 @@ tables:
       - accessTokenPeriod
       - tokenReviewMode
       - gatewayV2Id
+      - templateId
 
   - name: identity_ldap_auths
     source: public.identity_ldap_auths
