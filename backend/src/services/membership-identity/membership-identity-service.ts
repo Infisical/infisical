@@ -15,7 +15,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -239,6 +239,7 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -496,9 +497,11 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
 
     if (needsRevocationBump && externalTx) {

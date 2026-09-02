@@ -13,7 +13,13 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
+import {
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -597,6 +603,7 @@ export const userServiceFactory = ({
       usageMeteringService.emit(orgId, UserIdentities.key);
       usageMeteringService.emit(orgId, SecretIdentities.key);
       usageMeteringService.emit(orgId, PamIdentities.key);
+      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     });
 
     try {

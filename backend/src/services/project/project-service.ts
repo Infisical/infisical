@@ -55,7 +55,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
@@ -755,6 +755,7 @@ export const projectServiceFactory = ({
     // the just-committed row; the counter filters by project type.
     usageMeteringService.emit(results.orgId, SecretIdentities.key);
     usageMeteringService.emit(results.orgId, PamIdentities.key);
+    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
     return results;
   };
 
@@ -847,6 +848,7 @@ export const projectServiceFactory = ({
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
+      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();

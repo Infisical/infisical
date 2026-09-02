@@ -183,5 +183,20 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { countInternalCas, countActiveCerts, countPamResources, countSecretManagementIdentities, countPamIdentities };
+  const countAgentVaultIdentities = async (orgId?: string): Promise<number> => {
+    try {
+      return await countProjectIdentities(ProjectType.AgentVault, orgId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Agent Vault identities for usage" });
+    }
+  };
+
+  return {
+    countInternalCas,
+    countActiveCerts,
+    countPamResources,
+    countSecretManagementIdentities,
+    countPamIdentities,
+    countAgentVaultIdentities
+  };
 };

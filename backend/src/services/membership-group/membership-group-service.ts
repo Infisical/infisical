@@ -9,13 +9,13 @@ import {
 } from "@app/db/schemas";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import {
   AgentVaultMemberKind,
   TAgentVaultMembershipCleanupServiceFactory
 } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
@@ -24,7 +24,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -234,6 +234,7 @@ export const membershipGroupServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -500,6 +501,7 @@ export const membershipGroupServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

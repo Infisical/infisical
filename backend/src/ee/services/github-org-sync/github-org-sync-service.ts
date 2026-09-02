@@ -14,7 +14,7 @@ import { retryWithBackoff } from "@app/lib/retry";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -435,6 +435,7 @@ export const githubOrgSyncServiceFactory = ({
       // Group membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgId, SecretIdentities.key);
       usageMeteringService.emit(orgId, PamIdentities.key);
+      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     }
   };
 
@@ -861,6 +862,7 @@ export const githubOrgSyncServiceFactory = ({
       // Team membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
       usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, AgentVaultIdentities.key);
     }
 
     const syncDuration = Date.now() - startTime;

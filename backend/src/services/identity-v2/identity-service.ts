@@ -33,7 +33,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -329,6 +329,7 @@ export const identityV2ServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -431,6 +432,7 @@ export const identityV2ServiceFactory = ({
     usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);
     usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
     usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
 
     return { identity: deletedIdentity };
   };

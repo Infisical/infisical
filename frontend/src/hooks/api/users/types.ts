@@ -185,6 +185,8 @@ export type AddUserToOrgDTO = {
   projectIds?: string[];
   /** Also grant invitees member access to the org's PAM product. */
   grantPamAccess?: boolean;
+  /** Also grant invitees member access to the org's Agent Vault product. */
+  grantAgentVaultAccess?: boolean;
 };
 
 export type CreateAPIKeyRes = {

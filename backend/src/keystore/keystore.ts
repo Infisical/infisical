@@ -154,6 +154,7 @@ export const KeyStorePrefixes = {
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
+  AgentVaultSessionExpireSweep: "agent-vault-session-expire-sweep" as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,

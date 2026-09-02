@@ -28,6 +28,7 @@ import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vau
 import { agentVaultConnectionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-connection-dal";
 import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { agentVaultMembershipCleanupServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
+import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -1811,7 +1812,9 @@ export const registerRoutes = async (
     agentVaultSessionAccessBundleDAL,
     agentVaultAccessBundleDAL,
     agentVaultAccessBundleMemberDAL,
-    permissionService
+    permissionService,
+    auditLogService,
+    keyStore
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -1819,7 +1822,19 @@ export const registerRoutes = async (
     projectDAL,
     membershipDAL,
     membershipRoleDAL,
-    keyStore
+    keyStore,
+    usageMeteringService
+  });
+
+  const agentVaultMembershipService = agentVaultMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    projectAccessRequestDAL,
+    userDAL,
+    userAliasDAL,
+    orgDAL,
+    permissionService,
+    usageMeteringService
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
@@ -2947,7 +2962,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    agentVaultSessionService
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -4160,6 +4176,7 @@ export const registerRoutes = async (
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultMembershipCleanup: agentVaultMembershipCleanupService,
+    agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,

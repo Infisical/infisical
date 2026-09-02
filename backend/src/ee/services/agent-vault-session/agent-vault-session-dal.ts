@@ -166,5 +166,35 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList };
+  // Sessions whose expiry fell inside (since, until], skipping ones already ended by a revoke.
+  const findExpiredBetween = async (since: Date, until: Date, tx?: Knex) => {
+    try {
+      return await (tx || db.replicaNode())(TableName.AgentVaultSession)
+        .whereNotNull("expiresAt")
+        .where("expiresAt", ">", since)
+        .where("expiresAt", "<=", until)
+        .whereNull("revokedAt")
+        .select("id", "projectId", "expiresAt");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find expired Agent Vault sessions" });
+    }
+  };
+
+  // Hard-deletes sessions retired before the cutoff: revoked ones by revokedAt, the rest by expiresAt.
+  // A never-expiring session is only ever reaped once revoked. The child rows follow by cascade.
+  const pruneRetiredBefore = async (cutoff: Date, tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.AgentVaultSession)
+        .where((qb) => {
+          void qb.where("revokedAt", "<", cutoff).orWhere((inner) => {
+            void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
+          });
+        })
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Prune retired Agent Vault sessions" });
+    }
+  };
+
+  return { ...orm, findByTokenHash, findForList, findExpiredBetween, pruneRetiredBefore };
 };

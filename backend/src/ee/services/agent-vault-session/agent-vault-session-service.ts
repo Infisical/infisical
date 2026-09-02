@@ -1,20 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import {
   AGENT_VAULT_SESSION_TTL_SECONDS,
   AgentVaultSessionScope,
   AgentVaultSessionTtl
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
@@ -29,7 +32,14 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "findReachableAccessBundleIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
 };
+
+// Expired and revoked rows keep a month of history on the Sessions page, then go; nothing else outlives them.
+const SESSION_RETENTION_DAYS = 30;
+// The first sweep on a fresh instance looks back one day rather than over the whole table.
+const FIRST_SWEEP_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
 
@@ -38,7 +48,9 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionAccessBundleDAL,
   agentVaultAccessBundleDAL,
   agentVaultAccessBundleMemberDAL,
-  permissionService
+  permissionService,
+  auditLogService,
+  keyStore
 }: TAgentVaultSessionServiceFactoryDep) => {
   // Only a person or a machine identity can hold a session; the actor comes from the request, never the
   // body, so nobody mints on someone else's behalf.
@@ -192,5 +204,39 @@ export const agentVaultSessionServiceFactory = ({
     return agentVaultSessionDAL.updateById(session.id, { revokedAt: new Date() });
   };
 
-  return { mintSession, listSessions, revokeSession, ttlOptions: Object.values(AgentVaultSessionTtl) };
+  // Expiry itself needs no sweep: status is derived at read time and the proxy drops its own cache entry.
+  // This exists for two things only: the session-expire audit event, emitted once per session by moving a
+  // watermark forward, and hard-deleting rows a month after they stopped working.
+  const sweepRetiredSessions = async () => {
+    const now = new Date();
+    const watermark = await keyStore.getItem(KeyStorePrefixes.AgentVaultSessionExpireSweep);
+    const since = watermark ? new Date(watermark) : new Date(now.getTime() - FIRST_SWEEP_LOOKBACK_MS);
+
+    const expired = await agentVaultSessionDAL.findExpiredBetween(since, now);
+    for await (const session of expired) {
+      await auditLogService.createAuditLog({
+        projectId: session.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.AGENT_VAULT_SESSION_EXPIRE,
+          metadata: { sessionId: session.id, expiresAt: session.expiresAt!.toISOString() }
+        }
+      });
+    }
+    await keyStore.setItem(KeyStorePrefixes.AgentVaultSessionExpireSweep, now.toISOString());
+
+    const cutoff = new Date(now.getTime() - SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const pruned = await agentVaultSessionDAL.pruneRetiredBefore(cutoff);
+    logger.info(
+      `agent-vault: session sweep emitted ${expired.length} expire event(s) and pruned ${pruned} retired session(s)`
+    );
+  };
+
+  return {
+    mintSession,
+    listSessions,
+    revokeSession,
+    sweepRetiredSessions,
+    ttlOptions: Object.values(AgentVaultSessionTtl)
+  };
 };

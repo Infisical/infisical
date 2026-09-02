@@ -1,5 +1,19 @@
+import crypto from "node:crypto";
+
 import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
+import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
+import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
+import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { initLogger } from "@app/lib/logger";
+
+declare const testKeyStore: TKeyStoreFactory;
+
+// The test file has its own module graph, so the logger the environment initialised is not this one.
+initLogger();
 
 const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
 
@@ -267,6 +281,109 @@ describe("Agent Vault V1 Router", async () => {
       const list = await inject("GET", "/api/v1/agent-vault/sessions?status=revoked");
       const { sessions } = JSON.parse(list.payload) as { sessions: { id: string; status: string }[] };
       expect(sessions.find((row) => row.id === session.id)?.status).toBe("revoked");
+    });
+  });
+
+  describe("retention sweep", async () => {
+    test("reaps sessions a month after they stopped working and leaves live ones alone", async () => {
+      const bundle = await createAccessBundle("sweep-bundle");
+      const mintOne = async (ttl: string) => {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundleIds: [bundle.id], ttl });
+        expect(res.statusCode).toBe(200);
+        return (JSON.parse(res.payload) as { session: { id: string } }).session.id;
+      };
+      const longExpired = await mintOne("1h");
+      const longRevoked = await mintOne("never");
+      const recentlyExpired = await mintOne("1h");
+      const live = await mintOne("7d");
+      const neverEnding = await mintOne("never");
+
+      const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      await testDb("agent_vault_sessions")
+        .where({ id: longExpired })
+        .update({ expiresAt: daysAgo(31) });
+      await testDb("agent_vault_sessions")
+        .where({ id: longRevoked })
+        .update({ revokedAt: daysAgo(31) });
+      await testDb("agent_vault_sessions")
+        .where({ id: recentlyExpired })
+        .update({ expiresAt: new Date(Date.now() - 60 * 60 * 1000) });
+      // Start from a clean watermark so a previous run against the same Redis cannot narrow the window.
+      await testKeyStore.deleteItem("agent-vault-session-expire-sweep");
+
+      // The services decorator lives inside the routes plugin, out of reach here, so the sweep is built
+      // from the real DALs against the test database. Audit rows are dropped by the e2e license mock anyway.
+      const auditEvents: string[] = [];
+      const sweeper = agentVaultSessionServiceFactory({
+        agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
+        agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
+        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) },
+        auditLogService: {
+          createAuditLog: async (data) => {
+            auditEvents.push((data.event.metadata as { sessionId: string }).sessionId);
+          }
+        },
+        keyStore: testKeyStore
+      });
+      await sweeper.sweepRetiredSessions();
+
+      // Only the session that expired inside the look-back window gets an expire event; the one reaped
+      // today expired a month ago, and a revoked session is not an expiry.
+      expect(auditEvents).toEqual([recentlyExpired]);
+
+      const remaining = (await testDb("agent_vault_sessions")
+        .whereIn("id", [longExpired, longRevoked, recentlyExpired, live, neverEnding])
+        .select("id")) as { id: string }[];
+      expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding].sort());
+
+      // The child rows go with the parent.
+      const orphans = await testDb("agent_vault_session_access_bundles").whereIn("sessionId", [
+        longExpired,
+        longRevoked
+      ]);
+      expect(orphans).toHaveLength(0);
+    });
+  });
+
+  describe("roles", async () => {
+    test("the predefined roles are admin and member only", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const res = await inject("GET", `/api/v1/projects/${projectId}/roles`);
+      expect(res.statusCode).toBe(200);
+      const { roles } = JSON.parse(res.payload) as { roles: { slug: string }[] };
+      expect(roles.map((role) => role.slug).sort()).toEqual([
+        ProjectMembershipRole.Admin,
+        ProjectMembershipRole.Member
+      ]);
+    });
+  });
+
+  describe("org invite", async () => {
+    test("grantAgentVaultAccess makes the invitee a member of the implicit project", async () => {
+      const inviteeEmail = `agent-vault-invite-${crypto.randomUUID()}@localhost.local`;
+      const res = await inject("POST", "/api/v1/invite-org/signup", {
+        inviteeEmails: [inviteeEmail],
+        organizationId: seedData1.organization.id,
+        grantAgentVaultAccess: true
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.payload).grantFailures).toBeUndefined();
+
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const user = await testDb("users").where({ username: inviteeEmail }).first();
+      expect(user).toBeTruthy();
+      const membership = await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: user.id })
+        .first();
+      expect(membership).toBeTruthy();
+      const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
+      expect(role.role).toBe(ProjectMembershipRole.Member);
     });
   });
 

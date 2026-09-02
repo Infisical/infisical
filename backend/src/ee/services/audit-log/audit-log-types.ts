@@ -759,6 +759,7 @@ export enum EventType {
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_SESSION_EXPIRE = "agent-vault-session-expire",
   AGENT_VAULT_SESSION_RESOLVE = "agent-vault-session-resolve",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
@@ -6208,6 +6209,14 @@ interface AgentVaultSessionRevokeEvent {
   };
 }
 
+interface AgentVaultSessionExpireEvent {
+  type: EventType.AGENT_VAULT_SESSION_EXPIRE;
+  metadata: {
+    sessionId: string;
+    expiresAt: string;
+  };
+}
+
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
@@ -7949,6 +7958,7 @@ export type Event =
   | AgentVaultMemberRemoveEvent
   | AgentVaultSessionMintEvent
   | AgentVaultSessionRevokeEvent
+  | AgentVaultSessionExpireEvent
   | AgentVaultSessionResolveEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
