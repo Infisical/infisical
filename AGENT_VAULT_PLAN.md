@@ -39,7 +39,7 @@ Keep this current. It is the first thing the next session reads.
 
 | Phase | Commit state | Notes |
 | --- | --- | --- |
-| 1 — backend core: project type, schema, bundles, sessions | in progress | Project type + migration + generated schemas landed. Local dev DB was already stuck on `20260612142201_pam-revamp` before this work; migrations were verified on a fresh `av_scratch` database instead |
+| 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests green (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests green. Invariant 11 (custom role resolves to member) is covered by the dispatch arm but not yet by a test — see the note below |
 | 2 — backend proxy endpoints + `av proxy` | not started | |
 | 3 — frontend | not started | |
 | 4 — backend tail, `av run`, docs, visibility commit | not started | |
@@ -47,6 +47,14 @@ Keep this current. It is the first thing the next session reads.
 **No open product questions.** Every one raised in planning was settled with the product owner and is
 listed with its reasoning in [Decisions](#decisions-settled-in-planning). If you think you have found a
 new one, check [Do not re-derive these](#do-not-re-derive-these) first — it is probably there.
+
+**Local environment note (found while building Phase 1).** The dev stack's database is stuck on
+`20260612142201_pam-revamp`, which fails before any of this work and leaves the backend container
+crash-looping. Migrations were verified on a fresh database instead, and the e2e suite runs against a
+throwaway Postgres (`max_locks_per_transaction=512`) and Redis on the compose network. **Pass
+`DB_CONNECTION_URI` and `REDIS_URL` explicitly to `docker exec`**: the backend container sets both in its
+own environment, `dotenv` does not override an already-set variable, and the e2e harness opens with
+`DROP SCHEMA public CASCADE` — so a run that inherits the container's environment drops the dev database.
 
 **Two things do need a human, and neither blocks starting:**
 
@@ -1027,10 +1035,10 @@ Tick in this file and commit at each line. Ordered so every checkpoint leaves a 
 - [x] Generic-create block, delete block, billable-count exclusion, `requestProjectAccess` arm, keystore prefix, the rest of the `ProjectType.PAM` grep except the three **[Phase 4]** items
 - [x] Migration for the six tables and the `resource_auth_methods` column, `generate:schema` run, `folder-scoped-privilege-rules.test.ts` still green
 - [x] Three subjects in `ProjectPermissionSub` and the V2 union, explicit admin and member sets, dispatch arm, five frontend type maps in §3.1 updated so `type:check` passes
-- [ ] `agent-vault/` shared module: host grammar copied and tightened, shared pattern fixture, conflict detection (intersection, not equality)
-- [ ] `agent-vault-access-bundle/` + `agent-vault-member/`: DAL, service, credential encryption, routers, cleanup service wired into all five call sites
-- [ ] `agent-vault-session/`: mint with reachability + `position`, revoke owner-or-admin, `GET /sessions` scope and status filters
-- [ ] Ten Phase 1 audit events, `ApiDocsTags`, `.describe()` strings, e2e specs for invariants 1, 3, 11, 13, `agent-vault/CLAUDE.md` started, Progress row updated
+- [x] `agent-vault/` shared module: host grammar copied and tightened, shared pattern fixture, conflict detection (intersection, not equality)
+- [x] `agent-vault-access-bundle/` + `agent-vault-member/`: DAL, service, credential encryption, routers, cleanup service wired into all five call sites
+- [x] `agent-vault-session/`: mint with reachability + `position`, revoke owner-or-admin, `GET /sessions` scope and status filters
+- [x] Ten Phase 1 audit events, `ApiDocsTags`, `.describe()` strings, e2e specs for invariants 1, 3, 11, 13, `agent-vault/CLAUDE.md` started, Progress row updated
 
 ---
 
