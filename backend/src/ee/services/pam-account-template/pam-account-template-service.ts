@@ -155,7 +155,9 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
     // Credential health checking is on for a new template unless the caller says otherwise.
-    const seededSettings: TPamTemplateSettings = {
+    // Partial on purpose: the schema's defaults are applied on read, exactly as they were when create stored
+    // no settings at all.
+    const seededSettings: Partial<TPamTemplateSettings> = {
       ...(settings ?? {}),
       heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG
     };
