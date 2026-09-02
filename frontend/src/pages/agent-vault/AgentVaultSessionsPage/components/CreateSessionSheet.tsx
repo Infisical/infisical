@@ -49,15 +49,9 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onCreated: (session: TAgentVaultMintedSession) => void;
-  initialAccessBundleId?: string;
 };
 
-export const CreateSessionSheet = ({
-  isOpen,
-  onOpenChange,
-  onCreated,
-  initialAccessBundleId
-}: Props) => {
+export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const { data: accessBundles } = useListAgentVaultAccessBundles();
   const createSession = useCreateAgentVaultSession();
 
@@ -66,10 +60,10 @@ export const CreateSessionSheet = ({
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedIds(initialAccessBundleId ? [initialAccessBundleId] : []);
+      setSelectedIds([]);
       setTtl(AgentVaultSessionTtl.SevenDays);
     }
-  }, [isOpen, initialAccessBundleId]);
+  }, [isOpen]);
 
   const bundlesById = useMemo(
     () => new Map((accessBundles ?? []).map((bundle) => [bundle.id, bundle])),

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { BotIcon, MoreHorizontalIcon, SearchIcon, TicketIcon, UserIcon } from "lucide-react";
 
@@ -87,22 +87,6 @@ export const AgentVaultSessionsPage = () => {
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
-  const navigate = useNavigate();
-  const { accessBundleId: initialAccessBundleId } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions"
-  });
-  const isCreateOpen = isCreateSheetOpen || Boolean(initialAccessBundleId);
-  const handleCreateOpenChange = (isOpen: boolean) => {
-    setIsCreateSheetOpen(isOpen);
-    if (!isOpen && initialAccessBundleId) {
-      navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
-        params: { orgId: currentOrg.id },
-        search: {},
-        replace: true
-      });
-    }
-  };
   // Held on the page rather than inside the sheet so closing the sheet does not take the one-time
   // token reveal with it.
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
@@ -356,9 +340,8 @@ export const AgentVaultSessionsPage = () => {
       </Card>
 
       <CreateSessionSheet
-        isOpen={isCreateOpen}
-        onOpenChange={handleCreateOpenChange}
-        initialAccessBundleId={initialAccessBundleId}
+        isOpen={isCreateSheetOpen}
+        onOpenChange={setIsCreateSheetOpen}
         onCreated={setMintedSession}
       />
 
