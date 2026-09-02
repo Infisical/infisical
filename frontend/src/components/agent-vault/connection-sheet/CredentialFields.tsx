@@ -10,7 +10,6 @@ import {
   FieldError,
   FieldLabel,
   Input,
-  SecretInput,
   Select,
   SelectContent,
   SelectItem,
@@ -124,13 +123,18 @@ export const CredentialFields = ({ isUpdate }: Props) => {
           render={({ field, fieldState }) => (
             <Field>
               <FieldLabel>
-                {credentialType === AgentVaultCredentialType.Basic ? "Password" : "Value"}
+                {credentialType === AgentVaultCredentialType.Basic ? "Password" : "Token"}
               </FieldLabel>
               <FieldContent>
-                <SecretInput
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  containerClassName="rounded-md border border-border bg-container px-2 py-1.5"
+                <Input
+                  {...field}
+                  type="password"
+                  placeholder={
+                    credentialType === AgentVaultCredentialType.Basic
+                      ? "Enter the password"
+                      : "Enter the token"
+                  }
+                  isError={Boolean(fieldState.error)}
                 />
                 {isUpdate && (
                   <FieldDescription>Leave blank to keep the current secret.</FieldDescription>
@@ -151,18 +155,6 @@ export const CredentialFields = ({ isUpdate }: Props) => {
           </AlertDescription>
         </Alert>
       )}
-
-      <Field>
-        <FieldLabel>Sends</FieldLabel>
-        <FieldContent>
-          <div className="rounded-md border border-border bg-container px-3 py-2 font-mono text-xs">
-            {credentialPreview(watch())}
-          </div>
-          <FieldDescription>
-            Any header the agent already set with this name is replaced.
-          </FieldDescription>
-        </FieldContent>
-      </Field>
     </div>
   );
 };

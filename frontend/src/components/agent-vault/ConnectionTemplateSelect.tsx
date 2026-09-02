@@ -22,21 +22,28 @@ const TemplateCard = ({
     <button
       type="button"
       onClick={() => onSelect(template)}
-      className="flex items-start gap-3 rounded-md border border-border bg-container p-3 text-left transition-colors hover:bg-container-hover"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
     >
-      {hasImageError ? (
-        <GlobeIcon className="mt-0.5 size-5 shrink-0 text-muted" />
-      ) : (
-        <img
-          src={`/images/integrations/${template.image}`}
-          alt=""
-          className="mt-0.5 size-5 shrink-0"
-          onError={() => setHasImageError(true)}
-        />
-      )}
-      <div className="min-w-0">
-        <div className="truncate text-sm">{template.name}</div>
-        <div className="truncate text-xs text-accent">{template.description}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex size-9 items-center justify-center rounded-md bg-mineshaft-700">
+          {hasImageError ? (
+            <GlobeIcon className="size-5 text-bunker-300" />
+          ) : (
+            <img
+              src={`/images/integrations/${template.image}`}
+              alt={`${template.name} logo`}
+              className="size-6 object-contain"
+              onError={() => setHasImageError(true)}
+            />
+          )}
+        </div>
+        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+          {template.category}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-foreground">{template.name}</p>
+        <p className="text-xs leading-relaxed text-muted">{template.description}</p>
       </div>
     </button>
   );
@@ -46,12 +53,16 @@ const CustomCard = ({ onSelect }: { onSelect: () => void }) => (
   <button
     type="button"
     onClick={onSelect}
-    className="flex items-start gap-3 rounded-md border border-dashed border-border p-3 text-left transition-colors hover:bg-container-hover"
+    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-mineshaft-500 bg-card p-4 text-left transition-colors hover:border-mineshaft-400 hover:bg-mineshaft-700/50"
   >
-    <PlusIcon className="mt-0.5 size-5 shrink-0 text-muted" />
-    <div className="min-w-0">
-      <div className="truncate text-sm">Custom</div>
-      <div className="truncate text-xs text-accent">Name the hosts yourself.</div>
+    <div className="flex items-start gap-2">
+      <div className="flex size-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <PlusIcon className="size-5 text-bunker-300" />
+      </div>
+    </div>
+    <div className="flex flex-col gap-1">
+      <p className="text-sm font-semibold text-foreground">Custom</p>
+      <p className="text-xs leading-relaxed text-muted">Name the hosts yourself.</p>
     </div>
   </button>
 );
@@ -61,7 +72,7 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="mb-2 text-xs text-accent">{children}</div>
+  <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
 type Props = {
@@ -87,7 +98,7 @@ export const ConnectionTemplateSelect = ({ onSelect }: Props) => {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <InputGroup>
         <InputGroupAddon>
           <SearchIcon />
@@ -95,26 +106,26 @@ export const ConnectionTemplateSelect = ({ onSelect }: Props) => {
         <InputGroupInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search services..."
+          placeholder="Search services — OpenAI, Anthropic, Slack, GitHub..."
         />
       </InputGroup>
 
       {filtered ? (
         <Grid>
+          <CustomCard onSelect={() => onSelect(null)} />
           {filtered.map((template) => (
             <TemplateCard key={template.key} template={template} onSelect={onSelect} />
           ))}
-          <CustomCard onSelect={() => onSelect(null)} />
         </Grid>
       ) : (
         <>
           <div>
             <SectionLabel>Popular</SectionLabel>
             <Grid>
+              <CustomCard onSelect={() => onSelect(null)} />
               {popular.map((template) => (
                 <TemplateCard key={template.key} template={template} onSelect={onSelect} />
               ))}
-              <CustomCard onSelect={() => onSelect(null)} />
             </Grid>
           </div>
           {Object.values(AgentVaultTemplateCategory).map((category) => {

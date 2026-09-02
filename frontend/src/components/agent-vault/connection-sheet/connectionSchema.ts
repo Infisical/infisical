@@ -5,8 +5,8 @@ import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
-  [AgentVaultCredentialType.Bearer]: "Bearer / header token",
-  [AgentVaultCredentialType.Basic]: "Basic auth",
+  [AgentVaultCredentialType.Bearer]: "Bearer",
+  [AgentVaultCredentialType.Basic]: "Basic",
   [AgentVaultCredentialType.Passthrough]: "Pass-through"
 };
 
