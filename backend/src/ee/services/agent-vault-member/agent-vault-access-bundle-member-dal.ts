@@ -13,15 +13,18 @@ export type TAgentVaultMemberActor = {
   id: string;
 };
 
+// Raw fields rather than a computed display name, matching the generic and PAM member lists: the
+// frontend owns the "First Last, else username, else email" rule and can search across all of them.
 export type TAgentVaultAccessBundleMemberDetail = {
   id: string;
   accessBundleId: string;
   userId: string | null;
   identityId: string | null;
   groupId: string | null;
-  name: string;
-  email: string | null;
   createdAt: Date;
+  user: { username: string; email: string | null; firstName: string | null; lastName: string | null } | null;
+  identity: { name: string } | null;
+  group: { name: string } | null;
 };
 
 export const agentVaultAccessBundleMemberDALFactory = (db: TDbClient) => {
@@ -116,19 +119,24 @@ export const agentVaultAccessBundleMemberDALFactory = (db: TDbClient) => {
         groupName: string | null;
       }[];
 
-      return rows.map((row) => {
-        const fullName = [row.userFirstName, row.userLastName].filter(Boolean).join(" ");
-        return {
-          id: row.id,
-          accessBundleId: row.accessBundleId,
-          userId: row.userId,
-          identityId: row.identityId,
-          groupId: row.groupId,
-          name: row.identityName ?? row.groupName ?? fullName ?? row.userUsername ?? "",
-          email: row.userEmail ?? row.userUsername ?? null,
-          createdAt: row.createdAt
-        };
-      });
+      return rows.map((row) => ({
+        id: row.id,
+        accessBundleId: row.accessBundleId,
+        userId: row.userId,
+        identityId: row.identityId,
+        groupId: row.groupId,
+        createdAt: row.createdAt,
+        user: row.userId
+          ? {
+              username: row.userUsername ?? "",
+              email: row.userEmail,
+              firstName: row.userFirstName,
+              lastName: row.userLastName
+            }
+          : null,
+        identity: row.identityId ? { name: row.identityName ?? "" } : null,
+        group: row.groupId ? { name: row.groupName ?? "" } : null
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault access bundle members" });
     }

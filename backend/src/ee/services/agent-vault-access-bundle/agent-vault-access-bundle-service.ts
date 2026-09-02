@@ -411,17 +411,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
     }
 
-    const member = await agentVaultAccessBundleMemberDAL.create({
+    // The inserted row, as PAM and the generic member add return it. Re-reading the list here would go to
+    // the replica and could miss the row we just wrote; the frontend refetches the list it renders anyway.
+    return agentVaultAccessBundleMemberDAL.create({
       accessBundleId: bundle.id,
       userId,
       identityId,
       groupId
     });
-
-    const [detail] = (await agentVaultAccessBundleMemberDAL.findByAccessBundleId(bundle.id)).filter(
-      (row) => row.id === member.id
-    );
-    return detail;
   };
 
   const removeMember = async ({ accessBundleId, memberId, ...rest }: TRemoveMemberDTO) => {

@@ -848,8 +848,12 @@ Enough to stop two engineers building two different APIs. Everything is wrapped 
 
 // POST /access-bundles/:accessBundleId/members — exactly one of the three ids
 → { "groupId": "g1-2b3c-…" }
-← 200 { "member": { "id", "userId"|null, "identityId"|null, "groupId"|null,
-                    "name", "email", "createdAt" } }
+← 200 { "member": { "id", "accessBundleId", "userId"|null, "identityId"|null, "groupId"|null, "createdAt" } }
+// The inserted row and nothing more, exactly as PAM and the generic member add return it. Not decorated
+// with a name: re-reading the list to decorate went to the replica and could miss the row just written.
+// GET …/members returns raw `user { username, email, firstName, lastName }`, `identity { name }` and
+// `group { name }` — the frontend owns the display rule ("First Last", else username, else email), as
+// PamAccessControlPage/MembersTab.tsx:97 already does. Settled in review, 2026-09-02.
 ← 400 zero or more than one id supplied
 ← 409 already a member
 // the actor must already be a member of the Agent Vault project — validate on add, or the
@@ -1209,8 +1213,13 @@ expose `bypassHosts` or `unmatchedHost` to a member; they describe the deploymen
             "credential": { "type": "bearer", "headerName": "DD-API-KEY",
                             "headerPrefix": "", "value": "<plaintext>" } } ] }
 ← 200 { …, "connections": [] }   valid session, actor lost every bundle. Not an error
-← 401 { "message": "Session revoked" }   revoked or expired — proxy drops the entry
+← 401 { "message": "Session revoked" }   revoked, expired, **or the actor is no longer a project member**
+                                         — proxy drops the entry
 ← 404 session token unknown, or its org differs from the proxy's
+// The membership case matters: getProjectPermission throws a 403 for a removed actor, and the proxy
+// treats anything outside 200/401/404 as "Infisical unreachable" and keeps serving through its grace
+// window. resolveSession maps ProjectMembershipNotFound to this 401 so removal lands in one poll, not
+// five. Found in review, 2026-09-02; verified live.
 ```
 
 **`resolve` is the only endpoint that decrypts a credential.** Two values, and the distinction matters:
@@ -1319,8 +1328,12 @@ anyway, so the matcher is total and never depends on the order rows come back fr
 connection: §2.6's `whoami` reports which bundle a host came from, the proxy's decision log wants it,
 and resolve is the only place that knows it.
 
-Six things evict, and all of them **zero the credential bytes first** — today `close()` reassigns the
-map rather than zeroing values:
+Six things evict. **Credential bytes are deliberately not zeroed** (settled in review, 2026-09-02: the
+plan originally asked for zeroing on every eviction path). Zeroing defends only against someone who can
+read the proxy's memory, and anyone in that position is on the proxy's box, where the proxy token sits
+on disk and resolves every live session's credentials directly. Zeroing in place also raced with
+in-flight requests that still held the slice — a refresh could send `\x00` bytes upstream, reproduced
+with `go test -race`.
 
 ```
 idle 10 min             →  drop, stop polling
@@ -2342,6 +2355,8 @@ will "correct" the plan back into a bug.
 | 11 | `--port 17322` is fine for `av proxy` | **Collides** with the shipped `secrets agent-proxy start` default (`agent_proxy.go:487`). Use **17323**. Phase 4's verification runs both on one box |
 | 12 | Copy `gatewayMetricsReportLimit` for the resolve rate limit | **Copy its shape, not its numbers.** Its ceiling is `max: 10` per 60s; one proxy serving N sessions makes N resolve calls per interval, so verbatim it fails closed past ten sessions |
 | 14 | `credentialConfig jsonb` can carry a DB default | **It cannot.** `scripts/generate-schema-types.ts`'s `getZodDefaultValue` returns the bare string `"z.string()"` for `jsonb`, which is concatenated onto the type and emits `z.unknown()z.string()` — a parse error. No existing table has a jsonb default, so the bug has never fired. The column is `NOT NULL` with no default; the service always writes it. Same trap for `smallint`, which `getZodPrimitiveType` does not handle at all — `position` is `integer` |
+| 15 | The proxy must zero credential bytes on eviction | **No.** Dropped in review — see §2.5. It raced with in-flight requests and defended a door next to an open one |
+| 16 | `resolve` can let permission errors surface as they are | **No.** A removed actor is a 403 from `getProjectPermission`; the proxy treats a 403 as "Infisical unreachable" and keeps serving for five polls. Map `ProjectMembershipNotFound` to 401 — see §2.2 |
 | 13 | `projectId` FK columns are `uuid` | **`projects.id` is `varchar(36)`** (`20231212110939_project.ts:9`), not uuid. Every `projectId` FK in the schema uses `t.string("projectId", 36)`, as `pam-account-dependencies-rework.ts:16` does |
 
 ---

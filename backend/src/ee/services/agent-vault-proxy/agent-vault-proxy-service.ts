@@ -6,7 +6,7 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -302,20 +302,34 @@ export const agentVaultProxyServiceFactory = ({
     // `undefined` but passes cleanly on `null`, and the session row stores no auth method — so leaving
     // the field off 401s every user-minted session in an SSO-enforced org, and only in such an org, so
     // it would pass local testing.
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: session.projectId,
-      actorAuthMethod: null,
-      actorOrgId: orgId,
-      actionProjectType: ActionProjectType.AgentVault
-    });
+    let isAdmin: boolean;
+    try {
+      const { hasRole } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: session.projectId,
+        actorAuthMethod: null,
+        actorOrgId: orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      isAdmin = hasRole(ProjectMembershipRole.Admin);
+    } catch (error) {
+      // An actor removed from the project (or deactivated, or gone from the org) surfaces here as a 403.
+      // The wire contract promises the proxy only 200, 401 and 404, and it treats anything else as
+      // "Infisical is unreachable" and keeps serving cached credentials through its grace window - so a
+      // 403 would keep a removed member's agent running for five polls instead of one. To the proxy this
+      // session is simply dead.
+      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") {
+        throw new UnauthorizedError({ message: "Session revoked" });
+      }
+      throw error;
+    }
 
     const rows = await agentVaultResolveDAL.findResolvableConnections({
       sessionId: session.id,
       projectId: session.projectId,
       actor,
-      isAdmin: hasRole(ProjectMembershipRole.Admin)
+      isAdmin
     });
 
     // One cipher pair per resolve, not one per credential: this query runs once per active session per

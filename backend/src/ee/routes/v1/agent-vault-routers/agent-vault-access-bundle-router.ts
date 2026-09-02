@@ -13,6 +13,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   AgentVaultConflictWarningSchema,
   AgentVaultConnectionSchema,
+  AgentVaultCreatedMemberSchema,
   AgentVaultCredentialInputSchema,
   AgentVaultHostPatternSchema,
   AgentVaultMemberSchema,
@@ -431,7 +432,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
         groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId)
       }),
-      response: { 200: z.object({ member: AgentVaultMemberSchema }) }
+      response: { 200: z.object({ member: AgentVaultCreatedMemberSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {

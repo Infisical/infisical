@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AgentVaultAccessBundleMembersSchema } from "@app/db/schemas";
 import {
   AgentVaultBasicConfigSchema,
   AgentVaultBearerConfigSchema
@@ -52,14 +53,33 @@ export const AgentVaultConnectionSchema = z.object({
   credential: AgentVaultCredentialSummarySchema
 });
 
+// Raw fields, as the generic and PAM member lists return them; the frontend formats the display name.
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
   identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
   groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
-  name: z.string(),
-  email: z.string().nullable(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  user: z
+    .object({
+      username: z.string(),
+      email: z.string().nullable(),
+      firstName: z.string().nullable(),
+      lastName: z.string().nullable()
+    })
+    .nullable(),
+  identity: z.object({ name: z.string() }).nullable(),
+  group: z.object({ name: z.string() }).nullable()
+});
+
+/** What a grant returns: the inserted row, exactly as PAM and the generic member add do. */
+export const AgentVaultCreatedMemberSchema = AgentVaultAccessBundleMembersSchema.pick({
+  id: true,
+  accessBundleId: true,
+  userId: true,
+  identityId: true,
+  groupId: true,
+  createdAt: true
 });
 
 /**
