@@ -36,6 +36,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       response: {
         200: z.object({
           proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+          name: z.string().describe(AGENT_VAULT.PROXY.name),
           // Non-expiring, revoked by bumping tokenVersion.
           accessToken: z.string(),
           config: ProxyConfigSchema
@@ -72,7 +73,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         );
       }
 
-      return { proxyId: result.proxyId, accessToken: result.accessToken, config: result.config };
+      return {
+        proxyId: result.proxyId,
+        name: result.name,
+        accessToken: result.accessToken,
+        config: result.config
+      };
     }
   });
 

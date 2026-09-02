@@ -40,7 +40,7 @@ Keep this current. It is the first thing the next session reads.
 | Phase | Commit state | Notes |
 | --- | --- | --- |
 | 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests, 3 role-dispatch tests — all green. Invariants 1, 3, 11 and 13 covered |
-| 2 — backend proxy endpoints + `av proxy` | backend done, CLI next | Register / reissue / enroll / heartbeat / resolve all verified live against the dev stack: reissue leaves `tokenVersion` alone, enroll bumps it, a replayed enrollment token 400s, a demoted admin's session narrows to `connections: []`, revoked is 401 and unknown is 404 |
+| 2 — backend proxy endpoints + `av proxy` | **done** (bar the Go e2e listed below) | Verified end to end on the dev stack: an enrolled proxy took a session token from curl and a real credential arrived at the upstream, with the agent holding nothing. Also confirmed live — reissue leaves `tokenVersion` alone and enroll bumps it, a replayed enrollment token 400s, a demoted admin's session narrows to `connections: []`, revoked is 401 and unknown is 404, the proxy token is rejected on human routes, `169.254.169.254` is 403 under the **allow** default, a bypassed host tunnels without TLS termination (curl reached it on system trust), an unmatched host is 403 under `deny`, and a settings change reached the running proxy on its next poll |
 | 3 — frontend | not started | |
 | 4 — backend tail, `av run`, docs, visibility commit | not started | |
 
@@ -1449,14 +1449,14 @@ committed file must not redirect traffic.
 
 ### Phase 2 checklist
 
-- [ ] `resource-auth-method` arms: `ResourceRef`, `RESOURCE_LABEL`, `$loadResource` (joins `projects` for `orgId`), `$checkPermission` (project permission), FK mapping, `$bumpTokenVersion`, `$mintJwt`, `expectedResourceType`, `loginWithToken` resolution, `$generateEnrollmentToken` prefix
-- [ ] Auth plugin touchpoints: `AuthTokenType` / `AuthMode` / `ActorType`, JWT payload type, `req.auth` union, switch arm, `tokenVersion` check, `inject-permission` arm, `audit-log` actor arm plus the two `Actor` unions in `audit-log-types.ts`
-- [ ] `agent-vault-proxy/`: register, reissue, update, delete, revoke, `GET /proxies` role-projected, `GET /proxies/:proxyId/ca`
-- [ ] `/proxy/enroll` (PEM validated before `loginWithToken`), `/proxy/heartbeat` returning the settings block, `/proxy/resolve` with the §1.8 intersection, `actorAuthMethod: null`, 401 / 404 / empty-200 semantics, resolve rate limit sized off the cache cap
-- [ ] Eight Phase 2 audit events; `session-resolve` only on first resolve or a changed `lastResolvedHash`
-- [ ] `packages/agentvault`: six files copied, `agentScope` replaced by an opaque session key, paths dropped, port 443 default, `UnmatchedDeny`, cache keyed by token hash, six eviction paths zeroing credentials, five-interval grace, 404 arm, link-local block, saturation warning
-- [ ] `av proxy`: enroll-then-commit, persist-and-compare restart, data directory layout, `/_agent-vault/ca` and `/_agent-vault/whoami` on origin-form only, port 17323
-- [ ] Go tests reading the shared fixture, e2e for invariants 2, 4, 5, 6, 7, 8, 9, 10, 12; `CLAUDE.md` files updated; Progress row updated
+- [x] `resource-auth-method` arms: `ResourceRef`, `RESOURCE_LABEL`, `$loadResource` (joins `projects` for `orgId`), `$checkPermission` (project permission), FK mapping, `$bumpTokenVersion`, `$mintJwt`, `expectedResourceType`, `loginWithToken` resolution, `$generateEnrollmentToken` prefix
+- [x] Auth plugin touchpoints: `AuthTokenType` / `AuthMode` / `ActorType`, JWT payload type, `req.auth` union, switch arm, `tokenVersion` check, `inject-permission` arm, `audit-log` actor arm plus the two `Actor` unions in `audit-log-types.ts`
+- [x] `agent-vault-proxy/`: register, reissue, update, delete, revoke, `GET /proxies` role-projected, `GET /proxies/:proxyId/ca`
+- [x] `/proxy/enroll` (PEM validated before `loginWithToken`), `/proxy/heartbeat` returning the settings block, `/proxy/resolve` with the §1.8 intersection, `actorAuthMethod: null`, 401 / 404 / empty-200 semantics, resolve rate limit sized off the cache cap
+- [x] Eight Phase 2 audit events; `session-resolve` only on first resolve or a changed `lastResolvedHash`
+- [x] `packages/agentvault`: six files copied, `agentScope` replaced by an opaque session key, paths dropped, port 443 default, `UnmatchedDeny`, cache keyed by token hash, six eviction paths zeroing credentials, five-interval grace, 404 arm, link-local block, saturation warning
+- [x] `av proxy`: enroll-then-commit, persist-and-compare restart, data directory layout, `/_agent-vault/ca` and `/_agent-vault/whoami` on origin-form only, port 17323
+- [x] Go tests reading the shared fixture (39 pass, including the cache's eviction, 404 and grace-window arms). Invariants 2, 5, 6, 9, 10 and 12 are verified live rather than as automated e2e specs — see Progress. **Still to write: automated specs for 4, 7 and 8**, and the `CLAUDE.md` updates
 
 ---
 
