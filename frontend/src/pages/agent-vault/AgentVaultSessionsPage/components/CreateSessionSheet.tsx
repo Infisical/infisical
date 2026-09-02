@@ -8,6 +8,7 @@ import {
   AlertTitle,
   Button,
   Combobox,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -25,6 +26,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { useDiscardChangesGuard } from "@app/hooks";
 import {
   AgentVaultSessionTtl,
   useCreateAgentVaultSession,
@@ -117,6 +119,12 @@ export const CreateSessionSheet = ({
 
   const overlaps = useMemo(() => findOverlaps(selectedBundles), [selectedBundles]);
 
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: selectedIds.length > 0,
+      onDiscard: () => onOpenChange(false)
+    });
+
   const reachableHosts = useMemo(
     () => [...new Set(selectedBundles.flatMap((bundle) => bundle.hostPatterns))].sort(),
     [selectedBundles]
@@ -138,7 +146,16 @@ export const CreateSessionSheet = ({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          onOpenChange(true);
+          return;
+        }
+        requestDiscard();
+      }}
+    >
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Create Session</SheetTitle>
@@ -268,7 +285,7 @@ export const CreateSessionSheet = ({
         </div>
 
         <SheetFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={requestDiscard}>
             Cancel
           </Button>
           <Button
@@ -280,6 +297,14 @@ export const CreateSessionSheet = ({
             Create Session
           </Button>
         </SheetFooter>
+
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="No session is minted and the access bundles you picked will be cleared."
+        />
       </SheetContent>
     </Sheet>
   );

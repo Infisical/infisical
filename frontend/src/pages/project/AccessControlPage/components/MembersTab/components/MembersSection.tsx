@@ -25,10 +25,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { getProjectTitle } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
@@ -40,10 +40,9 @@ export const MembersSection = () => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   // Products without an intermediate project view read as a product, not a project, so they drop
   // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct =
-    isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
   const productLabel =
-      isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
   const removeUserMutation = useDeleteUserFromWorkspace();
 

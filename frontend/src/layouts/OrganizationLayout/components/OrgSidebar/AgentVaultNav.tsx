@@ -28,9 +28,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       ]
     : [];
 
-  const infrastructureItems: NavItem[] = [
-    { label: "Proxies", icon: Route, pathSuffix: "proxies" }
-  ];
+  const infrastructureItems: NavItem[] = [{ label: "Proxies", icon: Route, pathSuffix: "proxies" }];
 
   return (
     <>

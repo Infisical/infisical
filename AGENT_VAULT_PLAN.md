@@ -41,7 +41,7 @@ Keep this current. It is the first thing the next session reads.
 | --- | --- | --- |
 | 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests, 3 role-dispatch tests — all green. Invariants 1, 3, 11 and 13 covered |
 | 2 — backend proxy endpoints + `av proxy` | **done** (bar the Go e2e listed below) | Verified end to end on the dev stack: an enrolled proxy took a session token from curl and a real credential arrived at the upstream, with the agent holding nothing. Also confirmed live — reissue leaves `tokenVersion` alone and enroll bumps it, a replayed enrollment token 400s, a demoted admin's session narrows to `connections: []`, revoked is 401 and unknown is 404, the proxy token is rejected on human routes, `169.254.169.254` is 403 under the **allow** default, a bypassed host tunnels without TLS termination (curl reached it on system trust), an unmatched host is 403 under `deny`, and a settings change reached the running proxy on its next poll |
-| 3 — frontend | not started | |
+| 3 — frontend | **done bar one live check** | Product registration, the implicit-project resolver, the four pages, the connection sheet and the template catalog. Walked end to end on the dev stack: sessions mint/reveal/revoke, bundle and connection create with the same-bundle conflict landing on its own field, Access Control resolving the Agent Vault project (3 identities, where every PAM project has 0). **Outstanding: the Proxies page has only been type-checked**, because the dev login expired before it could be opened. Also outstanding: the discard-changes guard on the two sheets, and `make reviewable-ui` |
 | 4 — backend tail, `av run`, docs, visibility commit | not started | |
 
 **No open product questions.** Every one raised in planning was settled with the product owner and is
@@ -2015,10 +2015,10 @@ the later bundle's credential goes to `api.foo.com`, whatever the order.
 - [x] `av` variant on the ten components, `Tabs` four edits, both `PageHeader` scope maps, `Sidebar` five spots using `var(--color-product-av)`
 - [x] `useImplicitProjectId()` replacing the `pamProjectId` hardcode in both contexts; `isOrgScopedProduct()` replacing the four path sniffs
 - [x] Routes block with `index(...)`, `layout.tsx` + `AgentVaultLayout`, `AgentVaultNav`, the thin `route-agent-vault.tsx` wrappers, Audit Logs wrapper, Access Control through the generic page
-- [ ] `hooks/api/agentVault/` queries, mutations, types, enums; audit enums and `eventToNameMap`
-- [ ] Sessions page with scope switch, status filter, `Never` made obvious, revoke dialog; Access Bundles list and detail with member card gated on role; all three empty states from §3.4
-- [ ] Connection sheet: four steps via `Stepper`, `useWizardSteps` ported, template picker with `caveat` / `docsUrl` added to the catalog and correction 4 applied, live "Sends:" preview, one form for create and edit
-- [ ] Proxies page with two-phase create; Create Session sheet with ordered bundles and the pattern-level overlap warning; Session created reveal. `type:check` clean, `CLAUDE.md` updated, Progress row updated
+- [x] `hooks/api/agentVault/` queries, mutations, types, enums; audit enums and `eventToNameMap`
+- [x] Sessions page with scope switch, status filter, `Never` made obvious, revoke dialog; Access Bundles list and detail with member card gated on role; all three empty states from §3.4
+- [x] Connection sheet: four steps via `Stepper`, `useWizardSteps` ported, template picker with `caveat` / `docsUrl` added to the catalog and correction 4 applied, live "Sends:" preview, one form for create and edit
+- [x] Proxies page with two-phase create; Create Session sheet with ordered bundles and the pattern-level overlap warning; Session created reveal. `type:check` clean, `CLAUDE.md` updated, Progress row updated **Live browser verification of the Proxies page is outstanding** — the dev session expired mid-run; everything before it was walked end to end
 
 ---
 
@@ -2368,6 +2368,8 @@ will "correct" the plan back into a bug.
 | 19 | Access Control just needs a thin `route-agent-vault.tsx` wrapper | **Not quite.** The generic page renders its Users / Machine Identities / Groups tabs only when `hasTabs` (cert manager and secret manager); every other type relies on the sidebar submenu, which PAM opts out of. Agent Vault joins the `hasTabs` branch and takes the `ProjectNav.tsx:73` early return, or those two tabs are unreachable — which is where the backend's "Add them under Access Control first" error sends people |
 | 20 | `OverflowBadgeList` can render the stacked connection icons in §3.2's screen 2 | **It cannot.** Its `getLabel` returns a string and it has no icon slot. The bundle row shows template *names* as `av` badges; brand images appear on the detail page's connection rows, where there is room |
 | 21 | The `LogsSection.tsx:337` gate should be bypassed for Agent Vault as it is for PAM | **No.** PAM bypasses it because PAM has its own product permission model. The Agent Vault admin role holds `AuditLogs.read` (§1.3), so the generic gate passes for an admin and correctly shows the access-restricted dialog to a member. Only the `" in this project"` copy arm at `:149` changes |
+| 22 | A React Query key factory may fold its parameters into the same function used for invalidation | **Not with an optional parameter.** `sessions(params)` used as both the list key and the invalidation prefix produces `[..., "sessions", undefined]`, which prefix-matches nothing, so a freshly minted session did not appear until a reload. Split it: `sessions()` is the prefix, `sessionList(params)` the query key |
+| 23 | The dev stack's session and the curl JWT last the session out | **They can both die mid-run.** The browser refresh call starts 404ing and the JWT returns `Session not found`, which looks exactly like a broken page. Check `POST /api/v1/auth/token` in the network panel before debugging a blank screen, and note that re-logging in needs a human — entering the password is not something the agent does |
 | 13 | `projectId` FK columns are `uuid` | **`projects.id` is `varchar(36)`** (`20231212110939_project.ts:9`), not uuid. Every `projectId` FK in the schema uses `t.string("projectId", 36)`, as `pam-account-dependencies-rework.ts:16` does |
 
 ---

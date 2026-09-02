@@ -205,7 +205,7 @@ function Sidebar({
               className={cn(
                 "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
                 (scope === "project" || scope === "pam" || scope === "agent-vault") &&
-                "from-project/5",
+                  "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
@@ -242,7 +242,7 @@ function Sidebar({
               "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
               (scope === "project" || scope === "pam" || scope === "agent-vault") &&
-              "from-project/5",
+                "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",

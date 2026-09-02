@@ -20,9 +20,9 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
-import { getProjectTitle } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
@@ -34,10 +34,9 @@ export const GroupsSection = () => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   // Products without an intermediate project view read as a product, not a project, so they drop
   // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct =
-    isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
   const productLabel =
-      isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
   const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
     useDeleteGroupFromWorkspace();

@@ -11,7 +11,9 @@ const AccessControlPageQuerySchema = z.object({
   requesterEmail: z.string().catch("")
 });
 
-export const Route = createFileRoute("/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/access-management")({
+export const Route = createFileRoute(
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/access-management"
+)({
   component: AccessControlPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),
   search: {

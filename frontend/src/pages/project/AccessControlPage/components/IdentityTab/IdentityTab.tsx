@@ -102,8 +102,7 @@ export const IdentityTab = withProjectPermission(
     const isCertManager = currentProject?.type === ProjectType.CertificateManager;
     // Products without an intermediate project view read as a product, not a project, so they drop
     // the "Project" wording. Behavioural forks below stay on isCertManager.
-    const isStandaloneProduct =
-      isCertManager || currentProject?.type === ProjectType.AgentVault;
+    const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
     const productLabel =
       isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
@@ -590,14 +589,9 @@ export const IdentityTab = withProjectPermission(
                                             }}
                                           >
                                             {identityProjectId && <TrashIcon />}
-                                            {/* eslint-disable-next-line no-nested-ternary */}
                                             {identityProjectId
                                               ? "Delete Machine Identity"
-                                              : isCertManager
-                                                ? "Remove From Certificate Manager"
-                                                : isStandaloneProduct
-                                                  ? "Remove From Agent Vault"
-                                                  : "Remove From Project"}
+                                              : `Remove From ${productLabel}`}
                                           </DropdownMenuItem>
                                         )}
                                       </ProjectPermissionCan>

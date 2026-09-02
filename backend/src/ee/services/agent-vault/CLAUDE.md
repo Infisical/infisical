@@ -91,6 +91,22 @@ bundles it is a warning, because the session's bundle order settles it.
 `agent-vault-host-pattern-fixture.json` is the shared contract with the CLI matcher
 (`packages/agentvault/match.go`). Change the rules there, not in a comment.
 
+## The frontend
+
+Pages live in `frontend/src/pages/agent-vault/`, hooks in `frontend/src/hooks/api/agentVault/`, and the
+shared sheets and dialogs in `frontend/src/components/agent-vault/`. Agent Vault is an org-scoped
+product: its URLs carry no `$projectId` and the project is resolved from the org, exactly as PAM's is.
+
+**Whether a viewer is an administrator is a role check, not a CASL one**, on both sides —
+`hasRole(ProjectMembershipRole.Admin)` on this project. That is what decides the projected shapes the
+API returns (`members` omitted from a bundle, the three settings columns omitted from a proxy) and what
+the frontend branches on to match. A member sees the Proxies page but not its settings, because the
+fingerprint is the one thing they need from it.
+
+**The service-name catalog is frontend-only.** Templates prefill a host pattern and a credential type
+and are never persisted; icons re-derive from the stored pattern. Teaching this service anything about
+"Anthropic" is what turned App Connections into a 114-member enum.
+
 ## Credentials at rest
 
 The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`), built **once per resolve**, not once

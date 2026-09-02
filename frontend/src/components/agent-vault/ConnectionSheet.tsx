@@ -10,6 +10,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -35,7 +36,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
-import { useWizardSteps } from "@app/hooks";
+import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
   useCreateAgentVaultConnection,
@@ -119,8 +120,11 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     setError,
     trigger,
     watch,
-    formState: { isSubmitting }
+    formState: { isDirty, isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
   // Editing an existing connection has nothing to pick, so the template step is dropped entirely.
   const stepKeys: readonly StepKey[] = useMemo(
@@ -279,7 +283,16 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          onOpenChange(true);
+          return;
+        }
+        requestDiscard();
+      }}
+    >
       <SheetContent className="sm:max-w-6xl">
         <SheetHeader>
           <SheetTitle>{isUpdate ? "Edit Connection" : "Add Connection"}</SheetTitle>
@@ -539,7 +552,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             <Button
               type="button"
               variant="ghost"
-              onClick={() => (step === 0 ? onOpenChange(false) : goBack())}
+              onClick={() => (step === 0 ? requestDiscard() : goBack())}
             >
               {step === 0 ? "Cancel" : "Back"}
             </Button>
@@ -560,6 +573,14 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             )}
           </SheetFooter>
         </form>
+
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="This connection has not been saved. Its hosts and credential will be lost."
+        />
       </SheetContent>
     </Sheet>
   );

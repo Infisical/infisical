@@ -67,6 +67,7 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import {
   adminQueryKeys,
@@ -78,6 +79,7 @@ import {
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
@@ -93,8 +95,6 @@ import {
 } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";

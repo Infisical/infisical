@@ -100,10 +100,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   // Products without an intermediate project view read as a product, not a project, so they drop
   // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct =
-    isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
   const productLabel =
-      isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
   const {
