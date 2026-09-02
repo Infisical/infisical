@@ -4,7 +4,8 @@ import {
   TImmutableDBKeys,
   TSecretApprovalPolicies,
   TSecretApprovalRequests,
-  TSecretApprovalRequestsSecrets
+  TSecretApprovalRequestsSecrets,
+  TSecretFolders
 } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -78,6 +79,7 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   commitMessage?: string;
   policy: TSecretApprovalPolicies;
   updateMode?: SecretUpdateMode;
+  folder?: Pick<TSecretFolders, "id" | "envId">;
   data: {
     [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];

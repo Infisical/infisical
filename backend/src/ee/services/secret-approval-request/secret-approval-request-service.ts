@@ -2092,6 +2092,7 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     secretPath,
     environment,
+    folder: providedFolder,
     commitMessage,
     updateMode = SecretUpdateMode.FailOnNotFound,
     trx: providedTx,
@@ -2108,7 +2109,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx);
+    const folder = providedFolder ?? (await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx));
     if (!folder)
       throw new NotFoundError({
         message: `Folder not found for the environment slug '${environment}' & secret path '${secretPath}'`,

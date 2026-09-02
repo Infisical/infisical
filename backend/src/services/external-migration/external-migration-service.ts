@@ -574,6 +574,13 @@ export const externalMigrationServiceFactory = ({
         })
         .sort((a, b) => a.path.split("/").filter(Boolean).length - b.path.split("/").filter(Boolean).length);
 
+      const folderByPath = new Map<string, { id: string; envId: string }>();
+      folderByPath.set(basePath, baseFolder);
+      candidatePaths.forEach((candidatePath, idx) => {
+        const existing = candidateFolders[idx];
+        if (existing) folderByPath.set(candidatePath, existing);
+      });
+
       if (foldersToCreate.length) {
         await folderService.createManyFolders({
           projectId,
@@ -584,11 +591,27 @@ export const externalMigrationServiceFactory = ({
           folders: foldersToCreate,
           tx
         });
+
+        const createdFolders = await folderDAL.findByManySecretPath(
+          pathsToCreate.map((pathToCreate) => ({ envId: env.id, secretPath: pathToCreate })),
+          tx
+        );
+        pathsToCreate.forEach((pathToCreate, idx) => {
+          const created = createdFolders[idx];
+          if (created) folderByPath.set(pathToCreate, created);
+        });
       }
 
       const unitResults: TVaultFolderImportResult[] = [];
 
       for (const { folderPath, secrets } of unitsWithSecrets) {
+        const folder = folderByPath.get(folderPath);
+        if (!folder) {
+          throw new NotFoundError({
+            message: `Folder with path '${folderPath}' in environment with slug '${environment}' not found`
+          });
+        }
+
         // eslint-disable-next-line no-await-in-loop
         const secretOperation = await secretService.createManySecretsRaw({
           actorId: actor.id,
@@ -598,6 +621,7 @@ export const externalMigrationServiceFactory = ({
           projectId,
           environment,
           secretPath: folderPath,
+          folder,
           secrets,
           tx,
           skipPostProcessing: true

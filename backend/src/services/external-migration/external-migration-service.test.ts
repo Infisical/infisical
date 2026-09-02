@@ -55,6 +55,8 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
     return Promise.resolve({ type: SecretProtectionType.Direct as const, secrets: [] });
   });
 
+  const existingPaths = new Set([BASE_PATH]);
+
   const deps = {
     permissionService: {
       getProjectPermission: vi
@@ -66,10 +68,25 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
     folderDAL: {
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({}))),
       findByManySecretPath: vi.fn((query: { secretPath: string }[]) =>
-        Promise.resolve(query.map(({ secretPath }) => (secretPath === BASE_PATH ? { id: "folder-base" } : undefined)))
+        Promise.resolve(
+          query.map(({ secretPath }) =>
+            existingPaths.has(secretPath) ? { id: `folder-${secretPath}`, envId: "env-1" } : undefined
+          )
+        )
       )
     },
-    folderService: { createManyFolders: vi.fn().mockResolvedValue([]) },
+    folderService: {
+      createManyFolders: vi.fn(({ folders }: { folders: { name: string; path: string }[] }) => {
+        for (const folder of folders) {
+          const folderPath = folder.path === "/" ? `/${folder.name}` : `${folder.path}/${folder.name}`;
+          existingPaths.add(folderPath);
+        }
+        return Promise.resolve({
+          folders: folders.map((folder) => ({ id: `folder-${folder.name}`, envId: "env-1" })),
+          count: folders.length
+        });
+      })
+    },
     secretService: { createManySecretsRaw },
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
     externalMigrationQueue: { enqueueVaultImportSideEffects: vi.fn().mockResolvedValue(undefined) },
@@ -182,6 +199,26 @@ describe("importVaultSecrets preserving the Vault structure", () => {
     });
 
     expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("passes the folder resolved during the import into each secret write", async () => {
+    const { service, deps } = buildService();
+
+    await importWithStructure(service);
+
+    expect(deps.secretService.createManySecretsRaw).toHaveBeenCalledTimes(2);
+    expect(deps.secretService.createManySecretsRaw).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secretPath: "/base/app",
+        folder: { id: "folder-/base/app", envId: "env-1" }
+      })
+    );
+    expect(deps.secretService.createManySecretsRaw).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secretPath: "/base/app/db",
+        folder: { id: "folder-/base/app/db", envId: "env-1" }
+      })
+    );
   });
 
   // the import has already committed by the time these run, so a failed enqueue must not turn a

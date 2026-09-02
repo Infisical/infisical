@@ -2134,6 +2134,7 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     environment,
     projectId,
+    folder: providedFolder,
     secrets: inputSecrets,
     tx: providedTx,
     commitChanges,
@@ -2170,7 +2171,7 @@ export const secretV2BridgeServiceFactory = ({
 
     // the lookup has to go through a caller-supplied transaction: the folder may have been created in it
     // and not yet committed, and reading outside it would check out a second connection while it is open.
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx);
+    const folder = providedFolder ?? (await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx));
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
@@ -2323,8 +2324,8 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug,
-        environmentName: folder.environment.name,
+        environmentSlug: folder?.environment.slug ?? environment,
+        environmentName: folder?.environment.name ?? environment,
         secretKeys: newSecrets.map((el) => el.key)
       });
     }

@@ -2183,6 +2183,7 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     secretPath,
+    folder,
     secrets: inputSecrets = [],
     tx,
     skipPostProcessing
@@ -2236,6 +2237,7 @@ export const secretServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
+          folder,
           trx: tx,
           skipPostProcessing,
           data: {
@@ -2260,6 +2262,7 @@ export const secretServiceFactory = ({
         actorOrgId,
         actor,
         actorId,
+        folder,
         secrets: inputSecrets,
         tx,
         skipPostProcessing
