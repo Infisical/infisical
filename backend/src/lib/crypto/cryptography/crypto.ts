@@ -24,8 +24,14 @@ import { logger } from "../../logger";
 import { getLegacyDecryptionCandidates, getLegacyEncryptionSnapshot, TLegacyKeySnapshot } from "../legacy-key";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
-import type { TDecryptAsymmetricInput, TDecryptSymmetricInput, TEncryptSymmetricInput } from "./types";
-import { DigestType, SymmetricKeySize } from "./types";
+import type {
+  TDecryptAsymmetricInput,
+  TDecryptHybridInput,
+  TDecryptSymmetricInput,
+  TEncryptHybridInput,
+  TEncryptSymmetricInput
+} from "./types";
+import { DigestType, HybridSigningAlgorithm, SymmetricKeySize } from "./types";
 
 const bytesToBits = (bytes: number) => bytes * 8;
 
@@ -401,7 +407,82 @@ const cryptographyFactory = () => {
       };
     };
 
+    const hybrid = () => {
+      type HashType = "SHA256" | "SHA1";
+
+      // PKCS #1 / RFC 8017 | RSAES_OEAP
+      const $rsaesOaepEncrypt = (data: Buffer, publicKey: string | Buffer, hashType: HashType): Buffer => {
+        const keyObject = Buffer.isBuffer(publicKey)
+          ? crypto.createPublicKey({ key: publicKey, format: "der", type: "spki" })
+          : crypto.createPublicKey(publicKey);
+
+        if (keyObject.asymmetricKeyType !== "rsa") {
+          throw new CryptographyError({ message: "RSA-OAEP encryption requires an RSA public key" });
+        }
+
+        return crypto.publicEncrypt(
+          {
+            key: keyObject,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: hashType.toLowerCase()
+          },
+          data
+        );
+      };
+
+      // PKCS #1 / RFC 8017 | RSAES_OEAP
+      const $rsaesOaepDecrypt = (data: Buffer, privateKey: crypto.KeyLike, hashType: HashType): Buffer => {
+        return crypto.privateDecrypt(
+          {
+            key: privateKey,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: hashType.toLowerCase()
+          },
+          data
+        );
+      };
+
+      /**
+       * @param cipherText string hex encoded | Buffer
+       */
+      const decrypt = ({ algorithm, cipherText, privateKey }: TDecryptHybridInput) => {
+        if (algorithm === HybridSigningAlgorithm.RSAES_OEAP_SHA256) {
+          return $rsaesOaepDecrypt(
+            typeof cipherText === "string" ? Buffer.from(cipherText, "hex") : cipherText,
+            privateKey,
+            "SHA256"
+          );
+        }
+        throw new CryptographyError({
+          message: `Unsupported algorithm ${String(algorithm)}`
+        });
+      };
+
+      /**
+       *
+       * @param plainText string utf8 encoded | Buffer
+       */
+      const encrypt = ({ algorithm, plainText, publicKey }: TEncryptHybridInput) => {
+        if (algorithm === HybridSigningAlgorithm.RSAES_OEAP_SHA256) {
+          return $rsaesOaepEncrypt(
+            typeof plainText === "string" ? Buffer.from(plainText, "utf8") : plainText,
+            publicKey,
+            "SHA256"
+          );
+        }
+        throw new CryptographyError({
+          message: `Unsupported algorithm ${String(algorithm)}`
+        });
+      };
+
+      return {
+        encrypt,
+        decrypt
+      };
+    };
+
     return {
+      hybrid,
       asymmetric,
       symmetric
     };

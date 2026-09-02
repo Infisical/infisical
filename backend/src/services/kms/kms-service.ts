@@ -1,3 +1,5 @@
+import { constants, createPublicKey, publicEncrypt } from "node:crypto";
+
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
@@ -14,11 +16,13 @@ import {
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KMS } from "@app/lib/api-docs";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { HybridSigningAlgorithm } from "@app/lib/crypto/cryptography/types";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
@@ -49,6 +53,7 @@ import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsLegacyEncryptionKeyDALFactory } from "./kms-legacy-encryption-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
+  EncryptUsageKeyAlgorithm,
   KmsDataKey,
   KmsKeyUsage,
   KmsType,
@@ -172,11 +177,11 @@ export const kmsServiceFactory = ({
     verifyKeyTypeAndAlgorithm(keyUsage, encryptionAlgorithm);
 
     let kmsKeyMaterial: Buffer | null = null;
-    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-      kmsKeyMaterial = crypto.randomBytes(
-        getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
-      );
-    } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+
+    if (
+      keyUsage === KmsKeyUsage.SIGN_VERIFY ||
+      (encryptionAlgorithm === AsymmetricKeyAlgorithm.RSA_4096 && keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT)
+    ) {
       const { generateAsymmetricPrivateKey, getPublicKeyFromPrivateKey } = signingService(
         encryptionAlgorithm as AsymmetricKeyAlgorithm
       );
@@ -184,6 +189,10 @@ export const kmsServiceFactory = ({
 
       // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
       await getPublicKeyFromPrivateKey(kmsKeyMaterial);
+    } else if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      kmsKeyMaterial = crypto.randomBytes(
+        getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
+      );
     } else if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
       kmsKeyMaterial = hmacService(encryptionAlgorithm as HmacAlgorithm).generateKeyMaterial();
     }
@@ -257,10 +266,14 @@ export const kmsServiceFactory = ({
         throw new BadRequestError({ message: "Key is disabled" });
       }
 
-      if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
+      if (
+        (kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT ||
+        // asymmetric key with ENCRYP_DECRYPT usage type is disallowed
+        kmsDoc.internalKms?.encryptionAlgorithm === AsymmetricKeyAlgorithm.RSA_4096
+      ) {
         throw new BadRequestError({
           message:
-            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
+            "Only symmetric encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
         });
       }
 
@@ -326,6 +339,8 @@ export const kmsServiceFactory = ({
   /*
    * Simple decryption service function to do all the encryption tasks in infisical
    * This can be even later exposed directly as api for encryption as function
+   * Note : supports only SymmetricKeyAlgorithm as default , AsymmetricKeyAlgorithm with HybridSigningAlgorithm type support
+   * to be added on first demand
    */
   const decryptWithInputKey = async ({ key }: Omit<TDecryptWithKeyDTO, "cipherTextBlob">) => {
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
@@ -486,17 +501,32 @@ export const kmsServiceFactory = ({
       };
     }
 
-    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as EncryptUsageKeyAlgorithm;
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
-
+    // tdlr : get assymetric server or related for Assymetric Encrypt algorithm type
     // internal KMS
+
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-    const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const internalKmsId = kmsDoc.internalKms?.id as string;
     const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    // decrypt method based of 'encryptionAlgorithm' , relavant only inside decrptyWithKmsKey
+    const getDecryptWithKeyMaterial = () => {
+      if (encryptionAlgorithm === AsymmetricKeyAlgorithm.RSA_4096) {
+        return (cipherText: Buffer, privateKey: Buffer) =>
+          crypto.encryption().hybrid().decrypt({
+            algorithm: HybridSigningAlgorithm.RSAES_OEAP_SHA256,
+            cipherText,
+            privateKey
+          });
+      }
+      const dataCipher = symmetricCipherService(encryptionAlgorithm as SymmetricKeyAlgorithm);
+      return dataCipher.decrypt;
+    };
+    const decryptWithKeyMaterial = getDecryptWithKeyMaterial();
 
     const keyMaterialByVersion = new Map<number, Buffer>([[currentKeyVersion, kmsKey]]);
     let archivedVersionsLoaded = false;
@@ -520,7 +550,7 @@ export const kmsServiceFactory = ({
       const attempt = (material?: Buffer) => {
         if (!material) return null;
         try {
-          return dataCipher.decrypt(cipherTextBlob, material);
+          return decryptWithKeyMaterial(cipherTextBlob, material);
         } catch {
           return null; // GCM auth failure for this material; try the next candidate
         }
@@ -560,14 +590,14 @@ export const kmsServiceFactory = ({
         const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, embeddedVersion);
         if (decrypted) return decrypted;
 
-        return dataCipher.decrypt(cipherTextBlob, kmsKey);
+        return decryptWithKeyMaterial(cipherTextBlob, kmsKey);
       }
 
       // legacy v01 (or anything not validated as v02): strip the 3-byte suffix and try all available material
       const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
       const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, currentKeyVersion);
       if (decrypted) return decrypted;
-      return dataCipher.decrypt(cipherTextBlob, kmsKey);
+      return decryptWithKeyMaterial(cipherTextBlob, kmsKey);
     };
   };
 
@@ -639,16 +669,10 @@ export const kmsServiceFactory = ({
   ) => {
     verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
 
-    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
-      if (key.length !== expectedLength) {
-        throw new BadRequestError({
-          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
-        });
-      }
-    }
-
-    if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+    if (
+      keyUsage === KmsKeyUsage.SIGN_VERIFY ||
+      (algorithm === AsymmetricKeyAlgorithm.RSA_4096 && keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT)
+    ) {
       const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
       try {
         await getPublicKeyFromPrivateKey(key);
@@ -689,6 +713,15 @@ export const kmsServiceFactory = ({
             });
           }
         }
+      }
+    }
+
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && algorithm !== AsymmetricKeyAlgorithm.RSA_4096) {
+      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
       }
     }
 
@@ -743,9 +776,19 @@ export const kmsServiceFactory = ({
 
     const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
 
-    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
-      forceType: KmsKeyUsage.SIGN_VERIFY
-    });
+    if (
+      !(
+        kmsDoc.keyUsage === KmsKeyUsage.SIGN_VERIFY ||
+        (kmsDoc.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
+          kmsDoc.internalKms?.encryptionAlgorithm === AsymmetricKeyAlgorithm.RSA_4096)
+      )
+    ) {
+      throw new BadRequestError({
+        message: `Unsupported key type, expected asymetric algorithm for key but got ${kmsDoc.internalKms?.encryptionAlgorithm}`
+      });
+    }
+
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm);
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -906,16 +949,35 @@ export const kmsServiceFactory = ({
       };
     }
 
-    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as SymmetricKeyAlgorithm;
+    const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as EncryptUsageKeyAlgorithm;
     verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
-    // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-    const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    if (encryptionAlgorithm === AsymmetricKeyAlgorithm.RSA_4096) {
+      const publicKey = await signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
+      const publicKeyObject = createPublicKey({ key: publicKey, format: "der", type: "spki" });
+
+      return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        const encryptedPlainTextBlob = publicEncrypt(
+          {
+            key: publicKeyObject,
+            padding: constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256"
+          },
+          plainText
+        );
+
+        const cipherTextBlob = buildKmsCipherTextBlob(encryptedPlainTextBlob, currentKeyVersion);
+        return Promise.resolve({ cipherTextBlob });
+      };
+    }
+
+    const dataCipher = symmetricCipherService(encryptionAlgorithm as SymmetricKeyAlgorithm);
 
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);

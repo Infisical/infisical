@@ -101,13 +101,16 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           const algorithm = data.algorithm ?? data.encryptionAlgorithm ?? SymmetricKeyAlgorithm.AES_GCM_256;
           if (
             data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
-            !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)
+            !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm) &&
+            algorithm !== AsymmetricKeyAlgorithm.RSA_4096
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: `algorithm must be a valid symmetric encryption algorithm. Valid options are: ${Object.values(
+              message: `algorithm must be a valid supported encryption algorithm. Valid options are: ${Object.values(
                 SymmetricKeyAlgorithm
-              ).join(", ")}`
+              )
+                .join(", ")
+                .concat(", ", AsymmetricKeyAlgorithm.RSA_4096)}`
             });
           }
           if (
@@ -677,11 +680,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                 }
                 if (
                   data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
-                  !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)
+                  !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm) &&
+                  algorithm !== AsymmetricKeyAlgorithm.RSA_4096
                 ) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: `algorithm must be a symmetric algorithm for encrypt-decrypt keys`
+                    message: `algorithm must be a supported algorithm for encrypt-decrypt keys`
                   });
                 }
                 if (

@@ -86,7 +86,10 @@ export const verifyKeyTypeAndAlgorithm = (
   }
 
   if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-    if (!Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)) {
+    if (
+      !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm) &&
+      algorithm !== AsymmetricKeyAlgorithm.RSA_4096
+    ) {
       throw new BadRequestError({
         message: `Unsupported encryption algorithm for encrypt/decrypt key: ${algorithm as string}`
       });

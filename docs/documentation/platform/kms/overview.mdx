@@ -21,7 +21,7 @@ If you are on-premise, your KMS root key will be created at random with the `ROO
 
 The typical workflow for using Infisical KMS consists of the following steps:
 
-1. Creating a KMS key. As part of this step, you specify a name for the key and the encryption algorithm meant to be used for it (e.g. `AES-GCM-128`, `AES-GCM-256`).
+1. Creating a KMS key. As part of this step, you specify a name, usage, and algorithm for the key. Encrypt/decrypt keys support `AES-GCM-128`, `AES-GCM-256`, and `RSA-4096`.
 2. Encryption: To encrypt data, you would make a request to the Infisical KMS API endpoint, specifying the base64-encoded plaintext and the intended key to use for encryption; the API would return the base64-encoded ciphertext.
 3. Decryption: To decrypt data, you would make a request to the Infisical KMS API endpoint, specifying the base64-encoded ciphertext and the intended key to use for decryption; the API would return the base64-encoded plaintext.
 
@@ -47,10 +47,14 @@ In the following steps, we explore how to generate a key and use it to encrypt d
 
                 - Name: A slug-friendly name for the key.
                 - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, `Sign/Verify` for signing, and `Generate/Verify MAC` for message authentication codes).
-                - Algorithm: The encryption algorithm associated with the key (e.g. `AES-GCM-256`).
+                - Algorithm: The algorithm associated with the key. Encrypt/decrypt keys support `AES-GCM-128`, `AES-GCM-256`, and `RSA-4096`.
                 - Description: An optional description of what the intended usage is for the key.
                 - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
                 - Delete Protection: Whether the key is protected from deletion. While enabled, the key cannot be deleted on its own. You can turn this off at any time by editing the key. Deleting the whole project still removes its keys.
+
+                <Note>
+                  RSA-4096 encrypt/decrypt keys cannot be rotated. Create a replacement key and update your application to use it when you need to rotate an RSA key.
+                </Note>
 
                 ![kms add key modal](/images/platform/kms/infisical-kms/kms-add-key-modal.png)
             </Step>
