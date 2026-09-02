@@ -159,16 +159,9 @@ export const ConnectionsCard = ({
                 </TableCell>
                 <TableCell>{credentialSummary(connection)}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {connection.hostPattern.split(",").map((host) => (
-                      <span
-                        key={host}
-                        className="rounded border border-border bg-container px-1.5 py-0.5 font-mono text-xs"
-                      >
-                        {displayHost(host)}
-                      </span>
-                    ))}
-                  </div>
+                  <span className="font-mono text-xs">
+                    {connection.hostPattern.split(",").map(displayHost).join(", ")}
+                  </span>
                 </TableCell>
                 <TableCell variant="action">
                   {canManage && (
