@@ -113,7 +113,9 @@ export const DaytonaSyncFns = {
     if (disableSecretDeletion) return;
 
     for (const secret of existingSecrets) {
-      if (secret.name in secretMap) {
+      // Own-property check, not `in`: `in` walks the prototype chain, so a Daytona secret named
+      // constructor or toString would match a folder that contains no such key.
+      if (Object.hasOwn(secretMap, secret.name)) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -143,7 +145,7 @@ export const DaytonaSyncFns = {
     const existingSecrets = await listDaytonaSecrets(apiKey);
 
     for (const secret of existingSecrets) {
-      if (!(secret.name in secretMap)) {
+      if (!Object.hasOwn(secretMap, secret.name)) {
         // eslint-disable-next-line no-continue
         continue;
       }
