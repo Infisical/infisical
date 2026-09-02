@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
+import { VaultLdapImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Field,
   FieldContent,
@@ -24,7 +28,6 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { VaultLdapRole } from "@app/hooks/api/migration/types";
-import { VaultLdapImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultLdapImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
@@ -59,16 +62,34 @@ const LdapFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   const { control, reset, setValue, watch } = useFormContext<TLdapFormValues>();
   const credentialType = watch("inputs.credentialType");
   const common = [
-    { name: "inputs.url", type: "text", label: "URL" },
-    { name: "inputs.binddn", type: "text", label: "Bind DN", layout: "half" },
+    {
+      name: "inputs.url",
+      type: "text",
+      label: "URL",
+      placeholder: "ldaps://ldap.example.com:636"
+    },
+    {
+      name: "inputs.binddn",
+      type: "text",
+      label: "Bind DN",
+      placeholder: "cn=admin,dc=example,dc=com",
+      layout: "half"
+    },
     {
       name: "inputs.bindpass",
       type: "secret",
       label: "Bind Password",
+      placeholder: "Enter bind password",
       layout: "half",
       autoComplete: "new-password"
     },
-    { name: "inputs.ca", type: "textarea", label: "CA", isOptional: true }
+    {
+      name: "inputs.ca",
+      type: "textarea",
+      label: "CA",
+      placeholder: "-----BEGIN CERTIFICATE----- ...",
+      isOptional: true
+    }
   ] satisfies readonly TDynamicSecretProviderField<TLdapFormValues>[];
   const handleImport = (role: VaultLdapRole) => {
     try {
@@ -97,15 +118,17 @@ const LdapFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   return (
     <>
       {mode === "create" && canImport && connections.length > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-info/20 bg-info/10 p-3">
-          <div className="flex items-center gap-2 text-sm">
-            <InfoIcon className="size-4 text-info" />
-            Load values from HashiCorp Vault.
-          </div>
-          <Button type="button" size="sm" variant="info" onClick={() => setIsImportOpen(true)}>
-            Load from Vault
-          </Button>
-        </div>
+        <Alert variant="info">
+          <InfoIcon />
+          <AlertDescription>
+            <span>Load values from HashiCorp Vault.</span>
+            <AlertAction>
+              <Button type="button" size="sm" variant="info" onClick={() => setIsImportOpen(true)}>
+                Load from Vault
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
       )}
       <DynamicSecretProviderGroup id="ldap-connection" presentation="panel">
         <DynamicSecretProviderFields fields={common} />

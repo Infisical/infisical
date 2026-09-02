@@ -1,16 +1,114 @@
 import { AxiosError, AxiosResponse } from "axios";
+import { z } from "zod";
 
+import { TEMPLATE_VALIDATION_MESSAGES } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator/safe-request";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 import { handleAxiosError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
 import { getKubernetesServerName, withKubernetesHostScheme } from "./identity-kubernetes-auth-fns";
+import { IdentityKubernetesAuthTokenReviewMode } from "./identity-kubernetes-auth-types";
 
 const VALIDATION_TIMEOUT_MS = 10_000;
 // The /version and TokenReview responses are a few KB. Bounded so an operator-supplied host
 // cannot make us buffer an arbitrary body.
 const VALIDATION_MAX_RESPONSE_BYTES = 64 * 1024;
+
+export const kubernetesHostSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .refine(
+    (val) => {
+      if (!val) return true;
+
+      return characterValidator([
+        CharacterType.Alphabets,
+        CharacterType.Numbers,
+        CharacterType.Colon,
+        CharacterType.Period,
+        CharacterType.ForwardSlash,
+        CharacterType.Hyphen
+      ])(val);
+    },
+    {
+      message: "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+    }
+  );
+
+export type TKubernetesConnectionFields = {
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode | null;
+  kubernetesHost?: string | null;
+  caCert?: string | null;
+  verifyTlsCertificate?: boolean;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+};
+
+// single source for the cross-field connection rules shared by the identity k8s auth
+// attach route, the auth template create/update paths, and the frontend mirrors
+export const validateKubernetesConnectionFields = (
+  fields: TKubernetesConnectionFields
+): { path: string; message: string }[] => {
+  const issues: { path: string; message: string }[] = [];
+  const tokenReviewMode = fields.tokenReviewMode ?? IdentityKubernetesAuthTokenReviewMode.Api;
+
+  if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !fields.kubernetesHost) {
+    issues.push({ path: "kubernetesHost", message: TEMPLATE_VALIDATION_MESSAGES.KUBERNETES.HOST_REQUIRED });
+  }
+  if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !fields.gatewayId && !fields.gatewayPoolId) {
+    issues.push({ path: "gatewayId", message: TEMPLATE_VALIDATION_MESSAGES.KUBERNETES.GATEWAY_REQUIRED });
+  }
+  if (fields.gatewayId && fields.gatewayPoolId) {
+    issues.push({ path: "gatewayPoolId", message: TEMPLATE_VALIDATION_MESSAGES.KUBERNETES.GATEWAY_CONFLICT });
+  }
+  if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api) {
+    if (fields.verifyTlsCertificate && !fields.caCert?.length) {
+      issues.push({ path: "caCert", message: TEMPLATE_VALIDATION_MESSAGES.KUBERNETES.CA_CERT_REQUIRED });
+    }
+    if (fields.verifyTlsCertificate === false && fields.caCert?.length) {
+      issues.push({
+        path: "verifyTlsCertificate",
+        message: TEMPLATE_VALIDATION_MESSAGES.KUBERNETES.TLS_VERIFICATION_CONFLICT
+      });
+    }
+  }
+  return issues;
+};
+
+export const superRefineKubernetesConnectionFields = (fields: TKubernetesConnectionFields, ctx: z.RefinementCtx) => {
+  validateKubernetesConnectionFields(fields).forEach((issue) => {
+    ctx.addIssue({ path: [issue.path], code: z.ZodIssueCode.custom, message: issue.message });
+  });
+};
+
+// fields the linked auth template owns on an identity's kubernetes auth; both the attach
+// and update routes reject them so the two endpoints cannot drift apart again
+export const TEMPLATE_MANAGED_KUBERNETES_AUTH_FIELDS = [
+  "kubernetesHost",
+  "caCert",
+  "verifyTlsCertificate",
+  "tokenReviewerJwt",
+  "tokenReviewMode",
+  "allowedAudience",
+  "gatewayId",
+  "gatewayPoolId"
+] as const;
+
+export const rejectTemplateManagedKubernetesFields = (data: Record<string, unknown>, ctx: z.RefinementCtx) => {
+  TEMPLATE_MANAGED_KUBERNETES_AUTH_FIELDS.forEach((field) => {
+    if (data[field] !== undefined) {
+      ctx.addIssue({
+        path: [field],
+        code: z.ZodIssueCode.custom,
+        message: `${field} is managed by the auth template and cannot be provided`
+      });
+    }
+  });
+};
 
 export type GatewayRequestExecutor = <T>(
   method: "get" | "post",
