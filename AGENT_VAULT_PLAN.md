@@ -40,7 +40,7 @@ Keep this current. It is the first thing the next session reads.
 | Phase | Commit state | Notes |
 | --- | --- | --- |
 | 1 — backend core: project type, schema, bundles, sessions | **done** | 17 e2e tests (`backend/e2e-test/routes/v1/agent-vault.spec.ts`), 49 grammar tests, 3 role-dispatch tests — all green. Invariants 1, 3, 11 and 13 covered |
-| 2 — backend proxy endpoints + `av proxy` | not started | |
+| 2 — backend proxy endpoints + `av proxy` | backend done, CLI next | Register / reissue / enroll / heartbeat / resolve all verified live against the dev stack: reissue leaves `tokenVersion` alone, enroll bumps it, a replayed enrollment token 400s, a demoted admin's session narrows to `connections: []`, revoked is 401 and unknown is 404 |
 | 3 — frontend | not started | |
 | 4 — backend tail, `av run`, docs, visibility commit | not started | |
 
@@ -2252,7 +2252,7 @@ credential at all.
 | 2 | Resolve is proxy-bound | A proxy in org B presenting an org A session → 404 |
 | 3 | Foreign ids are 404, never 403 | Table-driven across every route |
 | 4 | No client-supplied id reaches a decrypt call | Assert decrypt receives the session row's `projectId` |
-| 5 | The proxy token authorizes identity only | Use it against bundle CRUD → **401**. The proxy has its own `AuthMode`, which the human routes do not list, so it fails auth-mode selection before any CASL check |
+| 5 | The proxy token authorizes identity only | Use it against bundle CRUD → **403**, not 401. The mechanism is as described — `verifyAuth` rejects it on auth-mode selection, before any CASL check — but the shared `verifyAuth` throws `ForbiddenRequestError`, so the code is 403. Verified live |
 | 6 | Injection requires TLS upstream, regardless of pattern | `http://` to a matched portless pattern → no credential; **and** `http://host:8080` to an explicit `host:8080` pattern → no credential |
 | 7 | Match and send agree byte for byte | `..`, `%2f`, `//`, trailing dot, uppercase, U+212A |
 | 8 | The cache has a hard deadline | Freeze the backend, advance past five poll intervals, assert fail-closed |

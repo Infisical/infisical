@@ -4175,6 +4175,23 @@ export const AGENT_VAULT = {
     identityId: "The ID of the machine identity to grant the access bundle to.",
     groupId: "The ID of the group to grant the access bundle to."
   },
+  PROXY: {
+    proxyId: "The ID of the proxy.",
+    name: "The name of the proxy.",
+    heartbeat: "When the proxy last checked in, or null if it never has.",
+    isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
+    version: "The proxy build, as the proxy reports it.",
+    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    rootCaCertificate: "The proxy's certificate authority, in PEM form.",
+    rootCaFingerprint:
+      "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
+    rootCaExpiresAt: "When the proxy's certificate authority expires.",
+    unmatchedHost: "What the proxy does with a host no connection covers: allow it through untouched, or deny it.",
+    bypassHosts:
+      "Hosts the proxy forwards without interception, evaluated before anything else. Use this for clients that pin certificates.",
+    pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
+    sessionToken: "The session an agent is running with. A selector, not a second credential."
+  },
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundleIds:

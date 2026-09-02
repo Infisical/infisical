@@ -79,7 +79,7 @@ export type TLoginWithKubernetesDTO = {
 
 export type TLoginWithTokenDTO = {
   token: string;
-  expectedResourceType: "gateway" | "relay" | "kmip";
+  expectedResourceType: "gateway" | "relay" | "kmip" | "agentVaultProxy";
 };
 
 export type TAuthMethodView =

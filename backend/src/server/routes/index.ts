@@ -29,6 +29,9 @@ import { agentVaultConnectionDALFactory } from "@app/ee/services/agent-vault-acc
 import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { agentVaultMembershipCleanupServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
+import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
+import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
@@ -1791,6 +1794,8 @@ export const registerRoutes = async (
   const agentVaultConnectionDAL = agentVaultConnectionDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
+  const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
+  const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
@@ -1896,10 +1901,23 @@ export const registerRoutes = async (
     gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
+    agentVaultProxyDAL,
     identityDAL,
     permissionService,
     licenseService,
     gatewayProxyRegistry
+  });
+
+  // After resourceAuthMethodService: the proxy service delegates enrollment, minting and the
+  // tokenVersion bump to it rather than reimplementing them.
+  const agentVaultProxyService = agentVaultProxyServiceFactory({
+    agentVaultProxyDAL,
+    agentVaultResolveDAL,
+    agentVaultSessionDAL,
+    agentVaultAccessBundleMemberDAL,
+    permissionService,
+    kmsService,
+    resourceAuthMethodService
   });
 
   const relayService = relayServiceFactory({
@@ -4139,6 +4157,7 @@ export const registerRoutes = async (
     pamProjectResolver,
     agentVaultProjectResolver,
     agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultMembershipCleanup: agentVaultMembershipCleanupService,
     pamAccountTemplate: pamAccountTemplateService,

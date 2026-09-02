@@ -80,14 +80,44 @@ export const mintKmipServerJwt = ({
   );
 };
 
+/**
+ * Mints an AGENT_VAULT_PROXY_ACCESS_TOKEN JWT. Non-expiring like the other resource tokens: the
+ * tokenVersion check in inject-identity is the only kill switch, which is why no proxy route may skip it.
+ */
+export const mintAgentVaultProxyJwt = ({
+  agentVaultProxyId,
+  orgId,
+  tokenVersion,
+  accessTokenTTL
+}: {
+  agentVaultProxyId: string;
+  orgId: string;
+  tokenVersion: number;
+  accessTokenTTL: number;
+}) => {
+  const appCfg = getConfig();
+  return crypto.jwt().sign(
+    {
+      agentVaultProxyId,
+      orgId,
+      authTokenType: AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+      tokenVersion
+    },
+    appCfg.AUTH_SECRET,
+    accessTokenTTL === 0 ? undefined : { expiresIn: accessTokenTTL }
+  );
+};
+
 export type ResourceRef =
   | { type: "gateway"; id: string }
   | { type: "relay"; id: string }
-  | { type: "kmip"; id: string };
+  | { type: "kmip"; id: string }
+  | { type: "agentVaultProxy"; id: string };
 
 export const RESOURCE_TYPE_GATEWAY = "gateway" as const;
 export const RESOURCE_TYPE_RELAY = "relay" as const;
 export const RESOURCE_TYPE_KMIP = "kmip" as const;
+export const RESOURCE_TYPE_AGENT_VAULT_PROXY = "agentVaultProxy" as const;
 
 export const assertGatewayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_GATEWAY) {
@@ -107,6 +137,14 @@ export const assertRelayResource = (resource: { type: string }, methodName: stri
 
 export const assertKmipServerResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_KMIP) {
+    throw new BadRequestError({
+      message: `Resource type "${resource.type}" not supported for ${methodName} auth`
+    });
+  }
+};
+
+export const assertAgentVaultProxyResource = (resource: { type: string }, methodName: string) => {
+  if (resource.type !== RESOURCE_TYPE_AGENT_VAULT_PROXY) {
     throw new BadRequestError({
       message: `Resource type "${resource.type}" not supported for ${methodName} auth`
     });

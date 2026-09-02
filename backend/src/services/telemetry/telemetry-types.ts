@@ -2,6 +2,7 @@ import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
+  AgentVaultProxyActor,
   EstAccountActor,
   GatewayActor,
   IdentityActor,
@@ -329,7 +330,8 @@ export type TSecretModifiedEvent = {
       | ScepAccountActor
       | GatewayActor
       | RelayActor
-      | KmipServerActor;
+      | KmipServerActor
+      | AgentVaultProxyActor;
   };
 };
 

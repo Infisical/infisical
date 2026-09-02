@@ -97,7 +97,8 @@ export type TCreateAuditLogDTO = {
     | ScepAccountActor
     | GatewayActor
     | RelayActor
-    | KmipServerActor;
+    | KmipServerActor
+    | AgentVaultProxyActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -758,6 +759,14 @@ export enum EventType {
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_SESSION_RESOLVE = "agent-vault-session-resolve",
+  AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
+  AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
+  AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
+  AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_CA_ROOT_READ = "agent-vault-ca-root-read",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -1011,6 +1020,10 @@ interface KmipServerActorMetadata {
   kmipServerId: string;
 }
 
+interface AgentVaultProxyActorMetadata {
+  agentVaultProxyId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1080,6 +1093,11 @@ export interface KmipServerActor {
   metadata: KmipServerActorMetadata;
 }
 
+export interface AgentVaultProxyActor {
+  type: ActorType.AGENT_VAULT_PROXY;
+  metadata: AgentVaultProxyActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1093,7 +1111,8 @@ export type Actor =
   | ScepAccountActor
   | GatewayActor
   | RelayActor
-  | KmipServerActor;
+  | KmipServerActor
+  | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -6030,6 +6049,80 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
+// Deliberately not one row per poll: at a 60s interval one active session would write ~1,440 rows a day
+// into the partitioned audit table and into every customer's audit stream. Emitted on a session's first
+// resolve and whenever the returned connection set changes; the steady-state poll is a log line.
+interface AgentVaultSessionResolveEvent {
+  type: EventType.AGENT_VAULT_SESSION_RESOLVE;
+  metadata: {
+    sessionId: string;
+    connectionCount: number;
+    isFirstResolve: boolean;
+  };
+}
+
+interface AgentVaultProxyRegisterEvent {
+  type: EventType.AGENT_VAULT_PROXY_REGISTER;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyTokenReissueEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+// The audit trail for CA rotation: which fingerprint enrolled, and whether it displaced one.
+interface AgentVaultProxyEnrollEvent {
+  type: EventType.AGENT_VAULT_PROXY_ENROLL;
+  metadata: {
+    proxyId: string;
+    name: string;
+    rootCaFingerprint: string;
+    replacedExistingCa: boolean;
+  };
+}
+
+interface AgentVaultProxyUpdateEvent {
+  type: EventType.AGENT_VAULT_PROXY_UPDATE;
+  metadata: {
+    proxyId: string;
+    name?: string;
+    unmatchedHost?: string;
+    bypassHosts?: string | null;
+    pollInterval?: number;
+  };
+}
+
+interface AgentVaultProxyRevokeEvent {
+  type: EventType.AGENT_VAULT_PROXY_REVOKE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyDeleteEvent {
+  type: EventType.AGENT_VAULT_PROXY_DELETE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultCaRootReadEvent {
+  type: EventType.AGENT_VAULT_CA_ROOT_READ;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -7865,6 +7958,14 @@ export type Event =
   | AgentVaultMemberRemoveEvent
   | AgentVaultSessionMintEvent
   | AgentVaultSessionRevokeEvent
+  | AgentVaultSessionResolveEvent
+  | AgentVaultProxyRegisterEvent
+  | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyEnrollEvent
+  | AgentVaultProxyUpdateEvent
+  | AgentVaultProxyRevokeEvent
+  | AgentVaultProxyDeleteEvent
+  | AgentVaultCaRootReadEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
