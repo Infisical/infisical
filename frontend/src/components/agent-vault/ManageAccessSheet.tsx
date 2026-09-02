@@ -69,7 +69,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
 
   return (
     <Sheet open={Boolean(accessBundle)} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent className="sm:max-w-[640px]">
         <SheetHeader>
           <SheetTitle>Manage Access</SheetTitle>
           <SheetDescription>

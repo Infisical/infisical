@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -12,10 +13,7 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldLabel,
-  Tabs,
-  TabsList,
-  TabsTrigger
+  FieldLabel
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -31,7 +29,13 @@ enum MemberKind {
   Group = "group"
 }
 
-type Option = { id: string; label: string };
+const KIND_ICON: Record<MemberKind, typeof UserIcon> = {
+  [MemberKind.User]: UserIcon,
+  [MemberKind.Identity]: BotIcon,
+  [MemberKind.Group]: UsersIcon
+};
+
+type Option = { kind: MemberKind; id: string; label: string; subtitle: string };
 
 type Props = {
   isOpen: boolean;
@@ -44,14 +48,10 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
   const { currentProject } = useProject();
   const addMember = useAddAgentVaultAccessBundleMember();
 
-  const [kind, setKind] = useState(MemberKind.User);
   const [selected, setSelected] = useState<Option | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setKind(MemberKind.User);
-      setSelected(null);
-    }
+    if (isOpen) setSelected(null);
   }, [isOpen]);
 
   const { data: users } = useGetWorkspaceUsers(currentProject.id, false, undefined, {
@@ -66,39 +66,58 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
 
   // Anyone already granted the bundle is filtered out, so the 409 the API returns for a duplicate
   // is never reachable from the picker.
-  const grantedIds = new Set(
-    members.map((member) => member.userId ?? member.identityId ?? member.groupId)
+  const grantedIds = useMemo(
+    () =>
+      new Set(members.map((member) => member.userId ?? member.identityId ?? member.groupId ?? "")),
+    [members]
   );
 
-  let options: Option[] = [];
-  if (kind === MemberKind.User) {
-    options = (users ?? [])
+  // One list rather than a tab per kind: an admin knows the name they are granting to, not which
+  // of the three it is filed under.
+  const options = useMemo<Option[]>(() => {
+    const userOptions = (users ?? [])
+      .map((membership) => {
+        const fullName = [membership.user.firstName, membership.user.lastName]
+          .filter(Boolean)
+          .join(" ");
+        return {
+          kind: MemberKind.User,
+          id: membership.user.id,
+          label: fullName || membership.user.username || membership.user.email,
+          subtitle: membership.user.email || membership.user.username
+        };
+      })
+      .filter((option) => !grantedIds.has(option.id));
+
+    const groupOptions = (groupMemberships ?? [])
       .map((membership) => ({
-        id: membership.user.id,
-        label:
-          [membership.user.firstName, membership.user.lastName].filter(Boolean).join(" ") ||
-          membership.user.username ||
-          membership.user.email
+        kind: MemberKind.Group,
+        id: membership.group.id,
+        label: membership.group.name,
+        subtitle: "Group"
       }))
       .filter((option) => !grantedIds.has(option.id));
-  } else if (kind === MemberKind.Identity) {
-    options = (identities ?? [])
-      .map((identity) => ({ id: identity.id, label: identity.name }))
+
+    const identityOptions = (identities ?? [])
+      .map((identity) => ({
+        kind: MemberKind.Identity,
+        id: identity.id,
+        label: identity.name,
+        subtitle: "Machine Identity"
+      }))
       .filter((option) => !grantedIds.has(option.id));
-  } else {
-    options = (groupMemberships ?? [])
-      .map((membership) => ({ id: membership.group.id, label: membership.group.name }))
-      .filter((option) => !grantedIds.has(option.id));
-  }
+
+    return [...userOptions, ...groupOptions, ...identityOptions];
+  }, [users, groupMemberships, identities, grantedIds]);
 
   const handleAdd = async () => {
     if (!selected) return;
 
     await addMember.mutateAsync({
       accessBundleId,
-      ...(kind === MemberKind.User && { userId: selected.id }),
-      ...(kind === MemberKind.Identity && { identityId: selected.id }),
-      ...(kind === MemberKind.Group && { groupId: selected.id })
+      ...(selected.kind === MemberKind.User && { userId: selected.id }),
+      ...(selected.kind === MemberKind.Identity && { identityId: selected.id }),
+      ...(selected.kind === MemberKind.Group && { groupId: selected.id })
     });
     createNotification({ text: `Access bundle granted to "${selected.label}"`, type: "success" });
     onOpenChange(false);
@@ -108,49 +127,48 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Grant Access Bundle</DialogTitle>
+          <DialogTitle>Grant Access</DialogTitle>
           <DialogDescription>
             Whoever holds this bundle can mint a session over it. They must already be a member of
             Agent Vault.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <Tabs
-            value={kind}
-            onValueChange={(value) => {
-              setKind(value as MemberKind);
-              setSelected(null);
-            }}
-          >
-            <TabsList variant="av" aria-label="Member type">
-              <TabsTrigger value={MemberKind.User}>User</TabsTrigger>
-              <TabsTrigger value={MemberKind.Identity}>Machine Identity</TabsTrigger>
-              <TabsTrigger value={MemberKind.Group}>Group</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <Field>
-            <FieldLabel>Grant To</FieldLabel>
-            <FieldContent>
-              <Combobox
-                options={options}
-                value={selected}
-                getOptionValue={(option) => option.id}
-                getOptionLabel={(option) => option.label}
-                placeholder="Select"
-                searchPlaceholder="Search..."
-                emptyMessage="Nobody left to grant. Add them under Access Control first."
-                onValueChange={setSelected}
-              />
-            </FieldContent>
-          </Field>
-        </div>
+        <Field>
+          <FieldLabel htmlFor="agent-vault-grant-to">Grant To</FieldLabel>
+          <FieldContent>
+            <Combobox
+              id="agent-vault-grant-to"
+              options={options}
+              value={selected}
+              getOptionValue={(option) => `${option.kind}:${option.id}`}
+              getOptionLabel={(option) => option.label}
+              getOptionKeywords={(option) => [option.subtitle]}
+              placeholder="Pick a user, group, or machine identity..."
+              searchPlaceholder="Pick a user, group, or machine identity..."
+              searchAriaLabel="Search users, groups, and machine identities"
+              emptyMessage="Nobody left to grant. Add them under Access Control first."
+              modal
+              onValueChange={setSelected}
+              renderOption={(option) => {
+                const Icon = KIND_ICON[option.kind];
+                return (
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <Icon className="size-4 shrink-0 text-muted" />
+                    <span className="min-w-0">
+                      <span className="block truncate">{option.label}</span>
+                      <span className="block truncate text-xs leading-4 text-muted">
+                        {option.subtitle}
+                      </span>
+                    </span>
+                  </span>
+                );
+              }}
+            />
+          </FieldContent>
+        </Field>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
           <Button
             variant="av"
             isDisabled={!selected}
@@ -158,6 +176,9 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
             onClick={async () => handleAdd()}
           >
             Grant Access
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
           </Button>
         </DialogFooter>
       </DialogContent>
