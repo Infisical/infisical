@@ -1,19 +1,21 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
-import { SearchIcon, XIcon } from "lucide-react";
+import { MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   DeleteConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -43,7 +45,6 @@ type Props = {
 };
 
 export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
-  const [search, setSearch] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TAgentVaultMember | null>(null);
 
@@ -51,11 +52,6 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const removeMember = useRemoveAgentVaultAccessBundleMember();
 
   const members = bundleDetails?.members ?? [];
-  const displayedMembers = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return members;
-    return members.filter((member) => memberDisplayName(member).toLowerCase().includes(term));
-  }, [members, search]);
 
   const handleRemove = async () => {
     if (!accessBundle || !memberToRemove) return;
@@ -72,13 +68,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   };
 
   return (
-    <Sheet
-      open={Boolean(accessBundle)}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) setSearch("");
-        onOpenChange(isOpen);
-      }}
-    >
+    <Sheet open={Boolean(accessBundle)} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Manage Access</SheetTitle>
@@ -88,43 +78,38 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <div className="flex items-center gap-2">
-            {members.length > 0 && (
-              <InputGroup className="flex-1">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search members..."
-                />
-              </InputGroup>
-            )}
-            <Button variant="av" className="ml-auto shrink-0" onClick={() => setIsAddOpen(true)}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex items-center gap-2 border-b border-border p-4">
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              Members
+              <Badge variant="av">{members.length}</Badge>
+            </span>
+            <Button size="sm" variant="av" className="ml-auto" onClick={() => setIsAddOpen(true)}>
+              <UserPlusIcon />
               Grant Access
             </Button>
           </div>
 
-          {isPending && <Skeleton className="h-16 w-full" />}
-
-          {!isPending && displayedMembers.length === 0 && (
-            <Empty className="border" frame="dashed">
-              <EmptyHeader>
-                <EmptyTitle>
-                  {members.length === 0 ? "No members yet" : "No members match your search"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {members.length === 0
-                    ? "Grant this bundle to a user, machine identity or group."
-                    : "Try a different search term."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+          {isPending && (
+            <div className="p-4">
+              <Skeleton className="h-16 w-full" />
+            </div>
           )}
 
-          {!isPending && displayedMembers.length > 0 && (
+          {!isPending && members.length === 0 && (
+            <div className="p-4">
+              <Empty className="border" frame="dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No members yet</EmptyTitle>
+                  <EmptyDescription>
+                    Grant this bundle to a user, machine identity or group.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </div>
+          )}
+
+          {!isPending && members.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -134,21 +119,32 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayedMembers.map((member) => (
+                {members.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
                       <MemberName member={member} />
                     </TableCell>
                     <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
                     <TableCell variant="action">
-                      <IconButton
-                        variant="ghost"
-                        size="xs"
-                        aria-label={`Revoke access for ${memberDisplayName(member)}`}
-                        onClick={() => setMemberToRemove(member)}
-                      >
-                        <XIcon />
-                      </IconButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label={`Actions for ${memberDisplayName(member)}`}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuItem
+                            variant="danger"
+                            onClick={() => setMemberToRemove(member)}
+                          >
+                            Revoke Access
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
