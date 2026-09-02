@@ -1842,6 +1842,18 @@
                         ]
                       },
                       {
+                        "group": "Daytona",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/daytona/list",
+                          "api-reference/endpoints/app-connections/daytona/available",
+                          "api-reference/endpoints/app-connections/daytona/get-by-id",
+                          "api-reference/endpoints/app-connections/daytona/get-by-name",
+                          "api-reference/endpoints/app-connections/daytona/create",
+                          "api-reference/endpoints/app-connections/daytona/update",
+                          "api-reference/endpoints/app-connections/daytona/delete"
+                        ]
+                      },
+                      {
                         "group": "DBT",
                         "pages": [
                           "api-reference/endpoints/app-connections/dbt/list",
@@ -3346,6 +3358,19 @@
                           "api-reference/endpoints/secret-syncs/databricks/delete",
                           "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
                           "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Daytona",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/daytona/list",
+                          "api-reference/endpoints/secret-syncs/daytona/get-by-id",
+                          "api-reference/endpoints/secret-syncs/daytona/get-by-name",
+                          "api-reference/endpoints/secret-syncs/daytona/create",
+                          "api-reference/endpoints/secret-syncs/daytona/update",
+                          "api-reference/endpoints/secret-syncs/daytona/delete",
+                          "api-reference/endpoints/secret-syncs/daytona/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/daytona/remove-secrets"
                         ]
                       },
                       {

@@ -42,7 +42,6 @@ import {
   CloudflareWorkersSyncReviewFields
 } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
-import { DaytonaSyncReviewFields } from "./DaytonaSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
@@ -261,7 +260,7 @@ export const SecretSyncReviewFields = () => {
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;
       break;
     case SecretSync.Daytona:
-      DestinationFieldsComponent = <DaytonaSyncReviewFields />;
+      // The connection is the whole destination; it is already shown above.
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;

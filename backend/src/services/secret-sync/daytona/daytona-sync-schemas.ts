@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -30,14 +29,9 @@ const DAYTONA_KEY_SCHEMA_ERROR = {
   path: ["syncOptions", "keySchema"]
 };
 
-const DaytonaSyncDestinationConfigSchema = z.object({
-  organizationName: z
-    .string()
-    .trim()
-    .min(1, "Organization name is required")
-    .max(255)
-    .describe(SecretSyncs.DESTINATION_CONFIG.DAYTONA.organizationName)
-});
+// A Daytona API key is bound to one organization and nothing scopes below it, so the connection is
+// the whole destination and there is nothing left to configure.
+const DaytonaSyncDestinationConfigSchema = z.object({});
 
 const DaytonaSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 

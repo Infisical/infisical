@@ -3287,10 +3287,6 @@ export const SecretSyncs = {
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."
     },
-    DAYTONA: {
-      organizationName:
-        "A display name for the Daytona organization secrets are synced to. The connection's API key determines the organization; this label is shown in Infisical only."
-    },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",
       projectName: "The GitLab Project Name to sync secrets to.",

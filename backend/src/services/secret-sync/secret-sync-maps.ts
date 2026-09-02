@@ -219,8 +219,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
   [SecretSync.Spacelift]: ["contextName"],
-  // Display-only label; excluded from duplicate matching so the connection check below decides.
-  [SecretSync.Daytona]: ["organizationName"]
+  [SecretSync.Daytona]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
@@ -340,8 +339,9 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
   [SecretSync.Spacelift]: defaultDuplicateCheck,
-  // A Daytona API key is bound to one organization and nothing scopes below it, so two syncs sharing a
-  // connection write the same secrets. The stored organization name is a label and cannot be trusted here.
+  // Daytona has an empty destination config, so checkDuplicateDestination returns early and never
+  // reaches this. Kept accurate rather than defaulted: a Daytona API key is bound to one organization
+  // and nothing scopes below it, so two syncs sharing a connection do write the same secrets.
   [SecretSync.Daytona]: async ({ existingSync, newSync }) =>
     Boolean(newSync.connectionId) && existingSync.connectionId === newSync.connectionId
 };

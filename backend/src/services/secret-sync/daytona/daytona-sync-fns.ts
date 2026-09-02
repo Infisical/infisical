@@ -1,8 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { HttpStatusCode, isAxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
-import { retryOnRateLimit } from "@app/lib/retry";
+import { safeRequest } from "@app/lib/validator/safe-request";
 import { getDaytonaAuthHeaders } from "@app/services/app-connection/daytona";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -12,7 +11,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { DAYTONA_SECRET_NAME_PATTERN, DAYTONA_SECRET_NAME_RULE } from "./daytona-sync-schemas";
 import { TDaytonaListSecretsResponse, TDaytonaSecret, TDaytonaSyncWithCredentials } from "./daytona-sync-types";
 
-const DAYTONA_PAGE_SIZE = 100;
+const DAYTONA_PAGE_SIZE = 200;
 const DAYTONA_MAX_PAGES = 10;
 
 const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => {
@@ -22,11 +21,12 @@ const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => 
   for (let page = 0; page < DAYTONA_MAX_PAGES; page += 1) {
     const currentCursor = cursor;
 
-    const { data } = await retryOnRateLimit(() =>
-      request.get<TDaytonaListSecretsResponse>(`${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`, {
+    const { data } = await safeRequest.get<TDaytonaListSecretsResponse>(
+      `${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`,
+      {
         params: { limit: DAYTONA_PAGE_SIZE, ...(currentCursor ? { cursor: currentCursor } : {}) },
         headers: getDaytonaAuthHeaders(apiKey)
-      })
+      }
     );
 
     secrets.push(...(data.items ?? []));
@@ -43,29 +43,23 @@ const listDaytonaSecrets = async (apiKey: string): Promise<TDaytonaSecret[]> => 
 };
 
 const createDaytonaSecret = (apiKey: string, name: string, value: string) =>
-  retryOnRateLimit(() =>
-    request.post(
-      `${IntegrationUrls.DAYTONA_API_URL}/secret`,
-      { name, value },
-      { headers: getDaytonaAuthHeaders(apiKey) }
-    )
+  safeRequest.post(
+    `${IntegrationUrls.DAYTONA_API_URL}/secret`,
+    { name, value },
+    { headers: getDaytonaAuthHeaders(apiKey) }
   );
 
 const updateDaytonaSecretValue = (apiKey: string, secretId: string, value: string) =>
-  retryOnRateLimit(() =>
-    request.patch(
-      `${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`,
-      { value },
-      { headers: getDaytonaAuthHeaders(apiKey) }
-    )
+  safeRequest.patch(
+    `${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`,
+    { value },
+    { headers: getDaytonaAuthHeaders(apiKey) }
   );
 
 const deleteDaytonaSecret = (apiKey: string, secretId: string) =>
-  retryOnRateLimit(() =>
-    request.delete(`${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`, {
-      headers: getDaytonaAuthHeaders(apiKey)
-    })
-  );
+  safeRequest.delete(`${IntegrationUrls.DAYTONA_API_URL}/secret/${encodeURIComponent(secretId)}`, {
+    headers: getDaytonaAuthHeaders(apiKey)
+  });
 
 export const DaytonaSyncFns = {
   async syncSecrets(secretSync: TDaytonaSyncWithCredentials, secretMap: TSecretMap) {

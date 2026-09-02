@@ -13,11 +13,15 @@ description: "Learn how to configure a Daytona sync for Infisical."
     The key schema itself is checked against the same rule when you create or update the sync, so a schema containing a slash is rejected up front rather than failing on every run.
 </Note>
 
-<Note>
-    Infisical does not set the **allowed hosts** list on the secrets it creates, so they are unrestricted in the same way as a secret created in Daytona without one. Daytona substitutes the real value for its placeholder on requests to any host.
+## Allowed hosts stay under your control in Daytona
 
-    To restrict a secret, set its allowed hosts in Daytona. This sync only ever writes the value, so a list you set there is preserved on later syncs.
-</Note>
+Daytona never places a secret's value in a sandbox. It sets the environment variable to an opaque placeholder and substitutes the real value in its egress proxy, but only for requests to hosts on that secret's allowed hosts list. A secret with no allowed hosts is unrestricted: Daytona substitutes the value for a request to any host.
+
+Infisical never sets or changes allowed hosts. Creating a secret sends its name and value, and updating one sends only the value, so the allowed hosts you set in Daytona are preserved by every later sync. Nothing you configure here can widen or narrow them.
+
+Set allowed hosts on a secret in Daytona after the first sync creates it. The list is per secret, so each one can be restricted to the destinations it is actually used with, and it survives from then on.
+
+![Allowed hosts on a Daytona secret](/images/secret-syncs/daytona/allowed-hosts.png)
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -29,9 +33,11 @@ description: "Learn how to configure a Daytona sync for Infisical."
             </Step>
             <Step title="Select 'Daytona'">
                 Select the **Daytona** option from the list of available secret syncs.
+
+                ![Select Daytona](/images/secret-syncs/daytona/select-option.png)
             </Step>
             <Step title="Configure source">
-                Configure the **Source** from where secrets should be retrieved, then select **Next**.
+                Configure the **Source** from where secrets should be retrieved, then select **Continue**.
 
                 - **Environment**: The project environment to retrieve secrets from.
                 - **Secret Path**: The folder path to retrieve secrets from.
@@ -41,38 +47,42 @@ description: "Learn how to configure a Daytona sync for Infisical."
                 </Tip>
             </Step>
             <Step title="Configure destination">
-                Configure the **Destination** to where secrets should be deployed, then select **Next**.
+                Select the **Daytona Connection** to authenticate with, then select **Continue**. The connection's API key determines which Daytona organization receives the secrets, so there is nothing further to configure.
 
-                - **Daytona Connection**: The Daytona connection to authenticate with. Its API key determines which Daytona organization receives the secrets.
-                - **Organization Name**: A label for that organization. It is shown in Infisical only and does not affect where secrets are written.
+                ![Configure Destination](/images/secret-syncs/daytona/configure-destination.png)
+            </Step>
+            <Step title="Choose initial sync behavior">
+                Choose how Infisical reconciles the secrets already in Daytona on the first run, then select **Continue**.
+
+                Daytona never returns a secret's value through its API, so this sync cannot import existing secrets into Infisical. **Overwrite Daytona** is the only behavior available.
+
+                ![Initial Sync Behavior](/images/secret-syncs/daytona/initial-sync-behavior.png)
             </Step>
             <Step title="Configure sync options">
-                Configure the **Sync Options** to specify how secrets should be synced, then select **Next**.
+                Configure the **Sync Options** to specify how secrets should be synced, then select **Continue**.
 
-                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
-                    - **Overwrite Destination Secrets**: Removes any secrets in the Daytona organization not present in Infisical.
+                - **Disable secret deletion**: When enabled, Infisical does not remove secrets from the Daytona organization. Enable this if you intend to manage some secrets manually outside of Infisical.
+                - **Auto-sync on changes**: When enabled, secrets sync to Daytona automatically as the source changes. Turn it off to sync manually only.
+                - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` as a placeholder for the original name and `{{environment}}` for the environment.
 
-                    <Note>
-                        Daytona never returns a secret's value through its API, so this sync cannot import existing secrets from Daytona into Infisical. Only **Overwrite Destination Secrets** is available as an initial sync behavior.
-                    </Note>
-                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
                 <Note>
-                    We highly recommend using a key schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                    We highly recommend customizing key names so Infisical only manages the specific keys you intend, keeping everything else untouched.
                 </Note>
-                - **Auto-Sync Enabled**: If enabled, secrets are automatically synced from the source location when changes occur. Disable to enforce manual syncing only.
-                - **Disable Secret Deletion**: If enabled, Infisical does not remove secrets from the Daytona organization. Enable this option if you intend to manage some secrets manually outside of Infisical.
+
+                ![Configure Sync Options](/images/secret-syncs/daytona/configure-sync-options.png)
             </Step>
             <Step title="Configure details">
-                Configure the **Details** of your Daytona sync, then select **Next**.
+                Give the sync a **Name** and an optional **Description**, then select **Continue**. The name must be slug-friendly.
 
-                - **Name**: The name of your sync. Must be slug-friendly.
-                - **Description**: An optional description for your sync.
+                ![Sync Details](/images/secret-syncs/daytona/configure-details.png)
             </Step>
-            <Step title="Review configuration">
+            <Step title="Review and create">
                 Review your Daytona sync configuration, then select **Create Sync**.
+
+                ![Review and Create](/images/secret-syncs/daytona/review-configuration.png)
             </Step>
             <Step title="Sync created">
-                If enabled, your Daytona sync begins syncing your secrets to the destination organization.
+                If auto-sync is enabled, your Daytona sync begins syncing your secrets to the destination organization.
             </Step>
         </Steps>
     </Tab>
@@ -97,9 +107,7 @@ description: "Learn how to configure a Daytona sync for Infisical."
                         "initialSyncBehavior": "overwrite-destination",
                         "disableSecretDeletion": false
                     },
-                    "destinationConfig": {
-                        "organizationName": "My Daytona Organization"
-                    }
+                    "destinationConfig": {}
                 }'
         ```
 
@@ -149,9 +157,7 @@ description: "Learn how to configure a Daytona sync for Infisical."
                     "path": "/my-secrets"
                 },
                 "destination": "daytona",
-                "destinationConfig": {
-                    "organizationName": "My Daytona Organization"
-                }
+                "destinationConfig": {}
             }
         }
         ```

@@ -1,7 +1,7 @@
 import { HttpStatusCode, isAxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -30,7 +30,7 @@ export const validateDaytonaConnectionCredentials = async (config: TDaytonaConne
   // Listing secrets is the capability every Daytona sync needs, so validating against it proves both
   // that the key works and that it carries manage:secrets. Reading the key's own details would not.
   try {
-    await request.get(`${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`, {
+    await safeRequest.get(`${IntegrationUrls.DAYTONA_API_URL}/secret/paginated`, {
       params: { limit: 1 },
       headers: getDaytonaAuthHeaders(apiKey)
     });

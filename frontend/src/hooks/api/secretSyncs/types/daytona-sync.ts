@@ -4,7 +4,7 @@ import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export type TDaytonaSync = TRootSecretSync & {
   destination: SecretSync.Daytona;
-  destinationConfig: { organizationName: string };
+  destinationConfig: Record<string, never>;
   connection: {
     app: AppConnection.Daytona;
     name: string;

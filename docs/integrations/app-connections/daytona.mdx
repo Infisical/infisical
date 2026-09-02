@@ -1,9 +1,10 @@
 ---
 title: "Daytona connection"
+sidebarTitle: "Daytona"
 description: "Learn how to configure a Daytona connection for Infisical."
 ---
 
-[Daytona](https://www.daytona.io/) runs sandboxes that read organization-scoped secrets at runtime. Infisical connects to Daytona with an **API key**, which is used to push secrets into a Daytona organization through the [Daytona secret sync](/integrations/secret-syncs/daytona).
+[Daytona](https://www.daytona.io/) runs sandboxes that read organization-scoped secrets at runtime. Infisical connects to Daytona with an API key, which is used to push secrets into a Daytona organization through the [Daytona secret sync](/integrations/secret-syncs/daytona).
 
 A Daytona API key belongs to exactly one organization. The key you choose therefore decides which organization your secrets are written to.
 
@@ -15,13 +16,17 @@ A Daytona API key belongs to exactly one organization. The key you choose theref
 
 <Steps>
     <Step title="Open API key settings">
-        In the Daytona dashboard, go to **Settings** → **API Keys** and select **Create Key**.
+        In the Daytona dashboard, select **API Keys** in the sidebar, then select **Create Key**.
     </Step>
-    <Step title="Grant the manage:secrets permission">
-        Give the key a name, then grant it the `manage:secrets` permission. Infisical needs this permission to create, update, and delete secrets. A key without it is rejected when you create the connection.
+    <Step title="Grant the key permission to manage secrets">
+        Give the key a name. Under **Permissions**, select **Restricted**, then set **Secrets** to **Manage**. **Full Access** also works.
+
+        Infisical needs this permission to create, update, and delete secrets. A key without it is rejected when you create the connection.
+
+        ![Create API Key](/images/app-connections/daytona/create-api-key.png)
     </Step>
     <Step title="Copy the key">
-        Daytona shows the key once, immediately after creation. Copy it and store it securely. You need it in the next section.
+        Select **Create**. Daytona shows the key once, immediately after creation. Copy it and store it securely. You need it in the next section.
     </Step>
 </Steps>
 
@@ -37,20 +42,24 @@ A Daytona API key belongs to exactly one organization. The key you choose theref
             </Step>
             <Step title="Select Daytona Connection">
                 Select **Add Connection** and choose **Daytona** from the list of available connections.
+
+                ![Select Daytona Connection](/images/app-connections/daytona/daytona-app-connection-option.png)
             </Step>
             <Step title="Fill out the connection form">
                 Complete the form with:
                 - A **name** for the connection (for example `daytona-prod`)
                 - An optional **description**
                 - Your **Daytona API key**
+
+                ![Daytona Connection Form](/images/app-connections/daytona/daytona-app-connection-form.png)
             </Step>
             <Step title="Connection created">
-                Infisical validates the key against Daytona and confirms it carries `manage:secrets`. Once it passes, the connection is ready to use in your project.
+                Infisical validates the key against Daytona. Once it passes, the connection is ready to use in your project.
             </Step>
         </Steps>
     </Tab>
     <Tab title="API">
-        Create a Daytona connection through the API.
+        To create a Daytona connection, make an API request to the [Create Daytona Connection](/api-reference/endpoints/app-connections/daytona/create) API endpoint.
 
         ### Sample request
 

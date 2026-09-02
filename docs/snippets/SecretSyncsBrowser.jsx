@@ -4,7 +4,7 @@ export const SecretSyncsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring', 'Identity & Auth', 'Data Analytics', 'Hosting', 'DevOps Tools', 'Security'];
+  const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring', 'Identity & Auth', 'Data Analytics', 'Hosting', 'DevOps Tools', 'Security', 'SaaS'];
 
   const syncs = [
     {"name": "AWS Parameter Store", "slug": "aws-parameter-store", "path": "/integrations/secret-syncs/aws-parameter-store", "description": "Learn how to sync secrets from Infisical to AWS Parameter Store.", "category": "Cloud Providers"},
@@ -54,6 +54,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools"},
     {"name": "Cloud 66", "slug": "cloud-66", "path": "/integrations/secret-syncs/cloud-66", "description": "Learn how to sync secrets from Infisical to Cloud66.", "category": "DevOps Tools"},
     {"name": "Hasura Cloud", "slug": "hasura-cloud", "path": "/integrations/secret-syncs/hasura-cloud", "description": "Learn how to sync secrets from Infisical to Hasura Cloud.", "category": "Platform"},
+    {"name": "Daytona", "slug": "daytona", "path": "/integrations/secret-syncs/daytona", "description": "Learn how to sync secrets from Infisical to a Daytona organization.", "category": "SaaS"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
