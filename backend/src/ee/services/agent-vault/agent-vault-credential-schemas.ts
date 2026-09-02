@@ -22,8 +22,10 @@ export const AgentVaultBearerConfigSchema = z.object({
   headerPrefix: z.string().trim().max(64).default("Bearer")
 });
 
+// RFC 7617 lets either half be blank, and real services use that: Stripe and Postmark authenticate
+// with the key as the username and no password at all.
 export const AgentVaultBasicConfigSchema = z.object({
-  username: z.string().trim().min(1).max(256)
+  username: z.string().trim().max(256)
 });
 
 export const AgentVaultPassthroughConfigSchema = z.object({});
@@ -36,11 +38,12 @@ export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
 
 export type TAgentVaultCredentialConfig = z.infer<typeof AgentVaultCredentialConfigSchema>;
 
-// The secret half, as it is sealed. Required on write for bearer and basic, so there is no
-// half-configured connection and the proxy never has a refusal path.
+// The secret half, as it is sealed. Present on write for bearer and basic, so there is no
+// half-configured connection and the proxy never has a refusal path. Basic may seal an empty
+// password; bearer may not, because a header with nothing after the prefix authenticates nobody.
 export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Bearer), value: z.string().min(1).max(8192) }),
-  z.object({ type: z.literal(AgentVaultCredentialType.Basic), password: z.string().min(1).max(8192) })
+  z.object({ type: z.literal(AgentVaultCredentialType.Basic), password: z.string().max(8192) })
 ]);
 
 export type TAgentVaultSecret = z.infer<typeof AgentVaultSecretSchema>;

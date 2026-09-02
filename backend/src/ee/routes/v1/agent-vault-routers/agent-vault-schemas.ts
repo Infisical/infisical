@@ -14,8 +14,9 @@ export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.CONNECTION.hostPattern);
 
-// The secret is required on write for bearer and basic, so there is no half-configured connection and
-// the proxy never has a refusal path to implement.
+// The secret is sent on write for bearer and basic, so there is no half-configured connection and the
+// proxy never has a refusal path to implement. Basic accepts an empty username or password, because
+// RFC 7617 allows either half to be blank and services like Stripe rely on it.
 export const AgentVaultCredentialInputSchema = z.discriminatedUnion("type", [
   AgentVaultBearerConfigSchema.partial().extend({
     type: z.literal(AgentVaultCredentialType.Bearer),
@@ -25,8 +26,8 @@ export const AgentVaultCredentialInputSchema = z.discriminatedUnion("type", [
   }),
   AgentVaultBasicConfigSchema.extend({
     type: z.literal(AgentVaultCredentialType.Basic),
-    username: z.string().trim().min(1).max(256).describe(AGENT_VAULT.CONNECTION.username),
-    password: z.string().min(1).max(8192).describe(AGENT_VAULT.CONNECTION.password)
+    username: z.string().trim().max(256).describe(AGENT_VAULT.CONNECTION.username),
+    password: z.string().max(8192).describe(AGENT_VAULT.CONNECTION.password)
   }),
   z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);

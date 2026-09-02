@@ -18,7 +18,7 @@ Each connection has a name, a host pattern, and a credential.
 | Type             | What the proxy sends                                                                                            | When to use it                                                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Bearer**       | One header, built as `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.            | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
-| **Basic**        | `Authorization: Basic <base64 of username:password>`.                                                           | APIs behind HTTP basic auth.                                                                |
+| **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be left blank.                            | APIs behind HTTP basic auth, including the ones that carry the whole key in the username and take no password. |
 | **Pass-through** | Nothing. The request is forwarded unchanged.                                                                    | Only meaningful on a proxy that denies unmatched hosts, where it makes a host reachable without giving it a credential. |
 
 The secret is entered once and never shown again. Editing a connection without entering a new value keeps the stored one, and changing how the header is built asks you to enter the value again.

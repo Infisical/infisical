@@ -4166,9 +4166,10 @@ export const AGENT_VAULT = {
     headerName: "The header the credential is written to. Defaults to Authorization.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY.",
-    username: "The username half of the basic credential.",
+    username: "The username half of the basic credential. May be empty.",
     value: "The secret. Never returned once saved.",
-    password: "The password half of the basic credential. Never returned once saved."
+    password:
+      "The password half of the basic credential. May be empty, for services that carry the whole key in the username. Never returned once saved."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",

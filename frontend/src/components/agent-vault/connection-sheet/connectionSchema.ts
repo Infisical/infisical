@@ -51,10 +51,12 @@ const credentialSettingsDiffer = (
   return false;
 };
 
-// The secret rules depend on whether a connection already exists: required on create, and on edit
-// required again whenever the settings that govern how it is sent change, because the API replaces
-// the credential as a whole or not at all. Keeping them in the schema means Continue blocks on the
-// step that owns the field and onFormInvalid jumps there, rather than Save failing silently.
+// The secret rules depend on whether a connection already exists: required on create for bearer, and
+// on edit required again whenever the settings that govern how it is sent change, because the API
+// replaces the credential as a whole or not at all. That second rule holds for basic too, blank
+// password or not, so a username change can never be silently dropped. Keeping the rules in the
+// schema means Continue blocks on the step that owns the field and onFormInvalid jumps there,
+// rather than Save failing silently.
 export const buildConnectionSchema = (connection?: TAgentVaultConnection | null) =>
   z
     .object({
@@ -87,14 +89,15 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
     .superRefine((data, ctx) => {
       const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
 
-      if (data.credentialType === AgentVaultCredentialType.Basic && !data.username) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["username"], message: "Required" });
-      }
-
       if (!needsSecret || data.secret) return;
 
       if (!connection) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        // Basic passes with either half blank: RFC 7617 allows it and services like Stripe put the
+        // whole key in the username. A bearer header with nothing after the prefix authenticates
+        // nobody, so that one stays required.
+        if (data.credentialType === AgentVaultCredentialType.Bearer) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        }
       } else if (credentialSettingsDiffer(data, connection)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

@@ -139,6 +139,11 @@ export const CredentialFields = ({ isUpdate }: Props) => {
                 {isUpdate && (
                   <FieldDescription>Leave blank to keep the current secret.</FieldDescription>
                 )}
+                {!isUpdate && credentialType === AgentVaultCredentialType.Basic && (
+                  <FieldDescription>
+                    Leave blank if the service carries the whole key in the username.
+                  </FieldDescription>
+                )}
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>
