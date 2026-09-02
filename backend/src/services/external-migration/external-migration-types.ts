@@ -153,6 +153,24 @@ export type TVaultFolderImportResult = {
   >["approval"];
 };
 
-export type TVaultFolderImportApprovalResult = TVaultFolderImportResult & {
-  approval: NonNullable<TVaultFolderImportResult["approval"]>;
+export type TVaultImportSideEffectsJobPayload = {
+  projectId: string;
+  environment: string;
+  environmentName: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+  auditLogInfo: AuditLogInfo;
+  writtenFolders: { folderPath: string; secretKeys: string[] }[];
+  approvedFolders: {
+    folderPath: string;
+    secretKeys: string[];
+    approval: {
+      id: string;
+      policyId: string;
+      slug: string;
+      committerUserId: string | null;
+      commits: { id: string }[];
+    };
+  }[];
 };

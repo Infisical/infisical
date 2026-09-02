@@ -1,5 +1,4 @@
 import { MongoAbility, subject } from "@casl/ability";
-import pLimit from "p-limit";
 
 import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
@@ -21,7 +20,6 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
@@ -55,7 +53,6 @@ import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-service";
-import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TUserDALFactory } from "../user/user-dal";
 import {
   assertVaultFolderImportSecretCount,
@@ -80,13 +77,8 @@ import {
   TImportDopplerSecretsDTO,
   TImportEnvKeyDataDTO,
   TImportVaultDataDTO,
-  TVaultFolderImportApprovalResult,
   TVaultFolderImportResult
 } from "./external-migration-types";
-
-const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
-// each notification is a KMS decrypt plus Slack/Teams and SMTP delivery, so it is paced lower
-const VAULT_IMPORT_NOTIFICATION_CONCURRENCY = 5;
 
 const $findFolderPathsDeniedCreate = ({
   permission,
@@ -180,11 +172,6 @@ type TExternalMigrationServiceFactoryDep = {
   folderService: Pick<TSecretFolderServiceFactory, "createManyFolders">;
   folderDAL: Pick<TSecretFolderDALFactory, "transaction" | "findByManySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretCreateSideEffects">;
-  secretApprovalRequestService: Pick<
-    TSecretApprovalRequestServiceFactory,
-    "dispatchSecretApprovalRequestCreateSideEffects"
-  >;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -203,9 +190,7 @@ export const externalMigrationServiceFactory = ({
   appConnectionService,
   folderService,
   folderDAL,
-  projectEnvDAL,
-  secretV2BridgeService,
-  secretApprovalRequestService
+  projectEnvDAL
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -502,100 +487,6 @@ export const externalMigrationServiceFactory = ({
     return listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, mountPath, gatewayDetails);
   };
 
-  // every failure here is logged rather than thrown: the import has committed, so a side effect that
-  // fails must not report the whole import as failed
-  const $dispatchVaultImportSideEffects = async ({
-    actor,
-    projectId,
-    environment,
-    environmentName,
-    auditLogInfo,
-    writtenResults,
-    approvedResults
-  }: {
-    actor: OrgServiceActor;
-    projectId: string;
-    environment: string;
-    environmentName: string;
-    auditLogInfo: AuditLogInfo;
-    writtenResults: TVaultFolderImportResult[];
-    approvedResults: TVaultFolderImportApprovalResult[];
-  }) => {
-    const sideEffectLimit = pLimit(VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY);
-    const notificationLimit = pLimit(VAULT_IMPORT_NOTIFICATION_CONCURRENCY);
-
-    await Promise.all(
-      writtenResults.map(({ folderPath, secrets }) =>
-        sideEffectLimit(async () => {
-          try {
-            await secretV2BridgeService.dispatchSecretCreateSideEffects({
-              projectId,
-              orgId: actor.orgId,
-              actor: actor.type,
-              actorId: actor.id,
-              environmentSlug: environment,
-              environmentName,
-              secretPath: folderPath,
-              secretKeys: secrets.map(({ secretKey }) => secretKey)
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `Failed to dispatch Vault import secret side effects [secretPath=${folderPath}] [projectId=${projectId}]`
-            );
-          }
-        })
-      )
-    );
-
-    await Promise.all(
-      approvedResults.map(({ folderPath, secrets, approval }) =>
-        notificationLimit(async () => {
-          try {
-            await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
-              secretApprovalRequest: approval,
-              projectId,
-              environment,
-              secretPath: folderPath,
-              secretKeys: secrets.map(({ secretKey }) => secretKey),
-              actor: actor.type,
-              actorId: actor.id,
-              actorOrgId: actor.orgId
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `Failed to notify approvers of Vault import change request [requestId=${approval.id}] [secretPath=${folderPath}]`
-            );
-          }
-        })
-      )
-    );
-
-    await Promise.all(
-      approvedResults.map(({ folderPath, secrets, approval }) =>
-        sideEffectLimit(() =>
-          auditLogService.createAuditLog({
-            projectId,
-            ...auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath: folderPath,
-                environment,
-                secrets: secrets.map(({ secretKey }) => ({ secretKey })),
-                eventType: SecretApprovalEvent.CreateMany
-              }
-            }
-          })
-        )
-      )
-    );
-  };
-
   const $importVaultSecretsPreservingStructure = async ({
     actor,
     projectId,
@@ -727,16 +618,36 @@ export const externalMigrationServiceFactory = ({
       approval ? [{ folderPath, secrets, approval }] : []
     );
 
-    // the writes have committed, so the per-folder side effects can no longer reference an uncommitted row
-    await $dispatchVaultImportSideEffects({
-      actor,
-      projectId,
-      environment,
-      environmentName: env.name,
-      auditLogInfo,
-      writtenResults,
-      approvedResults
-    });
+    // the writes have committed; enqueue is the only request-path wait, and a failure here must not
+    // report the import as failed
+    try {
+      await externalMigrationQueue.enqueueVaultImportSideEffects({
+        projectId,
+        environment,
+        environmentName: env.name,
+        actor: actor.type,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        auditLogInfo,
+        writtenFolders: writtenResults.map(({ folderPath, secrets }) => ({
+          folderPath,
+          secretKeys: secrets.map(({ secretKey }) => secretKey)
+        })),
+        approvedFolders: approvedResults.map(({ folderPath, secrets, approval }) => ({
+          folderPath,
+          secretKeys: secrets.map(({ secretKey }) => secretKey),
+          approval: {
+            id: approval.id,
+            policyId: approval.policyId,
+            slug: approval.slug,
+            committerUserId: approval.committerUserId,
+            commits: (approval.commits as { id: string }[]).map((commit) => ({ id: commit.id }))
+          }
+        }))
+      });
+    } catch (error) {
+      logger.error(error, `Failed to enqueue Vault import side effects [projectId=${projectId}]`);
+    }
 
     return {
       status: approvedResults.length

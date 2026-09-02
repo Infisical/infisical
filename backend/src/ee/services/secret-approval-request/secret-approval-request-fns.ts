@@ -12,7 +12,7 @@ type TSendApprovalEmails = {
   projectDAL: Pick<TProjectDALFactory, "findProjectWithOrg">;
   smtpService: Pick<TSmtpService, "sendMail">;
   projectId: string;
-  secretApprovalRequest: TSecretApprovalRequests;
+  secretApprovalRequest: Pick<TSecretApprovalRequests, "id" | "policyId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
