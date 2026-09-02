@@ -174,8 +174,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
     formState: { isSubmitting, isDirty }
   } = form;
 
-  useAppConnectionFormDirtyState(isDirty);
-
   const { subscription } = useSubscription();
 
   const selectedMethod = watch("method");
@@ -213,6 +211,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   // The form is restored (not edited) after resuming, so `isDirty` stays false — track this to keep
   // the Connect button enabled.
   const [isResumed, setIsResumed] = useState(false);
+
+  useAppConnectionFormDirtyState(isDirty || isResumed);
 
   // When we come back from creating a new GitHub App, restore the in-progress form and remember the
   // new app so we can select it. The connection itself is created later when the user hits Connect.
