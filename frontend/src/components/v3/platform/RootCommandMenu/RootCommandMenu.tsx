@@ -107,6 +107,7 @@ const NavigationCommandMenu = ({
     description="Search pages, projects, organizations, teams, and commands."
     placeholder="Find..."
     emptyMessage="No matching pages or commands."
+    showFooter={false}
   />
 );
 

@@ -63,6 +63,7 @@ export type GlobalCommandMenuProps = {
   description?: string;
   placeholder?: string;
   emptyMessage?: string;
+  showFooter?: boolean;
   className?: string;
 };
 
@@ -165,6 +166,7 @@ export const GlobalCommandMenu = ({
   description = "Search available commands.",
   placeholder = "Search commands...",
   emptyMessage = "No commands found.",
+  showFooter = true,
   className
 }: GlobalCommandMenuProps) => {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
@@ -251,15 +253,17 @@ export const GlobalCommandMenu = ({
 
   return (
     <CommandDialog
+      modal
       open={open}
       onOpenChange={setOpen}
       title={title}
       description={description}
-      className={cn("top-[12%] max-w-xl origin-top translate-y-0", className)}
+      className={cn("top-[12%] max-w-2xl origin-top translate-y-0 shadow-2xl", className)}
       loop
       shouldFilter={false}
       showCloseButton={false}
       contentProps={{
+        overlayClassName: "bg-black/20",
         onOpenAutoFocus: () => {
           invokerRef.current =
             document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -298,7 +302,10 @@ export const GlobalCommandMenu = ({
           ) : undefined
         }
       />
-      <CommandList key={`${activeDrilldown?.id ?? "root"}-${mode}`}>
+      <CommandList
+        key={`${activeDrilldown?.id ?? "root"}-${mode}`}
+        className="max-h-[calc(100dvh-8rem)] sm:max-h-[26rem]"
+      >
         <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {liveStatus}
         </div>
@@ -346,26 +353,28 @@ export const GlobalCommandMenu = ({
           </div>
         )}
       </CommandList>
-      <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2 text-xs text-muted">
-        {activeDrilldown && (
+      {showFooter && (
+        <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2 text-xs text-muted">
+          {activeDrilldown && (
+            <div className="flex items-center gap-1.5">
+              <Kbd>
+                <ArrowLeftIcon aria-hidden="true" className="size-3" />
+              </Kbd>
+              <span>Back</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <Kbd>
-              <ArrowLeftIcon aria-hidden="true" className="size-3" />
+              <CornerDownLeftIcon aria-hidden="true" className="size-3" />
             </Kbd>
-            <span>Back</span>
+            <span>Select</span>
           </div>
-        )}
-        <div className="flex items-center gap-1.5">
-          <Kbd>
-            <CornerDownLeftIcon aria-hidden="true" className="size-3" />
-          </Kbd>
-          <span>Select</span>
+          <div className="flex items-center gap-1.5">
+            <Kbd>Esc</Kbd>
+            <span>Close</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Kbd>Esc</Kbd>
-          <span>Close</span>
-        </div>
-      </div>
+      )}
     </CommandDialog>
   );
 };
