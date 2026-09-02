@@ -36,7 +36,7 @@ const formatBreadcrumb = ({
   path: string;
   resourceName: string;
 }) =>
-  [projectName, environmentName, path.replace(/^\/+|\/+$/g, ""), resourceName]
+  [projectName, environmentName, ...path.split("/").filter(Boolean), resourceName]
     .filter(Boolean)
     .join(" / ");
 

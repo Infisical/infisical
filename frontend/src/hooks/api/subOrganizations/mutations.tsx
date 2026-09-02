@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { organizationKeys } from "@app/hooks/api/organization/queries";
 
 import { subOrganizationsQuery } from "./queries";
 import {
@@ -23,6 +24,9 @@ export const useCreateSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -39,6 +43,9 @@ export const useUpdateSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -54,6 +61,9 @@ export const useDeleteSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -69,6 +79,9 @@ export const useJoinSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };

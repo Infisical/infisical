@@ -57,7 +57,7 @@ describe("Secret Manager command search", () => {
     assert.equal(matches[0].environmentSlug, "prod");
     assert.equal(matches[0].path, "/apps/api");
     assert.equal(matches[0].search, "API_KEY");
-    assert.equal(matches[0].breadcrumb, "Platform / Production / apps/api / Secret");
+    assert.equal(matches[0].breadcrumb, "Platform / Production / apps / api / Secret");
     assert.equal("value" in matches[0], false);
   });
 

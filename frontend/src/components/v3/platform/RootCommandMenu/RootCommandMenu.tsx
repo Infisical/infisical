@@ -54,7 +54,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
-import { getProjectTitle } from "@app/helpers/project";
+import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
 import {
   useGetOrganizationGroups,
   useGetOrganizationsWithSubOrgs,
@@ -174,7 +174,7 @@ const useEntityCommandGroups = ({
     id: `entity-project-${project.id}`,
     label: project.name,
     breadcrumb: `${organizationNames.get(project.orgId) ?? "Organization"} / ${getProjectTitle(project.type)}`,
-    icon: ProjectIcon,
+    icon: getProjectLucideIcon(project.type),
     iconClassName: projectIconClassNames[project.type],
     keywords: [project.slug, project.type, getProjectTitle(project.type), "project"],
     priority: project.orgId === currentOrganizationId ? 20 : 0,
