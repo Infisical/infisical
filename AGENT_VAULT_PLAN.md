@@ -48,13 +48,19 @@ Keep this current. It is the first thing the next session reads.
 listed with its reasoning in [Decisions](#decisions-settled-in-planning). If you think you have found a
 new one, check [Do not re-derive these](#do-not-re-derive-these) first — it is probably there.
 
-**Local environment note (found while building Phase 1).** The dev stack's database is stuck on
-`20260612142201_pam-revamp`, which fails before any of this work and leaves the backend container
-crash-looping. Migrations were verified on a fresh database instead, and the e2e suite runs against a
-throwaway Postgres (`max_locks_per_transaction=512`) and Redis on the compose network. **Pass
-`DB_CONNECTION_URI` and `REDIS_URL` explicitly to `docker exec`**: the backend container sets both in its
-own environment, `dotenv` does not override an already-set variable, and the e2e harness opens with
+**Running the e2e suite locally.** It runs inside the backend container (the host lacks `unixodbc` and a
+darwin `@infisical/quic` build) against a throwaway Postgres started with
+`max_locks_per_transaction=512` and a throwaway Redis, both on the compose network. **Pass
+`DB_CONNECTION_URI` and `REDIS_URL` explicitly to `docker exec`**: the container sets both in its own
+environment, `dotenv` does not override an already-set variable, and the harness opens with
 `DROP SCHEMA public CASCADE` — so a run that inherits the container's environment drops the dev database.
+
+**Audit persistence cannot be observed locally, by anyone.** `audit-log-queue.ts:107` drops every entry
+when `plan.auditLogsRetentionDays` is falsy, which is the unlicensed default *and* what the e2e license
+mock returns (`__mocks__/license-fns.ts:27`). So the emit calls are wired and type-checked — each event
+has its enum member, interface and union arm, and the handler awaits `createAuditLog` — but no test in
+this repo asserts an audit row lands, ours included. Verifying that needs an instance with retention
+days set.
 
 **Two things do need a human, and neither blocks starting:**
 
