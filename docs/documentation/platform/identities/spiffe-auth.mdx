@@ -77,7 +77,7 @@ In the following steps, we explore how to create and use identities to access th
 
     ![identities page](/images/platform/identities/identities-page.png)
 
-    Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use SPIFFE Auth instead. To do this, click the cog next to **Universal Auth** and then select **Delete** in the options dropdown.
+    Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use SPIFFE Auth instead. To do this, select the three dot menu next to **Universal Auth**, then select **Remove Auth Method**.
 
     ![identities press cog](/images/platform/identities/identities-press-cog.png)
 
@@ -125,7 +125,7 @@ In the following steps, we explore how to create and use identities to access th
   <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
 
-    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+    To do this, open the project you want to add the identity to, go to **Access Control** > **Machine Identities**, and select **Add Machine Identity to Project**.
 
     Next, select the identity you want to add to the project and the project-level role you want to allow it to assume. The project role assigned will determine what project-level resources this identity can have access to.
 
