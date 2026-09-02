@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import net from "node:net";
 
 import type WebSocket from "ws";
@@ -12,7 +13,12 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
+import {
+  createGatewayConnection,
+  createRelayConnection,
+  destroyGatewayTunnel,
+  setupRelayServer
+} from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -392,23 +398,29 @@ export const pamWebAccessServiceFactory = ({
         relayCerts = null;
         void (async () => {
           let relayConn: net.Socket | null = null;
+          let cancelConn: net.Socket | null = null;
+          const tunnelId = crypto.randomBytes(4).toString("hex");
           try {
             relayConn = await createRelayConnection({
               relayHost: certs.relayHost,
               clientCertificate: certs.relay.clientCertificate,
               clientPrivateKey: certs.relay.clientPrivateKey,
-              serverCertificateChain: certs.relay.serverCertificateChain
+              serverCertificateChain: certs.relay.serverCertificateChain,
+              tunnelId
             });
-            const cancelConn = await createGatewayConnection(
+            cancelConn = await createGatewayConnection(
               relayConn,
               certs.gateway,
-              GatewayProxyProtocol.PamSessionCancellation
+              GatewayProxyProtocol.PamSessionCancellation,
+              tunnelId
             );
             cancelConn.end();
           } catch (err) {
             logger.debug(err, "Session cancellation signal failed (best-effort)");
           } finally {
-            relayConn?.destroy();
+            // end() leaves the inner TLS session reading the gateway's close_notify through
+            // relayConn, so the transport must not be destroyed first.
+            destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
           }
         })();
       }

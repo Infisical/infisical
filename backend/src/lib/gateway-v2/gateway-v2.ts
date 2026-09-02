@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import net from "node:net";
 import tls from "node:tls";
 
@@ -26,18 +27,55 @@ interface IGatewayRelayServer {
 
 const DEFAULT_RELAY_CONNECTION_TIMEOUT_MS = 100000;
 
+/**
+ * A gateway tunnel is TLS inside TLS: `gatewayConn` is a TLSSocket whose transport is `relayConn`,
+ * itself a TLSSocket. Tear the two down innermost-first.
+ */
+export const destroyGatewayTunnel = ({
+  relayConn,
+  gatewayConn,
+  tunnelId,
+  trigger
+}: {
+  relayConn?: net.Socket | null;
+  gatewayConn?: net.Socket | null;
+  /** Correlates the teardown with the tunnel's other lifecycle lines. */
+  tunnelId?: string;
+  /** What asked for the teardown, so a crashing tunnel can be traced to its trigger. */
+  trigger?: string;
+}) => {
+  // Logged either side of the setImmediate on purpose: a process that dies between the two lines
+  // crashed inside the deferred destroy, which is the window this whole helper exists to move away
+  // from OpenSSL's stack.
+  if (tunnelId) {
+    logger.info(
+      `gatewayTunnel: teardown scheduled [tunnelId=${tunnelId}] [trigger=${trigger ?? "unknown"}] [gatewayDestroyed=${Boolean(gatewayConn?.destroyed)}] [relayDestroyed=${Boolean(relayConn?.destroyed)}]`
+    );
+  }
+
+  setImmediate(() => {
+    gatewayConn?.destroy();
+    relayConn?.destroy();
+    if (tunnelId) {
+      logger.info(`gatewayTunnel: teardown complete [tunnelId=${tunnelId}] [trigger=${trigger ?? "unknown"}]`);
+    }
+  });
+};
+
 export const createRelayConnection = async ({
   relayHost,
   clientCertificate,
   clientPrivateKey,
   serverCertificateChain,
-  timeoutMs = DEFAULT_RELAY_CONNECTION_TIMEOUT_MS
+  timeoutMs = DEFAULT_RELAY_CONNECTION_TIMEOUT_MS,
+  tunnelId
 }: {
   relayHost: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
   timeoutMs?: number;
+  tunnelId?: string;
 }): Promise<net.Socket> => {
   const [targetHost] = await verifyHostInputValidity({ host: relayHost, isDynamicSecret: false });
   const [, portStr] = relayHost.split(":");
@@ -58,7 +96,7 @@ export const createRelayConnection = async ({
   return new Promise((resolve, reject) => {
     try {
       const socket = tls.connect(tlsOptions, () => {
-        logger.info("Relay TLS connection established successfully");
+        logger.info(`Relay TLS connection established successfully [tunnelId=${tunnelId ?? "n/a"}]`);
         resolve(socket);
       });
 
@@ -88,7 +126,8 @@ export const createRelayConnection = async ({
 export const createGatewayConnection = async (
   relayConn: net.Socket,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
-  protocol: GatewayProxyProtocol
+  protocol: GatewayProxyProtocol,
+  tunnelId?: string
 ): Promise<net.Socket> => {
   const appCfg = getConfig();
 
@@ -129,11 +168,14 @@ export const createGatewayConnection = async (
           return;
         }
 
-        logger.info("Gateway mTLS connection established successfully");
+        logger.info(`Gateway mTLS connection established successfully [tunnelId=${tunnelId ?? "n/a"}]`);
         resolve(gatewaySocket);
       });
 
       gatewaySocket.on("error", (err: Error) => {
+        // Callers respond to a rejection by destroying relayConn, so the inner socket has to go
+        // first or it is left reading a transport that is about to disappear.
+        gatewaySocket.destroy();
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
@@ -177,30 +219,53 @@ export const setupRelayServer = async ({
   const relayErrorMsg: string[] = [];
   let establishedChannel = false;
   const loadTracker = getGatewayLoadTracker();
+  let localPort = 0;
+  const tunnelLog = (tunnelId: string, event: string, extra = "") =>
+    logger.info(
+      `gatewayTunnel: ${event} [tunnelId=${tunnelId}] [gatewayId=${gatewayId}] [protocol=${protocol}] [localPort=${localPort}]${extra}`
+    );
 
   type TUpstream = {
+    tunnelId: string;
     relayConn: net.Socket;
     gatewayConn: net.Socket;
     releaseChannel: () => void;
   };
 
   const openUpstream = async (): Promise<TUpstream> => {
+    const tunnelId = crypto.randomBytes(4).toString("hex");
+
     // Stage 1: Connect to relay with TLS
-    const relayConn = await createRelayConnection({
-      relayHost,
-      clientCertificate: relay.clientCertificate,
-      clientPrivateKey: relay.clientPrivateKey,
-      serverCertificateChain: relay.serverCertificateChain
-    });
+    let relayConn: net.Socket;
+    try {
+      relayConn = await createRelayConnection({
+        relayHost,
+        clientCertificate: relay.clientCertificate,
+        clientPrivateKey: relay.clientPrivateKey,
+        serverCertificateChain: relay.serverCertificateChain,
+        tunnelId
+      });
+    } catch (err) {
+      tunnelLog(tunnelId, "relay connect failed", ` [err=${err instanceof Error ? err.message : String(err)}]`);
+      throw err;
+    }
 
     let gatewayConn: net.Socket;
     try {
       // Stage 2: Establish mTLS connection to gateway through the relay
-      gatewayConn = await createGatewayConnection(relayConn, gateway, protocol);
+      gatewayConn = await createGatewayConnection(relayConn, gateway, protocol, tunnelId);
     } catch (err) {
-      relayConn.destroy();
+      tunnelLog(tunnelId, "gateway mTLS failed", ` [err=${err instanceof Error ? err.message : String(err)}]`);
+      destroyGatewayTunnel({ relayConn, tunnelId, trigger: "gatewayHandshakeFailed" });
       throw err;
     }
+
+    relayConn.on("close", (hadError: boolean) => tunnelLog(tunnelId, "relay socket close", ` [hadError=${hadError}]`));
+    gatewayConn.on("close", (hadError: boolean) =>
+      tunnelLog(tunnelId, "gateway socket close", ` [hadError=${hadError}]`)
+    );
+    relayConn.on("error", (err: Error) => tunnelLog(tunnelId, "relay socket error", ` [err=${err.message}]`));
+    gatewayConn.on("error", (err: Error) => tunnelLog(tunnelId, "gateway socket error", ` [err=${err.message}]`));
 
     // The gateway dials the target the moment it accepts the channel, so from here the attempt is
     // no longer safe to replay even if we abandon this connection.
@@ -246,6 +311,7 @@ export const setupRelayServer = async ({
     let released = false;
 
     return {
+      tunnelId,
       relayConn,
       gatewayConn,
       releaseChannel: () => {
@@ -261,11 +327,10 @@ export const setupRelayServer = async ({
 
   const discardPendingUpstream = () => {
     if (!pendingUpstream) return;
-    const { relayConn, gatewayConn, releaseChannel } = pendingUpstream;
+    const { tunnelId, relayConn, gatewayConn, releaseChannel } = pendingUpstream;
     pendingUpstream = null;
     releaseChannel();
-    relayConn.destroy();
-    gatewayConn.destroy();
+    destroyGatewayTunnel({ relayConn, gatewayConn, tunnelId, trigger: "discardUnclaimed" });
   };
 
   return new Promise((resolve, reject) => {
@@ -279,35 +344,40 @@ export const setupRelayServer = async ({
 
           const claimed = pendingUpstream;
           pendingUpstream = null;
-          const { relayConn, gatewayConn, releaseChannel } = claimed ?? (await openUpstream());
+          const { tunnelId, relayConn, gatewayConn, releaseChannel } = claimed ?? (await openUpstream());
+          tunnelLog(tunnelId, claimed ? "claimed pre-opened tunnel" : "opened tunnel for client");
 
           // Its "close" already fired, so the teardown listeners below would never run and the
           // channel would stay counted for the life of the pod.
           if (clientConn.destroyed) {
             releaseChannel();
-            relayConn.destroy();
-            gatewayConn.destroy();
+            destroyGatewayTunnel({ relayConn, gatewayConn, tunnelId, trigger: "clientAlreadyGone" });
             return;
           }
 
-          const destroyAll = () => {
+          // Only the first trigger is interesting: six listeners point here, and every later one is
+          // a consequence of the teardown the first already started.
+          let tornDown = false;
+          const destroyAll = (trigger: string) => {
+            if (tornDown) return;
+            tornDown = true;
+            tunnelLog(tunnelId, "teardown triggered", ` [trigger=${trigger}]`);
             releaseChannel();
             clientConn.destroy();
-            relayConn.destroy();
-            gatewayConn.destroy();
+            destroyGatewayTunnel({ relayConn, gatewayConn, tunnelId, trigger });
           };
 
-          clientConn.on("error", () => destroyAll());
-          relayConn.on("error", () => destroyAll());
-          gatewayConn.on("error", () => destroyAll());
+          clientConn.on("error", (err: Error) => destroyAll(`clientError:${err.message}`));
+          relayConn.on("error", () => destroyAll("relayError"));
+          gatewayConn.on("error", () => destroyAll("gatewayError"));
 
           // Bidirectional data forwarding
           clientConn.pipe(gatewayConn);
           gatewayConn.pipe(clientConn);
 
-          clientConn.on("close", destroyAll);
-          relayConn.on("close", destroyAll);
-          gatewayConn.on("close", destroyAll);
+          clientConn.on("close", () => destroyAll("clientClose"));
+          relayConn.on("close", () => destroyAll("relayClose"));
+          gatewayConn.on("close", () => destroyAll("gatewayClose"));
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           relayErrorMsg.push(errorMsg);
@@ -328,6 +398,7 @@ export const setupRelayServer = async ({
         reject(new Error("Failed to get server port"));
         return;
       }
+      localPort = address.port;
 
       const relayServer: IGatewayRelayServer = {
         server,
