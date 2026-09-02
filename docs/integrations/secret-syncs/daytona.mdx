@@ -8,7 +8,7 @@ description: "Learn how to configure a Daytona sync for Infisical."
 - Create a [Daytona connection](/integrations/app-connections/daytona)
 
 <Note>
-    Daytona secret names must start with a letter or an underscore, and can contain only letters, digits, hyphens, and underscores. A sync that includes a key Daytona rejects fails and names the offending key, so no secrets are written. Use a **key schema** to reshape names that do not fit.
+    Daytona secret names must start with a letter or an underscore, and can contain only letters, digits, hyphens, and underscores. A sync that includes a key Daytona rejects fails and names the offending key, so no secrets are written. Use a **key schema** to reshape names that don't fit.
 
     The key schema itself is checked against the same rule when you create or update the sync, so a schema containing a slash is rejected up front rather than failing on every run.
 </Note>
@@ -19,7 +19,7 @@ Daytona never places a secret's value in a sandbox. It sets the environment vari
 
 Infisical never sets or changes allowed hosts. Creating a secret sends its name and value, and updating one sends only the value, so the allowed hosts you set in Daytona are preserved by every later sync. Nothing you configure here can widen or narrow them.
 
-Set allowed hosts on a secret in Daytona after the first sync creates it. The list is per secret, so each one can be restricted to the destinations it is actually used with, and it survives from then on.
+Set allowed hosts on a secret in Daytona after the first sync creates it. The list is per secret, so each one can be restricted to the destinations it's actually used with, and it survives from then on.
 
 ![Allowed hosts on a Daytona secret](/images/secret-syncs/daytona/allowed-hosts.png)
 

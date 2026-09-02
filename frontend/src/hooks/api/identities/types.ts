@@ -504,8 +504,11 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 
 export type IdentityKubernetesAuth = {
   identityId: string;
+  templateId?: string | null;
   kubernetesHost: string;
   tokenReviewerJwt: string;
+  // template-sourced JWTs read back as ""; this flag marks that a hidden JWT is stored
+  isTokenReviewerJwtTemplateSourced?: boolean;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
@@ -524,15 +527,16 @@ export type AddIdentityKubernetesAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
-  kubernetesHost: string | null;
+  templateId?: string;
+  kubernetesHost?: string | null;
   tokenReviewerJwt?: string;
-  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
-  allowedAudience: string;
+  allowedAudience?: string;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
-  caCert: string;
+  caCert?: string;
   verifyTlsCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -546,6 +550,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
+  templateId?: string | null;
   kubernetesHost?: string | null;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
@@ -728,7 +733,6 @@ export type IdentityLdapAuth = {
   url?: string;
   bindDN?: string;
   templateId?: string;
-  bindPass?: string;
   searchBase?: string;
   searchFilter: string;
   ldapCaCertificate?: string;

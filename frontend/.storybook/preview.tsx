@@ -1,4 +1,6 @@
 import type { Preview } from "@storybook/react-vite";
+import { setWasmUrl } from "@lottiefiles/dotlottie-react";
+import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm?url";
 
 import { initializePlatform } from "../src/lib/fn/platform";
 
@@ -9,6 +11,9 @@ import "@fontsource/inter/500.css";
 import "../src/index.css";
 
 initializePlatform();
+
+// Mirrors main.tsx: serve the Lottie player WASM from the local module instead of a CDN.
+setWasmUrl(lottieWasmUrl);
 
 const preview: Preview = {
   decorators: [DocumentDecorator, RouterDecorator],

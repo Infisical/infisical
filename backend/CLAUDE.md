@@ -226,9 +226,8 @@ judgment. Two adjustments to that rule, both small enough to enumerate:
   body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
   and the two `memberships/details` routes. All five check a CASL read ability.
 - **A read that hands back credential material loses it**, because the point of closing administration is
-  that a third-party application should not end up holding the org's secrets. Six routes:
+  that a third-party application should not end up holding the org's secrets. Five routes:
   `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
-  `GET /v1/auth/ldap-auth/identities/:identityId` (`bindPass`),
   `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
   `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
   an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a

@@ -2,15 +2,15 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
+import { VaultCassandraImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { useCanUseProjectAppConnectionImport } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { VaultDatabaseRole } from "@app/hooks/api/migration/types";
-import { VaultCassandraImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultCassandraImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
@@ -33,19 +33,51 @@ import {
 } from "./cassandraContract";
 
 const cassandraFields = [
-  { name: "inputs.host", type: "text", label: "Host", placeholder: "host1,host2", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "cassandra-1.example.com,cassandra-2.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.localDataCenter", type: "text", label: "Local Data Center" },
-  { name: "inputs.username", type: "text", label: "User", layout: "half", autoComplete: "off" },
+  {
+    name: "inputs.localDataCenter",
+    type: "text",
+    label: "Local Data Center",
+    placeholder: "datacenter1"
+  },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "cassandra",
+    layout: "half",
+    autoComplete: "off"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     layout: "half",
     autoComplete: "new-password"
   },
-  { name: "inputs.keyspace", type: "text", label: "Keyspace", isOptional: true },
-  { name: "inputs.ca", type: "textarea", label: "CA (SSL)", isOptional: true, rows: 3 }
+  {
+    name: "inputs.keyspace",
+    type: "text",
+    label: "Keyspace",
+    placeholder: "app_keyspace",
+    isOptional: true
+  },
+  {
+    name: "inputs.ca",
+    type: "textarea",
+    label: "CA (SSL)",
+    placeholder: "-----BEGIN CERTIFICATE----- ...",
+    isOptional: true,
+    rows: 3
+  }
 ] satisfies readonly TDynamicSecretProviderField<TCassandraFormValues>[];
 
 const advancedFields = buildStatementFields<TCassandraFormValues>({
@@ -72,16 +104,18 @@ const CassandraVaultImport = ({ onImport }: { onImport: (role: VaultDatabaseRole
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-md border border-info/20 bg-info/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-foreground">
-          <InfoIcon className="size-4 text-info" />
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertDescription>
           <span>Load values from HashiCorp Vault.</span>
-        </div>
-        <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
-          <img src="/images/integrations/Vault.png" alt="" className="size-4" />
-          Load from Vault
-        </Button>
-      </div>
+          <AlertAction>
+            <Button type="button" size="sm" variant="info" onClick={() => setIsOpen(true)}>
+              <img src="/images/integrations/Vault.png" alt="" className="size-4" />
+              Load from Vault
+            </Button>
+          </AlertAction>
+        </AlertDescription>
+      </Alert>
       <VaultCassandraImportModal
         isOpen={isOpen}
         onOpenChange={setIsOpen}
