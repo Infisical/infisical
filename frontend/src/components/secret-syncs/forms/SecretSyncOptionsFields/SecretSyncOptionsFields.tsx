@@ -235,10 +235,10 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
             <Field className="mb-4">
               <Field orientation="horizontal">
                 <FieldContent>
-                  <Label htmlFor="disable-secret-deletion">Disable secret deletion</Label>
+                  <Label htmlFor="disable-secret-deletion">Prevent secret deletion</Label>
                   <FieldDescription>
-                    When enabled, Infisical will not remove secrets from {destinationName} during a
-                    sync. Use this if you intend to manage some secrets manually outside of
+                    Infisical will add and update secrets in {destinationName} but never delete
+                    them. Turn this off to let syncs remove secrets that no longer exist in
                     Infisical.
                   </FieldDescription>
                 </FieldContent>
@@ -265,17 +265,16 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                     <AlertDialogMedia>
                       <AlertTriangleIcon className="text-warning" />
                     </AlertDialogMedia>
-                    <AlertDialogTitle>Disable Secret Deletion Protection</AlertDialogTitle>
+                    <AlertDialogTitle>Allow Secret Deletion</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to disable secret deletion protection? This can lead to
-                      secrets being deleted from {destinationName} if they are not managed by
-                      Infisical.
+                      Turning off &quot;Prevent secret deletion&quot; lets a sync delete secrets in{" "}
+                      {destinationName} that are not managed by Infisical.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it enabled</AlertDialogCancel>
+                    <AlertDialogCancel>Keep it on</AlertDialogCancel>
                     <AlertDialogAction variant="project" onClick={() => onChange(false)}>
-                      Disable
+                      Allow deletion
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
