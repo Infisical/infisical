@@ -13,6 +13,7 @@ import {
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -66,6 +67,7 @@ import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-cert
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
@@ -142,6 +144,7 @@ export type TIssueCertificateFromProfileJobData = {
   locality?: string;
   applicationId?: string;
   basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
+  customExtensions?: TResolvedCustomExtension[];
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -326,54 +329,8 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Queue a certificate issuance job.
    */
-  const queueCertificateIssuance = async ({
-    certificateId,
-    profileId,
-    caId,
-    caType,
-    commonName,
-    altNames,
-    ttl,
-    signatureAlgorithm,
-    keyAlgorithm,
-    keyUsages,
-    extendedKeyUsages,
-    isRenewal,
-    originalCertificateId,
-    certificateRequestId,
-    csr,
-    organization,
-    organizationalUnit,
-    country,
-    state,
-    locality,
-    applicationId,
-    basicConstraints
-  }: TIssueCertificateFromProfileJobData) => {
-    const jobData: TIssueCertificateFromProfileJobData = {
-      certificateId,
-      profileId,
-      caId,
-      caType,
-      commonName,
-      altNames,
-      ttl,
-      signatureAlgorithm,
-      keyAlgorithm,
-      keyUsages,
-      extendedKeyUsages,
-      isRenewal,
-      originalCertificateId,
-      certificateRequestId,
-      csr,
-      organization,
-      organizationalUnit,
-      country,
-      state,
-      locality,
-      applicationId,
-      basicConstraints
-    };
+  const queueCertificateIssuance = async (jobData: TIssueCertificateFromProfileJobData) => {
+    const { caType, certificateId, certificateRequestId } = jobData;
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
     // IdempotencyToken, so we poll longer with a fixed backoff instead of exponential.
@@ -423,7 +380,8 @@ export const certificateIssuanceQueueFactory = ({
       country,
       state,
       locality,
-      basicConstraints
+      basicConstraints,
+      customExtensions
     } = data;
 
     const setPending = async (message: string) => {
@@ -466,6 +424,10 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+      if (customExtensions?.length) {
+        assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
+      }
 
       await setPending("Starting certificate issuance");
 
@@ -646,6 +608,7 @@ export const certificateIssuanceQueueFactory = ({
         const template = await extractProfileTemplate(certificateProfileDAL, profileId);
 
         const adcsParams = {
+          customExtensions,
           caId,
           profileId,
           commonName: commonName || "",
@@ -800,6 +763,7 @@ export const certificateIssuanceQueueFactory = ({
           state,
           locality,
           basicConstraints,
+          customExtensions,
           isCancelled
         };
 

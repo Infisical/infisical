@@ -197,6 +197,16 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
   <Accordion title="Could not reach certificate authority through the gateway">
     When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name does not match a CA on the host, or the Gateway cannot reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
   </Accordion>
+  <Accordion title="The certificate was issued without a custom extension">
+    AD CS copies a custom extension out of a request only when its OID is listed in the CA's `EnableRequestExtensionList`, which lists none by default. Add the OID and restart the service:
+
+    ```powershell
+    certutil -setreg policy\EnableRequestExtensionList +1.3.6.1.4.1.311.25.2
+    net stop certsvc && net start certsvc
+    ```
+
+    Leaving an OID off that list is also how you stop requests from introducing it.
+  </Accordion>
   <Accordion title="Signer rejected: missing Code Signing extended key usage">
     The template used for a code signing signer does not produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
   </Accordion>

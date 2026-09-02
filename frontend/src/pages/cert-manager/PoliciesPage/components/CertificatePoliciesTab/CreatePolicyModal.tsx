@@ -19,6 +19,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
+  IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -37,6 +38,13 @@ import {
   StepperList,
   StepperStep,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow,
   TextArea
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
@@ -58,6 +66,7 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
+  customExtensionLabelFor,
   EXTENDED_KEY_USAGE_OPTIONS,
   formatExtendedKeyUsage,
   formatKeyUsage,
@@ -70,6 +79,10 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
+import {
+  CUSTOM_EXTENSION_CRITICALITY_LABELS,
+  CustomExtensionRuleDialog
+} from "./CustomExtensionRuleDialog";
 import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 
 export type FormData = PolicyFormData;
@@ -231,6 +244,15 @@ const STEPS = [
     rightLabel: "KEY USAGES",
     rightDescription:
       "By default, certificates may carry any key usages and extended key usages. Enable a restriction to mark each usage as required, allowed, or denied. Requests that fall outside those rules are rejected at issuance."
+  },
+  {
+    name: "Custom Extensions",
+    shortDescription: "Arbitrary OIDs",
+    title: "Custom Extensions",
+    subtitle: "Control which custom X.509 extensions certificates may carry.",
+    rightLabel: "CUSTOM EXTENSIONS",
+    rightDescription:
+      "By default, certificates may carry any custom extension with any value. Enable a restriction to limit issuance to the OIDs you approve and the values they may take. Requests that fall outside those rules are rejected at issuance."
   },
   {
     name: "Constraints",
@@ -441,6 +463,8 @@ export const CreatePolicyModal = ({
   const [restrictExtendedKeyUsages, setRestrictExtendedKeyUsages] = useState(false);
   const [restrictValidity, setRestrictValidity] = useState(false);
   const [configureBasicConstraints, setConfigureBasicConstraints] = useState(false);
+  const [restrictCustomExtensions, setRestrictCustomExtensions] = useState(false);
+  const [isCustomExtensionDialogOpen, setIsCustomExtensionDialogOpen] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const clearError = (key: string) =>
@@ -559,6 +583,16 @@ export const CreatePolicyModal = ({
       maxPathLength: policyData.basicConstraints?.maxPathLength ?? undefined
     };
 
+    const customExtensions: FormData["customExtensions"] = (policyData.customExtensions ?? []).map(
+      (rule) => ({
+        oid: rule.oid,
+        label: rule.label ?? "",
+        critical: rule.critical ?? "",
+        rule: rule.rule,
+        value: rule.value
+      })
+    );
+
     return {
       preset: POLICY_PRESET_IDS.CUSTOM,
       name: policyData.name || "",
@@ -570,7 +604,8 @@ export const CreatePolicyModal = ({
       validity,
       signatureAlgorithm,
       keyAlgorithm,
-      basicConstraints
+      basicConstraints,
+      customExtensions
     };
   };
 
@@ -618,6 +653,7 @@ export const CreatePolicyModal = ({
     setRestrictExtendedKeyUsages(Boolean(source?.extendedKeyUsages));
     setRestrictValidity(Boolean(source?.validity?.max));
     setConfigureBasicConstraints(Boolean(source?.basicConstraints?.isCA));
+    setRestrictCustomExtensions(Boolean(source?.customExtensions));
     setErrors({});
   };
 
@@ -645,11 +681,21 @@ export const CreatePolicyModal = ({
   const watchedSignatureAlgs = watch("signatureAlgorithm")?.allowedAlgorithms || [];
   const watchedKeyAlgs = watch("keyAlgorithm")?.allowedKeyTypes || [];
   const watchedIsCAPolicy = watch("basicConstraints.isCA") || CertPolicyState.DENIED;
+  const watchedCustomExtensions = watch("customExtensions") || [];
 
   const markCustomPreset = () => {
     if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
       setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
+  };
+
+  const removeCustomExtension = (index: number) => {
+    setValue(
+      "customExtensions",
+      watchedCustomExtensions.filter((_, i) => i !== index)
+    );
+    clearError("customExtensions");
+    markCustomPreset();
   };
 
   const handlePresetChange = async (presetId: PolicyPresetId) => {
@@ -675,6 +721,8 @@ export const CreatePolicyModal = ({
 
       setRestrictSubject(Boolean(formData.attributes?.length));
       setRestrictSans(Boolean(formData.subjectAlternativeNames?.length));
+      setValue("customExtensions", []);
+      setRestrictCustomExtensions(false);
       setRestrictSignature(Boolean(formData.signatureAlgorithm?.allowedAlgorithms?.length));
       setRestrictKeyAlg(Boolean(formData.keyAlgorithm?.allowedKeyTypes?.length));
       setRestrictKeyUsages(
@@ -817,6 +865,20 @@ export const CreatePolicyModal = ({
         }
       : null;
 
+    const customExtensions = restrictCustomExtensions
+      ? (data.customExtensions ?? [])
+          .filter((extension) => extension.oid.trim())
+          .map((extension) => ({
+            oid: extension.oid.trim(),
+            ...(extension.label?.trim() && { label: extension.label.trim() }),
+            ...(extension.critical && {
+              critical: extension.critical
+            }),
+            rule: extension.rule,
+            value: extension.value.trim() || "*"
+          }))
+      : null;
+
     return {
       name: data.name,
       description: data.description,
@@ -826,7 +888,8 @@ export const CreatePolicyModal = ({
       extendedKeyUsages,
       algorithms: algorithms.signature || algorithms.keyAlgorithm ? algorithms : null,
       validity: validity.max ? validity : null,
-      basicConstraints
+      basicConstraints,
+      customExtensions
     };
   };
 
@@ -985,6 +1048,15 @@ export const CreatePolicyModal = ({
       }
       if (restrictSans && watchedSans.some((s) => !s.value?.[0]?.trim())) {
         stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
+      }
+    }
+
+    if (step === 4 && restrictCustomExtensions) {
+      if (watchedCustomExtensions.some((extension) => !extension.oid?.trim())) {
+        stepErrors.customExtensions = "Every custom extension needs an OID.";
+      } else if (watchedCustomExtensions.some((extension) => !extension.value?.trim())) {
+        stepErrors.customExtensions =
+          "Every custom extension needs a value pattern (use * for any).";
       }
     }
 
@@ -1525,6 +1597,98 @@ export const CreatePolicyModal = ({
               )}
 
               {step === 4 && (
+                <div className="space-y-8">
+                  <SectionToggle
+                    title="Restrict custom extensions"
+                    description="Only allow the custom extension OIDs you configure here."
+                    enabled={restrictCustomExtensions}
+                    error={errors.customExtensions}
+                    onChange={(enabled) => {
+                      setRestrictCustomExtensions(enabled);
+                      if (!enabled) setValue("customExtensions", []);
+                      clearError("customExtensions");
+                      markCustomPreset();
+                    }}
+                  >
+                    {watchedCustomExtensions.length === 0 ? (
+                      <p className="mb-4 text-sm text-muted">
+                        No custom extensions configured. Certificates issued under this policy
+                        cannot include any custom extensions. Turn this off to allow any custom
+                        extension a profile declares.
+                      </p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              <TableHeadLabel>Extension</TableHeadLabel>
+                            </TableHead>
+                            <TableHead>
+                              <TableHeadLabel>Rule</TableHeadLabel>
+                            </TableHead>
+                            <TableHead>
+                              <TableHeadLabel>Criticality</TableHeadLabel>
+                            </TableHead>
+                            <TableHead>
+                              <TableHeadLabel>Value pattern</TableHeadLabel>
+                            </TableHead>
+                            <TableHead className="w-12" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {watchedCustomExtensions.map((extension, index) => (
+                            <TableRow key={extension.oid}>
+                              <TableCell>
+                                <p>{customExtensionLabelFor(extension.oid, extension.label)}</p>
+                                <p className="font-mono text-xs text-muted">{extension.oid}</p>
+                              </TableCell>
+                              <TableCell className="capitalize">{extension.rule}</TableCell>
+                              <TableCell>
+                                {CUSTOM_EXTENSION_CRITICALITY_LABELS[extension.critical || ""]}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">{extension.value}</TableCell>
+                              <TableCell>
+                                <IconButton
+                                  type="button"
+                                  variant="ghost"
+                                  aria-label={`Remove ${extension.oid}`}
+                                  onClick={() => removeCustomExtension(index)}
+                                >
+                                  <Trash2 className="size-4" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+
+                    <Button
+                      type="button"
+                      className="mt-3"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCustomExtensionDialogOpen(true)}
+                    >
+                      <Plus className="mr-1 size-4" />
+                      Add extension
+                    </Button>
+
+                    <CustomExtensionRuleDialog
+                      isOpen={isCustomExtensionDialogOpen}
+                      onOpenChange={setIsCustomExtensionDialogOpen}
+                      usedOids={watchedCustomExtensions.map((extension) => extension.oid)}
+                      onConfirm={(rule) => {
+                        setValue("customExtensions", [...watchedCustomExtensions, rule]);
+                        clearError("customExtensions");
+                        markCustomPreset();
+                      }}
+                    />
+                  </SectionToggle>
+                </div>
+              )}
+
+              {step === 5 && (
                 <div className="space-y-8">
                   <SectionToggle
                     title="Set maximum validity"

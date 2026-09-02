@@ -337,6 +337,7 @@ export const certManagerExportServiceFactory = ({
             sans: toJsonbValue(sourcePolicy.sans),
             keyUsages: toJsonbValue(sourcePolicy.keyUsages),
             extendedKeyUsages: toJsonbValue(sourcePolicy.extendedKeyUsages),
+            customExtensions: toJsonbValue(sourcePolicy.customExtensions),
             algorithms: toJsonbValue(sourcePolicy.algorithms),
             validity: toJsonbValue(sourcePolicy.validity),
             basicConstraints: toJsonbValue(sourcePolicy.basicConstraints)

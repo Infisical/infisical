@@ -37,7 +37,10 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  assertCaSupportsCustomExtensions,
+  caUsesExternalIssuanceQueue
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -55,13 +58,15 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import {
   CertificateIssuanceOperation,
   CertKeyUsageType,
-  CertPolicyState
+  CertPolicyState,
+  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
 } from "../certificate-common/certificate-constants";
 import {
   buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
+import { assertAwsPcaCustomExtensionLimit } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
   extractCertificateFromBuffer,
@@ -589,7 +594,8 @@ export const certificateV3ServiceFactory = ({
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
-        mappedCertificateRequestForValidation
+        mappedCertificateRequestForValidation,
+        { profileCustomExtensions: profile.defaults?.customExtensions }
       );
 
       if (!validationResult.isValid) {
@@ -632,6 +638,9 @@ export const certificateV3ServiceFactory = ({
             ttl: resolvedTtl,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
+            customExtensions: validationResult.resolvedCustomExtensions
+              ? JSON.stringify(validationResult.resolvedCustomExtensions)
+              : null,
             organization: certificateRequestWithDefaults.organization || null,
             organizationalUnit: certificateRequestWithDefaults.organizationalUnit || null,
             country: certificateRequestWithDefaults.country || null,
@@ -677,7 +686,8 @@ export const certificateV3ServiceFactory = ({
             notAfter: certificateRequestWithDefaults.notAfter?.toISOString(),
             signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm,
             keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm,
-            basicConstraints: certificateRequestWithDefaults.basicConstraints
+            basicConstraints: certificateRequestWithDefaults.basicConstraints,
+            customExtensions: validationResult.resolvedCustomExtensions
           },
           certificateRequestId: certRequest.id
         };
@@ -754,7 +764,8 @@ export const certificateV3ServiceFactory = ({
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
@@ -762,6 +773,8 @@ export const certificateV3ServiceFactory = ({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
       });
     }
+
+    const { resolvedCustomExtensions } = validationResult;
 
     const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
       | CertSignatureAlgorithm
@@ -806,6 +819,7 @@ export const certificateV3ServiceFactory = ({
           },
           policy,
           profile,
+          customExtensions: resolvedCustomExtensions,
           effectiveAlgorithms,
           certificateDAL,
           certificateBodyDAL,
@@ -835,6 +849,7 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
           certificateId: processResult.certificateData.id,
+          customExtensions: resolvedCustomExtensions,
           ttl: resolvedTtl,
           enrollmentType: EnrollmentType.API,
           organization: certificateRequest.organization,
@@ -1011,6 +1026,7 @@ export const certificateV3ServiceFactory = ({
         friendlyName: certificateSubject.common_name || "Certificate",
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
+        altNameEntries: certificateRequestWithDefaults.altNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
         ttl: resolveEffectiveTtl({
@@ -1032,6 +1048,7 @@ export const certificateV3ServiceFactory = ({
         state: certificateRequestWithDefaults.state,
         locality: certificateRequestWithDefaults.locality,
         domainComponents: certificateRequestWithDefaults.domainComponents,
+        customExtensions: resolvedCustomExtensions,
         tx
       };
 
@@ -1096,6 +1113,7 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
         certificateId: certResult.certificateId,
+        customExtensions: resolvedCustomExtensions,
         basicConstraints: certificateRequest.basicConstraints,
         ttl: certificateRequest.validity.ttl,
         enrollmentType: EnrollmentType.API,
@@ -1304,7 +1322,8 @@ export const certificateV3ServiceFactory = ({
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
@@ -1312,6 +1331,8 @@ export const certificateV3ServiceFactory = ({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
       });
     }
+
+    const { resolvedCustomExtensions } = validationResult;
 
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1370,6 +1391,7 @@ export const certificateV3ServiceFactory = ({
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
+            customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -1404,7 +1426,8 @@ export const certificateV3ServiceFactory = ({
             notAfter: notAfter?.toISOString(),
             signatureAlgorithm: extractedSignatureAlgorithm,
             keyAlgorithm: extractedKeyAlgorithm,
-            basicConstraints: resolvedBasicConstraints
+            basicConstraints: resolvedBasicConstraints,
+            customExtensions: resolvedCustomExtensions
           },
           certificateRequestId: certRequest.id
         };
@@ -1509,6 +1532,7 @@ export const certificateV3ServiceFactory = ({
       signatureAlgorithm: effectiveSignatureAlgorithm,
       status: CertificateRequestStatus.PENDING,
       basicConstraints,
+      customExtensions: resolvedCustomExtensions,
       ttl: validity.ttl,
       enrollmentType
     });
@@ -1545,6 +1569,7 @@ export const certificateV3ServiceFactory = ({
           : undefined,
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
+        customExtensions: resolvedCustomExtensions,
         isFromProfile: true,
         onPersisted: async (newCert, tx) => {
           const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
@@ -1687,6 +1712,10 @@ export const certificateV3ServiceFactory = ({
     let extractedSignatureAlgorithm: string | undefined;
 
     if (certificateOrder.csr) {
+      if (certificateOrder.customExtensions?.length) {
+        throw new BadRequestError({ message: CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE });
+      }
+
       const csrRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
       certificateRequest = applyProfileDefaults(csrRequest, profile.defaults);
       const algorithms = extractAlgorithmsFromCSR(certificateOrder.csr);
@@ -1713,7 +1742,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateOrder.organizationalUnit,
         country: certificateOrder.country,
         state: certificateOrder.state,
-        locality: certificateOrder.locality
+        locality: certificateOrder.locality,
+        customExtensions: certificateOrder.customExtensions
       };
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
@@ -1749,7 +1779,8 @@ export const certificateV3ServiceFactory = ({
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
@@ -1761,6 +1792,17 @@ export const certificateV3ServiceFactory = ({
     // ACM pre-flight validation runs before the approval branch so bad inputs (e.g., a TTL that
     // isn't ACM's fixed 198 days) are rejected at submit time rather than after the approver has
     // already approved a request that's guaranteed to fail downstream.
+    const orderCustomExtensions = validationResult.resolvedCustomExtensions;
+
+    if (orderCustomExtensions?.length && preflightCa) {
+      const preflightCaType = (preflightCa.externalCa?.type ?? CaType.INTERNAL) as CaType;
+      assertCaSupportsCustomExtensions(preflightCaType, orderCustomExtensions.length);
+
+      if (preflightCaType === CaType.AWS_PCA) {
+        assertAwsPcaCustomExtensionLimit(orderCustomExtensions.length);
+      }
+    }
+
     if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
       validateAcmIssuanceInputs({
         csr: certificateOrder.csr,
@@ -1837,6 +1879,7 @@ export const certificateV3ServiceFactory = ({
             basicConstraints: certificateRequest.basicConstraints
               ? JSON.stringify(certificateRequest.basicConstraints)
               : null,
+            customExtensions: orderCustomExtensions ? JSON.stringify(orderCustomExtensions) : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -2000,6 +2043,7 @@ export const certificateV3ServiceFactory = ({
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         status: CertificateRequestStatus.PENDING,
+        customExtensions: orderCustomExtensions,
         ttl: certificateOrder.validity?.ttl,
         enrollmentType: EnrollmentType.API,
         organization: certificateRequest.organization,
@@ -2041,6 +2085,7 @@ export const certificateV3ServiceFactory = ({
         state: certificateRequest.state,
         locality: certificateRequest.locality,
         basicConstraints: certificateRequest.basicConstraints,
+        customExtensions: orderCustomExtensions,
         ...(applicationId && { applicationId })
       });
 

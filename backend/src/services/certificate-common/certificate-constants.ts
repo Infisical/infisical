@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
@@ -122,6 +123,7 @@ export enum CertExtendedKeyUsageType {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   OCSP_SIGNING = "ocsp_signing",
+  SMART_CARD_LOGON = "smart_card_logon",
   TIME_STAMPING = "time_stamping",
   ANY_PURPOSE = "any_purpose"
 }
@@ -133,6 +135,7 @@ export enum CertExtendedKeyUsage {
   EMAIL_PROTECTION = "emailProtection",
   TIMESTAMPING = "timeStamping",
   OCSP_SIGNING = "ocspSigning",
+  SMART_CARD_LOGON = "smartCardLogon",
   ANY_PURPOSE = "anyExtendedKeyUsage"
 }
 
@@ -227,6 +230,10 @@ export const CERT_EXTENDED_KEY_USAGES: Record<
     legacyName: CertExtendedKeyUsage.EMAIL_PROTECTION
   },
   [CertExtendedKeyUsageType.OCSP_SIGNING]: { oid: "1.3.6.1.5.5.7.3.9", legacyName: CertExtendedKeyUsage.OCSP_SIGNING },
+  [CertExtendedKeyUsageType.SMART_CARD_LOGON]: {
+    oid: "1.3.6.1.4.1.311.20.2.2",
+    legacyName: CertExtendedKeyUsage.SMART_CARD_LOGON
+  },
   [CertExtendedKeyUsageType.TIME_STAMPING]: { oid: "1.3.6.1.5.5.7.3.8", legacyName: CertExtendedKeyUsage.TIMESTAMPING },
   [CertExtendedKeyUsageType.ANY_PURPOSE]: { oid: "2.5.29.37.0", legacyName: CertExtendedKeyUsage.ANY_PURPOSE }
 };
@@ -354,6 +361,95 @@ export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
 
+export enum CertExtensionCriticality {
+  CRITICAL = "critical",
+  NOT_CRITICAL = "not_critical"
+}
+
+export enum CertExtensionRuleKind {
+  ALLOW = "allow",
+  REQUIRE = "require",
+  DENY = "deny"
+}
+
+export const CUSTOM_EXTENSION_PRESET_OIDS = {
+  NTDS_SID: "1.3.6.1.4.1.311.25.2",
+  MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",
+  MS_CERTIFICATE_TEMPLATE_INFORMATION: "1.3.6.1.4.1.311.21.7"
+} as const;
+
+export const MAX_CUSTOM_EXTENSIONS_PER_PROFILE = 10;
+
+/**
+ * AWS Private CA accepts at most 3 entries in ApiPassthrough.Extensions.CustomExtensions and rejects the
+ * request with an unexplained ValidationException past that, so the limit is enforced before we call them.
+ */
+export const MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE = 3;
+export const MAX_CUSTOM_EXTENSION_RULES_PER_POLICY = 20;
+export const CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE =
+  "Custom extensions cannot be supplied alongside a certificate signing request. Include them in the request itself, or let Infisical generate the key.";
+export const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
+
+/**
+ * AWS Private CA caps ObjectIdentifier at 64 characters and it is the strictest CA we integrate with,
+ * so bounding here turns a too-long OID into a 422 from us rather than an opaque error from them.
+ */
+export const MAX_CERT_EXTENSION_OID_LENGTH = 64;
+
+export const RESERVED_CERT_EXTENSION_OID_PREFIXES = ["2.5.29."] as const;
+
+export const RESERVED_CERT_EXTENSION_OID_MESSAGES: Record<string, string> = {
+  "1.3.6.1.5.5.7.1.1":
+    "OID 1.3.6.1.5.5.7.1.1 is the authority information access extension, which Infisical manages, so it cannot be used as a custom extension.",
+  "1.3.6.1.4.1.311.20.2.3":
+    "Use a UPN subject alternative name instead of declaring OID 1.3.6.1.4.1.311.20.2.3 as a custom extension."
+};
+
+export const CERT_EXTENSION_OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
+
+const CERT_EXTENSION_OID_PATTERN = new RE2(`^${CERT_EXTENSION_OID_PATTERN_SOURCE}$`);
+
+export const certificateExtensionOidSchema = z
+  .string()
+  .trim()
+  .max(MAX_CERT_EXTENSION_OID_LENGTH, `OID cannot exceed ${MAX_CERT_EXTENSION_OID_LENGTH} characters`)
+  .superRefine((oid, ctx) => {
+    if (!CERT_EXTENSION_OID_PATTERN.test(oid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OID must be dot-separated integers, for example 1.3.6.1.4.1.311.25.2"
+      });
+      return;
+    }
+
+    const [first, second] = oid.split(".");
+    if (first !== "2" && Number(second) > 39) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "When an OID starts with 0 or 1, its second arc must be 39 or lower"
+      });
+    }
+  });
+
+export const customExtensionLabelSchema = z
+  .string()
+  .trim()
+  .min(1, "Name cannot be empty")
+  .max(64, "Name cannot exceed 64 characters");
+
+export const customExtensionValueSchema = z
+  .string()
+  .trim()
+  .min(1, "Value cannot be empty")
+  .max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH, "Value is too large");
+
+export const resolvedCustomExtensionSchema = z.object({
+  oid: z.string().max(MAX_CERT_EXTENSION_OID_LENGTH),
+  critical: z.boolean(),
+  value: z.string().max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH),
+  displayValue: z.string().max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH).optional()
+});
+
 export const subjectAlternativeNameSchema = z.object({
   type: z.nativeEnum(CertSubjectAlternativeNameType),
   value: z
@@ -397,6 +493,29 @@ export const certificateAttributesSchema = z.object({
     .object({
       isCA: z.boolean(),
       pathLength: z.number().int().min(0).max(255).optional()
+    })
+    .optional(),
+  customExtensions: z
+    .array(
+      z.object({
+        oid: certificateExtensionOidSchema,
+        value: customExtensionValueSchema.optional(),
+        critical: z.boolean().optional()
+      })
+    )
+    .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
+    .superRefine((extensions, ctx) => {
+      const seen = new Set<string>();
+      extensions.forEach((extension, index) => {
+        if (seen.has(extension.oid)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "oid"],
+            message: `Duplicate custom extension for OID '${extension.oid}'. Each OID must appear only once.`
+          });
+        }
+        seen.add(extension.oid);
+      });
     })
     .optional()
 });

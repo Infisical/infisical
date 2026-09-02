@@ -1092,7 +1092,8 @@ describe("CertificateV3Service", () => {
             CertExtendedKeyUsageType.OCSP_SIGNING,
             CertExtendedKeyUsageType.SERVER_AUTH
           ]
-        })
+        }),
+        expect.anything()
       );
     });
 
@@ -2499,7 +2500,8 @@ describe("CertificateV3Service", () => {
 
       expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
         mockPolicy,
-        expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 3 } })
+        expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 3 } }),
+        expect.anything()
       );
       expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
     });

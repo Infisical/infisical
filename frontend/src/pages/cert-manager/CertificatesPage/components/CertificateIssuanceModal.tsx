@@ -29,6 +29,8 @@ import {
 import { useOrganization, useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/constants";
@@ -53,6 +55,7 @@ import {
 } from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
+import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import { useCertificatePolicy } from "./useCertificatePolicy";
@@ -144,7 +147,8 @@ const buildFormSchema = (variant: CaFormVariant) => {
       : z.string().min(1, "Signature algorithm is required"),
     keyAlgorithm: z.string().min(1, "Key algorithm is required"),
     keyUsages: keyUsagesField,
-    extendedKeyUsages: extendedKeyUsagesField
+    extendedKeyUsages: extendedKeyUsagesField,
+    customExtensions: z.array(z.object({ oid: z.string(), value: z.string() })).optional()
   });
 
   return z
@@ -189,7 +193,7 @@ type Props = {
   applicationName?: string;
 };
 
-type IssuanceStepKey = "profile" | "csr" | "subject" | "options" | "metadata";
+type IssuanceStepKey = "profile" | "csr" | "subject" | "options" | "extensions" | "metadata";
 
 const STEP_META: Record<IssuanceStepKey, WizardStep> = {
   profile: {
@@ -228,6 +232,15 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     rightDescription:
       "These values are validated against the profile's policy at issuance. Fields that the profile or an external CA fully controls are hidden or read-only."
   },
+  extensions: {
+    name: "Custom Extensions",
+    shortDescription: "Extension values",
+    title: "Custom Extensions",
+    subtitle: "Set the custom extensions this certificate carries.",
+    rightLabel: "Custom Extensions",
+    rightDescription:
+      "Custom extensions carry object identifiers beyond the standard ones. The profile's policy constrains which are permitted and what values they may take."
+  },
   metadata: {
     name: "Metadata",
     shortDescription: "Optional key-values",
@@ -251,6 +264,7 @@ const STEP_FIELDS: Record<IssuanceStepKey, string[]> = {
     "extendedKeyUsages",
     "basicConstraints"
   ],
+  extensions: ["customExtensions"],
   metadata: ["metadata"]
 };
 
@@ -331,6 +345,7 @@ export const CertificateIssuanceModal = ({
       profileId: profileId || "",
       subjectAttributes: [],
       subjectAltNames: [],
+      customExtensions: [],
       basicConstraints: {
         isCA: false,
         pathLength: undefined
@@ -357,9 +372,21 @@ export const CertificateIssuanceModal = ({
     () => availableProfiles.find((p) => p.id === actualSelectedProfileId),
     [availableProfiles, actualSelectedProfileId]
   );
+  const requestableCustomExtensions = useMemo(
+    () => actualSelectedProfile?.defaults?.customExtensions ?? [],
+    [actualSelectedProfile]
+  );
+
+  useEffect(() => {
+    setValue("customExtensions", []);
+  }, [actualSelectedProfileId, setValue]);
 
   const externalCaType = actualSelectedProfile?.certificateAuthority?.externalType;
   const isAdcsProfile = isExternalTemplateCa(externalCaType);
+  const caSupportsCustomExtensions = caSupportsCapability(
+    (externalCaType as CaType | undefined) ?? CaType.INTERNAL,
+    CaCapability.CUSTOM_EXTENSIONS
+  );
   isAdcsProfileRef.current = isAdcsProfile;
 
   const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
@@ -391,6 +418,7 @@ export const CertificateIssuanceModal = ({
     clearErrors,
     isSubjectSectionShown: constraints.shouldShowSubjectSection,
     isSanSectionShown: constraints.shouldShowSanSection,
+    customExtensionDeclarations: requestableCustomExtensions,
     isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
     isValidityEvaluated: !isAdcsProfile,
     resetKey: actualSelectedProfileId
@@ -410,10 +438,19 @@ export const CertificateIssuanceModal = ({
         keys.push("subject");
       }
       keys.push("options");
+      if (policyData?.customExtensions?.length !== 0 && caSupportsCustomExtensions) {
+        keys.push("extensions");
+      }
     }
     keys.push("metadata");
     return keys;
-  }, [requestMethod, constraints.shouldShowSubjectSection, constraints.shouldShowSanSection]);
+  }, [
+    requestMethod,
+    constraints.shouldShowSubjectSection,
+    constraints.shouldShowSanSection,
+    policyData?.customExtensions?.length,
+    caSupportsCustomExtensions
+  ]);
 
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
     stepKeys,
@@ -855,6 +892,16 @@ export const CertificateIssuanceModal = ({
                 </div>
               )}
             </>
+          )}
+
+          {currentStepKey === "extensions" && (
+            <RequestCustomExtensionsField
+              control={control}
+              declarations={requestableCustomExtensions}
+              policyRules={policyData?.customExtensions}
+              errorsByOid={policy.customExtensions.errorsByOid}
+              revealPolicyErrors={policy.isRevealed("customExtensions")}
+            />
           )}
 
           {currentStepKey === "metadata" && (

@@ -312,6 +312,7 @@ describe("CertificateRequestService", () => {
         locality: null,
         domainComponents: null,
         basicConstraints: undefined,
+        customExtensions: null,
         metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
@@ -359,6 +360,7 @@ describe("CertificateRequestService", () => {
         locality: null,
         domainComponents: null,
         basicConstraints: undefined,
+        customExtensions: null,
         metadata: [],
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
@@ -426,6 +428,7 @@ describe("CertificateRequestService", () => {
         locality: null,
         domainComponents: null,
         basicConstraints: undefined,
+        customExtensions: null,
         metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
@@ -504,6 +507,7 @@ describe("CertificateRequestService", () => {
         locality: null,
         domainComponents: null,
         basicConstraints: undefined,
+        customExtensions: null,
         metadata: [],
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
@@ -551,6 +555,7 @@ describe("CertificateRequestService", () => {
         locality: null,
         domainComponents: null,
         basicConstraints: undefined,
+        customExtensions: null,
         metadata: [],
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt

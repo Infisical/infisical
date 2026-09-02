@@ -32,6 +32,11 @@ import {
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  findDroppedCustomExtensionOids,
+  parseIssuedCustomExtensions,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 import { calculateFinalRenewBeforeDays } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -408,7 +413,8 @@ export const ADCSCertificateAuthorityFns = ({
     csr,
     isRenewal,
     originalCertificateId,
-    isCancelled
+    isCancelled,
+    customExtensions
   }: {
     caId: string;
     profileId?: string;
@@ -424,6 +430,7 @@ export const ADCSCertificateAuthorityFns = ({
     isRenewal?: boolean;
     originalCertificateId?: string;
     isCancelled?: () => Promise<boolean>;
+    customExtensions?: TResolvedCustomExtension[];
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.ADCS) {
@@ -497,12 +504,29 @@ export const ADCSCertificateAuthorityFns = ({
     let skLeaf: string | undefined;
     let csrDerBase64: string;
     if (csr) {
+      const csrExtensionValues = new Map(
+        new x509.Pkcs10CertificateRequest(csr).extensions.map((entry) => [
+          entry.type,
+          Buffer.from(new Uint8Array(entry.value)).toString("base64")
+        ])
+      );
+      const mismatched = (customExtensions ?? []).find(
+        (extension) => csrExtensionValues.get(extension.oid) !== extension.value
+      );
+      if (mismatched) {
+        throw new BadRequestError({
+          message: csrExtensionValues.has(mismatched.oid)
+            ? `Custom extension '${mismatched.oid}' in the certificate signing request does not carry the value this policy resolved, and Active Directory Certificate Services is given that request unchanged. Correct the request, or let Infisical generate the key.`
+            : `Custom extension '${mismatched.oid}' must be present in the certificate signing request you supply, because Active Directory Certificate Services is given that request unchanged. Include it, or let Infisical generate the key.`
+        });
+      }
       csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
     } else {
       const generated = await generateLeafKeypairAndCsr({
         subjectName: buildSubjectDN(commonName),
         algorithm: alg,
-        altNames
+        altNames,
+        customExtensions
       });
       skLeaf = generated.privateKeyPem;
       csrDerBase64 = generated.csrDerBase64;
@@ -561,6 +585,8 @@ export const ADCSCertificateAuthorityFns = ({
 
     let certificateId: string;
 
+    const droppedOids = findDroppedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -578,6 +604,9 @@ export const ADCSCertificateAuthorityFns = ({
           keyAlgorithm,
           signatureAlgorithm: extractIssuedSignatureAlgorithm(certObj) ?? signatureAlgorithm,
           projectId: ca.projectId,
+          customExtensions: JSON.stringify(
+            parseIssuedCustomExtensions(Buffer.from(cleanedCertificatePem), customExtensions)
+          ),
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
@@ -625,6 +654,15 @@ export const ADCSCertificateAuthorityFns = ({
         }
       }
     });
+
+    if (droppedOids.length) {
+      logger.warn(
+        `Active Directory Certificate Services dropped custom extensions this profile declared [caId=${ca.id}] [profileId=${profileId}] [certificateId=${certificateId!}] [oids=${droppedOids.join(",")}]`
+      );
+      throw new BadRequestError({
+        message: `Active Directory Certificate Services issued a certificate without ${droppedOids.join(", ")}, so it does not carry what this profile declared. The certificate is recorded so you can revoke it. Add each object identifier to the certificate authority's EnableRequestExtensionList and restart certsvc, then request again.`
+      });
+    }
 
     return {
       certificate: cleanedCertificatePem,

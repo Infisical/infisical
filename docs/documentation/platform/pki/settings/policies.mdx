@@ -176,6 +176,7 @@ Define higher-level intended uses:
 | Email Protection | S/MIME |
 | OCSP Signing | OCSP responders |
 | Time Stamping | Trusted timestamps |
+| Smart Card Logon | Active Directory logon, Windows Hello and other PKINIT authentication |
 | Any Extended Key Usage | Any purpose |
 
 If you configure Extended Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Extended Key Usages unconfigured to allow any extended key usage.
@@ -191,6 +192,23 @@ Control whether certificates can act as CAs:
 | **Require CA** | All certificates must be CAs (for Root/Intermediate CA policies) |
 
 **Maximum Path Length**: Limits how many intermediate CAs can exist below this certificate. `0` means the CA can only sign end-entity certificates.
+
+### Custom extensions
+
+Control which custom X.509 extensions certificates may carry, with one rule per object identifier (OID):
+
+| Rule | Meaning |
+|------|---------|
+| Allow | The extension is permitted, and its value must match the pattern |
+| Require | The extension must be present, and its value must match the pattern |
+| Deny | The extension is permitted, but not with a value matching the pattern |
+
+Each rule takes one value pattern, matched against the value you enter rather than its encoded form. Use `*` for any value, or a wildcard such as `S-1-5-21-1004336348-1177238915-682003330-*` to accept only identifiers from your own Active Directory domain. A rule can also pin criticality, except where an extension's specification already fixes it.
+
+If you configure Custom Extensions, only the OIDs you list are permitted, each subject to its rule. Any other OID in a request is rejected, including one carried in a signing request, so a value pattern is what limits what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
+
+Infisical manages some extensions itself, so you can't set any OID under `2.5.29.` or authority information access here.
+
 
 ## Next steps
 

@@ -911,7 +911,8 @@ export const pkiScepServiceFactory = ({
           validity: { ttl }
         },
         profile.defaults
-      )
+      ),
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
       throw new BadRequestError({
@@ -937,6 +938,7 @@ export const pkiScepServiceFactory = ({
       csr: csrPem,
       ttl,
       status: CertificateRequestStatus.PENDING,
+      customExtensions: validationResult.resolvedCustomExtensions,
       enrollmentType: EnrollmentType.SCEP,
       organization: certRequest.organization,
       organizationalUnit: certRequest.organizationalUnit,
@@ -950,6 +952,7 @@ export const pkiScepServiceFactory = ({
       certificateId: newCertRequest.id,
       profileId: profile.id,
       caId: profile.caId!,
+      customExtensions: validationResult.resolvedCustomExtensions,
       ttl,
       signatureAlgorithm: signatureAlgorithm || "",
       keyAlgorithm: keyAlgorithm || "",

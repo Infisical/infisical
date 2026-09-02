@@ -28,6 +28,12 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  parseIssuedCustomExtensions,
+  toRequestCustomExtensions,
+  TRequestCustomExtension,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateRequest, TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -107,6 +113,7 @@ const buildRevalidationRequest = ({
   notAfter,
   altNames,
   basicConstraints,
+  customExtensions,
   profileDefaults,
   ttl
 }: {
@@ -125,6 +132,7 @@ const buildRevalidationRequest = ({
   notAfter?: Date | null;
   altNames?: TAltNameEntry[] | null;
   basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
+  customExtensions?: TRequestCustomExtension[];
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
   ttl?: string;
 }): TCertificateRequest => {
@@ -154,6 +162,10 @@ const buildRevalidationRequest = ({
     mappedRequest.signatureAlgorithm = csrSigAlg;
   }
   // The stored value wins over anything reconstructed from the CSR or profile defaults.
+  if (customExtensions?.length) {
+    mappedRequest.customExtensions = customExtensions;
+  }
+
   if (basicConstraints) {
     mappedRequest.basicConstraints = {
       isCA: basicConstraints.isCA,
@@ -263,9 +275,11 @@ export const certificateApprovalServiceFactory = (
     selfSignedResult,
     certificateRequest,
     profile,
+    customExtensions,
     tx
   }: {
     selfSignedResult: Awaited<ReturnType<typeof generateSelfSignedCertificate>>;
+    customExtensions?: TResolvedCustomExtension[];
     certificateRequest: {
       commonName?: string;
       keyUsages?: CertKeyUsageType[];
@@ -296,6 +310,7 @@ export const certificateApprovalServiceFactory = (
         projectId,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+        customExtensions: JSON.stringify(parseIssuedCustomExtensions(selfSignedResult.certificate, customExtensions)),
         profileId: profile?.id || null
       },
       tx
@@ -353,6 +368,7 @@ export const certificateApprovalServiceFactory = (
     policy,
     profile,
     effectiveAlgorithms,
+    customExtensions,
     tx
   }: {
     certificateRequest: {
@@ -383,6 +399,7 @@ export const certificateApprovalServiceFactory = (
       signatureAlgorithm: CertSignatureAlgorithm;
       keyAlgorithm: CertKeyAlgorithm;
     };
+    customExtensions?: TResolvedCustomExtension[];
     tx: Parameters<TCertificateDALFactory["create"]>[1];
   }) => {
     const projectId = profile?.projectId;
@@ -394,13 +411,15 @@ export const certificateApprovalServiceFactory = (
       certificateRequest,
       policy,
       effectiveSignatureAlgorithm: effectiveAlgorithms.signatureAlgorithm,
-      effectiveKeyAlgorithm: effectiveAlgorithms.keyAlgorithm
+      effectiveKeyAlgorithm: effectiveAlgorithms.keyAlgorithm,
+      customExtensions
     });
 
     const certificateData = await $createSelfSignedCertificateRecord({
       selfSignedResult,
       certificateRequest,
       profile,
+      customExtensions,
       tx
     });
 
@@ -521,7 +540,8 @@ export const certificateApprovalServiceFactory = (
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest
+      mappedReconstructedRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -568,6 +588,7 @@ export const certificateApprovalServiceFactory = (
       notAfter: normalizeDateForApi(certRequest.notAfter || undefined),
       signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
       keyAlgorithm: certRequest.keyAlgorithm || undefined,
+      customExtensions: revalidationResult.resolvedCustomExtensions,
       isFromProfile: true,
       basicConstraints: effectiveBasicConstraints,
       pathLength: effectivePathLength,
@@ -701,13 +722,15 @@ export const certificateApprovalServiceFactory = (
       notAfter: certRequest.notAfter,
       altNames,
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
+      customExtensions: toRequestCustomExtensions(certRequest.customExtensions),
       profileDefaults: profile.defaults,
       ttl: effectiveTtl
     });
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest
+      mappedReconstructedRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -737,6 +760,7 @@ export const certificateApprovalServiceFactory = (
       state: certRequest.state || undefined,
       locality: certRequest.locality || undefined,
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
+      customExtensions: revalidationResult.resolvedCustomExtensions,
       ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
     });
 
@@ -775,7 +799,8 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>,
-    applicationId?: string | null
+    applicationId?: string | null,
+    customExtensions?: TResolvedCustomExtension[]
   ): Promise<TCertificateIssuanceResponse> => {
     const effectiveSignatureAlgorithm = certificateRequestInput.signatureAlgorithm as
       | CertSignatureAlgorithm
@@ -790,6 +815,7 @@ export const certificateApprovalServiceFactory = (
         policy: certPolicy,
         profile,
         effectiveAlgorithms,
+        customExtensions,
         tx
       });
 
@@ -883,7 +909,8 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     certPolicy: NonNullable<Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>>,
-    applicationId?: string | null
+    applicationId?: string | null,
+    customExtensions?: TResolvedCustomExtension[]
   ): Promise<TCertificateIssuanceResponse> => {
     if (!profile.caId) {
       throw new NotFoundError({ message: "Certificate Authority ID not found" });
@@ -917,6 +944,7 @@ export const certificateApprovalServiceFactory = (
           friendlyName: certificateSubject.common_name || "Certificate",
           commonName: certificateSubject.common_name || "",
           altNames: subjectAlternativeNames,
+          altNameEntries: certificateRequestInput.altNames,
           ttl: certificateRequestInput.validity.ttl,
           keyUsages: convertKeyUsageArrayToLegacy(certificateRequestInput.keyUsages) || [],
           extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestInput.extendedKeyUsages) || [],
@@ -924,6 +952,7 @@ export const certificateApprovalServiceFactory = (
           notAfter: normalizeDateForApi(certificateRequestInput.notAfter),
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
+          customExtensions,
           actor: undefined,
           actorId: undefined,
           actorAuthMethod: undefined,
@@ -1072,7 +1101,8 @@ export const certificateApprovalServiceFactory = (
         country: certRequest.country || undefined,
         state: certRequest.state || undefined,
         locality: certRequest.locality || undefined,
-        basicConstraints: basicConstraints || undefined
+        basicConstraints: basicConstraints || undefined,
+        customExtensions: toRequestCustomExtensions(certRequest.customExtensions)
       };
 
       // Validate against certificate policy
@@ -1096,7 +1126,8 @@ export const certificateApprovalServiceFactory = (
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         targetProfile.certificatePolicyId,
-        mappedCertificateRequest
+        mappedCertificateRequest,
+        { profileCustomExtensions: targetProfile.defaults?.customExtensions }
       );
 
       if (!validationResult.isValid) {
@@ -1113,7 +1144,8 @@ export const certificateApprovalServiceFactory = (
           certificateRequestId,
           targetProfile,
           certPolicy,
-          certRequest.applicationId
+          certRequest.applicationId,
+          validationResult.resolvedCustomExtensions
         );
       }
 
@@ -1122,7 +1154,8 @@ export const certificateApprovalServiceFactory = (
         certificateRequestId,
         targetProfile,
         certPolicy,
-        certRequest.applicationId
+        certRequest.applicationId,
+        validationResult.resolvedCustomExtensions
       );
     } catch (error) {
       await certificateRequestDAL.updateById(certificateRequestId, {

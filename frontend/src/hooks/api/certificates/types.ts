@@ -27,7 +27,15 @@ export type TCertificateFingerprints = {
 
 export type TCertificateSource = CertSource | null;
 
+export type TCertificateCustomExtension = {
+  oid: string;
+  critical: boolean;
+  value: string;
+  displayValue?: string;
+};
+
 export type TCertificate = {
+  customExtensions?: TCertificateCustomExtension[] | null;
   id: string;
   caId: string;
   certificateTemplateId?: string;
@@ -132,6 +140,11 @@ export type TRenewCertificateAttributes = {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
 };
 
 export type TRenewCertificateDTO = {
@@ -237,6 +250,7 @@ export type TCertificateRequestDetails = {
     isCA: boolean;
     pathLength?: number;
   } | null;
+  customExtensions?: TCertificateCustomExtension[] | null;
   createdAt: string;
   updatedAt: string;
   metadata?: Array<{ key: string; value: string }>;

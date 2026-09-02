@@ -13,6 +13,7 @@ import type { TCertificateBodyDALFactory } from "../certificate/certificate-body
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import type { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
@@ -239,6 +240,7 @@ describe("CertificateProfileService", () => {
   const mockCertificateAuthorityDAL = {
     create: vi.fn(),
     findById: vi.fn(),
+    findByIdWithAssociatedCa: vi.fn(),
     updateById: vi.fn(),
     deleteById: vi.fn(),
     transaction: vi.fn(),
@@ -329,6 +331,98 @@ describe("CertificateProfileService", () => {
       (mockCertificateProfileDAL.create as any).mockResolvedValue({
         ...sampleProfile,
         enrollmentType: EnrollmentType.API // Ensure enrollmentType is explicitly included
+      });
+    });
+
+    describe("custom extension declarations", () => {
+      const SID_OID = "1.3.6.1.4.1.311.25.2";
+      const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
+
+      const createWithExtensions = (customExtensions: unknown) =>
+        service.createProfile({
+          ...mockActor,
+          projectId: "project-123",
+          data: { ...validProfileData, defaults: { customExtensions } } as never
+        });
+
+      beforeEach(() => {
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: "ca-123",
+          externalCa: null
+        });
+      });
+
+      it("accepts a declaration the policy permits", async () => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
+          ...samplePolicy,
+          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+        });
+
+        await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103" }])).resolves.toBeDefined();
+      });
+
+      it("rejects a reserved OID", async () => {
+        await expect(createWithExtensions([{ oid: "2.5.29.17" }])).rejects.toThrow(
+          "standard X.509 extension that Infisical manages"
+        );
+      });
+
+      it("rejects duplicate OIDs", async () => {
+        await expect(createWithExtensions([{ oid: CUSTOM_OID }, { oid: CUSTOM_OID }])).rejects.toThrow(
+          "Duplicate custom extension"
+        );
+      });
+
+      it("rejects more declarations than a profile may hold", async () => {
+        const tooMany = Array.from({ length: 11 }, (_, i) => ({ oid: `1.3.6.1.4.1.99999.7.${i + 1}` }));
+
+        await expect(createWithExtensions(tooMany)).rejects.toThrow("cannot declare more than");
+      });
+
+      it("rejects an OID the policy does not mention", async () => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
+          ...samplePolicy,
+          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+        });
+
+        await expect(createWithExtensions([{ oid: CUSTOM_OID }])).rejects.toThrow("is not allowed by this policy");
+      });
+
+      it("rejects a declared value the policy forbids", async () => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
+          ...samplePolicy,
+          customExtensions: [{ oid: SID_OID, rule: "allow", value: "S-1-5-21-1-2-3-*" }]
+        });
+
+        await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-9-9-9-1103" }])).rejects.toThrow(
+          "is not allowed by this policy"
+        );
+      });
+
+      it("rejects a certificate authority that cannot carry custom extensions", async () => {
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: "ca-123",
+          externalCa: { type: CaType.DIGICERT }
+        });
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
+          ...samplePolicy,
+          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+        });
+
+        await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103" }])).rejects.toThrow(
+          "cannot carry custom extensions"
+        );
+      });
+
+      it("rejects setting criticality on a preset OID", async () => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
+          ...samplePolicy,
+          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+        });
+
+        await expect(
+          createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103", critical: true }])
+        ).rejects.toThrow("always emitted as non-critical");
       });
     });
 

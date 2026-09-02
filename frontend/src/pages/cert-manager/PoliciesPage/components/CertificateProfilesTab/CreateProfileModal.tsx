@@ -38,7 +38,8 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { CaType } from "@app/hooks/api/ca/enums";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import {
   useGetAdcsTemplates,
   useGetAzureAdcsTemplates,
@@ -59,6 +60,7 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
+import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
@@ -95,6 +97,16 @@ const certificateDefaultsSchema = z
         z.object({
           type: z.nativeEnum(CertSubjectAlternativeNameType),
           value: z.string()
+        })
+      )
+      .optional(),
+    customExtensions: z
+      .array(
+        z.object({
+          oid: z.string(),
+          label: z.string().optional(),
+          critical: z.boolean().optional(),
+          value: z.string().optional()
         })
       )
       .optional(),
@@ -337,6 +349,10 @@ const convertDefaultsToForm = (
     keyAlgorithm: defaults.keyAlgorithm ?? null,
     keyUsages: Object.keys(keyUsagesRecord).length > 0 ? keyUsagesRecord : undefined,
     extendedKeyUsages: Object.keys(extKeyUsagesRecord).length > 0 ? extKeyUsagesRecord : undefined,
+    customExtensions:
+      defaults.customExtensions && defaults.customExtensions.length > 0
+        ? defaults.customExtensions
+        : undefined,
     basicConstraints: defaults.basicConstraints ?? null
   };
 };
@@ -417,6 +433,18 @@ const convertFormToDefaults = (
       (san: { type: CertSubjectAlternativeNameType; value: string }) => san.value?.trim()
     );
     if (sans.length > 0) result.subjectAltNames = sans;
+  }
+
+  if (formDefaults.customExtensions) {
+    const declared = formDefaults.customExtensions
+      .filter((extension: TProfileCustomExtension) => extension.oid?.trim())
+      .map((extension: TProfileCustomExtension) => ({
+        oid: extension.oid.trim(),
+        ...(extension.label?.trim() && { label: extension.label.trim() }),
+        ...(extension.critical !== undefined && { critical: extension.critical }),
+        ...(extension.value?.trim() && { value: extension.value.trim() })
+      }));
+    if (declared.length > 0) result.customExtensions = declared;
   }
 
   if (formDefaults.basicConstraints) {
@@ -567,6 +595,7 @@ export const CreateProfileModal = ({
         allowedSubjectAttributeTypes: [],
         shouldShowSubjectSection: false,
         allowedSanTypes: [],
+        allowedCustomExtensions: null,
         shouldShowSanSection: false,
         policyAllowsCA: false,
         maxPathLength: undefined
@@ -654,6 +683,9 @@ export const CreateProfileModal = ({
       shouldShowSubjectSection,
       allowedSanTypes,
       shouldShowSanSection,
+      allowedCustomExtensions: selectedPolicyData.customExtensions
+        ? selectedPolicyData.customExtensions.filter((rule) => rule.oid)
+        : null,
       policyAllowsCA,
       maxPathLength: selectedPolicyData.basicConstraints?.maxPathLength as number | undefined
     };
@@ -667,6 +699,9 @@ export const CreateProfileModal = ({
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
   const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
+  const caSupportsCustomExtensions = selectedCa
+    ? caSupportsCapability(selectedCa.type, CaCapability.CUSTOM_EXTENSIONS)
+    : false;
 
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",
@@ -747,6 +782,11 @@ export const CreateProfileModal = ({
       delete adcsSafeDefaults.extendedKeyUsages;
       delete adcsSafeDefaults.basicConstraints;
       effectiveDefaults = adcsSafeDefaults;
+    }
+    if (effectiveDefaults && !caSupportsCustomExtensions) {
+      const withoutCustomExtensions = { ...effectiveDefaults };
+      delete withoutCustomExtensions.customExtensions;
+      effectiveDefaults = withoutCustomExtensions;
     }
     if (effectiveDefaults && !(isAzureAdcsCa || isAdcsCa)) {
       const nextDefaults = { ...effectiveDefaults };
@@ -1142,6 +1182,7 @@ export const CreateProfileModal = ({
                   policyConstraints={policyConstraints}
                   isAwsAcmPublicCa={isAwsAcmPublicCa}
                   isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
+                  caSupportsCustomExtensions={caSupportsCustomExtensions}
                   caKeyAlgorithm={caKeyAlgorithm}
                 />
               )}

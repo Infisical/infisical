@@ -8,6 +8,7 @@ import {
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
@@ -37,6 +38,7 @@ export type TIssueCertificateFromProfileDTO = {
       isCA: boolean;
       pathLength?: number;
     };
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
@@ -90,6 +92,7 @@ export type TOrderCertificateFromProfileDTO = {
     country?: string;
     state?: string;
     locality?: string;
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
@@ -158,6 +161,11 @@ export type TRenewalAttributes = {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
 };
 
 export type TRenewCertificateDTO = {

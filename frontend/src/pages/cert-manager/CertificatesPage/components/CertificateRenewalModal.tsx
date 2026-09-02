@@ -18,8 +18,12 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useRenewCertificate } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { IssuerType, useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
+import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
@@ -50,6 +54,7 @@ import {
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
+import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import {
@@ -90,7 +95,8 @@ const formSchema = z
     signatureAlgorithm: z.string().optional(),
     keyAlgorithm: z.string().optional(),
     keyUsages: z.record(z.boolean().optional()).default({}),
-    extendedKeyUsages: z.record(z.boolean().optional()).default({})
+    extendedKeyUsages: z.record(z.boolean().optional()).default({}),
+    customExtensions: z.array(z.object({ oid: z.string().trim(), value: z.string() })).default([])
   })
   .superRefine((data, ctx) => {
     if (data.keySource === CertificateRenewalKeySource.Csr && !data.csr) {
@@ -124,7 +130,9 @@ const externalTemplateFormSchema = formSchema.innerType().omit({ ttl: true }).ex
 
 export type RenewalFormData = z.infer<typeof formSchema>;
 
-type RenewalStepKey = "setup" | "csr" | "subject" | "options";
+type RenewalStepKey = "setup" | "csr" | "subject" | "options" | "extensions";
+
+const NO_RENEWAL_DECLARATIONS: TProfileCustomExtension[] = [];
 
 const STEP_META: Record<RenewalStepKey, WizardStep> = {
   setup: {
@@ -139,7 +147,7 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
     shortDescription: "CSR and validity",
     subtitle: "Provide the CSR and set the validity for this renewal.",
     rightDescription:
-      "The subject, key, and extensions are all taken from the CSR you provide, so there are no separate subject or key usage fields. Only validity is set here."
+      "The subject and key are taken from the CSR you provide, so there are no separate subject or key usage fields. Validity is set here, and custom extensions on the next step."
   },
   subject: {
     name: "Subject",
@@ -155,6 +163,13 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
     subtitle: "Set validity, algorithms, and key usages within the profile's policy.",
     rightDescription:
       "Profile defaults are not applied on renewal. Every value here starts as a copy of the current certificate and is validated against the profile's policy at issuance."
+  },
+  extensions: {
+    name: "Custom Extensions",
+    shortDescription: "Extension values",
+    subtitle: "These are copied from the current certificate. Change only what should differ.",
+    rightDescription:
+      "Custom extensions start as a copy of the current certificate, and the profile's policy still constrains which object identifiers are permitted and what values they may take."
   }
 };
 
@@ -177,7 +192,8 @@ const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
     "keyUsages",
     "extendedKeyUsages",
     "basicConstraints"
-  ]
+  ],
+  extensions: ["customExtensions"]
 };
 
 type Props = {
@@ -212,6 +228,10 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const isExternalTemplateProfile = isExternalTemplateCa(
     profile?.certificateAuthority?.externalType
+  );
+  const caSupportsCustomExtensions = caSupportsCapability(
+    (profile?.certificateAuthority?.externalType as CaType | undefined) ?? CaType.INTERNAL,
+    CaCapability.CUSTOM_EXTENSIONS
   );
   const isExternalTemplateProfileRef = useRef(false);
   isExternalTemplateProfileRef.current = isExternalTemplateProfile;
@@ -256,7 +276,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       subjectAltNames: [],
       basicConstraints: { isCA: false },
       keyUsages: {},
-      extendedKeyUsages: {}
+      extendedKeyUsages: {},
+      customExtensions: []
     }
   });
 
@@ -364,14 +385,27 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     if (isRefused) setValue("keySource", CertificateRenewalKeySource.New);
   }, [keySource, isReuseAllowed, isCsrAllowed, setValue]);
 
+  const showCustomExtensions =
+    policyData?.customExtensions?.length !== 0 && caSupportsCustomExtensions;
+
   const stepKeys = useMemo<RenewalStepKey[]>(() => {
-    if (keySource === CertificateRenewalKeySource.Csr) return ["setup", "csr"];
+    if (keySource === CertificateRenewalKeySource.Csr) {
+      return showCustomExtensions ? ["setup", "csr", "extensions"] : ["setup", "csr"];
+    }
     const keys: RenewalStepKey[] = ["setup"];
     if (constraints.shouldShowSubjectSection || constraints.shouldShowSanSection)
       keys.push("subject");
     keys.push("options");
+    if (showCustomExtensions) {
+      keys.push("extensions");
+    }
     return keys;
-  }, [keySource, constraints.shouldShowSubjectSection, constraints.shouldShowSanSection]);
+  }, [
+    keySource,
+    constraints.shouldShowSubjectSection,
+    constraints.shouldShowSanSection,
+    showCustomExtensions
+  ]);
 
   const policy = usePolicyGuidance({
     policy: policyData,
@@ -643,6 +677,16 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
             />
           )}
         </div>
+      )}
+
+      {currentStepKey === "extensions" && (
+        <RequestCustomExtensionsField
+          control={control}
+          declarations={NO_RENEWAL_DECLARATIONS}
+          policyRules={policyData?.customExtensions}
+          errorsByOid={policy.customExtensions.errorsByOid}
+          revealPolicyErrors={policy.isRevealed("customExtensions")}
+        />
       )}
 
       {currentStepKey === "options" && (

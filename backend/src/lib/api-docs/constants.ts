@@ -2285,6 +2285,12 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 export const CERTIFICATE_POLICIES = {
+  CUSTOM_EXTENSION_RULES:
+    "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
+  CUSTOM_EXTENSION_RULE: {
+    rule: "Whether the value pattern allows, requires, or denies this extension. Require also makes the extension mandatory.",
+    value: "The value pattern this rule matches against, with * as a wildcard. Use * on its own to match any value."
+  },
   SUBJECT_DOMAIN_COMPONENT_RULE: {
     allowed: domainComponentRule("permitted"),
     required: domainComponentRule("required"),

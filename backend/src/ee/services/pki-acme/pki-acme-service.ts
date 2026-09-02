@@ -1080,7 +1080,8 @@ export const pkiAcmeServiceFactory = ({
     // so forwarding a defaulted one would replace the identifier the client just validated.
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
-      applyProfileDefaults(updatedCertificateRequest, profile.defaults)
+      applyProfileDefaults(updatedCertificateRequest, profile.defaults),
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
       throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
@@ -1106,6 +1107,7 @@ export const pkiAcmeServiceFactory = ({
       status: CertificateRequestStatus.PENDING,
       acmeOrderId: orderId,
       csr,
+      customExtensions: validationResult.resolvedCustomExtensions,
       ttl: updatedCertificateRequest.validity?.ttl,
       enrollmentType: EnrollmentType.ACME,
       organization: updatedCertificateRequest.organization || undefined,
@@ -1123,6 +1125,7 @@ export const pkiAcmeServiceFactory = ({
         certificateId: orderId,
         profileId: profile.id,
         caId: profile.caId || "",
+        customExtensions: validationResult.resolvedCustomExtensions,
         ttl: updatedCertificateRequest.validity?.ttl || "47d",
         signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
         keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
@@ -1264,7 +1267,8 @@ export const pkiAcmeServiceFactory = ({
             // key actually is, which would fail a policy the CSR itself satisfies.
             const validationResult = await certificatePolicyService.validateCertificateRequest(
               policy.id,
-              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults)
+              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults),
+              { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
               throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
@@ -1273,6 +1277,7 @@ export const pkiAcmeServiceFactory = ({
             return {
               approvalPolicy: matchedApprovalPolicy,
               policy,
+              resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
               policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
             };
           })()
@@ -1342,6 +1347,9 @@ export const pkiAcmeServiceFactory = ({
               ttl,
               enrollmentType: EnrollmentType.ACME,
               status: CertificateRequestStatus.PENDING_APPROVAL,
+              customExtensions: approvalContext?.resolvedCustomExtensions
+                ? JSON.stringify(approvalContext.resolvedCustomExtensions)
+                : null,
               organization: certificateRequest.organization || null,
               organizationalUnit: certificateRequest.organizationalUnit || null,
               country: certificateRequest.country || null,

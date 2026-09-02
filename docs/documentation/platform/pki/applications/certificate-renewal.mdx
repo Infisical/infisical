@@ -67,6 +67,7 @@ Reuse is available for certificates issued with an Infisical-managed key pair. A
 | Key and signature algorithm | Locked to the current key algorithm while reusing the key pair, because the key already exists |
 | Key usages and extended key usages | Constrained to what the certificate policy allows |
 | Basic constraints | Whether the certificate is a CA, and its path length |
+| Custom extensions | Object identifiers and values, constrained to what the certificate policy allows |
 
 <Warning>
   Changing the common name can affect [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) that select certificates by name. Check any sync attached to the certificate before renaming it.
@@ -78,7 +79,7 @@ Renewing a certificate as it stands needs only permission to issue from its cert
 
 ### Renewing from a signing request
 
-When you supply a CSR, that request is the source of truth. The subject, the key, and the extensions all come from the CSR, so there are no separate fields for them. Only the validity and the basic constraints are set alongside it.
+When you supply a CSR, that request is the source of truth for the subject and the key, so there are no separate fields for them. The validity, the basic constraints and the custom extensions are set alongside it, and custom extensions keep their current values unless you change them.
 
 Sending a property the CSR already carries is rejected rather than quietly ignored, so a renewal never silently discards something you asked for.
 
@@ -100,7 +101,10 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
         The subject attributes and alternative names are filled in from the current certificate. Change only what should differ.
       </Step>
       <Step title="Set validity and extensions">
-        Adjust the validity, algorithms, key usages, and basic constraints, then select **Renew certificate**.
+        Adjust the validity, algorithms, key usages, and basic constraints.
+      </Step>
+      <Step title="Review the custom extensions">
+        The custom extensions are filled in from the current certificate. Change only what should differ, then select **Renew certificate**.
       </Step>
     </Steps>
 
