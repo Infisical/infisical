@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   KmsImportKeyMaterialTokensSchema,
   KmsKeysSchema,
+  TKmsImportKeyMaterialTokens,
   TKmsKeyImportMeta,
   TKmsKeys,
   TKmsRootConfig
@@ -118,17 +119,14 @@ type TKmsServiceFactoryDep = {
     TKmsKekHistoryDALFactory,
     "create" | "updateById" | "findHistoryPage" | "findActiveByLabel" | "findCurrent"
   >;
-  internalKmsDAL: Pick<
-    TInternalKmsDALFactory,
-    "create" | "findByKmsKeyIdForUpdate" | "updateById" | "findOne"
-  >;
+  internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById" | "findOne">;
   internalKmsKeyVersionDAL: Pick<
     TInternalKmsKeyVersionDALFactory,
     "create" | "find" | "findBeforeVersion" | "findOne" | "findLatestByInternalKmsId"
   >;
   kmsImportKeyMaterialTokenDAL: Pick<
     TKmsImportKeyMaterialTokenDALFactory,
-    "create" | "findByIdForUpdate" | "updateById"
+    "create" | "findByIdForUpdate" | "updateById" | 'findById'
   >;
   kmsKeyImportMetaDAL: TKmsKeyImportMetaDALFactory;
   hsmService: THsmServiceFactory;
@@ -504,12 +502,8 @@ export const kmsServiceFactory = ({
         });
       }
     };
-
-    const wrappedKeyMaterialRaw = Buffer.from(wrappedKeyMaterial, "base64");
-
-    return kmsDAL.transaction(async (tx) => {
-      const importToken = await kmsImportKeyMaterialTokenDAL.findByIdForUpdate(token, tx);
-      if (!importToken || importToken.keyId !== kmsId) {
+    const validateImportToken = (importToken: TKmsImportKeyMaterialTokens) => {
+      if (importToken.keyId !== kmsId) {
         throw new NotFoundError({
           message: `Key material import token '${token}' not found for KMS with ID '${kmsId}'.`
         });
@@ -522,50 +516,71 @@ export const kmsServiceFactory = ({
           message: "This key material import token has expired. Request a new wrapping key and try again."
         });
       }
+    };
 
-      // Validate and unwrap before locking the KMS row so the write lock is held only for persistence.
-      let kmsDoc = await kmsDAL.findById(kmsId, tx);
-      if (!kmsDoc) throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    const wrappedKeyMaterialRaw = Buffer.from(wrappedKeyMaterial, "base64");
+
+    const importToken = await kmsImportKeyMaterialTokenDAL.findById(token);
+    if (!importToken) {
+      throw new NotFoundError({
+        message: `Key material import token '${token}' not found for KMS with ID '${kmsId}'.`
+      });
+    }
+    validateImportToken(importToken);
+
+    // Validate and unwrap before locking the KMS row so the write lock is held only for persistence.
+    let kmsDoc = await kmsDAL.findById(kmsId);
+    if (!kmsDoc) throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    const kmsImportMeta = await kmsKeyImportMetaDAL.findOne({ keyId: kmsId });
+
+    validateKmsState(kmsDoc, kmsImportMeta);
+
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    let importedKeyMaterial: Buffer;
+    let privateKeyBuffer: Buffer;
+    try {
+      privateKeyBuffer = cipher.decrypt(importToken.encryptedKey, ROOT_ENCRYPTION_KEY);
+    } catch (error) {
+      logger.error(error, `KMS: Failed to decrypt import token for '${kmsId}'`);
+      throw new InternalServerError({
+        error,
+        message: "Unable to process this import token. Request a new wrapping key and try again."
+      });
+    }
+    try {
+      importedKeyMaterial = crypto
+        .encryption()
+        .wrapKeys()
+        .decrypt(wrappedKeyMaterialRaw, privateKeyBuffer.toString(), importToken.wrapAlgorithm as KeyWrapAlgorithm);
+    } catch (error) {
+      logger.error(error, `KMS: Failed to unwrap imported key material for '${kmsId}'`);
+      throw new BadRequestError({
+        message: "Unable to unwrap the key material. Verify that it was wrapped with the selected wrapping algorithm."
+      });
+    } finally {
+      // The wrapping private key is temporary; do not retain it in memory after use.
+      privateKeyBuffer.fill(0);
+    }
+
+    // Reject material that does not match the target key's declared usage and algorithm before persisting it.
+    await validateImportedKeyMaterial(
+      importedKeyMaterial,
+      kmsDoc.keyUsage as KmsKeyUsage,
+      kmsImportMeta.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
+    );
+
+    const encryptedImportedKeyMaterial = cipher.encrypt(importedKeyMaterial, ROOT_ENCRYPTION_KEY);
+
+    return kmsDAL.transaction(async (tx) => {
+      const importToken = await kmsImportKeyMaterialTokenDAL.findByIdForUpdate(token, tx);
+      if (!importToken) {
+        throw new NotFoundError({
+          message: `Key material import token '${token}' not found for KMS with ID '${kmsId}'.`
+        });
+      }
+      validateImportToken(importToken);
+      
       const kmsImportMeta = await kmsKeyImportMetaDAL.findOne({ keyId: kmsId }, tx);
-
-      validateKmsState(kmsDoc, kmsImportMeta);
-
-      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-      let importedKeyMaterial: Buffer;
-      let privateKeyBuffer: Buffer;
-      try {
-        privateKeyBuffer = cipher.decrypt(importToken.encryptedKey, ROOT_ENCRYPTION_KEY);
-      } catch (error) {
-        logger.error(error, `KMS: Failed to decrypt import token for '${kmsId}'`);
-        throw new InternalServerError({
-          error,
-          message: "Unable to process this import token. Request a new wrapping key and try again."
-        });
-      }
-      try {
-        importedKeyMaterial = crypto
-          .encryption()
-          .wrapKeys()
-          .decrypt(wrappedKeyMaterialRaw, privateKeyBuffer.toString(), importToken.wrapAlgorithm as KeyWrapAlgorithm);
-      } catch (error) {
-        logger.error(error, `KMS: Failed to unwrap imported key material for '${kmsId}'`);
-        throw new BadRequestError({
-          message: "Unable to unwrap the key material. Verify that it was wrapped with the selected wrapping algorithm."
-        });
-      } finally {
-        // The wrapping private key is temporary; do not retain it in memory after use.
-        privateKeyBuffer.fill(0);
-      }
-
-      // Reject material that does not match the target key's declared usage and algorithm before persisting it.
-      await validateImportedKeyMaterial(
-        importedKeyMaterial,
-        kmsDoc.keyUsage as KmsKeyUsage,
-        kmsImportMeta.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
-      );
-
-      const encryptedImportedKeyMaterial = cipher.encrypt(importedKeyMaterial, ROOT_ENCRYPTION_KEY);
-
       // acquired lock over kmskey
       const lockedKmsDoc = await kmsDAL.findByIdForUpdate(kmsId, tx);
       if (!lockedKmsDoc) {
