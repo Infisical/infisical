@@ -5,14 +5,13 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSessionTtl
 } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AGENT_VAULT_MAX_SESSION_BUNDLES } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-import { AGENT_VAULT_MAX_SESSION_BUNDLES } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),

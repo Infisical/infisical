@@ -21,7 +21,6 @@ import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
-import { TAgentVaultConnectionDALFactory } from "./agent-vault-connection-dal";
 import {
   TAddMemberDTO,
   TAgentVaultCredentialInput,
@@ -37,6 +36,7 @@ import {
   TUpdateAccessBundleDTO,
   TUpdateConnectionDTO
 } from "./agent-vault-access-bundle-types";
+import { TAgentVaultConnectionDALFactory } from "./agent-vault-connection-dal";
 
 type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleDAL: TAgentVaultAccessBundleDALFactory;

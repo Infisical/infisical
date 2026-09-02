@@ -8,8 +8,8 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { slugSchema } from "@app/server/lib/schemas";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({

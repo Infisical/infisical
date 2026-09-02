@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 
-import fixture from "./agent-vault-host-pattern-fixture.json";
 import {
   AgentVaultPatternRelation,
   hostPatternSchema,
@@ -10,6 +9,7 @@ import {
   parseHostPatterns,
   relateHostPatterns
 } from "./agent-vault-host-pattern";
+import fixture from "./agent-vault-host-pattern-fixture.json";
 
 const parseOne = (raw: string) => {
   const { patterns, errors } = parseHostPatterns(raw);
