@@ -114,6 +114,7 @@ type TCachedProjectSmKmsMaterial = {
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
+const RSA_4096_OAEP_SHA256_MAX_PLAINTEXT_BYTES = 446;
 // v02 blobs additionally embed the key material version that encrypted them: [ciphertext][4-byte BE version]["v02"]
 // Written only for keys with version > 1 so never-rotated keys keep producing byte-identical v01 blobs.
 const KMS_VERSION_V2 = "v02";
@@ -963,6 +964,12 @@ export const kmsServiceFactory = ({
       const publicKeyObject = createPublicKey({ key: publicKey, format: "der", type: "spki" });
 
       return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        if (plainText.length > RSA_4096_OAEP_SHA256_MAX_PLAINTEXT_BYTES) {
+          throw new BadRequestError({
+            message: `Plaintext exceeds the ${RSA_4096_OAEP_SHA256_MAX_PLAINTEXT_BYTES}-byte limit for RSA-4096 OAEP-SHA256 encryption.`
+          });
+        }
+
         const encryptedPlainTextBlob = publicEncrypt(
           {
             key: publicKeyObject,

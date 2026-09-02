@@ -88,6 +88,18 @@ describe("KMS V1 Router", () => {
       keyUsage: "encrypt-decrypt"
     });
 
+    const oversizedEncryptResponse = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/kms/keys/${key.id}/encrypt`,
+      headers: authHeaders,
+      body: { plaintext: Buffer.alloc(447).toString("base64") }
+    });
+
+    expect(oversizedEncryptResponse.statusCode, oversizedEncryptResponse.payload).toBe(400);
+    expect(JSON.parse(oversizedEncryptResponse.payload)).toMatchObject({
+      message: "Plaintext exceeds the 446-byte limit for RSA-4096 OAEP-SHA256 encryption."
+    });
+
     const plaintext = Buffer.from("RSA-4096 KMS plaintext", "utf8");
     const encryptResponse = await testServer.inject({
       method: "POST",
