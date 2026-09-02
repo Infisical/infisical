@@ -28,30 +28,35 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
-        <CodeBlock
-          label="Run an agent with it"
-          value={`infisical av run --token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
-        />
-        <p className="text-xs text-accent">
-          The proxy address differs per network. Ask whoever runs the proxy. Anything after{" "}
-          <span className="font-mono">--</span> runs with the session, for example{" "}
-          <span className="font-mono">claude</span> or{" "}
-          <span className="font-mono">python agent.py</span>. The CLI can also{" "}
+        <div className="flex flex-col gap-2">
+          <CodeBlock
+            label="Run an agent with it"
+            value={`infisical av run --token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
+          />
+          <p className="text-xs text-accent">
+            Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of your
+            proxy and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to run,
+            such as <span className="font-mono">claude</span>.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-accent">Expires</span>
+          <SessionExpiry expiresAt={session?.expiresAt ?? null} />
+        </div>
+
+        <p className="mt-2 text-xs text-accent">
+          Learn how to{" "}
           <a
             href={AgentVaultDocsUrls.sessions}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:opacity-80"
           >
-            mint a session itself
+            create a session using the CLI or a machine identity
           </a>
-          , including as a machine identity.
+          .
         </p>
-
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs text-accent">Expires</span>
-          <SessionExpiry expiresAt={session?.expiresAt ?? null} />
-        </div>
       </div>
 
       <DialogFooter>
