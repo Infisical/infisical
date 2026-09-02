@@ -1,0 +1,402 @@
+import { useEffect, useMemo, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import { CheckIcon, TriangleAlertIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  DiscardChangesAlertDialog,
+  DocumentationLinkBadge,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Stepper,
+  StepperList,
+  StepperStep
+} from "@app/components/v3";
+import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
+import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
+import {
+  AgentVaultCredentialType,
+  useCreateAgentVaultConnection,
+  useUpdateAgentVaultConnection
+} from "@app/hooks/api/agentVault";
+import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { onRequestError } from "@app/hooks/api/reactQuery";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
+
+import { ConnectionTemplateSelect } from "../ConnectionTemplateSelect";
+import {
+  buildConnectionSchema,
+  CONNECTION_STEP_FIELDS,
+  ConnectionStep,
+  TConnectionForm
+} from "./connectionSchema";
+import { CredentialFields } from "./CredentialFields";
+import { ReviewFields } from "./ReviewFields";
+import { ScopeFields } from "./ScopeFields";
+import { CONNECTION_DOCS_URL, CONNECTION_STEPS } from "./stepMeta";
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  accessBundleId: string;
+  // Present in edit mode; absent when creating.
+  connection?: TAgentVaultConnection | null;
+};
+
+export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connection }: Props) => {
+  const isUpdate = Boolean(connection);
+  const createConnection = useCreateAgentVaultConnection();
+  const updateConnection = useUpdateAgentVaultConnection();
+
+  const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
+  const [hasPickedTemplate, setHasPickedTemplate] = useState(false);
+
+  const schema = useMemo(() => buildConnectionSchema(connection), [connection]);
+
+  const formMethods = useForm<TConnectionForm>({ resolver: zodResolver(schema) });
+  const {
+    handleSubmit,
+    reset,
+    setError,
+    trigger,
+    formState: { isDirty, isSubmitting }
+  } = formMethods;
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
+
+  // Editing an existing connection has nothing to pick, so the template step is dropped entirely.
+  const steps = useMemo(
+    () =>
+      isUpdate
+        ? CONNECTION_STEPS.filter((meta) => meta.step !== ConnectionStep.Template)
+        : CONNECTION_STEPS,
+    [isUpdate]
+  );
+  const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
+
+  const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } =
+    useWizardSteps<ConnectionStep>({
+      stepKeys,
+      stepFields: CONNECTION_STEP_FIELDS,
+      invalidMessage: "Fix the errors before saving.",
+      validateStep: (fields) => trigger(fields as (keyof TConnectionForm)[])
+    });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setStep(0);
+    setTemplate(null);
+    setHasPickedTemplate(isUpdate);
+
+    if (connection) {
+      const { credential } = connection;
+      reset({
+        name: connection.name,
+        hostPattern: connection.hostPattern,
+        credentialType: credential.type,
+        headerName:
+          credential.type === AgentVaultCredentialType.Bearer ? credential.headerName : undefined,
+        headerPrefix:
+          credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
+        username:
+          credential.type === AgentVaultCredentialType.Basic ? credential.username : undefined,
+        secret: ""
+      });
+    } else {
+      reset({
+        name: "",
+        hostPattern: "",
+        credentialType: AgentVaultCredentialType.Bearer,
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        username: "",
+        secret: ""
+      });
+    }
+  }, [isOpen, connection, isUpdate, reset, setStep]);
+
+  const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
+    setTemplate(picked);
+    setHasPickedTemplate(true);
+
+    if (picked) {
+      const cred = picked.credential;
+      reset({
+        name: picked.key,
+        hostPattern: picked.hostPattern,
+        credentialType: cred.type,
+        headerName:
+          cred.type === AgentVaultCredentialType.Bearer ? (cred.headerName ?? "Authorization") : "",
+        headerPrefix:
+          cred.type === AgentVaultCredentialType.Bearer ? (cred.headerPrefix ?? "Bearer") : "",
+        username: "",
+        secret: ""
+      });
+    }
+    setStep(1);
+  };
+
+  const buildCredential = (data: TConnectionForm) => {
+    if (data.credentialType === AgentVaultCredentialType.Passthrough) {
+      return { type: AgentVaultCredentialType.Passthrough as const };
+    }
+    if (data.credentialType === AgentVaultCredentialType.Basic) {
+      return {
+        type: AgentVaultCredentialType.Basic as const,
+        username: data.username ?? "",
+        password: data.secret ?? ""
+      };
+    }
+    return {
+      type: AgentVaultCredentialType.Bearer as const,
+      headerName: data.headerName || undefined,
+      headerPrefix: data.headerPrefix ?? "",
+      value: data.secret ?? ""
+    };
+  };
+
+  const onSubmit = async (data: TConnectionForm) => {
+    const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
+    // The schema has already required a secret wherever the wire settings changed, so a blank one
+    // here means nothing about the credential moved and the stored secret can stay.
+    const keepsStoredSecret = isUpdate && needsSecret && !data.secret;
+
+    try {
+      const result = connection
+        ? await updateConnection.mutateAsync({
+            accessBundleId,
+            connectionId: connection.id,
+            name: data.name,
+            hostPattern: data.hostPattern,
+            credential: keepsStoredSecret ? undefined : buildCredential(data)
+          })
+        : await createConnection.mutateAsync({
+            accessBundleId,
+            name: data.name,
+            hostPattern: data.hostPattern,
+            credential: buildCredential(data)
+          });
+
+      createNotification({
+        text: `Connection "${data.name}" ${isUpdate ? "updated" : "created"}`,
+        type: "success"
+      });
+
+      // Cross-bundle overlaps are informational, and the mint sheet shows them again when someone
+      // combines the two bundles, so they go out as toasts rather than holding the sheet open.
+      result.warnings.slice(0, 3).forEach((warning) => {
+        createNotification({
+          type: "warning",
+          title: `${warning.connectionName} in ${warning.accessBundleName} also covers ${warning.patterns.join(", ")}`,
+          text: "If one session carries both bundles, the earlier one wins for those hosts."
+        });
+      });
+      if (result.warnings.length > 3) {
+        createNotification({
+          type: "warning",
+          text: `${result.warnings.length - 3} more connections in other bundles overlap these hosts.`
+        });
+      }
+
+      onOpenChange(false);
+    } catch (error) {
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as TApiErrors | undefined)
+        : undefined;
+
+      // The two failures that name the Hosts field land on it, with the wizard moved back to that
+      // step; everything else keeps the repo's standard error handling.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.includes("already covers")
+      ) {
+        setError("hostPattern", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ConnectionStep.Scope));
+        return;
+      }
+
+      if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+        const hostIssues = serverResponse.message.filter(
+          (issue) => issue.path[0] === "hostPattern"
+        );
+        if (hostIssues.length > 0) {
+          setError("hostPattern", {
+            type: "server",
+            message: hostIssues.map((issue) => issue.message).join(" ")
+          });
+          setStep(stepKeys.indexOf(ConnectionStep.Scope));
+        }
+        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+      }
+    }
+  };
+
+  // Going back is always allowed; going forward validates every step in between, so the rail can
+  // never skip a step that would have blocked Continue.
+  const handleStepChange = async (target: number) => {
+    if (target === step) return;
+    if (target < step) {
+      setStep(target);
+      return;
+    }
+    for (let i = step; i < target; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      if (!(await trigger(CONNECTION_STEP_FIELDS[stepKeys[i]] as (keyof TConnectionForm)[]))) {
+        return;
+      }
+    }
+    setStep(target);
+  };
+
+  const current = steps[step];
+  const isTemplateStep = current.step === ConnectionStep.Template;
+
+  return (
+    <Sheet
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          onOpenChange(true);
+          return;
+        }
+        requestDiscard();
+      }}
+    >
+      <SheetContent className="sm:max-w-6xl">
+        <SheetHeader>
+          <SheetTitle>{isUpdate ? "Edit Connection" : "Add Connection"}</SheetTitle>
+          <SheetDescription>
+            A connection is one set of hosts plus the credential the proxy attaches to them.
+          </SheetDescription>
+        </SheetHeader>
+
+        <FormProvider {...formMethods}>
+          <form
+            onSubmit={handleSubmit(onSubmit, onFormInvalid)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
+                  <StepperList>
+                    {steps.map((meta, index) => (
+                      <StepperStep
+                        key={meta.step}
+                        index={index}
+                        title={meta.name}
+                        description={
+                          meta.step === ConnectionStep.Template && template
+                            ? template.name
+                            : meta.shortDescription
+                        }
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
+
+              <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
+                </div>
+
+                {isTemplateStep && <ConnectionTemplateSelect onSelect={handleTemplatePicked} />}
+                {current.step === ConnectionStep.Credential && (
+                  <CredentialFields isUpdate={isUpdate} />
+                )}
+                {current.step === ConnectionStep.Scope && <ScopeFields />}
+                {current.step === ConnectionStep.Review && <ReviewFields />}
+              </div>
+
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                    Step {step + 1} · {current.rightLabel}
+                  </p>
+                  <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
+                </div>
+                <p className="text-sm font-semibold text-foreground">What this step does</p>
+                <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
+
+                {template && !isTemplateStep && (
+                  <div className="flex flex-col gap-3 border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground">{template.name}</p>
+                    <p className="text-sm leading-relaxed text-muted">{template.description}</p>
+                    {template.caveat && (
+                      <Alert variant="warning">
+                        <TriangleAlertIcon />
+                        <AlertDescription>{template.caveat}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="flex flex-col gap-1 text-sm text-muted">
+                      <span className="text-label">Filled in for you</span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckIcon className="size-3" /> Hosts
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckIcon className="size-3" /> Credential type
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            </div>
+
+            <SheetFooter className="items-center justify-between border-t">
+              <span className="text-xs text-muted">{isDirty ? "Unsaved changes" : ""}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  Step {step + 1} of {steps.length}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => (step === 0 ? requestDiscard() : goBack())}
+                >
+                  {step === 0 ? "Cancel" : "Back"}
+                </Button>
+                {isLastStep ? (
+                  <Button type="submit" variant="av" isPending={isSubmitting}>
+                    {isUpdate ? "Save" : "Add Connection"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="av"
+                    isDisabled={isTemplateStep && !hasPickedTemplate}
+                    onClick={async () => goNext()}
+                  >
+                    Continue
+                  </Button>
+                )}
+              </div>
+            </SheetFooter>
+          </form>
+        </FormProvider>
+
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="This connection has not been saved. Its hosts and credential will be lost."
+        />
+      </SheetContent>
+    </Sheet>
+  );
+};

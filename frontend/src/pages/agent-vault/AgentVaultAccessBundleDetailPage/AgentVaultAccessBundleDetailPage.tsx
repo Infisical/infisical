@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, PackageIcon } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ConnectionSheet } from "@app/components/agent-vault/ConnectionSheet";
+import { ConnectionSheet } from "@app/components/agent-vault/connection-sheet";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import {
   Button,
