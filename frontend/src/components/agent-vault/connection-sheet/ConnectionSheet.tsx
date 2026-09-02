@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { CheckIcon, TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -58,7 +58,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
   const updateConnection = useUpdateAgentVaultConnection();
 
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
-  const [hasPickedTemplate, setHasPickedTemplate] = useState(false);
 
   const schema = useMemo(() => buildConnectionSchema(connection), [connection]);
 
@@ -97,7 +96,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
     setStep(0);
     setTemplate(null);
-    setHasPickedTemplate(isUpdate);
 
     if (connection) {
       const { credential } = connection;
@@ -128,7 +126,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
-    setHasPickedTemplate(true);
 
     if (picked) {
       const cred = picked.credential;
@@ -275,118 +272,119 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     >
       <SheetContent className="sm:max-w-6xl">
         <SheetHeader>
-          <SheetTitle>{isUpdate ? "Edit Connection" : "Add Connection"}</SheetTitle>
-          <SheetDescription>
-            A connection is one set of hosts plus the credential the proxy attaches to them.
-          </SheetDescription>
+          {isTemplateStep ? (
+            <>
+              <SheetTitle>Choose a template</SheetTitle>
+              <SheetDescription>
+                Pick a service to get a head start, or set one up yourself.
+              </SheetDescription>
+            </>
+          ) : (
+            <>
+              <SheetTitle className="flex items-center gap-2.5">
+                {template && (
+                  <img
+                    src={`/images/integrations/${template.image}`}
+                    alt=""
+                    className="size-6 object-contain"
+                  />
+                )}
+                {template?.name ?? (isUpdate ? connection?.name : "Custom")}
+                <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
+              </SheetTitle>
+              <SheetDescription>
+                Define the credential the proxy attaches, and the hosts it goes to.
+              </SheetDescription>
+            </>
+          )}
         </SheetHeader>
 
         <FormProvider {...formMethods}>
-          <form
-            onSubmit={handleSubmit(onSubmit, onFormInvalid)}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                  Setup steps
-                </p>
-                <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
-                  <StepperList>
-                    {steps.map((meta, index) => (
-                      <StepperStep
-                        key={meta.step}
-                        index={index}
-                        title={meta.name}
-                        description={
-                          meta.step === ConnectionStep.Template && template
-                            ? template.name
-                            : meta.shortDescription
-                        }
-                      />
-                    ))}
-                  </StepperList>
-                </Stepper>
-              </aside>
-
-              <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
-                  <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
-                </div>
-
-                {isTemplateStep && <ConnectionTemplateSelect onSelect={handleTemplatePicked} />}
-                {current.step === ConnectionStep.Credential && (
-                  <CredentialFields isUpdate={isUpdate} />
-                )}
-                {current.step === ConnectionStep.Scope && <ScopeFields />}
-                {current.step === ConnectionStep.Review && <ReviewFields />}
-              </div>
-
-              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Step {step + 1} · {current.rightLabel}
-                  </p>
-                  <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
-                </div>
-                <p className="text-sm font-semibold text-foreground">What this step does</p>
-                <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
-
-                {template && !isTemplateStep && (
-                  <div className="flex flex-col gap-3 border-t border-border pt-4">
-                    <p className="text-sm font-semibold text-foreground">{template.name}</p>
-                    <p className="text-sm leading-relaxed text-muted">{template.description}</p>
-                    {template.caveat && (
-                      <Alert variant="warning">
-                        <TriangleAlertIcon />
-                        <AlertDescription>{template.caveat}</AlertDescription>
-                      </Alert>
-                    )}
-                    <div className="flex flex-col gap-1 text-sm text-muted">
-                      <span className="text-label">Filled in for you</span>
-                      <span className="flex items-center gap-1.5">
-                        <CheckIcon className="size-3" /> Hosts
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <CheckIcon className="size-3" /> Credential type
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </aside>
+          {isTemplateStep ? (
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <ConnectionTemplateSelect onSelect={handleTemplatePicked} />
             </div>
+          ) : (
+            <form
+              onSubmit={handleSubmit(onSubmit, onFormInvalid)}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="flex min-h-0 flex-1 overflow-hidden">
+                <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                  <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                    Setup steps
+                  </p>
+                  <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
+                    <StepperList>
+                      {steps.map((meta, index) => (
+                        <StepperStep
+                          key={meta.step}
+                          index={index}
+                          title={meta.name}
+                          description={
+                            meta.step === ConnectionStep.Template
+                              ? (template?.name ?? "Custom")
+                              : meta.shortDescription
+                          }
+                        />
+                      ))}
+                    </StepperList>
+                  </Stepper>
+                </aside>
 
-            <SheetFooter className="items-center justify-between border-t">
-              <span className="text-xs text-muted">{isDirty ? "Unsaved changes" : ""}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted">
-                  Step {step + 1} of {steps.length}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => (step === 0 ? requestDiscard() : goBack())}
-                >
-                  {step === 0 ? "Cancel" : "Back"}
-                </Button>
-                {isLastStep ? (
-                  <Button type="submit" variant="av" isPending={isSubmitting}>
-                    {isUpdate ? "Save" : "Add Connection"}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="av"
-                    isDisabled={isTemplateStep && !hasPickedTemplate}
-                    onClick={async () => goNext()}
-                  >
-                    Continue
-                  </Button>
-                )}
+                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
+                    <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
+                  </div>
+
+                  {current.step === ConnectionStep.Credential && (
+                    <CredentialFields isUpdate={isUpdate} />
+                  )}
+                  {current.step === ConnectionStep.Scope && <ScopeFields />}
+                  {current.step === ConnectionStep.Review && <ReviewFields />}
+                </div>
+
+                <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Step {step + 1} · {current.rightLabel}
+                    </p>
+                    <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
+                  {template?.caveat && current.step === ConnectionStep.Credential && (
+                    <Alert variant="warning">
+                      <TriangleAlertIcon />
+                      <AlertDescription>{template.caveat}</AlertDescription>
+                    </Alert>
+                  )}
+                </aside>
               </div>
-            </SheetFooter>
-          </form>
+
+              <SheetFooter className="items-center justify-between border-t">
+                <span className="text-xs text-muted">{isDirty ? "Unsaved changes" : ""}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted">
+                    Step {step + 1} of {steps.length}
+                  </span>
+                  <Button type="button" variant="outline" onClick={goBack}>
+                    Back
+                  </Button>
+                  {isLastStep ? (
+                    <Button type="submit" variant="av" isPending={isSubmitting}>
+                      {isUpdate ? "Save" : "Add Connection"}
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="av" onClick={async () => goNext()}>
+                      Continue
+                    </Button>
+                  )}
+                </div>
+              </SheetFooter>
+            </form>
+          )}
         </FormProvider>
 
         <DiscardChangesAlertDialog
