@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { format } from "date-fns";
 import { ChevronDownIcon, MoreHorizontalIcon, PackageIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -36,7 +37,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
@@ -49,8 +53,18 @@ import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog"
 
 enum SortColumn {
   Name = "name",
-  Connections = "connections"
+  Connections = "connections",
+  Created = "created"
 }
+
+const SORT_COMPARATORS: Record<
+  SortColumn,
+  (a: TAgentVaultAccessBundleListItem, b: TAgentVaultAccessBundleListItem) => number
+> = {
+  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
+  [SortColumn.Connections]: (a, b) => a.connectionCount - b.connectionCount,
+  [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+};
 
 export const AgentVaultAccessBundlesPage = () => {
   const { t } = useTranslation();
@@ -81,11 +95,7 @@ export const AgentVaultAccessBundlesPage = () => {
         (bundle.description ?? "").toLowerCase().includes(term)
     );
 
-    const ordered = [...filtered].sort((a, b) =>
-      sortColumn === SortColumn.Connections
-        ? a.connectionCount - b.connectionCount
-        : a.name.localeCompare(b.name)
-    );
+    const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
 
     return sortDirection === "ascending" ? ordered : ordered.reverse();
   }, [accessBundles, search, sortColumn, sortDirection]);
@@ -194,6 +204,13 @@ export const AgentVaultAccessBundlesPage = () => {
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Connections)} />
                 </TableHead>
                 <TableHead>Members</TableHead>
+                <TableHead
+                  sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
+                >
+                  Created
+                  <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
+                </TableHead>
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -249,6 +266,18 @@ export const AgentVaultAccessBundlesPage = () => {
                           {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
                         </>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm">
+                            {format(new Date(bundle.createdAt), "MMM d, yyyy")}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {format(new Date(bundle.createdAt), "MMM d, yyyy h:mm a")}
+                        </TooltipContent>
+                      </Tooltip>
                     </TableCell>
                     <TableCell variant="action">
                       {isAdmin && (
