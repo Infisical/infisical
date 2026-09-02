@@ -160,10 +160,14 @@ export const createGatewayConnection = async (
 
   return new Promise((resolve, reject) => {
     try {
+      // These listeners outlive the handshake, so each one has to stay correct once the tunnel is
+      // established: destroying is always deferred, and reject() is a no-op on a settled promise.
+      // Callers respond to a rejection by scheduling relayConn's destroy, which lands on the same
+      // queue behind ours, so the inner socket still goes first.
       const gatewaySocket = tls.connect(tlsOptions, () => {
         if (!gatewaySocket.authorized) {
           const error = gatewaySocket.authorizationError;
-          gatewaySocket.destroy();
+          destroyGatewayTunnel({ gatewayConn: gatewaySocket, tunnelId, trigger: "gatewayUnauthorized" });
           reject(new Error(`Gateway TLS authorization failed: ${error?.message}`));
           return;
         }
@@ -173,15 +177,13 @@ export const createGatewayConnection = async (
       });
 
       gatewaySocket.on("error", (err: Error) => {
-        // Callers respond to a rejection by destroying relayConn, so the inner socket has to go
-        // first or it is left reading a transport that is about to disappear.
-        gatewaySocket.destroy();
+        destroyGatewayTunnel({ gatewayConn: gatewaySocket, tunnelId, trigger: `gatewayError:${err.message}` });
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
       gatewaySocket.setTimeout(120000);
       gatewaySocket.on("timeout", () => {
-        gatewaySocket.destroy();
+        destroyGatewayTunnel({ gatewayConn: gatewaySocket, tunnelId, trigger: "gatewayTimeout" });
         reject(new Error("Gateway connection timeout"));
       });
     } catch (error: unknown) {
