@@ -33,8 +33,10 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
 import {
+  findCsrCustomExtensionMismatch,
   findUnsatisfiedCustomExtensionOids,
   parseIssuedCustomExtensions,
+  TCsrCustomExtensionMismatch,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
 import { calculateFinalRenewBeforeDays } from "@app/services/certificate-common/certificate-issuance-utils";
@@ -504,23 +506,20 @@ export const ADCSCertificateAuthorityFns = ({
     let skLeaf: string | undefined;
     let csrDerBase64: string;
     if (csr) {
-      const csrExtensionValues = new Map(
-        new x509.Pkcs10CertificateRequest(csr).extensions.map((entry) => [
-          entry.type,
-          Buffer.from(new Uint8Array(entry.value)).toString("base64")
-        ])
-      );
-      const mismatched = (customExtensions ?? []).find(
-        (extension) => csrExtensionValues.get(extension.oid) !== extension.value
-      );
-      if (mismatched) {
+      const parsedCsr = new x509.Pkcs10CertificateRequest(csr);
+      const mismatch = findCsrCustomExtensionMismatch(parsedCsr, customExtensions);
+      if (mismatch) {
+        const resolvedCritical = customExtensions?.find((extension) => extension.oid === mismatch.oid)?.critical;
+        const reasons: Record<TCsrCustomExtensionMismatch["reason"], string> = {
+          missing: `Custom extension '${mismatch.oid}' must be present in the certificate signing request you supply`,
+          value: `Custom extension '${mismatch.oid}' in the certificate signing request does not carry the value this policy resolved`,
+          criticality: `Custom extension '${mismatch.oid}' in the certificate signing request must be marked ${resolvedCritical ? "critical" : "non-critical"} to match this policy`
+        };
         throw new BadRequestError({
-          message: csrExtensionValues.has(mismatched.oid)
-            ? `Custom extension '${mismatched.oid}' in the certificate signing request does not carry the value this policy resolved, and Active Directory Certificate Services is given that request unchanged. Correct the request, or let Infisical generate the key.`
-            : `Custom extension '${mismatched.oid}' must be present in the certificate signing request you supply, because Active Directory Certificate Services is given that request unchanged. Include it, or let Infisical generate the key.`
+          message: `${reasons[mismatch.reason]}, because Active Directory Certificate Services is given that request unchanged. Correct the request, or let Infisical generate the key.`
         });
       }
-      csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
+      csrDerBase64 = Buffer.from(new Uint8Array(parsedCsr.rawData)).toString("base64");
     } else {
       const generated = await generateLeafKeypairAndCsr({
         subjectName: buildSubjectDN(commonName),

@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import * as asn1js from "asn1js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,6 +12,7 @@ import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeCustomExtensionValue,
   encodeCustomExtensionValue,
+  findCsrCustomExtensionMismatch,
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
@@ -453,6 +455,67 @@ describe("appendCustomExtensions", () => {
 describe("parseCustomExtensionsFromCertificate", () => {
   it("returns an empty list for bytes that are not a certificate", () => {
     expect(parseCustomExtensionsFromCertificate(Buffer.from("not a certificate"))).toEqual([]);
+  });
+});
+
+describe("findCsrCustomExtensionMismatch", () => {
+  const CSR_OID = "1.3.6.1.4.1.77777.99";
+  const der = Buffer.from(new asn1js.Utf8String({ value: "v1" }).toBER(false));
+  const value = der.toString("base64");
+
+  const csrWith = async (extensions: x509.Extension[]) => {
+    const keys = await crypto.subtle.generateKey(
+      { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+      true,
+      ["sign", "verify"]
+    );
+    return x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=mismatch-test",
+      keys,
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      extensions
+    });
+  };
+
+  it("accepts a request carrying the resolved value and criticality", async () => {
+    const csr = await csrWith([new x509.Extension(CSR_OID, false, der)]);
+
+    expect(findCsrCustomExtensionMismatch(csr, [{ oid: CSR_OID, value, critical: false }])).toBeNull();
+  });
+
+  it("reports an extension the request omits", async () => {
+    const csr = await csrWith([]);
+
+    expect(findCsrCustomExtensionMismatch(csr, [{ oid: CSR_OID, value, critical: false }])).toEqual({
+      oid: CSR_OID,
+      reason: "missing"
+    });
+  });
+
+  it("reports a request whose value differs from the resolved one", async () => {
+    const other = Buffer.from(new asn1js.Utf8String({ value: "v2" }).toBER(false));
+    const csr = await csrWith([new x509.Extension(CSR_OID, false, other)]);
+
+    expect(findCsrCustomExtensionMismatch(csr, [{ oid: CSR_OID, value, critical: false }])).toEqual({
+      oid: CSR_OID,
+      reason: "value"
+    });
+  });
+
+  it("reports a request whose criticality contradicts the resolved one, since the CA gets it unchanged", async () => {
+    const csr = await csrWith([new x509.Extension(CSR_OID, false, der)]);
+
+    expect(findCsrCustomExtensionMismatch(csr, [{ oid: CSR_OID, value, critical: true }])).toEqual({
+      oid: CSR_OID,
+      reason: "criticality"
+    });
+  });
+
+  it("accepts anything when the policy resolved no extensions", async () => {
+    const csr = await csrWith([new x509.Extension(CSR_OID, true, der)]);
+
+    expect(findCsrCustomExtensionMismatch(csr, [])).toBeNull();
+    expect(findCsrCustomExtensionMismatch(csr, undefined)).toBeNull();
   });
 });
 

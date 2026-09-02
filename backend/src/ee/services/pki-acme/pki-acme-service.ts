@@ -128,6 +128,14 @@ import {
  */
 const STALE_PROCESSING_ORDER_TIMEOUT_MS = 60 * 60 * 1000;
 
+const assertAcmeCaSupportsCustomExtensions = (caType: CaType, count: number): void => {
+  if (!count || caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) return;
+
+  throw new AcmeBadCSRError({
+    message: `Invalid CSR: ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${count} of them.`
+  });
+};
+
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
@@ -1090,14 +1098,7 @@ export const pkiAcmeServiceFactory = ({
     if (!validationResult.isValid) {
       throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
     }
-    if (
-      validationResult.resolvedCustomExtensions?.length &&
-      !caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)
-    ) {
-      throw new AcmeBadCSRError({
-        message: `Invalid CSR: ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${validationResult.resolvedCustomExtensions.length} of them.`
-      });
-    }
+    assertAcmeCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
     const certRequest = await certificateRequestService.createCertificateRequest({
       actor: ActorType.ACME_ACCOUNT,
@@ -1249,6 +1250,8 @@ export const pkiAcmeServiceFactory = ({
 
       assertCaInProfileProject(ca, profile);
 
+      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+
       const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
       const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
         ?.applicationProfileId;
@@ -1285,6 +1288,10 @@ export const pkiAcmeServiceFactory = ({
             if (!validationResult.isValid) {
               throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
             }
+            assertAcmeCaSupportsCustomExtensions(
+              finalizeCaType,
+              validationResult.resolvedCustomExtensions?.length ?? 0
+            );
 
             return {
               approvalPolicy: matchedApprovalPolicy,
@@ -1451,7 +1458,7 @@ export const pkiAcmeServiceFactory = ({
           return claimedOrder;
         });
 
-        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+        const caType = finalizeCaType;
         // Set once the certificate and its order-linked request are durably committed, which happens
         // inside processCertificateIssuanceForOrder rather than here. Anything that fails after that
         // point must not invalidate the order, or a real certificate is stranded.

@@ -270,6 +270,31 @@ export const parseIssuedCustomExtensions = (
     }));
 };
 
+export type TCsrCustomExtensionMismatch = { oid: string; reason: "missing" | "value" | "criticality" };
+
+export const findCsrCustomExtensionMismatch = (
+  csr: x509.Pkcs10CertificateRequest,
+  resolved?: TResolvedCustomExtension[]
+): TCsrCustomExtensionMismatch | null => {
+  if (!resolved?.length) return null;
+
+  const inCsr = new Map(
+    csr.extensions.map((entry) => [
+      entry.type,
+      { value: Buffer.from(new Uint8Array(entry.value)).toString("base64"), critical: entry.critical }
+    ])
+  );
+
+  for (const extension of resolved) {
+    const found = inCsr.get(extension.oid);
+    if (!found) return { oid: extension.oid, reason: "missing" };
+    if (found.value !== extension.value) return { oid: extension.oid, reason: "value" };
+    if (found.critical !== extension.critical) return { oid: extension.oid, reason: "criticality" };
+  }
+
+  return null;
+};
+
 export const findUnsatisfiedCustomExtensionOids = (
   certificateDer: Buffer,
   resolved?: TResolvedCustomExtension[]
