@@ -461,11 +461,6 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
