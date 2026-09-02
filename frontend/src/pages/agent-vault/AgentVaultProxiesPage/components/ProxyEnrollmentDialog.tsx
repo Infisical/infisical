@@ -16,13 +16,14 @@ import {
 } from "@app/components/v3";
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
 
-const dockerCommand = (token: string) =>
+const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
   -p 17323:17323 \\
   infisical/cli av proxy \\
-  --enrollment-token ${token}`;
+  --enrollment-token ${token} \\
+  --domain ${siteUrl}`;
 
-const kubernetesManifest = (token: string) =>
+const kubernetesManifest = (token: string, siteUrl: string) =>
   `apiVersion: v1
 kind: Secret
 metadata:
@@ -45,7 +46,15 @@ spec:
       containers:
         - name: proxy
           image: infisical/cli
-          args: ["av", "proxy", "--enrollment-token", "$(ENROLLMENT_TOKEN)"]
+          args:
+            [
+              "av",
+              "proxy",
+              "--enrollment-token",
+              "$(ENROLLMENT_TOKEN)",
+              "--domain",
+              "${siteUrl}"
+            ]
           env:
             - name: ENROLLMENT_TOKEN
               valueFrom:
@@ -53,13 +62,13 @@ spec:
           ports:
             - containerPort: 17323`;
 
-const systemdUnit = (token: string) =>
+const systemdUnit = (token: string, siteUrl: string) =>
   `[Unit]
 Description=Infisical Agent Vault proxy
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/infisical av proxy --enrollment-token ${token}
+ExecStart=/usr/local/bin/infisical av proxy --enrollment-token ${token} --domain ${siteUrl}
 Restart=always
 
 [Install]
@@ -72,6 +81,8 @@ type Props = {
 
 export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
   const token = enrollment?.token ?? "";
+  const { protocol, hostname, port } = window.location;
+  const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
 
   return (
     <Dialog open={Boolean(enrollment)} onOpenChange={onOpenChange}>
@@ -95,13 +106,13 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
               <TabsTrigger value="systemd">systemd</TabsTrigger>
             </TabsList>
             <TabsContent value="docker">
-              <CodeBlock value={dockerCommand(token)} />
+              <CodeBlock value={dockerCommand(token, siteUrl)} />
             </TabsContent>
             <TabsContent value="kubernetes">
-              <CodeBlock value={kubernetesManifest(token)} />
+              <CodeBlock value={kubernetesManifest(token, siteUrl)} />
             </TabsContent>
             <TabsContent value="systemd">
-              <CodeBlock value={systemdUnit(token)} />
+              <CodeBlock value={systemdUnit(token, siteUrl)} />
             </TabsContent>
           </Tabs>
         </div>
