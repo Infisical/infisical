@@ -272,12 +272,14 @@ export const AgentVaultSessionsPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <OverflowBadgeList
-                        items={session.accessBundles}
-                        getKey={(bundle) => bundle.id ?? bundle.name}
-                        getLabel={(bundle) => bundle.name}
-                        getVariant={(bundle) => (bundle.id ? "av" : "neutral")}
-                      />
+                      <div className="max-w-72">
+                        <OverflowBadgeList
+                          items={session.accessBundles}
+                          getKey={(bundle) => bundle.id ?? bundle.name}
+                          getLabel={(bundle) => bundle.name}
+                          getVariant={(bundle) => (bundle.id ? "av" : "neutral")}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>{format(new Date(session.createdAt), "MMM d, yyyy")}</TableCell>
                     <TableCell>

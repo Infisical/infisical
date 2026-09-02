@@ -215,12 +215,14 @@ export const AgentVaultAccessBundlesPage = () => {
                       {bundle.connectionCount === 0 ? (
                         <span className="text-muted">&mdash;</span>
                       ) : (
-                        <OverflowBadgeList
-                          items={connectionLabels(bundle)}
-                          getKey={(label) => label}
-                          getLabel={(label) => label}
-                          getVariant={() => "av"}
-                        />
+                        <div className="max-w-72">
+                          <OverflowBadgeList
+                            items={connectionLabels(bundle)}
+                            getKey={(label) => label}
+                            getLabel={(label) => label}
+                            getVariant={() => "av"}
+                          />
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>

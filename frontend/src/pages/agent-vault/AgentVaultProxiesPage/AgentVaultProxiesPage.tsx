@@ -180,12 +180,14 @@ export const AgentVaultProxiesPage = () => {
                     {isAdmin && (
                       <TableCell>
                         {proxy.bypassHosts ? (
-                          <OverflowBadgeList
-                            items={proxy.bypassHosts.split(",").map((host) => host.trim())}
-                            getKey={(host) => host}
-                            getLabel={(host) => host}
-                            getVariant={() => "neutral"}
-                          />
+                          <div className="max-w-72">
+                            <OverflowBadgeList
+                              items={proxy.bypassHosts.split(",").map((host) => host.trim())}
+                              getKey={(host) => host}
+                              getLabel={(host) => host}
+                              getVariant={() => "neutral"}
+                            />
+                          </div>
                         ) : (
                           <span className="text-muted">&mdash;</span>
                         )}
