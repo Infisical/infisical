@@ -36,6 +36,7 @@ import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certifica
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 import {
   CertSubjectAlternativeNameType,
@@ -51,7 +52,7 @@ import {
   isExternalTemplateCa,
   rowErrorsOf
 } from "./certificateUtils";
-import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
+import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";

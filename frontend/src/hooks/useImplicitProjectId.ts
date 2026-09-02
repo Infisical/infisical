@@ -9,7 +9,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 // on the derived product keeps the ~100 useProject/useProjectPermission callers from re-rendering on
 // every search-param change.
 export const useImplicitProjectId = () => {
-  const product = useLocation({ select: (location) => getOrgScopedProductFromPath(location.pathname) });
+  const product = useLocation({
+    select: (location) => getOrgScopedProductFromPath(location.pathname)
+  });
   const { currentOrg } = useOrganization();
 
   if (product === ProjectType.PAM) return currentOrg.pamProjectId;
