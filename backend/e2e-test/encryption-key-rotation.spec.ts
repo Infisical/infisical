@@ -10,9 +10,11 @@ import { generateRootEncryptionKey } from "@app/services/encryption-key-rotation
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
+import { kmsImportKeyMaterialTokenDALFactory } from "@app/services/kms/kms-import-key-material-token-dal";
 import { KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKeyImportMetaDALFactory } from "@app/services/kms/kms-key-import-meta-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -42,6 +44,8 @@ const bootInstanceWithKey = async (key: string) => {
     kmsDAL: kmskeyDALFactory(testDb),
     internalKmsDAL: internalKmsDALFactory(testDb),
     internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
+    kmsImportKeyMaterialTokenDAL: kmsImportKeyMaterialTokenDALFactory(testDb),
+    kmsKeyImportMetaDAL: kmsKeyImportMetaDALFactory(testDb),
     orgDAL: orgDALFactory(testDb),
     projectDAL: projectDALFactory(testDb),
     hsmService: testHsmService,

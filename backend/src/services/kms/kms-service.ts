@@ -893,6 +893,10 @@ export const kmsServiceFactory = ({
         key: orgKmsDataKey
       });
 
+      if (!kmsDoc.externalKms.encryptedProviderInput) {
+        throw new BadRequestError({ message: "External KMS configuration is incomplete." });
+      }
+
       const decryptedProviderInputBlob = kmsDecryptor({
         cipherTextBlob: kmsDoc.externalKms.encryptedProviderInput
       });
@@ -1361,6 +1365,10 @@ export const kmsServiceFactory = ({
       const kmsDecryptor = await decryptWithInputKey({
         key: orgKmsDataKey
       });
+
+      if (!kmsDoc.externalKms.encryptedProviderInput) {
+        throw new BadRequestError({ message: "External KMS configuration is incomplete." });
+      }
 
       const decryptedProviderInputBlob = kmsDecryptor({
         cipherTextBlob: kmsDoc.externalKms.encryptedProviderInput
