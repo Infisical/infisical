@@ -33,7 +33,7 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
 import {
-  findDroppedCustomExtensionOids,
+  findUnsatisfiedCustomExtensionOids,
   parseIssuedCustomExtensions,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
@@ -585,7 +585,7 @@ export const ADCSCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const droppedOids = findDroppedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
+    const unsatisfiedOids = findUnsatisfiedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -655,12 +655,12 @@ export const ADCSCertificateAuthorityFns = ({
       }
     });
 
-    if (droppedOids.length) {
+    if (unsatisfiedOids.length) {
       logger.warn(
-        `Active Directory Certificate Services dropped custom extensions this profile declared [caId=${ca.id}] [profileId=${profileId}] [certificateId=${certificateId!}] [oids=${droppedOids.join(",")}]`
+        `Active Directory Certificate Services did not honor custom extensions this profile declared [caId=${ca.id}] [profileId=${profileId}] [certificateId=${certificateId!}] [oids=${unsatisfiedOids.join(",")}]`
       );
       throw new BadRequestError({
-        message: `Active Directory Certificate Services issued a certificate without ${droppedOids.join(", ")}, so it does not carry what this profile declared. The certificate is recorded so you can revoke it. Add each object identifier to the certificate authority's EnableRequestExtensionList and restart certsvc, then request again.`
+        message: `Active Directory Certificate Services issued a certificate that does not carry ${unsatisfiedOids.join(", ")} as this profile declared it. The certificate is recorded so you can revoke it. Add each object identifier to the certificate authority's EnableRequestExtensionList and restart certsvc, then request again.`
       });
     }
 

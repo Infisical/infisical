@@ -749,9 +749,10 @@ export const CreateProfileModal = ({
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
   const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
-  const caSupportsCustomExtensions = selectedCa
-    ? caSupportsCapability(selectedCa.type, CaCapability.CUSTOM_EXTENSIONS)
-    : false;
+  const caSupportsCustomExtensions =
+    watchedIssuerType === IssuerType.SELF_SIGNED
+      ? true
+      : !!selectedCa && caSupportsCapability(selectedCa.type, CaCapability.CUSTOM_EXTENSIONS);
 
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",

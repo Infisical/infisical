@@ -52,10 +52,21 @@ export const RequestCustomExtensionsField = ({
     policyRules?.find((rule) => rule.oid === declaration.oid)?.rule ===
       CertExtensionRuleKind.REQUIRE;
 
-  const pinnedDeclarations = declarations.filter(isPinned);
+  const effectiveDeclarations: TProfileCustomExtension[] = [
+    ...declarations,
+    ...(policyRules ?? [])
+      .filter(
+        (rule) =>
+          rule.rule === CertExtensionRuleKind.REQUIRE &&
+          !declarations.some((declaration) => declaration.oid === rule.oid)
+      )
+      .map((rule) => ({ oid: rule.oid, label: rule.label ?? undefined }))
+  ];
+
+  const pinnedDeclarations = effectiveDeclarations.filter(isPinned);
   const pinnedOids = pinnedDeclarations.map((declaration) => declaration.oid);
   const declarationByOid = new Map(
-    declarations.map((declaration) => [declaration.oid, declaration] as const)
+    effectiveDeclarations.map((declaration) => [declaration.oid, declaration] as const)
   );
 
   return (

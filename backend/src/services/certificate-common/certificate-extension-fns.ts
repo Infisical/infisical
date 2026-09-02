@@ -270,13 +270,20 @@ export const parseIssuedCustomExtensions = (
     }));
 };
 
-export const findDroppedCustomExtensionOids = (
+export const findUnsatisfiedCustomExtensionOids = (
   certificateDer: Buffer,
   resolved?: TResolvedCustomExtension[]
 ): string[] => {
   if (!resolved?.length) return [];
-  const issuedOids = new Set(parseCustomExtensionsFromCertificate(certificateDer).map((extension) => extension.oid));
-  return resolved.filter((extension) => !issuedOids.has(extension.oid)).map((extension) => extension.oid);
+  const issuedByOid = new Map(
+    parseCustomExtensionsFromCertificate(certificateDer).map((extension) => [extension.oid, extension])
+  );
+  return resolved
+    .filter((extension) => {
+      const issued = issuedByOid.get(extension.oid);
+      return !issued || issued.value !== extension.value || issued.critical !== extension.critical;
+    })
+    .map((extension) => extension.oid);
 };
 
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>

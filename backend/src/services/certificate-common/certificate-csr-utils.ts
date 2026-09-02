@@ -126,13 +126,13 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const csrCustomExtensions = csrObj.extensions
     .filter((extension) => !isReservedExtensionOid(extension.type))
-    .flatMap((extension) => {
-      const value = describeCustomExtensionValue(
-        extension.type,
-        Buffer.from(new Uint8Array(extension.value)).toString("base64")
-      );
-      return value === null ? [] : [{ oid: extension.type, value, critical: extension.critical }];
-    });
+    .map((extension) => ({
+      oid: extension.type,
+      value:
+        describeCustomExtensionValue(extension.type, Buffer.from(new Uint8Array(extension.value)).toString("base64")) ??
+        undefined,
+      critical: extension.critical
+    }));
 
   if (csrCustomExtensions.length) {
     certificateRequest.customExtensions = csrCustomExtensions;

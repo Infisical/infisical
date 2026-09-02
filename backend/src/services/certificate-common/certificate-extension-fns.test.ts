@@ -11,7 +11,7 @@ import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeCustomExtensionValue,
   encodeCustomExtensionValue,
-  findDroppedCustomExtensionOids,
+  findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
   resolveCustomExtensions,
@@ -25,6 +25,7 @@ const SID_OID = "1.3.6.1.4.1.311.25.2";
 const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
 const TEMPLATE_INFO_OID = "1.3.6.1.4.1.311.21.7";
 const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
+const OPAQUE_OID = "1.3.6.1.4.1.311.21.20";
 
 const SID = "S-1-5-21-1004336348-1177238915-682003330-1103";
 
@@ -125,6 +126,27 @@ describe("resolveCustomExtensions", () => {
       oid: SID_OID,
       critical: false
     });
+  });
+
+  it("refuses a request extension whose value could not be decoded when the policy restricts OIDs", () => {
+    const { errors } = resolveCustomExtensions({
+      declarations: [],
+      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      requestExtensions: [{ oid: OPAQUE_OID, critical: false }]
+    });
+
+    expect(errors).toEqual([`Custom extension '${OPAQUE_OID}' is not allowed by this policy.`]);
+  });
+
+  it("lets an undecodable request extension through when the policy restricts nothing", () => {
+    const { extensions, errors } = resolveCustomExtensions({
+      declarations: [],
+      rules: null,
+      requestExtensions: [{ oid: OPAQUE_OID, critical: false }]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([]);
   });
 
   it("treats a null rule list as unconstrained, matching an unset jsonb column", () => {
@@ -434,7 +456,7 @@ describe("parseCustomExtensionsFromCertificate", () => {
   });
 });
 
-describe("findDroppedCustomExtensionOids", () => {
+describe("findUnsatisfiedCustomExtensionOids", () => {
   const certificateWith = async (oids: string[]) => {
     const keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.createSelfSigned({
@@ -458,21 +480,49 @@ describe("findDroppedCustomExtensionOids", () => {
 
   it("names the declared OIDs the issuer left off the certificate", async () => {
     const der = await certificateWith([CUSTOM_OID]);
-    expect(findDroppedCustomExtensionOids(der, resolved([CUSTOM_OID, SID_OID]))).toEqual([SID_OID]);
+    expect(findUnsatisfiedCustomExtensionOids(der, resolved([CUSTOM_OID, SID_OID]))).toEqual([SID_OID]);
   });
 
   it("returns nothing when every declared OID is present", async () => {
     const der = await certificateWith([CUSTOM_OID, SID_OID]);
-    expect(findDroppedCustomExtensionOids(der, resolved([CUSTOM_OID, SID_OID]))).toEqual([]);
+    expect(findUnsatisfiedCustomExtensionOids(der, resolved([CUSTOM_OID, SID_OID]))).toEqual([]);
   });
 
   it("returns nothing when the profile declared none, even for an unreadable certificate", () => {
-    expect(findDroppedCustomExtensionOids(Buffer.from("not a certificate"), [])).toEqual([]);
-    expect(findDroppedCustomExtensionOids(Buffer.from("not a certificate"), undefined)).toEqual([]);
+    expect(findUnsatisfiedCustomExtensionOids(Buffer.from("not a certificate"), [])).toEqual([]);
+    expect(findUnsatisfiedCustomExtensionOids(Buffer.from("not a certificate"), undefined)).toEqual([]);
+  });
+
+  it("names an OID the issuer replaced the value of", async () => {
+    const keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=drop-test",
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2027-01-01"),
+      keys,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      extensions: [new x509.Extension(CUSTOM_OID, false, Buffer.from("BQE=", "base64"))]
+    });
+    expect(findUnsatisfiedCustomExtensionOids(Buffer.from(cert.rawData), resolved([CUSTOM_OID]))).toEqual([CUSTOM_OID]);
+  });
+
+  it("names an OID the issuer emitted with the wrong criticality", async () => {
+    const keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=drop-test",
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2027-01-01"),
+      keys,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      extensions: [new x509.Extension(CUSTOM_OID, true, Buffer.from("BQA=", "base64"))]
+    });
+    expect(findUnsatisfiedCustomExtensionOids(Buffer.from(cert.rawData), resolved([CUSTOM_OID]))).toEqual([CUSTOM_OID]);
   });
 
   it("reports every declared OID when the certificate cannot be parsed at all", async () => {
-    expect(findDroppedCustomExtensionOids(Buffer.from("not a certificate"), resolved([CUSTOM_OID]))).toEqual([
+    expect(findUnsatisfiedCustomExtensionOids(Buffer.from("not a certificate"), resolved([CUSTOM_OID]))).toEqual([
       CUSTOM_OID
     ]);
   });

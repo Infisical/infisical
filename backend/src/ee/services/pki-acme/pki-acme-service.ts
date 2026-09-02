@@ -32,8 +32,12 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
@@ -1085,6 +1089,14 @@ export const pkiAcmeServiceFactory = ({
     );
     if (!validationResult.isValid) {
       throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+    }
+    if (
+      validationResult.resolvedCustomExtensions?.length &&
+      !caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)
+    ) {
+      throw new AcmeBadCSRError({
+        message: `Invalid CSR: ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${validationResult.resolvedCustomExtensions.length} of them.`
+      });
     }
 
     const certRequest = await certificateRequestService.createCertificateRequest({

@@ -684,7 +684,11 @@ export const evaluateCustomExtensions = ({
   );
   const isUnrestricted = rules === undefined || rules === null;
 
-  const oids = [...new Set([...declarationByOid.keys(), ...valueByOid.keys()])];
+  const requiredOids = (rules ?? [])
+    .filter((rule) => rule.rule === CertExtensionRuleKind.REQUIRE)
+    .map((rule) => rule.oid);
+
+  const oids = [...new Set([...declarationByOid.keys(), ...valueByOid.keys(), ...requiredOids])];
 
   oids.forEach((oid) => {
     const declaration = declarationByOid.get(oid);

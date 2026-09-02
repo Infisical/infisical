@@ -28,6 +28,7 @@ import {
   assertCaInProfileProject,
   getCaCertChain
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import {
   extractAlgorithmsFromCSR,
@@ -919,6 +920,7 @@ export const pkiScepServiceFactory = ({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
       });
     }
+    assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
       actor: ActorType.SCEP_ACCOUNT,
