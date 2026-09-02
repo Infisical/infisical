@@ -1,6 +1,5 @@
 import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
-import { Badge } from "@app/components/v3";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
 // The API returns raw user fields, so the display rule lives here, matching how the PAM members
@@ -26,8 +25,8 @@ export const MemberName = ({ member }: { member: TAgentVaultMember }) => {
   return (
     <div className="flex items-center gap-2">
       <Icon className="size-4 text-muted" />
+      <span className="sr-only">{label}</span>
       <span>{memberDisplayName(member)}</span>
-      <Badge variant="neutral">{label}</Badge>
     </div>
   );
 };
