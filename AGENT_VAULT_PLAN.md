@@ -66,8 +66,8 @@ days set.
 
 | What | Where | When to raise it |
 | --- | --- | --- |
-| Two REST deviations to confirm rather than implement silently: a `GET` that bootstraps the project, and `GET /proxies/:proxyId/ca` documented as "any org member" when the routing can only express "any project member" | §1.7 | Before the backend PR is opened. `CODE_QUALITY.md` requires the author be asked rather than the deviation silently shipped or silently "fixed" |
-| Whether the org-invite grant reuses a new `addProductUserMembers` on `agent-vault-member/` or writes memberships directly. There is no generic service to call — `grantPamAccess` routes through a PAM-specific one | §1.1 | When you get to the invite path. Either is defensible; it is a code-shape call, not a product one |
+| ~~Two REST deviations~~ | §1.7 | **Both settled with the product owner, 2026-09-02.** The `GET` that bootstraps the project **stays**, matching PAM, with a comment on the route saying the deviation is deliberate. `GET /proxies/:proxyId/ca` was **deleted** along with the stored PEM — see §1.2 |
+| ~~Org-invite grant shape~~ | §1.1 | **Settled 2026-09-02: mirror PAM.** `agent-vault-member/` grows its own `addProductUserMembers`, shaped like PAM's, rather than writing memberships directly in the invite path or extracting a shared helper (which would mean changing PAM's live signup-invite flow inside an already-large PR) |
 
 ---
 
@@ -521,7 +521,6 @@ agent_vault_proxies
   projectId          varchar(36) NOT NULL FK -> projects.id CASCADE
   name               varchar(64) NOT NULL  slug
   tokenVersion       integer NOT NULL default 0    bump to revoke; see §2.1
-  rootCaCertificate  text    NULL   PEM, public half only. NULL until enrolled
   rootCaFingerprint  varchar(102) NULL  'SHA256:' + 64 hex + 31 colons. Parsed once at enroll
   rootCaExpiresAt    timestamptz NULL   parsed once at enroll
   heartbeat          timestamptz NULL   last successful POST /proxy/heartbeat. NULL = never checked in
@@ -554,13 +553,19 @@ Four things the column list does not say on its own:
   evolve when the deferred credential types land. The service rejects a missing secret on `bearer` and
   `basic` at write.
 
-**The three `rootCa*` columns are a registry, not a trust anchor.** Since §4.1 has the agent fetch the
-CA from the proxy, nothing verifies against the stored copy. They still earn their place, but know what
-for: `rootCaFingerprint` is displayed on the Proxies page and is the only place someone gets a value to
-pin; `rootCaExpiresAt` shows a CA aging out; `rootCaCertificate` backs the dashboard download and
-out-of-band setup (a k8s Secret, a baked image). Parse the fingerprint and expiry **once at enrollment**,
-in the new `/proxy/enroll` handler, which is where the PEM is validated anyway (that validation is new work, not something existing to reuse), so no read path ever parses a certificate. The cert is
-immutable for the life of the row — re-enrollment overwrites all three — so they cannot drift.
+**The two `rootCa*` columns are a registry, not a trust anchor** (settled 2026-09-02: the plan
+originally had three). Since §4.1 has the agent fetch the CA from the proxy's own listener, nothing ever
+verifies against a stored copy — so **the certificate itself is not stored**, because it would have no
+reader. The two derived facts do earn their place: `rootCaFingerprint` is displayed on the Proxies page
+and is the only place someone gets a value to pin, and `rootCaExpiresAt` shows a CA aging out. Both are
+also what makes CA rotation auditable (§1.9's `proxy-enroll`).
+
+The proxy still **sends** its certificate at enrollment, and `/proxy/enroll` still validates it is a real
+CA and not expired before deriving the two values. Parse them **once there**, so no read path ever parses
+a certificate. Both are overwritten together on re-enrollment, so they cannot drift apart.
+
+There is consequently **no `GET /proxies/:proxyId/ca`**. An operator who needs the PEM for out-of-band
+setup fetches it from the proxy, which serves it unauthenticated on its own listener.
 
 The practical consequence: **the CA path has no runtime dependency on Infisical.** With the control
 plane down, a proxy still serves its own CA and an agent with a cached session still works.
@@ -611,9 +616,9 @@ capability to gate the kill switch on.
   `AgentVaultSessions.read|create|revoke` **and `AgentVaultProxies.read`**.
 - **Members need `AgentVaultProxies.read`.** The Proxies page is where a fingerprint comes from, and
   §4.1 makes pinning an opt-in any member can want; gated on admin, a member could never pin at all.
-  It also backs `GET /proxies/:proxyId/ca`, which §2.2 leaves open to any project member. `read` means
-  name, health and `rootCaFingerprint`; create, edit, delete, revoke and the enrollment token stay
-  admin-only.
+  `read` means name, health and `rootCaFingerprint`; create, edit, delete, revoke and the enrollment
+  token stay admin-only. (This was also the justification for `GET /proxies/:proxyId/ca`, which no
+  longer exists — the page justification stands on its own.)
 - Dispatch arm in `buildProjectPermissionRules` (`permission-service.ts:151`).
 - Anything not `admin` — including `custom`, which is how additional privileges arrive — resolves to
   the member set, so a custom role cannot reintroduce project-level power.
@@ -896,10 +901,12 @@ Rules the shapes do not carry:
 - **A `GET` bootstraps the project.** The `preValidation` hook creates it on first access and runs on
   every route, so `GET /agent-vault/project` mutates. PAM does exactly this and it is the point of lazy
   bootstrap. Recommend keeping it with a comment on the hook saying so.
-- **`GET /proxies/:proxyId/ca` is documented "any org member," which the routing cannot express.**
-  Every route under this prefix resolves the project and checks project membership, so it is really
-  "any Agent Vault project member." That is fine: §4.1 has every path fetch the CA from the proxy's own unauthenticated listener, so this
-  route is for the dashboard download and out-of-band setup, not for the CLI. Fix the doc, not the code.
+- ~~`GET /proxies/:proxyId/ca`~~ — **resolved by deleting the route** (settled with the product owner,
+  2026-09-02). The question was whether it should be readable by "any org member" as the doc said, or
+  "any project member" as the routing could actually express. Asking it surfaced the better question:
+  §4.1 already has every path fetch the CA from the proxy's own unauthenticated listener, so the route
+  was never on the trust path and the stored PEM had no reader. Both are gone; the fingerprint and
+  expiry stay, so pinning, expiry warnings and the rotation audit trail all survive.
 
 Non-negotiable on every route: `config.rateLimit`, a narrow `onRequest: verifyAuth([...])`, an
 `operationId`, a `tags: [ApiDocsTags.AgentVault*]` entry added to the enum at
@@ -1010,10 +1017,10 @@ all.
 `member-add`, `member-remove`,
 `session-mint`, `session-revoke`. `session-expire` lands with the retention sweep in Phase 4.
 
-**Phase 2** — 8 more:
+**Phase 2** — 7 more:
 `session-resolve` (the privileged read, see below),
 `proxy-register`, `proxy-token-reissue`, `proxy-enroll`, `proxy-update`, `proxy-revoke`,
-`proxy-delete`, `ca-root-read`.
+`proxy-delete`. (`ca-root-read` is gone with the route it audited — settled 2026-09-02.)
 
 `proxy-revoke` is not in the earlier review doc; it arrives with the revoke route in §2.6. What each
 records: `connection-*` never carries the secret, only whether it was replaced. `proxy-enroll` records
@@ -1145,7 +1152,6 @@ POST             /proxies                              admin
 PATCH|DELETE     /proxies/:proxyId                     admin
 POST             /proxies/:proxyId/enrollment-token    admin
 POST             /proxies/:proxyId/revoke              admin
-GET              /proxies/:proxyId/ca                  both
 
 POST             /proxy/enroll                         enrollment token
 POST             /proxy/heartbeat                      proxy JWT   → returns the settings block
@@ -1406,8 +1412,7 @@ directory holding the token but no access token skips enrollment and then fails 
 
 **Re-enrolling replaces the CA, and that is the expensive half.** A fresh `ca.key` / `ca.crt` on the box
 and new `rootCaCertificate` / `rootCaFingerprint` / `rootCaExpiresAt` on the row. What survives: the
-proxy `id`, its name, its three settings, its audit history, the `GET /proxies/:proxyId/ca` URL, and the
-`resource_auth_methods` row. Keeping the old CA across a rotation would be pointless anyway — the proxy
+proxy `id`, its name, its three settings, its audit history, and the `resource_auth_methods` row. Keeping the old CA across a rotation would be pointless anyway — the proxy
 token and `ca.key` sit in the same directory, so if one leaked, assume both did.
 
 Who notices is narrower than it looks, because the CLI fetches the CA fresh on every run (§4.1).
@@ -1451,7 +1456,7 @@ committed file must not redirect traffic.
 
 - [x] `resource-auth-method` arms: `ResourceRef`, `RESOURCE_LABEL`, `$loadResource` (joins `projects` for `orgId`), `$checkPermission` (project permission), FK mapping, `$bumpTokenVersion`, `$mintJwt`, `expectedResourceType`, `loginWithToken` resolution, `$generateEnrollmentToken` prefix
 - [x] Auth plugin touchpoints: `AuthTokenType` / `AuthMode` / `ActorType`, JWT payload type, `req.auth` union, switch arm, `tokenVersion` check, `inject-permission` arm, `audit-log` actor arm plus the two `Actor` unions in `audit-log-types.ts`
-- [x] `agent-vault-proxy/`: register, reissue, update, delete, revoke, `GET /proxies` role-projected, `GET /proxies/:proxyId/ca`
+- [x] `agent-vault-proxy/`: register, reissue, update, delete, revoke, `GET /proxies` role-projected. No `GET /proxies/:proxyId/ca` — deleted, see §1.2
 - [x] `/proxy/enroll` (PEM validated before `loginWithToken`), `/proxy/heartbeat` returning the settings block, `/proxy/resolve` with the §1.8 intersection, `actorAuthMethod: null`, 401 / 404 / empty-200 semantics, resolve rate limit sized off the cache cap
 - [x] Eight Phase 2 audit events; `session-resolve` only on first resolve or a changed `lastResolvedHash`
 - [x] `packages/agentvault`: six files copied, `agentScope` replaced by an opaque session key, paths dropped, port 443 default, `UnmatchedDeny`, cache keyed by token hash, six eviction paths zeroing credentials, five-interval grace, 404 arm, link-local block, saturation warning
@@ -2086,8 +2091,9 @@ Two consequences that fall out of statelessness, both good:
 - **Re-enrollment is transparent to `av run`.** Because the CA is fetched fresh every run, replacing a
   proxy's CA needs no action from anyone using the CLI. Only explicitly pinned fingerprints, macOS
   keychain entries and k8s Secrets mounting the CA still need updating (§2.6).
-- **`GET /proxies/:proxyId/ca` is no longer on the CLI path.** Keep it for the dashboard's download and
-  for out-of-band setup, but it is no longer load-bearing for trust.
+- **`GET /proxies/:proxyId/ca` does not exist.** Its only remaining callers would have been the
+  dashboard download and out-of-band setup, and both can fetch from the proxy itself, so the route and
+  the stored PEM were dropped rather than kept as a second copy nothing verifies against.
 
 **`/_agent-vault/ca` becomes load-bearing, so the interception rule in §2.6 matters more, not less:**
 serve it only for origin-form requests addressed to the proxy itself.

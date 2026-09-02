@@ -766,7 +766,6 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
-  AGENT_VAULT_CA_ROOT_READ = "agent-vault-ca-root-read",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -6115,14 +6114,6 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
-interface AgentVaultCaRootReadEvent {
-  type: EventType.AGENT_VAULT_CA_ROOT_READ;
-  metadata: {
-    proxyId: string;
-    name: string;
-  };
-}
-
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -7965,7 +7956,6 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
-  | AgentVaultCaRootReadEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

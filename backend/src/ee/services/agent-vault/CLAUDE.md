@@ -51,6 +51,12 @@ the product's primary actor.
 `applicationMembershipCleanupService`, inside the same transaction. Skip one and an actor removed from
 the project keeps a grant the mint path still honours.
 
+**Infisical stores no copy of a proxy's certificate.** The proxy serves its own CA unauthenticated on
+its own listener, which is where every agent gets it, so the CA path has no runtime dependency on
+Infisical: with the control plane down, an agent with a cached session still works. Only the fingerprint
+(what an operator pins) and the expiry are recorded, derived once at enrollment. There is deliberately no
+download endpoint — a second copy nothing verifies against is a liability, not a feature.
+
 **A cross-org or unreachable id is 404, never 403.** A 403 would confirm the id exists. The mint path
 uses the same message whether a bundle id is unknown or merely not granted.
 

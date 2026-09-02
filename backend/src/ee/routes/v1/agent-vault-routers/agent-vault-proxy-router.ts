@@ -247,47 +247,4 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       return { proxy };
     }
   });
-
-  server.route({
-    method: "GET",
-    url: "/:proxyId/ca",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getAgentVaultProxyRootCa",
-      description: "Download an Agent Vault proxy's certificate authority",
-      tags: [ApiDocsTags.AgentVaultProxies],
-      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
-      response: {
-        200: z.object({
-          proxyId: z.string().uuid(),
-          name: z.string(),
-          certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificate),
-          fingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
-          expiresAt: z.date().nullable().optional().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
-        })
-      }
-    },
-    // A public certificate is public, so this is open to any Agent Vault project member. It backs the
-    // dashboard download and out-of-band setup; the CLI fetches the CA from the proxy's own listener.
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const ca = await server.services.agentVaultProxy.getRootCa({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        proxyId: req.params.proxyId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_CA_ROOT_READ,
-          metadata: { proxyId: ca.proxyId, name: ca.name }
-        }
-      });
-
-      return ca;
-    }
-  });
 };

@@ -203,29 +203,6 @@ export const agentVaultProxyServiceFactory = ({
     return toAdminView(updated);
   };
 
-  // Readable by any Agent Vault project member: a public certificate is public, and this backs the
-  // dashboard download and out-of-band setup. The CLI fetches the CA from the proxy itself, not here.
-  const getRootCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
-    const proxy = await $findProxyOr404({ projectId, proxyId });
-
-    if (!proxy.rootCaCertificate) {
-      throw new NotFoundError({
-        message: `Proxy '${proxy.name}' has not enrolled yet, so it has no certificate authority to download.`
-      });
-    }
-
-    // All three columns are written together at enrollment and are immutable for the row's life, so a
-    // present certificate implies a present fingerprint and expiry.
-    return {
-      proxyId: proxy.id,
-      name: proxy.name,
-      certificate: proxy.rootCaCertificate,
-      fingerprint: proxy.rootCaFingerprint ?? null,
-      expiresAt: proxy.rootCaExpiresAt ?? null
-    };
-  };
-
   const enroll = async ({ enrollmentToken, rootCaCertificate }: TEnrollProxyDTO) => {
     // Validate the PEM BEFORE the login: loginWithToken deletes the enrollment token in-transaction, so
     // a certificate checked afterwards would burn the operator's one-time token on a 400.
@@ -237,8 +214,11 @@ export const agentVaultProxyServiceFactory = ({
     });
 
     const before = await agentVaultProxyDAL.findByIdWithOrg(login.resourceId);
+    // Only the two public facts are kept. The certificate itself is not stored: an agent fetches it from
+    // the proxy's own listener, so a copy here would have no reader. The fingerprint is what an operator
+    // pins and the expiry is what warns them a CA is ageing out, and deriving both once at enrollment
+    // means no read path ever parses a certificate.
     const proxy = await agentVaultProxyDAL.updateById(login.resourceId, {
-      rootCaCertificate: parsed.certificate,
       rootCaFingerprint: parsed.fingerprint,
       rootCaExpiresAt: parsed.expiresAt
     });
@@ -253,7 +233,7 @@ export const agentVaultProxyServiceFactory = ({
       accessToken: login.accessToken,
       config: toConfig(proxy),
       rootCaFingerprint: parsed.fingerprint,
-      replacedExistingCa: Boolean(before?.rootCaCertificate)
+      replacedExistingCa: Boolean(before?.rootCaFingerprint)
     };
   };
 
@@ -382,7 +362,6 @@ export const agentVaultProxyServiceFactory = ({
     updateProxy,
     deleteProxy,
     revokeProxyAccess,
-    getRootCa,
     enroll,
     heartbeat,
     resolveSession

@@ -12,7 +12,6 @@ export const AgentVaultProxiesSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   tokenVersion: z.number().default(0),
-  rootCaCertificate: z.string().nullable().optional(),
   rootCaFingerprint: z.string().nullable().optional(),
   rootCaExpiresAt: z.date().nullable().optional(),
   heartbeat: z.date().nullable().optional(),

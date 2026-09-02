@@ -4,7 +4,6 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
 export type TParsedRootCa = {
-  certificate: string;
   /** `SHA256:` followed by colon-separated uppercase hex, the form an operator pins with. */
   fingerprint: string;
   expiresAt: Date;
@@ -14,8 +13,9 @@ const MAX_ROOT_CA_PEM_LENGTH = 16384;
 
 /**
  * Validates a proxy's self-signed CA and derives its fingerprint and expiry **once, at enrollment**, so
- * no read path ever parses a certificate. The row is immutable for its life — re-enrollment overwrites
- * all three columns together — so the derived values cannot drift from the PEM.
+ * no read path ever parses a certificate. Only those two derived values are kept — the certificate is
+ * served by the proxy itself, so storing a second copy would give it no reader. Re-enrollment overwrites
+ * both together, so they cannot drift apart.
  */
 export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
   if (pem.length > MAX_ROOT_CA_PEM_LENGTH) {
@@ -52,5 +52,5 @@ export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
     .toUpperCase();
   const fingerprint = `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
 
-  return { certificate: certificate.toString("pem"), fingerprint, expiresAt: certificate.notAfter };
+  return { fingerprint, expiresAt: certificate.notAfter };
 };

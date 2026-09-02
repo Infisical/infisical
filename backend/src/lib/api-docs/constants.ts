@@ -4182,7 +4182,8 @@ export const AGENT_VAULT = {
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
     version: "The proxy build, as the proxy reports it.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
-    rootCaCertificate: "The proxy's certificate authority, in PEM form.",
+    rootCaCertificate:
+      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",

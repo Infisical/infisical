@@ -201,9 +201,10 @@ export async function up(knex: Knex): Promise<void> {
       // Bumped on enroll and by the revoke route; the only kill switch for an issued proxy token.
       t.integer("tokenVersion").notNullable().defaultTo(0);
 
-      // A registry of the proxy's self-signed CA, not a trust anchor: the agent fetches the CA from the proxy
-      // itself. Fingerprint and expiry are parsed once at enrollment so no read path parses a certificate.
-      t.text("rootCaCertificate");
+      // Only the two public facts about the proxy's self-signed CA, derived once at enrollment. The
+      // certificate itself is not stored: the agent fetches it from the proxy's own listener, so a copy
+      // here would have no reader. The fingerprint is what an operator pins; the expiry is what warns
+      // them a CA is ageing out.
       t.string("rootCaFingerprint", 102);
       t.timestamp("rootCaExpiresAt", { useTz: true });
 
