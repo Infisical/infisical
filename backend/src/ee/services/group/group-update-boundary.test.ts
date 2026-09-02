@@ -33,6 +33,19 @@ const groupEditorOnly = createMongoAbility<MongoAbility>([
   }
 ]);
 
+// deleteGroup's own throwUnlessCan demands Delete, which the editor ability above deliberately lacks.
+const groupDeleterOnly = createMongoAbility<MongoAbility>([
+  {
+    action: [
+      OrgPermissionGroupActions.Read,
+      OrgPermissionGroupActions.Edit,
+      OrgPermissionGroupActions.Delete,
+      OrgPermissionGroupActions.GrantPrivileges
+    ],
+    subject: OrgPermissionSubjects.Groups
+  }
+]);
+
 const createUpdate = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
@@ -74,17 +87,20 @@ const createUpdate = ({
     membershipRoleDAL: membershipRoleDAL as never
   } as never);
 
-  const run = () =>
-    service.updateGroup({
-      id: GROUP_ID,
-      role: incomingRole,
-      actor: "user",
-      actorId: "actor-id",
-      actorAuthMethod: "email",
-      actorOrgId: ORG_ID
-    } as never);
+  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
 
-  return { run, membershipRoleDAL };
+  const run = () => service.updateGroup({ id: GROUP_ID, role: incomingRole, ...actor } as never);
+  const remove = () => service.deleteGroup({ id: GROUP_ID, ...actor } as never);
+
+  return { run, remove, membershipRoleDAL };
+};
+
+// deleteGroup runs on past the boundary into the teardown this harness does not stand up, so the
+// pass-through cases assert only that the boundary is not what stopped them.
+const expectNoBoundaryError = async (fn: () => Promise<unknown>) => {
+  await fn().catch((err: unknown) => {
+    expect(err).not.toBeInstanceOf(PermissionBoundaryError);
+  });
 };
 
 describe("updateGroup privilege boundary", () => {
@@ -119,6 +135,28 @@ describe("updateGroup privilege boundary", () => {
     await expect(createUpdate({ actorPermission: admin, shouldUseNewPrivilegeSystem: true }).run()).resolves.toEqual(
       expect.objectContaining({ id: GROUP_ID })
     );
+  });
+
+  test("on the legacy system, a weaker actor cannot delete an Admin-role group", async () => {
+    const { remove } = createUpdate({ actorPermission: groupDeleterOnly, shouldUseNewPrivilegeSystem: false });
+
+    await expect(remove()).rejects.toThrow(PermissionBoundaryError);
+  });
+
+  test("deleting a group nothing outranks the actor on clears the boundary", async () => {
+    const { remove } = createUpdate({
+      actorPermission: groupDeleterOnly,
+      shouldUseNewPrivilegeSystem: false,
+      currentRole: OrgMembershipRole.NoAccess
+    });
+
+    await expectNoBoundaryError(remove);
+  });
+
+  test("an admin actor clears the delete boundary", async () => {
+    const { remove } = createUpdate({ actorPermission: admin, shouldUseNewPrivilegeSystem: false });
+
+    await expectNoBoundaryError(remove);
   });
 
   test("nothing outranks the actor, so an ordinary no-access group is let through", async () => {
