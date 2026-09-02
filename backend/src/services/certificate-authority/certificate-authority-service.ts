@@ -80,6 +80,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -323,6 +324,12 @@ export const certificateAuthorityServiceFactory = ({
     if (typeof plan.certManager === "boolean" && !plan.certManager) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
+      });
+    }
+
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+      throw new BadRequestError({
+        message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
     }
 

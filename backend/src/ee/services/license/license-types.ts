@@ -73,7 +73,6 @@ export type TFeatureSet = {
   has_used_trial: true;
   secretApproval: false;
   secretRotation: false;
-  caCrl: false;
   instanceUserManagement: false;
   externalKms: false;
   rateLimits: {
@@ -81,13 +80,6 @@ export type TFeatureSet = {
     writeLimit: number;
     secretsLimit: number;
   };
-  pkiEst: boolean;
-  pkiAcme: true;
-  pkiScep: false;
-  pkiPqc: false;
-  // PKI code signing capability. null (default) is ignored (no restriction); an explicit boolean gates
-  // code signer creation.
-  pkiCodeSigning: null;
   kmsPqc: false;
   enforceMfa: false;
   projectTemplates: false;
@@ -97,10 +89,8 @@ export type TFeatureSet = {
   pamSlackNotifications: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
-  enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
-  pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
@@ -108,8 +98,29 @@ export type TFeatureSet = {
   honeyTokenLimit: 0;
   secretsBrokering: true;
   secretSyncLimit: null;
-  maxInternalCas: null;
   maxPamAccounts: null;
+
+  // PKI / Cert Manager
+  pkiAcme: true;
+  pkiEst: boolean;
+  pkiScep: false;
+  pkiPqc: false;
+  // caCrl and pkiWildcardSans default on, so self-hosted OSS keeps them; the License Server's free-plan
+  // default is what withholds them on cloud.
+  caCrl: boolean;
+  pkiWildcardSans: boolean;
+  pkiEnterpriseCaIntegrations: false;
+  pkiExternalIntermediateCa: false;
+  pkiDiscovery: false;
+  pkiEnterpriseAlerting: false;
+  pkiApprovals: false;
+  pkiSyncs: false;
+  pkiLegacyTemplates: false;
+  pkiCodeSigning: false;
+  maxInternalCas: null;
+  // Declared for the License Server plan map; enforcement lands with the CA/certificate counting work.
+  maxSansPerCertificate: null;
+
   pam: null;
   certManager: null;
   secretsTemporaryAccess: null;

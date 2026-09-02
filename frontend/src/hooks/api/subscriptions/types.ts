@@ -54,16 +54,29 @@ export type SubscriptionPlan = {
     | null;
   trial_end: number | null;
   has_used_trial: boolean;
-  caCrl: boolean;
   instanceUserManagement: boolean;
   gateway: boolean;
   gatewayPool: boolean;
   pamSlackNotifications: boolean;
   externalKms: boolean;
-  pkiEst: boolean;
+  // PKI / Cert Manager. The /plan route returns z.any(), so nothing enforces that this mirrors
+  // the backend's TFeatureSet.
   pkiAcme: boolean;
-  pkiLegacyTemplates: boolean;
+  pkiEst: boolean;
+  pkiScep: boolean;
   pkiPqc: boolean;
+  caCrl: boolean;
+  pkiWildcardSans: boolean;
+  pkiEnterpriseCaIntegrations: boolean;
+  pkiExternalIntermediateCa: boolean;
+  pkiDiscovery: boolean;
+  pkiEnterpriseAlerting: boolean;
+  pkiApprovals: boolean;
+  pkiSyncs: boolean;
+  pkiLegacyTemplates: boolean;
+  pkiCodeSigning: boolean;
+  maxInternalCas: number | null;
+  maxSansPerCertificate: number | null;
   kmsPqc: boolean;
   enforceMfa: boolean;
   enforceGoogleSSO: boolean;
@@ -71,7 +84,6 @@ export type SubscriptionPlan = {
   kmip: boolean;
   secretScanning: boolean;
   enterpriseSecretSyncs: boolean;
-  enterpriseCertificateSyncs: boolean;
   enterpriseAppConnections: boolean;
   cardDeclined?: boolean;
   cardDeclinedReason?: string;

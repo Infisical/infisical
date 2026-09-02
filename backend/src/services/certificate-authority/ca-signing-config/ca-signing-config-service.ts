@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -31,6 +32,13 @@ import {
   VenafiDestinationConfigSchema
 } from "./ca-signing-config-types";
 
+// Signing through a third-party provider is the same capability as connecting one as an external CA.
+const EXTERNAL_SIGNING_TYPES: string[] = [
+  CaSigningConfigType.Venafi,
+  CaSigningConfigType.AzureAdCs,
+  CaSigningConfigType.Adcs
+];
+
 type TCaSigningConfigServiceFactoryDep = {
   caSigningConfigDAL: Pick<
     TCaSigningConfigDALFactory,
@@ -39,6 +47,7 @@ type TCaSigningConfigServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
@@ -54,6 +63,7 @@ export const caSigningConfigServiceFactory = ({
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
   permissionService,
+  licenseService,
   appConnectionDAL,
   appConnectionService,
   caAutoRenewalQueue
@@ -160,10 +170,19 @@ export const caSigningConfigServiceFactory = ({
       await validateAdcsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
     }
 
-    const isExternalCa =
-      type === CaSigningConfigType.Venafi ||
-      type === CaSigningConfigType.AzureAdCs ||
-      type === CaSigningConfigType.Adcs;
+    const isExternalCa = EXTERNAL_SIGNING_TYPES.includes(type);
+
+    // An org already signing through a provider can re-save or switch between them; only introducing
+    // one is refused. updateSigningConfig takes no type, so it cannot reach this.
+    if (isExternalCa && !EXTERNAL_SIGNING_TYPES.includes(existing?.type ?? "")) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.pkiEnterpriseCaIntegrations) {
+        throw new BadRequestError({
+          message:
+            "Failed to sign this certificate authority through a third-party provider due to plan restriction. Upgrade plan to connect an external certificate authority."
+        });
+      }
+    }
 
     const config = await caSigningConfigDAL.transaction(async (tx) => {
       if (existing) {

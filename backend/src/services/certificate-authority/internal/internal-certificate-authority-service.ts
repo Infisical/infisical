@@ -172,6 +172,15 @@ export const internalCertificateAuthorityServiceFactory = ({
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
 
+  // Gates only Infisical's own distribution point. Custom URLs are gated where the CA is configured.
+  const $isManagedCrlDistributionAllowed = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    return plan.caCrl;
+  };
+
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
   const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
   // PQC root CAs also need digitalSignature per FIPS 204/205
@@ -343,6 +352,14 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await $validatePqcLicense(keyAlgorithm, projectId);
+
+    // Refused rather than silently dropped, since the caller asked for it explicitly.
+    if (crlDistributionPointUrls?.length && !(await $isManagedCrlDistributionAllowed(projectId))) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate authority with CRL distribution points due to plan restriction. Upgrade plan to use certificate revocation lists."
+      });
+    }
 
     const dn = createDistinguishedName({
       commonName,
@@ -662,6 +679,17 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Edit,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
+    }
+
+    // Gating creation alone would let an org create a CA with no distribution points and patch them in.
+    // Keyed on newly added URLs, so keeping, reordering, or clearing the existing set stays open, as does
+    // toggling the managed distribution point.
+    const storedCrlUrls = new Set(ca.internalCa.crlDistributionPointUrls ?? []);
+    const addedCrlUrl = (crlDistributionPointUrls ?? []).find((url) => !storedCrlUrls.has(url));
+    if (addedCrlUrl && !(await $isManagedCrlDistributionAllowed(ca.projectId))) {
+      throw new BadRequestError({
+        message: `Failed to add the CRL distribution point '${addedCrlUrl}' due to plan restriction. Upgrade plan to use certificate revocation lists.`
+      });
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
@@ -1546,6 +1574,21 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    // No internal parent means the certificate was signed outside Infisical. createCa cannot tell the
+    // two apart, because parentCaId is written here rather than at creation.
+    if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE && !parentCaId) {
+      const caProject = await projectDAL.findById(ca.projectId);
+      if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
+
+      const plan = await licenseService.getPlan(caProject.orgId);
+      if (!plan.pkiExternalIntermediateCa) {
+        throw new BadRequestError({
+          message:
+            "Failed to import an externally signed certificate for this intermediate CA due to plan restriction. Upgrade plan to use externally signed intermediate CAs."
+        });
+      }
+    }
+
     const caCert = ca.internalCa.activeCaCertId
       ? await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId)
       : undefined;
@@ -2012,7 +2055,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
@@ -2427,7 +2470,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({

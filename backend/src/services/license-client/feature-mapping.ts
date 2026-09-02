@@ -264,8 +264,38 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiCodeSigning"
   },
   {
-    v2Key: "enterprise_certificate_syncs",
-    v1Field: "enterpriseCertificateSyncs"
+    // Defaults on, so the free plan has to send false; the features below default off instead.
+    v2Key: "pki_wildcard_sans",
+    v1Field: "pkiWildcardSans"
+  },
+  {
+    v2Key: "pki_enterprise_ca_integrations",
+    v1Field: "pkiEnterpriseCaIntegrations"
+  },
+  {
+    v2Key: "pki_external_intermediate_ca",
+    v1Field: "pkiExternalIntermediateCa"
+  },
+  {
+    v2Key: "pki_discovery",
+    v1Field: "pkiDiscovery"
+  },
+  {
+    v2Key: "pki_enterprise_alerting",
+    v1Field: "pkiEnterpriseAlerting"
+  },
+  {
+    v2Key: "pki_approvals",
+    v1Field: "pkiApprovals"
+  },
+  {
+    v2Key: "pki_syncs",
+    v1Field: "pkiSyncs"
+  },
+  {
+    // Declared for completeness; enforcement lands with the CA/certificate counting work.
+    v2Key: "max_sans_per_certificate",
+    v1Field: "maxSansPerCertificate"
   },
   {
     // v2's `internal_cas` is a usage meter; the internal-CA cap is a separate v2 feature

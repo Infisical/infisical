@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isWildcardPattern, matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -35,6 +36,57 @@ export const validatePqcLicense = async ({
     throw new BadRequestError({
       message:
         "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+    });
+  }
+};
+
+// Call with the request as it will actually be signed. A PQC algorithm or wildcard that only appears
+// in a CSR or a profile default is invisible until applyProfileDefaults has run.
+export const validateCertificateRequestLicense = async ({
+  request,
+  projectId,
+  projectDAL,
+  licenseService
+}: {
+  request: {
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    commonName?: string;
+    // applyProfileDefaults keys off altNames; a CSR-derived request keeps its SANs in
+    // subjectAlternativeNames. Either can hold the wildcard.
+    altNames?: { value: string }[];
+    subjectAlternativeNames?: { value: string }[];
+  };
+  projectId: string;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+}) => {
+  const pqcAlgorithm = [request.keyAlgorithm, request.signatureAlgorithm].find(
+    (algorithm): algorithm is string => !!algorithm && isPqcAlgorithm(algorithm)
+  );
+  const wildcardSan = [
+    ...(request.commonName ? [request.commonName] : []),
+    ...(request.altNames ?? []).map(({ value }) => value),
+    ...(request.subjectAlternativeNames ?? []).map(({ value }) => value)
+  ].find(isWildcardPattern);
+
+  if (!pqcAlgorithm && !wildcardSan) return;
+
+  const project = await projectDAL.findById(projectId);
+  if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+  const plan = await licenseService.getPlan(project.orgId);
+
+  if (pqcAlgorithm && !plan.pkiPqc) {
+    throw new BadRequestError({
+      message:
+        "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+    });
+  }
+
+  if (wildcardSan && !plan.pkiWildcardSans) {
+    throw new BadRequestError({
+      message: `Failed to issue certificate with wildcard name '${wildcardSan}' due to plan restriction. Upgrade plan to issue wildcard certificates.`
     });
   }
 };
@@ -113,44 +165,13 @@ export const buildCertificateSubjectFromTemplate = (
   return subject;
 };
 
-const isWildcardPattern = (value: string): boolean => {
-  return value.includes("*");
-};
-
-const createWildcardRegex = (pattern: string): RE2 => {
-  const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
-  const escaped = pattern.replace(escapeRegex, "\\$&");
-  const wildcardRegex = new RE2(/\*/g);
-  const regexPattern = escaped.replace(wildcardRegex, ".*");
-  return new RE2(`^${regexPattern}$`);
-};
-
 const validateValueAgainstPatterns = (value: string, patterns: string[]): boolean => {
   if (!patterns || patterns.length === 0) {
     return false;
   }
 
   const normalizedValue = value.toLowerCase();
-
-  for (const pattern of patterns) {
-    const normalizedPattern = pattern.toLowerCase();
-    if (isWildcardPattern(pattern)) {
-      try {
-        const regex = createWildcardRegex(normalizedPattern);
-        if (regex.test(normalizedValue)) {
-          return true;
-        }
-      } catch {
-        if (normalizedPattern === normalizedValue) {
-          return true;
-        }
-      }
-    } else if (normalizedPattern === normalizedValue) {
-      return true;
-    }
-  }
-
-  return false;
+  return patterns.some((pattern) => matchesNormalizedPattern(normalizedValue, pattern.toLowerCase()));
 };
 
 export const buildSubjectAlternativeNamesFromTemplate = (

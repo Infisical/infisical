@@ -6,7 +6,6 @@ import { randomUUID } from "crypto";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -41,7 +40,6 @@ import {
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import {
-  enterprisePkiSyncCheck,
   getPkiSyncProviderCapabilities,
   parsePkiSyncErrorMessage,
   PkiSyncFns,
@@ -87,7 +85,6 @@ type TPkiSyncQueueFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -125,7 +122,6 @@ export const pkiSyncQueueFactory = ({
   notificationService,
   pkiApplicationDAL,
   projectDAL,
-  licenseService,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -223,13 +219,6 @@ export const pkiSyncQueueFactory = ({
     const {
       data: { syncId, auditLogInfo }
     } = job;
-
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to sync certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
 
     await pkiSyncDAL.updateById(syncId, {
       syncStatus: PkiSyncStatus.Running
@@ -613,13 +602,6 @@ export const pkiSyncQueueFactory = ({
     const {
       data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove }
     } = job;
-
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to remove certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
 
     await pkiSyncDAL.updateById(syncId, {
       removeStatus: PkiSyncStatus.Running

@@ -84,7 +84,7 @@ import {
   mapEnumsForValidation,
   normalizeDateForApi,
   removeRootCaFromChain,
-  validatePqcLicense
+  validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
@@ -538,23 +538,6 @@ export const certificateV3ServiceFactory = ({
       EnrollmentType.API
     );
 
-    if (certificateRequest.keyAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.keyAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
-    if (certificateRequest.signatureAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.signatureAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
-
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
       approvalPolicyDAL as TApprovalPolicyDALFactory,
@@ -566,6 +549,13 @@ export const certificateV3ServiceFactory = ({
     )) as TCertRequestPolicy | null;
 
     const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+
+    await validateCertificateRequestLicense({
+      request: certificateRequestWithDefaults,
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService
+    });
 
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
@@ -1277,6 +1267,14 @@ export const certificateV3ServiceFactory = ({
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
 
+    // Also the gate for ACME, SCEP and EST, which all reach issuance through here.
+    await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService
+    });
+
     // When notAfter is explicitly provided, validate using date range (notAfter overrides TTL in cert generation).
     // Otherwise, validate using TTL. These are mutually exclusive to avoid "Cannot specify both" validation error.
     if (notAfter) {
@@ -1746,6 +1744,13 @@ export const certificateV3ServiceFactory = ({
       mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     }
+
+    await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService
+    });
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,

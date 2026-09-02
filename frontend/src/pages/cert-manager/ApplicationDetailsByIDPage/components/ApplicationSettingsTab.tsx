@@ -17,6 +17,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -56,7 +57,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProjectPermission, useSubscription } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -429,10 +430,25 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const attachMutation = useAttachPkiApplicationProfiles();
   const detachMutation = useDetachPkiApplicationProfile();
 
+  const { subscription } = useSubscription();
+
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy"
+    "deletePolicy",
+    "upgradePlan"
   ] as const);
+
+  // Creation only; existing policies keep enforcing and their requests can still be approved.
+  const handleCreatePolicy = () => {
+    if (!subscription.pkiApprovals) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      });
+      return;
+    }
+    handlePopUpOpen("policy");
+  };
   const deletePolicy = useDeleteApprovalPolicy();
 
   const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
@@ -744,7 +760,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                 <span tabIndex={0}>
                   <Button
                     variant="outline"
-                    onClick={() => handlePopUpOpen("policy")}
+                    onClick={handleCreatePolicy}
                     isDisabled={!canManagePolicies}
                   >
                     <FontAwesomeIcon icon={faPlus} />
@@ -858,6 +874,11 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { text: string })?.text}
       />
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}

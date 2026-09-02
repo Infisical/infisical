@@ -54,8 +54,6 @@ import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCr
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
 
-const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
-
 const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
@@ -72,15 +70,15 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.NutanixPrismCentral]: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION
 };
 
-export const enterprisePkiSyncCheck = async (
+// Creation path only, never pki-sync-queue, so existing syncs keep running after a downgrade.
+export const assertPkiSyncLicense = async (
   licenseService: Pick<TLicenseServiceFactory, "getPlan">,
   orgId: string,
-  pkiSyncDestination: PkiSync,
   errorMessage?: string
 ) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (!plan.enterpriseCertificateSyncs && ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)) {
+  if (!plan.pkiSyncs) {
     throw new BadRequestError({
       message: errorMessage || "Failed to create PKI sync due to plan restriction. Upgrade plan to create PKI sync."
     });

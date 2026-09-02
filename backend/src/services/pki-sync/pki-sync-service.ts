@@ -29,7 +29,7 @@ import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-s
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
   assertPkiSyncDestinationConfigAllowsCertificateCount,
-  enterprisePkiSyncCheck,
+  assertPkiSyncLicense,
   getPkiSyncMaxCertificates,
   getPkiSyncProviderCapabilities,
   listPkiSyncOptions,
@@ -398,7 +398,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    await enterprisePkiSyncCheck(licenseService, actor.orgId, destination);
+    await assertPkiSyncLicense(licenseService, actor.orgId);
 
     let subscriber;
     if (subscriberId) {
