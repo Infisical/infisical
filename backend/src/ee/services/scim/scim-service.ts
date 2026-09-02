@@ -804,7 +804,7 @@ export const scimServiceFactory = ({
           {
             firstName: scimUser.name.givenName,
             lastName: scimUser.name.familyName,
-            ...(newEmail ? { email: newEmail, username: newEmail } : {})
+            ...(newEmail ? { email: newEmail, username: newEmail, isEmailVerified: false } : {})
           },
           tx
         );
@@ -921,7 +921,7 @@ export const scimServiceFactory = ({
           {
             firstName,
             lastName,
-            ...(newEmail ? { email: newEmail, username: newEmail } : {})
+            ...(newEmail ? { email: newEmail, username: newEmail, isEmailVerified: false } : {})
           },
           tx
         );

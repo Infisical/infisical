@@ -764,9 +764,12 @@ describe("SCIM v1 Router", () => {
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.payload).emails[0].value).toBe(newEmail);
 
-      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email", "isEmailVerified");
       expect(row.username).toBe(newEmail);
       expect(row.email).toBe(newEmail);
+      // Account recovery gates on this flag, so a directory write must not leave the new mailbox
+      // able to claim a password reset. The next SSO login re-verifies it.
+      expect(row.isEmailVerified).toBe(false);
 
       // The old address stays on the alias so a login in flight from before the rename still resolves.
       const [aliasRow] = await db(TableName.UserAliases).where({ id: alias.id }).select("emails");
@@ -786,9 +789,10 @@ describe("SCIM v1 Router", () => {
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.payload).emails[0].value).toBe(newEmail);
 
-      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email");
+      const [row] = await db(TableName.Users).where({ id: user.id }).select("username", "email", "isEmailVerified");
       expect(row.username).toBe(newEmail);
       expect(row.email).toBe(newEmail);
+      expect(row.isEmailVerified).toBe(false);
     });
 
     test("should apply an unrelated PATCH when the stored email and username have drifted", async () => {
