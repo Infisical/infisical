@@ -28,8 +28,8 @@ interface ProductSelectionStepProps {
 }
 
 const setUpProduct = async (product: SignupProductType): Promise<Project | undefined> => {
-  // PAM pages are org-scoped; there is no project to create.
-  if (product === ProjectType.PAM) return undefined;
+  // PAM and Agent Vault pages are org-scoped; there is no project to create.
+  if (product === ProjectType.PAM || product === ProjectType.AgentVault) return undefined;
 
   // Locate before creating: a retry after a lost response or a mid-flow refresh can arrive
   // with the project already created (cert-manager is even bootstrapped server-side), and the

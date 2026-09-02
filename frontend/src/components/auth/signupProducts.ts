@@ -8,6 +8,7 @@ export type SignupProductType =
   | ProjectType.CertificateManager
   | ProjectType.KMS
   | ProjectType.PAM
+  | ProjectType.AgentVault
   | ProjectType.SecretScanning;
 
 export const EXPLORING_SELECTION = "exploring" as const;
@@ -78,6 +79,19 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
     selectedCardClassName: "border-product-pam/50 bg-product-pam/[0.04]",
     radioClassName: "border-product-pam",
     dotClassName: "bg-product-pam"
+  },
+  {
+    type: ProjectType.AgentVault,
+    name: "Agent Vault",
+    description:
+      "Run AI agents that hold no credentials. A proxy attaches them at the network boundary.",
+    completedDescription: "Everything is ready. Jump in and create your first access bundle.",
+    icon: getProjectLucideIcon(ProjectType.AgentVault),
+    iconClassName: "text-product-av",
+    tileClassName: "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5",
+    selectedCardClassName: "border-product-av/50 bg-product-av/[0.04]",
+    radioClassName: "border-product-av",
+    dotClassName: "bg-product-av"
   },
   {
     type: ProjectType.SecretScanning,

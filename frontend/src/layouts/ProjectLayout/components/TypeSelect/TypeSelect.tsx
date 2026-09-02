@@ -29,7 +29,8 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ];
 
 const TypeSelectInner = ({

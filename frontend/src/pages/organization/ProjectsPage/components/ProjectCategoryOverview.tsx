@@ -32,6 +32,7 @@ import {
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
+import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
@@ -44,7 +45,8 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ];
 
 const PRODUCT_STYLES: Record<
@@ -159,6 +161,18 @@ export const ProjectCategoryOverview = () => {
   const isPamAccessBlocked =
     Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
 
+  const isAgentVaultMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.agentVaultProjectId &&
+          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+      ),
+    [currentOrg?.agentVaultProjectId, projects]
+  );
+  // Agent Vault has no access-request flow: a member is granted access bundles by an admin instead.
+  const isAgentVaultAccessBlocked =
+    Boolean(currentOrg?.agentVaultProjectId) && !isOrgAdmin && !isAgentVaultMember;
+
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
     if (cookieValue && cmInstances.some((p) => p.id === cookieValue)) return cookieValue;
@@ -206,6 +220,12 @@ export const ProjectCategoryOverview = () => {
           { label: "accounts", value: productStats.pam.accountsCount },
           { label: "account templates", value: productStats.pam.accountTemplatesCount },
           { label: "folders", value: productStats.pam.foldersCount }
+        ];
+      case ProjectType.AgentVault:
+        return [
+          { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
+          { label: "connections", value: productStats.agentVault.connectionsCount },
+          { label: "proxies", value: productStats.agentVault.proxiesCount }
         ];
       default:
         return [];
@@ -307,6 +327,52 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
+  const navigateToAgentVault = () => {
+    navigate({
+      to: "/organizations/$orgId/agent-vault/sessions",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  // Same shape as PAM: the project is bootstrapped lazily and org admins created after that
+  // bootstrap are not members yet, so they join on behalf before entering.
+  const enterAgentVaultProject = async () => {
+    let agentVaultProjectId: string;
+    try {
+      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === agentVaultProjectId);
+    if (isMember) {
+      navigateToAgentVault();
+      return;
+    }
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
+        navigateToAgentVault();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
+        });
+      }
+      return;
+    }
+
+    createNotification({
+      type: "error",
+      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
+    });
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -326,6 +392,11 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.PAM) {
       await enterPamProject();
+      return;
+    }
+
+    if (type === ProjectType.AgentVault) {
+      await enterAgentVaultProject();
       return;
     }
 
@@ -430,7 +501,8 @@ export const ProjectCategoryOverview = () => {
 
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked);
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
 
           if (isAccessBlocked) {
             return (
@@ -452,7 +524,11 @@ export const ProjectCategoryOverview = () => {
 
           // Cert Manager and PAM resolve their destination asynchronously (instance picker,
           // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
-          if (type === ProjectType.CertificateManager || type === ProjectType.PAM) {
+          if (
+            type === ProjectType.CertificateManager ||
+            type === ProjectType.PAM ||
+            type === ProjectType.AgentVault
+          ) {
             return (
               <Card
                 key={type}
