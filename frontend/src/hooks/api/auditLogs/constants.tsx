@@ -450,7 +450,25 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.CREATE_SECRET_FOLDER_ACCESS]: "Grant folder access",
   [EventType.UPDATE_SECRET_FOLDER_ACCESS]: "Update folder access",
-  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access"
+  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access",
+
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE]: "Create access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE]: "Update access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE]: "Delete access bundle",
+  [EventType.AGENT_VAULT_CONNECTION_CREATE]: "Create connection",
+  [EventType.AGENT_VAULT_CONNECTION_UPDATE]: "Update connection",
+  [EventType.AGENT_VAULT_CONNECTION_DELETE]: "Delete connection",
+  [EventType.AGENT_VAULT_MEMBER_ADD]: "Grant access bundle",
+  [EventType.AGENT_VAULT_MEMBER_REMOVE]: "Revoke access bundle",
+  [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
+  [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
+  [EventType.AGENT_VAULT_SESSION_RESOLVE]: "Resolve session",
+  [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
+  [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
+  [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
+  [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
+  [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -502,5 +520,24 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_DISCOVERY_SOURCE_DELETE,
     EventType.PAM_DISCOVERY_SCAN,
     EventType.PAM_DISCOVERED_ACCOUNT_IMPORT
+  ],
+  [ProjectType.AgentVault]: [
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
+    EventType.AGENT_VAULT_CONNECTION_CREATE,
+    EventType.AGENT_VAULT_CONNECTION_UPDATE,
+    EventType.AGENT_VAULT_CONNECTION_DELETE,
+    EventType.AGENT_VAULT_MEMBER_ADD,
+    EventType.AGENT_VAULT_MEMBER_REMOVE,
+    EventType.AGENT_VAULT_SESSION_MINT,
+    EventType.AGENT_VAULT_SESSION_REVOKE,
+    EventType.AGENT_VAULT_SESSION_RESOLVE,
+    EventType.AGENT_VAULT_PROXY_REGISTER,
+    EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
+    EventType.AGENT_VAULT_PROXY_ENROLL,
+    EventType.AGENT_VAULT_PROXY_UPDATE,
+    EventType.AGENT_VAULT_PROXY_REVOKE,
+    EventType.AGENT_VAULT_PROXY_DELETE
   ]
 };
