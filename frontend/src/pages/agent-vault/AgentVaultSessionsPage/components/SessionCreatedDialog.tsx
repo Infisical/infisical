@@ -6,8 +6,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DocumentationLinkBadge
+  DialogTitle
 } from "@app/components/v3";
 import { TAgentVaultMintedSession } from "@app/hooks/api/agentVault/types";
 
@@ -24,10 +23,7 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
   <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-x-2">
-          Session Created
-          <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
-        </DialogTitle>
+        <DialogTitle>Session Created</DialogTitle>
         <DialogDescription>This command is shown once. Copy it now.</DialogDescription>
       </DialogHeader>
 
@@ -40,7 +36,16 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
           The proxy address differs per network. Ask whoever runs the proxy. Anything after{" "}
           <span className="font-mono">--</span> runs with the session, for example{" "}
           <span className="font-mono">claude</span> or{" "}
-          <span className="font-mono">python agent.py</span>.
+          <span className="font-mono">python agent.py</span>. The CLI can also{" "}
+          <a
+            href={AgentVaultDocsUrls.sessions}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            mint a session itself
+          </a>
+          , including as a machine identity.
         </p>
 
         <div className="flex flex-col gap-1.5">

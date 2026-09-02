@@ -9,7 +9,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DocumentationLinkBadge,
   Tabs,
   TabsContent,
   TabsList,
@@ -91,10 +90,7 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
     <Dialog open={Boolean(enrollment)} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-x-2">
-            Enrollment Token
-            <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
-          </DialogTitle>
+          <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
             Shown once. Copy it now.
             {enrollment &&
@@ -121,6 +117,17 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
               <CodeBlock value={systemdUnit(token, siteUrl)} />
             </TabsContent>
           </Tabs>
+          <p className="text-xs text-accent">
+            <a
+              href={AgentVaultDocsUrls.proxies}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:opacity-80"
+            >
+              Running a proxy
+            </a>{" "}
+            covers its settings, certificate trust and re-enrolling.
+          </p>
         </div>
 
         <DialogFooter>
