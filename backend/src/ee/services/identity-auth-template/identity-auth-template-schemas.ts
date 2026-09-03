@@ -150,3 +150,16 @@ export const templateFieldPatchKeysByMethod = {
   kubernetes: Object.keys(kubernetesTemplateFieldsBaseSchema.shape),
   oidc: Object.keys(oidcTemplateFieldsSchema.shape)
 } as const;
+
+// not a union of per-method partials: zod reports only the first failing branch, so every
+// bad value surfaced as an LDAP unrecognized-key error. The service checks method membership
+export const templateFieldsPatchSchema = ldapTemplateFieldsSchema
+  .merge(kubernetesTemplateFieldsBaseSchema)
+  .merge(oidcTemplateFieldsSchema)
+  .extend({
+    caCert: oidcTemplateFieldsSchema.shape.caCert.describe(
+      "The PEM-encoded CA certificate used to validate the TLS certificate of the Kubernetes API server or identity provider"
+    )
+  })
+  .partial()
+  .strict();

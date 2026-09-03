@@ -370,3 +370,57 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
     );
   });
 });
+
+// the route accepts any method's fields, so this guard is the only method-membership check
+describe("identityAuthTemplateServiceFactory field patch method guard", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("rejects a field from another auth method before anything is written", async () => {
+    const { service, identityOidcAuthDAL, identityAuthTemplateDAL, auditLogCreate } = createOidcService();
+
+    const error = await patchTemplate(service, { bindDN: "cn=admin,dc=example,dc=com" }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [bindDN] are not valid for a 'oidc' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects the whole patch when a valid field rides along with a foreign one", async () => {
+    const { service, identityOidcAuthDAL, identityAuthTemplateDAL } = createOidcService();
+
+    const error = await patchTemplate(service, {
+      boundIssuer: "https://other-issuer.example.com",
+      bindDN: "cn=admin,dc=example,dc=com"
+    }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [bindDN] are not valid for a 'oidc' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("names every foreign field and the template's own method", async () => {
+    const { service, identityAuthTemplateDAL } = createService({
+      authMethod: IdentityAuthTemplateMethod.LDAP,
+      blobFields: { url: "ldap://example.com", bindDN: "cn=admin", bindPass: "pw", searchBase: "dc=example" },
+      gatewayColumns: NO_GATEWAY
+    });
+
+    const error = await patchTemplate(service, {
+      oidcDiscoveryUrl: "https://idp.example.com",
+      tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api
+    }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [oidcDiscoveryUrl, tokenReviewMode] are not valid for a 'ldap' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+  });
+});
