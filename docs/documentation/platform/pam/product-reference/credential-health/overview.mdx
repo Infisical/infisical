@@ -1,0 +1,77 @@
+---
+title: "Credential health"
+sidebarTitle: "Overview"
+description: "Check on a schedule that the credentials stored for your PAM accounts still work."
+---
+
+A stored credential can stop working without anyone noticing. Someone changes a password directly on the target, an administrator disables an account, or a service principal's secret expires. Nothing tells Infisical, so the credential sits in the vault looking fine until a session fails or a rotation breaks.
+
+Credential health checks each account on a schedule by signing in to its target with the stored credential, then records what happened. The check is read-only: it proves the credential still authenticates and changes nothing on the target.
+
+## Concepts
+
+Checking is configured on the [account template](/documentation/platform/pam/templates/overview), which sets whether accounts are checked and how often. Every account created from the template inherits those settings. There is no per-account override, so accounts that need a different frequency belong on a different template.
+
+New templates are created with checking on, every 24 hours. Templates that existed before this feature were enabled with the same default.
+
+### Statuses
+
+An account's health is one of four states:
+
+| Status | Meaning |
+| --- | --- |
+| **Healthy** | The target accepted the credential on the last check. |
+| **Out of Sync** | The target rejected the credential. Sessions and rotation using it will fail. |
+| **Unreachable** | The target couldn't be reached, so the credential's state is unknown. |
+| **Unchecked** | No check has run yet, or the account is missing the details needed to sign in. |
+
+The account list shows a badge for **Out of Sync** and **Unreachable** only. A healthy account needs no attention, so it carries no badge.
+
+## How it works
+
+Each check signs in the same way a session would, using the account's own authentication method, and then disconnects. For most resources this means a login through the [gateway](/documentation/platform/gateways/overview) that serves the account. Cloud accounts have no host to reach, so their check asks the provider for short-lived credentials instead.
+
+| Account type | What the check does |
+| --- | --- |
+| PostgreSQL, MySQL, Microsoft SQL Server | Signs in and runs a trivial query |
+| Microsoft SQL Server with Windows authentication | Completes an NTLM or Kerberos handshake |
+| MongoDB | Signs in and pings the server |
+| Redis | Sends `AUTH`, then `PING` |
+| Windows Active Directory | Binds to the domain controller |
+| Windows | Signs in over WinRM |
+| Kubernetes | Calls the API server and treats a 401 as a rejected credential |
+| SSH with a password or key | Signs in |
+| SSH with a certificate | Issues a certificate valid for 60 seconds from the account's certificate authority, then signs in with it |
+| AWS IAM, GCP, Azure | Asks the provider for short-lived credentials |
+
+Checks are spread across the interval rather than fired together, so a template with many accounts doesn't sign in to one domain controller all at once. Every check is recorded in the [audit log](/documentation/platform/pam/auditing).
+
+<Note>
+  Microsoft SQL Server accounts using Windows authentication need a gateway running a version that supports the Windows authentication handshake. An older gateway reports these accounts as **Out of Sync** even when the credential is valid. Update the gateway to get an accurate result.
+</Note>
+
+## Configuring a template
+
+Template settings are managed by a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership). Go to **Privileged Access Management → Account Templates**, open a template, and find **Credential Health**.
+
+Turn on **Check credentials** and set **Check every** to 1 hour, 12 hours, 24 hours, 7 days, or 30 days. Turning it off stops scheduled checks for every account on the template. Each account keeps the result of its last check, labelled as having been taken before checking was turned off.
+
+## Viewing an account's health
+
+Open an account and go to the **Configuration** tab. The **Credential health** section shows the current status, when the account was last checked, and when it was last healthy. When a check fails, the reason the target gave appears below.
+
+Select **Check now** to run a check immediately. This requires permission to view the account's credentials, since the check signs in with them.
+
+## When checking stops
+
+A rejected credential takes the account off the schedule. Retrying a password the target has already refused is how a monitoring feature locks out a privileged account, so Infisical stops after the first rejection and waits for a person.
+
+Checking resumes when you:
+
+- Enter the credential again on the account.
+- Select **Check now** and the check succeeds.
+- Rotate the account, since [rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) verifies the new password before it commits.
+
+An **Unreachable** account keeps being checked, because an unreachable target says nothing about the credential and retrying costs nothing.
+
+Changing an account's host or gateway also pauses checking if you can't view that account's credentials, so the next check doesn't carry the stored credential to a target you just chose. The account's reason line says so, and entering the credential or running a check resumes it.
