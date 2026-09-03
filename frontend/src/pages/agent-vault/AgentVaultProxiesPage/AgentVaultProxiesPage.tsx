@@ -1,8 +1,9 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { MoreHorizontalIcon, RouteIcon, TriangleAlertIcon } from "lucide-react";
+import { ChevronDownIcon, MoreHorizontalIcon, RouteIcon, TriangleAlertIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -77,6 +78,18 @@ const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode })
   </Tooltip>
 );
 
+enum SortColumn {
+  Name = "name",
+  Created = "created"
+}
+
+// A member's row carries no createdAt, so the fallback keeps the sort stable rather than producing NaN.
+const SORT_COMPARATORS: Record<SortColumn, (a: TAgentVaultProxy, b: TAgentVaultProxy) => number> = {
+  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
+  [SortColumn.Created]: (a, b) =>
+    new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
+};
+
 // Enough of the fingerprint to recognise, with the whole value behind the copy button.
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
@@ -97,6 +110,30 @@ export const AgentVaultProxiesPage = () => {
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
   const [proxyToReissue, setProxyToReissue] = useState<TAgentVaultProxy | null>(null);
   const [enrollment, setEnrollment] = useState<TAgentVaultEnrollment | null>(null);
+  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+
+  const displayed = useMemo(() => {
+    const ordered = [...(proxies ?? [])].sort(SORT_COMPARATORS[sortColumn]);
+    return sortDirection === "ascending" ? ordered : ordered.reverse();
+  }, [proxies, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    if (direction === "none") {
+      setSortColumn(SortColumn.Created);
+      setSortDirection("descending");
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(direction);
+  };
+
+  const sortIconClassName = (column: SortColumn) =>
+    twMerge(
+      "size-3 transition-transform",
+      sortColumn === column && sortDirection === "descending" && "rotate-180",
+      sortColumn !== column && "opacity-30"
+    );
 
   const handleDelete = async () => {
     if (!proxyToDelete) return;
@@ -162,7 +199,13 @@ export const AgentVaultProxiesPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead
+                  sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
+                >
+                  Name
+                  <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
+                </TableHead>
                 <TableHead>Status</TableHead>
                 {isAdmin && (
                   <TableHead>
@@ -180,6 +223,15 @@ export const AgentVaultProxiesPage = () => {
                 )}
                 <TableHead>Version</TableHead>
                 <TableHead>Certificate Authority</TableHead>
+                {isAdmin && (
+                  <TableHead
+                    sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
+                    onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
+                  >
+                    Created
+                    <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
+                  </TableHead>
+                )}
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -188,7 +240,7 @@ export const AgentVaultProxiesPage = () => {
                 Array.from({ length: 3 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`proxy-skeleton-${index}`}>
-                    {Array.from({ length: isAdmin ? 7 : 5 }).map((__, cell) => (
+                    {Array.from({ length: isAdmin ? 8 : 5 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`proxy-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -197,7 +249,7 @@ export const AgentVaultProxiesPage = () => {
                   </TableRow>
                 ))}
               {!isPending &&
-                (proxies ?? []).map((proxy) => (
+                displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
                     <TableCell>{proxy.name}</TableCell>
                     <TableCell>
@@ -261,6 +313,24 @@ export const AgentVaultProxiesPage = () => {
                         <span className="text-muted">&mdash;</span>
                       )}
                     </TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        {proxy.createdAt ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm">
+                                {format(new Date(proxy.createdAt), "MMM d, yyyy")}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {format(new Date(proxy.createdAt), "MMM d, yyyy h:mm a")}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-muted">&mdash;</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell variant="action">
                       {isAdmin && (
                         <DropdownMenu>
