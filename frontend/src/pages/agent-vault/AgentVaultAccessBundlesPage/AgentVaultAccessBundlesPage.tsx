@@ -179,7 +179,7 @@ export const AgentVaultAccessBundlesPage = () => {
 
         {!isPending && displayedBundles.length === 0 ? (
           <CardContent>
-            <Empty className="border" frame="dashed">
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>{emptyTitle}</EmptyTitle>
                 <EmptyDescription>{emptyDescription}</EmptyDescription>

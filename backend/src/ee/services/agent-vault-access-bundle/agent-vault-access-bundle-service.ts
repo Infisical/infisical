@@ -7,6 +7,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -266,7 +267,27 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
     }
 
-    return agentVaultAccessBundleDAL.create({ projectId, name, description });
+    // The creator is granted the bundle they just made, as PAM does when a folder is created. An admin
+    // already reaches every bundle by role, so this changes nothing for them today — it matters when
+    // they are later demoted to member, and it keeps a freshly made bundle from reading "0 members".
+    // Groups cannot create, and no other actor type holds a grant, so only these two are seeded.
+    const grantsToCreator = ctx.actor === ActorType.USER || ctx.actor === ActorType.IDENTITY;
+
+    return agentVaultAccessBundleDAL.transaction(async (tx) => {
+      const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
+
+      if (grantsToCreator) {
+        await agentVaultAccessBundleMemberDAL.create(
+          {
+            accessBundleId: bundle.id,
+            ...(ctx.actor === ActorType.USER ? { userId: ctx.actorId } : { identityId: ctx.actorId })
+          },
+          tx
+        );
+      }
+
+      return bundle;
+    });
   };
 
   const updateAccessBundle = async ({ accessBundleId, name, description, ...rest }: TUpdateAccessBundleDTO) => {

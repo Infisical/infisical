@@ -166,7 +166,7 @@ export const ConnectionsCard = ({
 
       {displayed.length === 0 ? (
         <CardContent>
-          <Empty className="border" frame="dashed">
+          <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
                 {connections.length === 0

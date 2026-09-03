@@ -142,7 +142,7 @@ export const AgentVaultProxiesPage = () => {
 
         {!isPending && (proxies?.length ?? 0) === 0 ? (
           <CardContent>
-            <Empty className="border" frame="dashed">
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No proxies yet</EmptyTitle>
                 <EmptyDescription>

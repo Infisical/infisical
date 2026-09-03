@@ -87,6 +87,18 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("access bundles", async () => {
+    test("the creator is granted the access bundle they just made", async () => {
+      const bundle = await createAccessBundle("creator-grant");
+
+      const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      const { accessBundle } = JSON.parse(res.payload) as {
+        accessBundle: { members: { userId: string | null; identityId: string | null }[] };
+      };
+
+      expect(accessBundle.members).toHaveLength(1);
+      expect(accessBundle.members[0].userId).toBe(seedData1.id);
+    });
+
     test("a connection is rejected when it shares a host with another in the same bundle", async () => {
       const bundle = await createAccessBundle("overlap-check");
 

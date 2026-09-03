@@ -4,7 +4,6 @@ import { MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   DeleteConfirmDialog,
   DropdownMenu,
@@ -79,12 +78,8 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="flex items-center gap-2 border-b border-border p-4">
-            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-              Members
-              <Badge variant="av">{members.length}</Badge>
-            </span>
-            <Button size="sm" variant="av" className="ml-auto" onClick={() => setIsAddOpen(true)}>
+          <div className="flex items-center justify-end border-b border-border p-4">
+            <Button size="sm" variant="av" onClick={() => setIsAddOpen(true)}>
               <UserPlusIcon />
               Grant Access
             </Button>
@@ -98,7 +93,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
 
           {!isPending && members.length === 0 && (
             <div className="p-4">
-              <Empty className="border" frame="dashed">
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>No members yet</EmptyTitle>
                   <EmptyDescription>

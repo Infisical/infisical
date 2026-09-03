@@ -55,7 +55,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   if (!accessBundle) {
     return (
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Empty frame="dashed">
+        <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Access bundle not found</EmptyTitle>
             <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
