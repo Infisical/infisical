@@ -99,7 +99,7 @@ using the Universal Auth authentication method.
     </Warning>
 
     <Info>
-      On a self-hosted instance behind a reverse proxy, Infisical only sees the real client IP when [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars#param-trusted-proxy-cidrs) lists that proxy. Set it to the proxy's CIDR (for Docker Compose, often `uniquelocal`), not to the client subnets you want to allow. Put client subnets in the trusted IP fields above.
+      On a self-hosted instance behind a reverse proxy, Infisical only sees the real client IP when [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars#param-trusted-proxy-cidrs) lists that proxy. Set it to the proxy's CIDR or Docker network subnet, not to the client subnets you want to allow. Put client subnets in the trusted IP fields above, and don't publish the Infisical backend port directly if you rely on those allowlists.
     </Info>
 
   </Step>

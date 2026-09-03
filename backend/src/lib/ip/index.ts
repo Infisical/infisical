@@ -140,14 +140,20 @@ const PROXY_ADDR_ALIASES = new Set(["loopback", "linklocal", "uniquelocal"]);
 
 /** Normalize and validate TRUSTED_PROXY_CIDRS entries (CIDR, IP, or proxy-addr alias). */
 export const parseTrustedProxyCidrs = (value: string | undefined): string | undefined => {
-  if (!value) return undefined;
+  // Genuinely unset/empty env → legacy trust-all. A supplied value that only contains
+  // separators (e.g. ",") must fail closed rather than falling back to trust-all.
+  if (value === undefined || value === "") return undefined;
 
   const entries = value
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-  if (entries.length === 0) return undefined;
+  if (entries.length === 0) {
+    throw new Error(
+      "TRUSTED_PROXY_CIDRS was set but contained no valid entries. Provide at least one IP, CIDR, or alias (loopback, linklocal, uniquelocal), or unset the variable to keep legacy trust-all behavior."
+    );
+  }
 
   for (const entry of entries) {
     if (PROXY_ADDR_ALIASES.has(entry)) continue;

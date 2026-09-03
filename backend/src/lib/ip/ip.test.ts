@@ -4,10 +4,14 @@ import { ForbiddenRequestError } from "../errors";
 import { checkIPAgainstBlocklist, IPType, parseTrustedProxyCidrs } from "./index";
 
 describe("parseTrustedProxyCidrs", () => {
-  it("returns undefined for empty input", () => {
+  it("returns undefined for unset or empty input", () => {
     expect(parseTrustedProxyCidrs(undefined)).toBeUndefined();
     expect(parseTrustedProxyCidrs("")).toBeUndefined();
-    expect(parseTrustedProxyCidrs("  ,  ")).toBeUndefined();
+  });
+
+  it("rejects separator-only values instead of falling back to legacy trust-all", () => {
+    expect(() => parseTrustedProxyCidrs(",")).toThrow(/contained no valid entries/);
+    expect(() => parseTrustedProxyCidrs("  ,  ")).toThrow(/contained no valid entries/);
   });
 
   it("trims entries and preserves aliases", () => {
