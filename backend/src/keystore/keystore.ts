@@ -186,10 +186,7 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
-  // Cached distinct active certificate quota keys per org tree. Not LicenseUsageLastReported, which
-  // counts rows and is only written on a successful License Server report.
   PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
-  // Separate key rather than a JSON blob with the total, so both stay INCR-able on creation.
   PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,

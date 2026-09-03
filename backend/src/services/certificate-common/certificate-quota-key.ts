@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
-// Identity of "one logical certificate" for quotas. orderId already collapses renewal chains; this
-// exists for re-enrollment, where ACME mints a new order for the same names every cycle.
+// Identity of "one logical certificate" for quotas: ACME re-enrolls rather than renews, minting a
+// fresh order for the same names every cycle
 export const buildCertificateQuotaKey = ({
   commonName,
   altNames
