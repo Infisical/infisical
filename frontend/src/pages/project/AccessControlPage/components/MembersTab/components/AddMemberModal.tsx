@@ -36,7 +36,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
+import { getProjectTitle } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -83,7 +83,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const isStandaloneProduct = isCertManager;
   const productLabel =
     isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
@@ -423,7 +423,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
             <Button
               type="submit"
-              variant={getProductControlVariant(currentProject.type)}
+              variant="project"
               isPending={isSubmitting}
               isDisabled={
                 isSubmitting ||

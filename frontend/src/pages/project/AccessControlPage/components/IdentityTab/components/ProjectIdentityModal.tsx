@@ -18,7 +18,6 @@ import {
   Switch
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { getProductControlVariant } from "@app/helpers/project";
 import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
 
 const schema = z.object({
@@ -110,7 +109,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           <Field orientation="horizontal">
             <Switch
               id="delete-protection-enabled"
-              variant={getProductControlVariant(currentProject.type)}
+              variant="project"
               checked={value}
               onCheckedChange={onChange}
             />
@@ -197,12 +196,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant={getProductControlVariant(currentProject.type)}
-          isPending={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
           Update
         </Button>
       </div>

@@ -45,10 +45,9 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  const isAgentVault = currentProject.type === ProjectType.AgentVault;
   // Products without an intermediate project view read as a product, not a project, so they drop the
   // "Project" wording and surface users, identities and groups as tabs rather than a sidebar submenu.
-  const isStandaloneProduct = isCertManager || isAgentVault;
+  const isStandaloneProduct = isCertManager;
   const hasTabs = isStandaloneProduct || isSecretManager;
 
   const renderTabContent = () => {
@@ -84,10 +83,7 @@ const Page = () => {
         </PageHeader>
         {hasTabs ? (
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-            <TabsList
-              variant={isAgentVault ? "av" : "project"}
-              aria-label="Project access control sections"
-            >
+            <TabsList variant="project" aria-label="Project access control sections">
               <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
               <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities

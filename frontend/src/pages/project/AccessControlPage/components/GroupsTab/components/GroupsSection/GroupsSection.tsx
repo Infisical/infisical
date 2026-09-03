@@ -20,7 +20,7 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -34,7 +34,7 @@ export const GroupsSection = () => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   // Products without an intermediate project view read as a product, not a project, so they drop
   // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
+  const isStandaloneProduct = isCertManager;
   const productLabel =
     isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
@@ -95,7 +95,7 @@ export const GroupsSection = () => {
             >
               {(isAllowed) => (
                 <Button
-                  variant={getProductControlVariant(currentProject.type)}
+                  variant="project"
                   onClick={() => handleAddGroupModal()}
                   isDisabled={!isAllowed}
                 >

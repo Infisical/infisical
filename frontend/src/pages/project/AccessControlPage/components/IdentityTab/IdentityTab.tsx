@@ -68,7 +68,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProductControlVariant, getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -102,7 +102,7 @@ export const IdentityTab = withProjectPermission(
     const isCertManager = currentProject?.type === ProjectType.CertificateManager;
     // Products without an intermediate project view read as a product, not a project, so they drop
     // the "Project" wording. Behavioural forks below stay on isCertManager.
-    const isStandaloneProduct = isCertManager || currentProject?.type === ProjectType.AgentVault;
+    const isStandaloneProduct = isCertManager;
     const productLabel =
       isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
 
@@ -234,7 +234,7 @@ export const IdentityTab = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant={getProductControlVariant(currentProject.type)}
+                    variant="project"
                     onClick={() => handlePopUpOpen("createIdentity")}
                     isDisabled={!isAllowed}
                   >
