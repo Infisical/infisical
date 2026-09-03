@@ -46,8 +46,8 @@ const EnrollmentSchema = z.object({
 
 const ProxySettingsSchema = {
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  // Consulted only for hosts no connection covers, so a credential always wins: attaching one means
-  // opening the request, which bypassing it cannot do.
+  // A proxy-wide exception to deny, and nothing else. These hosts are handled like any other: opened,
+  // certificate minted, no credential unless a connection covers them.
   bypassHosts: hostPatternSchema.nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
   pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
 };

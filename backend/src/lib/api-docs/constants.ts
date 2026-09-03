@@ -4202,7 +4202,7 @@ export const AGENT_VAULT = {
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
     unmatchedHost: "What the proxy does with a host no connection covers: allow it through untouched, or deny it.",
     bypassHosts:
-      "Hosts the proxy forwards without interception, consulted only where no connection covers the host. Use this for clients that pin certificates.",
+      "Hosts that stay reachable when unmatchedHost is deny, handled like any other host and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
     sessionToken: "The session an agent is running with. A selector, not a second credential."
   },

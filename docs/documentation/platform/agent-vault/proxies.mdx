@@ -42,9 +42,11 @@ Private and link-local addresses, such as `169.254.169.254`, are blocked under b
 
 ### Bypass hosts
 
-A comma-separated list of hosts the proxy tunnels through untouched: no TLS termination and no unmatched-host check. Use it for clients that pin certificates, such as `npm`, `pip`, and `cargo`, which would otherwise fail behind the proxy.
+A comma-separated list of hosts that stay reachable under **Deny**. They are handled like every other host, with the proxy's certificate and no credential attached, so this is the proxy-wide equivalent of giving each of them a pass-through connection.
 
-A connection in the session takes precedence over this list. A credential can only be attached to a connection the proxy opens, so a host one of your bundles covers is opened and given its credential even if it also appears here. The list therefore governs only the hosts nothing else covers.
+Use it when the hosts are a property of the deployment rather than of one bundle, such as a documentation site or a package registry every agent needs. It is set by whoever runs the proxy; pass-through connections are set by whoever owns the bundle.
+
+Under **Allow** the list changes nothing, since those hosts are reachable anyway. A host one of your bundles covers still gets its credential.
 
 ### Poll interval
 
@@ -100,4 +102,4 @@ Three kinds of traffic don't work through the proxy in this release. Each fails 
 - **Streams longer than 30 minutes.** A single response that stays open past 30 minutes, such as a long-lived MCP server over server-sent events, is closed at that point.
 - **HTTP/2-only clients.** Clients that refuse to speak HTTP/1.1, including gRPC, Google Cloud SDKs, and Temporal.
 
-Put hosts that need any of these on the bypass list so the agent reaches them directly. Remove any connection covering them first, since a connection takes precedence and the proxy would open the request to attach its credential.
+Point clients that need any of these at the upstream directly, outside the proxy, until it supports them.

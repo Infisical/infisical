@@ -169,7 +169,7 @@ export const AgentVaultProxiesPage = () => {
                 <TableHead>Status</TableHead>
                 {isAdmin && (
                   <TableHead>
-                    <HeadWithHint hint="Hosts nothing else covers are passed straight through without being opened. A host an access bundle covers still gets its credential.">
+                    <HeadWithHint hint="Reachable under Deny without naming them in an access bundle. They get no credential.">
                       Bypass Hosts
                     </HeadWithHint>
                   </TableHead>
