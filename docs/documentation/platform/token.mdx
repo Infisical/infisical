@@ -16,7 +16,7 @@ Service Token (ST) is the current widely-used authentication method for managing
 
 Here's a few pointers to get you acquainted with it:
 
-- Each service token is of the form `st.<id>.<secret>`. Send it verbatim in the `Authorization` header as `Bearer st.<id>.<secret>` when calling the Infisical API.
+- Each service token is of the form `st.<id>.<secret>`. Send it in the `Authorization` header as `Bearer st.<id>.<secret>` when calling the Infisical API.
 - ST supports expiration; it gets deleted automatically upon expiration.
 - ST supports provisioning `read` and/or `write` permissions broadly applied to all accessible environment(s) and path(s).
 - ST isn't editable.
