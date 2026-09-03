@@ -101,10 +101,14 @@ export const identityV2ServiceFactory = ({
   alertService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
-    permissionService
+    permissionService,
+    orgDAL,
+    membershipIdentityDAL
   });
   const projectFactory = newProjectIdentityFactory({
-    permissionService
+    permissionService,
+    orgDAL,
+    membershipIdentityDAL
   });
 
   const scopeFactory = {
