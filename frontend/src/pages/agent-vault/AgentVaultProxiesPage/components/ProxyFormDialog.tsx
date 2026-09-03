@@ -81,6 +81,15 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
   // is left alone rather than cleared, so switching back to deny brings it back.
   const isDenying = watch("unmatchedHost") === AgentVaultUnmatchedHost.Deny;
 
+  // A proxy that has never checked in has nothing to update, so the delay is only worth raising once
+  // one has.
+  const saveDelayNote = (() => {
+    if (!proxy?.heartbeat) return null;
+    return proxy.isHealthy
+      ? "This proxy picks up the change on its next check."
+      : "This proxy is not connected right now. It picks up the change when it reconnects.";
+  })();
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -120,7 +129,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           <DialogHeader>
             <DialogTitle>{isUpdate ? "Edit Proxy" : "Create Proxy"}</DialogTitle>
             <DialogDescription>
-              A proxy is one deployed egress node. Settings reach it on its next poll.
+              Set how this proxy handles your agents&apos; traffic.
             </DialogDescription>
           </DialogHeader>
 
@@ -143,7 +152,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
               name="unmatchedHost"
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>Hosts no connection covers</FieldLabel>
+                  <FieldLabel>Hosts no access bundle covers</FieldLabel>
                   <FieldContent>
                     <RadioGroup value={field.value} onValueChange={field.onChange}>
                       {UNMATCHED_HOST_CHOICES.map((choice) => {
@@ -172,12 +181,24 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 name="bypassHosts"
                 render={({ field, fieldState }) => (
                   <Field>
-                    <FieldLabel>Bypass Hosts</FieldLabel>
+                    <FieldLabel>
+                      Bypass Hosts
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          Hosts listed here are reached even though no access bundle covers them,
+                          with nothing added to the request. If a bundle does cover the same host,
+                          its credential still applies. To open a host for one bundle only, add a
+                          Pass-through connection to that bundle instead.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
                     <FieldContent>
                       <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
                       <FieldDescription>
-                        Reachable under Deny without naming them in an access bundle. They are
-                        treated like any other host and get no credential.
+                        Reachable under Deny without naming them in an access bundle.
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
@@ -212,6 +233,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           </div>
 
           <DialogFooter>
+            {saveDelayNote && <p className="mr-auto text-sm text-muted">{saveDelayNote}</p>}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
