@@ -96,14 +96,12 @@ export const NetlifySyncFields = () => {
                 isDisabled={!accountId}
                 value={sites.find((p) => p.id === value) ?? null}
                 onValueChange={(option) => {
-                  const v = option;
-                  if (v?.id === value) {
-                    onChange(undefined);
-                    setValue("destinationConfig.siteName", undefined);
-                  } else {
-                    onChange(v?.id);
-                    setValue("destinationConfig.siteName", v?.name);
-                  }
+                  onChange(option.id);
+                  setValue("destinationConfig.siteName", option.name);
+                }}
+                onClear={() => {
+                  onChange(null);
+                  setValue("destinationConfig.siteName", undefined);
                 }}
                 options={sites}
                 placeholder="Select a site..."
@@ -130,10 +128,8 @@ export const NetlifySyncFields = () => {
                 isError={Boolean(error)}
                 isDisabled={!accountId}
                 value={contexts.find((p) => p.value === value) ?? undefined}
-                onValueChange={(option) => {
-                  const v = option;
-                  if (v) onChange(v.value);
-                }}
+                onValueChange={(option) => onChange(option.value)}
+                onClear={() => onChange(null)}
                 options={contexts}
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.label}

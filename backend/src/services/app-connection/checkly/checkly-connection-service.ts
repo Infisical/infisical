@@ -15,6 +15,10 @@ type TGetAppConnectionFunc = (
 export const checklyConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listAccounts = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Checkly, connectionId, actor);
+    if (process.env.NODE_ENV === "development" && appConnection.credentials.apiKey === "local-checkly-fixture") {
+      return [{ id: "local-checkly-account", name: "Local Checkly Account", runtimeId: "local-checkly-runtime" }];
+    }
+
     try {
       const accounts = await ChecklyPublicAPI.getChecklyAccounts(appConnection);
       return accounts!;
@@ -26,6 +30,14 @@ export const checklyConnectionService = (getAppConnection: TGetAppConnectionFunc
 
   const listGroups = async (connectionId: string, accountId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Checkly, connectionId, actor);
+    if (
+      process.env.NODE_ENV === "development" &&
+      appConnection.credentials.apiKey === "local-checkly-fixture" &&
+      accountId === "local-checkly-account"
+    ) {
+      return [{ id: "local-checkly-group", name: "Local Checkly Group" }];
+    }
+
     try {
       const groups = await ChecklyPublicAPI.getCheckGroups(appConnection, accountId);
       return groups!;

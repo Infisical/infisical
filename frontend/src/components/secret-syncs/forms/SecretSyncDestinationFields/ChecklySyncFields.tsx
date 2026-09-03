@@ -99,7 +99,7 @@ export const ChecklySyncFields = () => {
                   setValue("destinationConfig.groupName", v?.name ?? undefined);
                 }}
                 onClear={() => {
-                  onChange(undefined);
+                  onChange(null);
                   setValue("destinationConfig.groupName", undefined);
                 }}
                 options={groups}

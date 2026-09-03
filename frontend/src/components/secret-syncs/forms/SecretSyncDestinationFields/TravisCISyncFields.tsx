@@ -94,7 +94,7 @@ export const TravisCISyncFields = () => {
                   const branch = option;
                   onChange(branch?.name ?? undefined);
                 }}
-                onClear={() => onChange(undefined)}
+                onClear={() => onChange(null)}
                 options={branches}
                 placeholder="Select a branch..."
                 getOptionLabel={(option) =>
