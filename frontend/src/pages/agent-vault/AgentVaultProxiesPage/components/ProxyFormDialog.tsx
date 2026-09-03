@@ -53,7 +53,11 @@ const schema = z.object({
   name: slugSchema({ max: 64, field: "Name" }),
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
   bypassHosts: z.string().trim().max(1024).optional(),
-  pollInterval: z.coerce.number().int().min(10).max(300)
+  pollInterval: z.coerce
+    .number({ invalid_type_error: "Poll interval is required" })
+    .int("Poll interval must be a whole number of seconds")
+    .min(10, "Poll interval must be at least 10 seconds")
+    .max(300, "Poll interval must be at most 300 seconds")
 });
 
 type FormData = z.infer<typeof schema>;
@@ -226,7 +230,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <Input {...field} type="number" min={10} max={300} />
+                    <Input {...field} type="number" />
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>
