@@ -148,7 +148,8 @@ export const DigiCertFields = ({
         const filteredProducts = digicertProducts.filter((p) => {
           if (purpose === DigiCertCaPurpose.CodeSigning)
             return p.type === DigiCertProductType.CodeSigning;
-          return p.type === DigiCertProductType.Ssl || !p.type;
+          // X9 PKI for TLS issues TLS certificates through the same order flow as OV/EV.
+          return p.type === DigiCertProductType.Ssl || p.type === DigiCertProductType.X9 || !p.type;
         });
         return (
           <Field className="mb-4">
