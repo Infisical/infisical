@@ -240,20 +240,18 @@ export const newProjectMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
-        ignoreUnresolvedRoles: true
-      });
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-        opSubject: ProjectPermissionSub.Member,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged member",
-        subjectFields: { userEmail: targetUser.email || undefined }
-      });
-    }
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+      opSubject: ProjectPermissionSub.Member,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged member",
+      subjectFields: { userEmail: targetUser.email || undefined }
+    });
 
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
@@ -303,8 +301,6 @@ export const newProjectMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (!targetRoles.length) return;
-
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });

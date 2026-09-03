@@ -133,20 +133,18 @@ export const newOrgMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
-        ignoreUnresolvedRoles: true
-      });
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      ignoreUnresolvedRoles: true
+    });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionIdentityActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Identity,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged identity"
-      });
-    }
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionIdentityActions.GrantPrivileges,
+      opSubject: OrgPermissionSubjects.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged identity"
+    });
 
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
@@ -212,24 +210,22 @@ export const newOrgMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
-        ignoreUnresolvedRoles: true
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionIdentityActions.Delete,
-        opSubject: OrgPermissionSubjects.Identity,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to remove a more privileged identity from the organization"
-      });
-    }
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionIdentityActions.Delete,
+      opSubject: OrgPermissionSubjects.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged identity from the organization"
+    });
   };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (

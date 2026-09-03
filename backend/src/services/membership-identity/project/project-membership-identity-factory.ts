@@ -187,20 +187,18 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
-        ignoreUnresolvedRoles: true
-      });
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-        opSubject: ProjectPermissionSub.Identity,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged identity",
-        subjectFields: { identityId: dto.selector.identityId }
-      });
-    }
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+      opSubject: ProjectPermissionSub.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged identity",
+      subjectFields: { identityId: dto.selector.identityId }
+    });
 
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
@@ -262,25 +260,23 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
-        ignoreUnresolvedRoles: true
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: ProjectPermissionIdentityActions.Delete,
-        opSubject: ProjectPermissionSub.Identity,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to remove a more privileged identity from the project",
-        subjectFields: { identityId: dto.selector.identityId }
-      });
-    }
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: ProjectPermissionIdentityActions.Delete,
+      opSubject: ProjectPermissionSub.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged identity from the project",
+      subjectFields: { identityId: dto.selector.identityId }
+    });
   };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (

@@ -379,16 +379,6 @@ const constructPermissionErrorMessage = (
   }`;
 };
 
-const assertPermissionBoundary = (actorPermission: MongoAbility, managedPermission: MongoAbility, message: string) => {
-  const boundary = validatePermissionBoundary(actorPermission, managedPermission);
-  if (!boundary.isValid) {
-    throw new PermissionBoundaryError({
-      message,
-      details: { missingPermissions: boundary.missingPermissions }
-    });
-  }
-};
-
 type TAssertRoleSetBoundaryArg = {
   shouldUseNewPrivilegeSystem: boolean;
   opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[];
@@ -677,7 +667,6 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
 };
 
 export {
-  assertPermissionBoundary,
   assertRoleSetBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,

@@ -353,22 +353,19 @@ export const newOrgMembershipUserFactory = ({
         userId: dto.selector.userId
       });
       const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+        ignoreUnresolvedRoles: true
+      });
 
-      if (targetRoles.length) {
-        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
-          ignoreUnresolvedRoles: true
+      for (const { opAction, baseMessage } of targetOps) {
+        assertRoleSetBoundary({
+          shouldUseNewPrivilegeSystem,
+          opActions: opAction,
+          opSubject: OrgPermissionSubjects.Member,
+          actorPermission: permission,
+          targetPermissions,
+          baseMessage
         });
-
-        for (const { opAction, baseMessage } of targetOps) {
-          assertRoleSetBoundary({
-            shouldUseNewPrivilegeSystem,
-            opActions: opAction,
-            opSubject: OrgPermissionSubjects.Member,
-            actorPermission: permission,
-            targetPermissions,
-            baseMessage
-          });
-        }
       }
     }
 
@@ -405,8 +402,6 @@ export const newOrgMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    if (!targetRoles.length) return;
-
     const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
       ignoreUnresolvedRoles: true
     });

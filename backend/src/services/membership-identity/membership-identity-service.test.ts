@@ -50,8 +50,8 @@ const createService = ({
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
     // The delete guards resolve the target's current roles to bound the removal against them.
-    // "no-access" is filtered out before resolution, so these tests exercise the delete path
-    // without engaging the boundary comparison.
+    // "no-access" is filtered out before resolution, so the target resolves to no roles and the
+    // boundary check falls back to an empty ability.
     getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: "no-access" }] }),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
     find: vi.fn().mockResolvedValue([]),
@@ -75,9 +75,18 @@ const createService = ({
       getProjectPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      // Role name "no-access" skips the privilege-boundary comparison in the guards.
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }]),
-      getProjectPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }])
+      // Role name "no-access" skips the privilege-boundary comparison in the guards. An empty slug
+      // list resolves to no roles, matching the real implementation.
+      getOrgPermissionByRoles: vi
+        .fn()
+        .mockImplementation(async (roles: string[]) =>
+          roles.length ? [{ role: { name: "no-access" }, permission: null }] : []
+        ),
+      getProjectPermissionByRoles: vi
+        .fn()
+        .mockImplementation(async (roles: string[]) =>
+          roles.length ? [{ role: { name: "no-access" }, permission: null }] : []
+        )
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,

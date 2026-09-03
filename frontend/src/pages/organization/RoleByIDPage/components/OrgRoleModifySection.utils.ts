@@ -352,7 +352,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgPermissionMemberActions.Edit,
         label: "Edit members",
-        description: "Modify member roles and access settings"
+        description: "Update member attributes and activation status"
       },
       {
         value: OrgPermissionMemberActions.Delete,

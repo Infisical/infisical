@@ -885,21 +885,19 @@ export const orgServiceFactory = ({
 
     if (targetOps.length) {
       const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds([membershipId]));
-      if (targetRoles.length) {
-        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
-          ignoreUnresolvedRoles: true
-        });
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
+        ignoreUnresolvedRoles: true
+      });
 
-        for (const { opAction, baseMessage } of targetOps) {
-          assertRoleSetBoundary({
-            shouldUseNewPrivilegeSystem,
-            opActions: opAction,
-            opSubject: OrgPermissionSubjects.Member,
-            actorPermission: permission,
-            targetPermissions,
-            baseMessage
-          });
-        }
+      for (const { opAction, baseMessage } of targetOps) {
+        assertRoleSetBoundary({
+          shouldUseNewPrivilegeSystem,
+          opActions: opAction,
+          opSubject: OrgPermissionSubjects.Member,
+          actorPermission: permission,
+          targetPermissions,
+          baseMessage
+        });
       }
     }
 
@@ -1228,8 +1226,6 @@ export const orgServiceFactory = ({
     permission: MongoAbility;
   }) => {
     const targetRoles = resolveMembershipRoleSlugs(await membershipRoleDAL.findRolesByMembershipIds(membershipIds));
-    if (!targetRoles.length) return;
-
     const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
       ignoreUnresolvedRoles: true
     });

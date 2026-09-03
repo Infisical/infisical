@@ -57,12 +57,14 @@ const createGuard = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
   targetRole = "admin",
+  targetRoles,
   incomingRole = "member",
   data
 }: {
   actorPermission: MongoAbility;
   shouldUseNewPrivilegeSystem: boolean;
   targetRole?: string;
+  targetRoles?: string[];
   incomingRole?: string;
   data?: Record<string, unknown>;
 }) => {
@@ -80,7 +82,9 @@ const createGuard = ({
         .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
-    membershipUserDAL: { getUserById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never,
+    membershipUserDAL: {
+      getUserById: vi.fn().mockResolvedValue({ roles: (targetRoles ?? [targetRole]).map((role) => ({ role })) })
+    } as never,
     tokenService: {} as never,
     userDAL: {} as never,
     smtpService: {} as never,
@@ -241,6 +245,42 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
           data: { roles: [], isActive: false }
         })()
       ).rejects.toThrow(PermissionBoundaryError);
+    });
+
+    test("a target holding no roles is still bounded on the new system", async () => {
+      // A membership whose roles have all expired resolves to an empty role set. Skipping the
+      // boundary for it would let member:edit alone deactivate that member, since nothing else in
+      // the guard asks for member:delete.
+      const deactivate = { roles: [], isActive: false };
+
+      await expect(
+        createGuard({
+          actorPermission: memberEditorOnly,
+          shouldUseNewPrivilegeSystem: true,
+          targetRoles: [],
+          data: deactivate
+        })()
+      ).rejects.toThrow(PermissionBoundaryError);
+
+      await expect(
+        createGuard({
+          actorPermission: memberDeleter,
+          shouldUseNewPrivilegeSystem: true,
+          targetRoles: [],
+          data: deactivate
+        })()
+      ).resolves.toBeUndefined();
+
+      // The legacy system compares privilege levels, and no target privileges means nothing to
+      // out-rank, so the same weak actor passes there.
+      await expect(
+        createGuard({
+          actorPermission: memberEditorOnly,
+          shouldUseNewPrivilegeSystem: false,
+          targetRoles: [],
+          data: deactivate
+        })()
+      ).resolves.toBeUndefined();
     });
 
     test("a role change and a deactivation in one request need both actions", async () => {

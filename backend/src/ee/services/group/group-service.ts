@@ -292,20 +292,18 @@ export const groupServiceFactory = ({
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
       const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-      if (targetRoles.length) {
-        const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
-          ignoreUnresolvedRoles: true
-        });
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+        ignoreUnresolvedRoles: true
+      });
 
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: OrgPermissionGroupActions.GrantPrivileges,
-          opSubject: OrgPermissionSubjects.Groups,
-          actorPermission: permission,
-          targetPermissions,
-          baseMessage: "Failed to change the roles of a more privileged group"
-        });
-      }
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged group"
+      });
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
@@ -724,23 +722,21 @@ export const groupServiceFactory = ({
     const { group } = groupMembership;
 
     const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
-    if (targetRoles.length) {
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
-        ignoreUnresolvedRoles: true
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionGroupActions.Delete,
-        opSubject: OrgPermissionSubjects.Groups,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to delete a more privileged group"
-      });
-    }
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionGroupActions.Delete,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to delete a more privileged group"
+    });
 
     const isLinkedGroup = group.orgId !== actorOrgId;
 

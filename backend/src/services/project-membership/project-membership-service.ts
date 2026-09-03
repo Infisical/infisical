@@ -414,41 +414,37 @@ export const projectMembershipServiceFactory = ({
 
     const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
     const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
-    if (targetRoles.length) {
-      const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
-        ignoreUnresolvedRoles: true
+    const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
+    const unattributableRoles: typeof resolvedRoles = [];
+    for (const resolved of resolvedRoles) {
+      if (resolved.role) resolvedRoleBySlug[resolved.role.slug] = resolved;
+      else unattributableRoles.push(resolved);
+    }
+    const roleRowsByMembershipId = groupBy(targetRoleRows, (el) => el.membershipId);
+
+    for (const projectMember of projectMembers) {
+      const targetPermissions = [
+        ...resolveMembershipRoleSlugs(roleRowsByMembershipId[projectMember.id] || [])
+          .map((slug) => resolvedRoleBySlug[slug])
+          .filter(Boolean),
+        ...unattributableRoles
+      ];
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionMemberActions.Delete,
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged member from the project",
+        subjectFields: { userEmail: projectMember.user.email || undefined }
       });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
-
-      const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
-      const unattributableRoles: typeof resolvedRoles = [];
-      for (const resolved of resolvedRoles) {
-        if (resolved.role) resolvedRoleBySlug[resolved.role.slug] = resolved;
-        else unattributableRoles.push(resolved);
-      }
-      const roleRowsByMembershipId = groupBy(targetRoleRows, (el) => el.membershipId);
-
-      for (const projectMember of projectMembers) {
-        const targetPermissions = [
-          ...resolveMembershipRoleSlugs(roleRowsByMembershipId[projectMember.id] || [])
-            .map((slug) => resolvedRoleBySlug[slug])
-            .filter(Boolean),
-          ...unattributableRoles
-        ];
-        if (targetPermissions.length) {
-          assertRoleSetBoundary({
-            shouldUseNewPrivilegeSystem,
-            opActions: ProjectPermissionMemberActions.Delete,
-            opSubject: ProjectPermissionSub.Member,
-            actorPermission: permission,
-            targetPermissions,
-            baseMessage: "Failed to remove a more privileged member from the project",
-            subjectFields: { userEmail: projectMember.user.email || undefined }
-          });
-        }
-      }
     }
 
     await checkUserApproverPolicies(
