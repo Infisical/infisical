@@ -875,12 +875,12 @@ export const orgServiceFactory = ({
     if (role !== undefined || metadata !== undefined)
       targetOps.push({
         opAction: OrgPermissionMemberActions.GrantPrivileges,
-        baseMessage: "Failed to change the roles or attributes of a more privileged org member"
+        baseMessage: "Failed to change the roles or attributes of this org member"
       });
     if (isActive !== undefined)
       targetOps.push({
         opAction: OrgPermissionMemberActions.Edit,
-        baseMessage: "Failed to change the activation status of a more privileged org member"
+        baseMessage: "Failed to change the activation status of this org member"
       });
 
     if (targetOps.length) {
@@ -926,7 +926,7 @@ export const orgServiceFactory = ({
         opSubject: OrgPermissionSubjects.Member,
         actorPermission: permission,
         targetPermissions: permissionRoles,
-        baseMessage: "Cannot assign a role exceeding your own privileges to an org member"
+        baseMessage: "Failed to assign the requested role to an org member"
       });
     }
 
@@ -1239,7 +1239,7 @@ export const orgServiceFactory = ({
       opSubject: OrgPermissionSubjects.Member,
       actorPermission: permission,
       targetPermissions,
-      baseMessage: "Failed to remove a more privileged member from the organization"
+      baseMessage: "Failed to remove this member from the organization"
     });
   };
 

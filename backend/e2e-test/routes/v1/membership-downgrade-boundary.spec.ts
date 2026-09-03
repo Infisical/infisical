@@ -298,17 +298,18 @@ describe("Privilege boundary on org membership downgrade", () => {
         asIdentity(actor.token)
       );
       expect(res.statusCode).toBe(403);
-      expect(res.json().message).toContain("more privileged org member");
+      expect(res.json().message).toContain("Failed to change the roles or attributes of this org member");
     });
 
-    test("deactivating a more privileged member follows the removal boundary", async () => {
-      // Deactivation keys on member:delete, so it lands where a removal lands rather than where a role
-      // change does. Own target, because it succeeds on one of the two runs.
+    test("deactivating a more privileged member is bounded on the legacy system only", async () => {
+      // Deactivation keys on member:edit, which the route's own permission check already demanded, so
+      // the new system has nothing further to ask. Own target, because it succeeds on one of the two runs.
       const target = await createAdminTarget();
 
       const res = await patchMembership(target.membershipId, { isActive: false }, asIdentity(actor.token));
       expect(res.statusCode).toBe(newSystem ? 200 : 403);
-      if (!newSystem) expect(res.json().message).toContain("more privileged org member");
+      if (!newSystem)
+        expect(res.json().message).toContain("Failed to change the activation status of this org member");
     });
   });
 

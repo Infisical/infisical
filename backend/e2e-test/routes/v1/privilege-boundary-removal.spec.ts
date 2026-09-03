@@ -362,13 +362,13 @@ describe("Privilege boundary on org membership removal", () => {
     test("a member:delete-only role cannot remove an org Admin", async () => {
       const res = await deleteOrgMembership(adminTarget.membershipId, asIdentity(actor.token));
       expect(res.statusCode).toBe(403);
-      expect(res.json().message).toContain("more privileged member");
+      expect(res.json().message).toContain("Failed to remove this member from the organization");
     });
 
     test("the bulk route is bounded too, so it is not a way around the single-member route", async () => {
       const res = await bulkDeleteOrgMemberships([adminTarget.membershipId], asIdentity(actor.token));
       expect(res.statusCode).toBe(403);
-      expect(res.json().message).toContain("more privileged member");
+      expect(res.json().message).toContain("Failed to remove this member from the organization");
     });
 
     test("an admin can still remove an org Admin", async () => {
