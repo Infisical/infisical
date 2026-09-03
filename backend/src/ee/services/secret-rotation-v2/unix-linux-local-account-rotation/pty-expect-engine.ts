@@ -20,14 +20,21 @@ const createTranscript = (secrets: (string | undefined)[]) => {
     knownSecrets.reduce((redacted, secret) => redacted.replaceAll(secret, "***"), value);
 
   // Raw text is kept unredacted so a secret split across two data events is
-  // still intact when redact() runs.  The buffer lives only for the duration
-  // of one runExpectSession call (bounded by SHELL_TIMEOUT and the overflow
-  // check on the unmatched buffer), so it needs no independent cap.
+  // still intact when redact() runs on read().  advance() consumes the
+  // separate unmatched buffer, so a cooperating host can keep unmatched small
+  // while raw grows; capping raw at MAX_BUFFER_SIZE bounds that.  The 60 KiB
+  // gap between the raw cap and MAX_TRANSCRIPT_SIZE means a partial secret at
+  // the raw-cap boundary is always discarded by the final output slice.
   let raw = "";
+  let truncated = false;
 
   return {
     append: (chunk: string) => {
       raw += chunk;
+      if (raw.length > MAX_BUFFER_SIZE) {
+        raw = raw.slice(-MAX_BUFFER_SIZE);
+        truncated = true;
+      }
     },
     redact,
     read: () => {
@@ -35,7 +42,7 @@ const createTranscript = (secrets: (string | undefined)[]) => {
       if (redacted.length > MAX_TRANSCRIPT_SIZE) {
         return `...${redacted.slice(-MAX_TRANSCRIPT_SIZE)}`;
       }
-      return redacted;
+      return truncated ? `...${redacted}` : redacted;
     }
   };
 };
