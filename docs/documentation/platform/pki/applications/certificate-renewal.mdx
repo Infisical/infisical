@@ -6,7 +6,7 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which reissues a certificate exactly as it's on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which reissues a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
   A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
@@ -165,7 +165,7 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
     The algorithm is a property of the key itself, so it can't change while the key stays the same. To move from RSA to an elliptic curve key, or to a larger key size, renew with a new key pair.
   </Accordion>
   <Accordion title="What happens if the certificate policy changed since the certificate was issued?">
-    The renewal is validated against the policy as it's now, so a certificate that no longer satisfies the policy is rejected with a message naming the field at fault. Adjust the values during the renewal so they fit the current policy.
+    The renewal is validated against the policy as it is now, so a certificate that no longer satisfies the policy is rejected with a message naming the field at fault. Adjust the values during the renewal so they fit the current policy.
   </Accordion>
   <Accordion title="Can I renew a certificate that Infisical did not generate the key for?">
     Yes. Choose a new key pair, or supply a CSR generated from the existing key. A certificate issued from a signing request can also reuse its public key, in which case the renewal is made from that original request.

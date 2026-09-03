@@ -7,7 +7,7 @@ vocab: false
 nonword: true
 swap:
 
-  '(?<=^|[.!?]\s|\b(?:if|when|then|because|since|while|until|unless|though|although|whether|that|and|but|so|as|before|after|once|where|why|how|otherwise|generally|however|which)\s)\bit is\b(?! not)(?!\.)(?![,;)])(?!\s*$)': "it's"
+  '(?<=^|[.!?]\s|\b(?:if|when|then|because|since|while|until|unless|though|although|whether|that|and|but|so|before|after|once|where|why|how|otherwise|generally|however|which)\s)\bit is\b(?! not)(?!\.)(?![,;)])(?!\s*$)': "it's"
   '\byou will\b(?! not)(?![,;)])(?!\s*$)': "you'll"
   '\byou are\b(?! not)(?![,;)])(?!\s*$)': "you're"
   '\bwe are\b(?! not)(?![,;)])(?!\s*$)': "we're"
