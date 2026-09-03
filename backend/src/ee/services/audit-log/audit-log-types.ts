@@ -591,6 +591,8 @@ export enum EventType {
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
+  SSO_USER_PROFILE_SYNCED = "sso-user-profile-synced",
+  SSO_USER_EMAIL_SYNC_SKIPPED = "sso-user-email-sync-skipped",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -736,6 +738,7 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_ACCOUNT_CREDENTIALS_VIEW = "pam-account-credentials-view",
   PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
   PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
   PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
@@ -2213,6 +2216,8 @@ interface AddIdentityOidcAuthEvent {
   type: EventType.ADD_IDENTITY_OIDC_AUTH;
   metadata: {
     identityId: string;
+    templateId?: string | null;
+    templateName?: string;
     oidcDiscoveryUrl: string;
     caCert: string;
     boundIssuer: string;
@@ -2238,6 +2243,9 @@ interface UpdateIdentityOidcAuthEvent {
   type: EventType.UPDATE_IDENTITY_OIDC_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
+    templateId?: string | null;
+    templateName?: string;
     oidcDiscoveryUrl?: string;
     caCert?: string;
     boundIssuer?: string;
@@ -4953,6 +4961,36 @@ interface OidcProvisionedPlaceholderAdoptedEvent {
   };
 }
 
+interface SsoUserProfileSyncedEvent {
+  type: EventType.SSO_USER_PROFILE_SYNCED;
+  metadata: {
+    userId: string;
+    aliasType: string;
+    externalId: string;
+    previousEmail?: string;
+    newEmail?: string;
+    previousFirstName?: string | null;
+    newFirstName?: string;
+    previousLastName?: string | null;
+    newLastName?: string;
+  };
+}
+
+export type TSsoUserEmailSyncSkipReason = "address-taken" | "domain-not-owned";
+
+interface SsoUserEmailSyncSkippedEvent {
+  type: EventType.SSO_USER_EMAIL_SYNC_SKIPPED;
+  metadata: {
+    userId: string;
+    aliasType: string;
+    externalId: string;
+    currentEmail: string;
+    assertedEmail: string;
+    reason: TSsoUserEmailSyncSkipReason;
+    conflictingUserId?: string;
+  };
+}
+
 interface CreateKmipClientEvent {
   type: EventType.CREATE_KMIP_CLIENT;
   metadata: {
@@ -6065,6 +6103,19 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamAccountCredentialsViewEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIALS_VIEW;
+  metadata: {
+    accountId: string;
+    accountName: string;
+    accountType: string;
+    folderId?: string | null;
+    folderName?: string | null;
+    reason?: string | null;
+    grantExpiresAt?: string | null;
+  };
+}
+
 interface PamDiscoverySourceCreateEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
   metadata: { sourceId: string; discoveryType: string; name: string };
@@ -6131,6 +6182,7 @@ interface PamAccessRequestCreateEvent {
     accountId: string;
     folderId: string;
     duration: string;
+    accessType: string;
     reason?: string;
   };
 }
@@ -7630,6 +7682,8 @@ export type Event =
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | OidcProvisionedPlaceholderAdoptedEvent
+  | SsoUserProfileSyncedEvent
+  | SsoUserEmailSyncSkippedEvent
   | CreateKmipClientEvent
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent
@@ -7755,6 +7809,7 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamAccountCredentialsViewEvent
   | PamDiscoverySourceCreateEvent
   | PamDiscoverySourceUpdateEvent
   | PamDiscoverySourceDeleteEvent

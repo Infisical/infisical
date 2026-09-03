@@ -255,7 +255,7 @@ curl -X POST \
 ## Important notes
 
 - **Security Warning**: The instance admin machine identity has the highest level of privileges in your Infisical deployment. The token should be treated with the utmost security and handled like a root credential. Unauthorized access to this token could compromise your entire Infisical instance.
-- Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities
+- Security controls prevent privilege escalation: instance admin identities can't be managed by non-instance admin users and identities
 - The instance admin permission of the generated identity can be revoked later in the server admin panel if needed
 - The generated admin user account can still be used for UI access if needed, or can be removed if you prefer to manage everything through the machine identity
 - This process is designed to work with future Crossplane providers and the existing Terraform provider for full infrastructure-as-code capabilities

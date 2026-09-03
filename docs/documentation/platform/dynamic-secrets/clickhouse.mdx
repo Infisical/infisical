@@ -114,7 +114,7 @@ GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
 
   </Step>
   <Step title="Click 'Submit'">
-    After submitting the form, you will see a dynamic secret created in the dashboard.
+    After submitting the form, you'll see a dynamic secret created in the dashboard.
 
     <Note>
       If this step fails, verify that the service user has the `CREATE USER`, `DROP USER`, and `GRANT OPTION` privileges, and that the host and port are reachable from Infisical.
@@ -124,7 +124,7 @@ GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
   </Step>
   <Step title="Generate dynamic secrets">
     Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-    To do this, simply click on the **Generate** button which appears when hovering over the dynamic secret item.
+    To do this, simply select the **Generate** button which appears when hovering over the dynamic secret item.
     Alternatively, you can initiate the creation of a new lease by selecting **New Lease** from the dynamic secret lease list section.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -145,15 +145,15 @@ GRANT CREATE USER, DROP USER, GRANT OPTION ON *.* TO 'infisical';
 </Steps>
 
 ## Audit or revoke leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic secret
 </Warning>

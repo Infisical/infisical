@@ -18,8 +18,8 @@ Groups have the following properties:
 
 - If a group is added to a project under specific role(s), all identities in the group will be provisioned access to the project with the role(s). Conversely, if a group is removed from a project, all identities in the group will lose access to the project.
 - If an identity is added to a group, they will inherit the access control properties of the group including access to project(s) under the role(s) assigned to the group. Conversely, if an identity is removed from a group, they will lose access to project(s) that the group has access to.
-- If an identity was previously added to a project under a role and is later added to a group that has access to the same project under a different role, then the identity will now have access to the project under the composite permissions of the two roles. If the group is subsequently removed from the project, the identity will not lose access to the project as they were previously added to the project separately.
-- An identity can be part of multiple groups. If an identity is part of multiple groups, they will inherit the composite permissions of all the groups that they are part of.
+- If an identity was previously added to a project under a role and is later added to a group that has access to the same project under a different role, then the identity will now have access to the project under the composite permissions of the two roles. If the group is subsequently removed from the project, the identity won't lose access to the project as they were previously added to the project separately.
+- An identity can be part of multiple groups. If an identity is part of multiple groups, they will inherit the composite permissions of all the groups that they're part of.
 
 ## Workflow
 

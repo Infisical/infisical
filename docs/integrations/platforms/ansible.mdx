@@ -8,7 +8,7 @@ You can find the Infisical Ansible collection on [Ansible Galaxy](https://galaxy
 This Ansible Infisical collection includes a variety of Ansible content to help automate the management of Infisical services. This collection is maintained by the Infisical team.
 
 ## Ansible version compatibility
-Tested with the Ansible Core >= 2.12.0 versions, and the current development version of Ansible. Ansible Core versions prior to 2.12.0 have not been tested.
+Tested with the Ansible Core >= 2.12.0 versions, and the current development version of Ansible. Ansible Core versions prior to 2.12.0 haven't been tested.
 
 ## Python version compatibility
 This collection depends on the Infisical SDK for Python.
@@ -22,7 +22,7 @@ You can install the Infisical collection with the Ansible Galaxy CLI:
 ansible-galaxy collection install infisical.vault
 ```
 
-The python module dependencies are not installed by ansible-galaxy. They can be manually installed using pip:
+The python module dependencies aren't installed by ansible-galaxy. They can be manually installed using pip:
 
 ```bash
 pip install infisicalsdk
@@ -541,11 +541,11 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
   If you get this Python error when you running the lookup plugin:
 
   ```
-  objc[72832]: +[__NSCFConstantString initialize] may have been in progress in another thread when fork() was called. We cannot safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
+  objc[72832]: +[__NSCFConstantString initialize] may have been in progress in another thread when fork() was called. We can't safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
   Fatal Python error: Aborted
   ```
 
-  You will need to add this to your shell environment or ansible wrapper script:
+  You'll need to add this to your shell environment or ansible wrapper script:
 
   ```
   export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES

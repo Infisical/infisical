@@ -174,7 +174,7 @@ Supports conditions and permission inversion.
 | Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
 | `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you're using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
@@ -243,7 +243,7 @@ Supports conditions and permission inversion.
 | `read` | List and view all secret approval requests in the project                   |
 
 <Note>
-  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
+  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they're committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
 </Note>
 
 #### Subject: `secret-rotation`
@@ -477,11 +477,11 @@ When defining conditions for permissions, you can use the following operators to
 | `$elemMatch` | Element match for nested objects/arrays | `object` |
 
 <Note>
-When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
+When using `$glob`, note that `*` doesn't match across `/` boundaries. Use `**` to match across multiple path segments.
 
-A trailing `/*` also does **not** match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
+A trailing `/*` also doesn't match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
 
-| Pattern | Matches | Does not match |
+| Pattern | Matches | Doesn't match |
 |---------|---------|----------------|
 | `/app/*` | `/app/config`, `/app/secrets` | `/app` (the folder itself), `/app/config/db` |
 | `/app/**` | `/app`, `/app/config`, `/app/config/db/primary` | `/other/config` |

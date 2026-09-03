@@ -15,10 +15,10 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
 - The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
 - Up to **4 mirror URLs** can be configured per CA.
 - URLs must use `http://` or `https://`.
-- Changes apply only to certificates issued **after** the update — existing certificates are not affected.
+- Changes apply only to certificates issued **after** the update — existing certificates aren't affected.
 
 <Warning>
-  Infisical only **advertises** the mirror URLs in issued certificates — it does not publish your CRL to them. You are responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
+  Infisical only **advertises** the mirror URLs in issued certificates — it doesn't publish your CRL to them. You're responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
 </Warning>
 
 ## Configure CRL mirrors

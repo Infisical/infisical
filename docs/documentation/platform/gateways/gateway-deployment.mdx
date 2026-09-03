@@ -15,7 +15,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 <Steps>
   <Step title="Set Up a Relay Server">
     Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
-    - **Managed relay (Infisical Cloud, US/EU only):** If you are using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
+    - **Managed relay (Infisical Cloud, US/EU only):** If you're using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
     - **Self-hosted relay:** For all other cases, you must deploy your own relay server. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
   </Step>
   <Step title="Create the Gateway in the UI">
@@ -43,7 +43,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
     For managed relays, allow outbound traffic to the provided relay server IP/hostname. For self-hosted relays, allow outbound traffic to your own relay server address.
 
-    If you are in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
+    If you're in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
 
     <Tip>
       For the full connection model, a complete port reference, and firewall details (including self-hosted relays and HTTP forward proxies), see the [Network Architecture](/documentation/platform/gateways/network-architecture) page.
@@ -97,7 +97,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
             ```
 
             <Info>
-              A PersistentVolumeClaim is created by default to store enrollment credentials across pod restarts. The enrollment token is single-use. Without persistent storage, the gateway cannot restart after the initial enrollment.
+              A PersistentVolumeClaim is created by default to store enrollment credentials across pod restarts. The enrollment token is single-use. Without persistent storage, the gateway can't restart after the initial enrollment.
             </Info>
 
             You can also pass the token inline (the chart creates the Secret for you):
@@ -168,7 +168,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         | **Allowed Namespaces** | Namespaces whose service accounts may authenticate as this gateway. Supports `*` wildcards. |
         | **Allowed Service Account Names** | Service account names that may authenticate as this gateway. Supports `*` wildcards. |
         | **Allowed Audience** | Optional. The audience the token must carry. |
-        | **CA Certificate** | The CA that issued the API server's certificate. Needed unless that certificate is already trusted by the public trust store, which for a cluster CA it will not be. |
+        | **CA Certificate** | The CA that issued the API server's certificate. Needed unless that certificate is already trusted by the public trust store, which for a cluster CA it won't be. |
         | **Token Reviewer JWT** | Optional. A token with the `system:auth-delegator` ClusterRole. Leave empty to let the gateway's own service account review its token, which the Helm chart configures by default. |
 
         At least one of **Allowed Namespaces** or **Allowed Service Account Names** must be set, so that not every pod in the cluster can enroll as the gateway.
@@ -182,12 +182,12 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         | **Gateway as Reviewer** | The selected gateway, using its own service account | That gateway runs as a pod in the same cluster. No host or reviewer token needed. |
         | **Manual Token Reviewer JWT (API)** | Infisical, tunnelling through the gateway | A Kubernetes host and a reviewer token. Works from any gateway that can reach the API server, including one on a VM in the same network. |
 
-        A gateway pool can only be used with **Manual Token Reviewer JWT (API)**, where any healthy member performs the check and one gateway going offline does not stop the others from authenticating. **Gateway as Reviewer** requires a specific gateway, because in that mode the selected gateway decides the outcome and pool membership can change after the config is saved.
+        A gateway pool can only be used with **Manual Token Reviewer JWT (API)**, where any healthy member performs the check and one gateway going offline doesn't stop the others from authenticating. **Gateway as Reviewer** requires a specific gateway, because in that mode the selected gateway decides the outcome and pool membership can change after the config is saved.
 
         <Warning>
-          A gateway cannot review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
+          A gateway can't review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
 
-          This means the **first** gateway in a private cluster cannot use Kubernetes auth. Enrol it with an enrollment token or AWS auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they are pointed elsewhere.
+          This means the **first** gateway in a private cluster can't use Kubernetes auth. Enrol it with an enrollment token or AWS auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they're pointed elsewhere.
         </Warning>
 
         <Tabs>
@@ -257,7 +257,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 From the gateway's detail page (select the gateway row in the list):
 
-- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway does **not** disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
 - **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
@@ -292,7 +292,7 @@ Test relay connectivity and outbound API access from the gateway:
 </Accordion>
 
 <Accordion title="How do I troubleshoot relay connectivity issues?">
-If the gateway cannot connect to the relay:
+If the gateway can't connect to the relay:
 
 1. Verify the relay server is running and accessible
 2. Check firewall rules allow outbound connections on port 2222
@@ -304,7 +304,7 @@ If the gateway cannot connect to the relay:
 </Accordion>
 
 <Accordion title="How do I troubleshoot authentication failures?">
-For token method: ensure the enrollment token has not expired or already been used. Open the gateway's detail page and select **Show deploy command** to generate a fresh token.
+For token method: ensure the enrollment token hasn't expired or already been used. Open the gateway's detail page and select **Show deploy command** to generate a fresh token.
 
 For AWS method: ensure the host has AWS credentials available (instance role, env vars, or shared profile) and the resolved principal/account is in the allowlist on the gateway's detail page.
 

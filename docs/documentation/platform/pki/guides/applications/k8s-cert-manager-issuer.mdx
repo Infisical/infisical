@@ -15,9 +15,9 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
 ## When to use the Infisical Issuer instead of ACME
 
 - You want to authenticate with a [machine identity](/documentation/platform/identities/machine-identities) ([Universal Auth](/documentation/platform/identities/universal-auth) or [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth)) rather than ACME/EAB credentials.
-- You want the **CA chain populated** in the Secret's `ca.crt` automatically (with the ACME issuer this is not automatic and needs extra setup such as [trust-manager](https://cert-manager.io/docs/trust/trust-manager/)).
-- You do not want ACME domain-ownership challenges (HTTP-01/DNS-01).
-- You are issuing workload identity certificates (for example `spiffe://` URIs for service meshes).
+- You want the **CA chain populated** in the Secret's `ca.crt` automatically (with the ACME issuer this isn't automatic and needs extra setup such as [trust-manager](https://cert-manager.io/docs/trust/trust-manager/)).
+- You don't want ACME domain-ownership challenges (HTTP-01/DNS-01).
+- You're issuing workload identity certificates (for example `spiffe://` URIs for service meshes).
 
 ## How it works
 
@@ -109,7 +109,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
   </Step>
 
   <Step title="Store your machine identity credentials in a Secret">
-    Create a Kubernetes `Secret` holding your machine identity credentials, in the namespace where you will issue certificates.
+    Create a Kubernetes `Secret` holding your machine identity credentials, in the namespace where you'll issue certificates.
 
     <Tabs>
       <Tab title="Universal Auth">

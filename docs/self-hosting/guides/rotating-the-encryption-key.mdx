@@ -26,8 +26,8 @@ value**, so generating a key changes nothing until you deploy it.
 
 - You need **server admin** access.
 - Have somewhere to store two keys. You hold both the new and the old key until you finish.
-- Know which rotation you are doing. A scheduled rotation can take its time. If you are responding to a
-  leaked key, your exposure is not reduced until you remove the old key in step 5.
+- Know which rotation you're doing. A scheduled rotation can take its time. If you're responding to a
+  leaked key, your exposure isn't reduced until you remove the old key in step 5.
 
 ## Rotate
 
@@ -53,7 +53,7 @@ value**, so generating a key changes nothing until you deploy it.
     Set `ENCRYPTION_KEY` to the new value and restart your instances as you normally would. A rolling
     restart works and needs no downtime.
 
-    The first instance that starts with the new key applies the rotation. Instances that have not restarted
+    The first instance that starts with the new key applies the rotation. Instances that haven't restarted
     yet keep serving normally, and instances that restart on the old key still start.
 
   </Step>
@@ -62,13 +62,13 @@ value**, so generating a key changes nothing until you deploy it.
     Return to **Encryption** and check the key table under **Root Encryption Keys**. The new key is
     listed as **Active**, and the old one shows the date it expires.
 
-    If the new key is not listed yet, no instance has started with the new value. Check that
+    If the new key isn't listed yet, no instance has started with the new value. Check that
     `ENCRYPTION_KEY` reached your instances, then restart one.
 
   </Step>
 
   <Step title="Remove the old key">
-    Until you remove it, the old key still opens your database, so the rotation has not reduced your
+    Until you remove it, the old key still opens your database, so the rotation hasn't reduced your
     exposure yet.
 
     When every instance has restarted on the new key, select **Deactivate Now** in the rotation banner,
@@ -78,7 +78,7 @@ value**, so generating a key changes nothing until you deploy it.
     ![Remove encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/remove-key.png)
 
     <Warning>
-      This cannot be undone. Afterwards, losing the new key means losing access to every secret in the
+      This can't be undone. Afterwards, losing the new key means losing access to every secret in the
       instance, and any database backup taken before the rotation needs the old key to restore.
     </Warning>
 
@@ -88,7 +88,7 @@ value**, so generating a key changes nothing until you deploy it.
 
     Rotating again before you remove the old key removes it for you, at the moment the new key is first
     used. Infisical warns you about this when it generates the key. Only one old key is ever kept, so an
-    instance two rotations behind will not be able to restart.
+    instance two rotations behind won't be able to restart.
 
   </Step>
 </Steps>
@@ -101,10 +101,10 @@ Do one of these:
   backup, tagged with the label from the key table under **Root Encryption Keys**. That table is kept
   permanently, so a restored backup can always be matched to the key it needs.
 - **Crypto-shred.** Remove the old key, take a fresh full backup immediately, and expire backups taken
-  before the rotation. A backup nobody can decrypt is also a backup that cannot leak.
+  before the rotation. A backup nobody can decrypt is also a backup that can't leak.
 
 The key table lists every key the instance has used and when. If an instance ever fails to
-start with "the configured encryption key does not decrypt this database's root key", the error names the
+start with "the configured encryption key doesn't decrypt this database's root key", the error names the
 label it needs, which you can look up there.
 
 ## What is reversible when
@@ -114,9 +114,9 @@ far you have got.
 
 | When you revert `ENCRYPTION_KEY`                            | What happens                                                                                                                     |
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Before any instance restarts                                | Nothing has changed. The generated key is still waiting, so select the discard icon on its row if you are abandoning the rotation. |
-| After an instance applied it, before you remove the old key | Instances boot on the old key and keep serving. The rotation is not undone: the new key is still the active one.                 |
-| After you removed the old key                               | Those instances will not start. Give them the new key to bring them back.                                                        |
+| Before any instance restarts                                | Nothing has changed. The generated key is still waiting, so select the discard icon on its row if you're abandoning the rotation. |
+| After an instance applied it, before you remove the old key | Instances boot on the old key and keep serving. The rotation isn't undone: the new key is still the active one.                 |
+| After you removed the old key                               | Those instances won't start. Give them the new key to bring them back.                                                        |
 
-The window in the middle row exists so instances can finish rolling over. It is not a way to undo the
+The window in the middle row exists so instances can finish rolling over. It isn't a way to undo the
 rotation.

@@ -82,6 +82,7 @@ export const accountAccessibilitySql = (accountTable: string, templateTable: str
 
 type TPamAccountTemplateInheritedFields = {
   credentialConfigured: boolean;
+  encryptedCredentials: Buffer;
   templateGatewayId: string | null;
   templateGatewayPoolId: string | null;
   templateRecordingConnectionId: string | null;
@@ -191,6 +192,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.recordingConnectionId`,
         `${TableName.PamAccount}.settingsOverrides`,
         `${TableName.PamAccount}.credentialConfigured`,
+        `${TableName.PamAccount}.encryptedCredentials`,
         `${TableName.PamAccount}.createdAt`,
         `${TableName.PamAccount}.updatedAt`,
         `${TableName.PamAccountTemplate}.type as accountType`,

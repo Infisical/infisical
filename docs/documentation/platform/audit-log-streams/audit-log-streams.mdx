@@ -6,7 +6,7 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 <Info>
     Audit log streams is a paid feature.
 
-    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
+    If you're using Infisical Cloud, then it's available under the **Enterprise Tier**. If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 Infisical Audit Log Streaming enables you to transmit your organization's audit logs to external logging providers for monitoring and analysis.
@@ -80,7 +80,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 
                 ![azure configure dce](/images/platform/audit-log-streams/azure-configure-dce.png)
 
-                After creation, it may take a few minutes for the Data Collection Endpoint to appear. Once visible, click on it and copy the **Logs Ingestion** URL. You will need this URL in later steps.
+                After creation, it may take a few minutes for the Data Collection Endpoint to appear. Once visible, click on it and copy the **Logs Ingestion** URL. You'll need this URL in later steps.
 
                 ![azure dce url](/images/platform/audit-log-streams/azure-dce-url.png)
             </Step>
@@ -304,7 +304,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
         <Note>
             **Splunk Cloud serves the HTTP Event Collector on port 443.** The default port `8088` applies to Splunk Enterprise and to Splunk Cloud free trials.
 
-            Splunk Cloud also uses a dedicated collector hostname, which is not the address you use to reach the Splunk web interface:
+            Splunk Cloud also uses a dedicated collector hostname, which isn't the address you use to reach the Splunk web interface:
 
             | Splunk Cloud region | Hostname |
             | --- | --- |
@@ -399,13 +399,13 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 
 ## Delivery reliability and failure handling
 
-Audit log delivery is decoupled from the action that produced the event. When something happens in Infisical, the event is first recorded as an audit log and durably queued for streaming, and only then delivered to your configured destinations in the background. A streaming failure never blocks or rolls back the underlying action, and a temporary outage at your destination does not lose events that were already queued.
+Audit log delivery is decoupled from the action that produced the event. When something happens in Infisical, the event is first recorded as an audit log and durably queued for streaming, and only then delivered to your configured destinations in the background. A streaming failure never blocks or rolls back the underlying action, and a temporary outage at your destination doesn't lose events that were already queued.
 
 ### What happens when an event fails to be pushed to a stream?
 
 If a delivery attempt to your destination fails, the event is **not** discarded immediately. Instead:
 
-1. **Automatic retries with backoff.** The event is retried automatically up to **5 attempts**. Retries use exponential backoff with jitter (starting at 30 seconds and capping at roughly 4 minutes between attempts) so a struggling or rate-limiting destination is not hammered.
+1. **Automatic retries with backoff.** The event is retried automatically up to **5 attempts**. Retries use exponential backoff with jitter (starting at 30 seconds and capping at roughly 4 minutes between attempts) so a struggling or rate-limiting destination isn't hammered.
 2. **Exhaustion.** If all 5 attempts fail, the event is dropped from the stream. The drop is surfaced for observability through logs and metrics.
 
 <Note>
@@ -414,7 +414,7 @@ If a delivery attempt to your destination fails, the event is **not** discarded 
 
 ### Can I manually retry a failed event?
 
-There is no manual "retry" or "replay" button so far, and retries are not something you trigger yourself. Retrying is fully **automatic**, as described above: every event is retried up to 5 times with backoff, and crashed or stalled deliveries are automatically recovered by the background sweeper. In practice, transient destination outages recover on their own once the destination is reachable again, with no action required on your side.
+There is no manual "retry" or "replay" button so far, and retries aren't something you trigger yourself. Retrying is fully **automatic**, as described above: every event is retried up to 5 times with backoff, and crashed or stalled deliveries are automatically recovered by the background sweeper. In practice, transient destination outages recover on their own once the destination is reachable again, with no action required on your side.
 
 ### How can I backfill lost events into my SIEM?
 
@@ -427,7 +427,7 @@ Because streaming is best-effort with bounded retries, your durable source of tr
 3. **Re-ingest into your SIEM.** Push the exported events into your SIEM using its native ingestion API. The exported fields match the [audit log structure](#audit-logs-structure) below, so the same parsing and transformation rules you already use for the live stream apply to backfilled events.
 
 <Warning>
-    Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and are not using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events cannot be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
+    Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and aren't using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events can't be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
 </Warning>
 
 ## Delivery format
@@ -446,7 +446,7 @@ For **Custom** streams, each request is an HTTP `POST` with a body containing a 
 Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk, Sumo Logic) are batched automatically using each provider's native bulk-ingestion format.
 
 <Note>
-    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
+    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it can't be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
 </Note>
 
 ### Example log entry
@@ -570,7 +570,7 @@ The example below shows a single audit log event. For Custom streams using batch
 </ParamField>
 
 <ParamField path="updatedAt" type="string" required>
-    The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
+    The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we don't update log entries after they've been created.
 </ParamField>
 
 <ParamField path="orgId" type="string" required>

@@ -24,6 +24,7 @@ import { registerCloudflareConnectionRouter } from "./cloudflare-connection-rout
 import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
+import { registerDaytonaConnectionRouter } from "./daytona-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDevinConnectionRouter } from "./devin-connection-router";
 import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
@@ -170,5 +171,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
     [AppConnection.Fireworks]: registerFireworksConnectionRouter,
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
-    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter
+    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
+    [AppConnection.Daytona]: registerDaytonaConnectionRouter
   };

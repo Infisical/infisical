@@ -7,7 +7,8 @@ import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-ku
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
 import {
   kubernetesTemplateFieldsResponseSchema,
-  ldapTemplateFieldsResponseSchema
+  ldapTemplateFieldsResponseSchema,
+  oidcTemplateFieldsResponseSchema
 } from "./identity-auth-template-schemas";
 
 // what every read path returns: the row with its credentials replaced by presence flags.
@@ -24,6 +25,10 @@ export type TSanitizedIdentityAuthTemplate = Omit<
     | {
         authMethod: IdentityAuthTemplateMethod.KUBERNETES;
         templateFields: z.infer<typeof kubernetesTemplateFieldsResponseSchema>;
+      }
+    | {
+        authMethod: IdentityAuthTemplateMethod.OIDC;
+        templateFields: z.infer<typeof oidcTemplateFieldsResponseSchema>;
       }
   );
 
@@ -45,6 +50,13 @@ export type TKubernetesTemplateFields = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   allowedAudience?: string;
+};
+
+export type TOidcTemplateFields = {
+  oidcDiscoveryUrl: string;
+  boundIssuer: string;
+  boundAudiences?: string;
+  caCert?: string;
 };
 
 export type TDeleteIdentityAuthTemplateDTO = {

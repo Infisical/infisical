@@ -394,3 +394,4 @@ I
 # Ordinary technical vocabulary the en_US dictionary does not carry.
 (?i)prefilled
 (?i)unscoped
+(?i)rsync

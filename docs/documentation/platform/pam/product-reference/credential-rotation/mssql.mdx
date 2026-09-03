@@ -17,7 +17,7 @@ ALTER LOGIN "<target_login>" WITH PASSWORD = '<generated_password>';
 The connection uses the account's existing connection details, including the SSL settings.
 
 <Warning>
-  Only **SQL Server authentication** logins can be rotated. Windows-authenticated accounts are not supported, because their passwords are managed by the domain or the operating system rather than by SQL Server. A rotation on a Windows-authenticated account is rejected before any change is attempted.
+  Only **SQL Server authentication** logins can be rotated. Windows-authenticated accounts aren't supported, because their passwords are managed by the domain or the operating system rather than by SQL Server. A rotation on a Windows-authenticated account is rejected before any change is attempted.
 </Warning>
 
 ## Rotation account requirements

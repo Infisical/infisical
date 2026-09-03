@@ -23,6 +23,7 @@ import {
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
+  DaytonaConnectionMethod,
   DbtConnectionMethod,
   DevinConnectionMethod,
   FlyioConnectionMethod,
@@ -623,6 +624,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
     description: "Sync and manage resources with Spacelift."
+  },
+  [AppConnection.Daytona]: {
+    name: "Daytona",
+    image: "Daytona.png",
+    category: "PLATFORM",
+    description: "Organization secret access for Daytona sandboxes."
   }
 };
 
@@ -732,6 +739,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
+    case DaytonaConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

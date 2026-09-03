@@ -19,7 +19,7 @@ Anyone who installed the CLI on Linux from the Cloudsmith `apt`, `yum`/`dnf`, or
 - Container images with the CLI baked in
 - Developer machines running Linux
 
-Homebrew (macOS) and Windows users are **not affected**.
+Homebrew (macOS) and Windows users aren't affected.
 
 ## Impact of not migrating
 
@@ -71,7 +71,7 @@ Remove the old Cloudsmith source first, then re-run the repository setup script 
 
 ## Already on the new host but stuck on an older version?
 
-If you are on RHEL/CentOS/Fedora and your machine won't install the latest release, your repo config may be pointing at an outdated path from an earlier setup. Re-run the setup script to fix it, then refresh:
+If you're on RHEL/CentOS/Fedora and your machine won't install the latest release, your repo config may be pointing at an outdated path from an earlier setup. Re-run the setup script to fix it, then refresh:
 
 ```bash
 curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
@@ -79,7 +79,7 @@ sudo yum clean all && sudo yum makecache && sudo yum install -y infisical
 ```
 
 <Note>
-  This version-pinning issue only affects RHEL/CentOS/Fedora (yum/dnf). Debian/Ubuntu and Alpine are not affected.
+  This version-pinning issue only affects RHEL/CentOS/Fedora (yum/dnf). Debian/Ubuntu and Alpine aren't affected.
 </Note>
 
 ## Verify the migration

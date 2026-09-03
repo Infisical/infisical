@@ -306,6 +306,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
     description: "Environment variables or file mounts for Spacelift contexts."
+  },
+  [SecretSync.Daytona]: {
+    name: "Daytona",
+    image: "Daytona.png",
+    category: "PLATFORM",
+    description: "Organization secrets for Daytona sandboxes."
   }
 };
 
@@ -364,7 +370,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
-  [SecretSync.Spacelift]: AppConnection.Spacelift
+  [SecretSync.Spacelift]: AppConnection.Spacelift,
+  [SecretSync.Daytona]: AppConnection.Daytona
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

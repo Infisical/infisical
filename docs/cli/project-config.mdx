@@ -22,11 +22,11 @@ To simplify the process, you can establish a default environment, which will be 
 
 ### How it works
 If both `defaultEnvironment` and `gitBranchToEnvironmentMapping` are configured, `gitBranchToEnvironmentMapping` will take precedence over `defaultEnvironment`. 
-However, if `gitBranchToEnvironmentMapping` is not set and `defaultEnvironment` is, then the `defaultEnvironment` will be used to execute your Infisical CLI commands.
+However, if `gitBranchToEnvironmentMapping` isn't set and `defaultEnvironment` is, then the `defaultEnvironment` will be used to execute your Infisical CLI commands.
 If you wish to override the `defaultEnvironment`, you can do so by using the `--env` flag explicitly.
 
 ## Set Infisical environment based on GitHub branch 
-When fetching your secrets from Infisical, you can switch between environments by using the `--env` flag. However, in certain cases, you may prefer the environment to be automatically mapped based on the current GitHub branch you are working on. 
+When fetching your secrets from Infisical, you can switch between environments by using the `--env` flag. However, in certain cases, you may prefer the environment to be automatically mapped based on the current GitHub branch you're working on. 
 To achieve this, simply add the `gitBranchToEnvironmentMapping` property to your configuration file, as shown below.
 
 ```json .infisical.json
@@ -40,7 +40,7 @@ To achieve this, simply add the `gitBranchToEnvironmentMapping` property to your
 ```
 
 ### How it works
-After configuring this property, every time you use the CLI with the specified configuration file, it will automatically verify if there is a corresponding environment mapping for the current GitHub branch you are on.
+After configuring this property, every time you use the CLI with the specified configuration file, it will automatically verify if there is a corresponding environment mapping for the current GitHub branch you're on.
 If it exists, the CLI will use that environment to retrieve secrets. You can override this behavior by explicitly using the `--env` flag while interacting with the CLI.
 
 ## Set the Infisical instance domain
@@ -62,8 +62,8 @@ The CLI resolves the domain in the following order, from highest to lowest prece
 3. The `domain` field in `.infisical.json`
 4. The default (US Cloud, `https://app.infisical.com`)
 
-The value must start with `http://` or `https://`, otherwise it is ignored. Always prefer `https://`. An `http://` domain sends your secrets and credentials over the network in plaintext, so only use it for isolated, private-network setups.
+The value must start with `http://` or `https://`, otherwise it's ignored. Always prefer `https://`. An `http://` domain sends your secrets and credentials over the network in plaintext, so only use it for isolated, private-network setups.
 
 <Warning>
-  Because `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust, and review it when cloning a project you do not control.
+  Because `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust, and review it when cloning a project you don't control.
 </Warning>

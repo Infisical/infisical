@@ -1,6 +1,7 @@
 export enum IdentityAuthTemplateMethod {
   LDAP = "ldap",
-  KUBERNETES = "kubernetes"
+  KUBERNETES = "kubernetes",
+  OIDC = "oidc"
 }
 
 export const TEMPLATE_VALIDATION_MESSAGES = {
@@ -22,6 +23,14 @@ export const TEMPLATE_VALIDATION_MESSAGES = {
       "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification.",
     TLS_VERIFICATION_CONFLICT:
       "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+  },
+  OIDC: {
+    DISCOVERY_URL_REQUIRED: "OIDC discovery URL is required",
+    DISCOVERY_URL_WELL_KNOWN_SUFFIX:
+      "Remove the /.well-known/openid-configuration suffix from the OIDC discovery URL. Infisical appends it automatically.",
+    DISCOVERY_URL_QUERY_OR_FRAGMENT:
+      "Remove the query string or fragment from the OIDC discovery URL. Infisical appends /.well-known/openid-configuration to it, which would land inside them.",
+    ISSUER_REQUIRED: "Issuer is required"
   }
 } as const;
 
@@ -35,5 +44,6 @@ export const TEMPLATE_SUCCESS_MESSAGES = {
 // template read path strips them, and the edit UI treats them as write-only
 export const TEMPLATE_SECRET_FIELDS_BY_METHOD: Record<IdentityAuthTemplateMethod, readonly string[]> = {
   [IdentityAuthTemplateMethod.LDAP]: ["bindPass"],
-  [IdentityAuthTemplateMethod.KUBERNETES]: ["tokenReviewerJwt"]
+  [IdentityAuthTemplateMethod.KUBERNETES]: ["tokenReviewerJwt"],
+  [IdentityAuthTemplateMethod.OIDC]: []
 };

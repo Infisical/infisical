@@ -34,8 +34,8 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 | Role | Capabilities |
 |------|--------------|
 | **Administrator** | Edit settings, manage members, edit the approval policy, pre-approve signing for others, sign, and export the certificate. |
-| **Operator** | Sign artifacts and submit signing requests. Export the certificate. Cannot manage members or the policy. |
-| **Auditor** | View members, activity, and the audit log. Export the certificate. Cannot sign or change anything. |
+| **Operator** | Sign artifacts and submit signing requests. Export the certificate. Can't manage members or the policy. |
+| **Auditor** | View members, activity, and the audit log. Export the certificate. Can't sign or change anything. |
 
 <Info>
   The user who creates a Signer becomes its Administrator automatically.
@@ -43,7 +43,7 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 
 ## Create a signer
 
-In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through five steps in order: Basics, Certificate, Signing Key, Members, and Approval Policy.
+In **Certificate Manager → Code Signing → Signers**, select **Create Signer**. The wizard walks you through five steps in order: Basics, Certificate, Signing Key, Members, and Approval Policy.
 
 <Steps>
   <Step title="Basics">
@@ -121,7 +121,7 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 
 | Status | Meaning |
 |--------|---------|
-| **Pending** | The Signer is created but the certificate has not been issued yet. Most common with external CAs that take time to respond. The PKCS#11 module sees this slot but signing is rejected until the certificate lands. |
+| **Pending** | The Signer is created but the certificate hasn't been issued yet. Most common with external CAs that take time to respond. The PKCS#11 module sees this slot but signing is rejected until the certificate lands. |
 | **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
 | **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
@@ -190,7 +190,7 @@ To sign with a Signer, pick the integration that matches your tooling:
     External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. AWS and Azure usually take seconds. DigiCert takes minutes to hours for an already-validated organization, and up to 3 business days the first time an organization is used for code signing while DigiCert validates it. If it stays Pending well beyond those windows, hover the badge. The failure reason appears there once the polling job gives up.
   </Accordion>
   <Accordion title="What happens to signed artifacts when I delete a Signer?">
-    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It does not invalidate past signatures.
+    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It doesn't invalidate past signatures.
   </Accordion>
   <Accordion title="Can I migrate an existing Signer between Infisical and an HSM?">
     Yes. From the Signer detail page, open **Edit Signer > Signing Key** and change **Key source**. When switching to HSM, pick an HSM Connector and a supported algorithm (RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384). Saving reissues the certificate with the new key. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.

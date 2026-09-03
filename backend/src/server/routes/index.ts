@@ -1313,7 +1313,8 @@ export const registerRoutes = async (
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    emailDomainDAL
   });
 
   const totpService = totpServiceFactory({
@@ -1362,6 +1363,7 @@ export const registerRoutes = async (
   });
 
   const samlService = samlConfigServiceFactory({
+    auditLogService,
     identityMetadataDAL,
     additionalPrivilegeDAL,
     permissionService,
@@ -1388,6 +1390,7 @@ export const registerRoutes = async (
   });
 
   const ldapService = ldapConfigServiceFactory({
+    auditLogService,
     additionalPrivilegeDAL,
     ldapConfigDAL,
     ldapGroupMapDAL,
@@ -2002,6 +2005,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     pamDiscoverySourceDAL,
     userDAL,
+    orgDAL,
+    mfaSessionService,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -2561,6 +2566,7 @@ export const registerRoutes = async (
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
+    identityOidcAuthDAL,
     gatewayDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
@@ -2703,6 +2709,7 @@ export const registerRoutes = async (
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityDAL,
     identityOidcAuthDAL,
+    identityAuthTemplateDAL,
     orgDAL,
     identityAccessTokenDAL,
     permissionService,

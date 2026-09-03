@@ -512,6 +512,14 @@ export const AppConnectionsBrowser = () => {
       category: "SaaS",
     },
     {
+      name: "Daytona",
+      slug: "daytona",
+      path: "/integrations/app-connections/daytona",
+      description:
+        "Learn how to connect Daytona to push secrets from Infisical into a Daytona organization.",
+      category: "SaaS",
+    },
+    {
       name: "Trigger.dev",
       slug: "trigger-dev",
       path: "/integrations/app-connections/trigger-dev",

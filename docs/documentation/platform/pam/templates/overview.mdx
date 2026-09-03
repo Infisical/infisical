@@ -22,7 +22,7 @@ If you need different rules — say, 4-hour sessions with MFA for production —
 
 <Steps>
   <Step title="Navigate to Account Templates">
-    Go to **Privileged Access Management → Account Templates** and click **Create Template**.
+    Go to **Privileged Access Management → Account Templates** and select **Create Template**.
   </Step>
   <Step title="Set the basics">
     | Field | Description |
@@ -34,10 +34,15 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   <Step title="Configure policies">
     | Option | What it does |
     |--------|--------------|
+    | **Require Approval** | Users must request and receive approval before launching a session or [viewing credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
+
+    <Note>
+      **Require Approval** gates sessions and credential reveals with one switch, but they are approved separately: a session request never reveals the credential, and a credential request never launches a session. A member who needs both files both.
+    </Note>
 
     <Note>
       **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.
@@ -51,7 +56,7 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     | **Session Log Masking** | Regex patterns for content to mask in recordings (one per line) |
   </Step>
   <Step title="Save">
-    Click **Create**. The template is now available when adding accounts.
+    Select **Create**. The template is now available when adding accounts.
   </Step>
 </Steps>
 

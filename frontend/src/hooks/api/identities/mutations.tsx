@@ -939,6 +939,7 @@ export const useUpdateIdentityOidcAuth = () => {
   return useMutation<IdentityOidcAuth, object, UpdateIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
@@ -956,6 +957,7 @@ export const useUpdateIdentityOidcAuth = () => {
       } = await apiRequest.patch<{ identityOidcAuth: IdentityOidcAuth }>(
         `/api/v1/auth/oidc-auth/identities/${identityId}`,
         {
+          templateId,
           oidcDiscoveryUrl,
           caCert,
           boundIssuer,
@@ -997,6 +999,7 @@ export const useAddIdentityOidcAuth = () => {
   return useMutation<IdentityOidcAuth, object, AddIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       oidcDiscoveryUrl,
       caCert,
       boundIssuer,
@@ -1014,6 +1017,7 @@ export const useAddIdentityOidcAuth = () => {
       } = await apiRequest.post<{ identityOidcAuth: IdentityOidcAuth }>(
         `/api/v1/auth/oidc-auth/identities/${identityId}`,
         {
+          templateId,
           oidcDiscoveryUrl,
           caCert,
           boundIssuer,
