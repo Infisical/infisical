@@ -1,5 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ClipboardCopyIcon, LockIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  ClipboardCopyIcon,
+  LockIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -18,6 +24,10 @@ import {
   ButtonGroup,
   Combobox,
   DocumentationLinkBadge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -76,16 +86,36 @@ const getInitialState = (
 ) => {
   if (invocation.origin === "toolbar") {
     return {
-      sourceEnvironmentSlug: getOtherCopyEnvironmentSlug(
-        environments,
-        invocation.destinationEnvironmentSlug
-      ),
+      sourceEnvironmentSlug: invocation.destinationEnvironmentSlug
+        ? getOtherCopyEnvironmentSlug(environments, invocation.destinationEnvironmentSlug)
+        : "",
       sourcePath: "/",
       destinationEnvironmentSlug: invocation.destinationEnvironmentSlug,
       destinationPath: invocation.destinationPath,
       selectedIds: [] as string[],
       includeValues: true,
       mode: "contents" as CopySecretsMode
+    };
+  }
+
+  if (invocation.origin === "bulk") {
+    const sourceEnvironmentSlugs = Object.keys(invocation.secretsByEnvironment);
+    const sourceEnvironmentSlug =
+      sourceEnvironmentSlugs.length === 1 ? sourceEnvironmentSlugs[0] : "";
+    const sourceSecrets = sourceEnvironmentSlug
+      ? invocation.secretsByEnvironment[sourceEnvironmentSlug]
+      : [];
+
+    return {
+      sourceEnvironmentSlug,
+      sourcePath: invocation.sourcePath,
+      destinationEnvironmentSlug: sourceEnvironmentSlug
+        ? getOtherCopyEnvironmentSlug(environments, sourceEnvironmentSlug)
+        : "",
+      destinationPath: "/",
+      selectedIds: sourceSecrets.map(({ id }) => id),
+      includeValues: sourceSecrets.every(({ isValueHidden }) => !isValueHidden),
+      mode: getCopyPathName(invocation.sourcePath) ? ("folder" as const) : ("contents" as const)
     };
   }
 
@@ -133,7 +163,9 @@ export const CopySecretsSheet = ({
   const [debouncedSourcePath] = useDebounce(sourcePath, 250);
   const [debouncedDestinationPath] = useDebounce(destinationPath, 250);
   const invocationKey = JSON.stringify(invocation);
-  const isSourceLocked = invocation?.origin === "row" || invocation?.origin === "bulk";
+  const hasInvocationSourceSecrets = invocation?.origin === "row" || invocation?.origin === "bulk";
+  const isSourceEnvironmentLocked = invocation?.origin === "row";
+  const isSourcePathLocked = hasInvocationSourceSecrets;
 
   useEffect(() => {
     if (!isOpen || !invocation) return;
@@ -157,13 +189,16 @@ export const CopySecretsSheet = ({
     options: {
       enabled:
         isOpen &&
-        !isSourceLocked &&
+        !hasInvocationSourceSecrets &&
         Boolean(projectId && sourceEnvironmentSlug && debouncedSourcePath)
     }
   });
 
   const sourceSecrets = useMemo<CopySecretsSource[]>(() => {
-    if (invocation?.origin === "row" || invocation?.origin === "bulk") return invocation.secrets;
+    if (invocation?.origin === "row") return invocation.secrets;
+    if (invocation?.origin === "bulk") {
+      return invocation.secretsByEnvironment[sourceEnvironmentSlug] ?? [];
+    }
     return (sourceQuery.data ?? []).map((secret) => ({
       id: secret.id,
       name: secret.secretKey,
@@ -172,7 +207,7 @@ export const CopySecretsSheet = ({
       isRotated: secret.isRotatedSecret,
       isHoneyToken: secret.isHoneyTokenSecret
     }));
-  }, [invocation, isSourceLocked, sourceQuery.data]);
+  }, [invocation, sourceEnvironmentSlug, sourceQuery.data]);
 
   const destinationQuery = useGetAccessibleSecrets({
     projectId,
@@ -199,8 +234,32 @@ export const CopySecretsSheet = ({
   }, [includeValues, sourceSecrets]);
 
   const sourceEnvironment = environments.find(({ slug }) => slug === sourceEnvironmentSlug) ?? null;
+  const sourceEnvironmentOptions =
+    invocation?.origin === "bulk"
+      ? environments.filter(({ slug }) => Boolean(invocation.secretsByEnvironment[slug]?.length))
+      : environments;
   const destinationEnvironment =
     environments.find(({ slug }) => slug === destinationEnvironmentSlug) ?? null;
+  const unavailableBulkSecretCount =
+    invocation?.origin === "bulk" && sourceEnvironmentSlug
+      ? Math.max(invocation.selectedSecretCount - sourceSecrets.length, 0)
+      : 0;
+  let bulkSelectionSummary: string | undefined;
+  if (invocation?.origin === "bulk") {
+    const selectedSecretLabel = invocation.selectedSecretCount === 1 ? "secret" : "secrets";
+    if (!sourceEnvironment) {
+      bulkSelectionSummary = `${invocation.selectedSecretCount} selected ${selectedSecretLabel}. Choose a source environment to confirm availability.`;
+    } else if (unavailableBulkSecretCount > 0) {
+      const unavailableSecretLabel = unavailableBulkSecretCount === 1 ? "secret" : "secrets";
+      const availabilityVerb = sourceSecrets.length === 1 ? "is" : "are";
+      bulkSelectionSummary = `${sourceSecrets.length} of ${invocation.selectedSecretCount} selected ${selectedSecretLabel} ${availabilityVerb} available in ${sourceEnvironment.name}. The other ${unavailableBulkSecretCount} ${unavailableSecretLabel} won’t be copied.`;
+    } else {
+      bulkSelectionSummary =
+        invocation.selectedSecretCount === 1
+          ? `The selected secret is available in ${sourceEnvironment.name}.`
+          : `All ${invocation.selectedSecretCount} selected secrets are available in ${sourceEnvironment.name}.`;
+    }
+  }
   const selectedSecrets = sourceSecrets.filter(({ id }) => selectedIds.includes(id));
   const normalizedSourcePath = normalizeCopyPath(sourcePath);
   const normalizedDestinationPath = normalizeCopyPath(destinationPath);
@@ -259,14 +318,15 @@ export const CopySecretsSheet = ({
   const isSourcePathSettled =
     normalizeCopyPath(sourcePath) === normalizeCopyPath(debouncedSourcePath);
   const isSourceLoading =
-    !isSourceLocked && (!isSourcePathSettled || sourceQuery.isPending || sourceQuery.isFetching);
-  const isSourceError = !isSourceLocked && sourceQuery.isError;
+    !hasInvocationSourceSecrets &&
+    (!isSourcePathSettled || sourceQuery.isPending || sourceQuery.isFetching);
+  const isSourceError = !hasInvocationSourceSecrets && sourceQuery.isError;
   const isDestinationPathSettled =
     normalizeCopyPath(destinationPath) === normalizeCopyPath(debouncedDestinationPath);
   const isDestinationLoading =
     !isDestinationPathSettled || destinationQuery.isPending || destinationQuery.isFetching;
   const cannotIncludeValues =
-    isSourceLocked && sourceSecrets.some(({ isValueHidden }) => isValueHidden);
+    hasInvocationSourceSecrets && sourceSecrets.some(({ isValueHidden }) => isValueHidden);
 
   const disabledReason = (() => {
     if (!sourceEnvironmentSlug || !destinationEnvironmentSlug)
@@ -426,7 +486,16 @@ export const CopySecretsSheet = ({
       onSelectionChange={setSelectedIds}
     />
   );
-  if (isSourceLoading) {
+  if (!sourceEnvironmentSlug) {
+    sourceContent = (
+      <Empty className="h-full border">
+        <EmptyHeader>
+          <EmptyTitle>Choose a source environment</EmptyTitle>
+          <EmptyDescription>Select an environment to browse its secrets.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else if (isSourceLoading) {
     sourceContent = (
       <div
         className="flex h-full flex-col gap-3 rounded-md border border-border bg-container p-4"
@@ -462,7 +531,16 @@ export const CopySecretsSheet = ({
       onSelectionChange={() => undefined}
     />
   );
-  if (isDestinationLoading) {
+  if (!destinationEnvironmentSlug) {
+    destinationContent = (
+      <Empty className="h-full border">
+        <EmptyHeader>
+          <EmptyTitle>Choose a destination environment</EmptyTitle>
+          <EmptyDescription>Select an environment to preview the copy.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else if (isDestinationLoading) {
     destinationContent = (
       <div
         className="flex h-full flex-col gap-3 rounded-md border border-border bg-container p-4"
@@ -496,12 +574,12 @@ export const CopySecretsSheet = ({
                 <DocumentationLinkBadge href={DOCUMENTATION_URL} />
               </SheetTitle>
               <SheetDescription>
-                Copy secrets between project locations. This isn&apos;t a sync.
+                Perform a one-time copy of secrets between project locations.
               </SheetDescription>
             </SheetHeader>
 
             <div className="@container/copy-sheet flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-              <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-2">
+              <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] @xl/copy-sheet:gap-2">
                 <section
                   className="flex min-h-0 min-w-0 flex-col gap-3"
                   aria-labelledby="copy-source-contents-heading"
@@ -522,15 +600,37 @@ export const CopySecretsSheet = ({
                           id="copy-secrets-source-environment"
                           modal
                           value={sourceEnvironment}
-                          options={environments}
-                          isDisabled={isSubmitting || isSourceLocked}
+                          options={sourceEnvironmentOptions}
+                          isDisabled={isSubmitting || isSourceEnvironmentLocked}
                           placeholder="Environment..."
                           searchPlaceholder="Search environments..."
                           searchAriaLabel="Search source environments"
                           getOptionLabel={({ name }) => name}
                           getOptionValue={({ slug }) => slug}
+                          renderOptionIndicator={
+                            invocation?.origin === "bulk"
+                              ? ({ slug }, { isSelected }) => (
+                                  <span className="flex items-center gap-2">
+                                    <span className="flex size-4 items-center justify-center">
+                                      {isSelected && <CheckIcon className="size-4" />}
+                                    </span>
+                                    <span className="text-xs text-muted">
+                                      {`${invocation.secretsByEnvironment[slug]?.length ?? 0}/${invocation.selectedSecretCount}`}
+                                    </span>
+                                  </span>
+                                )
+                              : undefined
+                          }
                           onValueChange={(environment) => {
                             setSourceEnvironmentSlug(environment.slug);
+                            if (invocation?.origin === "bulk") {
+                              setSelectedIds(
+                                (invocation.secretsByEnvironment[environment.slug] ?? [])
+                                  .filter((secret) => isCopySecretSelectable(secret, includeValues))
+                                  .map(({ id }) => id)
+                              );
+                              return;
+                            }
                             setSelectedIds([]);
                           }}
                         />
@@ -544,7 +644,7 @@ export const CopySecretsSheet = ({
                           projectId={projectId}
                           environment={sourceEnvironmentSlug}
                           value={sourcePath}
-                          disabled={isSubmitting || isSourceLocked}
+                          disabled={isSubmitting || isSourcePathLocked}
                           onChange={(path) => {
                             setSourcePath(path);
                             setSelectedIds([]);
@@ -553,9 +653,22 @@ export const CopySecretsSheet = ({
                         />
                       </Field>
                     </div>
+                    {bulkSelectionSummary && (
+                      <FieldDescription
+                        isOpen
+                        aria-live="polite"
+                        className={unavailableBulkSecretCount > 0 ? "text-warning" : undefined}
+                      >
+                        {bulkSelectionSummary}
+                      </FieldDescription>
+                    )}
                   </div>
                   <div className="min-h-0 flex-1">{sourceContent}</div>
                 </section>
+                <div className="flex items-center justify-center text-muted" aria-hidden>
+                  <ArrowDownIcon className="size-4 @xl/copy-sheet:hidden" />
+                  <ArrowRightIcon className="hidden size-4 @xl/copy-sheet:block" />
+                </div>
                 <section
                   className="flex min-h-0 min-w-0 flex-col gap-3"
                   aria-labelledby="copy-destination-contents-heading"
@@ -605,6 +718,9 @@ export const CopySecretsSheet = ({
                         />
                       </Field>
                     </div>
+                    <FieldDescription isOpen>
+                      Options to handle conflicts available in confirmation step.
+                    </FieldDescription>
                   </div>
                   <div className="min-h-0 flex-1">{destinationContent}</div>
                 </section>
@@ -643,7 +759,7 @@ export const CopySecretsSheet = ({
             </div>
 
             <SheetFooter className="flex-wrap items-center border-t">
-              <div className="mr-auto flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
+              <div className="mr-auto flex min-w-0 flex-wrap items-center">
                 <Field
                   orientation="horizontal"
                   className="w-auto"
@@ -662,11 +778,10 @@ export const CopySecretsSheet = ({
                       <LockIcon aria-hidden /> Include secret values
                     </FieldLabel>
                     <FieldDescription id="copy-secrets-values-description">
-                      Enabling this deselects secrets marked No value access.
+                      Enabling this will also exclude secrets you have no value access to.
                     </FieldDescription>
                   </FieldContent>
                 </Field>
-                {disabledReason && <span className="text-xs text-muted">{disabledReason}</span>}
               </div>
               <Button
                 type="button"

@@ -31,7 +31,10 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
-import type { CopySecretsInvocation } from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet";
+import type {
+  CopySecretsInvocation,
+  CopySecretsSource
+} from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet";
 import {
   BulkDeleteDialog,
   BulkTagDialog,
@@ -335,16 +338,13 @@ export const SelectionPanel = ({
   const hasUnmaterializedSecretSelection = Object.values(selectedEntries[EntryType.SECRET]).some(
     (perEnv) => Object.keys(perEnv).length === 0
   );
-  const copySourceEnvironmentSlugs = new Set(selectedSecretEntries.map(([envSlug]) => envSlug));
-
   const isCopyDisabled =
     areFoldersSelected ||
     hasImportedSecretSelection ||
     hasUnmaterializedSecretSelection ||
     isHoneyTokenSelected ||
     areRotationsSelected ||
-    isManagedSecretSelected ||
-    copySourceEnvironmentSlugs.size > 1;
+    isManagedSecretSelected;
 
   let copyDisabledReason = "Folders cannot be copied";
   if (hasImportedSecretSelection) {
@@ -356,20 +356,26 @@ export const SelectionPanel = ({
     copyDisabledReason = "Honey token secrets cannot be copied";
   } else if (areRotationsSelected || isManagedSecretSelected) {
     copyDisabledReason = "Rotated secrets cannot be copied";
-  } else if (copySourceEnvironmentSlugs.size > 1) {
-    copyDisabledReason = "Select secrets from one source environment to copy them";
   }
 
-  const copySourceEnvironmentSlug =
-    copySourceEnvironmentSlugs.size === 1 ? selectedSecretEntries[0]?.[0] : undefined;
-  const copySecrets = selectedSecretEntries.map(([, secret]) => ({
-    id: secret.id,
-    name: secret.key,
-    path: secret.path ?? secretPath,
-    isValueHidden: secret.secretValueHidden,
-    isRotated: secret.isRotatedSecret,
-    isHoneyToken: secret.isHoneyTokenSecret
-  }));
+  const copySecretsByEnvironment = selectedSecretEntries.reduce<
+    Record<string, CopySecretsSource[]>
+  >((secretsByEnvironment, [environmentSlug, secret]) => {
+    return {
+      ...secretsByEnvironment,
+      [environmentSlug]: [
+        ...(secretsByEnvironment[environmentSlug] ?? []),
+        {
+          id: secret.id,
+          name: secret.key,
+          path: secret.path ?? secretPath,
+          isValueHidden: secret.secretValueHidden,
+          isRotated: secret.isRotatedSecret,
+          isHoneyToken: secret.isHoneyTokenSecret
+        }
+      ]
+    };
+  }, {});
   const shouldShowBulkCopy = selectedKeysCount > 0;
 
   return (
@@ -414,12 +420,12 @@ export const SelectionPanel = ({
                 isDisabled={isCopyDisabled}
                 variant="project"
                 onClick={() => {
-                  if (isCopyDisabled || !copySourceEnvironmentSlug) return;
+                  if (isCopyDisabled) return;
                   onCopySecrets({
                     origin: "bulk",
-                    sourceEnvironmentSlug: copySourceEnvironmentSlug,
                     sourcePath: secretPath,
-                    secrets: copySecrets
+                    selectedSecretCount: selectedKeysCount,
+                    secretsByEnvironment: copySecretsByEnvironment
                   });
                 }}
                 size="xs"

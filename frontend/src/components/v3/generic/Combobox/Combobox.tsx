@@ -18,6 +18,7 @@ type ComboboxSharedProps<TOption> = {
   getOptionKeywords?: (option: TOption) => readonly string[];
   isOptionDisabled?: (option: TOption) => boolean;
   renderOption?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
+  renderOptionIndicator?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
   renderValue?: (option: TOption) => React.ReactNode;
   clearAriaLabel?: string;
   placeholder?: string;
@@ -109,6 +110,7 @@ type ComboboxListProps<TOption> = Pick<
   | "isOptionDisabled"
   | "loadingMessage"
   | "renderOption"
+  | "renderOptionIndicator"
 > & {
   ariaLabel: string;
   selectedValues: ReadonlySet<string>;
@@ -123,6 +125,7 @@ const ComboboxList = <TOption,>({
   isOptionDisabled,
   loadingMessage,
   renderOption,
+  renderOptionIndicator,
   ariaLabel,
   selectedValues,
   maxHeight
@@ -146,7 +149,8 @@ const ComboboxList = <TOption,>({
             disabled={isOptionDisabled?.(option)}
             className={cn(
               COMBOBOX_ROW_CLASS,
-              "relative pr-8 pl-2",
+              "relative pl-2",
+              renderOptionIndicator ? "pr-2" : "pr-8",
               "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
             )}
           >
@@ -155,9 +159,13 @@ const ComboboxList = <TOption,>({
                 <span className="block truncate">{getOptionLabel(option)}</span>
               )}
             </span>
-            <ComboboxPrimitive.ItemIndicator className="absolute right-2 flex size-4 items-center justify-center">
-              <CheckIcon className="size-4" />
-            </ComboboxPrimitive.ItemIndicator>
+            {renderOptionIndicator ? (
+              <span className="ml-2 shrink-0">{renderOptionIndicator(option, { isSelected })}</span>
+            ) : (
+              <ComboboxPrimitive.ItemIndicator className="absolute right-2 flex size-4 items-center justify-center">
+                <CheckIcon className="size-4" />
+              </ComboboxPrimitive.ItemIndicator>
+            )}
             {isSelected && <span className="sr-only">Current selection</span>}
           </ComboboxPrimitive.Item>
         );
@@ -269,6 +277,7 @@ const SingleCombobox = <TOption,>({
   getOptionKeywords,
   isOptionDisabled,
   renderOption,
+  renderOptionIndicator,
   renderValue,
   onClear,
   clearAriaLabel = "Clear selection",
@@ -396,6 +405,7 @@ const SingleCombobox = <TOption,>({
           getOptionLabel={getOptionLabel}
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
+          renderOptionIndicator={renderOptionIndicator}
           ariaLabel={`${searchAriaLabel} suggestions`}
           selectedValues={selectedValues}
           maxHeight={SINGLE_LIST_MAX_HEIGHT}
@@ -414,6 +424,7 @@ const MultipleCombobox = <TOption,>({
   getOptionKeywords,
   isOptionDisabled,
   renderOption,
+  renderOptionIndicator,
   renderValue,
   onClear,
   clearAriaLabel = "Clear all selections",
@@ -622,6 +633,7 @@ const MultipleCombobox = <TOption,>({
           getOptionLabel={getOptionLabel}
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
+          renderOptionIndicator={renderOptionIndicator}
           ariaLabel={`${searchAriaLabel} suggestions`}
           selectedValues={selectedValues}
           maxHeight={MULTIPLE_LIST_MAX_HEIGHT}

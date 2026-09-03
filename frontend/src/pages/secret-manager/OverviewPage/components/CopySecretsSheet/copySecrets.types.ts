@@ -15,10 +15,16 @@ export type CopySecretsInvocation =
       destinationPath: string;
     }
   | {
-      origin: "row" | "bulk";
+      origin: "row";
       sourceEnvironmentSlug: string;
       sourcePath: string;
       secrets: CopySecretsSource[];
+    }
+  | {
+      origin: "bulk";
+      sourcePath: string;
+      selectedSecretCount: number;
+      secretsByEnvironment: Record<string, CopySecretsSource[]>;
     };
 
 export type CopySecretsEnvironment = {

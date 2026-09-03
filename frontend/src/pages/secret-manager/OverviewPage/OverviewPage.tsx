@@ -2632,18 +2632,15 @@ const OverviewPageContent = () => {
                       });
                     }}
                     onCopySecrets={() =>
-                      singleVisibleEnv &&
                       handleOpenCopySecrets({
                         origin: "toolbar",
                         destinationPath: secretPath,
-                        destinationEnvironmentSlug: singleVisibleEnv.slug
+                        destinationEnvironmentSlug: singleVisibleEnv?.slug ?? ""
                       })
                     }
-                    isCopySecretsDisabled={hasPendingBatchChanges || !singleVisibleEnv}
+                    isCopySecretsDisabled={hasPendingBatchChanges}
                     copySecretsDisabledReason={
-                      hasPendingBatchChanges
-                        ? "Commit or discard pending changes first"
-                        : "Select one destination environment"
+                      hasPendingBatchChanges ? "Commit or discard pending changes first" : undefined
                     }
                     isDyanmicSecretAvailable={visibleDynamicSecretEnvs.length > 0}
                     isSecretRotationAvailable={visibleSecretRotationEnvs.length > 0}
