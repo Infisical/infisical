@@ -129,8 +129,34 @@ export const checkIPAgainstBlocklist = ({ ipAddress, trustedIps }: { ipAddress: 
   const { type } = extractIPDetails(ipAddress);
   const check = blockList.check(ipAddress, type);
 
-  if (!check)
+  if (!check) {
     throw new ForbiddenRequestError({
-      message: "You are not allowed to access this resource from the current IP address"
+      message: `You are not allowed to access this resource from the current IP address (${ipAddress}). Confirm this address is on the identity's Client Secret Trusted IPs or Access Token Trusted IPs list. If you self-host behind a reverse proxy, set TRUSTED_PROXY_CIDRS to your proxy's CIDRs (not your client subnets) so Infisical detects the correct client IP.`
     });
+  }
+};
+
+const PROXY_ADDR_ALIASES = new Set(["loopback", "linklocal", "uniquelocal"]);
+
+/** Normalize and validate TRUSTED_PROXY_CIDRS entries (CIDR, IP, or proxy-addr alias). */
+export const parseTrustedProxyCidrs = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+
+  const entries = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (entries.length === 0) return undefined;
+
+  for (const entry of entries) {
+    if (PROXY_ADDR_ALIASES.has(entry)) continue;
+    if (!isValidIpOrCidr(entry)) {
+      throw new Error(
+        `Invalid TRUSTED_PROXY_CIDRS entry '${entry}'. Use IPv4/IPv6 addresses, CIDR ranges (e.g. 10.0.0.0/8), or the aliases loopback, linklocal, uniquelocal.`
+      );
+    }
+  }
+
+  return entries.join(",");
 };

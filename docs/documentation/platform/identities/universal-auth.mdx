@@ -98,6 +98,10 @@ using the Universal Auth authentication method.
     If you're using Infisical Cloud, then it is available under the Pro Tier. If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
     </Warning>
 
+    <Info>
+      On a self-hosted instance behind a reverse proxy, Infisical only sees the real client IP when [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars#param-trusted-proxy-cidrs) lists that proxy. Set it to the proxy's CIDR (for Docker Compose, often `uniquelocal`), not to the client subnets you want to allow. Put client subnets in the trusted IP fields above.
+    </Info>
+
   </Step>
   <Step title="Creating a Client Secret">
     In order to use the identity, you'll need the non-sensitive **Client ID**

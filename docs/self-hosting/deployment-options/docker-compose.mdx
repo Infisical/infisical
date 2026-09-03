@@ -460,7 +460,11 @@ docker logs <container_name> --since 1h
     **5. Update `.env`:**
     ```env
     SITE_URL=https://secrets.example.com
+    # Trust X-Forwarded-* headers from the NGINX container on the Docker network
+    TRUSTED_PROXY_CIDRS=uniquelocal
     ```
+
+    Set `TRUSTED_PROXY_CIDRS` to your proxy's CIDR (for Compose, `uniquelocal` is usually enough). Do not list client machine subnets here; those belong on identity trusted IP allowlists. See [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars#param-trusted-proxy-cidrs).
 
     **6. Restart services:**
     ```bash
