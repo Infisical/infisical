@@ -11,6 +11,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { CaDnsProvider } from "../dns-providers/ca-dns-provider-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import { TDigiCertCertificateAuthority } from "./digicert-certificate-authority-types";
 
@@ -38,6 +39,8 @@ export const castDbEntryToDigiCertCertificateAuthority = (
       jobTitle: string;
       telephone: string;
     };
+    dnsProvider?: CaDnsProvider;
+    dnsHostedZoneId?: string;
   };
 
   if (typeof config.organizationId !== "number" || !config.productNameId) {
@@ -60,7 +63,12 @@ export const castDbEntryToDigiCertCertificateAuthority = (
       organizationId: config.organizationId,
       productNameId: config.productNameId,
       purpose,
-      verifiedContact: config.verifiedContact
+      verifiedContact: config.verifiedContact,
+      dnsAppConnectionId: ca.externalCa.dnsAppConnectionId ?? undefined,
+      dnsProviderConfig:
+        config.dnsProvider && config.dnsHostedZoneId
+          ? { provider: config.dnsProvider, hostedZoneId: config.dnsHostedZoneId }
+          : undefined
     },
     status: ca.status as CaStatus
   };

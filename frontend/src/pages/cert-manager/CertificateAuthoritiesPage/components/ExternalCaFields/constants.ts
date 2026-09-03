@@ -12,5 +12,6 @@ export const REQUIRED_EAB_DIRECTORIES = [
 // DigiCert product discriminators returned by the CertCentral products endpoint.
 export const DigiCertProductType = {
   CodeSigning: "code_signing_certificate",
-  Ssl: "ssl_certificate"
+  Ssl: "ssl_certificate",
+  X9: "x9_pki"
 } as const;

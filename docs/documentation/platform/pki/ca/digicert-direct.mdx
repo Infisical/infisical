@@ -7,7 +7,7 @@ description: "Issue TLS or Code Signing certificates from DigiCert using the Cer
 
 Infisical can issue certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html). A single DigiCert CA in Infisical is configured for one purpose:
 
-- **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`).
+- **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`). X9 PKI for TLS (`x9_pki`) is also selected under this purpose if your account is entitled to it.
 - **Code Signing** — issues OV (`code_signing`) and EV (`code_signing_ev`) code-signing certificates against a CSR. The signing key must live on an HSM.
 
 <Note>
@@ -18,7 +18,8 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 
 - A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.
 - A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it is used for a code-signing order, which can take up to 3 business days.
-- Entitlement to the product you intend to use (`ssl_plus`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
+- Entitlement to the product you intend to use (`ssl_plus`, `x9_pki`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
+- Optional, to automate domain control validation (see [below](#automating-domain-control-validation-with-dns-txt-records)): an [App Connection](/integrations/app-connections/overview) to the DNS provider that hosts the domains you'll be issuing certificates for (Route53, Cloudflare, Azure DNS, or DNS Made Easy).
 
 <Note>
   Configuring a DigiCert CA requires a CertCentral account with administrator-level access (or a role with permission to manage organizations, products, and API keys). The API key used for the App Connection inherits the permissions of the CertCentral user that created it.
@@ -40,6 +41,7 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
         - **Purpose** — `SSL / TLS` or `Code Signing`. The product list filters accordingly.
         - **Product** — the CertCentral entitlement this CA will issue under
         - **Verified Contact** (Code Signing only) — full contact info for the person DigiCert emails to approve first-time code-signing orders for this organization. All five fields required: **First Name**, **Last Name**, **Email**, **Job Title**, **Telephone** (E.164, e.g. `+15551234567`). DigiCert requires `job_title` and `telephone` on every verified contact for CS orders; referencing an existing CertCentral user by id alone is not enough. Once the organization has an active CS validation on file, DigiCert ignores this field.
+        - **Automate domain control validation via DNS TXT record** (optional) — enable this to have Infisical create and clean up the DCV TXT record for you. See [below](#automating-domain-control-validation-with-dns-txt-records).
       </Step>
     </Steps>
   </Tab>
@@ -58,6 +60,27 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
           "organizationId": 112236,
           "productNameId": "ssl_plus",
           "purpose": "ssl"
+        }
+      }'
+    ```
+
+    ```bash Create a DigiCert CA (SSL, with automated DCV)
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "digicert-ov",
+        "status": "active",
+        "configuration": {
+          "appConnectionId": "<digicert-app-connection-id>",
+          "organizationId": 112236,
+          "productNameId": "ssl_plus",
+          "purpose": "ssl",
+          "dnsAppConnectionId": "<dns-app-connection-id>",
+          "dnsProviderConfig": {
+            "provider": "route53",
+            "hostedZoneId": "Z040441124N1GOOMCQYX1"
+          }
         }
       }'
     ```
@@ -101,13 +124,30 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 
 | State | Description |
 |-------|-------------|
-| **Pending Validation** | DigiCert has accepted the order. Complete domain control validation in DigiCert CertCentral. |
+| **Pending Validation** | DigiCert has accepted the order. If DNS TXT automation is configured, Infisical creates the DCV record for you; otherwise complete domain control validation in DigiCert CertCentral. |
 | **Issued** | Infisical polls DigiCert and downloads the certificate once validation completes. Click **Trigger Validation** to force an immediate check. |
 | **Failed** | If DigiCert does not issue within 24 hours. Complete validation on CertCentral and submit a new request. |
 
 <Note>
-  OV and EV certificates require manual domain validation on the DigiCert CertCentral side before issuance.
+  OV and EV certificates require domain validation on the DigiCert CertCentral side before issuance — either automatically via a DNS TXT record (see below) or manually.
 </Note>
+
+## Automating domain control validation with DNS TXT records
+
+By default, this CA type places the order and polls it — domain control validation (DCV) happens on the DigiCert side and must already be on file for the domain, or you complete it manually in CertCentral before the order's 24-hour validation window expires.
+
+If you attach a DNS provider App Connection to the CA (**Automate domain control validation via DNS TXT record** in the UI, or `dnsAppConnectionId`/`dnsProviderConfig` via the API), Infisical automates this instead:
+
+1. When an order is placed, DigiCert returns a random value used to prove control of every domain on the order.
+2. Infisical creates a TXT record for each domain using that value, via the configured DNS provider.
+3. Infisical asks DigiCert to check validation immediately rather than waiting for the next scheduled poll.
+4. Once the order reaches a final state (issued or failed), Infisical removes the TXT record it created.
+
+<Note>
+  If the domain is already validated in CertCentral, or the order doesn't require a DNS TXT DCV method, DigiCert doesn't return a random value and there's nothing for Infisical to automate — the order proceeds exactly as it would without DNS automation configured.
+</Note>
+
+Supported DNS providers are the same ones supported by [ACME CAs](/documentation/platform/pki/ca/acme-ca): Route53, Cloudflare, Azure DNS, and DNS Made Easy.
 
 ## FAQ
 

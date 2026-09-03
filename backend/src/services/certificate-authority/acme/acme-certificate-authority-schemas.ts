@@ -8,13 +8,13 @@ import {
   GenericCreateCertificateAuthorityFieldsSchema,
   GenericUpdateCertificateAuthorityFieldsSchema
 } from "../certificate-authority-schemas";
-import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
+import { CaDnsProvider } from "../dns-providers/ca-dns-provider-enums";
 
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   dnsAppConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
   dnsProviderConfig: z.object({
-    provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
+    provider: z.nativeEnum(CaDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
     hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
   }),
   directoryUrl: z.string().url().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),

@@ -482,6 +482,7 @@ TPP
 TS
 TTL(?:s)?
 TUI(?:s)?
+TXT
 UI
 UPN
 URI(?:s)?

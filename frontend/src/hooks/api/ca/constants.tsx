@@ -1,5 +1,5 @@
 import { AppConnection } from "../appConnections/enums";
-import { AcmeDnsProvider, CaCapability, CaStatus, CaType, InternalCaType } from "./enums";
+import { CaCapability, CaDnsProvider, CaStatus, CaType, InternalCaType } from "./enums";
 
 export const caTypeToNameMap: { [K in InternalCaType]: string } = {
   [InternalCaType.ROOT]: "Root",
@@ -12,18 +12,18 @@ export const caStatusToNameMap: { [K in CaStatus]: string } = {
   [CaStatus.PENDING_CERTIFICATE]: "Pending Certificate"
 };
 
-export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
-  [AcmeDnsProvider.ROUTE53]: "Route53",
-  [AcmeDnsProvider.Cloudflare]: "Cloudflare",
-  [AcmeDnsProvider.DNSMadeEasy]: "DNS Made Easy",
-  [AcmeDnsProvider.AzureDNS]: "Azure DNS"
+export const CA_DNS_PROVIDER_NAME_MAP: Record<CaDnsProvider, string> = {
+  [CaDnsProvider.ROUTE53]: "Route53",
+  [CaDnsProvider.Cloudflare]: "Cloudflare",
+  [CaDnsProvider.DNSMadeEasy]: "DNS Made Easy",
+  [CaDnsProvider.AzureDNS]: "Azure DNS"
 };
 
-export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
-  [AcmeDnsProvider.ROUTE53]: AppConnection.AWS,
-  [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
-  [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
-  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS
+export const CA_DNS_PROVIDER_APP_CONNECTION_MAP: Record<CaDnsProvider, AppConnection> = {
+  [CaDnsProvider.ROUTE53]: AppConnection.AWS,
+  [CaDnsProvider.Cloudflare]: AppConnection.Cloudflare,
+  [CaDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
+  [CaDnsProvider.AzureDNS]: AppConnection.AzureDNS
 };
 
 export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {

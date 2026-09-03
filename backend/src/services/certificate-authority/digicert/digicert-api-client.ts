@@ -7,6 +7,7 @@ import { extractDigiCertErrorMessage } from "@app/services/app-connection/digice
 
 import {
   TCheckValidationResponse,
+  TDcvRandomValueResponse,
   TDigiCertAlternateOrdersResponse,
   TOrderResponse,
   TOrderStatusChangesResponse,
@@ -78,6 +79,19 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       return data;
     }, `validation check for order ${orderId}`);
 
+  // Requests (or re-fetches, if unexpired) the order-level DCV random value for
+  // dns-txt-token/dns-cname-token/http-token orders. Used to automate DCV via DNS TXT
+  // record when the order response doesn't already include `dcv_random_value`.
+  const getDcvRandomValue = async (orderId: number) =>
+    wrap(async () => {
+      const { data } = await request.put<TDcvRandomValueResponse>(
+        `${baseURL}/order/certificate/${orderId}/dcv-random-value`,
+        null,
+        { headers }
+      );
+      return data;
+    }, `DCV random value fetch for order ${orderId}`);
+
   const downloadCertificatePem = async (certificateId: number) =>
     wrap(async () => {
       const { data } = await request.get<string>(`${baseURL}/certificate/${certificateId}/download/format/pem_all`, {
@@ -133,6 +147,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     reissueOrder,
     getOrder,
     checkValidation,
+    getDcvRandomValue,
     getOrganizationValidations,
     downloadCertificatePem,
     getOrdersByAlternativeId,

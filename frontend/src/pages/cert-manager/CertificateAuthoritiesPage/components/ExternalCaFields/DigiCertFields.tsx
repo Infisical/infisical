@@ -3,6 +3,7 @@ import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
+  Checkbox,
   Field,
   FieldError,
   FieldLabel,
@@ -13,11 +14,16 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
+import { TAzureDNSZone } from "@app/hooks/api/appConnections/azure-dns";
+import { TCloudflareZone } from "@app/hooks/api/appConnections/cloudflare";
 import { TDigiCertOrganization, TDigiCertProduct } from "@app/hooks/api/appConnections/digicert";
+import { TDNSMadeEasyZone } from "@app/hooks/api/appConnections/dns-made-easy";
+import { CaDnsProvider } from "@app/hooks/api/ca";
 import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
 
 import { AppConnectionSelectField } from "./AppConnectionSelectField";
 import { DigiCertProductType } from "./constants";
+import { DnsProviderFields } from "./DnsProviderFields";
 import { FormData } from "./schema";
 
 const PURPOSE_OPTIONS = [
@@ -37,6 +43,17 @@ type Props = {
   digicertProducts: TDigiCertProduct[];
   isDigiCertProductsPending: boolean;
   csRequiresContact: boolean;
+  isDcvAutomationEnabled: boolean;
+  dnsProvider?: CaDnsProvider;
+  dnsAppConnection: { id: string; name: string };
+  availableDnsConnections: TAvailableAppConnection[];
+  isDnsConnectionsPending: boolean;
+  cloudflareZones: TCloudflareZone[];
+  isZonesPending: boolean;
+  dnsMadeEasyZones: TDNSMadeEasyZone[];
+  isDNSMadeEasyZonesPending: boolean;
+  azureDnsZones: TAzureDNSZone[];
+  isAzureDNSZonesPending: boolean;
 };
 
 export const DigiCertFields = ({
@@ -50,7 +67,18 @@ export const DigiCertFields = ({
   isDigiCertOrgsPending,
   digicertProducts,
   isDigiCertProductsPending,
-  csRequiresContact
+  csRequiresContact,
+  isDcvAutomationEnabled,
+  dnsProvider,
+  dnsAppConnection,
+  availableDnsConnections,
+  isDnsConnectionsPending,
+  cloudflareZones,
+  isZonesPending,
+  dnsMadeEasyZones,
+  isDNSMadeEasyZonesPending,
+  azureDnsZones,
+  isAzureDNSZonesPending
 }: Props) => (
   <>
     <AppConnectionSelectField
@@ -148,7 +176,8 @@ export const DigiCertFields = ({
         const filteredProducts = digicertProducts.filter((p) => {
           if (purpose === DigiCertCaPurpose.CodeSigning)
             return p.type === DigiCertProductType.CodeSigning;
-          return p.type === DigiCertProductType.Ssl || !p.type;
+          // X9 PKI for TLS issues TLS certificates through the same order flow as OV/EV.
+          return p.type === DigiCertProductType.Ssl || p.type === DigiCertProductType.X9 || !p.type;
         });
         return (
           <Field className="mb-4">
@@ -182,6 +211,63 @@ export const DigiCertFields = ({
         );
       }}
     />
+    <div className="mt-3 mb-2 rounded-md border border-border bg-mineshaft-800 p-4">
+      <div className="mb-1 flex items-center gap-3">
+        <Checkbox
+          id="digicert-dcv-automation"
+          variant="project"
+          isChecked={isDcvAutomationEnabled}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setValue("configuration.dnsAppConnection", { id: "", name: "" });
+              setValue("configuration.dnsProviderConfig", {
+                provider: CaDnsProvider.ROUTE53,
+                hostedZoneId: ""
+              });
+            } else {
+              setValue("configuration.dnsAppConnection", undefined);
+              setValue("configuration.dnsProviderConfig", undefined);
+            }
+          }}
+        />
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- htmlFor targets the sibling Checkbox's id */}
+        <label
+          htmlFor="digicert-dcv-automation"
+          className="cursor-pointer text-sm font-medium text-foreground"
+        >
+          Automate domain control validation via DNS TXT record
+        </label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            When enabled, Infisical creates the DCV TXT record DigiCert requires for each ordered
+            domain and removes it once the order is issued or fails. When disabled, the domain must
+            already be validated in CertCentral, or you must complete DCV manually before the
+            order&apos;s 24-hour validation window expires.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      {isDcvAutomationEnabled && (
+        <div className="mt-3">
+          <DnsProviderFields
+            control={control}
+            isExistingCa={false}
+            dnsProvider={dnsProvider}
+            dnsAppConnection={dnsAppConnection}
+            availableConnections={availableDnsConnections}
+            isPending={isDnsConnectionsPending}
+            cloudflareZones={cloudflareZones}
+            isZonesPending={isZonesPending}
+            dnsMadeEasyZones={dnsMadeEasyZones}
+            isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
+            azureDnsZones={azureDnsZones}
+            isAzureDNSZonesPending={isAzureDNSZonesPending}
+          />
+        </div>
+      )}
+    </div>
     {csRequiresContact && (
       <div className="mt-3 mb-2 rounded-md border border-border bg-mineshaft-800 p-4">
         <div className="mb-1 text-sm font-medium text-foreground">Verified Contact</div>

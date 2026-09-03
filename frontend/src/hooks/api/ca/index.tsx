@@ -1,7 +1,7 @@
 export type { CaIssuanceCapabilities } from "./capabilities";
 export { getCaIssuanceCapabilities } from "./capabilities";
 export {
-  AcmeDnsProvider,
+  CaDnsProvider,
   CaRenewalStatus,
   CaRenewalType,
   CaSigningConfigType,
