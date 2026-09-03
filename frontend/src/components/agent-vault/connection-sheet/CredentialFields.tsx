@@ -5,13 +5,11 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Checkbox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldTitle,
   Input,
   Select,
   SelectContent,
@@ -21,7 +19,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { CREDENTIAL_LABELS, TConnectionForm } from "./connectionSchema";
+import { CREDENTIAL_LABELS, TConnectionForm, UNCHANGED_SECRET } from "./connectionSchema";
 
 export const credentialPreview = (form: {
   credentialType: AgentVaultCredentialType;
@@ -39,24 +37,23 @@ type Props = {
   isUpdate: boolean;
   /** Whether the connection being edited already has a password sealed. Meaningless on create. */
   storedHasPassword: boolean;
+  /** The credential type as stored, so a switch away from it can invalidate the sealed secret. */
+  storedType?: AgentVaultCredentialType;
 };
 
-export const CredentialFields = ({ isUpdate, storedHasPassword }: Props) => {
+export const CredentialFields = ({ isUpdate, storedHasPassword, storedType }: Props) => {
   const { control, watch, setValue } = useFormContext<TConnectionForm>();
   const credentialType = watch("credentialType");
-  const username = watch("username");
-  const clearPassword = watch("clearPassword");
+  const secret = watch("secret");
 
   const isBasic = credentialType === AgentVaultCredentialType.Basic;
-  // Removing the password is only ever offered when a username would be left behind to authenticate
-  // with, and only when there is something to remove.
-  const canClearPassword = isUpdate && isBasic && storedHasPassword && Boolean(username);
+  const isUntouched = secret === UNCHANGED_SECRET;
 
-  // The checkbox is conditional, so its value has to be too. Left set once it is hidden, clearing the
-  // username would submit a credential with neither half and fail against a control nobody can see.
+  // Switching type strands the sealed secret, which belongs to the type being replaced, so the box
+  // stops claiming to hold anything.
   useEffect(() => {
-    if (!canClearPassword) setValue("clearPassword", false);
-  }, [canClearPassword, setValue]);
+    if (isUntouched && storedType && credentialType !== storedType) setValue("secret", "");
+  }, [isUntouched, credentialType, storedType, setValue]);
 
   const secretDescription = () => {
     if (!isUpdate) {
@@ -65,7 +62,10 @@ export const CredentialFields = ({ isUpdate, storedHasPassword }: Props) => {
     if (isBasic && !storedHasPassword) {
       return "No password is stored. This connection authenticates by username alone.";
     }
-    return `Leave blank to keep the current ${isBasic ? "password" : "token"}.`;
+    if (isBasic) {
+      return "Type to replace it, or clear the field to remove the password.";
+    }
+    return "Type to replace it. A token cannot be removed — use Pass-through for a connection that sends nothing.";
   };
 
   return (
@@ -155,42 +155,16 @@ export const CredentialFields = ({ isUpdate, storedHasPassword }: Props) => {
                 <Input
                   {...field}
                   type="password"
-                  disabled={clearPassword}
+                  // Selected rather than cleared, so focusing the field and moving on cannot remove a
+                  // credential: typing still replaces the whole value, and leaving it alone keeps it.
+                  onFocus={(e) => {
+                    if (isUntouched) e.target.select();
+                  }}
                   placeholder={isBasic ? "Enter the password" : "Enter the token"}
                   isError={Boolean(fieldState.error)}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    if (e.target.value) setValue("clearPassword", false);
-                  }}
                 />
                 {secretDescription() && <FieldDescription>{secretDescription()}</FieldDescription>}
                 <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            </Field>
-          )}
-        />
-      )}
-
-      {canClearPassword && (
-        <Controller
-          control={control}
-          name="clearPassword"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <Checkbox
-                id="clear-password"
-                isChecked={Boolean(field.value)}
-                onCheckedChange={(checked) => {
-                  field.onChange(checked === true);
-                  if (checked === true) setValue("secret", "");
-                }}
-              />
-              <FieldContent>
-                <FieldTitle>Remove the password</FieldTitle>
-                <FieldDescription>
-                  The connection authenticates by username alone, as services that carry the whole
-                  key there expect.
-                </FieldDescription>
               </FieldContent>
             </Field>
           )}

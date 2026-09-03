@@ -4,6 +4,13 @@ import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
+/**
+ * Seeded into the secret field on edit so the box can show that something is stored without the
+ * server ever returning it. Never sent: the sheet maps it back to an omitted key. It is the one value
+ * a real secret cannot be, which is the price of letting a single field mean keep, replace and remove.
+ */
+export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
+
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
@@ -61,35 +68,45 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
       headerName: z.string().trim().max(128).optional(),
       headerPrefix: z.string().trim().max(64).optional(),
       username: z.string().trim().max(256).optional(),
-      secret: z.string().max(8192).optional(),
-      clearPassword: z.boolean().optional()
+      secret: z.string().max(8192).optional()
     })
     .superRefine((data, ctx) => {
       if (data.credentialType === AgentVaultCredentialType.Passthrough) return;
 
+      const isUnchanged = data.secret === UNCHANGED_SECRET;
+
+      // A different type from the stored one leaves the sealed secret shaped for the credential being
+      // replaced, so it has to be supplied again whatever the type.
+      const typeChanged =
+        Boolean(connection) && connection?.credential.type !== data.credentialType;
+
       if (data.credentialType === AgentVaultCredentialType.Bearer) {
-        // A bearer header with nothing after the prefix authenticates nobody, so a create must carry
-        // one. An edit may leave it blank, which keeps what is stored.
-        if (!connection && !data.secret) {
+        // Emptying the box is how a password is removed, and a bearer token cannot be removed — a
+        // header with nothing after the prefix authenticates nobody, which is what Pass-through is for.
+        // So on edit an empty box simply keeps the stored token, and only a create can be short one.
+        if ((!connection || typeChanged) && !data.secret) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
         }
         return;
       }
 
-      const storedHasPassword =
-        connection?.credential.type === AgentVaultCredentialType.Basic &&
-        connection.credential.hasPassword;
-      const willHavePassword = data.clearPassword
-        ? false
-        : Boolean(data.secret) || storedHasPassword;
-
-      if (!data.username && !willHavePassword) {
+      if (typeChanged && !data.username && !data.secret) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["username"],
           message: "Enter a username, a password, or both."
         });
+        return;
       }
+
+      const willHavePassword = isUnchanged ? true : Boolean(data.secret);
+      if (data.username || willHavePassword) return;
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["username"],
+        message: "Enter a username, a password, or both."
+      });
     });
 
 export type TConnectionForm = z.infer<ReturnType<typeof buildConnectionSchema>>;

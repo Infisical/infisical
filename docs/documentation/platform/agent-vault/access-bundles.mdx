@@ -21,7 +21,7 @@ Each connection has a name, a host pattern, and a credential.
 | **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank, but not both.                  | APIs behind HTTP basic auth, including the ones that carry the whole key in the username and take no password. |
 | **Pass-through** | Nothing. The request is forwarded unchanged.                                                                    | Only meaningful on a proxy that denies unmatched hosts, where it makes a host reachable without giving it a credential. |
 
-The secret is entered once and never shown again. Editing a connection leaves it alone unless you enter a new one, so you can rename a header or fix a username without having the original secret to hand. A basic credential that authenticates by username alone offers a **Remove the password** option, which is the only way to clear a stored secret.
+The secret is entered once and never shown again. When you edit a connection the field shows that something is stored without revealing it, so you can rename a header or fix a username without having the original secret to hand. Type over it to replace it, or clear the field to remove a basic password, which leaves the connection authenticating by username alone. A token cannot be removed, since a header with nothing in it authenticates nobody; use **Pass-through** for a connection that sends no credential.
 
 If the agent's request already carries a header with the same name, the proxy replaces it. The agent is expected to send a placeholder or nothing at all, so this isn't an error, but it's the first thing to suspect when a request you expected to pass through unchanged comes back `401`.
 

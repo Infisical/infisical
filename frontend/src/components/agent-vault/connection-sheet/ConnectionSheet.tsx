@@ -37,7 +37,8 @@ import {
   buildConnectionSchema,
   CONNECTION_STEP_FIELDS,
   ConnectionStep,
-  TConnectionForm
+  TConnectionForm,
+  UNCHANGED_SECRET
 } from "./connectionSchema";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
@@ -109,8 +110,12 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
         username:
           credential.type === AgentVaultCredentialType.Basic ? credential.username : undefined,
-        secret: "",
-        clearPassword: false
+        // A username-only basic credential has nothing sealed, so its box starts genuinely empty.
+        secret:
+          credential.type === AgentVaultCredentialType.Passthrough ||
+          (credential.type === AgentVaultCredentialType.Basic && !credential.hasPassword)
+            ? ""
+            : UNCHANGED_SECRET
       });
     } else {
       reset({
@@ -120,8 +125,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         headerName: "Authorization",
         headerPrefix: "Bearer",
         username: "",
-        secret: "",
-        clearPassword: false
+        secret: ""
       });
     }
   }, [isOpen, connection, isUpdate, reset, setStep]);
@@ -140,8 +144,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         headerPrefix:
           cred.type === AgentVaultCredentialType.Bearer ? (cred.headerPrefix ?? "Bearer") : "",
         username: "",
-        secret: "",
-        clearPassword: false
+        secret: ""
       });
     }
     setStep(1);
@@ -166,27 +169,28 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  // The update is a patch. A key left off keeps what is stored, which is why a blank secret box is
-  // simply absent here rather than an empty string — an empty string is how the password is cleared.
+  // The update is a patch, and the secret box carries all three intents. The sentinel means the field
+  // was never touched, so the key is left off and the stored secret survives. An empty box means the
+  // user deleted what was there, which removes a basic password — a bearer token has no removed state,
+  // so an empty box there keeps what is stored rather than writing a header that authenticates nobody.
   const buildCredentialPatch = (data: TConnectionForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
+    const untouched = data.secret === UNCHANGED_SECRET;
+
     if (data.credentialType === AgentVaultCredentialType.Basic) {
-      let password: string | undefined;
-      if (data.clearPassword) password = "";
-      else if (data.secret) password = data.secret;
       return {
         type: AgentVaultCredentialType.Basic as const,
         username: data.username ?? "",
-        password
+        password: untouched ? undefined : (data.secret ?? "")
       };
     }
     return {
       type: AgentVaultCredentialType.Bearer as const,
       headerName: data.headerName || "Authorization",
       headerPrefix: data.headerPrefix ?? "",
-      value: data.secret || undefined
+      value: untouched || !data.secret ? undefined : data.secret
     };
   };
 
@@ -378,6 +382,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                         connection?.credential.type === AgentVaultCredentialType.Basic &&
                         connection.credential.hasPassword
                       }
+                      storedType={connection?.credential.type}
                     />
                   )}
                   {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}

@@ -9,7 +9,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { CREDENTIAL_LABELS, TConnectionForm } from "./connectionSchema";
+import { CREDENTIAL_LABELS, TConnectionForm, UNCHANGED_SECRET } from "./connectionSchema";
 import { credentialPreview } from "./CredentialFields";
 
 type Props = {
@@ -23,11 +23,13 @@ export const ReviewFields = ({ isUpdate }: Props) => {
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const secretLabel = isBasic ? "Password" : "Token";
 
-  // On an edit the secret is a patch, so what matters is what will happen to the stored one.
+  // On an edit the secret is a patch, so what matters is what will happen to the stored one. An
+  // emptied box removes a basic password; a bearer token has no removed state and simply stays.
   const secretOutcome = () => {
-    if (form.clearPassword) return "Removed";
-    if (form.secret) return isUpdate ? "Replaced" : "Set";
-    return isUpdate ? "Unchanged" : "None";
+    if (!isUpdate) return form.secret ? "Set" : "None";
+    if (form.secret === UNCHANGED_SECRET) return "Unchanged";
+    if (form.secret) return "Replaced";
+    return isBasic ? "Removed" : "Unchanged";
   };
 
   return (
