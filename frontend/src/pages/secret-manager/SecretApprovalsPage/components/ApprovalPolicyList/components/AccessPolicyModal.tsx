@@ -388,6 +388,40 @@ const Form = ({
     [memberOptions, groupOptions]
   );
 
+  const memberById = useMemo(
+    () => new Map(members.map((member) => [member.user.id, member] as const)),
+    [members]
+  );
+
+  const groupById = useMemo(
+    () => new Map(groups.map(({ group }) => [group.id, group] as const)),
+    [groups]
+  );
+
+  // policies only return ids for groups (and for change policy approvers), so labels have to be
+  // resolved against the loaded project members and groups
+  const resolveApproverOption = useCallback(
+    (option: ApproverOptionData): ApproverOptionData => {
+      if (!option.id) return option;
+
+      if (option.type === ApproverType.Group) {
+        const group = groupById.get(option.id);
+        return group ? { ...option, name: group.name } : option;
+      }
+
+      const member = memberById.get(option.id);
+      return member
+        ? {
+            ...option,
+            name: getMemberLabel(member),
+            memberEmail: member.user.username,
+            isOrgMembershipActive: member.user.isOrgMembershipActive
+          }
+        : option;
+    },
+    [memberById, groupById]
+  );
+
   const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
     users: selected
       .filter((option) => option.type === ApproverType.User)
@@ -442,6 +476,7 @@ const Form = ({
         type: BypasserType.User as const,
         id: option.id,
         username: option.username,
+        name: option.name,
         isOrgMembershipActive: option.isOrgMembershipActive
       })),
     groups: selected
@@ -457,7 +492,7 @@ const Form = ({
   const selectedPolicyApprovers: ApproverOptionData[] = [
     ...(formUserApprovers ?? []),
     ...(formGroupApprovers ?? [])
-  ];
+  ].map(resolveApproverOption);
   const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
     setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
@@ -470,7 +505,7 @@ const Form = ({
   const selectedPolicyBypassers: ApproverOptionData[] = [
     ...(formUserBypassers ?? []),
     ...(formGroupBypassers ?? [])
-  ];
+  ].map(resolveApproverOption);
   const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
     setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
@@ -525,7 +560,7 @@ const Form = ({
     const selectedOptions: ApproverOptionData[] = [
       ...(watch(`sequenceApprovers.${index}.user`) ?? []),
       ...(watch(`sequenceApprovers.${index}.group`) ?? [])
-    ];
+    ].map(resolveApproverOption);
     const updateSelectedOptions = (newValue: readonly ApproverOptionData[]) => {
       const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
       setValue(`sequenceApprovers.${index}.user`, users, {

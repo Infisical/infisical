@@ -169,10 +169,38 @@ export const SignerApprovalPolicyTab = ({ signerId, isStandalone = false }: Prop
   const stepsCount = policy?.steps.length ?? 0;
 
   const addPolicyButton = (
-    <Button variant="project" onClick={() => setIsEditOpen(true)} isDisabled={!canManagePolicy}>
+    <Button
+      variant="project"
+      isFullWidth={!isStandalone}
+      onClick={() => setIsEditOpen(true)}
+      isDisabled={!canManagePolicy}
+    >
       <PlusIcon />
       Add Policy
     </Button>
+  );
+
+  const addPolicyAction = canManagePolicy ? (
+    addPolicyButton
+  ) : (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={isStandalone ? undefined : "block w-full"}>{addPolicyButton}</span>
+      </TooltipTrigger>
+      <TooltipContent>Requires the Manage Policy permission on this signer.</TooltipContent>
+    </Tooltip>
+  );
+
+  const unconfiguredBody = isStandalone ? (
+    <Empty className="border">
+      <EmptyHeader>
+        <EmptyTitle>No approval policy</EmptyTitle>
+        <EmptyDescription>Any member can sign directly until you add approvers.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>{addPolicyAction}</EmptyContent>
+    </Empty>
+  ) : (
+    addPolicyAction
   );
 
   return (
@@ -266,28 +294,7 @@ export const SignerApprovalPolicyTab = ({ signerId, isStandalone = false }: Prop
               </div>
             </>
           ) : (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No approval policy</EmptyTitle>
-                <EmptyDescription>
-                  Any member can sign directly until you add approvers.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                {canManagePolicy ? (
-                  addPolicyButton
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>{addPolicyButton}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Requires the Manage Policy permission on this signer.
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </EmptyContent>
-            </Empty>
+            unconfiguredBody
           )}
         </CardContent>
       </Card>

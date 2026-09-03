@@ -2002,6 +2002,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     pamDiscoverySourceDAL,
     userDAL,
+    orgDAL,
+    mfaSessionService,
     permissionService,
     kmsService,
     gatewayV2DAL,

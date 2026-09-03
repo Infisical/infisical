@@ -350,6 +350,7 @@ export enum EventType {
   PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
   PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_ACCOUNT_CREDENTIALS_VIEW = "pam-account-credentials-view",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
   PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
   PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
