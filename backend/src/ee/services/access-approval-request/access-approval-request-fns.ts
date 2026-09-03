@@ -47,7 +47,7 @@ type TUnpackedAccessApprovalRequestRule = {
 // than on the shared schema so the tightening cannot affect the other permission surfaces.
 const AccessApprovalRequestConditionsSchema = z
   .object({
-    environment: slugSchema({ max: 64, field: "Environment slug" }),
+    environment: slugSchema({ max: 64, field: "Environment slug", trim: false }),
     secretPath: z
       .object({
         $glob: z

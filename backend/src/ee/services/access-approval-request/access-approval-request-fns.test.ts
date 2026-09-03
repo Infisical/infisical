@@ -269,6 +269,15 @@ describe("verifyRequestedPermissions input hardening", () => {
     expect(() => verifyRequestedPermissions({ permissions })).toThrow();
   });
 
+  test("rejects a padded environment rather than trimming it", () => {
+    // The service persists the request body verbatim and copies it into the granted privilege, so a
+    // value this schema normalized would be validated as "dev" and granted as " dev ": the request
+    // would be approved and the privilege would match no environment at all.
+    const permissions = packRules([makeRule(" dev ", "/apps/*")]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(BadRequestError);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(/is not allowed/);
+  });
+
   test("rejects an over-long secretPath", () => {
     const permissions = packRules([makeRule("dev", `/${"a".repeat(600)}`)]);
     expect(() => verifyRequestedPermissions({ permissions })).toThrow();
