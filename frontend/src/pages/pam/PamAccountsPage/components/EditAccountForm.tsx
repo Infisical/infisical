@@ -34,6 +34,7 @@ import {
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
+import { CredentialHealthSection } from "./CredentialHealthSection";
 import { CredentialsForm } from "./CredentialsForm";
 
 function filterUnchangedCredentials(
@@ -303,8 +304,9 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
             <CardTitle className="text-base">Credentials</CardTitle>
             <CardDescription>Authentication used to connect to this account.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <CredentialsForm control={control} setValue={setValue} />
+            <CredentialHealthSection accountId={accountId} />
           </CardContent>
         </Card>
       )}
