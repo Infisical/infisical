@@ -347,7 +347,7 @@ export const newOrgMembershipUserFactory = ({
       });
     if (dto.data.isActive !== undefined)
       targetOps.push({
-        opAction: OrgPermissionMemberActions.Delete,
+        opAction: OrgPermissionMemberActions.Edit,
         baseMessage: "Failed to change the activation status of a more privileged org member"
       });
 

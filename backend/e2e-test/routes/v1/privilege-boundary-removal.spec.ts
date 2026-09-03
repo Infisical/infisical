@@ -1,15 +1,11 @@
 /**
- * E2E tests for the privilege boundary on membership removal and role assignment.
- *
  * The gap these cover: the create and update guards in every membership scope factory ran a
  * privilege-boundary check, and the delete guards did not. A default project Member holds
- * `identity:delete`, so it could remove an Admin-role identity's membership -- a privilege change
- * on a principal it does not dominate.
+ * `identity:delete`, so it could remove an Admin-role identity's membership, a privilege change on a
+ * principal it does not dominate.
  *
- * Each test drives the reach as a *machine identity* actor rather than the seeded admin user, so
- * the actor's role is exactly what the assertion is about.
- *
- * Prerequisites (handled by vitest-environment-knex.ts): testServer, jwtAuthToken, testDb.
+ * Every test drives the reach as a machine identity rather than the seeded admin user, so the
+ * actor's role is exactly what the assertion is about.
  */
 
 import crypto from "node:crypto";
@@ -22,7 +18,7 @@ import { seedData1 } from "@app/db/seed-data";
 const adminHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const asIdentity = (token: string) => ({ authorization: `Bearer ${token}` });
 
-/** Create an org-Member identity with Universal Auth attached, and log it in. */
+/** Org-Member identity with Universal Auth attached, logged in. */
 const createActorIdentity = async (name: string) => {
   const createRes = await testServer.inject({
     method: "POST",
@@ -61,7 +57,7 @@ const createActorIdentity = async (name: string) => {
   return { identityId, token: loginRes.json().accessToken as string };
 };
 
-/** Create a bare org-level identity, with no auth method. Used as a removal target. */
+/** Bare org-level identity with no auth method, for use as a removal target. */
 const createTargetIdentity = async (name: string, role: OrgMembershipRole) => {
   const res = await testServer.inject({
     method: "POST",
@@ -99,9 +95,8 @@ const removeIdentityFromProject = (projectId: string, identityId: string, header
   });
 
 /**
- * organizations.shouldUseNewPrivilegeSystem decides which of the two boundary semantics applies:
- * false => the actor must dominate the target's privileges; true => holding the action suffices.
- * It defaults to true, so both branches have to be exercised explicitly.
+ * Picks the boundary semantics: false => the actor must dominate the target's privileges, true =>
+ * holding the action is enough. Defaults to true, so both branches need exercising explicitly.
  */
 const setNewPrivilegeSystem = async (enabled: boolean) => {
   await testDb(TableName.Organization)
@@ -145,7 +140,7 @@ describe("Privilege boundary on project identity membership removal", () => {
   });
 
   test("the actor does hold identity:delete, so the reach is real", async () => {
-    // Removing an equal-privilege target succeeds. This is what makes the assertions below
+    // Removing an equal-privilege target succeeds, which is what makes the assertions below
     // boundary checks rather than plain missing-permission rejections.
     const res = await removeIdentityFromProject(project.id, memberTarget, asIdentity(actor.token));
     expect(res.statusCode).toBe(200);
@@ -172,12 +167,9 @@ describe("Privilege boundary on project identity membership removal", () => {
   });
 
   describe("on the new privilege system", () => {
-    // Documents the deliberate scope of the fix rather than an oversight. Under the new privilege
-    // system, holding the action IS the authorization -- validatePrivilegeChangeOperation returns
-    // valid as soon as the actor can perform Delete on the subject, ignoring the target's roles.
-    // Narrowing this is done with conditions on the Delete action, not with a privilege comparison.
-    // NOTE: organizations.shouldUseNewPrivilegeSystem defaults to true, so this is the path most
-    // orgs are on, and the removal boundary is inert for them.
+    // Deliberate, not an oversight: under the new system holding the action IS the authorization, so
+    // Delete passes regardless of the target's roles. You narrow it with conditions on the action,
+    // not with a privilege comparison. This is the default, so most orgs get an inert boundary here.
     test("a project Member can remove an Admin-role identity", async () => {
       const res = await removeIdentityFromProject(project.id, adminTarget, asIdentity(actor.token));
       expect(res.statusCode).toBe(200);
@@ -188,10 +180,9 @@ describe("Privilege boundary on project identity membership removal", () => {
 });
 
 describe("Privilege boundary on the deprecated v1 add-user-to-project route", () => {
-  // POST /api/v1/workspace/:projectId/memberships hardcodes the built-in Member role, so the
-  // boundary only bites for an actor holding member:create with LESS than Member's privileges --
-  // i.e. a custom role. What is asserted here is the regression guard: the added boundary must not
-  // break an admin using the route.
+  // POST /api/v1/workspace/:projectId/memberships hardcodes the built-in Member role, so the boundary
+  // only bites for a custom role holding member:create with less than Member's privileges. All this
+  // asserts is the regression guard: the added boundary must not break an admin using the route.
   let project: { id: string };
 
   beforeAll(async () => {
@@ -234,22 +225,20 @@ describe("Privilege boundary on the deprecated v1 add-user-to-project route", ()
       }
     });
 
-    // The project creator is already a member, so the duplicate check is what rejects this -- which
-    // is downstream of the boundary, so reaching it proves the boundary let an admin through.
+    // The project creator is already a member, so the duplicate check rejects this. That check is
+    // downstream of the boundary, so reaching it proves the boundary let an admin through.
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toContain("already part of project");
   });
 });
 
 /**
- * A custom role holding only the removal action. This is the actor shape the boundary is about: a
- * principal that legitimately holds `member:delete` yet is weaker than the member it is removing.
- * The built-in org and project Member roles do not hold `member:delete` at all, so they would be
+ * The actor shape the boundary is about: legitimately holds `member:delete`, yet is weaker than the
+ * member it is removing. The built-in Member roles do not hold `member:delete` at all, so they get
  * rejected by the plain permission check and never reach the boundary.
  *
- * The role is written straight to the table because the e2e license mock reports `rbac: false`, so
- * the custom-role routes refuse to create one. That gate is not what these tests are about, and the
- * boundary resolves roles out of these same columns however they were written.
+ * Written straight to the table because the e2e license mock reports `rbac: false` and the
+ * custom-role routes refuse to create one. The boundary reads these same columns either way.
  */
 const insertMemberRemoverRole = async (slug: string, scope: { orgId: string } | { projectId: string }) => {
   const [role] = await testDb(TableName.Role)
@@ -285,9 +274,8 @@ const findIdentityMembershipId = async (identityId: string, projectId?: string) 
 };
 
 /**
- * The seed carries exactly one user, and every removal path here targets a *user* membership. The
- * routes only need a non-ghost Users row joined to a Membership, never a login, so the target is
- * inserted directly rather than driven through the signup and SRP flow.
+ * The seed carries exactly one user and every removal path here targets a user membership. The routes
+ * only need a non-ghost Users row joined to a Membership, never a login, so skip signup and SRP.
  */
 const createTargetUser = async (label: string) => {
   const username = `${label}-${crypto.randomUUID()}@localhost.local`;
@@ -327,9 +315,8 @@ const dropUser = async (userId: string) => {
 };
 
 describe("Privilege boundary on org membership removal", () => {
-  // These are the v2 organization routes, which remove a member through org-service rather than
-  // through the scoped membership factory. They carry the same reach as the scoped delete and so
-  // need the same boundary; without it they are a way around it.
+  // The v2 org routes remove a member through org-service rather than the scoped membership factory.
+  // Same reach as the scoped delete, so without the same boundary they are a way around it.
   let actor: { identityId: string; token: string };
   let adminTarget: { userId: string; membershipId: string };
 

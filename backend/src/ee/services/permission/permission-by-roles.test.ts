@@ -7,11 +7,10 @@ import { OrgPermissionMemberActions, OrgPermissionSubjects } from "./org-permiss
 import { permissionServiceFactory } from "./permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "./project-permission";
 
-// A membership row can outlive the role slug it points at: a product gets removed and its slugs stop
-// resolving, while the rows that reference them stay. buildProjectPermissionRules already tolerates
-// that (unknown slug -> no rules). These cover the same tolerance on the by-roles lookups, which the
-// privilege-boundary guards use to measure roles a principal already holds -- without it, a member
-// carrying a stale slug could not be removed at all, because the boundary check 404s first.
+// A membership row can outlive the role slug it points at, e.g. a product gets removed and its slugs
+// stop resolving. buildProjectPermissionRules already tolerates that (unknown slug -> no rules); the
+// by-roles lookups need the same tolerance, or a member carrying a stale slug can never be removed
+// because the privilege-boundary check 404s first.
 
 const CUSTOM_ROLE_SLUG = "release-manager";
 

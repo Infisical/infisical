@@ -14,9 +14,8 @@ import { PermissionBoundaryError } from "@app/lib/errors";
 import { newProjectMembershipUserFactory } from "./project-membership-user-factory";
 
 // The loop that bounds the incoming roles skips NoAccess, so downgrading a privileged member to
-// no-access is the one role change it never sees. The check against the roles the target already
-// holds is what closes that, and it only holds for a condition-scoped actor if it is handed the
-// same subject fields that loop passes.
+// no-access is the one role change it never sees. Checking the roles the target already holds closes
+// that, and for a condition-scoped actor only if it gets the same subject fields that loop passes.
 
 const ORG_ID = "org-id";
 const PROJECT_ID = "project-id";

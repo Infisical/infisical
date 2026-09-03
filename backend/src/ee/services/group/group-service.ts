@@ -1063,7 +1063,6 @@ export const groupServiceFactory = ({
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than every role the group holds
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.AddMembers,
@@ -1161,7 +1160,6 @@ export const groupServiceFactory = ({
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than every role the group holds
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.AddIdentities,
@@ -1256,7 +1254,6 @@ export const groupServiceFactory = ({
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than every role the group holds
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.RemoveMembers,
@@ -1333,7 +1330,6 @@ export const groupServiceFactory = ({
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than every role the group holds
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.RemoveIdentities,

@@ -43,8 +43,8 @@ type TUnpackedAccessApprovalRequestRule = {
 // { environment: data.environmentSlug, secretPath: { $glob: data.secretPath } }.
 // .strict() at both levels so no other operator ($in/$eq/...) or key
 // (secretName, secretTags, connectionId, metadata, ...) can be smuggled in.
-// The $glob value reuses the same validator as every other permission surface, bounded here rather
-// than on the shared schema so the tightening cannot affect the other permission surfaces.
+// The $glob value reuses the same validator as every other permission surface, with the length cap
+// added here rather than on the shared schema so the tightening stays local.
 const AccessApprovalRequestConditionsSchema = z
   .object({
     environment: slugSchema({ max: 64, field: "Environment slug", trim: false }),

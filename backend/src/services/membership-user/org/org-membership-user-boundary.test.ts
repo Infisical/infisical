@@ -13,11 +13,10 @@ import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgMembershipUserFactory } from "./org-membership-user-factory";
 
-// The org update guard bounds a role change against the roles the target already holds, because a
-// downgrade strips privileges as effectively as a removal does. Both privilege systems reject, but
-// for different reasons: the legacy system compares privilege levels, while the new system asks for
-// member:grant-privileges, which is deliberately not implied by the member:edit that the guard's own
-// throwUnlessCan requires.
+// The org update guard bounds a role change against the roles the target already holds, since a
+// downgrade strips privileges as effectively as a removal does. Both systems reject, for different
+// reasons: the legacy one compares privilege levels, the new one asks for member:grant-privileges,
+// which is deliberately not implied by the member:edit the guard's own throwUnlessCan requires.
 
 const ORG_ID = "org-id";
 const TARGET_USER_ID = "target-user-id";
@@ -40,15 +39,6 @@ const memberPrivilegeGranter = createMongoAbility<MongoAbility>([
       OrgPermissionMemberActions.Edit,
       OrgPermissionMemberActions.GrantPrivileges
     ],
-    subject: OrgPermissionSubjects.Member
-  }
-]);
-
-// Holds the action that describes changing a member's activation, but not the one for assigning
-// roles. The pair with memberPrivilegeGranter is what pins each operation to its own action.
-const memberDeleter = createMongoAbility<MongoAbility>([
-  {
-    action: [OrgPermissionMemberActions.Read, OrgPermissionMemberActions.Edit, OrgPermissionMemberActions.Delete],
     subject: OrgPermissionSubjects.Member
   }
 ]);
@@ -181,9 +171,8 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
   });
 
   test("it is the target's privileges that reject, not the actor being weak", async () => {
-    // Same weak actor, but nothing on either side outranks it: no-access is filtered out of the
-    // target set entirely, and grants nothing when requested. The guard has to let this through,
-    // or it would block every role change a non-admin can legitimately make.
+    // Same weak actor, but nothing on either side outranks it. The guard has to let this through, or
+    // it would block every role change a non-admin can legitimately make.
     const guard = createGuard({
       actorPermission: memberEditorOnly,
       shouldUseNewPrivilegeSystem: false,
@@ -196,12 +185,12 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
 
   // The guard ran one boundary keyed on member:grant-privileges for every field on the route, so a
   // deactivation was gated on a role-assignment permission. Each operation now keys on the action
-  // that describes it, which for metadata is still grant-privileges: it feeds ABAC.
+  // that describes it: activation is a member attribute and stays on member:edit, while metadata
+  // needs grant-privileges because it feeds ABAC.
   describe("gating follows the operation being performed", () => {
     test("a metadata-only edit is bounded, because metadata drives ABAC", async () => {
-      // Org member metadata is the {{identity.metadata.*}} attribute source that project policies
-      // interpolate, so rewriting an Admin's metadata rewrites what their roles grant. member:edit
-      // alone must not reach it.
+      // Org member metadata is the {{identity.metadata.*}} source project policies interpolate, so
+      // rewriting an Admin's metadata rewrites what their roles grant. member:edit must not reach it.
       const metadataOnly = { roles: [], metadata: [{ key: "team", value: "platform" }] };
 
       await expect(
@@ -220,47 +209,38 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
           data: metadataOnly
         })()
       ).resolves.toBeUndefined();
-
-      // member:delete does not: deactivating a member and rewriting their attributes are different
-      // operations gated on different actions.
-      await expect(
-        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: metadataOnly })()
-      ).rejects.toThrow(PermissionBoundaryError);
     });
 
-    test("deactivation keys on member:delete, not member:grant-privileges", async () => {
+    test("deactivation keys on member:edit, so the new system asks for nothing further", async () => {
+      // Activation is a member attribute, not a privilege grant, so it stays on the action the
+      // route's own throwUnlessCan already demanded. On the new system that boundary can only pass.
       const deactivate = { roles: [], isActive: false };
 
-      // Holds grant-privileges but not delete: it can assign roles, and that says nothing about
-      // being allowed to cut off an Admin's access.
       await expect(
-        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: deactivate })()
-      ).rejects.toThrow(PermissionBoundaryError);
-
-      await expect(
-        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: deactivate })()
+        createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true, data: deactivate })()
       ).resolves.toBeUndefined();
-    });
 
-    test("reactivating a privileged member is bounded the same way", async () => {
-      // Restoring an Admin's access is as much a privilege change as removing it, so it cannot be
-      // the ungated direction of the same field.
-      const reactivate = { roles: [], isActive: true };
-
+      // Reactivating is the same operation in the other direction, and gated the same way.
       await expect(
-        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: reactivate })()
-      ).rejects.toThrow(PermissionBoundaryError);
-
-      await expect(
-        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: reactivate })()
+        createGuard({
+          actorPermission: memberEditorOnly,
+          shouldUseNewPrivilegeSystem: true,
+          data: { roles: [], isActive: true }
+        })()
       ).resolves.toBeUndefined();
+
+      // The same actor still cannot touch the target's roles.
+      await expect(
+        createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true })()
+      ).rejects.toThrow(PermissionBoundaryError);
     });
 
     test("the legacy system still compares privilege levels, whatever the operation", async () => {
-      // memberDeleter holds the action, which buys it nothing here: it is still weaker than an Admin.
+      // Holding member:edit buys the actor nothing here: it is still weaker than an Admin, so it
+      // cannot cut off that Admin's access.
       await expect(
         createGuard({
-          actorPermission: memberDeleter,
+          actorPermission: memberEditorOnly,
           shouldUseNewPrivilegeSystem: false,
           data: { roles: [], isActive: false }
         })()
@@ -268,59 +248,48 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
     });
 
     test("a target holding no roles is still bounded on the new system", async () => {
-      // A membership whose roles have all expired resolves to an empty role set. Skipping the
-      // boundary for it would let member:edit alone deactivate that member, since nothing else in
-      // the guard asks for member:delete.
-      const deactivate = { roles: [], isActive: false };
+      // A membership whose roles have all expired resolves to an empty role set. The boundary still
+      // runs against it, so a role change there asks for grant-privileges like any other.
+      const roleChange = { roles: [{ role: "member", isTemporary: false }] };
 
       await expect(
         createGuard({
           actorPermission: memberEditorOnly,
           shouldUseNewPrivilegeSystem: true,
           targetRoles: [],
-          data: deactivate
+          data: roleChange
         })()
       ).rejects.toThrow(PermissionBoundaryError);
 
       await expect(
         createGuard({
-          actorPermission: memberDeleter,
+          actorPermission: memberPrivilegeGranter,
           shouldUseNewPrivilegeSystem: true,
           targetRoles: [],
-          data: deactivate
-        })()
-      ).resolves.toBeUndefined();
-
-      // The legacy system compares privilege levels, and no target privileges means nothing to
-      // out-rank, so the same weak actor passes there.
-      await expect(
-        createGuard({
-          actorPermission: memberEditorOnly,
-          shouldUseNewPrivilegeSystem: false,
-          targetRoles: [],
-          data: deactivate
+          data: roleChange
         })()
       ).resolves.toBeUndefined();
     });
 
-    test("a role change and a deactivation in one request need both actions", async () => {
+    test("a role change and a deactivation in one request are gated separately", async () => {
       const both = { roles: [{ role: "member", isTemporary: false }], isActive: false };
 
-      // Each holds exactly one of the two actions, so neither can do both at once.
+      // member:edit carries the deactivation but not the role change, so the request is rejected
+      // as a whole rather than partly applied.
       await expect(
-        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: both })()
+        createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true, data: both })()
       ).rejects.toThrow(PermissionBoundaryError);
 
       await expect(
-        createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: both })()
-      ).rejects.toThrow(PermissionBoundaryError);
+        createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: both })()
+      ).resolves.toBeUndefined();
     });
   });
 });
 
-// An invite always carries a role, so create alone never gets the request through — except for
+// An invite always carries a role, so create alone never gets the request through, except for
 // no-access, which confers nothing and so cannot escalate anything. Unlike the update guard, the
-// invite guard has no target to bound against, so the requested roles are the only thing it checks.
+// invite guard has no target to bound against, so the requested roles are all it checks.
 describe("onCreateMembershipUserGuard privilege boundary", () => {
   const createInviteGuard = ({
     actorPermission,
@@ -382,9 +351,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
   });
 
   test("inviting with no-access is exempt on both systems", async () => {
-    // no-access resolves to an empty rule set, so there is no privilege to escalate and nothing for
-    // grant-privileges to be protecting. Requiring it here would block the one invite that is
-    // provably harmless.
+    // no-access resolves to an empty rule set, so there is nothing to escalate and nothing for
+    // grant-privileges to protect. Requiring it would block the one invite that is provably harmless.
     await expect(
       createInviteGuard({
         actorPermission: memberCreatorOnly,

@@ -2,19 +2,18 @@
  * The membership *update* guard has to bound the target's current roles, not just the roles being
  * assigned.
  *
- * The update guards resolve `dto.data.roles` -- the roles being ASSIGNED -- and filter NoAccess out
- * before resolution. A request of exactly [no-access] therefore resolved to an empty list, the
- * boundary loop never ran, and nothing was checked on either privilege system. Since setting a
- * member to no-access revokes their access just as a delete does, that was a way around the
- * removal boundary rather than a separate concern:
+ * The update guards resolve the roles being ASSIGNED and filter NoAccess out first, so a request of
+ * exactly [no-access] resolved to an empty list and nothing got checked on either privilege system.
+ * Setting a member to no-access revokes their access just like a delete does, so that was a way
+ * around the removal boundary:
  *
- *   DELETE an Admin target        -> 403 (bounded)
- *   PATCH  that Admin -> viewer   -> 403 (bounded, actor cannot assign viewer)
- *   PATCH  that Admin -> no-access-> 200 (unbounded)  <-- the gap
+ *   DELETE an Admin target         -> 403 (bounded)
+ *   PATCH  that Admin -> viewer    -> 403 (bounded, actor cannot assign viewer)
+ *   PATCH  that Admin -> no-access -> 200 (unbounded)  <-- the gap
  *
- * Removing the filter alone does not fix the legacy system: no-access grants nothing, so
- * dominating it passes trivially. The boundary has to run against the target's CURRENT roles,
- * which is what the delete guard already does.
+ * Dropping the filter alone does not fix the legacy system: no-access grants nothing, so dominating
+ * it passes trivially. The boundary has to run against the target's CURRENT roles, like the delete
+ * guard already does.
  */
 
 import crypto from "node:crypto";
@@ -164,8 +163,7 @@ describe("Privilege boundary on project membership downgrade", () => {
         url: `/api/v1/projects/${project.id}/memberships/${membershipId}`,
         headers: asIdentity(actor.token)
       });
-      // Delete uses the privilege-system-aware boundary, so the new system permits it on the
-      // strength of holding member:delete alone. That asymmetry is the documented design.
+      // The new system lets this through on member:delete alone. That asymmetry is by design.
       expect(res.statusCode).toBe(newSystem ? 200 : 403);
     });
 
@@ -213,11 +211,10 @@ describe("Privilege boundary on project membership downgrade", () => {
 });
 
 describe("Privilege boundary on org membership downgrade", () => {
-  // PATCH /api/v2/organizations/:orgId/memberships/:membershipId updates a member through
-  // org-service rather than through the scoped membership factory, and it only bounded the role
-  // being ASSIGNED. Downgrading an Admin to no-access, or deactivating them, assigns nothing the
-  // boundary could reject, so it was a way around both the update guard and the removal boundary:
-  // downgrade first, then remove the now-weaker member.
+  // PATCH /api/v2/organizations/:orgId/memberships/:membershipId goes through org-service instead of
+  // the scoped membership factory, and only bounded the role being ASSIGNED. Downgrading an Admin to
+  // no-access, or deactivating them, assigns nothing the boundary could reject: downgrade first,
+  // then remove the now-weaker member.
   let actor: { identityId: string; token: string };
   let adminTarget: { userId: string; membershipId: string };
   const targetUserIds: string[] = [];
@@ -305,10 +302,8 @@ describe("Privilege boundary on org membership downgrade", () => {
     });
 
     test("deactivating a more privileged member follows the removal boundary", async () => {
-      // Deactivation keys on member:delete, so it lands where a removal lands rather than where a
-      // role change does: the new system permits it on the strength of holding that action alone,
-      // the legacy system still compares privilege levels. It gets its own target because it
-      // succeeds on one of the two runs.
+      // Deactivation keys on member:delete, so it lands where a removal lands rather than where a role
+      // change does. Own target, because it succeeds on one of the two runs.
       const target = await createAdminTarget();
 
       const res = await patchMembership(target.membershipId, { isActive: false }, asIdentity(actor.token));

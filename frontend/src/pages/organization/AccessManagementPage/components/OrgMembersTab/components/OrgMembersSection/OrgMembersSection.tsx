@@ -21,7 +21,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -137,7 +137,7 @@ export const OrgMembersSection = () => {
         onClearSelection={() => setSelectedMemberIds([])}
       >
         <OrgPermissionCan
-          I={OrgPermissionActions.Delete}
+          I={OrgPermissionMemberActions.Delete}
           a={OrgPermissionSubjects.Member}
           renderTooltip
         >
@@ -172,7 +172,10 @@ export const OrgMembersSection = () => {
             Invite and manage {isSubOrganization ? "sub-" : ""}organization users
           </CardDescription>
           <CardAction>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) => (
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}

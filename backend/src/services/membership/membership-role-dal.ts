@@ -18,9 +18,9 @@ type TMembershipRoleSlug = {
 export const membershipRoleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.MembershipRole);
 
-  // Role rows for a set of memberships, carrying the custom-role slug rather than its id so the
-  // result feeds resolveMembershipRoleSlugs directly. Batched so a bulk privilege-boundary check
-  // costs one query no matter how many memberships the caller is removing.
+  // Carries the custom-role slug rather than its id so the result feeds resolveMembershipRoleSlugs
+  // directly. Batched so a bulk privilege-boundary check is one query however many memberships it
+  // covers.
   const findRolesByMembershipIds = async (membershipIds: string[], tx?: Knex): Promise<TMembershipRoleSlug[]> => {
     if (!membershipIds.length) return [];
 

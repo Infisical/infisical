@@ -271,8 +271,8 @@ describe("verifyRequestedPermissions input hardening", () => {
 
   test("rejects a padded environment rather than trimming it", () => {
     // The service persists the request body verbatim and copies it into the granted privilege, so a
-    // value this schema normalized would be validated as "dev" and granted as " dev ": the request
-    // would be approved and the privilege would match no environment at all.
+    // value normalized here would be validated as "dev" but granted as " dev ": approved, and
+    // matching no environment at all.
     const permissions = packRules([makeRule(" dev ", "/apps/*")]);
     expect(() => verifyRequestedPermissions({ permissions })).toThrow(BadRequestError);
     expect(() => verifyRequestedPermissions({ permissions })).toThrow(/is not allowed/);

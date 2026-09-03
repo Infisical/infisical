@@ -49,9 +49,8 @@ const createService = ({
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
-    // The delete guards resolve the target's current roles to bound the removal against them.
-    // "no-access" is filtered out before resolution, so the target resolves to no roles and the
-    // boundary check falls back to an empty ability.
+    // The delete guards bound the removal against the target's current roles. "no-access" is filtered
+    // out before resolution, so the target resolves to no roles and the boundary sees an empty ability.
     getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: "no-access" }] }),
     findByIdForUpdate: vi.fn().mockResolvedValue(existingMembership),
     find: vi.fn().mockResolvedValue([]),
@@ -76,8 +75,7 @@ const createService = ({
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
-      // without a `role` field, and an empty target ability satisfies the boundary under both
-      // privilege systems given the `manage all` actor above. An empty slug list resolves to no roles.
+      // without a `role` field, and an empty target ability clears the boundary for the actor above.
       getOrgPermissionByRoles: vi
         .fn()
         .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : [])),
