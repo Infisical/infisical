@@ -69,8 +69,13 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Under allow every host is reachable already, so the list has nothing left to do. The stored value
+  // is left alone rather than cleared, so switching back to deny brings it back.
+  const isDenying = watch("unmatchedHost") === AgentVaultUnmatchedHost.Deny;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -156,24 +161,25 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              name="bypassHosts"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Bypass Hosts</FieldLabel>
-                  <FieldContent>
-                    <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
-                    <FieldDescription>
-                      Connections to these hosts are passed straight through without being opened,
-                      so no credential is attached and the setting above does not apply. Use it for
-                      clients that refuse the proxy&apos;s certificate.
-                    </FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+            {isDenying && (
+              <Controller
+                control={control}
+                name="bypassHosts"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>Bypass Hosts</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
+                      <FieldDescription>
+                        Reachable under Deny without naming them in an access bundle. They are
+                        treated like any other host and get no credential.
+                      </FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            )}
             <Controller
               control={control}
               name="pollInterval"
