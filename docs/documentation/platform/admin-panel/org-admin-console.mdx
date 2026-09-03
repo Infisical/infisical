@@ -3,14 +3,9 @@ title: "Organization admin console"
 description: "View and manage resources across your organization"
 ---
 
-<Note>
-  Only organization members with admin status can see every project in the
-  organization.
-</Note>
-
 ## Viewing every project in the organization
 
-Project membership normally decides what you can see: a project you haven't joined doesn't appear in your project list. Organization admins are the exception. They can list every project of a given type and join any of them.
+Project membership normally decides what you can see: a project you haven't joined doesn't appear in your project list. The exception is members whose role grants **Project → Request access** (organization admins by default): they can list every project of a given type.
 
 Open a product from the organization overview, then select the **All Projects** tab. It lists every project of that type in the organization, including the ones you aren't a member of, and you can narrow the list by name with the search bar.
 
@@ -18,7 +13,10 @@ Open a product from the organization overview, then select the **All Projects** 
 
 ## Accessing a project you aren't a member of
 
-Projects you have already joined are marked **Joined**. Any other project shows a **Join as Admin** button. Selecting it adds you to that project as an admin and grants you full permissions there.
+Projects you have already joined are marked **Joined**. What appears on any other project depends on your role:
+
+- Members whose role grants **Admin console → Access all projects** (organization admins by default) see a **Join as Admin** button. Selecting it adds you to that project as an admin.
+- Everyone else sees **Request access**, which files a request the project's admins can approve.
 
 ![Join as Admin on a project you haven't joined](/images/platform/admin-panels/org-admin-console-access.png)
 
