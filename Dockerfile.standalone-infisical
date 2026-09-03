@@ -213,7 +213,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libaio1t64 \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.90 \
+    && apt-get update && apt-get install -y infisical=0.43.128 \
     # Patch CVEs in base image packages (pinned versions for reproducibility)
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
@@ -226,6 +226,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
     libsqlite3-0=3.46.1-7+deb13u1 \
+    util-linux=2.41.5-0+deb13u1 \
+    mount=2.41.5-0+deb13u1 \
+    libblkid1=2.41.5-0+deb13u1 \
+    libuuid1=2.41.5-0+deb13u1 \
+    libmount1=2.41.5-0+deb13u1 \
+    libsmartcols1=2.41.5-0+deb13u1 \
+    liblastlog2-2=2.41.5-0+deb13u1 \
+    bsdutils=1:2.41.5-0+deb13u1 \
+    login=1:4.16.0-2+really2.41.5-0+deb13u1 \
+    libsystemd0=257.13-1~deb13u1 \
+    libudev1=257.13-1~deb13u1 \
+    liblzma5=5.8.1-1+deb13u1 \
+    sed=4.9-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
