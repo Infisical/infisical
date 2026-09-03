@@ -421,6 +421,55 @@ audit-log entitlement, so on those deployments only the `logger.info` line survi
 Do not special-case this event past the retention gate; treat the application log as the floor and
 the audit event as the addition for licensed instances.
 
+### Profile Sync From The IdP (SSO-enforced orgs)
+
+An IdP keyed on a stable identifier lets someone change mailbox and display name without changing
+who they are, so our copy of both goes stale: notification mail goes to an address that no longer
+exists, and every audit entry written from then on records it. `syncSsoUserProfile`
+(`src/services/user-alias/user-alias-fns.ts`) carries the asserted email and name onto the account,
+and is called from all three login services right after `ensureSsoAccountVerified`, outside the
+caller's transaction, with its result flowing into the session.
+
+The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+is the org saying the IdP is authoritative for identity, which is the same claim that already skips
+email verification at signup. The verified alias is the proof that the IdP controls *this* account:
+an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
+catch, and reading that as a rename would let a stale alias rewrite somebody else's account. One
+consequence to know: a legacy unverified alias whose email changed before its next login is stale,
+so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
+
+Three invariants:
+
+- **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
+  already had; a throw locks the person out of an org that has no other way in. Every failure path
+  returns the unchanged user.
+- **It only renames an address the org owns, onto another address the org owns.** Both halves are
+  checked in the helper against the org's verified domains. The user row is global rather than
+  org-scoped, so without the first half an org could rename an account that merely carries one of
+  its aliases and rewrite the identity every other org of that user sees. Every login path
+  establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
+  verified *for this org*, and the alias branch runs it against the existing account's username),
+  so the helper's copy is there to keep the rename from outliving those checks. It is unreachable
+  today, and audits the skip anyway (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "domain-not-owned"`) so a refactor that removes a caller's check leaves a trail rather
+  than a silently stale account.
+- **It never renames onto an occupied address.** `users.username` is globally unique and the row is
+  global rather than org-scoped, so the asserted address may already be a personal signup or an
+  unmerged duplicate. The conflict is recorded (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "address-taken"`) and the email is left alone; the name still syncs. The preceding read
+  is not a lock, so a unique violation lands on the same path.
+
+SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
+rejected every email change outright, which left the data stale *and* put the provisioning job in a
+permanent error state (Entra quarantines after repeated failures). Both now accept the change under
+the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
+`409 uniqueness` rather than a constraint-shaped 500. Self-service email change
+(`user-service.ts`) is refused when the next login would overwrite it anyway, which
+`$getManagedEmailReason` narrows to the case that actually would: the account's own address sits on a
+domain one of its SSO-enforced orgs has verified. Membership in an enforced org is not the test, since
+the user row is global and an address outside that org's domains is one `syncSsoUserProfile` will not
+touch. SCIM stays a blanket refusal, because the directory provisions the address either way.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:

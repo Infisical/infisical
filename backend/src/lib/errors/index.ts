@@ -190,16 +190,20 @@ export class ScimRequestError extends Error {
 
   mutability?: string;
 
+  scimType?: string;
+
   constructor({
     name,
     error,
     detail,
     status,
-    mutability
+    mutability,
+    scimType
   }: {
     message?: string;
     name?: string;
     mutability?: string;
+    scimType?: string;
     error?: unknown;
     detail: string;
     status: number;
@@ -211,6 +215,7 @@ export class ScimRequestError extends Error {
     this.detail = detail;
     this.status = status;
     this.mutability = mutability;
+    this.scimType = scimType;
   }
 }
 

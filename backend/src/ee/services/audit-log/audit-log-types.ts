@@ -591,6 +591,8 @@ export enum EventType {
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   OIDC_PROVISIONED_PLACEHOLDER_ADOPTED = "oidc-provisioned-placeholder-adopted",
+  SSO_USER_PROFILE_SYNCED = "sso-user-profile-synced",
+  SSO_USER_EMAIL_SYNC_SKIPPED = "sso-user-email-sync-skipped",
   CREATE_KMIP_CLIENT = "create-kmip-client",
   UPDATE_KMIP_CLIENT = "update-kmip-client",
   DELETE_KMIP_CLIENT = "delete-kmip-client",
@@ -4959,6 +4961,36 @@ interface OidcProvisionedPlaceholderAdoptedEvent {
   };
 }
 
+interface SsoUserProfileSyncedEvent {
+  type: EventType.SSO_USER_PROFILE_SYNCED;
+  metadata: {
+    userId: string;
+    aliasType: string;
+    externalId: string;
+    previousEmail?: string;
+    newEmail?: string;
+    previousFirstName?: string | null;
+    newFirstName?: string;
+    previousLastName?: string | null;
+    newLastName?: string;
+  };
+}
+
+export type TSsoUserEmailSyncSkipReason = "address-taken" | "domain-not-owned";
+
+interface SsoUserEmailSyncSkippedEvent {
+  type: EventType.SSO_USER_EMAIL_SYNC_SKIPPED;
+  metadata: {
+    userId: string;
+    aliasType: string;
+    externalId: string;
+    currentEmail: string;
+    assertedEmail: string;
+    reason: TSsoUserEmailSyncSkipReason;
+    conflictingUserId?: string;
+  };
+}
+
 interface CreateKmipClientEvent {
   type: EventType.CREATE_KMIP_CLIENT;
   metadata: {
@@ -7650,6 +7682,8 @@ export type Event =
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | OidcProvisionedPlaceholderAdoptedEvent
+  | SsoUserProfileSyncedEvent
+  | SsoUserEmailSyncSkippedEvent
   | CreateKmipClientEvent
   | UpdateKmipClientEvent
   | DeleteKmipClientEvent

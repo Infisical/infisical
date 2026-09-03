@@ -1313,7 +1313,8 @@ export const registerRoutes = async (
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    emailDomainDAL
   });
 
   const totpService = totpServiceFactory({
@@ -1362,6 +1363,7 @@ export const registerRoutes = async (
   });
 
   const samlService = samlConfigServiceFactory({
+    auditLogService,
     identityMetadataDAL,
     additionalPrivilegeDAL,
     permissionService,
@@ -1388,6 +1390,7 @@ export const registerRoutes = async (
   });
 
   const ldapService = ldapConfigServiceFactory({
+    auditLogService,
     additionalPrivilegeDAL,
     ldapConfigDAL,
     ldapGroupMapDAL,
