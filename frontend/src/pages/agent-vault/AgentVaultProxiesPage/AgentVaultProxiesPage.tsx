@@ -222,7 +222,11 @@ export const AgentVaultProxiesPage = () => {
                   </TableHead>
                 )}
                 <TableHead>Version</TableHead>
-                <TableHead>Certificate Authority</TableHead>
+                <TableHead>
+                  <HeadWithHint hint="Pass it to infisical av run --ca-fingerprint so the agent refuses any proxy but this one.">
+                    Certificate Authority
+                  </HeadWithHint>
+                </TableHead>
                 {isAdmin && (
                   <TableHead
                     sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
@@ -296,11 +300,7 @@ export const AgentVaultProxiesPage = () => {
                                 {truncateFingerprint(proxy.rootCaFingerprint)}
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              {proxy.rootCaExpiresAt
-                                ? `Expires ${format(new Date(proxy.rootCaExpiresAt), "MMM d, yyyy")}`
-                                : proxy.rootCaFingerprint}
-                            </TooltipContent>
+                            <TooltipContent>{proxy.rootCaFingerprint}</TooltipContent>
                           </Tooltip>
                           <CopyButton
                             value={proxy.rootCaFingerprint}
