@@ -1,6 +1,5 @@
 ---
 title: "Credential health"
-sidebarTitle: "Overview"
 description: "Check on a schedule that the credentials stored for your PAM accounts still work."
 ---
 
@@ -61,6 +60,10 @@ Turn on **Check credentials** and set **Check every** to 1 hour, 12 hours, 24 ho
 Open an account and go to the **Configuration** tab. The **Credential health** section shows the current status, when the account was last checked, and when it was last healthy. When a check fails, the reason the target gave appears below.
 
 Select **Check now** to run a check immediately. This requires permission to view the account's credentials, since the check signs in with them.
+
+<Note>
+  AWS IAM accounts store no credentials of their own, since Infisical assumes their role instead. They have no **Credential health** section and no **Check now** button. They're still checked on schedule, and their status appears as a badge in the account list.
+</Note>
 
 ## When checking stops
 
