@@ -29,6 +29,7 @@ export * from "./Input";
 export * from "./InputGroup";
 export * from "./Item";
 export * from "./Label";
+export * from "./Loader";
 export * from "./Pagination";
 export * from "./Popover";
 export * from "./RadioGroup";

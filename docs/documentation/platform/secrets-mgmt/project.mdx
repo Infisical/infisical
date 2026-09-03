@@ -60,44 +60,39 @@ The **Secrets Dashboard** page appears when you select a specific environment to
 
 ### Secrets
 
-To add a secret, select the **Add Secret** button at the top of the dashboard.
+To add a secret, select **Add Secret** at the top of the dashboard.
 
-![Add Secret button at the top of the secrets dashboard](/images/platform/project/add-secret-2.png)
-
-For a new project, it can be convenient to populate the dashboard by dropping a `.env` file into the provided pane as shown below:
+In a new project, you can fill the dashboard in one go by dropping a `.env`, `.json`, `.yml`, or `.csv` file onto the upload pane:
 
 ![Dashboard showing drag-and-drop pane for importing a .env file](/images/platform/project/drop-env-2.png)
 
-To delete a secret, hover over it and select the three dots on the right side, then select **Delete secret** from the dropdown.
+To delete a secret, hover over it, select the three dot menu on the right, then select **Delete Secret**.
 
-![Three-dot menu open on a secret row with Delete secret option visible](/images/platform/project/delete-secret-2.png)
+![Three dot menu open on a secret row, showing Delete Secret](/images/platform/project/delete-secret-2.png)
 
-To delete multiple secrets at once, hover over and select the secrets you'd like to delete
-and select the **Delete** button that appears at the top.
+To delete several secrets at once, select their checkboxes, then select **Delete** at the top.
 
-![Multiple secrets selected with the Delete button visible at the top](/images/platform/project/delete-multiple-2.png)
+![Three secrets selected with the Delete button at the top of the dashboard](/images/platform/project/delete-multiple-2.png)
 
 ### Search
 
-To search for specific secrets by their key name, you can use the search bar.
+To find a secret by name, type into the search bar.
 
-![Search bar at the top of the secrets dashboard](/images/platform/project/search-secrets-2.png)
+![Secrets dashboard filtered by a search term](/images/platform/project/search-secrets-2.png)
 
-To assist you with finding secrets, you can also group them by similar prefixes and filter them by tags (if applicable).
+Select the filter icon to narrow the list to one kind of resource, or to filter by tag. The resource types are folders, secrets, secret imports, secret rotations, dynamic secrets, honey tokens, and proxied services.
 
-![Filter dropdown showing grouping by prefix and tag options](/images/platform/project/filter-secrets-2.png)
+![Filter by Resource menu open on the secrets dashboard](/images/platform/project/filter-secrets-2.png)
 
 ### Reveal values
 
-To view all secret values at once, toggle the **Reveal values** button.
+To show every value at once, select **Reveal Values**.
 
-![Reveal values button on the secrets dashboard](/images/platform/project/reveal-values-2.png)
+![Secrets dashboard with every value revealed](/images/platform/project/reveal-values-2.png)
 
 ### Download as .env
 
-To download/export secrets back into a `.env` file, select the download button.
-
-![Download button for exporting secrets as a .env file](/images/platform/project/download-env-2.png)
+To export the secrets in the current folder as a `.env` file, select the download icon.
 
 The short video below walks through tagging, comments, and personal overrides, three ways to organize, annotate, and customize secrets in the dashboard.
 
@@ -117,15 +112,15 @@ The short video below walks through tagging, comments, and personal overrides, t
 
 ### Tags
 
-To better organize similar secrets, hover over them and label them with a tag.
+To group similar secrets, hover over a secret, select the three dot menu, then select **Annotate** and **Add Tags**.
 
-![Tag selector appearing on hover over a secret](/images/platform/project/tags-2.png)
+![Annotate menu expanded on a secret row, showing Add Tags](/images/platform/project/tags-2.png)
 
 ### Comments
 
-To provide more context about a given secret, especially for your team, hover over it and select the comment button.
+To leave context for your team, hover over a secret and select the comment icon.
 
-![Comment button appearing on hover over a secret](/images/platform/project/comment-2.png)
+![Comment dialog open for a secret](/images/platform/project/comment-2.png)
 
 ### Personal overrides
 
@@ -145,8 +140,9 @@ Then:
 - If user A fetches secret D, they get the value F.
 - If users B and C fetch secret D, they both get the value E.
 
+To set a personal value, hover over the secret, select the three dot menu, then select **Add Override**.
+
 <Info>
   Secret reminders don't work with personal overrides.
 </Info>
 
-![Secret row showing the personal override option](/images/platform/project/override-2.png)

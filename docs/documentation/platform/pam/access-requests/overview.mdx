@@ -6,13 +6,15 @@ description: "Require approval before a member can use a sensitive account."
 
 Some [accounts](/documentation/platform/pam/accounts/overview) are sensitive enough that simply having access to them shouldn't be enough to use them. A production database or a domain admin account should be reachable only by people who are already trusted, but even for them, each individual use should clear an extra checkpoint. Access requests add that checkpoint: before a member can [launch a session](/documentation/platform/pam/sessions/overview) on a gated account, their access has to be approved.
 
+The template's **Require Approval** policy gates two things, and each is requested separately: launching a session, and [viewing the account's credentials](/documentation/platform/pam/accounts/overview#viewing-credentials). Everything below applies to both. An approved session request never reveals the credential, and an approved credential request never launches a session, so a member who needs both files both.
+
 The same checkpoint applies to [AI agents](/documentation/platform/pam/ai-agents/overview). An agent requests access as whoever started it, a person or a [machine identity](/documentation/platform/identities/machine-identities), and waits for an approver either way.
 
 ## How it works
 
 Approval sits on top of the access a member already holds. Two layers apply to a gated account:
 
-- **Membership** grants use access, the right to launch a session and connect to the account. This comes from the [Connector or Admin role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) or account, and it's the record of who can ever get in.
+- **Membership** grants use access, the right to launch a session and connect to the account. This comes from the [Admin, Operator, or Connector role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) or account, and it's the record of who can ever get in. Credential access needs the Operator or Admin role specifically.
 - **Approval** decides whether a member is cleared to use that access right now.
 
 A gated account needs both. A member requests access on an account they can already use, an approver signs off, and the member's access opens for the duration they asked for. When the duration runs out, the access closes again.
@@ -76,7 +78,7 @@ Once approved, the key icon switches to the rocket icon and the member can launc
 
 ### Reviewing a request
 
-Approvers are notified by email and in the app when a request needs them. From **Approval Requests**, an approver sees the requests waiting on them, each showing the requester, account, folder, reason, and duration.
+Approvers are notified by email and in the app when a request needs them. From **Approval Requests**, an approver sees the requests waiting on them, each showing the requester, account, folder, reason, and duration. A credential request carries a **Credentials** badge, so an approver can tell at a glance that approving hands over the raw password rather than opening a recorded session.
 
 They **approve** or **reject** the request. A single approval from any one of the folder's seated approvers clears it; it doesn't have to come from a specific person.
 
@@ -129,6 +131,8 @@ When an agent reaches for a gated account, the request is filed for it automatic
   </Accordion>
   <Accordion title="Who can revoke access once it is granted?">
     A Folder Admin. Revoking ends an active request right away and cuts off access before its duration runs out. Any active session using that access is terminated immediately.
+
+    Revoking a credential request is weaker: it stops further reveals, but a credential already copied is outside Infisical and stays valid until the account is rotated. It also leaves live sessions alone, since those are authorized by their own grant.
   </Accordion>
   <Accordion title="Do changes to a folder's approvers apply to requests already in flight?">
     Removing an approver takes effect right away: someone dropped from the folder's approvers can no longer act on a request that is still pending. Adding an approver doesn't reach back into requests already in flight, so a pending request can only be cleared by the approvers it had when it was created. An approved request is already granted and keeps its access until it expires or is revoked, whatever changes afterward.

@@ -166,7 +166,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
 COPY --from=backend-prod-deps /app/node_modules ./node_modules
 
 RUN mkdir frontend-build
@@ -199,13 +199,16 @@ FROM base AS production
 
 # Runtime dependencies only. The PQC OpenSSL toolchain lives in
 # openssl-pqc-builder; nothing here compiles.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     bash \
     curl \
     git \
     unixodbc \
     freetds-bin \
+    # the ECS container health check shells out to wget; dropping it fails the
+    # probe with exit 127 even while the server is serving /api/status fine
+    wget \
     openssh-client \
     libaio1t64 \
     smbclient \

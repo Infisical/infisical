@@ -1,0 +1,101 @@
+name: Publish Storybook to Chromatic
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "frontend/src/components/v3/**"
+      - "frontend/src/lib/**"
+      - "frontend/src/index.css"
+      - "frontend/.storybook/**"
+      - "frontend/package-lock.json"
+      - ".github/workflows/publish-storybook-chromatic.yml"
+
+concurrency:
+  group: storybook-chromatic-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  chromatic:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Fork PRs can't read secrets, so the publish would always fail; skip them.
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Chromatic needs full git history to find the baseline build
+          fetch-depth: 0
+      - name: 🔧 Setup Node 22
+        id: setup-node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+      - name: 📦 Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: frontend/node_modules
+          key: frontend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
+      - name: 📦 Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+        working-directory: frontend
+      - name: 🎨 Publish to Chromatic
+        id: chromatic
+        uses: chromaui/action@2a0b63f30233c48591844a46d451b9cf68128186 # v18.7.2
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: frontend
+          onlyChanged: true
+          exitZeroOnChanges: true
+      - name: 💬 Comment Storybook preview
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          STORYBOOK_URL: ${{ steps.chromatic.outputs.storybookUrl }}
+          CHROMATIC_BUILD_URL: ${{ steps.chromatic.outputs.buildUrl }}
+        with:
+          retries: 3
+          script: |
+            const marker = "<!-- chromatic-storybook-preview -->";
+            const head = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = [
+              marker,
+              "## Storybook preview",
+              "",
+              `📚 [Open Storybook](${process.env.STORYBOOK_URL})`,
+              "",
+              `[🔍 View Chromatic build details](${process.env.CHROMATIC_BUILD_URL})`,
+              "",
+              `Updated for \`${head}\`.`
+            ].join("\n");
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+            const existing = comments.find(
+              (comment) => comment.user?.login === "github-actions[bot]" && comment.body?.startsWith(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

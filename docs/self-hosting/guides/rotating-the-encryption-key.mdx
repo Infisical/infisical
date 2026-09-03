@@ -43,8 +43,9 @@ value**, so generating a key changes nothing until you deploy it.
     The key is shown once and is never recoverable. Copy it into your secret store before closing the
     dialog, together with the **label** shown beside it.
 
-    If the key may have been exposed while you copied it, select **Discard generated key**. It can no
-    longer be applied, and you can generate another.
+    If the key may have been exposed while you copied it, you can discard the generated key or just generate a new one.
+
+    ![Discard generated encryption key](/images/self-hosting/guides/rotating-encryption-key/discard-key.png)
 
   </Step>
 
@@ -71,7 +72,7 @@ value**, so generating a key changes nothing until you deploy it.
     exposure yet.
 
     The panel tells you when an instance last started on the old key. When every instance has restarted
-    on the new key, select **Remove old key**.
+    on the new key, select **Deactivate now** or click the icon button at the previous key row.
 
     ![Remove encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/remove-key.png)
 

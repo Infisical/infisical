@@ -736,6 +736,7 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_ACCOUNT_CREDENTIALS_VIEW = "pam-account-credentials-view",
   PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
   PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
   PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
@@ -2213,6 +2214,8 @@ interface AddIdentityOidcAuthEvent {
   type: EventType.ADD_IDENTITY_OIDC_AUTH;
   metadata: {
     identityId: string;
+    templateId?: string | null;
+    templateName?: string;
     oidcDiscoveryUrl: string;
     caCert: string;
     boundIssuer: string;
@@ -2238,6 +2241,9 @@ interface UpdateIdentityOidcAuthEvent {
   type: EventType.UPDATE_IDENTITY_OIDC_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
+    templateId?: string | null;
+    templateName?: string;
     oidcDiscoveryUrl?: string;
     caCert?: string;
     boundIssuer?: string;
@@ -6065,6 +6071,19 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamAccountCredentialsViewEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIALS_VIEW;
+  metadata: {
+    accountId: string;
+    accountName: string;
+    accountType: string;
+    folderId?: string | null;
+    folderName?: string | null;
+    reason?: string | null;
+    grantExpiresAt?: string | null;
+  };
+}
+
 interface PamDiscoverySourceCreateEvent {
   type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
   metadata: { sourceId: string; discoveryType: string; name: string };
@@ -6131,6 +6150,7 @@ interface PamAccessRequestCreateEvent {
     accountId: string;
     folderId: string;
     duration: string;
+    accessType: string;
     reason?: string;
   };
 }
@@ -7755,6 +7775,7 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamAccountCredentialsViewEvent
   | PamDiscoverySourceCreateEvent
   | PamDiscoverySourceUpdateEvent
   | PamDiscoverySourceDeleteEvent

@@ -132,89 +132,93 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
           </CardAction>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Algorithm</TableHead>
-                <TableHead>Data Hash</TableHead>
-                <TableHead>Actor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <TableRow key={`skeleton-${i}`}>
-                    {Array.from({ length: 5 }).map((__, j) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <TableCell key={`skeleton-cell-${j}`}>
-                        <div className="h-4 w-full animate-pulse rounded bg-mineshaft-700" />
+          {(isLoading || operations.length > 0) && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Algorithm</TableHead>
+                  <TableHead>Data Hash</TableHead>
+                  <TableHead>Actor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`skeleton-${i}`}>
+                      {Array.from({ length: 5 }).map((__, j) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <TableCell key={`skeleton-cell-${j}`}>
+                          <div className="h-4 w-full animate-pulse rounded bg-mineshaft-700" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!isLoading &&
+                  operations.map((op) => (
+                    <TableRow
+                      key={op.id}
+                      className="cursor-pointer transition-colors hover:bg-mineshaft-700 [&>td]:py-3"
+                      onClick={() =>
+                        navigate({
+                          to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId/operations/$operationId",
+                          params: {
+                            orgId: currentOrg.id,
+                            projectId,
+                            signerId,
+                            operationId: op.id
+                          }
+                        })
+                      }
+                    >
+                      <TableCell>
+                        {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {!isLoading &&
-                operations.map((op) => (
-                  <TableRow
-                    key={op.id}
-                    className="cursor-pointer transition-colors hover:bg-mineshaft-700 [&>td]:py-3"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId/operations/$operationId",
-                        params: {
-                          orgId: currentOrg.id,
-                          projectId,
-                          signerId,
-                          operationId: op.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}</TableCell>
-                    <TableCell>
-                      <Badge variant={getSigningOperationStatusBadgeVariant(op.status)}>
-                        {signingOperationStatusLabels[op.status] ?? op.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {signingAlgorithmLabels[op.signingAlgorithm] ?? op.signingAlgorithm}
-                    </TableCell>
-                    <TableCell className="max-w-[120px] truncate font-mono text-xs">
-                      {op.dataHash}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-1.5">
-                            {op.actorType === SigningActorType.User ? (
-                              <UserIcon className="size-3.5 text-muted" />
-                            ) : (
-                              <HardDriveIcon className="size-3.5 text-muted" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={
-                                isActorClickable(op) ? () => handleActorClick(op) : undefined
-                              }
-                              className={
-                                isActorClickable(op)
-                                  ? "cursor-pointer font-medium text-accent underline"
-                                  : "text-muted"
-                              }
-                            >
-                              {getActorDisplayName(op.actorType, op.actorName)}
-                            </button>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+                      <TableCell>
+                        <Badge variant={getSigningOperationStatusBadgeVariant(op.status)}>
+                          {signingOperationStatusLabels[op.status] ?? op.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {signingAlgorithmLabels[op.signingAlgorithm] ?? op.signingAlgorithm}
+                      </TableCell>
+                      <TableCell className="max-w-[120px] truncate font-mono text-xs">
+                        {op.dataHash}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1.5">
+                              {op.actorType === SigningActorType.User ? (
+                                <UserIcon className="size-3.5 text-muted" />
+                              ) : (
+                                <HardDriveIcon className="size-3.5 text-muted" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={
+                                  isActorClickable(op) ? () => handleActorClick(op) : undefined
+                                }
+                                className={
+                                  isActorClickable(op)
+                                    ? "cursor-pointer font-medium text-accent underline"
+                                    : "text-muted"
+                                }
+                              >
+                                {getActorDisplayName(op.actorType, op.actorName)}
+                              </button>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          )}
           {!isLoading && operations.length === 0 && (
             <Empty className="border border-solid">
               <EmptyHeader>
