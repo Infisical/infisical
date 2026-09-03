@@ -15,7 +15,8 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretsOrderBy
+  type SecretOrderBy,
+  type SecretsOrderBy
 } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -478,8 +479,9 @@ export type TGetSecretReferencesDTO = {
 export type TFindSecretsByFolderIdsFilter = {
   limit?: number;
   offset?: number;
-  orderBy?: SecretsOrderBy;
+  orderBy?: SecretOrderBy;
   orderDirection?: OrderByDirection;
+  sortFolderIds?: string[];
   search?: string;
   tagSlugs?: string[];
   metadataFilter?: { key?: string; value?: string }[];

@@ -1499,6 +1499,7 @@ export const DASHBOARD = {
     limit: "The number of secrets/folders to return.",
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
+    sortEnvironment: "The environment slug whose secret timestamps determine recency ordering.",
     search: "The text string to filter secret keys and folder names by.",
     tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
     includeSecrets: "Whether to include project secrets in the response.",

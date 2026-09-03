@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
-  ChevronDownIcon,
+  ArrowUpDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -77,6 +77,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   PageHeader,
   Pagination,
@@ -297,6 +304,46 @@ const DEFAULT_FILTER_STATE = {
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 
+const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
+  `${orderBy}:${orderDirection}`;
+
+const SECRET_RECENCY_SORT_OPTIONS = [
+  {
+    label: "Last edited — newest first",
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last edited — oldest first",
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Created — newest first",
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Created — oldest first",
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.ASC
+  }
+] as const;
+
+const SECRET_SORT_OPTIONS = [
+  {
+    label: "Name — A to Z",
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Name — Z to A",
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.DESC
+  },
+  ...SECRET_RECENCY_SORT_OPTIONS
+] as const;
+
 const OverviewPageContent = () => {
   const { t } = useTranslation();
 
@@ -390,10 +437,12 @@ const OverviewPageContent = () => {
     perPage,
     page,
     setPerPage,
-    orderBy
+    orderBy,
+    setOrderBy
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
     initPerPage: getUserTablePreference("secretOverviewTable", PreferenceKey.PerPage, 100)
   });
+  const [sortEnvironment, setSortEnvironment] = useState<string>();
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -513,6 +562,49 @@ const OverviewPageContent = () => {
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
+
+  useEffect(() => {
+    if (
+      sortEnvironment &&
+      (visibleEnvs.length === 1 ||
+        !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
+    ) {
+      setSortEnvironment(undefined);
+      setPage(1);
+    }
+  }, [sortEnvironment, visibleEnvs, setPage]);
+
+  const handleSecretSortChange = useCallback(
+    (value: string, environment?: string) => {
+      const option = SECRET_SORT_OPTIONS.find(
+        ({ orderBy: nextOrderBy, orderDirection: nextOrderDirection }) =>
+          getSecretSortValue(nextOrderBy, nextOrderDirection) === value
+      );
+
+      if (!option) return;
+
+      setOrderBy(option.orderBy);
+      setOrderDirection(option.orderDirection);
+      setSortEnvironment(environment);
+      setPage(1);
+    },
+    [setOrderBy, setOrderDirection, setPage]
+  );
+
+  const activeSecretSort = SECRET_SORT_OPTIONS.find(
+    (option) =>
+      getSecretSortValue(option.orderBy, option.orderDirection) ===
+      getSecretSortValue(orderBy, orderDirection)
+  );
+  let activeSecretSortScope = "";
+  if (sortEnvironment) {
+    activeSecretSortScope = ` in ${
+      visibleEnvs.find((environment) => environment.slug === sortEnvironment)?.name ??
+      sortEnvironment
+    }`;
+  } else if (visibleEnvs.length > 1 && orderBy !== DashboardSecretsOrderBy.Name) {
+    activeSecretSortScope = " across visible environments";
+  }
 
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
@@ -731,6 +823,7 @@ const OverviewPageContent = () => {
     secretPath,
     orderDirection,
     orderBy,
+    sortEnvironment,
     includeFolders: isFilteredByResources ? filter.folder : true,
     includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
     includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
@@ -2977,23 +3070,43 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container lg:w-96 lg:max-w-96 lg:min-w-96"
+                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
                         )}
-                        onClick={() =>
-                          setOrderDirection((prev) =>
-                            prev === OrderByDirection.ASC
-                              ? OrderByDirection.DESC
-                              : OrderByDirection.ASC
-                          )
-                        }
                       >
-                        Name
-                        <ChevronDownIcon
-                          className={twMerge(
-                            orderDirection === OrderByDirection.DESC && "rotate-180",
-                            "transition-transform"
-                          )}
-                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex h-full w-full items-center gap-2 px-3 text-left hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name — A to Z"}${activeSecretSortScope}`}
+                            >
+                              <span>Name</span>
+                              <ArrowUpDownIcon className="size-3.5 shrink-0" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-64">
+                            <DropdownMenuLabel>
+                              {visibleEnvs.length > 1
+                                ? "Sort across visible environments"
+                                : "Sort secrets"}
+                            </DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={
+                                sortEnvironment ? "" : getSecretSortValue(orderBy, orderDirection)
+                              }
+                              onValueChange={(value) => handleSecretSortChange(value)}
+                            >
+                              {SECRET_SORT_OPTIONS.map((option) => (
+                                <DropdownMenuRadioItem
+                                  key={getSecretSortValue(option.orderBy, option.orderDirection)}
+                                  value={getSecretSortValue(option.orderBy, option.orderDirection)}
+                                >
+                                  {option.label}
+                                </DropdownMenuRadioItem>
+                              ))}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
                         visibleEnvs?.map(({ name, slug, id }, index) => {
@@ -3003,18 +3116,60 @@ const OverviewPageContent = () => {
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
-                                <Tooltip>
-                                  <TooltipTrigger className="h-full">
-                                    <DropdownMenuTrigger asChild>
-                                      <div className="flex h-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
-                                        <span className="whitespace-nowrap">{name}</span>
-                                        <EllipsisIcon className="size-3.5 shrink-0" />
-                                      </div>
-                                    </DropdownMenuTrigger>
-                                  </TooltipTrigger>
-                                  <TooltipContent>{name}</TooltipContent>
-                                </Tooltip>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    title={name}
+                                    aria-label={`Open ${name} environment menu${
+                                      sortEnvironment === slug
+                                        ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
+                                        : ""
+                                    }`}
+                                    className="flex h-full min-w-40 items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                                  >
+                                    <span className="whitespace-nowrap">{name}</span>
+                                    {sortEnvironment === slug && (
+                                      <ArrowUpDownIcon className="size-3.5 shrink-0 text-primary" />
+                                    )}
+                                    <EllipsisIcon className="size-3.5 shrink-0" />
+                                  </button>
+                                </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <ArrowUpDownIcon />
+                                      Sort secrets by recency
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="w-60">
+                                      <DropdownMenuLabel>Use {name} timestamps</DropdownMenuLabel>
+                                      <DropdownMenuRadioGroup
+                                        value={
+                                          sortEnvironment === slug
+                                            ? getSecretSortValue(orderBy, orderDirection)
+                                            : ""
+                                        }
+                                        onValueChange={(value) =>
+                                          handleSecretSortChange(value, slug)
+                                        }
+                                      >
+                                        {SECRET_RECENCY_SORT_OPTIONS.map((option) => (
+                                          <DropdownMenuRadioItem
+                                            key={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                            value={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                          >
+                                            {option.label}
+                                          </DropdownMenuRadioItem>
+                                        ))}
+                                      </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => {
                                       navigator.clipboard.writeText(slug);

@@ -16,6 +16,7 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { DashboardSecretsOrderBy } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -43,6 +44,31 @@ interface TSecretV2DalArg {
   db: TDbClient;
   keyStore: TKeyStoreFactory;
 }
+
+type TSecretSort = { key: string; sortValue: Date };
+
+type TSecretV2FindByFolderIdsRow = TSecretsV2 & {
+  rank: number;
+  reminderId: string;
+  reminderNote: string;
+  reminderRepeatDays: number;
+  nextReminderDate: Date;
+  reminderRecipientId: string;
+  reminderRecipientUsername: string;
+  reminderRecipientEmail: string;
+  reminderRecipientUserId: string;
+  tagId: string;
+  tagColor: string;
+  tagSlug: string;
+  tagCreatedAt: Date;
+  metadataId: string;
+  metadataKey: string;
+  metadataValue: string;
+  metadataEncryptedValue: Buffer;
+  metadataCreatedAt: Date;
+  rotationId: string;
+  honeyTokenId: string;
+};
 
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
@@ -612,7 +638,31 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         userId = undefined;
       }
 
-      const query = (tx || db.replicaNode())(TableName.SecretV2)
+      const orderBy = filters?.orderBy ?? DashboardSecretsOrderBy.Name;
+      const orderDirection = filters?.orderDirection ?? OrderByDirection.ASC;
+      const isTimestampSort = orderBy !== DashboardSecretsOrderBy.Name;
+      const sortFolderIds = filters?.sortFolderIds ?? folderIds;
+      const readDb = tx || db.replicaNode();
+
+      const secretSortQuery = readDb(`${TableName.SecretV2} as sortSecret`)
+        .select("sortSecret.key")
+        .max({ sortValue: `sortSecret.${orderBy}` })
+        .whereIn("sortSecret.folderId", sortFolderIds)
+        .where((bd) => {
+          void bd.whereNull("sortSecret.userId").orWhere({ "sortSecret.userId": userId || null });
+        })
+        .groupBy("sortSecret.key");
+
+      const query = readDb(TableName.SecretV2)
+        .modify((queryBuilder) => {
+          if (isTimestampSort) {
+            void queryBuilder.leftJoin<TSecretSort>(
+              secretSortQuery.as("secretSort"),
+              "secretSort.key",
+              `${TableName.SecretV2}.key`
+            );
+          }
+        })
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
@@ -679,9 +729,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           selectAllTableCols(TableName.SecretV2),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${
-              filters?.orderDirection ?? OrderByDirection.ASC
-            }) as rank`
+            isTimestampSort
+              ? `DENSE_RANK() OVER (ORDER BY "secretSort"."sortValue" ${orderDirection} NULLS LAST, "${TableName.SecretV2}"."key" ASC) as rank`
+              : `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}"."key" ${orderDirection}) as rank`
           )
         )
         .select(db.ref("id").withSchema(TableName.Reminder).as("reminderId"))
@@ -716,34 +766,48 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        // Always order by key (name) to match the Go sidecar's ordering.
         // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
-        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
+        .modify((queryBuilder) => {
+          if (isTimestampSort) {
+            void queryBuilder
+              .orderBy("secretSort.sortValue", orderDirection, "last")
+              .orderBy(`${TableName.SecretV2}.key`, OrderByDirection.ASC);
+          } else {
+            // Match the Go sidecar's name ordering when recency sorting is not requested.
+            void queryBuilder.orderBy(`${TableName.SecretV2}.key`, orderDirection);
+          }
+        })
         .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
         .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
         .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
         .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
-      let secs: Awaited<typeof query>;
+      let secs: TSecretV2FindByFolderIdsRow[];
 
       if (filters?.limit) {
         const rankOffset = (filters?.offset ?? 0) + 1; // ranks start at 1
-        secs = await (tx || db)
+        secs = (await (tx || db)
           .with("w", query)
           .select("*")
-          .from<Awaited<typeof query>[number]>("w")
+          .from<TSecretV2FindByFolderIdsRow>("w")
           .where("w.rank", ">=", rankOffset)
           .andWhere("w.rank", "<", rankOffset + filters.limit)
           // a CTE does not carry its inner ordering, so re-state it in full: paging needs the key order, and the
           // join rows need the metadata/tag order the inner query set, which a partial re-sort would scramble
-          .orderBy("key", filters.orderDirection ?? OrderByDirection.ASC)
+          .modify((queryBuilder) => {
+            if (isTimestampSort) {
+              void queryBuilder.orderBy("rank", OrderByDirection.ASC);
+            } else {
+              void queryBuilder.orderBy("key", orderDirection);
+            }
+          })
           .orderBy("id", OrderByDirection.ASC)
           .orderBy("metadataCreatedAt", "asc", "first")
           .orderBy("metadataId", "asc", "first")
           .orderBy("tagCreatedAt", "asc", "first")
-          .orderBy("tagId", "asc", "first");
+          .orderBy("tagId", "asc", "first")) as TSecretV2FindByFolderIdsRow[];
       } else {
-        secs = await query;
+        secs = (await query) as TSecretV2FindByFolderIdsRow[];
       }
 
       const data = sqlNestRelationships({

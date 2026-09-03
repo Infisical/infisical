@@ -64,6 +64,7 @@ import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
+  type SecretOrderBy,
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
@@ -1216,10 +1217,26 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     isInternal,
     ...params
-  }: Pick<
-    TGetSecretsDTO,
-    "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
+  }: Omit<
+    Pick<
+      TGetSecretsDTO,
+      | "actorId"
+      | "actor"
+      | "path"
+      | "projectId"
+      | "actorOrgId"
+      | "actorAuthMethod"
+      | "search"
+      | "tagSlugs"
+      | "orderBy"
+      | "orderDirection"
+      | "limit"
+      | "offset"
+    >,
+    "orderBy"
   > & {
+    orderBy?: SecretOrderBy;
+    sortEnvironment?: string;
     environments: string[];
     isInternal?: boolean;
   }) => {
@@ -1252,11 +1269,15 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
+    const sortFolderIds = params.sortEnvironment
+      ? folders.filter((folder) => folder.environment.slug === params.sortEnvironment).map((folder) => folder.id)
+      : undefined;
+
     const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
-        filters: params,
+        filters: { ...params, sortFolderIds },
         userId: actorId,
         filterByAction: ProjectPermissionSecretActions.DescribeSecret
       },

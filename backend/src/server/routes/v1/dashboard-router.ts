@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -31,6 +32,7 @@ import {
   SecretMetadataSearchOperator
 } from "@app/services/resource-metadata/resource-metadata-types";
 import {
+  DashboardSecretsOrderBy,
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
   SecretsOrderBy
@@ -171,15 +173,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).optional().default(0).describe(DASHBOARD.SECRET_OVERVIEW_LIST.offset),
         limit: z.coerce.number().min(1).max(100).optional().default(100).describe(DASHBOARD.SECRET_OVERVIEW_LIST.limit),
         orderBy: z
-          .nativeEnum(SecretsOrderBy)
-          .default(SecretsOrderBy.Name)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy)
-          .optional(),
+          .nativeEnum(DashboardSecretsOrderBy)
+          .default(DashboardSecretsOrderBy.Name)
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
           .default(OrderByDirection.ASC)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
-          .optional(),
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection),
+        sortEnvironment: slugSchema().describe(DASHBOARD.SECRET_OVERVIEW_LIST.sortEnvironment).optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
@@ -312,6 +313,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         search,
         orderBy,
         orderDirection,
+        sortEnvironment,
         includeFolders,
         includeSecrets,
         includeImports,
@@ -326,6 +328,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || environments.length === 0)
         throw new BadRequestError({ message: "Missing project id or environment(s)" });
+
+      if (sortEnvironment && !environments.includes(sortEnvironment)) {
+        throw new BadRequestError({
+          message: `Sort environment '${sortEnvironment}' must be included in the requested environments`
+        });
+      }
+
+      const resourceOrderDirection = orderBy === DashboardSecretsOrderBy.Name ? orderDirection : OrderByDirection.ASC;
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);
 
@@ -435,8 +445,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             environments,
             path: secretPath,
-            orderBy,
-            orderDirection,
+            orderBy: SecretsOrderBy.Name,
+            orderDirection: resourceOrderDirection,
             search,
             limit: remainingLimit,
             offset: adjustedOffset
@@ -489,8 +499,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             actorOrgId: req.permission.orgId,
             projectId,
             search,
-            orderBy,
-            orderDirection,
+            orderBy: SecretsOrderBy.Name,
+            orderDirection: resourceOrderDirection,
             environmentSlugs: environments,
             path: secretPath,
             limit: remainingLimit,
@@ -539,8 +549,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -589,8 +599,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -624,8 +634,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -673,6 +683,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             path: secretPath,
             orderBy,
             orderDirection,
+            sortEnvironment,
             search,
             tagSlugs,
             limit: remainingLimit,
