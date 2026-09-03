@@ -18,13 +18,10 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
+  Switch
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -213,13 +210,11 @@ export const GcpSecretManagerConfigurePage = () => {
           </div>
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
+          <TabsList variant="project">
+            <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+            <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSections.Connection}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -310,8 +305,8 @@ export const GcpSecretManagerConfigurePage = () => {
                 }}
               />
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
+          </TabsContent>
+          <TabsContent value={TabSections.Options}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -391,7 +386,7 @@ export const GcpSecretManagerConfigurePage = () => {
                 </div>
               )}
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           colorSchema="primary"

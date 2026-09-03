@@ -12,12 +12,9 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
+  SelectItem
 } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -222,13 +219,11 @@ export const QoveryConfigurePage = () => {
           </div>
         </CardTitle>
         <Tabs defaultValue={TabSections.InfisicalSettings} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.InfisicalSettings}>Infisical Settings</Tab>
-              <Tab value={TabSections.QoverySettings}>Qovery Settings</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.InfisicalSettings}>
+          <TabsList variant="project">
+            <TabsTrigger value={TabSections.InfisicalSettings}>Infisical Settings</TabsTrigger>
+            <TabsTrigger value={TabSections.QoverySettings}>Qovery Settings</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSections.InfisicalSettings}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -260,8 +255,8 @@ export const QoveryConfigurePage = () => {
                 />
               </FormControl>
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.QoverySettings}>
+          </TabsContent>
+          <TabsContent value={TabSections.QoverySettings}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -383,7 +378,7 @@ export const QoveryConfigurePage = () => {
                 </FormControl>
               )}
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           onClick={handleButtonClick}

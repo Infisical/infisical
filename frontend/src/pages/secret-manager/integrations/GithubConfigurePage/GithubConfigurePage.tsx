@@ -28,12 +28,9 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
+  Switch
 } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -326,13 +323,11 @@ export const GithubConfigurePage = () => {
             </div>
           </CardTitle>
           <Tabs defaultValue={TabSections.Connection}>
-            <TabList>
-              <div className="flex w-full flex-row border-b border-mineshaft-600">
-                <Tab value={TabSections.Connection}>Connection</Tab>
-                <Tab value={TabSections.Options}>Options</Tab>
-              </div>
-            </TabList>
-            <TabPanel value={TabSections.Connection}>
+            <TabsList variant="project">
+              <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+              <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+            </TabsList>
+            <TabsContent value={TabSections.Connection}>
               <motion.div
                 key="panel-1"
                 transition={{ duration: 0.15 }}
@@ -705,8 +700,8 @@ export const GithubConfigurePage = () => {
                   />
                 )}
               </motion.div>
-            </TabPanel>
-            <TabPanel value={TabSections.Options}>
+            </TabsContent>
+            <TabsContent value={TabSections.Options}>
               <motion.div
                 key="panel-1"
                 transition={{ duration: 0.15 }}
@@ -747,7 +742,7 @@ export const GithubConfigurePage = () => {
                   )}
                 />
               </motion.div>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
           <div className="flex w-full justify-end">
             <Button
