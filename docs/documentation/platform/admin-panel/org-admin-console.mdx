@@ -3,26 +3,25 @@ title: "Organization admin console"
 description: "View and manage resources across your organization"
 ---
 
-<Note>
-  The Organization Admin Console can only be accessed by organization members
-  with admin status.
-</Note>
+## Viewing every project in the organization
 
-## Accessing the organization admin console
+Project membership normally decides what you can see: a project you haven't joined doesn't appear in your project list. The exception is members whose role grants **Project → Request access** (organization admins by default): they can list every project of a given type.
 
-On the sidebar, hover over **Admin** to access the settings dropdown and press the **Organization Admin Console** option.
-
-![Access Organization Admin Console](/images/platform/admin-panels/access-org-admin-console.png)
-
-## Projects tab
-
-The Projects tab lists all the projects within your organization, including those which you aren't a member of. You can easily filter projects by name or slug using the search bar.
+Open a product from the organization overview, then select the **All Projects** tab. It lists every project of that type in the organization, including the ones you aren't a member of, and you can narrow the list by name with the search bar.
 
 ![Projects Section](/images/platform/admin-panels/org-admin-console-projects.png)
 
-### Accessing a project in your organization
+## Accessing a project you aren't a member of
 
-You can access a project that you aren't a member of by opening the options menu on the project row and pressing the **Access** button.
-Doing so will grant you admin permissions for the selected project and add you as a member.
+Projects you have already joined are marked **Joined**. What appears on any other project depends on your role:
 
-![Access project](/images/platform/admin-panels/org-admin-console-access.png)
+- Members whose role grants **Admin console → Access all projects** (organization admins by default) see a **Join as Admin** button. Selecting it adds you to that project as an admin.
+- Everyone else sees **Request access**, which files a request the project's admins can approve.
+
+![Join as Admin on a project you haven't joined](/images/platform/admin-panels/org-admin-console-access.png)
+
+<Note>
+  Joining a project this way is recorded in the
+  [audit log](/documentation/platform/audit-logs), so the project's own admins
+  can see that you joined.
+</Note>
