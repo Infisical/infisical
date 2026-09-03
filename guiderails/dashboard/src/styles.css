@@ -1,0 +1,758 @@
+/*
+ * Tokens copied from infisical-web/styles/infisical-brand.css, dark treatment.
+ *
+ * Trust that file, not its DESIGN.md, which has drifted (it calls Volt #dbf530; the real token is
+ * #f7fe62). Values are inlined rather than imported because that stylesheet is 727 lines of tokens
+ * for a marketing site and this needs about twenty of them.
+ *
+ * Committed to dark, with no toggle. This is an instrument panel watched while a walk runs, the
+ * brand has a fully specified dark treatment, and one deliberate visual world beats two hedged
+ * ones. Every colour is painted explicitly so nothing borrows from the host.
+ */
+
+:root {
+  --page: #0b0d10;
+  --panel: #1a1a1e;
+  --panel-raised: #212127;
+  --border: #26272b;
+  --border-strong: #707174;
+
+  --text: #ebebeb;
+  --text-2: #adaeb0;
+  --text-3: #707174;
+
+  --volt: #f7fe62;
+  --pass: #c5df58;
+  --fail: #ff7a6f;
+  --warn: #ffbd3d;
+  --info: #71bef5;
+  --code: #8fdc5a;
+
+  --surface-pass: #172417;
+  --surface-warn: #27200f;
+  --surface-fail: #291515;
+
+  --scanner-dot: rgba(228, 228, 231, 0.2);
+  --scanner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  --font-ui: "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* No JetBrains Mono in this repo, and a webfont fetch would break the offline case. The system
+     stack resolves to SF Mono on macOS, which is close enough in character. */
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* The brand's 8px scale. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+
+  --ease: cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+@font-face {
+  font-family: "Alliance No. 2";
+  src: url("/fonts/AllianceNo2-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * Everything here is square. The brand defines zero radius tokens, which is its most distinctive
+ * structural trait and the opposite of the generic rounded-card look, so `border-radius` appears
+ * nowhere below. Noted rather than enforced with a universal `!important`, which would be a strange
+ * thing to fight in a stylesheet nobody else contributes to.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Film grain over everything, from the brand's --v2-grain-* tokens. feTurbulence rather than a
+   bitmap: it is a few hundred bytes and scales to any viewport. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 30vw, 480px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+
+.header {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.header__title {
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.header__guide {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.header__meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex: none;
+}
+
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  padding: 2px var(--s2);
+  white-space: nowrap;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+}
+
+.status--live {
+  color: var(--volt);
+}
+.status--live .status__dot {
+  background: var(--volt);
+  animation: pulse 1.6s var(--ease) infinite;
+}
+
+.status--done {
+  color: var(--text-2);
+}
+.status--done .status__dot {
+  background: var(--text-3);
+}
+
+.status__icon {
+  width: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.status--passed {
+  color: var(--pass);
+}
+
+.status--failed {
+  color: var(--fail);
+}
+
+.status--lost {
+  color: var(--fail);
+}
+.status--lost .status__dot {
+  background: var(--fail);
+  animation: pulse 0.8s var(--ease) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ── browser pane ───────────────────────────────────────────────────────── */
+
+.stage {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.stage__frame {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--scanner-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Letterboxed: the screencast is 1440x900 and the pane is whatever the window allows, so fitting
+   preserves the aspect ratio rather than stretching the app's own layout out of shape. */
+.stage__image {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* The scanner dot grid, from --v2-scanner-dot. Only the empty state: behind a frame it would be
+   invisible, and over one it would be noise. */
+.stage__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(var(--scanner-dot) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.stage__url {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 0;
+}
+
+.stage__url span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Marks frames arriving. Volt as a 6px dot, not as a fill, so it stays an accent. */
+.stage__pip {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--volt);
+  opacity: 0.25;
+  transition: opacity 120ms var(--ease);
+}
+
+.stage__pip--on {
+  opacity: 1;
+}
+
+/* ── step rail ──────────────────────────────────────────────────────────── */
+
+.rail {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding-bottom: var(--s6);
+}
+
+.rail__procedure-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.rail__procedure-tab {
+  position: relative;
+  flex: 1 0 128px;
+  min-width: 0;
+  padding: var(--s3) var(--s3) var(--s2);
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail__procedure-tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+}
+
+.rail__procedure-tab:hover,
+.rail__procedure-tab--active {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+}
+
+.rail__procedure-tab--active::after,
+.rail__procedure-tab--running::after {
+  background: var(--volt);
+}
+
+.rail__procedure-tab--failed::after {
+  background: var(--fail);
+}
+
+.rail__procedure-index {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.rail__procedure-label {
+  display: block;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail__log {
+  padding: var(--s4);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.rail__empty {
+  padding: var(--s6) var(--s4);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ── step row ───────────────────────────────────────────────────────────── */
+
+.step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: var(--s2);
+  padding: var(--s2) var(--s4) var(--s2) var(--s3);
+  /* Volt lives here, unpainted, so switching it on for the active step does not shift the text. */
+  border-left: 2px solid transparent;
+  transition: border-color 160ms var(--ease), background 160ms var(--ease);
+}
+
+.step--running {
+  border-left-color: var(--volt);
+  background: rgba(247, 254, 98, 0.04);
+}
+
+.step__marker {
+  display: grid;
+  grid-template-columns: minmax(12px, 1fr) 14px;
+  align-items: center;
+  align-self: start;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 21px;
+  color: var(--text-3);
+}
+
+.step__index {
+  color: var(--text-3);
+  text-align: right;
+}
+
+.step__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 21px;
+  line-height: 1;
+  text-align: center;
+}
+
+.agent-pulse {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--volt);
+  animation: pulse 1.6s var(--ease) infinite;
+}
+
+.step--passed .step__marker {
+  color: var(--pass);
+}
+.step--failed .step__marker {
+  color: var(--fail);
+}
+.step--skipped .step__marker {
+  color: var(--warn);
+}
+
+.step__instruction {
+  color: var(--text-3);
+  transition: color 160ms var(--ease);
+}
+
+.step--running .step__instruction {
+  color: var(--text);
+}
+
+.step--passed .step__instruction,
+.step--failed .step__instruction {
+  color: var(--text-2);
+}
+
+/* Completed steps collapse to one line: five verified steps should not push the one that is
+   actually running off the bottom of the rail. */
+.step--passed .step__instruction,
+.step--skipped .step__instruction,
+.step--unverified .step__instruction {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step__mode {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-left: var(--s2);
+}
+
+.step__thinking {
+  display: flex;
+  align-items: baseline;
+  margin-top: 2px;
+  color: var(--volt);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.step__thinking-dots {
+  display: inline-flex;
+  width: 12px;
+}
+
+.step__thinking-dots span {
+  animation: thinking-dot 1.2s infinite;
+}
+
+.step__thinking-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.step__thinking-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes thinking-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.step__detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: var(--s1);
+  color: var(--text-3);
+}
+
+.step--failed .step__detail {
+  color: var(--fail);
+}
+
+/* ── activity ───────────────────────────────────────────────────────────── */
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: var(--s2) 0 var(--s3);
+  /* The connector line, so activity reads as belonging to the step above it rather than floating. */
+  padding-left: var(--s3);
+  border-left: 1px solid var(--border);
+}
+
+.activity__thinking {
+  font-size: 13px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.activity__text {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.activity__tool-label {
+  margin-bottom: var(--s1);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.activity__tool {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  min-width: 0;
+}
+
+.activity__tool-name {
+  color: var(--code);
+  flex: none;
+}
+
+.activity__tool-arg {
+  color: var(--text-2);
+  /* Shrinkable, so a long argument ellipsises instead of pushing the state marker off the rail. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity__tool-detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fail);
+  margin-top: var(--s1);
+  overflow-wrap: anywhere;
+}
+
+.activity__tool-state {
+  margin-left: auto;
+  flex: none;
+  color: var(--text-3);
+}
+
+.activity__tool--running .activity__tool-state {
+  color: var(--volt);
+}
+.activity__tool--ok .activity__tool-state {
+  color: var(--pass);
+}
+.activity__tool--failed .activity__tool-state {
+  color: var(--fail);
+}
+
+.activity__finding {
+  border-left: 2px solid var(--warn);
+  background: var(--surface-warn);
+  padding: var(--s2) var(--s3);
+  margin-left: calc(-1 * var(--s3) - 1px);
+}
+
+.activity__finding--blocker {
+  border-left-color: var(--fail);
+  background: var(--surface-fail);
+}
+
+.activity__finding-summary {
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.runtabs {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+  max-width: 45%;
+  overflow-x: auto;
+}
+
+.runtab {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px var(--s2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.runtab:hover {
+  border-color: var(--border-strong);
+  color: var(--text-2);
+}
+
+.runtab--active {
+  border-color: var(--volt);
+  color: var(--text);
+}
+
+.runtab--failed .runtab__tally {
+  color: var(--fail);
+}
+
+.runtab__title {
+  font-family: var(--font-ui);
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+}
+
+.progress__cell {
+  flex: 1;
+  background: var(--panel-raised);
+  transition: background 200ms var(--ease);
+}
+
+.progress__cell--passed {
+  background: var(--pass);
+}
+.progress__cell--failed {
+  background: var(--fail);
+}
+.progress__cell--running {
+  background: var(--volt);
+}
+.progress__cell--skipped {
+  background: var(--warn);
+  opacity: 0.5;
+}
+
+.progress__cell--unverified {
+  background: var(--text-3);
+  opacity: 0.5;
+}
+
+.footer__counts {
+  display: flex;
+  gap: var(--s4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  flex: none;
+}
+
+.footer__count strong {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.footer__count--passed strong {
+  color: var(--pass);
+}
+.footer__count--failed strong {
+  color: var(--fail);
+}
+.footer__count--unverified strong {
+  color: var(--text-3);
+}
+
+/* Respect the setting rather than animating regardless: a pulsing dot next to a live screencast is
+   exactly the combination someone turns this off for. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

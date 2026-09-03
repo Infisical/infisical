@@ -1,0 +1,16 @@
+guide: docs/documentation/platform/access-controls/assume-privilege.mdx
+fixture: project-with-second-member
+tab: null
+critical: false
+requiresLicense: false
+skipSteps: []
+watch:
+  - frontend/src/pages/project/MemberDetailsByIDPage/**
+  - frontend/src/pages/project/IdentityDetailsByIDPage/**
+  - frontend/src/pages/project/AccessControlPage/**
+  - backend/src/ee/services/assume-privilege/**
+notes: >
+  Needs a second principal to assume and the acting user needs the assume-privilege
+  permission. Step 1 has no bolded target at all ("Click on the user or identity you want
+  to assume"), and the nav location lives only in the <Step title> attribute, so this is a
+  useful check that the compiler handles an untargeted imperative.

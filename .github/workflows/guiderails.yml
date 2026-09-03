@@ -1,0 +1,356 @@
+name: Guiderails (docs walkthrough)
+
+# Walks procedural documentation guides against a live self-hosted instance and reports where
+# the guide and the app disagree.
+#
+# Advisory by design: this job does not gate the merge. A guide opts into gating with
+# `critical: true` in its registry entry, and even then only a non-harness BLOCKER can fail it.
+# A flaky red X on a non-deterministic check destroys trust in it faster than a missing check
+# ever would.
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "frontend/src/**"
+      - "guiderails/**"
+  schedule:
+    # Nightly full sweep. This is where coverage comes from; PR runs stay small and fast.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      guides:
+        description: "Space-separated guide paths, or empty for the whole registry"
+        required: false
+        default: ""
+      build_image:
+        description: "Build the instance image from this ref instead of using the published one"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: guiderails-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Offline, deterministic, seconds. Runs on every trigger including forks, because it needs
+  # no secrets at all. Kept separate so a docs PR gets fast structural feedback even when the
+  # walkthrough job is skipped.
+  static:
+    name: Extract and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: guiderails/package-lock.json
+
+      - name: Install
+        working-directory: guiderails
+        run: npm ci
+
+      - name: Type check
+        working-directory: guiderails
+        run: npm run type:check
+
+      - name: Unit tests
+        working-directory: guiderails
+        run: npx vitest run --exclude "**/*.integration.test.ts"
+
+      - name: Every image reference resolves
+        working-directory: guiderails
+        run: npm run lint:images
+
+      - name: Every registered guide has an up-to-date plan
+        working-directory: guiderails
+        run: npm run check-drift
+
+  walkthrough:
+    name: Walk guides
+    runs-on: ubuntu-latest
+    needs: static
+    # Forks cannot read secrets, so the agent could not run and the license would be missing.
+    # Skipping is honest; the nightly sweep on the base repo covers those changes.
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed to diff against the base branch for the changed-file list.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: guiderails/package-lock.json
+
+      - name: Install
+        working-directory: guiderails
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: guiderails
+        run: npx playwright install --with-deps chromium
+
+      - name: Collect changed files and the diff
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            RANGE="origin/${{ github.base_ref }}...${{ github.event.pull_request.head.sha }}"
+            git diff --name-only "$RANGE" > /tmp/changed.txt
+            # The full diff is what lets a finding be traced back to the frontend line that
+            # caused it, so the warning can be attached to code that is actually in the diff.
+            # A directory pathspec rather than a glob: unambiguous, and avoids relying on how
+            # git expands `**` in a pathspec.
+            git diff "$RANGE" -- frontend/src > /tmp/changed.diff
+          else
+            : > /tmp/changed.txt
+            : > /tmp/changed.diff
+          fi
+          echo "count=$(wc -l < /tmp/changed.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      # The published image contains whatever was last released, so testing a frontend change
+      # against it would pass while the change under review stayed invisible. Anything that ends
+      # up inside the image has to be built from this ref instead.
+      - name: Decide whether the image needs building
+        id: image
+        run: |
+          NEEDS_BUILD=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+             && [ "${{ inputs.build_image }}" = "true" ]; then
+            NEEDS_BUILD=true
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            if grep -qE '^(frontend/|backend/|Dockerfile\.standalone-infisical)' /tmp/changed.txt; then
+              NEEDS_BUILD=true
+            fi
+          fi
+          echo "needs_build=$NEEDS_BUILD" >> "$GITHUB_OUTPUT"
+          if [ "$NEEDS_BUILD" = "true" ]; then
+            echo "image=guiderails-under-test:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "This pull request changes the image contents, so it will be built from source."
+          else
+            echo "image=infisical/infisical:latest" >> "$GITHUB_OUTPUT"
+            echo "Docs-only change, so the published image is used."
+          fi
+
+      - name: Select guides
+        id: select
+        working-directory: guiderails
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npx tsx src/cli.ts select --changed-files /tmp/changed.txt --limit 4 --json > /tmp/selected.json
+          else
+            npx tsx src/cli.ts select --all --json > /tmp/selected.json
+          fi
+          cat /tmp/selected.json
+          echo "count=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/selected.json","utf8")).selected.length)')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Depot
+        if: steps.image.outputs.needs_build == 'true' && steps.select.outputs.count != '0'
+        uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+
+      # Depot rather than bake or build-push, because backend/CLAUDE.md forbids
+      # `cache-to: type=gha` on image builds: GHA cache is PR-scoped and the repo's 10GB budget
+      # is already full, so writing image blobs there evicts every other workflow's node_modules
+      # cache. Depot keeps its cache outside GHA, which is why the release workflow uses it.
+      - name: Build the image under test
+        if: steps.image.outputs.needs_build == 'true' && steps.select.outputs.count != '0'
+        uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # v1
+        timeout-minutes: 30
+        with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          file: Dockerfile.standalone-infisical
+          context: .
+          # Loaded into the local daemon rather than pushed; this image is throwaway.
+          load: true
+          push: false
+          tags: ${{ steps.image.outputs.image }}
+
+      - name: Start the instance under test
+        if: steps.select.outputs.count != '0'
+        working-directory: guiderails
+        env:
+          # Either the image just built from this ref, or the published one for a docs-only
+          # change. Decided in the "Decide whether the image needs building" step above.
+          GUIDERAILS_IMAGE: ${{ steps.image.outputs.image }}
+          # Never pull a tag that was just built locally, or Docker would replace it with the
+          # published image and silently test the wrong code.
+          GUIDERAILS_PULL_POLICY: ${{ steps.image.outputs.needs_build == 'true' && 'never' || 'always' }}
+          LICENSE_KEY_OFFLINE: ${{ secrets.GUIDERAILS_LICENSE_KEY_OFFLINE }}
+        run: npx tsx src/cli.ts env up
+
+      - name: Walk the selected guides
+        if: steps.select.outputs.count != '0'
+        id: walk
+        working-directory: guiderails
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          GUIDES=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/selected.json","utf8")).selected.map(s=>s.guide).join(" "))')
+          echo "walking: $GUIDES"
+          npx tsx src/cli.ts run $GUIDES \
+            --changed-files /tmp/changed.txt \
+            --diff /tmp/changed.diff \
+            --screenshots
+
+      - name: Job summary
+        if: steps.select.outputs.count != '0'
+        working-directory: guiderails
+        run: |
+          if [ -f reports/comment.md ]; then
+            cat reports/comment.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "The walkthrough produced no report." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload artifacts
+        if: always() && steps.select.outputs.count != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: guiderails-report
+          path: |
+            guiderails/reports/**
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # Sticky comment. Follows the pattern already established by
+      # check-api-for-breaking-changes.yml: hidden marker, upsert rather than append, fork
+      # guard, continue-on-error, and truncation well under GitHub's body limit.
+      - name: Comment on the PR
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.select.outputs.count != '0' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- guiderails -->";
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100
+            });
+            const existing = comments.find((c) => c.body?.startsWith(marker));
+
+            let body;
+            try {
+              body = fs.readFileSync("guiderails/reports/comment.md", "utf8");
+            } catch {
+              // No report means the walk itself failed. Say so rather than leaving a stale
+              // comment that reads as a clean result.
+              body = `${marker}\n## Guiderails\n\nThe walkthrough did not produce a report. See the job log.`;
+            }
+
+            if (body.length > 60000) {
+              body = body.slice(0, 60000) + "\n\n_Truncated. See the job summary and artifacts._";
+            }
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      # Inline suggestions, one per mechanical label fix. Separate from the summary comment so
+      # a failure here (a line that moved, a file outside the diff) cannot lose the summary.
+      - name: Post inline suggestions
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.select.outputs.count != '0' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require("fs");
+            let suggestions = [];
+            try {
+              suggestions = JSON.parse(fs.readFileSync("guiderails/reports/suggestions.json", "utf8"));
+            } catch {
+              return;
+            }
+            if (suggestions.length === 0) return;
+
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const commit_id = context.payload.pull_request.head.sha;
+
+            // GitHub rejects a review comment on a line outside the diff, so each is posted
+            // individually and a rejection is logged rather than losing the whole batch.
+            for (const suggestion of suggestions) {
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner, repo, pull_number, commit_id,
+                  path: suggestion.path,
+                  line: suggestion.line,
+                  side: "RIGHT",
+                  body: suggestion.body
+                });
+              } catch (error) {
+                core.info(`skipped suggestion for ${suggestion.path}:${suggestion.line}: ${error.message}`);
+              }
+            }
+
+      # On a frontend pull request the stale docs line is not in the diff, so GitHub rejects a
+      # comment there. These are anchored to the changed frontend line instead, which is both
+      # acceptable to GitHub and in front of the person who caused the drift.
+      - name: Post frontend warnings
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.select.outputs.count != '0' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require("fs");
+            let comments = [];
+            try {
+              comments = JSON.parse(
+                fs.readFileSync("guiderails/reports/frontend-comments.json", "utf8")
+              );
+            } catch {
+              return;
+            }
+            if (comments.length === 0) return;
+
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const commit_id = context.payload.pull_request.head.sha;
+
+            for (const comment of comments) {
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner, repo, pull_number, commit_id,
+                  path: comment.path,
+                  line: comment.line,
+                  side: "RIGHT",
+                  body: comment.body
+                });
+              } catch (error) {
+                core.info(`skipped warning on ${comment.path}:${comment.line}: ${error.message}`);
+              }
+            }
+
+      - name: Stop the instance
+        if: always()
+        working-directory: guiderails
+        run: npx tsx src/cli.ts env down --volumes || true

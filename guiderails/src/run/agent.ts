@@ -1,0 +1,459 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
+import * as z from "zod/v4";
+
+import { addUsage, cachedSystem, getClient, modelFor, type UsageTotals } from "../llm.js";
+import type { Finding, PlanStep, ResolvedLocator, Severity } from "../types.js";
+import type { BrowserTools } from "./browser.js";
+import type { RunEvents } from "./events.js";
+
+/**
+ * L4: the agent, scoped to exactly one plan step at a time.
+ *
+ * The scoping is the safety mechanism, not a convenience. The agent never sees the whole guide,
+ * so it cannot skip ahead, cannot decide a later step is a better idea, and cannot wander into
+ * an expensive tangent. It must finish by reporting the step done or blocked, and a hard
+ * tool-call cap means a lost agent fails loudly instead of quietly burning budget.
+ */
+
+const MAX_TOOL_CALLS_PER_STEP = 8;
+
+const AGENT_SYSTEM_PROMPT = `You are verifying one step of an Infisical documentation guide against a live instance, acting as a reader who has the guide open and is following it literally.
+
+You see the page only through its accessibility tree, and you address controls by their visible label. That is deliberate: it is the mechanical equivalent of a person reading the screen.
+
+## What you are deciding
+
+Whether a reader following this step, on this page, could do what the guide says. Nothing else. You are not testing the product, and you are not judging whether the guide is well written.
+
+## How to work
+
+Call snapshot first to see the page. Then act. Then report.
+
+If the step succeeds, call step_done. Include the exact label you actually used for each control, because a successful run is serialized into a replayable script and a paraphrased label breaks the replay.
+
+If the step cannot be completed as written, call report_finding once and then step_blocked. Be specific about the difference between what the guide said and what the page offered:
+
+- The guide names a control that does not exist, but a differently labelled one clearly does the same job. That is a label mismatch: report both strings exactly.
+- The guide names a control that does not exist and nothing equivalent does either. That is a blocker.
+- The page requires something the guide never mentions (a required field, a confirmation dialog, a prerequisite). That is a missing step.
+- The guide describes a step the page has no trace of. That is an extra step.
+
+## When the guide gives you nothing to do
+
+Some steps carry no instruction: the guide only shows a screenshot, or documents a form's fields without ever telling the reader to fill them. Those steps hand you the strings the guide names instead of a list of actions, and the question changes.
+
+Look at the page, then decide:
+
+- Every named string is already on screen. Call step_done: the step is descriptive and it is accurate.
+- Some are missing. Before concluding anything, open collapsed sections, accordions, and anything labelled "advanced", "more" or "show". Fields are routinely one disclosure away, and calling one missing when it is merely folded away is a false alarm.
+- Still missing, and reaching them needs an action no step in this guide ever gave the reader. That is the finding, and it is the most valuable thing you can report: MISSING_STEP naming the exact action the guide left out. "The guide never says to click Share a Secret to open this dialog" is the shape of it. Then take that action yourself and call step_done. Report the omission, but do not block on it: the reader's problem is the gap in the guide, and blocking would hide every later step behind something you have already diagnosed.
+- Still missing and you cannot work out what would reveal them: step_blocked with what you saw. Do not guess.
+
+Never report a label mismatch in this mode. You were not told to act on any control, so a difference in wording is not something this step claimed.
+
+## Rules
+
+1. Do only what this step says. Do not perform the next step because it seems helpful, and do not clean up after yourself.
+2. Quote real strings. When you report a mismatch, "what the app shows" must be a label you actually saw in the snapshot, copied exactly. Never paraphrase it and never guess at one.
+3. Some controls in this app have no accessible name, usually icon-only buttons. The snapshot lists those at the end, with the icon they draw and the text beside them, which is normally how the guide refers to them anyway ("the chevron next to Add Secret"). Click one with click_unlabelled and its number. Block only when nothing in that list plausibly matches the control the step describes, and say which entries you ruled out. A number is meaningful only against the snapshot you just took, so take a fresh one if the page has changed.
+4. If a snapshot looks like a loading state, take one more snapshot before concluding anything is missing.
+5. You have a small budget of tool calls. Spend it on acting, not on re-reading an unchanged page.
+
+6. Each action carries the guide text it came from. That is a pointer into the documentation, not a promise that those words appear in the product: it is often a section heading. Never report a mismatch because such a quote is absent from the screen. Report one only when the guide named a control you were told to act on and the page calls that control something else.`;
+
+export type StepAgentResult = {
+  outcome: "passed" | "failed";
+  toolCalls: number;
+  findings: Omit<Finding, "guide" | "procedureIndex" | "stepIndex" | "sourceQuote">[];
+  resolvedLocators: ResolvedLocator[];
+  notes: string[];
+};
+
+const findingSchema = z.object({
+  severity: z
+    .enum(["BLOCKER", "MISMATCH", "STALE_SCREENSHOT", "MISSING_STEP", "EXTRA_STEP"])
+    .describe("MISMATCH for a label difference; BLOCKER when the step cannot be completed."),
+  summary: z.string().min(1).describe("One sentence stating the defect."),
+  docSays: z
+    .string()
+    .min(1)
+    .describe("What the guide told the reader to look for, copied from the step."),
+  appShows: z
+    .string()
+    .min(1)
+    .describe(
+      "What the page actually presented, copied exactly from the snapshot. If nothing " +
+        "equivalent exists, say so plainly rather than inventing a label."
+    )
+});
+
+/**
+ * Renders the step for the agent. Kept out of the system prompt so the cache prefix holds.
+ *
+ * Placeholders are resolved in **every** field the agent reads, not just fill values. Resolving
+ * only some of them was a real bug: a click target left as a literal `{{fixture.subjectName}}`
+ * gave the agent an unresolvable string, so it improvised and clicked the wrong principal
+ * entirely, and the six cascading blockers that followed looked like the guide's fault.
+ */
+export type StepAgentMode =
+  /** The usual case: the plan has actions and the agent performs them. */
+  | { kind: "perform" }
+  /**
+   * The guide gave no action but did name UI strings. The question becomes whether the reader
+   * could be looking at them, and if not whether the guide ever said how to get there.
+   */
+  | { kind: "gap-check"; named: string[] };
+
+/**
+ * One action, with the guide text it came from on the line beneath it.
+ *
+ * The quote used to be listed separately under "Quotes from the guide, for reporting mismatches
+ * accurately", detached from any action. On a step whose only action was a screenshot, that left
+ * the agent holding a `<Step title="Configure Secret Share">` attribute and nothing else, so it
+ * compared the title against the dialog's own heading and filed a mismatch the guide never claimed.
+ * Attached to its action and labelled as provenance, the same string cannot be mistaken for a
+ * promise about what the screen says.
+ */
+const renderAction = (
+  action: PlanStep["actions"][number],
+  index: number,
+  fill: (text: string) => string
+): string => {
+  const body = (() => {
+    switch (action.kind) {
+      case "navigate":
+        return `Navigate: ${action.path.map(fill).join(" > ")}`;
+      case "click":
+        return `Click "${fill(action.target)}"${action.role ? ` (role ${action.role})` : ""}`;
+      case "fill":
+        return `Fill "${fill(action.field)}" with "${fill(action.value)}"`;
+      case "select":
+        return `In "${fill(action.field)}" choose "${fill(action.option)}"`;
+      case "expect_visible":
+        return `Confirm the page shows "${fill(action.text)}"`;
+      case "expect_screenshot":
+        return "(a screenshot is compared separately; no action needed)";
+      case "external":
+        return `(skipped, needs something outside this instance: ${action.reason})`;
+      default:
+        return "(unknown action)";
+    }
+  })();
+
+  return `${index + 1}. ${body}\n   from the guide: "${action.sourceQuote.text}"`;
+};
+
+const renderStep = (
+  step: PlanStep,
+  fixtureValues: Record<string, string>,
+  startingState: string[],
+  mode: StepAgentMode
+): string => {
+  const fill = (text: string): string => resolvePlaceholders(text, fixtureValues);
+
+  const header = [
+    `Step ${step.docStepIndex}: ${fill(step.instruction)}`,
+    "",
+    // Without this the agent cannot tell that the subject it is asked to act on is a machine
+    // identity rather than a user, which in this app lives behind a different tab.
+    "Starting state of this instance:",
+    ...startingState.map((line) => `- ${line}`),
+    ""
+  ];
+
+  if (mode.kind === "gap-check") {
+    return [
+      ...header,
+      "This step tells the reader to do nothing. It does name these strings:",
+      ...mode.named.map((name) => `- "${fill(name)}"`),
+      "",
+      "Answer the question in \"When the guide gives you nothing to do\" above."
+    ].join("\n");
+  }
+
+  const actions = step.actions.map((action, index) => renderAction(action, index, fill));
+
+  return [
+    ...header,
+    "What the guide says to do:",
+    actions.length > 0 ? actions.join("\n") : "(nothing actionable)"
+  ].join("\n");
+};
+
+export const resolvePlaceholders = (
+  value: string,
+  fixtureValues: Record<string, string>
+): string =>
+  value.replace(/\{\{fixture\.(\w+)\}\}/g, (whole, key: string) => fixtureValues[key] ?? whole);
+
+export const runStepAgent = async (
+  step: PlanStep,
+  tools: BrowserTools,
+  fixtureValues: Record<string, string>,
+  startingState: string[],
+  usage: UsageTotals,
+  events: RunEvents,
+  mode: StepAgentMode = { kind: "perform" }
+): Promise<StepAgentResult> => {
+  const client = getClient();
+
+  let toolCalls = 0;
+  let terminal: "passed" | "failed" | null = null;
+  const findings: StepAgentResult["findings"] = [];
+  const resolvedLocators: ResolvedLocator[] = [];
+  const notes: string[] = [];
+
+  /** Shared by every tool so the cap applies to the step as a whole. */
+  const budgetExceeded = (): boolean => toolCalls >= MAX_TOOL_CALLS_PER_STEP;
+
+  /**
+   * Stops the runner as soon as the step reaches a verdict.
+   *
+   * The runner calls the API, yields the message, and only then executes that message's tools,
+   * so a `terminal` flag checked in the consumer loop is always one turn behind: by the time we
+   * could see it, another request has already gone out and its response is discarded. Aborting
+   * from inside the terminal tool closes the loop on the turn that actually ended it, which cut
+   * roughly a third of the calls in a seven-step walk.
+   */
+  const finish = new AbortController();
+
+  /**
+   * Every acting tool, in one place.
+   *
+   * The six tool bodies this replaces each re-implemented the same four concerns — budget check,
+   * call accounting, locator capture, event emission — and had already drifted: the budget message
+   * differed between snapshot and the rest, and only some of them emitted anything the dashboard
+   * could pair a result with.
+   *
+   * `reply` is what the model reads; `detail` is what the dashboard shows. They are separate
+   * because snapshot's reply is an entire accessibility tree, and putting that on the wire would
+   * bury every other entry in the activity feed.
+   */
+  type ActionOutcome = {
+    ok: boolean;
+    /** One line. Shown in the feed and the terminal. */
+    detail: string;
+    /** Defaults to the ok/failed form below, which is what every browser tool wants. */
+    reply?: string;
+    locator?: ResolvedLocator | null;
+  };
+
+  const acting = async (
+    name: string,
+    arg: string | null,
+    action: () => Promise<ActionOutcome>
+  ): Promise<string> => {
+    if (budgetExceeded()) {
+      return `Tool budget for this step is exhausted (${MAX_TOOL_CALLS_PER_STEP} calls). Report the step blocked with what you know.`;
+    }
+    toolCalls += 1;
+    // Before the tool runs, so a click that hangs shows as in-flight rather than as nothing.
+    const id = events.toolCall(name, arg);
+
+    let outcome: ActionOutcome;
+    try {
+      outcome = await action();
+    } catch (error) {
+      // The browser tools report failure by returning `ok: false`, so this is a genuine fault, most
+      // likely a navigation that killed the page mid-call. It still has to be paired: an unanswered
+      // call leaves the dashboard showing that tool as in flight for the rest of the run, and tells
+      // the model nothing about why its step stopped progressing.
+      const detail = error instanceof Error ? error.message : String(error);
+      events.toolResult(id, name, false, detail);
+      return `failed: ${detail}`;
+    }
+
+    if (outcome.locator) resolvedLocators.push(outcome.locator);
+    events.toolResult(id, name, outcome.ok, outcome.detail);
+    return outcome.reply ?? `${outcome.ok ? "ok" : "failed"}: ${outcome.detail}`;
+  };
+
+  const snapshotTool = betaZodTool({
+    name: "snapshot",
+    description:
+      "Read the page's accessibility tree: every control with its role and visible label.",
+    inputSchema: z.object({}),
+    run: async () =>
+      acting("snapshot", null, async () => {
+        const tree = await tools.snapshot();
+        const lines = tree.split("\n").length;
+        return { ok: true, detail: `${lines} line(s)`, reply: tree };
+      })
+  });
+
+  const clickUnlabelledTool = betaZodTool({
+    name: "click_unlabelled",
+    description:
+      "Click a control that has no accessible name, using its number from the unlabelled list at " +
+      "the end of the snapshot.",
+    inputSchema: z.object({
+      number: z
+        .number()
+        .int()
+        .describe("The number shown beside the control in the snapshot's unlabelled list.")
+    }),
+    run: async (input) =>
+      acting("click_unlabelled", `#${input.number}`, () => tools.clickUnlabelled(input.number))
+  });
+
+  const clickTool = betaZodTool({
+    name: "click",
+    description: "Click a control by its visible label.",
+    inputSchema: z.object({
+      name: z.string().describe("The visible label, copied from the snapshot."),
+      role: z
+        .string()
+        .nullable()
+        .describe("ARIA role if you are certain of it, otherwise null.")
+    }),
+    run: async (input) => acting("click", input.name, () => tools.click(input.name, input.role))
+  });
+
+  const fillTool = betaZodTool({
+    name: "fill",
+    description: "Type a value into a labelled text field.",
+    inputSchema: z.object({
+      field: z.string().describe("The field's visible label."),
+      value: z.string().describe("The value to type.")
+    }),
+    run: async (input) => acting("fill", input.field, () => tools.fill(input.field, input.value))
+  });
+
+  const selectTool = betaZodTool({
+    name: "select",
+    description: "Choose an option from a dropdown or radio group.",
+    inputSchema: z.object({
+      field: z.string().describe("The control's visible label."),
+      option: z.string().describe("The option to choose.")
+    }),
+    run: async (input) =>
+      acting("select", input.field, () => tools.select(input.field, input.option))
+  });
+
+  const expectVisibleTool = betaZodTool({
+    name: "expect_visible",
+    description: "Check whether some text is present on the page.",
+    inputSchema: z.object({ text: z.string() }),
+    run: async (input) =>
+      acting("expect_visible", input.text, () => tools.expectVisible(input.text))
+  });
+
+  const reportFindingTool = betaZodTool({
+    name: "report_finding",
+    description:
+      "Record a discrepancy between the guide and the app. Call at most once per step.",
+    inputSchema: findingSchema,
+    run: async (input) => {
+      findings.push({
+        severity: input.severity as Severity,
+        // Blame is decided by a separate pass with the diff in hand; the agent only observes.
+        blame: "DOC_DRIFT",
+        summary: input.summary,
+        docSays: input.docSays,
+        appShows: input.appShows,
+        suggestion: null,
+        frontendAnchor: null,
+        evidence: {}
+      });
+      events.finding(input.severity, input.summary);
+      return "recorded";
+    }
+  });
+
+  const stepDoneTool = betaZodTool({
+    name: "step_done",
+    description: "The step succeeded as written. Ends the step.",
+    inputSchema: z.object({
+      note: z
+        .string()
+        .describe("One short sentence on what you did, for the run log.")
+    }),
+    run: async (input) => {
+      terminal = "passed";
+      notes.push(input.note);
+      finish.abort();
+      return "acknowledged";
+    }
+  });
+
+  const stepBlockedTool = betaZodTool({
+    name: "step_blocked",
+    description: "The step cannot be completed as written. Ends the step.",
+    inputSchema: z.object({
+      reason: z.string().describe("Why a reader could not proceed.")
+    }),
+    run: async (input) => {
+      terminal = "failed";
+      notes.push(input.reason);
+      finish.abort();
+      return "acknowledged";
+    }
+  });
+
+  const runner = client.beta.messages.toolRunner({
+    model: modelFor("navigate"),
+    max_tokens: 8000,
+    // Frozen prefix plus a fixed tool set, so every step after the first is a cache read.
+    system: cachedSystem(AGENT_SYSTEM_PROMPT),
+    thinking: { type: "adaptive", display: "summarized" },
+    output_config: { effort: "medium" },
+    tools: [
+      snapshotTool,
+      clickTool,
+      clickUnlabelledTool,
+      fillTool,
+      selectTool,
+      expectVisibleTool,
+      reportFindingTool,
+      stepDoneTool,
+      stepBlockedTool
+    ],
+    messages: [{ role: "user", content: renderStep(step, fixtureValues, startingState, mode) }],
+    max_iterations: MAX_TOOL_CALLS_PER_STEP + 4
+  }, { signal: finish.signal });
+
+  try {
+    for await (const message of runner) {
+      for (const block of message.content) {
+        if (block.type === "thinking" && block.thinking) events.thinking(block.thinking);
+        else if (block.type === "text" && block.text.trim()) events.assistantText(block.text);
+      }
+      addUsage(usage, message.usage);
+      if (terminal) break;
+    }
+  } catch (error) {
+    // Our own abort is the expected way this loop ends; anything else is a real failure.
+    if (!(error instanceof Anthropic.APIUserAbortError)) throw error;
+  }
+
+  // An agent that ran out of turns without reporting is a failure, not a pass. Defaulting the
+  // other way would turn every timeout into a silent green step.
+  if (!terminal) {
+    notes.push(
+      `Agent ended without reporting an outcome after ${toolCalls} tool call(s); treated as failed.`
+    );
+    if (findings.length === 0) {
+      findings.push({
+        severity: "BLOCKER",
+        blame: "HARNESS",
+        summary: "The agent did not reach a conclusion for this step.",
+        docSays: step.instruction,
+        appShows: "no conclusion reached",
+        suggestion: null,
+        frontendAnchor: null,
+        evidence: {}
+      });
+    }
+  }
+
+  return {
+    outcome: terminal ?? "failed",
+    toolCalls,
+    findings,
+    resolvedLocators,
+    notes
+  };
+};
+
+export { MAX_TOOL_CALLS_PER_STEP, AGENT_SYSTEM_PROMPT };

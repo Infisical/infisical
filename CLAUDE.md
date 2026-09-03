@@ -23,6 +23,7 @@ infisical/
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
+├── guiderails/            # Agent-verified documentation guides (see guiderails/CLAUDE.md)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
 ├── docker-compose.bdd.yml        # BDD testing environment
@@ -39,6 +40,7 @@ infisical/
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
+- **`guiderails/`** — Agent-driven documentation checker. Walks procedural guides from `docs/` against a live self-hosted instance and reports where the guide and the app disagree, attributing each finding to either stale docs or an app regression. Advisory, never gates a merge. `e2e/` tests the product; this tests the documentation. See [`guiderails/CLAUDE.md`](guiderails/CLAUDE.md) — read it before changing docs tooling, and note the instance-bootstrap gotchas it records.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
 
@@ -85,6 +87,11 @@ If the user wrote or edited the docs prose themselves, don't just accept it. Tel
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
 Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions` report at warning and suggestion level, so they never change the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
+
+Procedural UI walkthroughs can be verified against a running instance by `guiderails/`. Two consequences worth knowing when editing one:
+
+- **Registered guides have a committed plan.** If you change a guide listed in `guiderails/guides/`, its plan goes stale and CI fails until it is recompiled (`cd guiderails && npx tsx src/cli.ts compile`). This mirrors how `validate-db-schemas.yml` fails on an un-regenerated schema.
+- **Markup helps the checker.** Bolding the UI target (`click **Create**`) and writing nav paths as `**Settings → Folders**` gives it a high-precision anchor. Both are already style-guide rules; roughly half of core-product imperatives currently omit them.
 
 ### Auth & Permissions
 

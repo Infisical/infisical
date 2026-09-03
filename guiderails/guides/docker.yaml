@@ -1,0 +1,25 @@
+# Walk the Infisical-side setup in the recommended startup flow. Dockerfile, CLI, and container
+# commands are reported as unverified because they run outside the browser instance.
+guide: docs/integrations/platforms/docker.mdx
+fixture: fresh-org
+tab: Fetch at startup (Recommended)
+critical: false
+requiresLicense: false
+skipSteps: []
+watch:
+  - frontend/src/pages/organization/OverviewPage/**
+  - frontend/src/pages/secret-manager/OverviewPage/**
+  - frontend/src/pages/project/AccessControlPage/**
+  - frontend/src/pages/project/IdentityDetailsByIDPage/**
+  - frontend/src/views/IdentityAuthMethods/**
+  - frontend/src/hooks/api/identities/**
+  - backend/src/services/project/**
+  - backend/src/services/secret/**
+  - backend/src/services/identity/**
+  - backend/src/services/identity-project/**
+  - backend/src/services/identity-ua/**
+notes: >
+  Walk the recommended Fetch at startup tab. The fresh-org fixture intentionally creates no
+  project because the imported ConfigureProject snippet creates and seeds one in its first two
+  procedures. Dockerfile changes, CLI authentication, and Docker commands cannot be performed in
+  the browser and should remain unverified rather than passed.

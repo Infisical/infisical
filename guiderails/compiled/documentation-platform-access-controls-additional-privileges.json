@@ -1,0 +1,200 @@
+{
+  "guide": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+  "guideDocHash": "43cc103d695c9955ebad8333348be32a6c8210de7e7a90342f52f122f6b00603",
+  "compiledAt": "2026-08-12T19:04:39.660Z",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 1,
+      "instruction": "Navigate to Access Controls and select the user or machine identity to grant privileges to.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Access Controls"
+          ],
+          "sourceQuote": {
+            "text": "Navigate to the Access Controls page of your project",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 26
+          }
+        },
+        {
+          "kind": "click",
+          "target": "user or machine identity",
+          "role": null,
+          "sourceQuote": {
+            "text": "click on the user or machine identity you want to grant additional privileges to",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 26
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/access-control-select-user.png",
+          "sourceQuote": {
+            "text": "Select the user or machine identity",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 25
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 2,
+      "instruction": "Click the Add Additional Privileges button to open the configuration panel.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Add Additional Privileges",
+          "role": "button",
+          "sourceQuote": {
+            "text": "click the Add Additional Privileges button",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 31
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/user-details-add-additional-privileges-button.png",
+          "sourceQuote": {
+            "text": "Add additional privileges",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 30
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 3,
+      "instruction": "Click Add Policies to open the policy selector dropdown.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Add Policies",
+          "role": "button",
+          "sourceQuote": {
+            "text": "Click the Add Policies button to open the policy selector dropdown",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 36
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/additional-privilege-add-policies-button.png",
+          "sourceQuote": {
+            "text": "Add policies",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 35
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 4,
+      "instruction": "Choose the policies to apply from the dropdown.",
+      "actions": [
+        {
+          "kind": "select",
+          "field": "Policies",
+          "option": "guiderails-test",
+          "sourceQuote": {
+            "text": "Choose the policies you want to include in this additional privilege from the dropdown",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 41
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/additional-privilege-select-policy-dropdown.png",
+          "sourceQuote": {
+            "text": "Select the policies to apply",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 40
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 5,
+      "instruction": "Fill in the privilege details and configure each selected policy.",
+      "actions": [
+        {
+          "kind": "fill",
+          "field": "Privilege Name",
+          "value": "guiderails-test",
+          "sourceQuote": {
+            "text": "A slug-friendly identifier for the privilege.",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 48
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/additional-privilege-configure-policies.png",
+          "sourceQuote": {
+            "text": "Configure the privilege",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 45
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 6,
+      "instruction": "Click Save to apply the additional privilege.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Save",
+          "role": "button",
+          "sourceQuote": {
+            "text": "Click Save to apply the additional privilege",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 55
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/additional-privilege-save-button.png",
+          "sourceQuote": {
+            "text": "Save the privilege",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 54
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 7,
+      "instruction": "Verify the new privilege appears in the member's detail page.",
+      "actions": [
+        {
+          "kind": "expect_visible",
+          "text": "The new additional privilege now appears in the member's detail page",
+          "sourceQuote": {
+            "text": "The new additional privilege now appears in the member's detail page",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 60
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/additional-privileges/user-details-additional-privileges-created.png",
+          "sourceQuote": {
+            "text": "Verify the privilege",
+            "file": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+            "line": 59
+          }
+        }
+      ]
+    }
+  ]
+}

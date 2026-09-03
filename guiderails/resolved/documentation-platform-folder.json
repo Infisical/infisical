@@ -1,0 +1,31 @@
+{
+  "guide": "docs/documentation/platform/folder.mdx",
+  "guideDocHash": "8989d1e1b4f3ba608789728d350aa8430dfa9da036c9ba2d6bd976b5087d2503",
+  "recordedAt": "2026-08-13T01:08:04.646Z",
+  "steps": [
+    {
+      "docStepIndex": 1,
+      "procedureIndex": 1,
+      "instruction": "Add a new folder using the chevron next to Add Secret.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": null,
+          "value": null,
+          "unlabelled": {
+            "role": "button",
+            "icon": "chevron-down",
+            "near": "Add Secret"
+          }
+        },
+        {
+          "action": "click",
+          "role": "menuitem",
+          "name": "Add Folder",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

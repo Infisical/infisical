@@ -1,0 +1,19 @@
+# License-gated. In scope only because the harness runs with a real offline enterprise
+# license; with no license the approval policy UI is hidden and every step would report as
+# unverified rather than failing.
+guide: docs/documentation/platform/pr-workflows.mdx
+fixture: project-with-second-member
+tab: null
+critical: false
+requiresLicense: true
+skipSteps: []
+watch:
+  - frontend/src/pages/secret-manager/SecretApprovalsPage/**
+  - frontend/src/components/approvals/**
+  - frontend/src/hooks/api/secretApproval/**
+  - frontend/src/hooks/api/secretApprovalRequest/**
+  - backend/src/ee/services/secret-approval-policy/**
+  - backend/src/ee/services/secret-approval-request/**
+notes: >
+  Needs a second member to act as approver. The approval flow spans two principals, so the
+  fixture provides both and the runner switches session between them.

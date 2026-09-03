@@ -1,0 +1,344 @@
+{
+  "guide": "docs/integrations/platforms/docker.mdx",
+  "guideDocHash": "b336728c9c4d3cc6ce761ec43dc52aad5675765b8d34aaeff3cb2919c84c7cfc",
+  "compiledAt": "2026-08-12T22:33:03.414Z",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 1,
+      "instruction": "Log in to Infisical.",
+      "actions": [
+        {
+          "kind": "external",
+          "reason": "Logging in requires valid account credentials which cannot be verified against a fresh local instance.",
+          "sourceQuote": {
+            "text": "Log in to Infisical.",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 9
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 2,
+      "instruction": "Navigate to Secrets Management and start creating a new project.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Secrets Management"
+          ],
+          "sourceQuote": {
+            "text": "Secrets Management",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 12
+          }
+        },
+        {
+          "kind": "click",
+          "target": "+ Add New Project",
+          "role": null,
+          "sourceQuote": {
+            "text": "+ Add New Project",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 12
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 3,
+      "instruction": "Enter a name for the new project.",
+      "actions": [
+        {
+          "kind": "fill",
+          "field": "Project Name",
+          "value": "{{fixture.projectName}}",
+          "sourceQuote": {
+            "text": "In the Project Name field, enter a name for the project",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 15
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 4,
+      "instruction": "Create the project.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Create Project",
+          "role": null,
+          "sourceQuote": {
+            "text": "Select Create Project.",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 18
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 2,
+      "docStepIndex": 1,
+      "instruction": "Click the button to add a new secret.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "+ Add a New Secret",
+          "role": null,
+          "sourceQuote": {
+            "text": "+ Add a New Secret",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 42
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 2,
+      "docStepIndex": 2,
+      "instruction": "Enter a key-value pair for the secret.",
+      "actions": [
+        {
+          "kind": "fill",
+          "field": "Key",
+          "value": "{{fixture.secretName}}",
+          "sourceQuote": {
+            "text": "In the Key and Value fields, enter a key-value pair",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 45
+          }
+        },
+        {
+          "kind": "fill",
+          "field": "Value",
+          "value": "guiderails-test",
+          "sourceQuote": {
+            "text": "In the Key and Value fields, enter a key-value pair",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 45
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/snippets/documentation/platform/secrets-mgmt/assets/key-value-fields.png",
+          "sourceQuote": {
+            "text": "In the Key and Value fields, enter a key-value pair",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 45
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 2,
+      "docStepIndex": 3,
+      "instruction": "Save the new secret.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Create Secret",
+          "role": null,
+          "sourceQuote": {
+            "text": "Create Secret",
+            "file": "docs/snippets/documentation/platform/secrets-mgmt/configure-project.mdx",
+            "line": 52
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 2,
+      "docStepIndex": 4,
+      "instruction": "Repeat the process for additional key-value pairs.",
+      "actions": []
+    },
+    {
+      "procedureIndex": 3,
+      "docStepIndex": 1,
+      "instruction": "Navigate to Machine Identities settings.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Project Settings",
+            "Access Control",
+            "Machine Identities"
+          ],
+          "sourceQuote": {
+            "text": "select Project Settings > Access Control > Machine Identities",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 46
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 3,
+      "docStepIndex": 2,
+      "instruction": "Start creating a new machine identity.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Add Machine Identity",
+          "role": null,
+          "sourceQuote": {
+            "text": "Select Add Machine Identity",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 49
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Create New",
+          "role": null,
+          "sourceQuote": {
+            "text": "then select Create New",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 49
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 3,
+      "docStepIndex": 3,
+      "instruction": "Configure the machine identity's name and role, then create it.",
+      "actions": [
+        {
+          "kind": "fill",
+          "field": "Name",
+          "value": "orders-service-docker",
+          "sourceQuote": {
+            "text": "Enter a name (e.g., orders-service-docker)",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 52
+          }
+        },
+        {
+          "kind": "select",
+          "field": "Role",
+          "option": "read secrets",
+          "sourceQuote": {
+            "text": "select a role that can read secrets",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 52
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Create",
+          "role": null,
+          "sourceQuote": {
+            "text": "select Create",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 52
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 4,
+      "docStepIndex": 1,
+      "instruction": "Open the Authentication section and select Universal Auth for the machine identity.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Authentication",
+          "role": null,
+          "sourceQuote": {
+            "text": "Authentication",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 64
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Universal Auth",
+          "role": null,
+          "sourceQuote": {
+            "text": "Universal Auth",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 64
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 4,
+      "docStepIndex": 2,
+      "instruction": "Copy the Client ID for later use.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Client ID",
+          "role": null,
+          "sourceQuote": {
+            "text": "Copy the Client ID",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 67
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 4,
+      "docStepIndex": 3,
+      "instruction": "Create a new client secret with a description.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Create Client Secret",
+          "role": null,
+          "sourceQuote": {
+            "text": "Select Create Client Secret",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 70
+          }
+        },
+        {
+          "kind": "fill",
+          "field": "Description",
+          "value": "docker-quickstart",
+          "sourceQuote": {
+            "text": "enter a description (e.g., docker-quickstart)",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 70
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Create",
+          "role": null,
+          "sourceQuote": {
+            "text": "select Create",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 70
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 4,
+      "docStepIndex": 4,
+      "instruction": "Copy the generated Client Secret since it cannot be viewed again.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Client Secret",
+          "role": null,
+          "sourceQuote": {
+            "text": "Copy the Client Secret",
+            "file": "docs/integrations/platforms/docker.mdx",
+            "line": 73
+          }
+        }
+      ]
+    }
+  ]
+}
