@@ -61,6 +61,9 @@ The short video below walks through configuring a Vercel Sync end-to-end.
 
                 Example: Vercel has a single shared variable `FOO` scoped to **Production and Preview**, but the sync targets only **Production**. `FOO` is not imported. On the next sync, the existing `FOO` is rescoped to Preview (value preserved) and a new `FOO` record is created for Production with the value from Infisical.
             </Note>
+            <Warning>
+                If this sync's target environments cover all of an existing shared variable's environments, there is nothing left to rescope. The existing record is deleted and recreated with this sync's target projects only, so any other projects it was linked to lose it. To avoid this, match the sync's target environments and target projects to the existing variable exactly, or use a [Key Schema](/integrations/secret-syncs/overview#key-schemas) so Infisical-managed keys never collide with existing shared variables.
+            </Warning>
             - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
             <Note>
                 We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
