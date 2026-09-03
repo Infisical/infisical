@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"testing"
 
 	"github.com/testcontainers/testcontainers-go"
 
@@ -30,6 +31,17 @@ func (s *Stack) Redis() *RedisService       { return s.redis }
 func (s *Stack) NodeJS() *NodeJSService     { return s.nodejs }
 func (s *Stack) Config() *config.Config     { return s.cfg }
 func (s *Stack) DB() pg.DB                  { return s.db }
+
+// EnableLegacyAdditionalPrivileges flips the project flag that additional
+// privileges are gated on. New projects default to false and no route exposes
+// the column, so tests covering the legacy path have to set it directly.
+func (s *Stack) EnableLegacyAdditionalPrivileges(t *testing.T, projectID string) {
+	t.Helper()
+	if _, err := s.db.Primary().Exec(context.Background(),
+		`UPDATE projects SET "isLegacyAdditionalPrivilegesEnabled" = true WHERE id = $1`, projectID); err != nil {
+		t.Fatalf("infra.EnableLegacyAdditionalPrivileges: %v", err)
+	}
+}
 
 // Stop tears down all containers, the network, and closes the DB pool.
 func (s *Stack) Stop() {
