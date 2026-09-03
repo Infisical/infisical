@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultProductIdentityMember,
   TAgentVaultProxy,
   TAgentVaultSession,
   TListAgentVaultSessionsDTO
@@ -27,8 +28,23 @@ export const agentVaultKeys = {
   sessionList: (params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(), params] as const,
   proxies: () => [...agentVaultKeys.all, "proxies"] as const,
-  productIdentities: () => [...agentVaultKeys.all, "product-identities"] as const
+  productIdentities: () => [...agentVaultKeys.all, "product-identities"] as const,
+  productMembers: () => [...agentVaultKeys.all, "product-members"] as const,
+  productIdentityMembers: () => [...agentVaultKeys.productMembers(), "identities"] as const
 };
+
+const fetchProductMembers = async <T,>(path: string) => {
+  const { data } = await apiRequest.get<{ members: T[] }>(
+    `/api/v1/agent-vault/memberships/${path}`
+  );
+  return data.members;
+};
+
+export const useListAgentVaultProductIdentityMembers = () =>
+  useQuery({
+    queryKey: agentVaultKeys.productIdentityMembers(),
+    queryFn: () => fetchProductMembers<TAgentVaultProductIdentityMember>("identity-members")
+  });
 
 // Every identity member rather than a page: the grant picker filters client-side, so a paginated
 // list would leave search unable to find one it never fetched.

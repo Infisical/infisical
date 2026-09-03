@@ -179,3 +179,22 @@ export type TAgentVaultProxySettingsDTO = {
   bypassHosts?: string | null;
   pollInterval?: number;
 };
+
+export type TAgentVaultProductMember = {
+  membershipId: string;
+  userId: string | null;
+  groupId: string | null;
+  identityId: string | null;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & { name: string };
+
+/** Exactly one of the three ids, as the API requires. */
+export type TAgentVaultProductMemberActor = {
+  userId?: string;
+  groupId?: string;
+  identityId?: string;
+};

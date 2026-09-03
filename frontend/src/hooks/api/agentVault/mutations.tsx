@@ -10,6 +10,7 @@ import {
   TAgentVaultConnection,
   TAgentVaultEnrollment,
   TAgentVaultMintedSession,
+  TAgentVaultProductMemberActor,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TCreateAgentVaultAccessBundleDTO,
@@ -279,5 +280,59 @@ export const useRevokeAgentVaultProxyAccess = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies() });
     }
+  });
+};
+
+const invalidateProductMembers = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers() });
+  // Losing the product loses every bundle grant with it, so the bundle lists are stale too.
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles() });
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities() });
+};
+
+export const useAddAgentVaultProductUserMembers = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: { userIds: string[]; emails: string[]; role: string }) => {
+      const { data } = await apiRequest.post<{ addedCount: number; skipped: string[] }>(
+        "/api/v1/agent-vault/memberships/users",
+        dto
+      );
+      return data;
+    },
+    onSuccess: () => invalidateProductMembers(queryClient)
+  });
+};
+
+export const useAddAgentVaultProductMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: TAgentVaultProductMemberActor & { role: string }) => {
+      const { data } = await apiRequest.post("/api/v1/agent-vault/memberships", dto);
+      return data;
+    },
+    onSuccess: () => invalidateProductMembers(queryClient)
+  });
+};
+
+export const useUpdateAgentVaultProductMemberRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: TAgentVaultProductMemberActor & { role: string }) => {
+      const { data } = await apiRequest.patch("/api/v1/agent-vault/memberships", dto);
+      return data;
+    },
+    onSuccess: () => invalidateProductMembers(queryClient)
+  });
+};
+
+export const useRemoveAgentVaultProductMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: TAgentVaultProductMemberActor) => {
+      const { data } = await apiRequest.delete("/api/v1/agent-vault/memberships", { data: dto });
+      return data;
+    },
+    onSuccess: () => invalidateProductMembers(queryClient)
   });
 };
