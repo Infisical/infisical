@@ -25,17 +25,15 @@ Large enterprises may need to create [sub-organizations](/documentation/platform
 
 ## Projects
 
-The _Projects_ tab shows a list of projects that you have access to.
+Selecting a product on the organization overview opens the projects of that type. **My Projects** lists the ones you are a member of.
 
-If you're an organization admin, you also have the option to view _All Projects_—a complete view of every project within the organization, including those you are not currently a member of— and gain access to any project.
-
-Admins can gain access to any project in the organization by opening the options menu (⋮) next to a project and selecting Access. This will add you to the project as an admin and allow full visibility and control.
+Organization admins also get an **All Projects** tab, which lists every project of that type in the organization, including the ones they haven't joined. Selecting **Join as Admin** on a project there adds them to it as an admin, with full visibility and control.
 
 ![organization projects](/images/platform/organization/organization-projects.png)
 
 ## Roles and access control
 
-The _Access Control_ tab lets you view and manage roles and permissions for users, machine identities, and groups across your organization.
+The **Access Control** section lets you view and manage roles and permissions for users, machine identities, and groups across your organization.
 
 Users are invited to an organization and assigned organization-level roles such as `Admin` or `Member`. You can also define [custom roles](/documentation/platform/access-controls/role-based-access-controls#creating-custom-roles) at the organization level to fit your permission model.
 
@@ -65,7 +63,7 @@ If you're self-hosting Infisical, then you should contact sales@infisical.com to
 
 ## Usage & billing
 
-The _Usage & Billing_ tab provides an overview of your organization's billing information and platform usage.
+The **Usage & Billing** section provides an overview of your organization's billing information and platform usage.
 
 Infisical calculates usage at the organization level—aggregating activity across all projects and product types (e.g., Secrets Management, PAM, PKI). From this tab, you can track usage, view billing details, and manage your Infisical Cloud subscription.
 
@@ -77,30 +75,32 @@ Infisical provides a unified view of [audit logs](/documentation/platform/audit-
 
 Audit logs are also viewable at the project level, where they are scoped to show only events relevant to that specific project. This allows project administrators to monitor activity and investigate changes without requiring organization-wide access.
 
-## App connections
+The **External Log Streams** tab on the same page forwards audit events to third-party logging tools like SIEMs or cloud storage. See [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams).
 
-Infisical supports [app connections](/integrations/app-connections/overview) — integrations configured at the organization level with third-party platforms such as AWS, GCP, GitHub, and many others.
+## Integrations
 
-Once configured, these connections can be reused across multiple projects as part of any feature that requires third-party integrations—such as [secret syncing](/integrations/secret-syncs/overview) or [dynamic credential generation](/documentation/platform/dynamic-secrets/overview).
+The **Integrations** section holds the connections an organization makes to third-party platforms, across three tabs.
+
+**App Connections** configures [app connections](/integrations/app-connections/overview) to platforms such as AWS, GCP, and GitHub. Once configured, these connections can be reused across multiple projects as part of any feature that requires third-party integrations—such as [secret syncing](/integrations/secret-syncs/overview) or [dynamic credential generation](/documentation/platform/dynamic-secrets/overview).
 
 ![organization app connections](/images/platform/organization/organization-app-connections.png)
+
+**Workflow Integrations** connects [Slack](/documentation/platform/workflow-integrations/slack-integration) or [Microsoft Teams](/documentation/platform/workflow-integrations/microsoft-teams-integration), so that events like access requests notify a channel. **External Migrations** runs a one-time bulk import of data from another platform.
 
 To learn more, refer to the [app connections documentation](/integrations/app-connections/overview).
 
 ## Organization settings
 
-The _Organization Settings_ tab lets you configure global behavior and security controls for the organization.
+The **Settings** section lets you configure global behavior and security controls for the organization:
 
-Key configuration areas include:
-
-- General: Manage the organization’s name, slug, and default role for newly invited members.
-- Single Sign-On (SSO): Enable [SAML](/documentation/platform/sso/overview), [LDAP](/documentation/platform/ldap/overview), or [OIDC-based](/documentation/platform/sso/general-oidc/overview) authentication for user login.
-- Provisioning: Enable [SCIM](/documentation/platform/scim/overview) to automatically provision and deprovision users and groups from an identity provider.
-- Security Policies: Enforce MFA and configure session duration limits.
-- Encryption: Integrate with external KMS systems or bring your own encryption keys (BYOK).
-- [Audit Log Streaming](/documentation/platform/audit-log-streams/audit-log-streams): Forward audit events to third-party logging tools like SIEMs or cloud storage.
-- Workflow Integrations: Trigger [Slack](/documentation/platform/workflow-integrations/slack-integration) or [Microsoft Teams](/documentation/platform/workflow-integrations/microsoft-teams-integration) notifications for events like access requests.
-- [Project Templates](/documentation/platform/project-templates): Define default environments, roles, and settings to standardize project creation.
-- KMIP (Enterprise): Connect to KMIP-compatible HSMs for hardware-backed key storage and operations.
+- **General**: Manage the organization's name, slug, default role for newly invited members, and incident contacts.
+- **SSO & Provisioning**: Enable [SAML](/documentation/platform/sso/overview), [LDAP](/documentation/platform/ldap/overview), or [OIDC-based](/documentation/platform/sso/general-oidc/overview) authentication for user login, and [SCIM](/documentation/platform/scim/overview) to provision and deprovision users and groups from an identity provider.
+- **OAuth Applications**: Register external platforms that request delegated access to Infisical on a user's behalf.
+- **Networking**: Manage the [gateways](/documentation/platform/gateways/overview) and relays that connect Infisical to private infrastructure.
+- **Security**: Enforce MFA and set how long a login session lasts.
+- **Encryption**: Integrate with external KMS systems or bring your own encryption keys (BYOK).
+- **[Project Templates](/documentation/platform/project-templates)**: Define default environments, roles, and settings to standardize project creation.
+- **Product Settings**: Configure organization-wide policies and templates for a single product, such as Secrets Management.
+- **[Sub Organizations](/documentation/platform/sub-organizations)**: Create and manage child organizations under this one.
 
 ![organization settings](/images/platform/organization/organization-settings.png)

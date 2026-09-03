@@ -590,16 +590,14 @@ curl --request POST \
 
 ## Auditing a user's effective permissions
 
-Because a member can receive access from direct roles, group-inherited roles, and additional privileges at the same time, it isn't always obvious what they can actually do. The **Permission Audit** view resolves all sources into a single, effective answer per subject and action.
+A member can hold a direct role, a group-inherited role, and additional privileges at the same time, so what they can actually do isn't always obvious. The **Permission Audit** view resolves every source into one effective answer per subject and action.
 
-Open **Access Control → Users**, click a member, then click **Permission Audit** in the page header.
+Open **Access Control**, select the **Users** tab, select the member, then select **Permission Audit** in the page header.
 
-<Frame caption="Open a member from Access Control → Users and click Permission Audit.">
-  <img src="/images/internals/permissions/permission-audit-button.png" alt="Permission Audit button on the member details page" />
-</Frame>
-
-Each action is shown as **Allow**, **Conditional** (hover for the matching conditions), or **Forbid** (red icon = explicit forbid; muted dash = no rule grants it). The **Granted by** column lists every contributing source — direct role, group-inherited role, or additional privilege — with the source's role/group name. Use the search box to filter by resource, action, or source, and **Export CSV** to download a flat report.
-
-<Frame caption="Effective access for a member, grouped by resource with per-action state and source attribution.">
+<Frame caption="Permission Audit for a project member, grouped by resource.">
   <img src="/images/internals/permissions/permission-audit-sheet.png" alt="Permission Audit sheet showing effective access per resource" />
 </Frame>
+
+Each action reads as **Allow**, **Conditional**, or **Forbid**. Hover over a conditional action to see the conditions that have to match. A red icon means an explicit forbid, and a muted dash means nothing grants the action at all. The **Granted by** column names every source that contributes: the direct role, the group-inherited role, or the additional privilege.
+
+Use the search box to filter by resource, action, or source, and the **All** dropdown to show only allowed, conditional, or forbidden actions. Select the **Export CSV** icon next to the search box to download the full list.

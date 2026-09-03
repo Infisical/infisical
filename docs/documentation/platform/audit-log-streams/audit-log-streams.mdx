@@ -29,14 +29,14 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 
 <Steps>
     <Step title="Create Stream">
-        1. Navigate to **Organization Settings**
-        2. Select the **Audit Log Streams** tab
-        3. Click **Add Log Stream**
+        1. Go to **Audit Logs**
+        2. Select the **External Log Streams** tab
+        3. Select **Add Log Stream**
 
         ![stream create](/images/platform/audit-log-streams/stream-create.png)
     </Step>
 		<Step title="Select Provider">
-		    If your log provider is included in this list, select it. Otherwise click on **Custom** to input your own Endpoint URL and headers.
+		    If your log provider is included in this list, select it. Otherwise select **Custom** to input your own Endpoint URL and headers.
 
 		    ![select provider](/images/platform/audit-log-streams/select-provider.png)
 		</Step>
@@ -51,7 +51,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 				    Custom endpoints receive audit logs as a **JSON array of events** per request (batch delivery). Make sure your receiver accepts an array. See [Delivery Format](#delivery-format) for details.
 				</Info>
 
-				Once you're finished, click **Create Log Stream**.
+				Once you're finished, select **Create Log Stream**.
 		</Step>
 		<Step title="Log Stream Created">
 		    Your audit logs are now ready to be streamed.

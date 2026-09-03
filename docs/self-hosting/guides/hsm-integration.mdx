@@ -154,13 +154,17 @@ Below you'll find a list of the attributes each key will be created with.
     <Step title="Restart Instance">
         After setting up the HSM, you need to restart the Infisical instance for the changes to take effect.
     </Step>
-    <Step title="Navigate to the Server Admin Console">
-        ![Server Admin Console](/images/platform/kms/hsm/server-admin-console.png)
-    </Step>
-    <Step title="Update the KMS Encryption Strategy to HSM">
-        ![Set Encryption Strategy](/images/platform/kms/hsm/encryption-strategy.png)
+    <Step title="Open the Server Console">
+        Select **Server Console** in the top navigation bar. It's only shown to server administrators.
 
-        Once you press the 'Save' button, your Infisical instance will immediately switch to the HSM encryption strategy. This will re-encrypt your KMS key with keys from the HSM device.
+        ![Open the Server Console](/images/platform/kms/hsm/server-admin-console.png)
+    </Step>
+    <Step title="Update the KMS encryption strategy to HSM">
+        Go to **Encryption** and set **Encryption strategy** to **Hardware Security Module (HSM)**.
+
+        ![Set the encryption strategy](/images/platform/kms/hsm/encryption-strategy.png)
+
+        Select **Save**, and your instance switches to the HSM encryption strategy right away, re-encrypting your KMS key with keys from the HSM device.
     </Step>
     <Step title="Verify Encryption Strategy">
         To verify that the HSM was correctly configured, you can try creating a new secret in one of your projects. If the secret is created successfully, the HSM is now being used for encryption.
@@ -1561,7 +1565,7 @@ Below you'll find a list of the attributes each key will be created with.
 
 ## Disabling HSM encryption
 
-To disable HSM encryption, navigate to Infisical's Server Admin Console and set the KMS encryption strategy to `Software-based Encryption`. This will revert the encryption strategy back to the default software-based encryption.
+To disable HSM encryption, go to **Encryption** in the [Server Console](/documentation/platform/admin-panel/server-admin) and set **Encryption strategy** back to **Software-based Encryption**.
 
 <Note>
   In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you will not be able to disable HSM encryption.

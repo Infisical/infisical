@@ -68,16 +68,13 @@ Before you begin, you'll first need to set up a GCP Service Account, add a KMS k
 Next, you will need to follow the steps listed below to add GCP KMS for your organization.
 
 <Steps>
-  <Step title="Navigate to the organization settings and select the 'Encryption' tab.">
+  <Step title="Open the Encryption settings">
+    Go to **Settings**, select **Encryption**, then select **Add KMS**.
 	![Open encryption org settings](../../../images/platform/kms/encryption-org-settings.png)
   </Step>
-  <Step title="Click on the 'Add' button">
-	![Add encryption org settings](../../../images/platform/kms/encryption-org-settings-add.png)
-    Click the 'Add' button to begin adding a new external KMS.
-  </Step>
-  <Step title="Select 'GCP KMS'">
+  <Step title="Select GCP KMS">
 	![Select Encryption Provider](../../../images/platform/kms/encryption-modal-provider-select.png)
-     Choose 'GCP KMS' from the list of encryption providers.
+     Choose **GCP KMS** from the list of encryption providers.
   </Step>
   <Step title="Provide the inputs for GCP KMS">
 
@@ -105,28 +102,29 @@ Next, you will need to follow the steps listed below to add GCP KMS for your org
     </ParamField>
 
   </Step>
-  <Step title="Click Save">
-    Save your configuration to apply the settings.
+  <Step title="Save the configuration">
+    Select **Save** to apply the settings.
   </Step>
 </Steps>
 
-You now have a GCP KMS Key configured at the organization level. You can assign these GCP KMS keys to existing Infisical projects by visiting the 'Project Settings' page.
+You now have a GCP KMS Key configured at the organization level. You can assign these GCP KMS keys to existing Infisical projects from the project's **Settings** page.
 
 ## Assign GCP KMS key to an existing project
 
 To assign the GCP KMS key you added to your organization, follow the steps below.
 
 <Steps>
-  <Step title="Open Project Settings and select to the Encryption Tab">
+  <Step title="Open the project's Encryption settings">
+    Open the project, go to **Settings**, and select **Encryption**.
     ![Open encryption project
     settings](../../../images/platform/kms/gcp/project-settings.png)
   </Step>
-  <Step title="Under the Key Management section, select your newly added GCP KMS key from the dropdown">
+  <Step title="Select the key under Key Management">
     ![Select encryption project
     settings](../../../images/platform/kms/gcp/select-gcp-kms-in-project.png)
     Choose the GCP KMS key you configured earlier.
   </Step>
-  <Step title="Click Save">
-    Once you have selected the KMS of choice, click save.
+  <Step title="Save the change">
+    Once you have selected the KMS of choice, select **Save**.
   </Step>
 </Steps>

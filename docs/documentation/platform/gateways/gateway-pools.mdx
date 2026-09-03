@@ -24,26 +24,26 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 
 ## Creating a Gateway pool
 
-1. Navigate to **Organization Settings > Networking > Gateways**.
-2. Click the **Gateway Pools** tab.
+1. Go to **Settings**, select **Networking**, then open the **Gateways** tab.
+2. Select the **Gateway Pools** sub-tab.
 
 ![Gateway Pools Switch](../../../images/platform/gateways/gateway-pools-switch.png)
 
-3. Click **Create Pool**.
+3. Select **Create Pool**.
 
 ![Gateway Pools Tab](../../../images/platform/gateways/gateway-pools-tab.png)
 
-4. Enter a name for the pool and click **Create Pool**.
+4. Enter a name for the pool and select **Create Pool**.
 
 ![Create Gateway Pool](../../../images/platform/gateways/gateway-pools-create.png)
 
 ## Adding gateways to a pool
 
-1. In the **Gateway Pools** tab, click on a pool to open its detail view.
+1. In the **Gateway Pools** sub-tab, select a pool to open its detail view.
 
-![Click on a pool](../../../images/platform/gateways/gateway-pools-click-pool.png)
+![Select a pool](../../../images/platform/gateways/gateway-pools-click-pool.png)
 
-2. Click **Add Gateway** and select a gateway from the dropdown.
+2. Under **Member Gateways**, pick a gateway from the picker and select **Add**.
 
 ![Add gateway to pool](../../../images/platform/gateways/gateway-pools-add-gateway.png)
 
@@ -94,7 +94,7 @@ If all gateways in a pool are unhealthy when a request is made, the request fail
     No. A pool cannot be deleted if it is referenced by any consumer configurations (e.g., Kubernetes Auth). You must first update those configurations to use a different gateway or pool before deleting.
   </Accordion>
   <Accordion title="How can I see what is using a pool?">
-    Each pool shows a count of connected consumer configurations in the table. Click the count to see the full list with links to each resource.
+    Each pool shows a count of connected consumer configurations in the table. Select the count to see the full list with links to each resource.
   </Accordion>
   <Accordion title="What happens if all gateways in a pool are unhealthy?">
     The request fails with a descriptive error. You should ensure at least one gateway in the pool is online and has a recent heartbeat.

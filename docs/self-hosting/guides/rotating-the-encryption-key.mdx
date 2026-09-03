@@ -33,17 +33,17 @@ value**, so generating a key changes nothing until you deploy it.
 
 <Steps>
   <Step title="Generate a new key">
-    Go to **Admin > Encryption** and select **Generate new key** under **Root encryption key**.
+    In the [Server Console](/documentation/platform/admin-panel/server-admin), go to **Encryption** and select **Generate New Key** under **Root Encryption Keys**.
 
     ![Root encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/generate-key.png)
 
   </Step>
 
   <Step title="Store the key">
-    The key is shown once and is never recoverable. Copy it into your secret store before closing the
-    dialog, together with the **label** shown beside it.
+    The key is shown once and is never recoverable. Copy it into your secret store before you close the
+    dialog, together with the **Label** shown below it.
 
-    If the key may have been exposed while you copied it, you can discard the generated key or just generate a new one.
+    If the key may have been exposed while you copied it, select the discard icon on the generated key's row, or generate another key.
 
     ![Discard generated encryption key](/images/self-hosting/guides/rotating-encryption-key/discard-key.png)
 
@@ -59,8 +59,8 @@ value**, so generating a key changes nothing until you deploy it.
   </Step>
 
   <Step title="Confirm the rotation applied">
-    Return to **Admin > Encryption** and check **Key history**. The new key is listed as `Active` and the
-    old one as `Expiring`.
+    Return to **Encryption** and check the key table under **Root Encryption Keys**. The new key is
+    listed as **Active**, and the old one shows the date it expires.
 
     If the new key is not listed yet, no instance has started with the new value. Check that
     `ENCRYPTION_KEY` reached your instances, then restart one.
@@ -71,8 +71,9 @@ value**, so generating a key changes nothing until you deploy it.
     Until you remove it, the old key still opens your database, so the rotation has not reduced your
     exposure yet.
 
-    The panel tells you when an instance last started on the old key. When every instance has restarted
-    on the new key, select **Deactivate now** or click the icon button at the previous key row.
+    When every instance has restarted on the new key, select **Deactivate Now** in the rotation banner,
+    or select the deactivate icon on the previous key's row. The confirmation dialog tells you when an
+    instance last started on the old key.
 
     ![Remove encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/remove-key.png)
 
@@ -82,7 +83,7 @@ value**, so generating a key changes nothing until you deploy it.
     </Warning>
 
     Infisical only sees instances that have restarted, so confirm your rollout is complete yourself
-    rather than relying on the panel alone. If you do nothing, Infisical removes the old key on the first
+    rather than relying on that dialog alone. If you do nothing, Infisical removes the old key on the first
     weekly cleanup after it has been superseded for `KMS_ROOT_KEY_RETENTION_DAYS` (7 by default).
 
     Rotating again before you remove the old key removes it for you, at the moment the new key is first
@@ -97,12 +98,12 @@ value**, so generating a key changes nothing until you deploy it.
 Do one of these:
 
 - **Archive the old key.** Keep it in your secret store for at least as long as your oldest restorable
-  backup, tagged with the label from the **Key history** table. That table is kept permanently, so
-  a restored backup can always be matched to the key it needs.
+  backup, tagged with the label from the key table under **Root Encryption Keys**. That table is kept
+  permanently, so a restored backup can always be matched to the key it needs.
 - **Crypto-shred.** Remove the old key, take a fresh full backup immediately, and expire backups taken
   before the rotation. A backup nobody can decrypt is also a backup that cannot leak.
 
-The **Key history** table lists every key the instance has used and when. If an instance ever fails to
+The key table lists every key the instance has used and when. If an instance ever fails to
 start with "the configured encryption key does not decrypt this database's root key", the error names the
 label it needs, which you can look up there.
 
@@ -113,7 +114,7 @@ far you have got.
 
 | When you revert `ENCRYPTION_KEY`                            | What happens                                                                                                                     |
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Before any instance restarts                                | Nothing has changed. The generated key is still waiting, so select **Discard generated key** if you are abandoning the rotation. |
+| Before any instance restarts                                | Nothing has changed. The generated key is still waiting, so select the discard icon on its row if you are abandoning the rotation. |
 | After an instance applied it, before you remove the old key | Instances boot on the old key and keep serving. The rotation is not undone: the new key is still the active one.                 |
 | After you removed the old key                               | Those instances will not start. Give them the new key to bring them back.                                                        |
 

@@ -1,50 +1,51 @@
 ---
 title: "Server admin console"
-description: "Configure and manage server related features"
+description: "Configure instance-wide settings and manage users from the Server Console"
 ---
 
-The Server Admin Console provides **server administrators** with the ability to
-customize settings and manage users for their entire Infisical instance.
+The Server Console is where a server administrator manages the settings, users, and resources of an entire Infisical instance.
 
 <Note>
-  The first user to setup an account on your Infisical instance is designated as
-  the server administrator by default.
+  The first user to set up an account on your Infisical instance becomes the
+  server administrator.
 </Note>
 
-## Accessing the server admin console
+## Accessing the server console
 
-On the sidebar, hover over **Admin** to access the settings dropdown and press the **Server Admin Console** option.
+Select **Server Console** in the top navigation bar. The button is only shown to server administrators.
 
-![Access Server Admin Console](/images/platform/admin-panels/access-server-admin-panel.png)
+![Access the Server Console](/images/platform/admin-panels/access-server-admin-panel.png)
 
-## General tab
+The console opens on **General**. The sidebar holds the rest of the instance settings.
 
-Configure general settings for your instance.
+## General
 
-![General Settings](/images/platform/admin-panels/admin-panel-general.png)
-![General Settings 1](/images/platform/admin-panels/admin-panel-general-1.png)
+Instance-wide settings for signups, the default organization, LDAP email trust, and the notices users see.
+
+![General settings](/images/platform/admin-panels/admin-panel-general.png)
+![Notice settings](/images/platform/admin-panels/admin-panel-general-1.png)
 
 ### Allow user signups
 
-User signups are enabled by default, allowing **Anyone** with access to your instance to sign up. This can alternatively be **Disabled** to prevent any users from signing up.
+**Signup mode** controls who can create an account on your instance. **Anyone** lets every visitor who reaches the instance sign up. **Disabled** means new accounts only come from an organization invitation.
 
-### Restrict signup domain
+### Allowed email domains
 
-Signup can be restricted to users matching one or more email domains, such as your organization's domain, to control who has access to your instance.
+When **Signup mode** is **Anyone**, **Allowed email domains** limits signups to the domains you list, such as your company's. Leave it blank to allow any domain.
 
 ### Default organization
 
-If you're using SAML/LDAP/OIDC for only one organization on your instance, you can specify a default organization to use at login to skip requiring users to manually enter the organization slug.
+If you use SAML, LDAP, or OIDC for a single organization on your instance, set **Organization** to that organization. Users then skip entering the organization slug at login.
 
 ### Trust LDAP emails
 
-By default, users provisioned through LDAP must verify their email address on their first login, which prevents email spoofing. Enable **Trust LDAP emails** to skip that step for LDAP users across every organization on this instance.
+By default, users provisioned through LDAP have to verify their email address on first login, which prevents email spoofing. Turn on **Trust LDAP emails** to skip that step for LDAP users across every organization on this instance.
 
 For SAML and OIDC, email verification is skipped automatically when an organization [enforces SSO](/documentation/platform/sso/overview#sso-enforcement).
 
-### Broadcast messages
+### Notices
 
-Auth consent content is displayed to users on the login page. They can be used to display important information to users, such as a maintenance message or a new feature announcement. Both HTML and Markdown formatting are supported, allowing for customized styling like below:
+Users see **Auth consent content** on the login page. Use it for anything they should read before signing in, such as a maintenance message or an access notice. HTML, Markdown, and plain text all work, so you can style it:
 
 ```
 **You are entering a confidential website**
@@ -54,34 +55,37 @@ Auth consent content is displayed to users on the login page. They can be used t
 <div style="font-weight: bold;">You are entering a confidential website</div>
 ```
 
-![Auth Consent Usage](/images/platform/admin-panels/auth-consent-usage.png)
+![Auth consent content on the login page](/images/platform/admin-panels/auth-consent-usage.png)
 
-Page frame content is displayed as a header and footer in ALL protected pages. Like the auth consent content, both HTML and Markdown formatting are supported here as well.
-![Page Frame Usage](/images/platform/admin-panels/page-frame-usage.png)
+**Page frame content** appears as a header and a footer on every page a signed-in user opens. It accepts the same formats.
 
-## Authentication tab
+![Page frame content on a signed-in page](/images/platform/admin-panels/page-frame-usage.png)
 
-From this tab, you can configure which login methods are enabled for your instance.
+Select **Save** to apply either change.
 
-![Authentication Settings](/images/platform/admin-panels/admin-panel-auths.png)
+## Authentication
 
-## Rate limit tab
+Use **Login Methods** to choose the login methods available on the instance. Turn a method off here and no organization can use it.
 
-This tab allows you to set various rate limits for your Infisical instance. You do not need to redeploy when making changes to rate limits as these will be propagated automatically.
+![Authentication settings](/images/platform/admin-panels/admin-panel-auths.png)
 
-![Rate Limit Settings](/images/platform/admin-panels/admin-panel-rate-limits.png)
+## Resource overview
 
-<Note>
-  Note that rate limit configuration is a paid feature. Please contact
-  sales@infisical.com to purchase a license for its use.
-</Note>
+**Resource Overview** lists the organizations, users, machine identities, and email domains on the instance. Each list has its own entry in the sidebar.
 
-## User management tab
+On **Users**, search for a user by name or email, filter the list down to server admins, and select the three dot menu on a row to remove the user or change their server admin access.
 
-From this tab, you can view all the users who have signed up for your instance. You can search for users using the search bar and remove them from your instance by clicking on the three dots icon on the right. Additionally, the Server Admin can grant server administrator access to other users through this menu.
-![User Management](/images/platform/admin-panels/admin-panel-users.png)
+![User identities in the Server Console](/images/platform/admin-panels/admin-panel-users.png)
 
-<Note>
-  Note that rate limit configuration is a paid feature. Please contact
-  sales@infisical.com to purchase a license for its use.
-</Note>
+## Access control
+
+**Access Control** lists the server administrators of the instance. Select **Add Admin** to grant server admin access to an existing user.
+
+## Other sections
+
+The remaining sidebar entries have their own guides:
+
+- **Encryption**: the KMS encryption strategy and the root encryption keys. See [Rotating the encryption key](/self-hosting/guides/rotating-the-encryption-key).
+- **Environment Variables**: overrides for instance configuration, so you can change a value without redeploying. See [Environment variables](/self-hosting/configuration/envars#environment-variable-overrides).
+- **Integrations**: the instance-wide settings for Slack and Microsoft Teams.
+- **Caching**: invalidate the encrypted secrets cache.
