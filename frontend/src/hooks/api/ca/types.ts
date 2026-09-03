@@ -1,7 +1,7 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
 import { CertKeySource } from "../signers/types";
 import {
-  AcmeDnsProvider,
+  CaDnsProvider,
   CaRenewalType,
   CaStatus,
   CaType,
@@ -19,7 +19,7 @@ export type TAcmeCertificateAuthority = {
   configuration: {
     dnsAppConnectionId: string;
     dnsProviderConfig: {
-      provider: AcmeDnsProvider;
+      provider: CaDnsProvider;
       hostedZoneId: string;
     };
     directoryUrl: string;
@@ -95,6 +95,11 @@ export type TDigiCertCertificateAuthority = {
     productNameId: string;
     purpose?: DigiCertCaPurpose;
     verifiedContact?: TDigiCertVerifiedContact;
+    dnsAppConnectionId?: string;
+    dnsProviderConfig?: {
+      provider: CaDnsProvider;
+      hostedZoneId: string;
+    };
   };
 };
 

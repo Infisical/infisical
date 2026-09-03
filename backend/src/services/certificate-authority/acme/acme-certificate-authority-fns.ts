@@ -8,7 +8,6 @@ import RE2 from "re2";
 import { TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { delay } from "@app/lib/delay";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -19,10 +18,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
-import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
-import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
-import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
@@ -46,9 +41,15 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
-import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
+import { CaDnsProvider } from "../dns-providers/ca-dns-provider-enums";
+import { waitForTxtRecordPropagation } from "../dns-providers/dns-propagation";
+import {
+  assertDnsProviderMatchesAppConnection,
+  deleteDnsProviderTxtRecord,
+  TDnsProviderConnection,
+  upsertDnsProviderTxtRecord
+} from "../dns-providers/dns-txt-record-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 import { throwIfAcmeOrderAborted } from "./acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
 import {
@@ -56,9 +57,6 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
-import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
-import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
-import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
@@ -196,7 +194,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
     configuration: {
       dnsAppConnectionId: ca.externalCa.dnsAppConnectionId as string,
       dnsProviderConfig: {
-        provider: dbConfigurationCol.dnsProvider as AcmeDnsProvider,
+        provider: dbConfigurationCol.dnsProvider as CaDnsProvider,
         hostedZoneId: dbConfigurationCol.hostedZoneId
       },
       directoryUrl: dbConfigurationCol.directoryUrl,
@@ -209,8 +207,6 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-const DNS_PROPAGATION_MAX_RETRIES = 5;
-const DNS_PROPAGATION_INTERVAL_MS = 2000;
 const CNAME_MAX_DEPTH = 10;
 
 const resolveAcmeChallengeCname = async (recordName: string): Promise<string> => {
@@ -236,49 +232,20 @@ const resolveAcmeChallengeCname = async (recordName: string): Promise<string> =>
   return current;
 };
 
-const waitForDnsPropagation = async (
-  lookupName: string,
-  expectedValue: string,
-  dnsResolver?: string
-): Promise<void> => {
-  const unquotedExpected = expectedValue.replace(new RE2('^"|"$', "g"), "");
-  let attempts = 0;
-
-  const resolver = new dns.promises.Resolver();
-  if (dnsResolver) {
-    resolver.setServers([dnsResolver]);
-  }
-
-  while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
-    attempts += 1;
-
-    const found = await resolver // eslint-disable-line no-await-in-loop
-      .resolveTxt(lookupName)
-      .then((records) => records.some((chunks) => chunks.join("") === unquotedExpected))
-      .catch(() => false);
-
-    if (found) return;
-
-    if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
-      await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
-    }
-  }
-};
-
 const getAcmeChallengeRecord = async (
-  provider: AcmeDnsProvider,
+  provider: CaDnsProvider,
   identifierValue: string,
   keyAuthorization: string
 ): Promise<{ recordName: string; recordValue: string }> => {
   let recordName: string;
-  if (provider === AcmeDnsProvider.DNSMadeEasy || provider === AcmeDnsProvider.AzureDNS) {
+  if (provider === CaDnsProvider.DNSMadeEasy || provider === CaDnsProvider.AzureDNS) {
     // For DNS Made Easy, we don't need to provide the domain name in the record name.
     recordName = "_acme-challenge";
   } else {
     recordName = `_acme-challenge.${identifierValue}`; // e.g., "_acme-challenge.example.com"
   }
 
-  if (provider !== AcmeDnsProvider.DNSMadeEasy) {
+  if (provider !== CaDnsProvider.DNSMadeEasy) {
     recordName = await resolveAcmeChallengeCname(recordName);
   }
 
@@ -418,7 +385,7 @@ export const executeAcmeOrder = async (
   const acmeClient = new acme.Client(acmeClientOptions);
 
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
-  const connection = await decryptAppConnection(appConnection, kmsService);
+  const connection = (await decryptAppConnection(appConnection, kmsService)) as unknown as TDnsProviderConnection;
 
   await reportProgress("Submitting order to the certificate authority");
 
@@ -444,56 +411,22 @@ export const executeAcmeOrder = async (
         keyAuthorization
       );
 
-      switch (acmeCa.configuration.dnsProviderConfig.provider) {
-        case AcmeDnsProvider.Route53: {
-          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Set ACME challenge TXT record"
-          });
-          break;
-        }
-        case AcmeDnsProvider.Cloudflare: {
-          await cloudflareInsertTxtRecord(
-            connection as TCloudflareConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        case AcmeDnsProvider.DNSMadeEasy: {
-          await dnsMadeEasyInsertTxtRecord(
-            connection as TDNSMadeEasyConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        case AcmeDnsProvider.AzureDNS: {
-          await azureDnsInsertTxtRecord(
-            connection as TAzureDnsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        default: {
-          throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
-        }
-      }
+      await upsertDnsProviderTxtRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        connection,
+        acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+        recordName,
+        recordValue,
+        "Set ACME challenge TXT record"
+      );
 
       const lookupName =
-        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy ||
-        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS
+        acmeCa.configuration.dnsProviderConfig.provider === CaDnsProvider.DNSMadeEasy ||
+        acmeCa.configuration.dnsProviderConfig.provider === CaDnsProvider.AzureDNS
           ? recordName
           : `_acme-challenge.${authz.identifier.value}`;
       await reportProgress(`Waiting for DNS records to propagate for ${authz.identifier.value}`);
-      await waitForDnsPropagation(lookupName, recordValue, acmeCa.configuration.dnsResolver);
+      await waitForTxtRecordPropagation(lookupName, recordValue, acmeCa.configuration.dnsResolver);
       await reportProgress(`The certificate authority is validating ${authz.identifier.value}`);
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
@@ -504,48 +437,14 @@ export const executeAcmeOrder = async (
         keyAuthorization
       );
 
-      switch (acmeCa.configuration.dnsProviderConfig.provider) {
-        case AcmeDnsProvider.Route53: {
-          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
-            name: recordName,
-            type: "TXT",
-            value: recordValue,
-            ttl: 30,
-            comment: "Delete ACME challenge TXT record"
-          });
-          break;
-        }
-        case AcmeDnsProvider.Cloudflare: {
-          await cloudflareDeleteTxtRecord(
-            connection as TCloudflareConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        case AcmeDnsProvider.DNSMadeEasy: {
-          await dnsMadeEasyDeleteTxtRecord(
-            connection as TDNSMadeEasyConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        case AcmeDnsProvider.AzureDNS: {
-          await azureDnsDeleteTxtRecord(
-            connection as TAzureDnsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
-          break;
-        }
-        default: {
-          throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
-        }
-      }
+      await deleteDnsProviderTxtRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        connection,
+        acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+        recordName,
+        recordValue,
+        "Delete ACME challenge TXT record"
+      );
     }
   });
 
@@ -688,29 +587,11 @@ export const AcmeCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
     }
 
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy && appConnection.app !== AppConnection.DNSMadeEasy) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-      });
-    }
+    assertDnsProviderMatchesAppConnection(
+      dnsProviderConfig.provider,
+      appConnection.app as AppConnection,
+      dnsAppConnectionId
+    );
 
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
@@ -796,35 +677,11 @@ export const AcmeCertificateAuthorityFns = ({
           throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
         }
 
-        if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare &&
-          appConnection.app !== AppConnection.Cloudflare
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy &&
-          appConnection.app !== AppConnection.DNSMadeEasy
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-          });
-        }
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-          });
-        }
+        assertDnsProviderMatchesAppConnection(
+          dnsProviderConfig.provider,
+          appConnection.app as AppConnection,
+          dnsAppConnectionId
+        );
 
         if (dnsResolver) {
           validateDnsResolver(dnsResolver);

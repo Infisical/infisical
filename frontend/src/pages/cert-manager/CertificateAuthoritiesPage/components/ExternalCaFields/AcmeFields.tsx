@@ -1,41 +1,29 @@
 import { Control, Controller } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { TAzureDNSZone } from "@app/hooks/api/appConnections/azure-dns";
 import { TCloudflareZone } from "@app/hooks/api/appConnections/cloudflare";
 import { TDNSMadeEasyZone } from "@app/hooks/api/appConnections/dns-made-easy";
-import { AcmeDnsProvider } from "@app/hooks/api/ca";
-import {
-  ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
-  ACME_DNS_PROVIDER_NAME_MAP
-} from "@app/hooks/api/ca/constants";
+import { CaDnsProvider } from "@app/hooks/api/ca";
 
-import { AppConnectionSelectField } from "./AppConnectionSelectField";
 import { REQUIRED_EAB_DIRECTORIES } from "./constants";
+import { DnsProviderFields } from "./DnsProviderFields";
 import { FormData } from "./schema";
 
 type Props = {
   control: Control<FormData>;
   isExistingCa: boolean;
-  dnsProvider?: AcmeDnsProvider;
+  dnsProvider?: CaDnsProvider;
   directoryUrl?: string;
   dnsAppConnection: { id: string; name: string };
   availableConnections: TAvailableAppConnection[];
@@ -64,141 +52,20 @@ export const AcmeFields = ({
   isAzureDNSZonesPending
 }: Props) => (
   <>
-    <Controller
+    <DnsProviderFields
       control={control}
-      name="configuration.dnsProviderConfig.provider"
-      defaultValue={AcmeDnsProvider.ROUTE53}
-      render={({ field: { onChange, value }, fieldState: { error } }) => (
-        <Field className="mb-4">
-          <FieldLabel>DNS Provider</FieldLabel>
-          <Select value={value} onValueChange={(val) => onChange(val)} disabled={isExistingCa}>
-            <SelectTrigger className="w-full" isError={Boolean(error)}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              {Object.values(AcmeDnsProvider).map((provider) => (
-                <SelectItem value={String(provider)} key={provider}>
-                  {ACME_DNS_PROVIDER_NAME_MAP[provider]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldError errors={[error]} />
-        </Field>
-      )}
+      isExistingCa={isExistingCa}
+      dnsProvider={dnsProvider}
+      dnsAppConnection={dnsAppConnection}
+      availableConnections={availableConnections}
+      isPending={isPending}
+      cloudflareZones={cloudflareZones}
+      isZonesPending={isZonesPending}
+      dnsMadeEasyZones={dnsMadeEasyZones}
+      isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
+      azureDnsZones={azureDnsZones}
+      isAzureDNSZonesPending={isAzureDNSZonesPending}
     />
-    <AppConnectionSelectField
-      control={control}
-      name="configuration.dnsAppConnection"
-      label="DNS App Connection"
-      options={availableConnections}
-      isLoading={isPending}
-      tooltip={
-        dnsProvider
-          ? `${ACME_DNS_PROVIDER_NAME_MAP[dnsProvider]} uses the ${APP_CONNECTION_MAP[ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider]].name} App Connection. You can create one in the Organization Settings page.`
-          : "Select a DNS provider first"
-      }
-    />
-    {dnsProvider === AcmeDnsProvider.ROUTE53 && (
-      <Controller
-        control={control}
-        defaultValue=""
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        render={({ field, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>
-              Hosted Zone ID <span className="text-danger">*</span>
-            </FieldLabel>
-            <Input {...field} placeholder="Z040441124N1GOOMCQYX1" isError={Boolean(error)} />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.Cloudflare && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                cloudflareZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
-              }}
-              options={cloudflareZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                dnsMadeEasyZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
-              }}
-              options={dnsMadeEasyZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.AzureDNS && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isAzureDNSZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                azureDnsZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TAzureDNSZone>)?.id ?? null);
-              }}
-              options={azureDnsZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
     <Controller
       control={control}
       defaultValue=""

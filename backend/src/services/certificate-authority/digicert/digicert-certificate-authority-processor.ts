@@ -31,6 +31,7 @@ import {
   TDigiCertCertificateAuthorityFns
 } from "./digicert-certificate-authority-fns";
 import { DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
+import { cleanupDigiCertDcvDnsRecords, TDigiCertDcvSnapshot } from "./digicert-dcv-dns-fns";
 
 export type TDigiCertCertificateRequestServiceDep = {
   updateCertificateRequestStatus: (args: TUpdateCertificateRequestStatusDTO) => Promise<unknown>;
@@ -50,7 +51,39 @@ export type TDigiCertOrderMetadata = {
     lastCheckStatus?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    dcv?: TDigiCertDcvSnapshot;
   };
+};
+
+const cleanupDcvIfNeeded = async (
+  deps: Pick<TProcessDigiCertRequestDeps, "appConnectionDAL" | "kmsService" | "certificateRequestDAL">,
+  request: TCertificateRequests,
+  orderId: number,
+  dcv: TDigiCertDcvSnapshot | undefined
+): Promise<void> => {
+  if (!dcv || dcv.cleanedUpAt) return;
+
+  await cleanupDigiCertDcvDnsRecords({ orderId, dcv, deps }).catch((err) => {
+    logger.warn(
+      err,
+      `DigiCert DCV TXT record cleanup failed [certificateRequestId=${request.id}] [orderId=${orderId}]`
+    );
+  });
+
+  try {
+    const rawMetadata = JSON.parse(request.metadata ?? "{}") as { digicert?: Record<string, unknown> };
+    await deps.certificateRequestDAL.updateById(request.id, {
+      metadata: JSON.stringify({
+        ...rawMetadata,
+        digicert: { ...rawMetadata.digicert, dcv: { ...dcv, cleanedUpAt: new Date().toISOString() } }
+      })
+    });
+  } catch (err) {
+    logger.warn(
+      err,
+      `Failed to record DigiCert DCV TXT cleanup [certificateRequestId=${request.id}] [orderId=${orderId}]`
+    );
+  }
 };
 
 export type TProcessDigiCertRequestDeps = {
@@ -136,6 +169,7 @@ export const processDigiCertPendingValidationRequest = async (
       status: CertificateRequestStatus.FAILED,
       errorMessage: "Validation timed out after 24h"
     });
+    await cleanupDcvIfNeeded(deps, request, parsed.digicert.orderId, parsed.digicert.dcv);
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
     return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
   }
@@ -198,6 +232,8 @@ export const processDigiCertPendingValidationRequest = async (
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
     });
 
+    await cleanupDcvIfNeeded(deps, request, parsed.digicert.orderId, parsed.digicert.dcv);
+
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
   }
 
@@ -212,6 +248,7 @@ export const processDigiCertPendingValidationRequest = async (
       status: CertificateRequestStatus.FAILED,
       errorMessage: `DigiCert order ${orderStatus}`
     });
+    await cleanupDcvIfNeeded(deps, request, parsed.digicert.orderId, parsed.digicert.dcv);
     logger.info(`DigiCert order terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);
     return {
       status: CertificateRequestStatus.FAILED,

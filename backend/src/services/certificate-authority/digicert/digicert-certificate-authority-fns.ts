@@ -32,6 +32,7 @@ import {
   extractIssuedCertificateFields,
   keyAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
+import { assertDnsProviderMatchesAppConnection } from "../dns-providers/dns-txt-record-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import {
@@ -52,6 +53,7 @@ import {
   TUpdateDigiCertCertificateAuthorityDTO
 } from "./digicert-certificate-authority-types";
 import { digiCertCodeSigningFns } from "./digicert-code-signing-fns";
+import { createDigiCertDcvDnsRecords, TDigiCertDcvSnapshot } from "./digicert-dcv-dns-fns";
 
 export { castDbEntryToDigiCertCertificateAuthority, getDigiCertClientCredentials };
 
@@ -86,6 +88,33 @@ const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, pro
       message: `Product '${productNameId}' is a code-signing product but this CA is configured for SSL`
     });
   }
+};
+
+const assertValidDnsAutomationConfig = async (
+  {
+    dnsAppConnectionId,
+    dnsProviderConfig
+  }: Pick<TCreateDigiCertCertificateAuthorityDTO["configuration"], "dnsAppConnectionId" | "dnsProviderConfig">,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">
+): Promise<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>> | undefined> => {
+  if (!dnsAppConnectionId && !dnsProviderConfig) return undefined;
+  if (!dnsAppConnectionId || !dnsProviderConfig) {
+    throw new BadRequestError({
+      message:
+        "dnsAppConnectionId and dnsProviderConfig must both be provided to automate DigiCert DCV via DNS TXT record"
+    });
+  }
+
+  const dnsAppConnection = await appConnectionDAL.findById(dnsAppConnectionId);
+  if (!dnsAppConnection) {
+    throw new NotFoundError({ message: `DNS app connection with ID '${dnsAppConnectionId}' not found` });
+  }
+  assertDnsProviderMatchesAppConnection(
+    dnsProviderConfig.provider,
+    dnsAppConnection.app as AppConnection,
+    dnsAppConnectionId
+  );
+  return dnsAppConnection;
 };
 
 const TTL_RE2 = new RE2("^(\\d+)([dhm])$");
@@ -144,7 +173,15 @@ export const DigiCertCertificateAuthorityFns = ({
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
     actor: OrgServiceActor;
   }) => {
-    const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+    const {
+      appConnectionId,
+      organizationId,
+      productNameId,
+      purpose,
+      verifiedContact,
+      dnsAppConnectionId,
+      dnsProviderConfig
+    } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
@@ -161,6 +198,18 @@ export const DigiCertCertificateAuthorityFns = ({
       { connectionId: appConnectionId, projectId },
       actor
     );
+
+    const dnsAppConnection = await assertValidDnsAutomationConfig(
+      { dnsAppConnectionId, dnsProviderConfig },
+      appConnectionDAL
+    );
+    if (dnsAppConnectionId && dnsAppConnection) {
+      await appConnectionService.validateAppConnectionUsageById(
+        dnsAppConnection.app as AppConnection,
+        { connectionId: dnsAppConnectionId, projectId },
+        actor
+      );
+    }
 
     assertPurposeMatchesProduct(purpose, productNameId);
 
@@ -189,12 +238,16 @@ export const DigiCertCertificateAuthorityFns = ({
           {
             caId: ca.id,
             appConnectionId,
+            dnsAppConnectionId,
             type: CaType.DIGICERT,
             configuration: {
               organizationId,
               productNameId,
               purpose: purpose ?? DigiCertCaPurpose.Ssl,
-              ...(verifiedContact ? { verifiedContact } : {})
+              ...(verifiedContact ? { verifiedContact } : {}),
+              ...(dnsProviderConfig
+                ? { dnsProvider: dnsProviderConfig.provider, dnsHostedZoneId: dnsProviderConfig.hostedZoneId }
+                : {})
             }
           },
           tx
@@ -234,7 +287,15 @@ export const DigiCertCertificateAuthorityFns = ({
     name?: string;
   }) => {
     if (configuration) {
-      const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+      const {
+        appConnectionId,
+        organizationId,
+        productNameId,
+        purpose,
+        verifiedContact,
+        dnsAppConnectionId,
+        dnsProviderConfig
+      } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
         throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
@@ -256,6 +317,18 @@ export const DigiCertCertificateAuthorityFns = ({
         actor
       );
 
+      const dnsAppConnection = await assertValidDnsAutomationConfig(
+        { dnsAppConnectionId, dnsProviderConfig },
+        appConnectionDAL
+      );
+      if (dnsAppConnectionId && dnsAppConnection) {
+        await appConnectionService.validateAppConnectionUsageById(
+          dnsAppConnection.app as AppConnection,
+          { connectionId: dnsAppConnectionId, projectId: ca.projectId },
+          actor
+        );
+      }
+
       assertPurposeMatchesProduct(purpose, productNameId);
 
       if (purpose === DigiCertCaPurpose.CodeSigning) {
@@ -270,7 +343,15 @@ export const DigiCertCertificateAuthorityFns = ({
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+        const {
+          appConnectionId,
+          organizationId,
+          productNameId,
+          purpose,
+          verifiedContact,
+          dnsAppConnectionId,
+          dnsProviderConfig
+        } = configuration;
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -278,11 +359,15 @@ export const DigiCertCertificateAuthorityFns = ({
           },
           {
             appConnectionId,
+            dnsAppConnectionId: dnsAppConnectionId ?? null,
             configuration: {
               organizationId,
               productNameId,
               purpose: purpose ?? DigiCertCaPurpose.Ssl,
-              ...(verifiedContact ? { verifiedContact } : {})
+              ...(verifiedContact ? { verifiedContact } : {}),
+              ...(dnsProviderConfig
+                ? { dnsProvider: dnsProviderConfig.provider, dnsHostedZoneId: dnsProviderConfig.hostedZoneId }
+                : {})
             }
           },
           tx
@@ -446,6 +531,19 @@ export const DigiCertCertificateAuthorityFns = ({
       }
     }
 
+    let dcv: TDigiCertDcvSnapshot | undefined;
+    const { dnsAppConnectionId, dnsProviderConfig } = digicertCa.configuration;
+    if (dnsAppConnectionId && dnsProviderConfig) {
+      dcv = await createDigiCertDcvDnsRecords({
+        orderResponse,
+        orderedDomains: [effectiveCommonName, ...extraSans],
+        dnsAppConnectionId,
+        dnsProviderConfig,
+        client,
+        deps: { appConnectionDAL, kmsService }
+      });
+    }
+
     return {
       metadata: {
         digicert: {
@@ -453,7 +551,8 @@ export const DigiCertCertificateAuthorityFns = ({
           certificateId: orderResponse.certificate_id,
           productNameId,
           organizationId: digicertCa.configuration.organizationId,
-          orderPlacedAt: new Date().toISOString()
+          orderPlacedAt: new Date().toISOString(),
+          ...(dcv ? { dcv } : {})
         }
       },
       privateKey: privateKeyPem,

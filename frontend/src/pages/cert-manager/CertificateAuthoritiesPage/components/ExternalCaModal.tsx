@@ -35,7 +35,7 @@ import {
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
-  AcmeDnsProvider,
+  CaDnsProvider,
   CaStatus,
   CaType,
   GoDaddyProductType,
@@ -65,7 +65,7 @@ const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 type ExternalCaConfigurationPayload =
   | {
-      dnsProviderConfig: { provider: AcmeDnsProvider; hostedZoneId: string };
+      dnsProviderConfig: { provider: CaDnsProvider; hostedZoneId: string };
       directoryUrl: string;
       accountEmail: string;
       dnsAppConnectionId: string;
@@ -88,6 +88,8 @@ type ExternalCaConfigurationPayload =
         jobTitle?: string;
         telephone?: string;
       };
+      dnsAppConnectionId?: string;
+      dnsProviderConfig?: { provider: CaDnsProvider; hostedZoneId: string };
     }
   | { appConnectionId: string; dnsAppConnectionId: string; hostedZoneId: string; region: string }
   | { appConnectionId: string; policyDN: string }
@@ -232,8 +234,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const caType = watch("type");
   const configuration = watch("configuration");
   const dnsProvider =
-    caType === CaType.ACME && configuration && "dnsProviderConfig" in configuration
-      ? configuration.dnsProviderConfig.provider
+    (caType === CaType.ACME || caType === CaType.DIGICERT) &&
+    configuration &&
+    "dnsProviderConfig" in configuration
+      ? configuration.dnsProviderConfig?.provider
       : undefined;
   const directoryUrl =
     caType === CaType.ACME && configuration && "directoryUrl" in configuration
@@ -283,7 +287,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             organizationId: 0,
             productNameId: "",
             purpose: DigiCertCaPurpose.Ssl,
-            verifiedContact: undefined
+            verifiedContact: undefined,
+            dnsAppConnection: undefined,
+            dnsProviderConfig: undefined
           }
         };
       case CaType.AWS_ACM_PUBLIC_CA:
@@ -323,7 +329,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           status: CaStatus.ACTIVE,
           configuration: {
             dnsAppConnection: { id: "", name: "" },
-            dnsProviderConfig: { provider: AcmeDnsProvider.ROUTE53, hostedZoneId: "" },
+            dnsProviderConfig: { provider: CaDnsProvider.ROUTE53, hostedZoneId: "" },
             directoryUrl: "",
             accountEmail: "",
             eabKid: "",
@@ -355,25 +361,44 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popUp?.ca?.isOpen, isEditMode]);
 
+  const supportsDnsAutomation = caType === CaType.ACME || caType === CaType.DIGICERT;
+
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
     useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
-      enabled: caType === CaType.ACME
+      enabled: supportsDnsAutomation
     });
 
   const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
     useListAvailableAppConnections(AppConnection.Cloudflare, currentProject.id, {
-      enabled: caType === CaType.ACME
+      enabled: supportsDnsAutomation
     });
 
   const { data: availableDNSMadeEasyConnections, isPending: isDNSMadeEasyPending } =
     useListAvailableAppConnections(AppConnection.DNSMadeEasy, currentProject.id, {
-      enabled: caType === CaType.ACME
+      enabled: supportsDnsAutomation
     });
 
   const { data: availableAzureDNSConnections, isPending: isAzureDNSPending } =
     useListAvailableAppConnections(AppConnection.AzureDNS, currentProject.id, {
-      enabled: caType === CaType.ACME
+      enabled: supportsDnsAutomation
     });
+
+  const availableDnsConnections: TAvailableAppConnection[] = useMemo(
+    () => [
+      ...(availableRoute53Connections || []),
+      ...(availableCloudflareConnections || []),
+      ...(availableDNSMadeEasyConnections || []),
+      ...(availableAzureDNSConnections || [])
+    ],
+    [
+      availableRoute53Connections,
+      availableCloudflareConnections,
+      availableDNSMadeEasyConnections,
+      availableAzureDNSConnections
+    ]
+  );
+  const isDnsConnectionsPending =
+    isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending;
 
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
@@ -427,18 +452,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.GODADDY) {
       return availableGoDaddyConnections || [];
     }
-    return [
-      ...(availableRoute53Connections || []),
-      ...(availableCloudflareConnections || []),
-      ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
-    ];
+    return availableDnsConnections;
   }, [
     caType,
-    availableRoute53Connections,
-    availableCloudflareConnections,
-    availableDNSMadeEasyConnections,
-    availableAzureDNSConnections,
+    availableDnsConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -448,8 +465,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   ]);
 
   const isPending =
-    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
-      caType === CaType.ACME) ||
+    (isDnsConnectionsPending && caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
     (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA)) ||
@@ -458,23 +474,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     (isGoDaddyPending && caType === CaType.GODADDY);
 
   const dnsAppConnection =
-    caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
-      ? configuration.dnsAppConnection
+    supportsDnsAutomation && configuration && "dnsAppConnection" in configuration
+      ? (configuration.dnsAppConnection ?? { id: "", name: "" })
       : { id: "", name: "" };
 
   const { data: cloudflareZones = [], isPending: isZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
-      enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
+      enabled: dnsProvider === CaDnsProvider.Cloudflare && !!dnsAppConnection.id
     });
 
   const { data: dnsMadeEasyZones = [], isPending: isDNSMadeEasyZonesPending } =
     useDNSMadeEasyConnectionListZones(dnsAppConnection.id, {
-      enabled: dnsProvider === AcmeDnsProvider.DNSMadeEasy && !!dnsAppConnection.id
+      enabled: dnsProvider === CaDnsProvider.DNSMadeEasy && !!dnsAppConnection.id
     });
 
   const { data: azureDnsZones = [], isPending: isAzureDNSZonesPending } =
     useAzureDNSConnectionListZones(dnsAppConnection.id, {
-      enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
+      enabled: dnsProvider === CaDnsProvider.AzureDNS && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -560,6 +576,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         const selectedConnection = availableConnections?.find(
           (connection) => connection.id === ca.configuration.appConnectionId
         );
+        const selectedDnsConnection = ca.configuration.dnsAppConnectionId
+          ? availableDnsConnections?.find(
+              (connection) => connection.id === ca.configuration.dnsAppConnectionId
+            )
+          : undefined;
 
         reset({
           type: ca.type,
@@ -573,7 +594,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             organizationId: ca.configuration.organizationId,
             productNameId: ca.configuration.productNameId,
             purpose: ca.configuration.purpose ?? DigiCertCaPurpose.Ssl,
-            verifiedContact: ca.configuration.verifiedContact
+            verifiedContact: ca.configuration.verifiedContact,
+            dnsAppConnection: ca.configuration.dnsAppConnectionId
+              ? { id: ca.configuration.dnsAppConnectionId, name: selectedDnsConnection?.name || "" }
+              : undefined,
+            dnsProviderConfig: ca.configuration.dnsProviderConfig
           }
         });
       } else if (ca.type === CaType.AWS_ACM_PUBLIC_CA && availableConnections?.length) {
@@ -641,7 +666,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
     }
-  }, [ca, availableConnections, reset, isCaLoading]);
+  }, [ca, availableConnections, availableDnsConnections, reset, isCaLoading]);
 
   const digicertConnectionId =
     caType === CaType.DIGICERT && configuration && "digicertConnection" in configuration
@@ -745,6 +770,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         formConfiguration.csRequiresContact &&
         formConfiguration.verifiedContact
           ? { verifiedContact: formConfiguration.verifiedContact }
+          : {}),
+        ...(formConfiguration.dnsAppConnection?.id && formConfiguration.dnsProviderConfig
+          ? {
+              dnsAppConnectionId: formConfiguration.dnsAppConnection.id,
+              dnsProviderConfig: formConfiguration.dnsProviderConfig
+            }
           : {})
       };
     } else if (type === CaType.AWS_ACM_PUBLIC_CA && "awsConnection" in formConfiguration) {
@@ -969,6 +1000,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   digicertProducts={digicertProducts}
                   isDigiCertProductsPending={isDigiCertProductsPending}
                   csRequiresContact={csRequiresContact}
+                  isDcvAutomationEnabled={!!dnsAppConnection.id}
+                  dnsProvider={dnsProvider}
+                  dnsAppConnection={dnsAppConnection}
+                  availableDnsConnections={availableDnsConnections}
+                  isDnsConnectionsPending={isDnsConnectionsPending}
+                  cloudflareZones={cloudflareZones}
+                  isZonesPending={isZonesPending}
+                  dnsMadeEasyZones={dnsMadeEasyZones}
+                  isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
+                  azureDnsZones={azureDnsZones}
+                  isAzureDNSZonesPending={isAzureDNSZonesPending}
                 />
               )}
               {caType === CaType.AWS_ACM_PUBLIC_CA && (

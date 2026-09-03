@@ -25,7 +25,7 @@ export enum CaRenewalType {
   EXISTING = "existing"
 }
 
-export enum AcmeDnsProvider {
+export enum CaDnsProvider {
   ROUTE53 = "route53",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",

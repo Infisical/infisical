@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AcmeDnsProvider, CaStatus, CaType, GoDaddyProductType } from "@app/hooks/api/ca";
+import { CaDnsProvider, CaStatus, CaType, GoDaddyProductType } from "@app/hooks/api/ca";
 import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -21,7 +21,7 @@ const acmeConfigurationSchema = z
       name: z.string()
     }),
     dnsProviderConfig: z.object({
-      provider: z.nativeEnum(AcmeDnsProvider),
+      provider: z.nativeEnum(CaDnsProvider),
       hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required")
     }),
     directoryUrl: z.string().trim().min(1, "Directory URL is required").url("Must be a valid URL"),
@@ -92,9 +92,31 @@ const digicertConfigurationSchema = z
         jobTitle: z.string().trim().max(64).optional(),
         telephone: z.string().trim().max(32).optional()
       })
+      .optional(),
+    // Optional: automates DigiCert's DCV via a DNS TXT record. Left unset, the domain must
+    // already be validated in CertCentral or DCV is completed manually within the order's
+    // 24h validation window.
+    dnsAppConnection: z
+      .object({
+        id: z.string(),
+        name: z.string()
+      })
+      .optional(),
+    dnsProviderConfig: z
+      .object({
+        provider: z.nativeEnum(CaDnsProvider),
+        hostedZoneId: z.string().trim()
+      })
       .optional()
   })
   .superRefine((cfg, ctx) => {
+    if (cfg.dnsAppConnection?.id && !cfg.dnsProviderConfig?.hostedZoneId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Hosted Zone ID is required",
+        path: ["dnsProviderConfig", "hostedZoneId"]
+      });
+    }
     if (cfg.purpose !== DigiCertCaPurpose.CodeSigning || !cfg.csRequiresContact) return;
     const c = cfg.verifiedContact;
     const requiredFields: { key: keyof NonNullable<typeof c>; label: string }[] = [

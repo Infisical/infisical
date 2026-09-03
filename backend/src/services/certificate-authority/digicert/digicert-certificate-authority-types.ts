@@ -59,6 +59,11 @@ export type TOrderResponse = {
   dcv_method?: string;
 };
 
+export type TDcvRandomValueResponse = {
+  dcv_random_value: string;
+  expiration_date?: string;
+};
+
 export type TCheckValidationResponse = {
   order_status?: string;
   certificate_id?: number;
