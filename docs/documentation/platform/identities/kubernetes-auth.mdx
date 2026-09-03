@@ -31,7 +31,7 @@ sequenceDiagram
 
 ## Concept
 
-At a high-level, Infisical authenticates an application in Kubernetes by verifying its identity and checking that it meets specific requirements (e.g. it is bound to an allowed service account) at the `/api/v1/auth/kubernetes-auth/login` endpoint. If successful,
+At a high-level, Infisical authenticates an application in Kubernetes by verifying its identity and checking that it meets specific requirements (e.g. it's bound to an allowed service account) at the `/api/v1/auth/kubernetes-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 To be more specific:
@@ -328,7 +328,7 @@ In the following steps, we explore how to create and use identities for your app
   There are a few reasons for why this might happen:
   - The Kubernetes Auth authentication method configuration is invalid.
   - The service account JWT token has expired is malformed or invalid.
-  - The service account associated with the JWT token does not meet the criteria set forth in the Kubernetes Auth authentication method configuration such as **Allowed Service Account Names** and **Allowed Namespaces**.
+  - The service account associated with the JWT token doesn't meet the criteria set forth in the Kubernetes Auth authentication method configuration such as **Allowed Service Account Names** and **Allowed Namespaces**.
 </Accordion>
 <Accordion title="Why is the Infisical API rejecting my access token?">
   There are a few reasons for why this might happen:

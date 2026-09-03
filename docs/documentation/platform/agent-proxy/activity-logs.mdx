@@ -4,7 +4,7 @@ sidebarTitle: "Activity logs"
 description: "See what the agent proxy brokered on every request."
 ---
 
-Activity logs record what the agent proxy did with each request: which agent called which host, and which credential was applied. Together they form an audit trail of every credential your agents used, and a way to spot blocked or failed requests. Both setups produce the same records; only where they are written differs, so [Where the records go](#where-the-records-go) has a section for each.
+Activity logs record what the agent proxy did with each request: which agent called which host, and which credential was applied. Together they form an audit trail of every credential your agents used, and a way to spot blocked or failed requests. Both setups produce the same records; only where they're written differs, so [Where the records go](#where-the-records-go) has a section for each.
 
 <Note>
   Only requests that reach the forwarding stage are logged. Requests rejected earlier (malformed proxy auth, an invalid `CONNECT` target, TLS failures) never reach it and aren't logged. A request whose identity can't be resolved at forwarding is still logged as an `error`, just with an empty agent.
@@ -48,13 +48,13 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 | `blocked` | warn |
 | `error` | error |
 
-`canceled` means the agent hung up before the request finished, which happens when you interrupt a prompt or the agent exits mid-request. Nothing failed and there was nobody left to answer, so these stay at debug and off your terminal. A request that really failed, an unreachable upstream or permissions that could not be resolved, is still an `error`.
+`canceled` means the agent hung up before the request finished, which happens when you interrupt a prompt or the agent exits mid-request. Nothing failed and there was nobody left to answer, so these stay at debug and off your terminal. A request that really failed, an unreachable upstream or permissions that couldn't be resolved, is still an `error`.
 
 ## Where the records go
 
 ### Local proxy
 
-Nothing is written unless you pass `--log-file`, since the agent owns the terminal and a file you did not ask for is one you cannot find. With it, records go to that path and you can `tail -f` them:
+Nothing is written unless you pass `--log-file`, since the agent owns the terminal and a file you didn't ask for is one you can't find. With it, records go to that path and you can `tail -f` them:
 
 ```bash
 infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude

@@ -31,7 +31,7 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
     <Step title="Create Stream">
         1. Navigate to **Organization Settings**
         2. Select the **Audit Log Streams** tab
-        3. Click **Add Log Stream**
+        3. Select **Add Log Stream**
 
         ![stream create](/images/platform/audit-log-streams/stream-create.png)
     </Step>
@@ -446,7 +446,7 @@ For **Custom** streams, each request is an HTTP `POST` with a body containing a 
 Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk, Sumo Logic) are batched automatically using each provider's native bulk-ingestion format.
 
 <Note>
-    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
+    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it can't be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
 </Note>
 
 ### Example log entry
@@ -570,7 +570,7 @@ The example below shows a single audit log event. For Custom streams using batch
 </ParamField>
 
 <ParamField path="updatedAt" type="string" required>
-    The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
+    The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we don't update log entries after they've been created.
 </ParamField>
 
 <ParamField path="orgId" type="string" required>

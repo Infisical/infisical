@@ -9,7 +9,7 @@ infisical bootstrap --domain=<domain> --email=<email> --password=<password> --or
 
 ## Description
 
-The `infisical bootstrap` command is used when deploying Infisical in automated environments where manual UI setup is not feasible. It's ideal for:
+The `infisical bootstrap` command is used when deploying Infisical in automated environments where manual UI setup isn't feasible. It's ideal for:
 
 - Containerized deployments in Kubernetes or Docker environments
 - Infrastructure-as-code pipelines with Terraform or similar tools
@@ -251,7 +251,7 @@ echo "Token has been captured and can be used for authentication"
 
 - The bootstrap process can only be performed once on a fresh Infisical instance
 - All core flags (domain, email, password, organization) are required for the bootstrap process to complete successfully
-- Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities
+- Security controls prevent privilege escalation: instance admin identities can't be managed by non-instance admin users and identities
 - The generated admin user account can be used to log in via the UI if needed
 - When using `k8-secret` output, the command must run within a Kubernetes pod with proper service account permissions
 - The `--ignore-if-bootstrapped` flag is useful for making bootstrap scripts idempotent

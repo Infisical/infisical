@@ -134,13 +134,13 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 </Info>
 
 <Warning>
-  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped**, i.e., those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
+  If your Vault token is restricted and can't list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) can't be expanded and is **skipped**, i.e., those secrets won't be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
 </Warning>
 
 **To import secrets from Vault:**
 
 1. Navigate to your project and select a specific environment (e.g., Development, Production)
-2. In the secrets view, click the dropdown icon (caret) next to the **"+ Add Secret"** button
+2. In the secrets view, select the dropdown icon (caret) next to the **"+ Add Secret"** button
   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-caret.png)
 
 
@@ -153,7 +153,7 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
  If you select multiple paths and the same key name exists in more than one of them, the import aborts and no secrets are saved.
 </Note>
 
-5. Click **"Import Secrets"**
+5. Select **"Import Secrets"**
   ![Import Vault Secrets](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-modal.png)
 
 
@@ -167,20 +167,20 @@ If you're using Vault's Kubernetes auth method to authenticate your pods, you ca
 
 1. First, [create a Machine Identity](/documentation/platform/identities/machine-identities) in Infisical
 2. Navigate to **Access Control > Machine Identities** and select the identity
-3. Click **"Add Authentication Method"** and choose **Kubernetes Auth**
-4. In the configuration modal, click **"Load from Vault"**
+3. Select **"Add Authentication Method"** and choose **Kubernetes Auth**
+4. In the configuration modal, select **"Load from Vault"**
 
    ![Load Kubernetes Auth from Vault](/images/platform/external-migrations/vault-in-platform/import-vault-kubernetes-auth-modal.png)
 
 5. In the load modal, pick the **App Connection**, the **Vault namespace**, and the Kubernetes role
-6. Click **"Load"**
+6. Select **"Load"**
 
    ![Kubernetes Auth Form Populated](/images/platform/external-migrations/vault-in-platform/import-vault-kubernetes-auth-modal-form.png)
 
 The authentication settings (allowed service accounts, namespaces, TTL, etc.) will be automatically populated from your Vault configuration.
 
 <Note>
-  Sensitive values like service account JWTs cannot be retrieved from Vault and
+  Sensitive values like service account JWTs can't be retrieved from Vault and
   must be manually provided in the form after importing the configuration.
 </Note>
 
@@ -193,14 +193,14 @@ If you're using Vault's Kubernetes secrets engine to generate short-lived Kubern
 **To import a Kubernetes dynamic secret configuration:**
 
 1. Navigate to your project and select an environment
-2. Click **"+ Add Secret"** dropdown and choose **"Dynamic Secret"**
+2. Select **"+ Add Secret"** dropdown and choose **"Dynamic Secret"**
 3. Select **Kubernetes** as the provider
-4. Click **"Load from Vault"** at the top of the form
+4. Select **"Load from Vault"** at the top of the form
 
    ![Load Kubernetes Dynamic Secret from Vault](/images/platform/external-migrations/vault-in-platform/import-vault-dynamic-secret.png)
 
 5. In the load modal, pick the **App Connection**, the **Vault namespace**, the Kubernetes secrets engine mount, and the role
-6. Click **"Load Configuration"**
+6. Select **"Load Configuration"**
 
 The form will be automatically populated with the role's configuration including:
 
@@ -212,7 +212,7 @@ The form will be automatically populated with the role's configuration including
 - Token audiences
 
 <Note>
-  Sensitive values like cluster tokens cannot be retrieved from Vault and must
+  Sensitive values like cluster tokens can't be retrieved from Vault and must
   be manually provided in the form after loading the configuration.
 </Note>
 
@@ -244,7 +244,7 @@ Infisical can translate your Vault HCL policies into [Infisical project roles](/
 **To import and translate a policy:**
 
 1. Navigate to your project, then go to **Access Control > Roles** and create or edit a role
-2. In the policy configuration, click **"Add from HashiCorp Vault"**
+2. In the policy configuration, select **"Add from HashiCorp Vault"**
 
    ![Import Vault Policy Button](/images/platform/external-migrations/vault-in-platform/translate-vault-policy-toggle.png)
 

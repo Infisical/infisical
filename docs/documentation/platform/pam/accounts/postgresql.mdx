@@ -10,7 +10,7 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
 
 <Steps>
   <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+    Go to **Privileged Access Management → Accounts** and select **Add Account**.
   </Step>
   <Step title="Select a folder and template">
     Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a PostgreSQL [template](/documentation/platform/pam/templates/overview) (e.g., the default `postgres` or a custom one).
@@ -54,7 +54,7 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     </Tabs>
   </Step>
   <Step title="Save">
-    Click **Create**.
+    Select **Create**.
   </Step>
 </Steps>
 
@@ -122,14 +122,14 @@ Set the following up before creating the account.
 </Note>
 
 <Note>
-  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and cannot be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's RDS root certificate into **SSL Certificate**, for example `https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem`.
+  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and can't be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's RDS root certificate into **SSL Certificate**, for example `https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem`.
 </Note>
 
 <Warning>
   `PAM authentication failed for user` means AWS rejected the token rather than the database being unreachable. Check that the role's `rds-db:connect` resource ARN uses the instance's current resource ID, region, and the same database user the account connects as.
 </Warning>
 
-[Credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) does not apply to these accounts, since there is no stored password.
+[Credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) doesn't apply to these accounts, since there is no stored password.
 
 ## Connecting
 

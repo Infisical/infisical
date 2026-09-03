@@ -4,7 +4,7 @@ sidebarTitle: "Network architecture"
 description: "Ports, egress requirements, and the relay tunnel that connect the Gateway to Infisical"
 ---
 
-The Gateway is deployed inside your private network and makes **only outbound connections** — it never accepts inbound connections. It reaches Infisical through a [**relay server**](/documentation/platform/gateways/relay-deployment/overview) using an **SSH reverse tunnel over TCP**, so the platform can access your private resources (databases, internal APIs) without any inbound firewall rules. All traffic through the relay is double-encrypted, and the relay only routes traffic — it cannot decrypt it.
+The Gateway is deployed inside your private network and makes **only outbound connections** — it never accepts inbound connections. It reaches Infisical through a [**relay server**](/documentation/platform/gateways/relay-deployment/overview) using an **SSH reverse tunnel over TCP**, so the platform can access your private resources (databases, internal APIs) without any inbound firewall rules. All traffic through the relay is double-encrypted, and the relay only routes traffic — it can't decrypt it.
 
 ## Connection model
 
@@ -68,7 +68,7 @@ If you run a self-hosted relay, that host needs:
   </Accordion>
 
   <Accordion title="Can Gateway traffic egress through an HTTP forward proxy?">
-    Not currently. The Gateway's connection to the relay is a raw SSH tunnel over TCP (port 2222), and its connection to the Infisical API is TLS over TCP (port 443). Neither is HTTP, so an HTTP forward proxy cannot transparently carry this traffic.
+    Not currently. The Gateway's connection to the relay is a raw SSH tunnel over TCP (port 2222), and its connection to the Infisical API is TLS over TCP (port 443). Neither is HTTP, so an HTTP forward proxy can't transparently carry this traffic.
 
     If an HTTP proxy is mandatory in your environment, you have two options:
 

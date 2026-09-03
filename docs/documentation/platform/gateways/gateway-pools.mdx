@@ -4,7 +4,7 @@ sidebarTitle: "Gateway pools"
 description: "Load balancing, high availability, and automatic failover for gateways"
 ---
 
-Gateway Pools spread work across your gateway infrastructure and keep it available when a gateway fails. A pool is a named collection of gateways that all have connectivity to the same private network. When the platform needs to reach a resource through a pool, it sends the work to whichever gateway is least busy, and retries on another gateway if the chosen one cannot be reached.
+Gateway Pools spread work across your gateway infrastructure and keep it available when a gateway fails. A pool is a named collection of gateways that all have connectivity to the same private network. When the platform needs to reach a resource through a pool, it sends the work to whichever gateway is least busy, and retries on another gateway if the chosen one can't be reached.
 
 <Info>
   Gateway Pools is an enterprise feature. Self-hosted users can contact
@@ -17,7 +17,7 @@ Gateway Pools spread work across your gateway infrastructure and keep it availab
 1. You create a Gateway Pool and add multiple gateways that share network access to the same resources.
 2. When configuring a consumer (e.g., Kubernetes Auth), you select the pool instead of an individual gateway.
 3. At request time, the platform sends the work to whichever healthy gateway in the pool is handling the fewest connections.
-4. If that gateway cannot be reached, the request is retried on another member and the failed gateway is skipped for the next minute.
+4. If that gateway can't be reached, the request is retried on another member and the failed gateway is skipped for the next minute.
 5. If a gateway goes down, subsequent requests route through the remaining healthy gateways.
 
 A gateway is considered healthy if it has sent a successful heartbeat within its TTL window.
@@ -25,25 +25,25 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 ## Creating a Gateway pool
 
 1. Navigate to **Organization Settings > Networking > Gateways**.
-2. Click the **Gateway Pools** tab.
+2. Select the **Gateway Pools** tab.
 
 ![Gateway Pools Switch](../../../images/platform/gateways/gateway-pools-switch.png)
 
-3. Click **Create Pool**.
+3. Select **Create Pool**.
 
 ![Gateway Pools Tab](../../../images/platform/gateways/gateway-pools-tab.png)
 
-4. Enter a name for the pool and click **Create Pool**.
+4. Enter a name for the pool and select **Create Pool**.
 
 ![Create Gateway Pool](../../../images/platform/gateways/gateway-pools-create.png)
 
 ## Adding gateways to a pool
 
-1. In the **Gateway Pools** tab, click on a pool to open its detail view.
+1. In the **Gateway Pools** tab, select a pool to open its detail view.
 
-![Click on a pool](../../../images/platform/gateways/gateway-pools-click-pool.png)
+![Select a pool](../../../images/platform/gateways/gateway-pools-click-pool.png)
 
-2. Click **Add Gateway** and select a gateway from the dropdown.
+2. Select **Add Gateway** and select a gateway from the dropdown.
 
 ![Add gateway to pool](../../../images/platform/gateways/gateway-pools-add-gateway.png)
 
@@ -59,21 +59,21 @@ When you select a pool, the platform validates connectivity through one of its h
 
 ## Gateway selection
 
-Each gateway reports how many connections it is currently handling. When a request is routed through a pool, the platform picks the healthy member handling the fewest, so a gateway holding several long-lived sessions stops attracting new work until the others catch up.
+Each gateway reports how many connections it's currently handling. When a request is routed through a pool, the platform picks the healthy member handling the fewest, so a gateway holding several long-lived sessions stops attracting new work until the others catch up.
 
 Members handling the same amount are chosen between at random. On an idle pool every member is equal, so traffic spreads evenly.
 
-Because the count comes from the gateway itself, it includes work the platform does not proxy, such as a PAM session opened from the CLI.
+Because the count comes from the gateway itself, it includes work the platform doesn't proxy, such as a PAM session opened from the CLI.
 
 <Warning>
   Load balancing requires gateways running a CLI version that reports connection counts. A gateway
-  on an older version does not report, and a pool containing any non-reporting member falls back to
+  on an older version doesn't report, and a pool containing any non-reporting member falls back to
   choosing at random. Upgrade every gateway in a pool to get load balancing for that pool.
 </Warning>
 
 ## Failover
 
-If the platform cannot establish a connection to the gateway it chose, it retries the request on another member of the pool, then marks the failed gateway as suspect and skips it for the next minute. This covers the window where a gateway has stopped responding but its last heartbeat is still recent enough to look healthy.
+If the platform can't establish a connection to the gateway it chose, it retries the request on another member of the pool, then marks the failed gateway as suspect and skips it for the next minute. This covers the window where a gateway has stopped responding but its last heartbeat is still recent enough to look healthy.
 
 Only failures that occur *before* the platform reaches your resource are retried. If the connection succeeds and the resource itself rejects the request, for example bad credentials, that error is returned to you as-is and is never retried on another gateway. This is deliberate: an operation that changes something on the target, such as rotating a password, must not run twice.
 
@@ -91,10 +91,10 @@ If all gateways in a pool are unhealthy when a request is made, the request fail
 
 <AccordionGroup>
   <Accordion title="Can I delete a pool that is in use?">
-    No. A pool cannot be deleted if it is referenced by any consumer configurations (e.g., Kubernetes Auth). You must first update those configurations to use a different gateway or pool before deleting.
+    No. A pool can't be deleted if it's referenced by any consumer configurations (e.g., Kubernetes Auth). You must first update those configurations to use a different gateway or pool before deleting.
   </Accordion>
   <Accordion title="How can I see what is using a pool?">
-    Each pool shows a count of connected consumer configurations in the table. Click the count to see the full list with links to each resource.
+    Each pool shows a count of connected consumer configurations in the table. Select the count to see the full list with links to each resource.
   </Accordion>
   <Accordion title="What happens if all gateways in a pool are unhealthy?">
     The request fails with a descriptive error. You should ensure at least one gateway in the pool is online and has a recent heartbeat.
