@@ -105,10 +105,9 @@ export type TFeatureSet = {
   pkiEst: boolean;
   pkiScep: false;
   pkiPqc: false;
-  // caCrl and pkiWildcardSans default on, so self-hosted OSS keeps them; the License Server's free-plan
-  // default is what withholds them on cloud.
+  // caCrl defaults on, so self-hosted OSS keeps it; the License Server's free-plan default is what
+  // withholds it on cloud.
   caCrl: boolean;
-  pkiWildcardSans: boolean;
   pkiEnterpriseCaIntegrations: false;
   pkiExternalIntermediateCa: false;
   pkiDiscovery: false;
@@ -117,9 +116,16 @@ export type TFeatureSet = {
   pkiSyncs: false;
   pkiLegacyTemplates: false;
   pkiCodeSigning: false;
-  maxInternalCas: null;
-  // Declared for the License Server plan map; enforcement lands with the CA/certificate counting work.
-  maxSansPerCertificate: null;
+  // maxCas covers every CA type, maxInternalCas covers INTERNAL only. Both enforced, whichever binds
+  // first. Typed number | null rather than the literal null the flags above use, so consumers can
+  // name the limit in an error without casting.
+  maxCas: number | null;
+  maxInternalCas: number | null;
+  maxCertificates: number | null;
+  // Wildcards have no separate boolean gate: 0 means the plan does not include them at all, which is
+  // how the free tier withholds them. A wildcard certificate counts against maxCertificates too.
+  maxWildcardCertificates: number | null;
+  maxSansPerCertificate: number | null;
 
   pam: null;
   certManager: null;

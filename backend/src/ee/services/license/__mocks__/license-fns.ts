@@ -67,7 +67,6 @@ export const getDefaultOnPremFeatures = () => {
     pkiScep: false,
     pkiPqc: false,
     caCrl: true,
-    pkiWildcardSans: true,
     pkiEnterpriseCaIntegrations: false,
     pkiExternalIntermediateCa: false,
     pkiDiscovery: false,
@@ -76,7 +75,10 @@ export const getDefaultOnPremFeatures = () => {
     pkiSyncs: false,
     pkiLegacyTemplates: false,
     pkiCodeSigning: false,
+    maxCas: null,
     maxInternalCas: null,
+    maxCertificates: null,
+    maxWildcardCertificates: null,
     maxSansPerCertificate: null,
     // product gating
     pam: null,

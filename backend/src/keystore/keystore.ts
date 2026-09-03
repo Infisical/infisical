@@ -186,6 +186,11 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
+  // Cached distinct active certificate quota keys per org tree. Not LicenseUsageLastReported, which
+  // counts rows and is only written on a successful License Server report.
+  PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
+  // Separate key rather than a JSON blob with the total, so both stay INCR-able on creation.
+  PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
@@ -250,6 +255,9 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
+  // Short: the count drifts high as certificates expire and low when an ungated path such as a
+  // discovery scan inserts rows, and only this expiry corrects either.
+  PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,

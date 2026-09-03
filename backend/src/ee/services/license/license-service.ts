@@ -148,8 +148,16 @@ export const licenseServiceFactory = ({
         }
       }
 
-      // anything that reaches here without setting an instance type is the self-hosted OSS version,
-      // which keeps the default onPremFeatures.
+      // Unlicensed self-hosted gets the community single-CA allowance. Keyed on instanceType rather
+      // than on reaching this line: the offline branch above sets its type without returning, so a
+      // valid air-gapped enterprise license would otherwise be capped at one CA too.
+      //
+      // Applied here rather than in getDefaultOnPremFeatures because that object is also the cloud
+      // plan's base and getPlan's error fallback, so a non-null cap on it would cap every paid cloud
+      // org whenever the License Server is briefly unreachable.
+      if (instanceType === InstanceType.OnPrem) {
+        onPremFeatures = { ...onPremFeatures, maxCas: 1 };
+      }
     } catch (error) {
       logger.error(error, `init-license: encountered an error when init license`);
     }

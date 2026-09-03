@@ -3442,6 +3442,8 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3529,6 +3531,9 @@ export const registerRoutes = async (
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
+    licenseService,
+    usageCounterDAL,
+    keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
     acmeAccountDAL,
@@ -3574,6 +3579,8 @@ export const registerRoutes = async (
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,

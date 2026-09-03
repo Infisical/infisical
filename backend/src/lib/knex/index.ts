@@ -10,6 +10,7 @@ import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
 export * from "./join";
+export * from "./org-tree";
 export * from "./prependTableNameToFindFilter";
 export * from "./select";
 

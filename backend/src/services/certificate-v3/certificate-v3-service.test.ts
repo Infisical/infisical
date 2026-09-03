@@ -101,6 +101,7 @@ describe("CertificateV3Service", () => {
       status: "ACTIVE",
       source: "issued",
       keySource: "infisical",
+      quotaKey: "a".repeat(64),
       orderId: "00000000-0000-0000-0000-000000000000"
     }),
     transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -330,6 +331,16 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
+      usageCounterDAL: {
+        resolveRootOrgId: vi.fn(async (id: string) => id),
+        countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
+        isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false)
+      },
+      keyStore: {
+        getItem: vi.fn(async () => null),
+        setItemWithExpiry: vi.fn(async () => "OK" as const),
+        deleteItem: vi.fn(async () => 1)
+      },
       licenseService: {
         getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
       },
@@ -478,6 +489,7 @@ describe("CertificateV3Service", () => {
         revokedBy: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       };
 
@@ -965,6 +977,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       };
 
@@ -1061,6 +1074,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord);
@@ -1266,6 +1280,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       };
 
@@ -1663,6 +1678,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
@@ -1688,6 +1704,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
@@ -1713,6 +1730,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -1833,6 +1851,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
@@ -1858,6 +1877,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
@@ -1883,6 +1903,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -2003,6 +2024,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
@@ -2028,6 +2050,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
@@ -2053,6 +2076,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -2173,6 +2197,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue({
@@ -2198,6 +2223,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
@@ -2223,6 +2249,7 @@ describe("CertificateV3Service", () => {
         profileId: null,
         source: "issued",
         keySource: "infisical",
+        quotaKey: "a".repeat(64),
         orderId: "00000000-0000-0000-0000-000000000000"
       });
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -2273,6 +2300,7 @@ describe("CertificateV3Service", () => {
       signatureAlgorithm: "RSA-SHA256",
       source: "issued",
       keySource: "infisical",
+      quotaKey: "a".repeat(64),
       orderId: "00000000-0000-0000-0000-000000000000"
     };
 

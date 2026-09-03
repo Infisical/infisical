@@ -1,15 +1,18 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { orgTreeIds } from "@app/lib/knex";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertExtendedKeyUsageType } from "@app/services/certificate-common/certificate-constants";
 
 export type TUsageCounterDALFactory = ReturnType<typeof usageCounterDALFactory>;
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
-// Live counts for the project-scoped metered features. Each sums across the org's projects,
-// excluding soft-deleted projects so they don't inflate a quota. Org-scoped identities are
-// counted via licenseDAL.countOrgUsersAndIdentities and wired in usage-counters.ts.
+// Live counts for the project-scoped metered features, summed across the whole org tree and excluding
+// soft-deleted projects so they don't inflate a quota.
 export const usageCounterDALFactory = (db: TDbClient) => {
   const countInternalCas = async (orgId: string): Promise<number> => {
     try {
@@ -21,7 +24,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
           `${TableName.InternalCertificateAuthority}.caId`
         )
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
         .whereNull(`${TableName.Project}.deleteAfter`)
         .count(`${TableName.CertificateAuthority}.id as count`)
         .first();
@@ -36,7 +39,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       const row = await db
         .replicaNode()(TableName.Certificate)
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
         .where(`${TableName.Certificate}.notAfter`, ">", new Date())
@@ -47,6 +50,78 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       return toCount(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count active certificates for usage" });
+    }
+  };
+
+  // Matched on EKU rather than a pki_signers join, which tracks only a signer's current certificate
+  // and would recount it on renewal. The COALESCE is required: extendedKeyUsages is nullable and
+  // `NULL && ARRAY[...]` is NULL, which fails the WHERE and drops every EKU-less certificate.
+  const $excludeCodeSigningCertificates = (qb: Knex.QueryBuilder) =>
+    qb.whereRaw(`NOT (COALESCE(??, '{}') && ?::text[])`, [
+      `${TableName.Certificate}.extendedKeyUsages`,
+      [CertExtendedKeyUsageType.CODE_SIGNING, CertExtendedKeyUsage.CODE_SIGNING]
+    ]);
+
+  // No `status = 'active'` filter: nothing writes EXPIRED or RENEWED, both are derived at read time.
+  const $activeQuotaCertificates = (orgId: string) => {
+    const qb = db
+      .replicaNode()(TableName.Certificate)
+      .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+      .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .where(`${TableName.Certificate}.notAfter`, ">", new Date())
+      .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED);
+
+    return $excludeCodeSigningCertificates(qb);
+  };
+
+  // The count spans the org tree, so its cache must be keyed on the root: per-org keys would give each
+  // sub-org its own copy that only its own writes increment.
+  const resolveRootOrgId = async (orgId: string): Promise<string> => {
+    try {
+      const row = (await db
+        .replicaNode()(TableName.Organization)
+        .where("id", orgId)
+        .select(db.raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
+        .first()) as { rootOrgId?: string } | undefined;
+      return row?.rootOrgId ?? orgId;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Resolve root org id" });
+    }
+  };
+
+  // Joins on projectId rather than caId, which is nullable and would drop imported and discovered
+  // certificates. Wildcards need no stored column because isWildcardPattern is just includes("*"), so
+  // this LIKE cannot drift from it.
+  const countActiveCertificateQuotaKeysByOrg = async (orgId: string): Promise<{ total: number; wildcard: number }> => {
+    try {
+      const row = (await $activeQuotaCertificates(orgId)
+        .countDistinct(`${TableName.Certificate}.quotaKey as total`)
+        .select(
+          db.raw(`COUNT(DISTINCT ??) FILTER (WHERE ?? LIKE '%*%' OR ?? LIKE '%*%') as "wildcard"`, [
+            `${TableName.Certificate}.quotaKey`,
+            `${TableName.Certificate}.commonName`,
+            `${TableName.Certificate}.altNames`
+          ])
+        )
+        .first()) as { total?: string | number; wildcard?: string | number } | undefined;
+
+      return { total: Number(row?.total ?? 0), wildcard: Number(row?.wildcard ?? 0) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count active certificate quota keys for org" });
+    }
+  };
+
+  // Lets an org at its cap keep renewing: reissuing names it already holds cannot raise the count.
+  const isCertificateQuotaKeyActiveInOrg = async (orgId: string, quotaKey: string): Promise<boolean> => {
+    try {
+      const row = (await $activeQuotaCertificates(orgId)
+        .where(`${TableName.Certificate}.quotaKey`, quotaKey)
+        .select(`${TableName.Certificate}.id`)
+        .first()) as { id?: string } | undefined;
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Check certificate quota key active for org" });
     }
   };
 
@@ -183,5 +258,14 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { countInternalCas, countActiveCerts, countPamResources, countSecretManagementIdentities, countPamIdentities };
+  return {
+    countInternalCas,
+    countActiveCerts,
+    resolveRootOrgId,
+    countActiveCertificateQuotaKeysByOrg,
+    isCertificateQuotaKeyActiveInOrg,
+    countPamResources,
+    countSecretManagementIdentities,
+    countPamIdentities
+  };
 };

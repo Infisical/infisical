@@ -66,7 +66,6 @@ export type SubscriptionPlan = {
   pkiScep: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
-  pkiWildcardSans: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;
@@ -75,7 +74,12 @@ export type SubscriptionPlan = {
   pkiSyncs: boolean;
   pkiLegacyTemplates: boolean;
   pkiCodeSigning: boolean;
+  // maxCas caps every CA type, maxInternalCas caps INTERNAL only. Both enforced.
+  maxCas: number | null;
   maxInternalCas: number | null;
+  maxCertificates: number | null;
+  // 0 means the plan has no wildcard support; wildcards also count toward maxCertificates.
+  maxWildcardCertificates: number | null;
   maxSansPerCertificate: number | null;
   kmsPqc: boolean;
   enforceMfa: boolean;

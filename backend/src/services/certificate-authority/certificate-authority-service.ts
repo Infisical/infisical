@@ -133,6 +133,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
     | "countInternalCasByOrgId"
+    | "countCasByOrgId"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
@@ -333,6 +334,18 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    // Two independent caps, whichever binds first: maxCas covers every type (the free tier's single
+    // "internal or ACME" allowance), maxInternalCas covers INTERNAL only and is the per-contract
+    // enterprise lever. In practice a tier sets one and leaves the other null.
+    if (typeof plan.maxCas === "number") {
+      const currentCaCount = await certificateAuthorityDAL.countCasByOrgId(actor.orgId);
+      if (currentCaCount >= plan.maxCas) {
+        throw new BadRequestError({
+          message: `Failed to create certificate authority due to plan limit reached (${currentCaCount} of ${plan.maxCas} certificate authorities). Upgrade plan to add more certificate authorities.`
+        });
+      }
+    }
+
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
 
@@ -340,8 +353,7 @@ export const certificateAuthorityServiceFactory = ({
         const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
         if (currentInternalCaCount >= plan.maxInternalCas) {
           throw new BadRequestError({
-            message:
-              "Failed to create internal certificate authority due to plan limit reached. Upgrade plan to add more internal certificate authorities."
+            message: `Failed to create internal certificate authority due to plan limit reached (${currentInternalCaCount} of ${plan.maxInternalCas} internal certificate authorities). Upgrade plan to add more internal certificate authorities.`
           });
         }
       }

@@ -704,7 +704,10 @@ const processDiscoveredCertificate = async (
 
     const serialNumber = certResult.serialNumber || certResult.fingerprint.substring(0, 40);
 
-    const certData: TCertificatesInsert = {
+    // Deliberately not gated on the certificate quota: this is a background scan, and every PKI
+    // license gate blocks creation only. A scan can push an org past its cap, after which new
+    // issuance is refused until it upgrades or cleans up.
+    const certData: Omit<TCertificatesInsert, "quotaKey"> = {
       projectId,
       status: CertStatus.ACTIVE,
       serialNumber: truncateString(serialNumber, DB_SHORT_VARCHAR_LIMIT) || "unknown",

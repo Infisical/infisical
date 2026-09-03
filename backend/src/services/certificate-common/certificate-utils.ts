@@ -3,7 +3,7 @@ import RE2 from "re2";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { isWildcardPattern, matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
+import { matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -16,6 +16,7 @@ import {
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "./certificate-constants";
+import { assertCertificateQuota, TCertificateQuotaDeps } from "./certificate-quota-fns";
 
 export const validatePqcLicense = async ({
   keyAlgorithm,
@@ -42,11 +43,15 @@ export const validatePqcLicense = async ({
 
 // Call with the request as it will actually be signed. A PQC algorithm or wildcard that only appears
 // in a CSR or a profile default is invisible until applyProfileDefaults has run.
+//
+// Submit-time gate only; certificate-approval-fns re-checks the caps when it materializes an approval.
 export const validateCertificateRequestLicense = async ({
   request,
   projectId,
   projectDAL,
-  licenseService
+  licenseService,
+  quotaDeps,
+  isRenewal = false
 }: {
   request: {
     keyAlgorithm?: string;
@@ -60,17 +65,20 @@ export const validateCertificateRequestLicense = async ({
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  // When absent the caps are skipped, so an issuance entry point that forgets it is silently uncapped.
+  quotaDeps?: TCertificateQuotaDeps;
+  // Nothing sets this today: renewal does not route through here. Kept because a refused renewal lets
+  // a live certificate expire, so the exemption should already exist if that ever changes.
+  isRenewal?: boolean;
 }) => {
   const pqcAlgorithm = [request.keyAlgorithm, request.signatureAlgorithm].find(
     (algorithm): algorithm is string => !!algorithm && isPqcAlgorithm(algorithm)
   );
-  const wildcardSan = [
-    ...(request.commonName ? [request.commonName] : []),
-    ...(request.altNames ?? []).map(({ value }) => value),
-    ...(request.subjectAlternativeNames ?? []).map(({ value }) => value)
-  ].find(isWildcardPattern);
 
-  if (!pqcAlgorithm && !wildcardSan) return;
+  const requestedSans = [...(request.altNames ?? []), ...(request.subjectAlternativeNames ?? [])].map(
+    ({ value }) => value
+  );
+  const distinctSanCount = new Set(requestedSans.map((value) => value.trim().toLowerCase()).filter(Boolean)).size;
 
   const project = await projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -84,11 +92,23 @@ export const validateCertificateRequestLicense = async ({
     });
   }
 
-  if (wildcardSan && !plan.pkiWildcardSans) {
+  const { maxSansPerCertificate } = plan;
+  if (typeof maxSansPerCertificate === "number" && distinctSanCount > maxSansPerCertificate) {
     throw new BadRequestError({
-      message: `Failed to issue certificate with wildcard name '${wildcardSan}' due to plan restriction. Upgrade plan to issue wildcard certificates.`
+      message: `This certificate requests ${distinctSanCount} subject alternative names, above the ${maxSansPerCertificate} allowed on your plan. Upgrade plan to issue certificates with more SANs.`
     });
   }
+
+  if (!quotaDeps || isRenewal) return undefined;
+
+  const { isNewQuotaKey, quotaOrgId, isWildcard } = await assertCertificateQuota({
+    orgId: project.orgId,
+    commonName: request.commonName,
+    altNames: requestedSans.join(","),
+    deps: quotaDeps
+  });
+
+  return { orgId: quotaOrgId, isNewQuotaKey, isWildcard };
 };
 
 interface CertificateRequestInput {
