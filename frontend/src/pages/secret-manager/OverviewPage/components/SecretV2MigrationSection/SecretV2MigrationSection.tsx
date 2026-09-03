@@ -63,8 +63,8 @@ export const SecretV2MigrationSection = () => {
     handleSubmit,
     control,
     reset,
-    formState: { isSubmitting }
-  } = useForm({ resolver: zodResolver(formSchema) });
+    formState: { isSubmitting, isValid }
+  } = useForm({ resolver: zodResolver(formSchema), mode: "onChange" });
   useEffect(() => {
     if (!popUp.migrationInfo.isOpen) {
       reset();
@@ -102,7 +102,7 @@ export const SecretV2MigrationSection = () => {
   return (
     <div className="flex w-full flex-col gap-3">
       {isUpgrading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-page/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-page/80 backdrop-blur-sm">
           <Spinner size="lg" label="Upgrading secrets engine" />
           <div className="ml-4 flex flex-col gap-1 text-foreground">
             <div className="text-3xl font-medium">Please wait</div>
@@ -259,7 +259,12 @@ export const SecretV2MigrationSection = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="project" isPending={isSubmitting}>
+              <Button
+                type="submit"
+                variant="project"
+                isDisabled={!isValid || isSubmitting}
+                isPending={isSubmitting}
+              >
                 Confirm Upgrade
               </Button>
             </DialogFooter>
