@@ -17,9 +17,9 @@ Go to **Proxies**, select **Create Proxy**, name it, and select **Create Proxy**
 infisical av proxy --enrollment-token <enrollment-token>
 ```
 
-The proxy generates its own certificate authority, sends the certificate to Infisical, and starts serving on port `17323`. It writes its state to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, and reads it back on the next start. Passing the same enrollment token again on a restart is fine: the proxy recognizes it and serves without re-enrolling, which is what keeps a Kubernetes Deployment from crash-looping when a pod is rescheduled.
+The proxy generates its own certificate authority, sends the certificate to Infisical, and starts serving on port `17323`. It writes its state to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, and reads it back on the next start. Passing the same enrollment token again on a restart is fine: the proxy recognizes it and serves without re-enrolling. That only holds while the state directory survives, so run the proxy somewhere its filesystem persists. An enrollment token is good for one enrollment, and a proxy that starts with an empty state directory has to enroll again with a new one.
 
-The same dialog has snippets for Docker, Kubernetes, and systemd. Select **New Enrollment Token** on a proxy's menu if the token expired before you used it.
+The same dialog has snippets for Docker and systemd. Select **New Enrollment Token** on a proxy's menu if the token expired before you used it.
 
 <Note>
   Run `infisical av proxy --port 18000` to listen elsewhere. The default `17323` is chosen so that an Agent Vault proxy and a Secrets Management [Agent Proxy](/documentation/platform/agent-proxy/overview), which listens on `17322`, can share a machine.
@@ -78,7 +78,7 @@ An agent that isn't launched by the CLI, such as a container that sets `HTTPS_PR
 
 ### Re-enrolling
 
-Selecting **New Enrollment Token** and enrolling again replaces the proxy's certificate authority. The proxy keeps its name, settings, and history, and `infisical av run` picks up the new certificate on its next run. Three things hold a copy and break until updated: an explicit `--ca-fingerprint` pin, a Kubernetes Secret or image that carries the old certificate, and a macOS keychain entry that `av run` created earlier. The dialog names all three before you confirm.
+Selecting **New Enrollment Token** and enrolling again replaces the proxy's certificate authority. The proxy keeps its name, settings, and history, and `infisical av run` picks up the new certificate on its next run. Three things hold a copy and break until updated: an explicit `--ca-fingerprint` pin, any file or image that carries the old certificate, and a macOS keychain entry that `av run` created earlier.
 
 ## Revoking and deleting
 

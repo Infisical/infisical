@@ -30,45 +30,6 @@ const dockerCommand = (token: string, siteUrl: string) =>
   --enrollment-token ${token} \\
   --domain ${siteUrl}`;
 
-const kubernetesManifest = (token: string, siteUrl: string) =>
-  `apiVersion: v1
-kind: Secret
-metadata:
-  name: agent-vault-proxy
-stringData:
-  enrollmentToken: ${token}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: agent-vault-proxy
-spec:
-  replicas: 1
-  selector:
-    matchLabels: { app: agent-vault-proxy }
-  template:
-    metadata:
-      labels: { app: agent-vault-proxy }
-    spec:
-      containers:
-        - name: proxy
-          image: infisical/cli
-          args:
-            [
-              "av",
-              "proxy",
-              "--enrollment-token",
-              "$(ENROLLMENT_TOKEN)",
-              "--domain",
-              "${siteUrl}"
-            ]
-          env:
-            - name: ENROLLMENT_TOKEN
-              valueFrom:
-                secretKeyRef: { name: agent-vault-proxy, key: enrollmentToken }
-          ports:
-            - containerPort: 17323`;
-
 const systemdUnit = (token: string, siteUrl: string) =>
   `[Unit]
 Description=Infisical Agent Vault proxy
@@ -109,7 +70,6 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
             <TabsList variant="av" aria-label="Deployment target">
               <TabsTrigger value="cli">CLI</TabsTrigger>
               <TabsTrigger value="docker">Docker</TabsTrigger>
-              <TabsTrigger value="kubernetes">Kubernetes</TabsTrigger>
               <TabsTrigger value="systemd">systemd</TabsTrigger>
             </TabsList>
             <TabsContent value="cli">
@@ -117,9 +77,6 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
             </TabsContent>
             <TabsContent value="docker">
               <CodeBlock value={dockerCommand(token, siteUrl)} />
-            </TabsContent>
-            <TabsContent value="kubernetes">
-              <CodeBlock value={kubernetesManifest(token, siteUrl)} />
             </TabsContent>
             <TabsContent value="systemd">
               <CodeBlock value={systemdUnit(token, siteUrl)} />

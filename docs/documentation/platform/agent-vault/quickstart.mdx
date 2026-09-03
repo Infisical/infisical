@@ -41,7 +41,7 @@ infisical av proxy --enrollment-token <enrollment-token>
 The proxy enrolls, generates its own certificate authority, and starts listening on port `17323`. Leave it running. Its status on the Proxies page turns to **Healthy** within a minute.
 
 <Note>
-  The enrollment token is shown once and expires in an hour. Run the same command again on a restart: the proxy remembers it has enrolled and serves without asking Infisical for a new token. For Docker, Kubernetes, and systemd the same dialog has ready-made snippets.
+  The enrollment token is shown once and expires in an hour. Run the same command again on a restart: the proxy remembers it has enrolled and serves without asking Infisical for a new token. For Docker and systemd the same dialog has ready-made snippets.
 </Note>
 
 ## 3. Run an agent through it
