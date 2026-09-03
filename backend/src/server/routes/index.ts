@@ -2563,6 +2563,7 @@ export const registerRoutes = async (
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
+    identityOidcAuthDAL,
     gatewayDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
@@ -2705,6 +2706,7 @@ export const registerRoutes = async (
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityDAL,
     identityOidcAuthDAL,
+    identityAuthTemplateDAL,
     orgDAL,
     identityAccessTokenDAL,
     permissionService,

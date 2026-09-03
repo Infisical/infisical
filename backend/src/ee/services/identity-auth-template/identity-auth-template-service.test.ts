@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
@@ -8,6 +9,16 @@ import { identityAuthTemplateServiceFactory } from "./identity-auth-template-ser
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ isDevelopmentMode: false, ALLOW_INTERNAL_IP_CONNECTIONS: false })
+}));
+
+// every other host in the suite is a literal IP, which skips resolution entirely, so a
+// blanket rejection only ever fires for the unresolvable case below
+vi.mock("node:dns/promises", () => ({
+  default: {
+    lookup: vi.fn(() =>
+      Promise.reject(Object.assign(new Error("getaddrinfo ENOTFOUND idp.invalid"), { code: "ENOTFOUND" }))
+    )
+  }
 }));
 
 const ORG_ID = "org-id";
@@ -43,6 +54,9 @@ const createService = ({
   const identityKubernetesAuthDAL = {
     updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }])
   };
+  const identityOidcAuthDAL = {
+    updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }])
+  };
 
   const templateRow = {
     id: TEMPLATE_ID,
@@ -62,6 +76,7 @@ const createService = ({
       id,
       ...data
     })),
+    delete: vi.fn().mockResolvedValue([templateRow]),
     transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({}))
   };
 
@@ -72,11 +87,13 @@ const createService = ({
     find: vi.fn().mockImplementation(({ id }: { id: string }) => (liveGatewayV2Ids.includes(id) ? [{ id }] : []))
   };
   const gatewayPoolDAL = { findById: vi.fn().mockResolvedValue(null) };
+  const auditLogCreate = vi.fn();
 
   const service = identityAuthTemplateServiceFactory({
     identityAuthTemplateDAL,
     identityLdapAuthDAL: { updateByTemplateId: vi.fn().mockResolvedValue([]) },
     identityKubernetesAuthDAL,
+    identityOidcAuthDAL,
     gatewayDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
@@ -94,10 +111,10 @@ const createService = ({
     licenseService: {
       getPlan: vi.fn().mockResolvedValue({ machineIdentityAuthTemplates: true, gateway: true, gatewayPool: true })
     },
-    auditLogService: { createAuditLog: vi.fn() }
+    auditLogService: { createAuditLog: auditLogCreate }
   } as unknown as Parameters<typeof identityAuthTemplateServiceFactory>[0]);
 
-  return { service, identityKubernetesAuthDAL, identityAuthTemplateDAL };
+  return { service, identityKubernetesAuthDAL, identityOidcAuthDAL, identityAuthTemplateDAL, auditLogCreate };
 };
 
 const patchTemplate = (service: ReturnType<typeof createService>["service"], templateFields: Record<string, unknown>) =>
@@ -245,5 +262,165 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
       expect.objectContaining({ gatewayId: GATEWAY_ID }),
       expect.anything()
     );
+  });
+});
+
+const baseOidcBlobFields = {
+  oidcDiscoveryUrl: PUBLIC_HOST,
+  boundIssuer: "https://issuer.example.com",
+  boundAudiences: "https://github.com/acme",
+  caCert: "stored-ca"
+};
+
+const createOidcService = (blobFields: Record<string, unknown> = baseOidcBlobFields) =>
+  createService({ authMethod: IdentityAuthTemplateMethod.OIDC, blobFields, gatewayColumns: NO_GATEWAY });
+
+describe("identityAuthTemplateServiceFactory oidc templates", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("propagates the full merged connection to linked identities, not just the patched keys", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    await patchTemplate(service, { boundIssuer: "https://other-issuer.example.com" });
+
+    expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      {
+        oidcDiscoveryUrl: PUBLIC_HOST,
+        boundIssuer: "https://other-issuer.example.com",
+        boundAudiences: "https://github.com/acme",
+        encryptedCaCertificate: Buffer.from("stored-ca")
+      },
+      expect.anything()
+    );
+  });
+
+  it("clears the propagated CA certificate when the patch empties it", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    await patchTemplate(service, { caCert: "" });
+
+    expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      expect.objectContaining({ encryptedCaCertificate: null }),
+      expect.anything()
+    );
+  });
+
+  it("blocks a private discovery URL before anything propagates", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    await expect(patchTemplate(service, { oidcDiscoveryUrl: PRIVATE_HOST })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("blocks even an unrelated edit while a private discovery URL is stored", async () => {
+    // create/update both vet the URL, but an operator toggle (dev mode, allow-internal) can
+    // let one through; any patch propagates the whole merged connection, so it must re-vet
+    const { service, identityOidcAuthDAL } = createOidcService({
+      ...baseOidcBlobFields,
+      oidcDiscoveryUrl: PRIVATE_HOST
+    });
+
+    await expect(patchTemplate(service, { boundAudiences: "aud" })).rejects.toThrow("Local IPs not allowed as URL");
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("reports an unresolvable discovery host as a client error rather than a 500", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    const error = await patchTemplate(service, { oidcDiscoveryUrl: "https://idp.invalid" }).catch(
+      (err: unknown) => err
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toContain(
+      "Could not resolve the host of the OIDC discovery URL 'https://idp.invalid'"
+    );
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("audits the propagation as an OIDC auth update", async () => {
+    const { service, auditLogCreate } = createOidcService();
+
+    await patchTemplate(service, { boundIssuer: "https://other-issuer.example.com" });
+
+    expect(auditLogCreate).toHaveBeenCalledTimes(1);
+    const [entry] = auditLogCreate.mock.calls[0] as [{ event: { type: string } }];
+    expect(entry.event.type).toBe("update-identity-oidc-auth");
+  });
+
+  it("unlinks linked identities on delete while keeping their copied config", async () => {
+    const { service, identityOidcAuthDAL } = createOidcService();
+
+    await service.deleteTemplate({
+      templateId: TEMPLATE_ID,
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID
+    } as unknown as Parameters<typeof service.deleteTemplate>[0]);
+
+    expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      { templateId: null },
+      expect.anything()
+    );
+  });
+});
+
+// the route accepts any method's fields, so this guard is the only method-membership check
+describe("identityAuthTemplateServiceFactory field patch method guard", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("rejects a field from another auth method before anything is written", async () => {
+    const { service, identityOidcAuthDAL, identityAuthTemplateDAL, auditLogCreate } = createOidcService();
+
+    const error = await patchTemplate(service, { bindDN: "cn=admin,dc=example,dc=com" }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [bindDN] are not valid for a 'oidc' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects the whole patch when a valid field rides along with a foreign one", async () => {
+    const { service, identityOidcAuthDAL, identityAuthTemplateDAL } = createOidcService();
+
+    const error = await patchTemplate(service, {
+      boundIssuer: "https://other-issuer.example.com",
+      bindDN: "cn=admin,dc=example,dc=com"
+    }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [bindDN] are not valid for a 'oidc' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("names every foreign field and the template's own method", async () => {
+    const { service, identityAuthTemplateDAL } = createService({
+      authMethod: IdentityAuthTemplateMethod.LDAP,
+      blobFields: { url: "ldap://example.com", bindDN: "cn=admin", bindPass: "pw", searchBase: "dc=example" },
+      gatewayColumns: NO_GATEWAY
+    });
+
+    const error = await patchTemplate(service, {
+      oidcDiscoveryUrl: "https://idp.example.com",
+      tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api
+    }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toBe(
+      "Template fields [oidcDiscoveryUrl, tokenReviewMode] are not valid for a 'ldap' auth template"
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
   });
 });
