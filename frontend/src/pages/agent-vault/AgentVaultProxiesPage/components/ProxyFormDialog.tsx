@@ -6,6 +6,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Dialog,
   DialogContent,
@@ -230,10 +232,15 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 </Field>
               )}
             />
+            {saveDelayNote && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertDescription>{saveDelayNote}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <DialogFooter>
-            {saveDelayNote && <p className="mr-auto text-sm text-muted">{saveDelayNote}</p>}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
