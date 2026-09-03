@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
+import { CREDENTIAL_LABELS } from "@app/components/agent-vault/connection-sheet/connectionSchema";
 import { ConnectionIcon } from "@app/components/agent-vault/ConnectionIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -32,17 +33,10 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { AgentVaultCredentialType, useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
+import { useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
-
-const credentialSummary = (connection: TAgentVaultConnection) => {
-  const { credential } = connection;
-  if (credential.type === AgentVaultCredentialType.Bearer) return "Bearer";
-  if (credential.type === AgentVaultCredentialType.Basic) return "Basic";
-  return "Pass-through";
-};
 
 // 443 is the only port the grammar accepts without saying so, and every row would carry it.
 const displayHost = (host: string) => host.trim().replace(/:443$/, "");
@@ -157,7 +151,7 @@ export const ConnectionsCard = ({
                     {connection.name}
                   </div>
                 </TableCell>
-                <TableCell>{credentialSummary(connection)}</TableCell>
+                <TableCell>{CREDENTIAL_LABELS[connection.credential.type]}</TableCell>
                 <TableCell>
                   <span className="font-mono text-xs">
                     {connection.hostPattern.split(",").map(displayHost).join(", ")}

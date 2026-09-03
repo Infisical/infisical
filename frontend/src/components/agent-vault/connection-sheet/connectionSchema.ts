@@ -6,7 +6,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
-  [AgentVaultCredentialType.Basic]: "Basic",
+  [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through"
 };
 
@@ -92,11 +92,18 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
       if (!needsSecret || data.secret) return;
 
       if (!connection) {
-        // Basic passes with either half blank: RFC 7617 allows it and services like Stripe put the
-        // whole key in the username. A bearer header with nothing after the prefix authenticates
-        // nobody, so that one stays required.
+        // Basic passes with either half blank, but not both: RFC 7617 allows a blank half and
+        // services like Stripe put the whole key in the username, while an empty `:` authenticates
+        // nobody. A bearer header with nothing after the prefix is the same dead end, so its token
+        // stays required outright.
         if (data.credentialType === AgentVaultCredentialType.Bearer) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        } else if (!data.username) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["username"],
+            message: "Enter a username, a password, or both."
+          });
         }
       } else if (credentialSettingsDiffer(data, connection)) {
         ctx.addIssue({

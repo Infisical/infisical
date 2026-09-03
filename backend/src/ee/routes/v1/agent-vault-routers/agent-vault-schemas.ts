@@ -15,22 +15,36 @@ export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.CONNECTION.hostPattern);
 
 // The secret is sent on write for bearer and basic, so there is no half-configured connection and the
-// proxy never has a refusal path to implement. Basic accepts an empty username or password, because
-// RFC 7617 allows either half to be blank and services like Stripe rely on it.
-export const AgentVaultCredentialInputSchema = z.discriminatedUnion("type", [
-  AgentVaultBearerConfigSchema.partial().extend({
-    type: z.literal(AgentVaultCredentialType.Bearer),
-    headerName: z.string().trim().min(1).max(128).optional().describe(AGENT_VAULT.CONNECTION.headerName),
-    headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
-    value: z.string().min(1).max(8192).describe(AGENT_VAULT.CONNECTION.value)
-  }),
-  AgentVaultBasicConfigSchema.extend({
-    type: z.literal(AgentVaultCredentialType.Basic),
-    username: z.string().trim().max(256).describe(AGENT_VAULT.CONNECTION.username),
-    password: z.string().max(8192).describe(AGENT_VAULT.CONNECTION.password)
-  }),
-  z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-]);
+// proxy never has a refusal path to implement. Basic accepts an empty username or an empty password,
+// because RFC 7617 allows either half to be blank and services like Stripe rely on it.
+export const AgentVaultCredentialInputSchema = z
+  .discriminatedUnion("type", [
+    AgentVaultBearerConfigSchema.partial().extend({
+      type: z.literal(AgentVaultCredentialType.Bearer),
+      headerName: z.string().trim().min(1).max(128).optional().describe(AGENT_VAULT.CONNECTION.headerName),
+      headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
+      value: z.string().min(1).max(8192).describe(AGENT_VAULT.CONNECTION.value)
+    }),
+    AgentVaultBasicConfigSchema.extend({
+      type: z.literal(AgentVaultCredentialType.Basic),
+      username: z.string().trim().max(256).describe(AGENT_VAULT.CONNECTION.username),
+      password: z.string().max(8192).describe(AGENT_VAULT.CONNECTION.password)
+    }),
+    z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+  ])
+  .superRefine((data, ctx) => {
+    // Either half may be blank, but not both: `Basic ` over an empty `:` authenticates nobody, and a
+    // caller who wanted no credential wants the passthrough type. The check cannot live in an
+    // object-level refine, because discriminatedUnion options must be plain objects.
+    if (data.type !== AgentVaultCredentialType.Basic) return;
+    if (data.username.length > 0 || data.password.length > 0) return;
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["username"],
+      message: "A basic credential needs a username, a password, or both"
+    });
+  });
 
 /** What every read path returns: enough to render the row, never the secret. */
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
