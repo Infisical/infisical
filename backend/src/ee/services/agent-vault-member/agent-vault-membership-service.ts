@@ -280,9 +280,19 @@ export const agentVaultMembershipServiceFactory = ({
 
     const identityIds = resolved.map((m) => m.identityId).filter((v): v is string => Boolean(v));
     const identities = identityIds.length ? await identityDAL.find({ $in: { id: identityIds } }) : [];
-    const nameById = new Map(identities.map((i) => [i.id, i.name]));
+    const identityById = new Map(identities.map((i) => [i.id, i]));
 
-    return resolved.map((m) => ({ ...m, name: (m.identityId && nameById.get(m.identityId)) || "" }));
+    // The identity's own scope decides whether removing it here would orphan it: one created inside
+    // Agent Vault belongs to no other project, so the caller deletes it rather than detaching it.
+    return resolved.map((m) => {
+      const identity = m.identityId ? identityById.get(m.identityId) : undefined;
+      return {
+        ...m,
+        name: identity?.name ?? "",
+        identityProjectId: identity?.projectId ?? null,
+        identityOrgId: identity?.orgId ?? null
+      };
+    });
   };
 
   const resolveActorColumn = (dto: { userId?: string; groupId?: string; identityId?: string }) => {

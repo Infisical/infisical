@@ -352,8 +352,11 @@ export const identityV2ServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
+      // Compared against undefined, not truthiness: hasDeleteProtection: false on its own is a real
+      // update, and a truthiness check skipped it while still answering 200, so the flag could be
+      // turned on but never off.
       const updatedIdentity =
-        data?.name || data?.hasDeleteProtection
+        data?.name !== undefined || data?.hasDeleteProtection !== undefined
           ? await identityDAL.updateById(
               dto.selector.identityId,
               { name: data.name, hasDeleteProtection: data.hasDeleteProtection },

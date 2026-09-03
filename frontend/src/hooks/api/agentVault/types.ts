@@ -190,7 +190,12 @@ export type TAgentVaultProductMember = {
   createdAt: string;
 };
 
-export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & { name: string };
+export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & {
+  name: string;
+  /** The identity's own scope. Null project means it lives at the organization, not inside Agent Vault. */
+  identityProjectId: string | null;
+  identityOrgId: string | null;
+};
 
 /** Exactly one of the three ids, as the API requires. */
 export type TAgentVaultProductMemberActor = {

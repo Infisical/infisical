@@ -33,6 +33,20 @@ export const PAM_PRODUCT_ROLE_OPTIONS = [
   }
 ];
 
+// Agent Vault has no externally visible project either, so its roles get the same treatment.
+export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
+  {
+    value: ProjectMembershipRole.Admin,
+    label: "Admin",
+    description: "Manage bundles, connections, proxies and who else has access."
+  },
+  {
+    value: ProjectMembershipRole.Member,
+    label: "Member",
+    description: "Mint sessions over the access bundles they are granted, and nothing else."
+  }
+];
+
 export const formatProjectRoleName = (role: string, customRoleName?: string) => {
   switch (role) {
     case ProjectMembershipRole.Admin:

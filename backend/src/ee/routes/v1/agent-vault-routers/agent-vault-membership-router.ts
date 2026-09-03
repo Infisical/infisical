@@ -40,7 +40,15 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "listAgentVaultProductIdentityMembers",
       description: "List the machine identities that are members of Agent Vault, with their names",
       tags: [ApiDocsTags.AgentVaultMemberships],
-      response: { 200: z.object({ members: MemberSchema.extend({ name: z.string() }).array() }) }
+      response: {
+        200: z.object({
+          members: MemberSchema.extend({
+            name: z.string(),
+            identityProjectId: z.string().nullable(),
+            identityOrgId: z.string().nullable()
+          }).array()
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => ({
