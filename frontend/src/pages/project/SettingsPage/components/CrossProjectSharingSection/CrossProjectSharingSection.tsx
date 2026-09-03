@@ -307,15 +307,16 @@ export const CrossProjectSharingSection = () => {
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {(canEditGrants ||
-                        projectGroup.grants.some((grant) =>
-                          canRevokeGrant(grant.environmentSlug, grant.secretPath)
-                        )) && (
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
+                      {subscription?.crossProjectSecretSharing &&
+                        (canEditGrants ||
+                          projectGroup.grants.some((grant) =>
+                            canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                          )) && (
+                          <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                            <PencilIcon className="mr-2 size-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                       {projectGroup.grants.every((grant) =>
                         canRevokeGrant(grant.environmentSlug, grant.secretPath)
                       ) && (
