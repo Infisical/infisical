@@ -139,10 +139,7 @@ export const AccessRestrictedDialog = ({
               {description}
             </div>
           </div>
-          <CodeBlock
-            label={requirement ? "Access details" : "Restricted route"}
-            value={accessDetails}
-          />
+          <CodeBlock label={requirement ? "Access details" : undefined} value={accessDetails} />
           {docsUrl && (
             <a
               href={docsUrl}
