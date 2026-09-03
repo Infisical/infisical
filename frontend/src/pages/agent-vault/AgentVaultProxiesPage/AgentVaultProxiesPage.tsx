@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { InfoIcon, MoreHorizontalIcon, RouteIcon, TriangleAlertIcon } from "lucide-react";
+import { MoreHorizontalIcon, RouteIcon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Alert,
-  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -66,6 +64,18 @@ import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
+
+// A column heading whose meaning is not obvious from its name, with the explanation on hover.
+const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="cursor-help underline decoration-muted decoration-dotted underline-offset-4">
+        {children}
+      </span>
+    </TooltipTrigger>
+    <TooltipContent className="max-w-xs">{hint}</TooltipContent>
+  </Tooltip>
+);
 
 // Enough of the fingerprint to recognise, with the whole value behind the copy button.
 const truncateFingerprint = (fingerprint: string) =>
@@ -157,8 +167,20 @@ export const AgentVaultProxiesPage = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
-                {isAdmin && <TableHead>Bypass Hosts</TableHead>}
-                {isAdmin && <TableHead>Unmatched</TableHead>}
+                {isAdmin && (
+                  <TableHead>
+                    <HeadWithHint hint="Connections to these hosts are passed straight through without being opened, so no credential is attached.">
+                      Bypass Hosts
+                    </HeadWithHint>
+                  </TableHead>
+                )}
+                {isAdmin && (
+                  <TableHead>
+                    <HeadWithHint hint="What the agent may reach beyond the hosts its access bundles cover.">
+                      Uncovered Hosts
+                    </HeadWithHint>
+                  </TableHead>
+                )}
                 <TableHead>Version</TableHead>
                 <TableHead>Certificate Authority</TableHead>
                 <TableHead variant="action" />
@@ -271,19 +293,6 @@ export const AgentVaultProxiesPage = () => {
                 ))}
             </TableBody>
           </Table>
-        )}
-
-        {isAdmin && (proxies?.length ?? 0) > 0 && (
-          <CardContent>
-            <Alert variant="info">
-              <InfoIcon />
-              <AlertDescription>
-                A proxy set to allow unmatched hosts terminates TLS on every host an agent reaches,
-                and lets the ones no connection covers through without a credential. Set it to deny
-                to block them instead.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
         )}
       </Card>
 

@@ -17,12 +17,10 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  RadioGroup,
+  RadioGroupItem
 } from "@app/components/v3";
 import {
   AgentVaultUnmatchedHost,
@@ -32,10 +30,18 @@ import {
 import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
-// Package registries are the traffic an agent makes most and the traffic least worth intercepting,
-// so a new proxy starts with them bypassed.
-const DEFAULT_BYPASS_HOSTS =
-  "registry.npmjs.org, pypi.org, files.pythonhosted.org, proxy.golang.org, crates.io, static.crates.io";
+const UNMATCHED_HOST_CHOICES = [
+  {
+    value: AgentVaultUnmatchedHost.Allow,
+    title: "Allow",
+    description: "The agent reaches them, with no credential attached."
+  },
+  {
+    value: AgentVaultUnmatchedHost.Deny,
+    title: "Deny",
+    description: "The agent reaches only the hosts in its access bundles."
+  }
+];
 
 const schema = z.object({
   name: slugSchema({ max: 64, field: "Name" }),
@@ -72,7 +78,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     reset({
       name: proxy?.name ?? "",
       unmatchedHost: proxy?.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
-      bypassHosts: proxy ? (proxy.bypassHosts ?? "") : DEFAULT_BYPASS_HOSTS,
+      bypassHosts: proxy?.bypassHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
     });
   }, [isOpen, proxy, reset]);
@@ -127,21 +133,25 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
               name="unmatchedHost"
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>Unmatched Hosts</FieldLabel>
+                  <FieldLabel>Hosts no connection covers</FieldLabel>
                   <FieldContent>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value={AgentVaultUnmatchedHost.Allow}>Allow</SelectItem>
-                        <SelectItem value={AgentVaultUnmatchedHost.Deny}>Deny</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>
-                      Allow lets traffic to hosts no connection covers pass through, with TLS
-                      terminated and no credential attached. Deny blocks it.
-                    </FieldDescription>
+                    <RadioGroup value={field.value} onValueChange={field.onChange}>
+                      {UNMATCHED_HOST_CHOICES.map((choice) => {
+                        const id = `unmatched-${choice.value}`;
+
+                        return (
+                          <FieldLabel key={choice.value} htmlFor={id} variant="av">
+                            <Field orientation="horizontal">
+                              <FieldContent>
+                                <FieldTitle>{choice.title}</FieldTitle>
+                                <FieldDescription>{choice.description}</FieldDescription>
+                              </FieldContent>
+                              <RadioGroupItem id={id} value={choice.value} />
+                            </Field>
+                          </FieldLabel>
+                        );
+                      })}
+                    </RadioGroup>
                   </FieldContent>
                 </Field>
               )}
@@ -153,10 +163,11 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 <Field>
                   <FieldLabel>Bypass Hosts</FieldLabel>
                   <FieldContent>
-                    <Input {...field} placeholder="registry.npmjs.org" />
+                    <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
                     <FieldDescription>
-                      Tunnelled untouched: no certificate minted, no credential attached. The escape
-                      hatch for clients that pin certificates.
+                      Connections to these hosts are passed straight through without being opened,
+                      so no credential is attached and the setting above does not apply. Use it for
+                      clients that refuse the proxy&apos;s certificate.
                     </FieldDescription>
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
@@ -172,8 +183,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                   <FieldContent>
                     <Input {...field} type="number" min={10} max={300} />
                     <FieldDescription>
-                      Seconds between refreshes, 10 to 300. Every change reaches a running agent
-                      within one interval.
+                      How often the proxy asks for its configuration, in seconds. It is how long a
+                      change here takes to reach a running agent.
                     </FieldDescription>
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
