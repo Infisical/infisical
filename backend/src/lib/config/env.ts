@@ -9,6 +9,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
+import { parseTrustedProxyCidrs } from "../ip";
 import { CustomLogger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
@@ -580,8 +581,23 @@ const envSchema = z
     // proxy-addr aliases ("loopback", "linklocal", "uniquelocal"). When set, requests whose
     // socket remote address is NOT in this set will have forwarded-IP headers ignored; the
     // socket address is used as the real IP. When unset, legacy first-header-wins behavior
-    // is preserved for backwards compatibility.
-    TRUSTED_PROXY_CIDRS: zpStr(z.string().optional()),
+    // is preserved for backwards compatibility. Entries are trimmed and validated at boot.
+    TRUSTED_PROXY_CIDRS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val, ctx) => {
+          try {
+            return parseTrustedProxyCidrs(val);
+          } catch (err) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: err instanceof Error ? err.message : "Invalid TRUSTED_PROXY_CIDRS value"
+            });
+            return z.NEVER;
+          }
+        })
+    ),
 
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),

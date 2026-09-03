@@ -77,11 +77,22 @@ Configure network restrictions and firewall rules:
 # Limit CORS to specific domains
 CORS_ALLOWED_ORIGINS=["https://your-app.example.com"]
 
+# Trust forwarded-IP headers only from your reverse proxy (NGINX, Traefik, ALB, and similar).
+# Use that proxy's CIDR or Docker network subnet, not client or CLI host subnets.
+# Don't use the uniquelocal alias unless the backend is unreachable except through the proxy.
+TRUSTED_PROXY_CIDRS=172.18.0.0/16
+
 # Prevent connections to internal/private IP addresses
 # This blocks access to internal services like metadata endpoints,
 # internal APIs, databases, and other sensitive infrastructure
 ALLOW_INTERNAL_IP_CONNECTIONS=false
 ```
+
+Machine identity **Client Secret Trusted IPs** and **Access Token Trusted IPs** use the
+client IP Infisical derives after applying `TRUSTED_PROXY_CIDRS`. If those allowlists
+exclude a subnet, CLI and API logins from that subnet fail even when the host can reach
+your instance. See [Universal Auth](/documentation/platform/identities/universal-auth)
+and [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars#param-trusted-proxy-cidrs).
 
 #### Server-side request forgery (SSRF) protection
 
