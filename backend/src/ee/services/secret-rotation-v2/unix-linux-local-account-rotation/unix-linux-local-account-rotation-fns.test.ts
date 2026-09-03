@@ -187,6 +187,27 @@ describe("runManagedPasswordChange", () => {
     expect((error as Error).message).not.toContain(longPassword);
   });
 
+  test("redacts a secret split across two data events when a shorter secret overlaps", async () => {
+    const shortPassword = "secret";
+    const longPassword = "my-secret-value";
+    const fake = createFakeStream();
+    const result = runManagedPasswordChange(fake.stream, shortPassword, longPassword);
+
+    // The network splits the echoed long password across two chunks, right
+    // through the shorter secret.  An eager per-chunk redactor would replace
+    // "secret" in the first chunk, leaving "-value" visible in the second.
+    fake.feed("[sudo] password for svc: my-secret");
+    fake.feed(`-value\r\nNew password: ${shortPassword}\r\n`);
+    fake.close();
+
+    const error = await result.catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(shortPassword);
+    expect((error as Error).message).not.toContain(longPassword);
+    expect((error as Error).message).not.toContain("-value");
+  });
+
   test("rejects with sudoers guidance when sudo asks for a password we do not have", async () => {
     const fake = createFakeStream();
     const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL);

@@ -19,20 +19,24 @@ const createTranscript = (secrets: (string | undefined)[]) => {
   const redact = (value: string) =>
     knownSecrets.reduce((redacted, secret) => redacted.replaceAll(secret, "***"), value);
 
-  let text = "";
-  let truncated = false;
+  // Raw text is kept unredacted so a secret split across two data events is
+  // still intact when redact() runs.  The buffer lives only for the duration
+  // of one runExpectSession call (bounded by SHELL_TIMEOUT and the overflow
+  // check on the unmatched buffer), so it needs no independent cap.
+  let raw = "";
 
   return {
     append: (chunk: string) => {
-      text += chunk;
-      text = redact(text);
-      if (text.length > MAX_TRANSCRIPT_SIZE) {
-        text = text.slice(-MAX_TRANSCRIPT_SIZE);
-        truncated = true;
-      }
+      raw += chunk;
     },
     redact,
-    read: () => (truncated ? `...${redact(text)}` : redact(text))
+    read: () => {
+      const redacted = redact(raw);
+      if (redacted.length > MAX_TRANSCRIPT_SIZE) {
+        return `...${redacted.slice(-MAX_TRANSCRIPT_SIZE)}`;
+      }
+      return redacted;
+    }
   };
 };
 
