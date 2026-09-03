@@ -12,17 +12,14 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  FilterableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useGetOrganizationGroups, useListWorkspaceGroups } from "@app/hooks/api";
 import { useAddAgentVaultProductMember } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
+import { ProductRoleField } from "./ProductRoleField";
 
 type TOption = { value: string; label: string };
 
@@ -83,15 +80,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
         <Field>
           <FieldLabel>Product Role</FieldLabel>
           <FieldContent>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value={ProjectMembershipRole.Admin}>Admin</SelectItem>
-                <SelectItem value={ProjectMembershipRole.Member}>Member</SelectItem>
-              </SelectContent>
-            </Select>
+            <ProductRoleField value={role} onChange={setRole} idPrefix="add-group-role" />
           </FieldContent>
         </Field>
 

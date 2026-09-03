@@ -13,17 +13,14 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  FilterableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 import { useAddAgentVaultProductUserMembers } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
+import { ProductRoleField } from "./ProductRoleField";
 
 type TCandidate = { value: string; label: string; email: string };
 
@@ -100,15 +97,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         <Field>
           <FieldLabel>Product Role</FieldLabel>
           <FieldContent>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value={ProjectMembershipRole.Admin}>Admin</SelectItem>
-                <SelectItem value={ProjectMembershipRole.Member}>Member</SelectItem>
-              </SelectContent>
-            </Select>
+            <ProductRoleField value={role} onChange={setRole} idPrefix="invite-role" />
           </FieldContent>
         </Field>
 
