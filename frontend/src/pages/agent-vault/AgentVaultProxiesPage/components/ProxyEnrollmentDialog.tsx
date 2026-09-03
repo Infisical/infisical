@@ -1,4 +1,4 @@
-import { formatDistanceToNowStrict } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 import {
   Button,
@@ -17,6 +17,11 @@ import {
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
+
+const cliCommand = (token: string, siteUrl: string) =>
+  `infisical av proxy \\
+  --enrollment-token ${token} \\
+  --domain ${siteUrl}`;
 
 const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
@@ -92,21 +97,24 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
-            Shown once. Copy it now.
             {enrollment &&
-              ` Expires in ${formatDistanceToNowStrict(new Date(enrollment.expiresAt))}.`}
+              `This token is shown only once and expires in ${formatDistanceToNow(
+                new Date(enrollment.expiresAt)
+              )}.`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <CodeBlock value={token} label="Enrollment token" />
-
-          <Tabs defaultValue="docker">
+          <Tabs defaultValue="cli">
             <TabsList variant="av" aria-label="Deployment target">
+              <TabsTrigger value="cli">CLI</TabsTrigger>
               <TabsTrigger value="docker">Docker</TabsTrigger>
               <TabsTrigger value="kubernetes">Kubernetes</TabsTrigger>
               <TabsTrigger value="systemd">systemd</TabsTrigger>
             </TabsList>
+            <TabsContent value="cli">
+              <CodeBlock value={cliCommand(token, siteUrl)} />
+            </TabsContent>
             <TabsContent value="docker">
               <CodeBlock value={dockerCommand(token, siteUrl)} />
             </TabsContent>
