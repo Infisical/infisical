@@ -73,27 +73,14 @@ export type TExpectSessionConfig = {
   maxBufferSize?: number;
 };
 
-/**
- * Drives an interactive PTY stream through a caller-defined state machine.
- *
- * The engine handles the low-level plumbing that every PTY-driven exchange needs:
- *   - Accumulating chunks through a StringDecoder (so multi-byte characters split across
- *     reads are reassembled, not replaced with U+FFFD).
- *   - Matching against everything received so far, not just the arriving chunk, so a prompt
- *     split across any number of data events is still recognised.
- *   - Re-running the state machine in a loop until nothing more matches, so a host that
- *     coalesces several prompts into one chunk gets all of them answered.
- *   - Bounding the pending buffer (MAX_BUFFER_SIZE) and the retained transcript
- *     (MAX_TRANSCRIPT_SIZE), with automatic secret redaction on every error path.
- *   - Timeout, settlement guards, and stream cleanup.
- *
- * Callers provide:
- *   - `advance`: the state machine. Called repeatedly until it returns false (no progress).
- *     Reads `ctx.pending`, calls `ctx.consume`, `ctx.clearPending`, `ctx.write`,
- *     `ctx.finish`, or `ctx.safeReject` as needed.
- *   - `resolveOnClose`: called once on stream close to decide resolve vs. reject.
- *   - `overflowMessage` or `timeoutMessage`: build the error string for each failure mode.
- */
+// An SSH channel over a PTY re-segments output wherever the network splits the bytes, and a
+// gateway-backed connection copies between TCP and QUIC with no framing at all. The same
+// `passwd` exchange can arrive as one chunk or twenty, so matching against only the latest
+// chunk is unreliable: 11 of the 49 split points inside AIX's "root's New password:\r\n"
+// break a per-chunk match. This engine accumulates everything into a pending buffer and
+// re-runs the caller's `advance` function in a loop, so a prompt split across any number of
+// data events is still recognised and a host that coalesces several prompts into one chunk
+// gets all of them answered instead of stalling.
 export const runExpectSession = ({
   stream,
   secrets,
