@@ -7,9 +7,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AccessRestrictedDialog,
   Alert,
   AlertDescription,
-  AlertTitle,
   Button,
   Checkbox,
   Dialog,
@@ -100,7 +100,7 @@ export const SecretV2MigrationSection = () => {
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
-    <div className="mt-4 flex w-full max-w-2xl flex-col gap-3">
+    <div className="flex w-full flex-col gap-3">
       {isUpgrading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-page/80">
           <Spinner size="lg" label="Upgrading secrets engine" />
@@ -110,21 +110,26 @@ export const SecretV2MigrationSection = () => {
           </div>
         </div>
       )}
-      <Alert variant="warning" className="items-start p-5">
-        <TriangleAlertIcon className="mt-0.5" />
-        <AlertTitle className="text-lg">Upgrade secrets engine version</AlertTitle>
-        <AlertDescription className="gap-4 text-foreground/80">
-          <div className="flex flex-col gap-3 leading-relaxed">
+      <AccessRestrictedDialog
+        title="Upgrade your secrets engine to view your project dashboard."
+        subtitle={null}
+        description={
+          <>
             <p>
-              Your existing workflows to fetch secrets will continue to work. However, viewing
-              secrets on the UI requires you to upgrade your project&apos;s secrets engine version.
+              Your existing secret-fetching workflows will continue to work. To view secrets in the
+              UI, upgrade your project’s secrets engine.
             </p>
             <p>
-              Upgrading is free and enables the use of Infisical&apos;s new secrets engine, which is
-              10x faster and allows you to encrypt secrets with your own KMS provider.
+              The upgrade takes 1–2 minutes with no downtime and delivers up to 10× faster
+              performance plus support for your own KMS provider.
             </p>
-            <p>The upgrade takes only 1-2 minutes and will not cause any downtime.</p>
-          </div>
+          </>
+        }
+        badgeIcon={<TriangleAlertIcon />}
+        badgeLabel="Upgrade Required"
+        docsUrl={null}
+        showGoBack={false}
+        action={
           <Button
             variant="project"
             onClick={() => handlePopUpOpen("migrationInfo")}
@@ -134,8 +139,8 @@ export const SecretV2MigrationSection = () => {
           >
             {isAdmin ? "Upgrade Secrets Engine" : "Upgrade requires admin privilege"}
           </Button>
-        </AlertDescription>
-      </Alert>
+        }
+      />
       {didProjectUpgradeFailed && (
         <Alert variant="danger">
           <CircleXIcon />

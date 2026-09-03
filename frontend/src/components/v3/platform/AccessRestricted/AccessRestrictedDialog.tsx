@@ -4,6 +4,7 @@ import { ArrowLeftIcon, ExternalLinkIcon, HouseIcon, InfoIcon, LockIcon } from "
 
 import { Badge } from "../../generic/Badge";
 import { Button } from "../../generic/Button";
+import { CodeBlock } from "../../generic/CodeBlock";
 import { cn } from "../../utils";
 
 const RBAC_DOCS_URL =
@@ -54,25 +55,31 @@ export const toPermissionRequirement = (
   typeof action === "string" && typeof subject === "string" ? { action, subject } : undefined;
 
 type Props = {
-  // First line of the two-line heading, matching the error-page family.
+  // Primary heading, matching the error-page family. Set subtitle to null for one line.
   title?: string;
-  subtitle?: string;
+  subtitle?: string | null;
   description?: ReactNode;
   // The CASL action/subject the viewer is missing. Shown verbatim so an operator can hand it to
   // whoever edits their role.
   requirement?: TAccessRestrictedRequirement;
-  docsUrl?: string;
+  // Set to null when access is gated by a prerequisite rather than role-based access control.
+  docsUrl?: string | null;
+  // Non-permission prerequisites can replace the default lock badge while reusing the gate.
+  badgeIcon?: ReactNode;
+  badgeLabel?: string;
   // Extra call to action rendered after "Back to Home" — e.g. a request-access flow on the
   // surfaces that have one.
   action?: ReactNode;
+  showGoBack?: boolean;
   className?: string;
 };
 
 /**
- * Page- and tab-level permission gate, styled to the ErrorPage/ForbiddenPage family: a
+ * Page- and tab-level access gate, styled to the ErrorPage/ForbiddenPage family: a
  * dialog-look panel floating over a redacted stand-in for the content. It renders in normal
  * document flow, so the surrounding page chrome (sidebar, sibling tabs) stays usable by both
- * pointer and keyboard.
+ * pointer and keyboard. It defaults to permission-focused copy but can represent another
+ * prerequisite with custom copy and badge content.
  *
  * For a single section inside an otherwise usable page, use AccessRestrictedNotice instead.
  */
@@ -82,17 +89,17 @@ export const AccessRestrictedDialog = ({
   description = "Your role doesn't include the permission this page requires.",
   requirement,
   docsUrl = RBAC_DOCS_URL,
+  badgeIcon = <LockIcon />,
+  badgeLabel = "Access Restricted",
   action,
+  showGoBack = true,
   className
 }: Props) => {
   const titleId = useId();
 
-  const monoRows: [string, string][] = [
-    ...(requirement
-      ? ([["requires", `${requirement.action} on ${requirement.subject}`]] as [string, string][])
-      : []),
-    ["route", window.location.pathname]
-  ];
+  const accessDetails = requirement
+    ? `requires  ${requirement.action} on ${requirement.subject}\nroute     ${window.location.pathname}`
+    : window.location.pathname;
 
   // Deliberately NOT a real <Dialog>: this is a permanent page state with no close affordance,
   // and Radix DialogContent hardcodes a Tab loop (FocusScope loop) plus mount autofocus even
@@ -108,51 +115,62 @@ export const AccessRestrictedDialog = ({
       <div className="relative col-start-1 row-start-1 flex items-center justify-center p-4">
         <section
           aria-labelledby={titleId}
-          className="flex w-full max-w-2xl animate-in flex-col gap-5 rounded-lg border border-border bg-popover p-6 pb-0 text-foreground shadow-lg duration-200 fade-in-0 zoom-in-95"
+          className="@container/access-restricted flex w-full max-w-2xl animate-in flex-col gap-5 rounded-lg border border-border bg-popover p-6 pb-0 text-foreground shadow-lg duration-200 fade-in-0 zoom-in-95"
         >
           <div className="flex flex-col items-start gap-5 text-left">
             <Badge variant="warning" className="h-6 px-2">
-              <LockIcon />
-              Access Restricted
+              {badgeIcon}
+              {badgeLabel}
             </Badge>
             {/* Alliance ships only weight 400, so font-normal rather than a faux-bolded semibold. */}
-            <h2 id={titleId} className="font-alliance text-3xl leading-tight font-normal">
+            <h2
+              id={titleId}
+              className="font-alliance text-3xl leading-tight font-normal text-balance"
+            >
               {title}
-              <br />
-              <span className="text-2xl">{subtitle}</span>
+              {subtitle && (
+                <>
+                  <br />
+                  <span className="text-2xl">{subtitle}</span>
+                </>
+              )}
             </h2>
-            <p className="text-sm leading-relaxed text-accent">{description}</p>
+            <div className="flex flex-col gap-3 text-sm leading-relaxed text-accent">
+              {description}
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5 rounded-md border border-border bg-bunker-800/50 px-4 py-3">
-            {monoRows.map(([key, value]) => (
-              <div key={key} className="flex gap-4 font-mono text-xs">
-                <span className="w-16 shrink-0 text-muted">{key}</span>
-                <span className="break-all text-label">{value}</span>
-              </div>
-            ))}
-          </div>
-          <a
-            href={docsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-fit items-center gap-1.5 text-xs text-info transition-colors hover:text-info/75"
-          >
-            <InfoIcon className="size-3.5" />
-            Access control documentation
-            <ExternalLinkIcon className="size-3" />
-          </a>
-          <div className="-mx-6 flex flex-row flex-wrap justify-end gap-2 rounded-b-lg border-t border-border bg-container p-4">
-            <Button variant="outline" onClick={() => window.history.back()}>
-              <ArrowLeftIcon />
-              Go Back
-            </Button>
-            <Button variant="neutral" asChild>
-              <Link to="/">
-                <HouseIcon />
-                Back to Home
-              </Link>
-            </Button>
-            {action}
+          <CodeBlock
+            label={requirement ? "Access details" : "Restricted route"}
+            value={accessDetails}
+          />
+          {docsUrl && (
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-fit items-center gap-1.5 text-xs text-info transition-colors hover:text-info/75"
+            >
+              <InfoIcon className="size-3.5" />
+              Access control documentation
+              <ExternalLinkIcon className="size-3" />
+            </a>
+          )}
+          <div className="-mx-6 flex flex-col gap-2 rounded-b-lg border-t border-border bg-container p-4 @xl/access-restricted:flex-row @xl/access-restricted:items-center">
+            <div className="ml-auto flex flex-row flex-wrap justify-end gap-2">
+              {showGoBack && (
+                <Button variant="outline" onClick={() => window.history.back()}>
+                  <ArrowLeftIcon />
+                  Go Back
+                </Button>
+              )}
+              <Button variant="neutral" asChild>
+                <Link to="/">
+                  <HouseIcon />
+                  Back to Home
+                </Link>
+              </Button>
+            </div>
+            {action && <div className="flex min-w-0 flex-1 justify-end">{action}</div>}
           </div>
         </section>
       </div>
