@@ -46,7 +46,8 @@ const EnrollmentSchema = z.object({
 
 const ProxySettingsSchema = {
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  // Evaluated first, at CONNECT, before any interception: no certificate minted, no credential injected.
+  // Consulted only for hosts no connection covers, so a credential always wins: attaching one means
+  // opening the request, which bypassing it cannot do.
   bypassHosts: hostPatternSchema.nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
   pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
 };
