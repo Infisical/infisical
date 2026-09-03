@@ -68,7 +68,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProductControlVariant, getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -234,7 +234,7 @@ export const IdentityTab = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={getProductControlVariant(currentProject.type)}
                     onClick={() => handlePopUpOpen("createIdentity")}
                     isDisabled={!isAllowed}
                   >

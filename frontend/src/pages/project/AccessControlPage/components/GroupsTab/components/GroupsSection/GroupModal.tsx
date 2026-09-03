@@ -26,7 +26,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
+import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
@@ -150,7 +150,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="project" type="button" isPending isDisabled>
+          <Button
+            variant={getProductControlVariant(currentProject.type)}
+            type="button"
+            isPending
+            isDisabled
+          >
             Add
           </Button>
         </DialogFooter>
@@ -260,7 +265,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={getProductControlVariant(currentProject.type)}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>

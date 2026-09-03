@@ -20,7 +20,7 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
+import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -95,7 +95,7 @@ export const GroupsSection = () => {
             >
               {(isAllowed) => (
                 <Button
-                  variant="project"
+                  variant={getProductControlVariant(currentProject.type)}
                   onClick={() => handleAddGroupModal()}
                   isDisabled={!isAllowed}
                 >

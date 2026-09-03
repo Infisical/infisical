@@ -128,6 +128,13 @@ export const hasIntermediateProjectsView = (type: ProjectType) =>
 // $projectId in the URL. Their project id is resolved from the org rather than the route params.
 const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 
+/**
+ * The button and badge variant a shared page should tint with when it is showing a product that has
+ * its own accent. Every other product keeps `project`, so this only changes what it names.
+ */
+export const getProductControlVariant = (type: ProjectType) =>
+  type === ProjectType.AgentVault ? ("av" as const) : ("project" as const);
+
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
 
 const ORG_SCOPED_PRODUCT_PATH_RE = /^\/organizations\/[^/]+\/(pam|agent-vault)(?:\/|$)/;

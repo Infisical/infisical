@@ -25,7 +25,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
+import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -91,7 +91,7 @@ export const MembersSection = () => {
               {(isAllowed) => {
                 const button = (
                   <Button
-                    variant="project"
+                    variant={getProductControlVariant(currentProject.type)}
                     onClick={() => handlePopUpOpen("addMember")}
                     isDisabled={!isAllowed}
                   >

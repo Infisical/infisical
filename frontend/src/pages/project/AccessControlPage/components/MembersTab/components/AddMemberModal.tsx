@@ -36,7 +36,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
+import { getProductControlVariant, getProjectTitle } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -423,7 +423,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
             <Button
               type="submit"
-              variant="project"
+              variant={getProductControlVariant(currentProject.type)}
               isPending={isSubmitting}
               isDisabled={
                 isSubmitting ||

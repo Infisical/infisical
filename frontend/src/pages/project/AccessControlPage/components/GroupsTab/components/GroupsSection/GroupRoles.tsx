@@ -37,6 +37,7 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
+import { getProductControlVariant } from "@app/helpers/project";
 import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
@@ -375,7 +376,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           size="xs"
           type="submit"
           isFullWidth
-          variant="project"
+          variant={getProductControlVariant(currentProject.type)}
           form="role-update-form"
           isDisabled={!isDirty || isSubmitting}
           isPending={isSubmitting}
