@@ -172,6 +172,15 @@ jobs:
                       contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
                       contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
                       contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
+            - name: Snyk to check Docker image for vulnerabilities
+              continue-on-error: true
+              uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
+              env:
+                SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+              with:
+                image: infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
+                command: monitor
+                args: --file=Dockerfile.fips.standalone-infisical --project-name="infisical-fips-docker-image"
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]
