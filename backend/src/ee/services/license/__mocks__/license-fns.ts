@@ -75,7 +75,7 @@ export const getDefaultOnPremFeatures = () => {
     pkiSyncs: false,
     pkiLegacyTemplates: false,
     pkiCodeSigning: false,
-    maxCas: null,
+    maxCas: 1,
     maxInternalCas: null,
     maxCertificates: null,
     maxWildcardCertificates: null,

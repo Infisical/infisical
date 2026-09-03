@@ -55,7 +55,8 @@ export const CertificatesSchema = z.object({
   hsmPublicKeySpki: zodBuffer.nullable().optional(),
   subjectDomainComponents: z.string().nullable().optional(),
   orderId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
-  quotaKey: z.string().nullable().optional()
+  quotaKey: z.string().nullable().optional(),
+  hasWildcard: z.boolean().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

@@ -126,10 +126,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiSyncs: false,
   pkiLegacyTemplates: false,
   pkiCodeSigning: false,
-  // All null on purpose: this object is also the base the cloud plan is projected onto, so a non-null
-  // default would cap every cloud org on a deploy where the License Server has not sent that key yet.
-  // The self-hosted single-CA allowance is applied in license-service.
-  maxCas: null,
+  maxCas: 1,
   maxInternalCas: null,
   maxCertificates: null,
   maxWildcardCertificates: null,

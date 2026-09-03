@@ -18,3 +18,13 @@ export const buildCertificateQuotaKey = ({
 
   return createHash("sha256").update(canonical).digest("hex");
 };
+
+// Stored on the row so the wildcard quota can be counted from the index. Deriving it in SQL instead
+// would need commonName and altNames in the index, and altNames is varchar(4096).
+export const certificateHasWildcard = ({
+  commonName,
+  altNames
+}: {
+  commonName?: string | null;
+  altNames?: string | null;
+}): boolean => `${commonName ?? ""},${altNames ?? ""}`.includes("*");

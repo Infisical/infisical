@@ -84,6 +84,7 @@ import {
   validateImportedCertificate
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
+import { assertCertificateAuthorityQuota } from "../certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import { validateAndMapAltNameType } from "../certificate-authority-validators";
 import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-authority-dal";
@@ -117,6 +118,8 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     | "findOne"
     | "findByIdWithAssociatedCa"
     | "findWithAssociatedCa"
+    | "countCasByOrgId"
+    | "countInternalCasByOrgId"
   >;
   internalCertificateAuthorityDAL: Pick<
     TInternalCertificateAuthorityDALFactory,
@@ -352,6 +355,15 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await $validatePqcLicense(keyAlgorithm, projectId);
+
+    // Enforced here rather than only in certificateAuthorityService.createCertificateAuthority: the
+    // POST /cert-manager/ca route calls this method directly, so a check that only sat there was
+    // bypassable.
+    await assertCertificateAuthorityQuota({
+      projectId,
+      isInternal: true,
+      deps: { projectDAL, licenseService, certificateAuthorityDAL }
+    });
 
     // Refused rather than silently dropped, since the caller asked for it explicitly.
     if (crlDistributionPointUrls?.length && !(await $isManagedCrlDistributionAllowed(projectId))) {

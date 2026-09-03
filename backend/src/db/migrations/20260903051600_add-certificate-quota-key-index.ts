@@ -7,8 +7,7 @@ const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
 // Serves both quota queries: the point probe and the COUNT(DISTINCT) that fills the quota cache.
-// notAfter, status and extendedKeyUsages are INCLUDE columns so the count stays an index-only scan;
-// without them every candidate row needs a heap fetch, which is material at tens of thousands.
+// notAfter, status and hasWildcard are INCLUDE columns so both counts stay index-only scans.
 export async function up(knex: Knex): Promise<void> {
   const connection = await knex.client.acquireConnection();
   const raw = (sql: string) => knex.raw(sql).connection(connection);
@@ -36,7 +35,7 @@ export async function up(knex: Knex): Promise<void> {
         await raw(`
           CREATE INDEX CONCURRENTLY IF NOT EXISTS "${QUOTA_KEY_INDEX}"
           ON "${TableName.Certificate}" ("projectId", "quotaKey")
-          INCLUDE ("notAfter", "status", "extendedKeyUsages")
+          INCLUDE ("notAfter", "status", "hasWildcard")
         `);
       }
     } finally {

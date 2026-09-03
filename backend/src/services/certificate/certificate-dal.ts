@@ -14,7 +14,10 @@ import {
   mapExtendedKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard
 } from "@app/services/certificate-common/certificate-constants";
-import { buildCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-key";
+import {
+  buildCertificateQuotaKey,
+  certificateHasWildcard
+} from "@app/services/certificate-common/certificate-quota-key";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { keySizeToAlgorithms } from "./certificate-fns";
@@ -49,12 +52,13 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
 
-  // Every certificate insert funnels through here, so no site can forget the quota key.
-  const create = async (data: Omit<TCertificatesInsert, "quotaKey">, tx?: Knex) =>
+  // Every certificate insert funnels through here, so no site can forget these.
+  const create = async (data: Omit<TCertificatesInsert, "quotaKey" | "hasWildcard">, tx?: Knex) =>
     certificateOrm.create(
       {
         ...data,
-        quotaKey: buildCertificateQuotaKey({ commonName: data.commonName, altNames: data.altNames })
+        quotaKey: buildCertificateQuotaKey({ commonName: data.commonName, altNames: data.altNames }),
+        hasWildcard: certificateHasWildcard({ commonName: data.commonName, altNames: data.altNames })
       },
       tx
     );

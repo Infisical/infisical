@@ -2,11 +2,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { isWildcardPattern } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { buildCertificateQuotaKey } from "./certificate-quota-key";
+import { buildCertificateQuotaKey, certificateHasWildcard } from "./certificate-quota-key";
 
 type TQuotaCounts = { total: number; wildcard: number };
 
@@ -20,26 +19,37 @@ export type TCertificateQuotaDeps = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
+// The cache only saves a query, so a keystore failure degrades to the exact count rather than failing
+// issuance. That keeps issuance dependent on Postgres alone, which it already needs to write the row.
 const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Promise<TQuotaCounts> => {
   const totalKey = KeyStorePrefixes.PkiCertificateQuotaCount(orgId);
   const wildcardKey = KeyStorePrefixes.PkiWildcardCertificateQuotaCount(orgId);
 
-  const [cachedTotal, cachedWildcard] = await Promise.all([
-    deps.keyStore.getItem(totalKey),
-    deps.keyStore.getItem(wildcardKey)
-  ]);
-  if (cachedTotal !== null && cachedWildcard !== null) {
-    const total = Number(cachedTotal);
-    const wildcard = Number(cachedWildcard);
-    if (Number.isFinite(total) && Number.isFinite(wildcard)) return { total, wildcard };
+  try {
+    const [cachedTotal, cachedWildcard] = await Promise.all([
+      deps.keyStore.getItem(totalKey),
+      deps.keyStore.getItem(wildcardKey)
+    ]);
+    if (cachedTotal !== null && cachedWildcard !== null) {
+      const total = Number(cachedTotal);
+      const wildcard = Number(cachedWildcard);
+      if (Number.isFinite(total) && Number.isFinite(wildcard)) return { total, wildcard };
+    }
+  } catch (error) {
+    logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
   const counts = await deps.usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId);
-  const ttl = KeyStoreTtls.PkiCertificateQuotaCountInSeconds;
-  await Promise.all([
-    deps.keyStore.setItemWithExpiry(totalKey, ttl, String(counts.total)),
-    deps.keyStore.setItemWithExpiry(wildcardKey, ttl, String(counts.wildcard))
-  ]);
+
+  try {
+    const ttl = KeyStoreTtls.PkiCertificateQuotaCountInSeconds;
+    await Promise.all([
+      deps.keyStore.setItemWithExpiry(totalKey, ttl, String(counts.total)),
+      deps.keyStore.setItemWithExpiry(wildcardKey, ttl, String(counts.wildcard))
+    ]);
+  } catch (error) {
+    logger.error(error, `Failed to write certificate quota cache [orgId=${orgId}]`);
+  }
 
   return counts;
 };
@@ -79,7 +89,7 @@ export const assertCertificateQuota = async ({
   // recordNewCertificateQuotaKey rather than their own orgId.
 }): Promise<{ quotaKey: string; isNewQuotaKey: boolean; quotaOrgId: string; isWildcard: boolean }> => {
   const quotaKey = buildCertificateQuotaKey({ commonName, altNames });
-  const isWildcard = [commonName ?? "", ...(altNames ?? "").split(",")].some(isWildcardPattern);
+  const isWildcard = certificateHasWildcard({ commonName, altNames });
   const plan = await deps.licenseService.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 

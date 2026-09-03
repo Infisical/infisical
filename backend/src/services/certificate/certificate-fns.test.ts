@@ -55,7 +55,7 @@ describe("buildCertificateBundle", () => {
 describe("parseCertificateBody usages", () => {
   x509.cryptoProvider.set(webcrypto as unknown as Crypto);
 
-  const buildCert = async (extensions: x509.Extension[]) => {
+  const buildCert = async (extensions: x509.Extension[], name = "CN=probe.example.com") => {
     const keys = await webcrypto.subtle.generateKey(
       {
         name: "RSASSA-PKCS1-v1_5",
@@ -69,7 +69,7 @@ describe("parseCertificateBody usages", () => {
 
     const cert = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
-      name: "CN=probe.example.com",
+      name,
       notBefore: new Date("2026-01-01"),
       notAfter: new Date("2027-01-01"),
       keys: keys as CryptoKeyPair,
@@ -107,6 +107,32 @@ describe("parseCertificateBody usages", () => {
     expect(fields).not.toHaveProperty("keyUsages");
     expect(fields).not.toHaveProperty("extendedKeyUsages");
     expect(fields.isCA).toBe(false);
+  });
+
+  // The row's commonName has to match the certificate that was actually signed: on the CSR paths the
+  // issued subject comes from a subjectOverride the CSR itself never carried.
+  test("reads the common name off the certificate so it wins over the requested one", async () => {
+    const pem = await buildCert([new x509.BasicConstraintsExtension(false)], "CN=issued.example.com");
+
+    const fields = extractCertificateFields(pem);
+
+    expect(fields.commonName).toBe("issued.example.com");
+    expect({ commonName: "requested.example.com", ...fields }.commonName).toBe("issued.example.com");
+  });
+
+  test("omits the common name when the certificate has none, so a NOT NULL column keeps the requested value", async () => {
+    const pem = await buildCert([new x509.BasicConstraintsExtension(false)], "");
+
+    const fields = extractCertificateFields(pem);
+
+    expect(fields).not.toHaveProperty("commonName");
+    expect({ commonName: "requested.example.com", ...fields }.commonName).toBe("requested.example.com");
+  });
+
+  test("omits the common name when the certificate cannot be parsed", () => {
+    const fields = extractCertificateFields(Buffer.from("not a certificate"));
+
+    expect(fields).not.toHaveProperty("commonName");
   });
 
   test("drops extended key usage OIDs it cannot map rather than leaving holes in the array", async () => {

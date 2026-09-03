@@ -5,7 +5,6 @@ import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { orgTreeIds } from "@app/lib/knex";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { CertExtendedKeyUsage, CertExtendedKeyUsageType } from "@app/services/certificate-common/certificate-constants";
 
 export type TUsageCounterDALFactory = ReturnType<typeof usageCounterDALFactory>;
 
@@ -53,14 +52,23 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Matched on EKU rather than a pki_signers join, which tracks only a signer's current certificate
-  // and would recount it on renewal. The COALESCE is required: extendedKeyUsages is nullable and
-  // `NULL && ARRAY[...]` is NULL, which fails the WHERE and drops every EKU-less certificate.
-  const $excludeCodeSigningCertificates = (qb: Knex.QueryBuilder) =>
-    qb.whereRaw(`NOT (COALESCE(??, '{}') && ?::text[])`, [
-      `${TableName.Certificate}.extendedKeyUsages`,
-      [CertExtendedKeyUsageType.CODE_SIGNING, CertExtendedKeyUsage.CODE_SIGNING]
-    ]);
+  // Code signing is licensed separately, so signer certificates are excluded. Anchored on the signer
+  // rather than on the code_signing EKU: that usage is caller-supplied, so a tenant could append it to
+  // every request and escape the quota entirely.
+  //
+  // Matched on quotaKey rather than on pki_signers.certificateId, which points only at a signer's
+  // current certificate. Every certificate a signer issues carries the signer's commonName, so the
+  // whole renewal chain shares one quotaKey and this covers it without a schema change.
+  const $excludeSignerCertificates = (qb: Knex.QueryBuilder) =>
+    qb.whereNotExists((sub) => {
+      void sub
+        .select(db.raw("1"))
+        .from(`${TableName.PkiSigners} as s`)
+        .join(`${TableName.Certificate} as sc`, "sc.id", "s.certificateId")
+        .whereRaw(`sc."quotaKey" = ??`, [`${TableName.Certificate}.quotaKey`])
+        // Same project, so one tenant cannot exempt a certificate by matching another's signer names.
+        .whereRaw(`s."projectId" = ??`, [`${TableName.Certificate}.projectId`]);
+    });
 
   // No `status = 'active'` filter: nothing writes EXPIRED or RENEWED, both are derived at read time.
   const $activeQuotaCertificates = (orgId: string) => {
@@ -72,7 +80,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       .where(`${TableName.Certificate}.notAfter`, ">", new Date())
       .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED);
 
-    return $excludeCodeSigningCertificates(qb);
+    return $excludeSignerCertificates(qb);
   };
 
   // The count spans the org tree, so its cache must be keyed on the root: per-org keys would give each
@@ -91,17 +99,16 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   };
 
   // Joins on projectId rather than caId, which is nullable and would drop imported and discovered
-  // certificates. Wildcards need no stored column because isWildcardPattern is just includes("*"), so
-  // this LIKE cannot drift from it.
+  // certificates. Both counts read hasWildcard from the covering index; filtering with LIKE over
+  // commonName/altNames instead forces a sequential scan (measured: ~2x at 600k rows).
   const countActiveCertificateQuotaKeysByOrg = async (orgId: string): Promise<{ total: number; wildcard: number }> => {
     try {
       const row = (await $activeQuotaCertificates(orgId)
         .countDistinct(`${TableName.Certificate}.quotaKey as total`)
         .select(
-          db.raw(`COUNT(DISTINCT ??) FILTER (WHERE ?? LIKE '%*%' OR ?? LIKE '%*%') as "wildcard"`, [
+          db.raw(`COUNT(DISTINCT ??) FILTER (WHERE ??) as "wildcard"`, [
             `${TableName.Certificate}.quotaKey`,
-            `${TableName.Certificate}.commonName`,
-            `${TableName.Certificate}.altNames`
+            `${TableName.Certificate}.hasWildcard`
           ])
         )
         .first()) as { total?: string | number; wildcard?: string | number } | undefined;
