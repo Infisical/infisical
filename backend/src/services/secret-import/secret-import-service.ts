@@ -92,8 +92,8 @@ export const secretImportServiceFactory = ({
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     // If org-level toggle is disabled, strip cross-project imports entirely
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return imports
         .filter((imp) => imp.importEnv.projectId === projectId)
         .map((imp) => ({ ...imp, isAccessRevoked: false }));
@@ -913,7 +913,6 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        licenseService,
         kmsService
       });
 
@@ -1050,8 +1049,8 @@ export const secretImportServiceFactory = ({
     let crossProjItems = importedBy.filter((el) => el.projectSlug);
 
     if (crossProjItems.length) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+      const importedByOrg = await orgDAL.findOrgById(actorOrgId);
+      if (!(importedByOrg?.allowCrossProjectSecretSharing ?? false)) {
         crossProjItems = [];
       } else {
         const targetProjectIds = crossProjItems

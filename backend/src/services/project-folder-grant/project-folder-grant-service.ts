@@ -116,8 +116,8 @@ export const projectFolderGrantServiceFactory = ({
     grantId,
     sourceProjectId
   }: TDeleteProjectFolderGrantDTO) => {
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
@@ -160,8 +160,8 @@ export const projectFolderGrantServiceFactory = ({
     actorOrgId,
     sourceProjectId
   }: TListProjectFolderGrantsDTO) => {
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return [];
     }
 
@@ -197,8 +197,8 @@ export const projectFolderGrantServiceFactory = ({
     actorOrgId,
     targetProjectId
   }: TListProjectFolderGrantsForTargetDTO) => {
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return [];
     }
 

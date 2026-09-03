@@ -93,8 +93,11 @@ export const CreateSecretImportForm = ({
 
   const { mutateAsync: createSecretImport, isPending: isCreatingImport } = useCreateSecretImport();
 
+  const canCrossProjectShare =
+    subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
+
   const { data: receivedGrants = [] } = useListProjectFolderGrantsReceived(
-    currentOrg?.allowCrossProjectSecretSharing ? projectId : ""
+    canCrossProjectShare ? projectId : ""
   );
 
   const showSourceStep = receivedGrants.length > 0;

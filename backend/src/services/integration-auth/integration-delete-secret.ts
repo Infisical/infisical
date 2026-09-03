@@ -82,7 +82,6 @@ const getIntegrationSecretsV2 = async (
     projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
-    licenseService,
     kmsService
   });
 

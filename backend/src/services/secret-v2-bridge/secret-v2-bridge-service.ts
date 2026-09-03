@@ -1591,7 +1591,6 @@ export const secretV2BridgeServiceFactory = ({
           : undefined,
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService,
@@ -1739,7 +1738,6 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 
@@ -1943,7 +1941,6 @@ export const secretV2BridgeServiceFactory = ({
       userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -1979,7 +1976,6 @@ export const secretV2BridgeServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        licenseService,
         kmsService
       });
 
@@ -3265,7 +3261,6 @@ export const secretV2BridgeServiceFactory = ({
         }),
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService

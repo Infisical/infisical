@@ -302,7 +302,6 @@ export const secretReplicationServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
-        licenseService,
         kmsService
       });
       // secrets that gets replicated across imports
