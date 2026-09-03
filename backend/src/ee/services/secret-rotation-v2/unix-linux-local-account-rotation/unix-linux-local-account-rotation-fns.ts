@@ -164,7 +164,9 @@ export const runManagedPasswordChange = (
       }
       return {
         resolve: false,
-        error: new Error(`Password change incomplete (step: ${ManagedPasswdStep[step]}). Output: ${ctx.transcript.read()}`)
+        error: new Error(
+          `Password change incomplete (step: ${ManagedPasswdStep[step]}). Output: ${ctx.transcript.read()}`
+        )
       };
     },
 
