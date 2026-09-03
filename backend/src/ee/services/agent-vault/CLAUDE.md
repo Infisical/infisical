@@ -151,4 +151,15 @@ The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`), built **once
 per credential. The discriminator is a column, not a field inside the blob, so the deferred credential
 types are a config entry rather than a migration — PAM put its discriminator inside and now carries
 `withLegacyAuthMethod` to cope. `credentialConfig` is the plaintext half and is what lets a list page
-render `Bearer · DD-API-KEY` with no decrypt.
+render `Bearer · DD-API-KEY` with no decrypt. It also carries `hasPassword` for basic, so a read path can
+say "no password" and a username can be refused when nothing would be left to authenticate with, both
+without a decrypt.
+
+**A connection update is a patch, and the two schemas are separate for a reason.** `AgentVaultCredentialUpdateSchema`
+makes every field but the discriminator optional, and `mergeCredential` overlays only what arrived. Do
+not reuse `AgentVaultBearerConfigSchema` on that path: its `.default()`s belong to a create, and on a
+PATCH they turn an omitted `headerName` into a reset, silently moving a `DD-API-KEY` credential back onto
+`Authorization` so every upstream request 401s. The sealed secret has three states and they are not
+interchangeable — a value re-seals, `null` clears the column for passthrough, and `undefined` leaves it
+alone. `$decryptCredential` reads a NULL secret as passthrough, so a bearer row that lost its secret
+would stop attaching a credential rather than fail.

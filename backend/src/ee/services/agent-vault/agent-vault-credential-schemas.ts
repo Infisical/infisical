@@ -25,7 +25,10 @@ export const AgentVaultBearerConfigSchema = z.object({
 // RFC 7617 lets either half be blank, and real services use that: Stripe and Postmark authenticate
 // with the key as the username and no password at all.
 export const AgentVaultBasicConfigSchema = z.object({
-  username: z.string().trim().max(256)
+  username: z.string().trim().max(256),
+  // Whether, never what. Kept in the plaintext half so a read path can say "no password" without a
+  // decrypt, and so clearing a username can be refused when nothing would be left to authenticate with.
+  hasPassword: z.boolean()
 });
 
 export const AgentVaultPassthroughConfigSchema = z.object({});

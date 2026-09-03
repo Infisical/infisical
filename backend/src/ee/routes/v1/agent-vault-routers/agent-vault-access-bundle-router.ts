@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
+import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -15,6 +16,7 @@ import {
   AgentVaultConnectionSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCredentialInputSchema,
+  AgentVaultCredentialUpdateSchema,
   AgentVaultHostPatternSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema
@@ -285,8 +287,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       body: z.object({
         name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.CONNECTION.name),
         hostPattern: AgentVaultHostPatternSchema.optional(),
-        // Omit to keep the stored secret. Supplying the credential replaces both halves.
-        credential: AgentVaultCredentialInputSchema.optional()
+        // A patch, not a replacement: omit the credential to leave it alone, or send it with only the
+        // fields that change. See AgentVaultCredentialUpdateSchema.
+        credential: AgentVaultCredentialUpdateSchema.optional()
       }),
       response: {
         200: z.object({
@@ -317,7 +320,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             name: req.body.name,
             hostPattern: req.body.hostPattern,
             credentialType: req.body.credential?.type,
-            credentialReplaced: Boolean(req.body.credential)
+            // The config half can now be patched on its own, so the presence of `credential` no longer
+            // implies the secret moved. Only the secret's own key does.
+            credentialReplaced:
+              req.body.credential?.type === AgentVaultCredentialType.Bearer
+                ? req.body.credential.value !== undefined
+                : req.body.credential?.type === AgentVaultCredentialType.Basic &&
+                  req.body.credential.password !== undefined
           }
         }
       });

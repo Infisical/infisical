@@ -4,11 +4,13 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Checkbox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Input,
   Select,
   SelectContent,
@@ -34,11 +36,30 @@ export const credentialPreview = (form: {
 
 type Props = {
   isUpdate: boolean;
+  /** Whether the connection being edited already has a password sealed. Meaningless on create. */
+  storedHasPassword: boolean;
 };
 
-export const CredentialFields = ({ isUpdate }: Props) => {
-  const { control, watch } = useFormContext<TConnectionForm>();
+export const CredentialFields = ({ isUpdate, storedHasPassword }: Props) => {
+  const { control, watch, setValue } = useFormContext<TConnectionForm>();
   const credentialType = watch("credentialType");
+  const username = watch("username");
+  const clearPassword = watch("clearPassword");
+
+  const isBasic = credentialType === AgentVaultCredentialType.Basic;
+  // Removing the password is only ever offered when a username would be left behind to authenticate
+  // with, and only when there is something to remove.
+  const canClearPassword = isUpdate && isBasic && storedHasPassword && Boolean(username);
+
+  const secretDescription = () => {
+    if (!isUpdate) {
+      return isBasic ? "Leave blank if the service carries the whole key in the username." : null;
+    }
+    if (isBasic && !storedHasPassword) {
+      return "No password is stored. This connection authenticates by username alone.";
+    }
+    return `Leave blank to keep the current ${isBasic ? "password" : "token"}.`;
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -122,29 +143,47 @@ export const CredentialFields = ({ isUpdate }: Props) => {
           name="secret"
           render={({ field, fieldState }) => (
             <Field>
-              <FieldLabel>
-                {credentialType === AgentVaultCredentialType.Basic ? "Password" : "Token"}
-              </FieldLabel>
+              <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
               <FieldContent>
                 <Input
                   {...field}
                   type="password"
-                  placeholder={
-                    credentialType === AgentVaultCredentialType.Basic
-                      ? "Enter the password"
-                      : "Enter the token"
-                  }
+                  disabled={clearPassword}
+                  placeholder={isBasic ? "Enter the password" : "Enter the token"}
                   isError={Boolean(fieldState.error)}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    if (e.target.value) setValue("clearPassword", false);
+                  }}
                 />
-                {isUpdate && (
-                  <FieldDescription>Leave blank to keep the current secret.</FieldDescription>
-                )}
-                {!isUpdate && credentialType === AgentVaultCredentialType.Basic && (
-                  <FieldDescription>
-                    Leave blank if the service carries the whole key in the username.
-                  </FieldDescription>
-                )}
+                {secretDescription() && <FieldDescription>{secretDescription()}</FieldDescription>}
                 <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+
+      {canClearPassword && (
+        <Controller
+          control={control}
+          name="clearPassword"
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <Checkbox
+                id="clear-password"
+                isChecked={Boolean(field.value)}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked === true);
+                  if (checked === true) setValue("secret", "");
+                }}
+              />
+              <FieldContent>
+                <FieldTitle>Remove the password</FieldTitle>
+                <FieldDescription>
+                  The connection authenticates by username alone, as services that carry the whole
+                  key there expect.
+                </FieldDescription>
               </FieldContent>
             </Field>
           )}

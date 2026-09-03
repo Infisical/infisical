@@ -8,7 +8,7 @@ import {
 
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-  | { type: AgentVaultCredentialType.Basic; username: string }
+  | { type: AgentVaultCredentialType.Basic; username: string; hasPassword: boolean }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type TAgentVaultCredentialInput =
@@ -19,6 +19,17 @@ export type TAgentVaultCredentialInput =
       value: string;
     }
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+  | { type: AgentVaultCredentialType.Passthrough };
+
+/** A patch of the credential: an omitted field keeps what is stored, an empty string clears it. */
+export type TAgentVaultCredentialUpdate =
+  | {
+      type: AgentVaultCredentialType.Bearer;
+      headerName?: string;
+      headerPrefix?: string;
+      value?: string;
+    }
+  | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type TAgentVaultConnection = {
@@ -146,7 +157,7 @@ export type TUpdateAgentVaultConnectionDTO = {
   connectionId: string;
   name?: string;
   hostPattern?: string;
-  credential?: TAgentVaultCredentialInput;
+  credential?: TAgentVaultCredentialUpdate;
 };
 
 export type TAddAgentVaultMemberDTO = {

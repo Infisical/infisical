@@ -24,6 +24,7 @@ import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-d
 import {
   TAddMemberDTO,
   TAgentVaultCredentialInput,
+  TAgentVaultCredentialUpdate,
   TAgentVaultCredentialSummary,
   TCreateAccessBundleDTO,
   TCreateConnectionDTO,
@@ -92,9 +93,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-  const splitCredential = (
-    credential: TAgentVaultCredentialInput
-  ): { config: TAgentVaultCredentialConfig; secret: Record<string, string> | null } => {
+  // `null` clears the sealed column, `undefined` leaves it exactly as it is. The two are not
+  // interchangeable: $decryptCredential in the proxy service treats a NULL secret as passthrough, so a
+  // bearer row that lost its secret would stop attaching a credential rather than fail, and the agent's
+  // request would leave unauthenticated with nothing in the logs to say why.
+  type TCredentialWrite = { config: TAgentVaultCredentialConfig; secret: Record<string, string> | null | undefined };
+
+  const splitCredential = (credential: TAgentVaultCredentialInput): TCredentialWrite => {
     switch (credential.type) {
       case AgentVaultCredentialType.Bearer: {
         const config = AgentVaultBearerConfigSchema.parse({
@@ -104,8 +109,61 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return { config: { type: credential.type, ...config }, secret: { value: credential.value } };
       }
       case AgentVaultCredentialType.Basic: {
-        const config = AgentVaultBasicConfigSchema.parse({ username: credential.username });
+        const config = AgentVaultBasicConfigSchema.parse({
+          username: credential.username,
+          hasPassword: credential.password.length > 0
+        });
         return { config: { type: credential.type, ...config }, secret: { password: credential.password } };
+      }
+      default:
+        return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
+    }
+  };
+
+  /**
+   * The update counterpart: every field is optional, and an absent one keeps what is stored. The
+   * create schema is deliberately not reused, because its `.default()`s would turn an omitted
+   * headerName into a reset and quietly move a DD-API-KEY credential back onto Authorization.
+   */
+  const mergeCredential = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultConnections): TCredentialWrite => {
+    // A different type has no stored config to merge onto, and the sealed secret belongs to the type
+    // being replaced, so the credential has to arrive whole.
+    if (credential.type !== stored.credentialType) {
+      if (credential.type === AgentVaultCredentialType.Bearer && credential.value === undefined) {
+        throw new BadRequestError({
+          message: "Changing the credential type to bearer needs the token, because the stored secret belongs to the old type"
+        });
+      }
+      return splitCredential(
+        credential.type === AgentVaultCredentialType.Basic
+          ? { type: credential.type, username: credential.username ?? "", password: credential.password ?? "" }
+          : (credential as TAgentVaultCredentialInput)
+      );
+    }
+
+    const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string; username?: string; hasPassword?: boolean };
+
+    switch (credential.type) {
+      case AgentVaultCredentialType.Bearer:
+        return {
+          config: {
+            type: credential.type,
+            headerName: credential.headerName ?? prev.headerName ?? "Authorization",
+            headerPrefix: credential.headerPrefix ?? prev.headerPrefix ?? ""
+          },
+          secret: credential.value === undefined ? undefined : { value: credential.value }
+        };
+      case AgentVaultCredentialType.Basic: {
+        const username = credential.username ?? prev.username ?? "";
+        // Rows written before hasPassword existed always carried a non-empty password, so they read as true.
+        const hasPassword = credential.password === undefined ? (prev.hasPassword ?? true) : credential.password.length > 0;
+        if (!username && !hasPassword) {
+          throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
+        }
+        return {
+          config: { type: credential.type, username, hasPassword },
+          secret: credential.password === undefined ? undefined : { password: credential.password }
+        };
       }
       default:
         return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
@@ -122,7 +180,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           headerPrefix: config.headerPrefix
         };
       case AgentVaultCredentialType.Basic:
-        return { type: AgentVaultCredentialType.Basic, username: config.username };
+        return {
+          type: AgentVaultCredentialType.Basic,
+          username: config.username,
+          hasPassword: Boolean(config.hasPassword ?? true)
+        };
       default:
         return { type: AgentVaultCredentialType.Passthrough };
     }
@@ -330,18 +392,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       });
     }
 
-    // An omitted credential keeps the stored secret; changing type without supplying one would leave the
-    // connection carrying a secret shaped for the old type.
+    // An omitted credential leaves both halves alone. A present one patches the config, and touches the
+    // sealed secret only when the payload actually carried it.
     let credentialUpdate = {};
     if (credential) {
-      const { config, secret } = splitCredential(credential);
-      const { encryptor } = await getProjectCipher(rest.projectId);
+      const { config, secret } = mergeCredential(credential, connection);
       credentialUpdate = {
         credentialType: credential.type,
         credentialConfig: config,
-        encryptedCredential: secret
-          ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
-          : null
+        ...(secret === undefined
+          ? {}
+          : {
+              encryptedCredential: secret
+                ? (await getProjectCipher(rest.projectId)).encryptor({
+                    plainText: Buffer.from(JSON.stringify(secret))
+                  }).cipherTextBlob
+                : null
+            })
       };
     }
 

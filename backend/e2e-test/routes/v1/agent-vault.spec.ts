@@ -143,6 +143,89 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.stringify(row.credentialConfig)).not.toContain("ghp_secret_value");
     });
 
+    test("updating a connection patches the credential instead of replacing it", async () => {
+      const bundle = await createAccessBundle("credential-patch");
+
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+        name: "datadog",
+        hostPattern: "api.datadoghq.com",
+        credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+      const sealed = async () => (await testDb("agent_vault_connections").where({ id: connection.id }).first()).encryptedCredential;
+
+      // Rotating the secret must not disturb the header the credential rides on. Reusing the create
+      // schema here would reset DD-API-KEY to Authorization: Bearer and every request would 401.
+      const before = await sealed();
+      const rotated = await inject("PATCH", url, { credential: { type: "bearer", value: "rotated456" } });
+      expect(rotated.statusCode).toBe(200);
+      expect(JSON.parse(rotated.payload).connection.credential).toEqual({
+        type: "bearer",
+        headerName: "DD-API-KEY",
+        headerPrefix: ""
+      });
+      expect((await sealed()).equals(before)).toBe(false);
+
+      // And the mirror image: renaming the header leaves the sealed secret untouched.
+      const afterRotate = await sealed();
+      const renamed = await inject("PATCH", url, { credential: { type: "bearer", headerName: "X-Api-Key" } });
+      expect(renamed.statusCode).toBe(200);
+      expect(JSON.parse(renamed.payload).connection.credential.headerName).toBe("X-Api-Key");
+      expect((await sealed()).equals(afterRotate)).toBe(true);
+    });
+
+    test("a basic credential keeps one half while the other changes, and refuses to lose both", async () => {
+      const bundle = await createAccessBundle("basic-halves");
+
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+        name: "stripe",
+        hostPattern: "api.stripe.com",
+        credential: { type: "basic", username: "sk_live_key", password: "" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { connection } = JSON.parse(created.payload) as { connection: { id: string; credential: Record<string, unknown> } };
+      expect(connection.credential).toEqual({ type: "basic", username: "sk_live_key", hasPassword: false });
+
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+
+      // The username-only credential has nothing else to authenticate with, so clearing it is refused.
+      const emptied = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
+      expect(emptied.statusCode).toBe(400);
+
+      // Supplying a password first makes the same edit legal: the flip to password-only.
+      const flipped = await inject("PATCH", url, { credential: { type: "basic", username: "", password: "hunter2" } });
+      expect(flipped.statusCode).toBe(200);
+      expect(JSON.parse(flipped.payload).connection.credential).toEqual({ type: "basic", username: "", hasPassword: true });
+
+      // An empty string removes the password, where an omission would have kept it.
+      const named = await inject("PATCH", url, { credential: { type: "basic", username: "sk_live_key" } });
+      expect(JSON.parse(named.payload).connection.credential.hasPassword).toBe(true);
+      const cleared = await inject("PATCH", url, { credential: { type: "basic", password: "" } });
+      expect(cleared.statusCode).toBe(200);
+      expect(JSON.parse(cleared.payload).connection.credential.hasPassword).toBe(false);
+    });
+
+    test("changing the credential type requires whatever the new type needs", async () => {
+      const bundle = await createAccessBundle("type-change");
+
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", value: "ghp_one" }
+      });
+      const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+
+      // The sealed secret belongs to the old type, so there is nothing to carry over.
+      const noSecret = await inject("PATCH", url, { credential: { type: "basic", username: "bot" } });
+      expect(noSecret.statusCode).toBe(200);
+
+      const bearerNoValue = await inject("PATCH", url, { credential: { type: "bearer" } });
+      expect(bearerNoValue.statusCode).toBe(400);
+    });
+
     test("a path in a host pattern is rejected", async () => {
       const bundle = await createAccessBundle("no-paths");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {

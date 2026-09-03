@@ -7,13 +7,28 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
+import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { CREDENTIAL_LABELS, TConnectionForm } from "./connectionSchema";
 import { credentialPreview } from "./CredentialFields";
 
-export const ReviewFields = () => {
+type Props = {
+  isUpdate: boolean;
+};
+
+export const ReviewFields = ({ isUpdate }: Props) => {
   const { watch } = useFormContext<TConnectionForm>();
   const form = watch();
+
+  const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
+  const secretLabel = isBasic ? "Password" : "Token";
+
+  // On an edit the secret is a patch, so what matters is what will happen to the stored one.
+  const secretOutcome = () => {
+    if (form.clearPassword) return "Removed";
+    if (form.secret) return isUpdate ? "Replaced" : "Set";
+    return isUpdate ? "Unchanged" : "None";
+  };
 
   return (
     <div className="mb-4 flex flex-col gap-y-8">
@@ -42,6 +57,12 @@ export const ReviewFields = () => {
             <DetailLabel>Sends</DetailLabel>
             <DetailValue className="font-mono">{credentialPreview(form)}</DetailValue>
           </Detail>
+          {form.credentialType !== AgentVaultCredentialType.Passthrough && (
+            <Detail>
+              <DetailLabel>{secretLabel}</DetailLabel>
+              <DetailValue>{secretOutcome()}</DetailValue>
+            </Detail>
+          )}
         </div>
       </DetailGroup>
     </div>

@@ -6,10 +6,16 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
+/** The same credential as a patch: an absent field keeps what is stored, an empty string clears it. */
+export type TAgentVaultCredentialUpdate =
+  | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value?: string }
+  | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
+  | { type: AgentVaultCredentialType.Passthrough };
+
 /** The non-secret half, as every read path returns it. */
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-  | { type: AgentVaultCredentialType.Basic; username: string }
+  | { type: AgentVaultCredentialType.Basic; username: string; hasPassword: boolean }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TAgentVaultActorContext };
@@ -43,7 +49,7 @@ export type TUpdateConnectionDTO = TAgentVaultProjectScoped & {
   connectionId: string;
   name?: string;
   hostPattern?: string;
-  credential?: TAgentVaultCredentialInput;
+  credential?: TAgentVaultCredentialUpdate;
 };
 
 export type TDeleteConnectionDTO = TAgentVaultProjectScoped & {

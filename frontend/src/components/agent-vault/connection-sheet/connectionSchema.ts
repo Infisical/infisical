@@ -30,33 +30,10 @@ export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
   [ConnectionStep.Review]: []
 };
 
-const credentialSettingsDiffer = (
-  data: {
-    credentialType: AgentVaultCredentialType;
-    headerName?: string;
-    headerPrefix?: string;
-    username?: string;
-  },
-  connection: TAgentVaultConnection
-) => {
-  const stored = connection.credential;
-  if (data.credentialType !== stored.type) return true;
-  if (stored.type === AgentVaultCredentialType.Bearer) {
-    return (
-      (data.headerName || "Authorization") !== stored.headerName ||
-      (data.headerPrefix ?? "") !== stored.headerPrefix
-    );
-  }
-  if (stored.type === AgentVaultCredentialType.Basic) return data.username !== stored.username;
-  return false;
-};
-
-// The secret rules depend on whether a connection already exists: required on create for bearer, and
-// on edit required again whenever the settings that govern how it is sent change, because the API
-// replaces the credential as a whole or not at all. That second rule holds for basic too, blank
-// password or not, so a username change can never be silently dropped. Keeping the rules in the
-// schema means Continue blocks on the step that owns the field and onFormInvalid jumps there,
-// rather than Save failing silently.
+// The secret is write-only, so the form has to say what should happen to it rather than infer that
+// from an empty box. On create there is nothing stored and the field means itself. On edit, blank
+// keeps the stored secret and `clearPassword` is the only way to remove one, so tabbing through the
+// field can never wipe a credential.
 export const buildConnectionSchema = (connection?: TAgentVaultConnection | null) =>
   z
     .object({
@@ -84,32 +61,33 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
       headerName: z.string().trim().max(128).optional(),
       headerPrefix: z.string().trim().max(64).optional(),
       username: z.string().trim().max(256).optional(),
-      secret: z.string().max(8192).optional()
+      secret: z.string().max(8192).optional(),
+      clearPassword: z.boolean().optional()
     })
     .superRefine((data, ctx) => {
-      const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
+      if (data.credentialType === AgentVaultCredentialType.Passthrough) return;
 
-      if (!needsSecret || data.secret) return;
-
-      if (!connection) {
-        // Basic passes with either half blank, but not both: RFC 7617 allows a blank half and
-        // services like Stripe put the whole key in the username, while an empty `:` authenticates
-        // nobody. A bearer header with nothing after the prefix is the same dead end, so its token
-        // stays required outright.
-        if (data.credentialType === AgentVaultCredentialType.Bearer) {
+      if (data.credentialType === AgentVaultCredentialType.Bearer) {
+        // A bearer header with nothing after the prefix authenticates nobody, so a create must carry
+        // one. An edit may leave it blank, which keeps what is stored.
+        if (!connection && !data.secret) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
-        } else if (!data.username) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["username"],
-            message: "Enter a username, a password, or both."
-          });
         }
-      } else if (credentialSettingsDiffer(data, connection)) {
+        return;
+      }
+
+      const storedHasPassword =
+        connection?.credential.type === AgentVaultCredentialType.Basic &&
+        connection.credential.hasPassword;
+      const willHavePassword = data.clearPassword
+        ? false
+        : Boolean(data.secret) || storedHasPassword;
+
+      if (!data.username && !willHavePassword) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["secret"],
-          message: "Enter the secret again to change how it is sent."
+          path: ["username"],
+          message: "Enter a username, a password, or both."
         });
       }
     });

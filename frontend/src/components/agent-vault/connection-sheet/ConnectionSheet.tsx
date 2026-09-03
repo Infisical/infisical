@@ -109,7 +109,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
         username:
           credential.type === AgentVaultCredentialType.Basic ? credential.username : undefined,
-        secret: ""
+        secret: "",
+        clearPassword: false
       });
     } else {
       reset({
@@ -119,7 +120,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         headerName: "Authorization",
         headerPrefix: "Bearer",
         username: "",
-        secret: ""
+        secret: "",
+        clearPassword: false
       });
     }
   }, [isOpen, connection, isUpdate, reset, setStep]);
@@ -138,7 +140,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         headerPrefix:
           cred.type === AgentVaultCredentialType.Bearer ? (cred.headerPrefix ?? "Bearer") : "",
         username: "",
-        secret: ""
+        secret: "",
+        clearPassword: false
       });
     }
     setStep(1);
@@ -163,12 +166,31 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  const onSubmit = async (data: TConnectionForm) => {
-    const needsSecret = data.credentialType !== AgentVaultCredentialType.Passthrough;
-    // The schema has already required a secret wherever the wire settings changed, so a blank one
-    // here means nothing about the credential moved and the stored secret can stay.
-    const keepsStoredSecret = isUpdate && needsSecret && !data.secret;
+  // The update is a patch. A key left off keeps what is stored, which is why a blank secret box is
+  // simply absent here rather than an empty string — an empty string is how the password is cleared.
+  const buildCredentialPatch = (data: TConnectionForm) => {
+    if (data.credentialType === AgentVaultCredentialType.Passthrough) {
+      return { type: AgentVaultCredentialType.Passthrough as const };
+    }
+    if (data.credentialType === AgentVaultCredentialType.Basic) {
+      let password: string | undefined;
+      if (data.clearPassword) password = "";
+      else if (data.secret) password = data.secret;
+      return {
+        type: AgentVaultCredentialType.Basic as const,
+        username: data.username ?? "",
+        password
+      };
+    }
+    return {
+      type: AgentVaultCredentialType.Bearer as const,
+      headerName: data.headerName || "Authorization",
+      headerPrefix: data.headerPrefix ?? "",
+      value: data.secret || undefined
+    };
+  };
 
+  const onSubmit = async (data: TConnectionForm) => {
     try {
       const result = connection
         ? await updateConnection.mutateAsync({
@@ -176,7 +198,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             connectionId: connection.id,
             name: data.name,
             hostPattern: data.hostPattern,
-            credential: keepsStoredSecret ? undefined : buildCredential(data)
+            credential: buildCredentialPatch(data)
           })
         : await createConnection.mutateAsync({
             accessBundleId,
@@ -350,9 +372,15 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
                   {current.step === ConnectionStep.Details && <DetailsFields />}
                   {current.step === ConnectionStep.Credential && (
-                    <CredentialFields isUpdate={isUpdate} />
+                    <CredentialFields
+                      isUpdate={isUpdate}
+                      storedHasPassword={
+                        connection?.credential.type === AgentVaultCredentialType.Basic &&
+                        connection.credential.hasPassword
+                      }
+                    />
                   )}
-                  {current.step === ConnectionStep.Review && <ReviewFields />}
+                  {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
