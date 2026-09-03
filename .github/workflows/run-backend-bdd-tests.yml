@@ -93,6 +93,8 @@ jobs:
         with:
           driver-opts: |
             image=moby/buildkit:latest
+      - name: Read pinned versions
+        run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@4a9a8d494466d37134e2bfca2d3a8de8fb2681ad # v5
         timeout-minutes: 30
