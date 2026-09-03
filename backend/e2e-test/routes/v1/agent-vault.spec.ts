@@ -249,6 +249,85 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("product membership", async () => {
+    const memberships = "/api/v1/agent-vault/memberships";
+
+    test("a machine identity can be given Agent Vault, have its role changed, and lose it again", async () => {
+      const [identity] = (await testDb("identities")
+        .insert({ name: `av-membership-${Date.now()}`, orgId: seedData1.organization.id })
+        .returning("*")) as { id: string }[];
+
+      const added = await inject("POST", memberships, { identityId: identity.id, role: "member" });
+      expect(added.statusCode).toBe(200);
+
+      const listed = await inject("GET", `${memberships}/identity-members`);
+      const { members } = JSON.parse(listed.payload) as {
+        members: { identityId: string; role: string; name: string }[];
+      };
+      const row = members.find((m) => m.identityId === identity.id);
+      expect(row?.role).toBe("member");
+      // The name is joined on so the page never has to reach for the org identity list.
+      expect(row?.name).toBeTruthy();
+
+      const promoted = await inject("PATCH", memberships, { identityId: identity.id, role: "admin" });
+      expect(promoted.statusCode).toBe(200);
+      expect(JSON.parse(promoted.payload).role).toBe("admin");
+
+      const removed = await inject("DELETE", memberships, { identityId: identity.id });
+      expect(removed.statusCode).toBe(200);
+
+      const after = JSON.parse((await inject("GET", `${memberships}/identity-members`)).payload) as {
+        members: { identityId: string }[];
+      };
+      expect(after.members.some((m) => m.identityId === identity.id)).toBe(false);
+
+      await testDb("identities").where({ id: identity.id }).delete();
+    });
+
+    test("removing a member takes their access bundle grants with them", async () => {
+      const bundle = await createAccessBundle("membership-reap");
+
+      const [identity] = (await testDb("identities")
+        .insert({ name: `av-reap-${Date.now()}`, orgId: seedData1.organization.id })
+        .returning("*")) as { id: string }[];
+
+      expect((await inject("POST", memberships, { identityId: identity.id, role: "member" })).statusCode).toBe(200);
+      expect(
+        (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { identityId: identity.id }))
+          .statusCode
+      ).toBe(200);
+
+      const granted = await testDb("agent_vault_access_bundle_members").where({ identityId: identity.id });
+      expect(granted).toHaveLength(1);
+
+      expect((await inject("DELETE", memberships, { identityId: identity.id })).statusCode).toBe(200);
+
+      // Bundle grants live outside the membership table, so nothing reaps them unless this path does.
+      const afterRemoval = await testDb("agent_vault_access_bundle_members").where({ identityId: identity.id });
+      expect(afterRemoval).toHaveLength(0);
+
+      await testDb("identities").where({ id: identity.id }).delete();
+    });
+
+    test("the guards that keep the product administrable hold", async () => {
+      // Removing yourself would need another admin to undo, and the seed user is one.
+      const self = await inject("DELETE", memberships, { userId: seedData1.id });
+      expect(self.statusCode).toBe(403);
+
+      const unknown = await inject("POST", memberships, {
+        identityId: "00000000-0000-0000-0000-000000000000",
+        role: "member"
+      });
+      expect(unknown.statusCode).toBe(404);
+
+      const badRole = await inject("POST", memberships, { userId: seedData1.id, role: "viewer" });
+      expect(badRole.statusCode).toBe(422);
+
+      const noActor = await inject("POST", memberships, { role: "member" });
+      expect(noActor.statusCode).toBe(400);
+    });
+  });
+
   describe("cross-org ids and foreign resources", async () => {
     test("an access bundle in another organization is 404, never 403", async () => {
       // A different org, not just a different project: an Agent Vault project is a per-org singleton, so
