@@ -33,7 +33,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -66,11 +66,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  // Products without an intermediate project view read as a product, not a project, so they drop
-  // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct = isCertManager;
-  const productLabel =
-    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const {
     search,
@@ -131,8 +127,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isStandaloneProduct ? "Search groups..." : "Search project groups..."}
-            aria-label={isStandaloneProduct ? "Search groups" : "Search project groups"}
+            placeholder={isCertManager ? "Search groups..." : "Search project groups..."}
+            aria-label={isCertManager ? "Search groups" : "Search project groups"}
           />
         </InputGroup>
       </div>
@@ -142,10 +138,10 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             <EmptyTitle>
               {/* eslint-disable-next-line no-nested-ternary */}
               {search
-                ? isStandaloneProduct
+                ? isCertManager
                   ? "No groups match search"
                   : "No project groups match search"
-                : isStandaloneProduct
+                : isCertManager
                   ? "No groups found"
                   : "No project groups found"}
             </EmptyTitle>

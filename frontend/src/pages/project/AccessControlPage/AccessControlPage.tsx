@@ -45,10 +45,7 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  // Products without an intermediate project view read as a product, not a project, so they drop the
-  // "Project" wording and surface users, identities and groups as tabs rather than a sidebar submenu.
-  const isStandaloneProduct = isCertManager;
-  const hasTabs = isStandaloneProduct || isSecretManager;
+  const hasTabs = isCertManager || isSecretManager;
 
   const renderTabContent = () => {
     switch (selectedTab) {
@@ -72,9 +69,9 @@ const Page = () => {
         <PageHeader
           className={hasTabs ? "mb-6" : undefined}
           scope={currentProject.type}
-          title={isStandaloneProduct ? "Access Control" : "Project Access Control"}
+          title={isCertManager ? "Access Control" : "Project Access Control"}
           description={
-            isStandaloneProduct
+            isCertManager
               ? "Manage access for users, groups, and machine identities."
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }

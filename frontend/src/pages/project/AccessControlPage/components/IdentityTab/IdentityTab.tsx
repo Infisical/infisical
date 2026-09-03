@@ -68,7 +68,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -100,11 +100,7 @@ export const IdentityTab = withProjectPermission(
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
     const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-    // Products without an intermediate project view read as a product, not a project, so they drop
-    // the "Project" wording. Behavioural forks below stay on isCertManager.
-    const isStandaloneProduct = isCertManager;
-    const productLabel =
-      isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+    const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
     const {
       offset,
@@ -221,7 +217,7 @@ export const IdentityTab = withProjectPermission(
         <Card>
           <CardHeader>
             <CardTitle>
-              {isStandaloneProduct ? "Machine Identities" : `${productLabel} Machine Identities`}
+              {isCertManager ? "Machine Identities" : `${productLabel} Machine Identities`}
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </CardTitle>
             <CardDescription>
@@ -239,7 +235,7 @@ export const IdentityTab = withProjectPermission(
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    {isStandaloneProduct
+                    {isCertManager
                       ? "Add Machine Identity"
                       : `Add Machine Identity to ${productLabel}`}
                   </Button>
@@ -258,7 +254,7 @@ export const IdentityTab = withProjectPermission(
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder={
-                      isStandaloneProduct
+                      isCertManager
                         ? "Search machine identities by name..."
                         : "Search project machine identities by name..."
                     }
@@ -275,7 +271,7 @@ export const IdentityTab = withProjectPermission(
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>
-                      {isStandaloneProduct ? "Filter by Role" : `Filter by ${productLabel} Role`}
+                      {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
                     </DropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
                       <DropdownMenuCheckboxItem
@@ -299,7 +295,7 @@ export const IdentityTab = withProjectPermission(
                       {/* eslint-disable-next-line no-nested-ternary */}
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
-                        : isStandaloneProduct
+                        : isCertManager
                           ? "No machine identities have been added"
                           : "No machine identities have been added to this project"}
                     </EmptyTitle>
@@ -337,7 +333,7 @@ export const IdentityTab = withProjectPermission(
                           />
                         </TableHead>
                         <TableHead className="w-1/4">
-                          {isStandaloneProduct ? "Role" : `${productLabel} Role`}
+                          {isCertManager ? "Role" : `${productLabel} Role`}
                         </TableHead>
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
@@ -589,9 +585,12 @@ export const IdentityTab = withProjectPermission(
                                             }}
                                           >
                                             {identityProjectId && <TrashIcon />}
+                                            {/* eslint-disable-next-line no-nested-ternary */}
                                             {identityProjectId
                                               ? "Delete Machine Identity"
-                                              : `Remove From ${productLabel}`}
+                                              : isCertManager
+                                                ? "Remove From Certificate Manager"
+                                                : "Remove From Project"}
                                           </DropdownMenuItem>
                                         )}
                                       </ProjectPermissionCan>

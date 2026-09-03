@@ -26,7 +26,6 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
@@ -57,9 +56,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const isStandaloneProduct = isCertManager;
-  const productLabel =
-    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const orgId = currentOrg?.id || "";
 
@@ -290,9 +287,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const isStandaloneProduct = isCertManager;
-  const productLabel =
-    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   return (
     <Dialog

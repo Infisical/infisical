@@ -25,7 +25,6 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -38,11 +37,7 @@ export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  // Products without an intermediate project view read as a product, not a project, so they drop
-  // the "Project" wording. Behavioural forks below stay on isCertManager.
-  const isStandaloneProduct = isCertManager;
-  const productLabel =
-    isStandaloneProduct && currentProject ? getProjectTitle(currentProject.type) : "Project";
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const removeUserMutation = useDeleteUserFromWorkspace();
 
@@ -77,7 +72,7 @@ export const MembersSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isStandaloneProduct ? "Users" : `${productLabel} Users`}
+            {isCertManager ? "Users" : `${productLabel} Users`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
           <CardDescription>
@@ -96,7 +91,7 @@ export const MembersSection = () => {
                     isDisabled={!isAllowed}
                   >
                     <UserPlusIcon />
-                    {isStandaloneProduct ? "Add Users" : `Add Users to ${productLabel}`}
+                    {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
                   </Button>
                 );
 
