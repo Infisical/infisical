@@ -36,6 +36,25 @@ import {
 
 export type { TInteractiveShellStream } from "./pty-expect-engine";
 
+enum ManagedPasswdStep {
+  AwaitNewPasswordPrompt,
+  AwaitConfirmPrompt,
+  AwaitResult
+}
+
+enum SelfPasswdStep {
+  AwaitCurrentPasswordPrompt,
+  AwaitNewPasswordPrompt,
+  AwaitConfirmPrompt,
+  AwaitResult
+}
+
+enum SuVerifyStep {
+  AwaitPasswordPrompt,
+  AwaitShellReady,
+  AwaitWhoamiReply
+}
+
 const SUDO_PROMPT = new RE2("\\[sudo\\]", "i");
 const ANY_PASSWORD_PROMPT = new RE2("password", "i");
 const NEW_PASSWORD_PROMPT = new RE2("new\\s+password", "i");
@@ -70,7 +89,7 @@ export const runManagedPasswordChange = (
   newPassword: string,
   appConnectionPassword?: string
 ): Promise<void> => {
-  let step = 0;
+  let step: ManagedPasswdStep = ManagedPasswdStep.AwaitNewPasswordPrompt;
   let completed = false;
   let errorMessage = "";
 
@@ -87,7 +106,7 @@ export const runManagedPasswordChange = (
         return false;
       }
 
-      if (step === 0) {
+      if (step === ManagedPasswdStep.AwaitNewPasswordPrompt) {
         const sudoPrompt = SUDO_PROMPT.exec(ctx.unmatched);
         if (sudoPrompt) {
           if (!appConnectionPassword) {
@@ -107,19 +126,19 @@ export const runManagedPasswordChange = (
         if (newPasswordPrompt) {
           ctx.consume(newPasswordPrompt);
           ctx.write(`${newPassword}\n`);
-          step = 1;
+          step = ManagedPasswdStep.AwaitConfirmPrompt;
           return true;
         }
 
         return false;
       }
 
-      if (step === 1) {
+      if (step === ManagedPasswdStep.AwaitConfirmPrompt) {
         const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (confirmPrompt) {
           ctx.consume(confirmPrompt);
           ctx.write(`${newPassword}\n`);
-          step = 2;
+          step = ManagedPasswdStep.AwaitResult;
           return true;
         }
 
@@ -140,12 +159,12 @@ export const runManagedPasswordChange = (
       if (errorMessage && !completed) {
         return { resolve: false, error: new Error(`Password change failed: ${errorMessage}`) };
       }
-      if (completed || step >= 2) {
+      if (completed || step >= ManagedPasswdStep.AwaitResult) {
         return { resolve: true };
       }
       return {
         resolve: false,
-        error: new Error(`Password change incomplete (step ${step}). Output: ${ctx.transcript.read()}`)
+        error: new Error(`Password change incomplete (step: ${ManagedPasswdStep[step]}). Output: ${ctx.transcript.read()}`)
       };
     },
 
@@ -172,7 +191,7 @@ export const runSelfPasswordChange = (
   oldPassword: string,
   newPassword: string
 ): Promise<void> => {
-  let step = 0;
+  let step: SelfPasswdStep = SelfPasswdStep.AwaitCurrentPasswordPrompt;
   let completed = false;
   let errorMessage = "";
 
@@ -181,7 +200,7 @@ export const runSelfPasswordChange = (
     secrets: [oldPassword, newPassword],
 
     advance: (ctx) => {
-      if (step >= 1) {
+      if (step >= SelfPasswdStep.AwaitNewPasswordPrompt) {
         const failure = SELF_PASSWORD_CHANGE_FAILED.exec(ctx.unmatched);
         if (failure) {
           errorMessage = ctx.transcript.redact(lineAt(ctx.unmatched, failure.index));
@@ -191,36 +210,36 @@ export const runSelfPasswordChange = (
         }
       }
 
-      if (step === 0) {
+      if (step === SelfPasswdStep.AwaitCurrentPasswordPrompt) {
         const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (currentPasswordPrompt) {
           ctx.consume(currentPasswordPrompt);
           ctx.write(`${oldPassword}\n`);
-          step = 1;
+          step = SelfPasswdStep.AwaitNewPasswordPrompt;
           return true;
         }
 
         return false;
       }
 
-      if (step === 1) {
+      if (step === SelfPasswdStep.AwaitNewPasswordPrompt) {
         const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (newPasswordPrompt) {
           ctx.consume(newPasswordPrompt);
           ctx.write(`${newPassword}\n`);
-          step = 2;
+          step = SelfPasswdStep.AwaitConfirmPrompt;
           return true;
         }
 
         return false;
       }
 
-      if (step === 2) {
+      if (step === SelfPasswdStep.AwaitConfirmPrompt) {
         const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (confirmPrompt) {
           ctx.consume(confirmPrompt);
           ctx.write(`${newPassword}\n`);
-          step = 3;
+          step = SelfPasswdStep.AwaitResult;
           return true;
         }
 
@@ -241,12 +260,12 @@ export const runSelfPasswordChange = (
       if (errorMessage && !completed) {
         return { resolve: false, error: new Error(`Password change failed: ${errorMessage}`) };
       }
-      if (completed || step >= 3) {
+      if (completed || step >= SelfPasswdStep.AwaitResult) {
         return { resolve: true };
       }
       return {
         resolve: false,
-        error: new Error(`Password change incomplete (step ${step}). Output: ${ctx.transcript.read()}`)
+        error: new Error(`Password change incomplete (step: ${SelfPasswdStep[step]}). Output: ${ctx.transcript.read()}`)
       };
     },
 
@@ -268,7 +287,7 @@ export const runSuLoginVerification = (
 ): Promise<void> => {
   const whoamiReply = new RE2(escapeForPattern(targetUsername), "i");
 
-  let step = 0;
+  let step: SuVerifyStep = SuVerifyStep.AwaitPasswordPrompt;
   let completed = false;
 
   return runExpectSession({
@@ -276,7 +295,7 @@ export const runSuLoginVerification = (
     secrets: [targetPassword],
 
     advance: (ctx) => {
-      if (step >= 1) {
+      if (step >= SuVerifyStep.AwaitShellReady) {
         const failure = SU_LOGIN_FAILED.exec(ctx.unmatched);
         if (failure) {
           const diagnostic = ctx.transcript.redact(lineAt(ctx.unmatched, failure.index));
@@ -286,23 +305,23 @@ export const runSuLoginVerification = (
         }
       }
 
-      if (step === 0) {
+      if (step === SuVerifyStep.AwaitPasswordPrompt) {
         const passwordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (passwordPrompt) {
           ctx.consume(passwordPrompt);
           ctx.write(`${targetPassword}\n`);
-          step = 1;
+          step = SuVerifyStep.AwaitShellReady;
           return true;
         }
 
         return false;
       }
 
-      if (step === 1) {
+      if (step === SuVerifyStep.AwaitShellReady) {
         if (!ctx.unmatched.trim()) return false;
         ctx.clearUnmatched();
         ctx.write("whoami\n");
-        step = 2;
+        step = SuVerifyStep.AwaitWhoamiReply;
         return true;
       }
 
