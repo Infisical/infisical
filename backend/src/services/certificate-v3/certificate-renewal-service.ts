@@ -61,11 +61,14 @@ import {
   assertCanEditCertificate,
   assertCanEditCertificateResult
 } from "../certificate-common/certificate-permission-fns";
+import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
+import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
 import {
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy,
   normalizeDateForApi,
   removeRootCaFromChain,
+  validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
@@ -147,6 +150,8 @@ type TCertificateRenewalServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  quotaDeps: TCertificateQuotaDeps;
+  recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;
   reportCertificateIssued: TReportCertificateIssued;
 };
@@ -209,6 +214,8 @@ export const certificateRenewalServiceFactory = ({
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   licenseService,
+  quotaDeps,
+  recordQuotaUsage,
   resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
   reportCertificateIssued: $reportCertificateIssued
 }: TCertificateRenewalServiceFactoryDep) => {
@@ -928,11 +935,11 @@ export const certificateRenewalServiceFactory = ({
   };
 
   const $assertRequestedAlgorithmsLicensed = async ({
-    certificateId,
+    originalCert,
     csrRenewalRequest,
     attributes
   }: {
-    certificateId: string;
+    originalCert: TCertificates;
     csrRenewalRequest: TCertificateRequest | null;
     attributes?: TRenewalAttributes;
   }) => {
@@ -945,14 +952,55 @@ export const certificateRenewalServiceFactory = ({
 
     if (!requested.length) return;
 
-    const originalCert = await certificateDAL.findById(certificateId);
-    if (!originalCert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
     for await (const keyAlgorithm of requested) {
       await validatePqcLicense({ keyAlgorithm, projectId: originalCert.projectId, projectDAL, licenseService });
     }
+  };
+
+  // Renewal is exempt from the certificate caps only while it stays the same logical certificate: a
+  // refused renewal lets a live certificate expire. The flow lets the caller rewrite the common name
+  // and SANs though, and a renewal that does inserts a row under a quota key the org has never held,
+  // so that one is a new certificate wearing a renewal's clothes and takes the issuance caps.
+  const $assertRenewalQuota = async ({
+    originalCert,
+    csrRenewalRequest,
+    attributes
+  }: {
+    originalCert: TCertificates;
+    csrRenewalRequest: TCertificateRequest | null;
+    attributes?: TRenewalAttributes;
+  }) => {
+    // Same merge $buildValidatedRenewalRequest performs, so the key checked here is the key stored.
+    const renewedRequest =
+      csrRenewalRequest ??
+      buildRenewalCertificateRequest({
+        original: {
+          commonName: originalCert.commonName || undefined,
+          subjectAlternativeNames: originalCert.altNames
+            ? originalCert.altNames.split(",").map((san) => detectSanType(san.trim()))
+            : []
+        } as TCertificateRequest,
+        attributes
+      });
+
+    const renewedAltNames = (renewedRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(",");
+    const renewedQuotaKey = buildCertificateQuotaKey({
+      commonName: renewedRequest.commonName,
+      altNames: renewedAltNames
+    });
+
+    // Compared against the key derived from the row rather than the stored quotaKey, because the
+    // question is only whether the names changed. Were the hash ever to change, every stored key would
+    // go stale at once and reading it here would make every renewal look like a new certificate.
+    if (renewedQuotaKey === buildCertificateQuotaKey(originalCert)) return undefined;
+
+    return validateCertificateRequestLicense({
+      request: { ...renewedRequest, altNames: undefined },
+      projectId: originalCert.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps
+    });
   };
 
   const renewCertificate = async ({
@@ -980,7 +1028,15 @@ export const certificateRenewalServiceFactory = ({
     const isEditingCertificate = isCertificateContentEdit({ keySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
 
-    await $assertRequestedAlgorithmsLicensed({ certificateId, csrRenewalRequest, attributes });
+    // Read once for both licence checks. They run before the transaction because getPlan can reach
+    // Redis and the License Server, and the renewal transaction must hold no network call.
+    const certForLicenseChecks = await certificateDAL.findById(certificateId);
+    if (!certForLicenseChecks) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    await $assertRequestedAlgorithmsLicensed({ originalCert: certForLicenseChecks, csrRenewalRequest, attributes });
+    const quotaUsage = await $assertRenewalQuota({ originalCert: certForLicenseChecks, csrRenewalRequest, attributes });
 
     const runRenewal = () =>
       certificateDAL.transaction(async (tx) => {
@@ -1233,6 +1289,8 @@ export const certificateRenewalServiceFactory = ({
       }
       throw err;
     }
+
+    await recordQuotaUsage(quotaUsage);
 
     if (renewalResult.renewalMode === CertificateRenewalMode.KeyPreserving) {
       const response = await $completeKeyPreservingRenewal({

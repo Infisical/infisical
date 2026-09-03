@@ -3669,6 +3669,7 @@ export const registerRoutes = async (
 
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
+    usageCounterDAL,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -3704,6 +3705,8 @@ export const registerRoutes = async (
 
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
+    licenseService,
+    usageCounterDAL,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,

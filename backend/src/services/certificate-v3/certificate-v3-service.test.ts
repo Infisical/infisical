@@ -179,6 +179,22 @@ describe("CertificateV3Service", () => {
     })
   };
 
+  const mockUsageCounterDAL = {
+    resolveRootOrgId: vi.fn(async (id: string) => id),
+    countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
+    isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false)
+  };
+
+  const mockKeyStore = {
+    getItem: vi.fn(async () => null),
+    setItemWithExpiry: vi.fn(async () => "OK" as const),
+    deleteItem: vi.fn(async () => 1)
+  };
+
+  const mockLicenseService = {
+    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
+  };
+
   const mockCertificateIssuanceQueue = {
     queueCertificateIssuance: vi.fn()
   };
@@ -215,6 +231,15 @@ describe("CertificateV3Service", () => {
   beforeEach(() => {
     // Reset all mocks before each test
     vi.resetAllMocks();
+    // These three are shared across tests rather than rebuilt per test, so resetAllMocks strips their
+    // implementations and they have to be re-established here.
+    mockUsageCounterDAL.resolveRootOrgId.mockImplementation(async (id: string) => id);
+    mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg.mockResolvedValue({ total: 0, wildcard: 0 });
+    mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mockResolvedValue(false);
+    mockKeyStore.getItem.mockResolvedValue(null);
+    mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
+    mockKeyStore.deleteItem.mockResolvedValue(1);
+    mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true });
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
@@ -331,19 +356,9 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
-      usageCounterDAL: {
-        resolveRootOrgId: vi.fn(async (id: string) => id),
-        countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-        isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false)
-      },
-      keyStore: {
-        getItem: vi.fn(async () => null),
-        setItemWithExpiry: vi.fn(async () => "OK" as const),
-        deleteItem: vi.fn(async () => 1)
-      },
-      licenseService: {
-        getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
-      },
+      usageCounterDAL: mockUsageCounterDAL,
+      keyStore: mockKeyStore,
+      licenseService: mockLicenseService,
       telemetryService: mockTelemetryService
     });
   });
@@ -2393,8 +2408,71 @@ describe("CertificateV3Service", () => {
       vi.useRealTimers();
     });
 
+    // The renewal flow lets the caller rewrite the common name and SANs, which mints a row under a
+    // quota key the org has never held. Renewal is exempt from the caps only while the names are
+    // unchanged, because refusing that would let a live certificate expire.
+    describe("certificate quota on renewal", () => {
+      const AT_CAP = { pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null };
+
+      const atCap = (plan: Record<string, unknown> = AT_CAP, total = 5, wildcard = 0) => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+        vi.mocked(mockLicenseService.getPlan).mockResolvedValue(plan as never);
+        vi.mocked(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).mockResolvedValue({ total, wildcard });
+        vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg).mockResolvedValue(false);
+      };
+
+      it("refuses a renewal that changes the SANs once the certificate cap is reached", async () => {
+        atCap();
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            ...mockActor,
+            attributes: {
+              altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "brand-new.example.com" }]
+            }
+          })
+        ).rejects.toThrow(/plan limit/i);
+      });
+
+      it("refuses a renewal that changes the common name once the certificate cap is reached", async () => {
+        atCap();
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            ...mockActor,
+            attributes: { commonName: "brand-new.example.com" }
+          })
+        ).rejects.toThrow(/plan limit/i);
+      });
+
+      it("refuses a renewal that introduces a wildcard on a plan without wildcard support", async () => {
+        atCap({ pkiPqc: true, maxCertificates: null, maxWildcardCertificates: 0 }, 0, 0);
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            ...mockActor,
+            attributes: { altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "*.example.com" }] }
+          })
+        ).rejects.toThrow(/wildcard/i);
+      });
+
+      it("never consults the cap when the names are unchanged, so a live certificate cannot be blocked from renewing", async () => {
+        atCap();
+
+        // Fails later for want of the issuance mocks; the point is that it gets past the quota gate.
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
+
+        expect(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalled();
+      });
+    });
+
     it("should successfully renew eligible certificate", async () => {
+      // Three reads: the pre-transaction licence check, the in-transaction load, then the renewed row.
       vi.mocked(mockCertificateDAL.findById)
+        .mockResolvedValueOnce(mockOriginalCert)
         .mockResolvedValueOnce(mockOriginalCert)
         .mockResolvedValueOnce({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" });
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);

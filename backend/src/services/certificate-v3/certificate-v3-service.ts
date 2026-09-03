@@ -1286,7 +1286,8 @@ export const certificateV3ServiceFactory = ({
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
 
-    // Also the gate for ACME, SCEP and EST, which all reach issuance through here.
+    // Also the gate for the ACME and SCEP internal-CA branches, which sign through here. Their
+    // external-CA branches queue issuance instead and are gated in their own services.
     const quotaUsage = await validateCertificateRequestLicense({
       request: mappedCertificateRequest,
       projectId: profile.projectId,
@@ -2160,6 +2161,8 @@ export const certificateV3ServiceFactory = ({
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     licenseService,
+    quotaDeps: $quotaDeps,
+    recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
     reportCertificateIssued: $reportCertificateIssued
   });
