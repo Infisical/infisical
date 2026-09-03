@@ -244,7 +244,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         accessBundleId: connection.accessBundleId,
         name: connection.name,
         hostPattern: connection.hostPattern,
-        credential: summarizeCredential(connection)
+        credential: summarizeCredential(connection),
+        createdAt: connection.createdAt
       })),
       members
     };

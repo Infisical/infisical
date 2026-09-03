@@ -93,7 +93,8 @@ export const AgentVaultConnectionSchema = z.object({
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.CONNECTION.name),
   hostPattern: z.string().describe(AGENT_VAULT.CONNECTION.hostPattern),
-  credential: AgentVaultCredentialSummarySchema
+  credential: AgentVaultCredentialSummarySchema,
+  createdAt: z.date().describe(AGENT_VAULT.CONNECTION.createdAt)
 });
 
 // Raw fields, as the generic and PAM member lists return them; the frontend formats the display name.

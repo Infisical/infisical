@@ -74,8 +74,9 @@ export const AgentVaultAccessBundlesPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
-  const [sortColumn, setSortColumn] = useState(SortColumn.Name);
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
+  // Newest first, so a bundle someone just made is the one they are looking at.
+  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
@@ -102,8 +103,8 @@ export const AgentVaultAccessBundlesPage = () => {
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     if (direction === "none") {
-      setSortColumn(SortColumn.Name);
-      setSortDirection("ascending");
+      setSortColumn(SortColumn.Created);
+      setSortDirection("descending");
       return;
     }
 

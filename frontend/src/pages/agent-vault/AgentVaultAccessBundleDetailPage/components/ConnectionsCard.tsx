@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   CREDENTIAL_LABELS,
@@ -34,12 +36,33 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
+
+enum SortColumn {
+  Name = "name",
+  Credential = "credential",
+  Hosts = "hosts",
+  Created = "created"
+}
+
+const SORT_COMPARATORS: Record<
+  SortColumn,
+  (a: TAgentVaultConnection, b: TAgentVaultConnection) => number
+> = {
+  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
+  [SortColumn.Credential]: (a, b) =>
+    CREDENTIAL_LABELS[a.credential.type].localeCompare(CREDENTIAL_LABELS[b.credential.type]),
+  [SortColumn.Hosts]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
+  [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+};
 
 type Props = {
   accessBundleId: string;
@@ -60,12 +83,38 @@ export const ConnectionsCard = ({
   const [connectionToDelete, setConnectionToDelete] = useState<TAgentVaultConnection | null>(null);
   const deleteConnection = useDeleteAgentVaultConnection();
 
-  const term = search.trim().toLowerCase();
-  const displayed = connections.filter(
-    (connection) =>
-      connection.name.toLowerCase().includes(term) ||
-      connection.hostPattern.toLowerCase().includes(term)
-  );
+  // Newest first, so a connection someone just added is the one they are looking at.
+  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+
+  const displayed = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = connections.filter(
+      (connection) =>
+        connection.name.toLowerCase().includes(term) ||
+        connection.hostPattern.toLowerCase().includes(term)
+    );
+
+    const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
+    return sortDirection === "ascending" ? ordered : ordered.reverse();
+  }, [connections, search, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    if (direction === "none") {
+      setSortColumn(SortColumn.Created);
+      setSortDirection("descending");
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(direction);
+  };
+
+  const sortIconClassName = (column: SortColumn) =>
+    twMerge(
+      "size-3.5 transition-transform",
+      sortColumn === column && sortDirection === "descending" && "rotate-180",
+      sortColumn !== column && "opacity-30"
+    );
 
   const handleDelete = async () => {
     if (!connectionToDelete) return;
@@ -136,9 +185,34 @@ export const ConnectionsCard = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Credential</TableHead>
-              <TableHead>Hosts</TableHead>
+              <TableHead
+                sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
+              >
+                Name
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
+              </TableHead>
+              <TableHead
+                sortDirection={sortColumn === SortColumn.Credential ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Credential, direction)}
+              >
+                Credential
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Credential)} />
+              </TableHead>
+              <TableHead
+                sortDirection={sortColumn === SortColumn.Hosts ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Hosts, direction)}
+              >
+                Hosts
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Hosts)} />
+              </TableHead>
+              <TableHead
+                sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
+              >
+                Created
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
+              </TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -156,6 +230,18 @@ export const ConnectionsCard = ({
                   <span className="font-mono text-xs">
                     {displayHostPattern(connection.hostPattern)}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-sm">
+                        {format(new Date(connection.createdAt), "MMM d, yyyy")}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {format(new Date(connection.createdAt), "MMM d, yyyy h:mm a")}
+                    </TooltipContent>
+                  </Tooltip>
                 </TableCell>
                 <TableCell variant="action">
                   {canManage && (

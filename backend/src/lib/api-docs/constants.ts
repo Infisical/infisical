@@ -4173,6 +4173,7 @@ export const AGENT_VAULT = {
     updatePassword:
       "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
     hasPassword: "Whether a password is stored for this basic credential. The password itself is never returned.",
+    createdAt: "When the connection was added to the access bundle.",
     value: "The secret. Never returned once saved.",
     password:
       "The password half of the basic credential. May be empty if a username is set, for services that carry the whole key in the username. Never returned once saved."

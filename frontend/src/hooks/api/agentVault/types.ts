@@ -38,6 +38,7 @@ export type TAgentVaultConnection = {
   name: string;
   hostPattern: string;
   credential: TAgentVaultCredentialSummary;
+  createdAt: string;
 };
 
 export type TAgentVaultMember = {
