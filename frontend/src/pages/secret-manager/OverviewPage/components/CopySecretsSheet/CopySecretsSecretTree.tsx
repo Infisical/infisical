@@ -24,6 +24,7 @@ import type { CopySecretsSource } from "./copySecrets.types";
 import {
   filterCopyPreviewSecrets,
   getRelativeCopyPath,
+  isCopySecretSelectable,
   normalizeCopyPath
 } from "./copySecrets.utils";
 
@@ -40,6 +41,7 @@ type Props = {
   selectedIds: string[];
   isDisabled?: boolean;
   isReadOnly?: boolean;
+  includeValues?: boolean;
   showChangesFilter?: boolean;
   idPrefix?: string;
   onSelectionChange: (selectedIds: string[]) => void;
@@ -47,12 +49,18 @@ type Props = {
 
 type PreviewFilter = "all" | "changes";
 
-const isSecretDisabled = (secret: CopySecretsSource) =>
-  Boolean(secret.isRotated || secret.isHoneyToken);
-
-const getDisabledReason = (secret: CopySecretsSource) => {
+const getDisabledReason = (secret: CopySecretsSource, includeValues: boolean) => {
   if (secret.isRotated) return "Managed rotation secrets cannot be copied";
   if (secret.isHoneyToken) return "Honey tokens cannot be copied";
+  if (includeValues && secret.isValueHidden)
+    return "You do not have permission to copy this secret's value";
+  return undefined;
+};
+
+const getRestrictionLabel = (secret: CopySecretsSource) => {
+  if (secret.isRotated) return "Managed rotation";
+  if (secret.isHoneyToken) return "Honey token";
+  if (secret.isValueHidden) return "No value access";
   return undefined;
 };
 
@@ -91,9 +99,11 @@ const createTree = (secrets: CopySecretsSource[], sourcePath: string): FolderNod
   return root;
 };
 
-const getSelectableIds = (node: FolderNode): string[] => [
-  ...node.secrets.filter((secret) => !isSecretDisabled(secret)).map(({ id }) => id),
-  ...node.folders.flatMap(getSelectableIds)
+const getSelectableIds = (node: FolderNode, includeValues: boolean): string[] => [
+  ...node.secrets
+    .filter((secret) => isCopySecretSelectable(secret, includeValues))
+    .map(({ id }) => id),
+  ...node.folders.flatMap((folder) => getSelectableIds(folder, includeValues))
 ];
 
 const getAllIds = (node: FolderNode): string[] => [
@@ -112,6 +122,7 @@ const Folder = ({
   selectedIds,
   isDisabled,
   isReadOnly,
+  includeValues,
   idPrefix,
   onSelectionChange,
   isRoot = false
@@ -120,12 +131,13 @@ const Folder = ({
   selectedIds: Set<string>;
   isDisabled: boolean;
   isReadOnly: boolean;
+  includeValues: boolean;
   idPrefix: string;
   onSelectionChange: (ids: string[]) => void;
   isRoot?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const selectableIds = getSelectableIds(node);
+  const selectableIds = getSelectableIds(node, includeValues);
   const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
   const checkboxId = `${idPrefix}-folder-${node.path.replaceAll("/", "-") || "root"}`;
 
@@ -202,7 +214,8 @@ const Folder = ({
               .sort((left, right) => left.name.localeCompare(right.name))
               .map((secret) => {
                 const secretId = `${idPrefix}-secret-${secret.id}`;
-                const disabledReason = getDisabledReason(secret);
+                const disabledReason = getDisabledReason(secret, includeValues);
+                const restrictionLabel = getRestrictionLabel(secret);
                 return (
                   <li
                     key={secret.id}
@@ -212,7 +225,12 @@ const Folder = ({
                         ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
                         : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
                     )}
-                    title={disabledReason}
+                    title={
+                      disabledReason ??
+                      (secret.isValueHidden
+                        ? "This secret can be copied without its value"
+                        : undefined)
+                    }
                   >
                     <span className="size-4" aria-hidden />
                     <KeyRoundIcon className="size-4 text-secret" aria-hidden />
@@ -247,6 +265,11 @@ const Folder = ({
                         {secret.name}
                       </label>
                     )}
+                    {restrictionLabel && !isReadOnly && (
+                      <Badge variant="neutral" className="shrink-0">
+                        {restrictionLabel}
+                      </Badge>
+                    )}
                     {secret.previewStatus && (
                       <Badge
                         variant={secret.previewStatus === "new" ? "outline" : "warning"}
@@ -267,6 +290,7 @@ const Folder = ({
                   selectedIds={selectedIds}
                   isDisabled={isDisabled}
                   isReadOnly={isReadOnly}
+                  includeValues={includeValues}
                   idPrefix={idPrefix}
                   onSelectionChange={onSelectionChange}
                 />
@@ -284,6 +308,7 @@ export const CopySecretsSecretTree = ({
   selectedIds,
   isDisabled = false,
   isReadOnly = false,
+  includeValues = false,
   showChangesFilter = false,
   idPrefix = "copy-secrets",
   onSelectionChange
@@ -357,6 +382,7 @@ export const CopySecretsSecretTree = ({
           selectedIds={new Set(selectedIds)}
           isDisabled={isDisabled}
           isReadOnly={isReadOnly}
+          includeValues={includeValues}
           idPrefix={idPrefix}
           onSelectionChange={onSelectionChange}
           isRoot

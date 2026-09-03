@@ -10,6 +10,7 @@ import {
   getRelativeCopyPath,
   groupCopySecretsRequests,
   isCopyingToSameLocation,
+  isCopySecretSelectable,
   normalizeCopyPath
 } from "./copySecrets.utils";
 
@@ -52,6 +53,26 @@ describe("copy secrets paths", () => {
         ({ id }) => id
       ),
       ["two"]
+    );
+  });
+
+  it("keeps hidden-value secrets selectable only when values are omitted", () => {
+    const hiddenSecret = {
+      id: "hidden",
+      name: "HIDDEN",
+      path: "/",
+      isValueHidden: true
+    };
+
+    assert.equal(isCopySecretSelectable(hiddenSecret, true), false);
+    assert.equal(isCopySecretSelectable(hiddenSecret, false), true);
+    assert.equal(
+      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isRotated: true }, false),
+      false
+    );
+    assert.equal(
+      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isHoneyToken: true }, false),
+      false
     );
   });
 

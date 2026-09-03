@@ -19,6 +19,8 @@ import {
   Combobox,
   DocumentationLinkBadge,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldLabel,
   SecretPathInput,
   Sheet,
@@ -50,6 +52,7 @@ import {
   getOtherCopyEnvironmentSlug,
   groupCopySecretsRequests,
   isCopyingToSameLocation,
+  isCopySecretSelectable,
   joinCopyPath,
   normalizeCopyPath
 } from "./copySecrets.utils";
@@ -150,9 +153,7 @@ export const CopySecretsSheet = ({
     environment: sourceEnvironmentSlug,
     secretPath: normalizeCopyPath(debouncedSourcePath),
     recursive: true,
-    filterByAction: includeValues
-      ? ProjectPermissionSecretActions.ReadValue
-      : ProjectPermissionSecretActions.DescribeSecret,
+    filterByAction: ProjectPermissionSecretActions.DescribeSecret,
     options: {
       enabled:
         isOpen &&
@@ -188,11 +189,14 @@ export const CopySecretsSheet = ({
   useEffect(() => {
     const availableIds = new Set(
       sourceSecrets
-        .filter(({ isRotated, isHoneyToken }) => !isRotated && !isHoneyToken)
+        .filter((secret) => isCopySecretSelectable(secret, includeValues))
         .map(({ id }) => id)
     );
-    setSelectedIds((current) => current.filter((id) => availableIds.has(id)));
-  }, [sourceSecrets]);
+    setSelectedIds((current) => {
+      const next = current.filter((id) => availableIds.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [includeValues, sourceSecrets]);
 
   const sourceEnvironment = environments.find(({ slug }) => slug === sourceEnvironmentSlug) ?? null;
   const destinationEnvironment =
@@ -418,6 +422,7 @@ export const CopySecretsSheet = ({
       sourcePath={normalizedSourcePath}
       selectedIds={selectedIds}
       isDisabled={isSubmitting}
+      includeValues={includeValues}
       onSelectionChange={setSelectedIds}
     />
   );
@@ -639,21 +644,28 @@ export const CopySecretsSheet = ({
 
             <SheetFooter className="flex-wrap items-center border-t">
               <div className="mr-auto flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
-                <div className="flex items-center gap-2">
+                <Field
+                  orientation="horizontal"
+                  className="w-auto"
+                  data-disabled={isSubmitting || cannotIncludeValues}
+                >
                   <Switch
                     id="copy-secrets-values"
                     variant="project"
                     checked={includeValues}
                     disabled={isSubmitting || cannotIncludeValues}
+                    aria-describedby="copy-secrets-values-description"
                     onCheckedChange={setIncludeValues}
                   />
-                  <FieldLabel
-                    htmlFor="copy-secrets-values"
-                    className="flex cursor-pointer items-center gap-1.5 text-xs text-foreground"
-                  >
-                    <LockIcon className="size-3 text-muted" aria-hidden /> Include secret values
-                  </FieldLabel>
-                </div>
+                  <FieldContent>
+                    <FieldLabel htmlFor="copy-secrets-values" className="cursor-pointer">
+                      <LockIcon aria-hidden /> Include secret values
+                    </FieldLabel>
+                    <FieldDescription id="copy-secrets-values-description">
+                      Enabling this deselects secrets marked No value access.
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
                 {disabledReason && <span className="text-xs text-muted">{disabledReason}</span>}
               </div>
               <Button

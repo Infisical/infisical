@@ -50,6 +50,9 @@ export const filterCopyPreviewSecrets = ({
       (!changesOnly || Boolean(secret.previewStatus))
   );
 
+export const isCopySecretSelectable = (secret: CopySecretsSource, includeValues: boolean) =>
+  !secret.isRotated && !secret.isHoneyToken && (!includeValues || !secret.isValueHidden);
+
 export const getCopyDestinationPath = ({
   sourcePath,
   sourceRootPath,
