@@ -42,7 +42,9 @@ Private and link-local addresses, such as `169.254.169.254`, are blocked under b
 
 ### Bypass hosts
 
-A comma-separated list of hosts the proxy tunnels through untouched: no TLS termination, no credential, and the unmatched-host setting doesn't apply. New proxies start with a list of package registries, because installers such as `npm`, `pip`, and `cargo` pin certificates and would otherwise fail behind the proxy. Add any other client that pins here.
+A comma-separated list of hosts the proxy tunnels through untouched: no TLS termination and no unmatched-host check. Use it for clients that pin certificates, such as `npm`, `pip`, and `cargo`, which would otherwise fail behind the proxy.
+
+A connection in the session takes precedence over this list. A credential can only be attached to a connection the proxy opens, so a host one of your bundles covers is opened and given its credential even if it also appears here. The list therefore governs only the hosts nothing else covers.
 
 ### Poll interval
 
@@ -98,4 +100,4 @@ Three kinds of traffic don't work through the proxy in this release. Each fails 
 - **Streams longer than 30 minutes.** A single response that stays open past 30 minutes, such as a long-lived MCP server over server-sent events, is closed at that point.
 - **HTTP/2-only clients.** Clients that refuse to speak HTTP/1.1, including gRPC, Google Cloud SDKs, and Temporal.
 
-Put hosts that need any of these on the bypass list so the agent reaches them directly, without a credential from Agent Vault.
+Put hosts that need any of these on the bypass list so the agent reaches them directly. Remove any connection covering them first, since a connection takes precedence and the proxy would open the request to attach its credential.
