@@ -11,6 +11,17 @@ import { slugSchema } from "@app/lib/schemas";
  */
 export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
 
+/**
+ * 443 is the only port the grammar accepts without saying so, and the API stores it explicitly, so
+ * every host would otherwise carry a `:443` nobody typed. Stripped wherever a host pattern is shown,
+ * including the form, since the API puts it back on save.
+ */
+export const displayHostPattern = (hostPattern: string) =>
+  hostPattern
+    .split(",")
+    .map((host) => host.trim().replace(/:443$/, ""))
+    .join(", ");
+
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",

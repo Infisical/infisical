@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
-import { CREDENTIAL_LABELS } from "@app/components/agent-vault/connection-sheet/connectionSchema";
+import {
+  CREDENTIAL_LABELS,
+  displayHostPattern
+} from "@app/components/agent-vault/connection-sheet/connectionSchema";
 import { ConnectionIcon } from "@app/components/agent-vault/ConnectionIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -37,9 +40,6 @@ import { useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
 import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
-
-// 443 is the only port the grammar accepts without saying so, and every row would carry it.
-const displayHost = (host: string) => host.trim().replace(/:443$/, "");
 
 type Props = {
   accessBundleId: string;
@@ -154,7 +154,7 @@ export const ConnectionsCard = ({
                 <TableCell>{CREDENTIAL_LABELS[connection.credential.type]}</TableCell>
                 <TableCell>
                   <span className="font-mono text-xs">
-                    {connection.hostPattern.split(",").map(displayHost).join(", ")}
+                    {displayHostPattern(connection.hostPattern)}
                   </span>
                 </TableCell>
                 <TableCell variant="action">

@@ -14,9 +14,11 @@ import { credentialPreview } from "./CredentialFields";
 
 type Props = {
   isUpdate: boolean;
+  /** Whether the connection being edited already has a password sealed. Meaningless on create. */
+  storedHasPassword: boolean;
 };
 
-export const ReviewFields = ({ isUpdate }: Props) => {
+export const ReviewFields = ({ isUpdate, storedHasPassword }: Props) => {
   const { watch } = useFormContext<TConnectionForm>();
   const form = watch();
 
@@ -29,7 +31,9 @@ export const ReviewFields = ({ isUpdate }: Props) => {
     if (!isUpdate) return form.secret ? "Set" : "None";
     if (form.secret === UNCHANGED_SECRET) return "Unchanged";
     if (form.secret) return "Replaced";
-    return isBasic ? "Removed" : "Unchanged";
+    // An empty box on a credential that never had a password removes nothing.
+    if (!isBasic) return "Unchanged";
+    return storedHasPassword ? "Removed" : "None";
   };
 
   return (

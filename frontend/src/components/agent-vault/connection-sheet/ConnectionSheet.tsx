@@ -37,6 +37,7 @@ import {
   buildConnectionSchema,
   CONNECTION_STEP_FIELDS,
   ConnectionStep,
+  displayHostPattern,
   TConnectionForm,
   UNCHANGED_SECRET
 } from "./connectionSchema";
@@ -55,6 +56,9 @@ type Props = {
 
 export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connection }: Props) => {
   const isUpdate = Boolean(connection);
+  const storedHasPassword =
+    connection?.credential.type === AgentVaultCredentialType.Basic &&
+    connection.credential.hasPassword;
   const createConnection = useCreateAgentVaultConnection();
   const updateConnection = useUpdateAgentVaultConnection();
 
@@ -102,7 +106,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
       const { credential } = connection;
       reset({
         name: connection.name,
-        hostPattern: connection.hostPattern,
+        hostPattern: displayHostPattern(connection.hostPattern),
         credentialType: credential.type,
         headerName:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerName : undefined,
@@ -183,7 +187,10 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
       return {
         type: AgentVaultCredentialType.Basic as const,
         username: data.username ?? "",
-        password: untouched ? undefined : (data.secret ?? "")
+        // Writing "" over a credential that never had a password is a no-op that would still re-seal
+        // the blob and log a credential replacement, so it is left off too.
+        password:
+          untouched || (!data.secret && !storedHasPassword) ? undefined : (data.secret ?? "")
       };
     }
     return {
@@ -378,14 +385,13 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   {current.step === ConnectionStep.Credential && (
                     <CredentialFields
                       isUpdate={isUpdate}
-                      storedHasPassword={
-                        connection?.credential.type === AgentVaultCredentialType.Basic &&
-                        connection.credential.hasPassword
-                      }
+                      storedHasPassword={storedHasPassword}
                       storedType={connection?.credential.type}
                     />
                   )}
-                  {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ConnectionStep.Review && (
+                    <ReviewFields isUpdate={isUpdate} storedHasPassword={storedHasPassword} />
+                  )}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
