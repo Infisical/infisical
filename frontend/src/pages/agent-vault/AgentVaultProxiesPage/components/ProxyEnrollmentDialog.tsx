@@ -14,8 +14,6 @@ import {
 } from "@app/components/v3";
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
 
-import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
-
 const cliCommand = (token: string, siteUrl: string) =>
   `infisical av proxy \\
   --enrollment-token ${token} \\
@@ -77,17 +75,6 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
               <CodeBlock value={systemdUnit(token, siteUrl)} />
             </TabsContent>
           </Tabs>
-          <p className="text-xs text-accent">
-            <a
-              href={AgentVaultDocsUrls.proxies}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:opacity-80"
-            >
-              Running a proxy
-            </a>{" "}
-            covers its settings, certificate trust and re-enrolling.
-          </p>
         </div>
 
         <DialogFooter>
