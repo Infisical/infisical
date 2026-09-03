@@ -111,6 +111,7 @@ export const GitHubSyncFields = () => {
                 <FieldLabel>Organization</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     isLoading={isOrganizationsPending && Boolean(connectionId)}
                     isDisabled={!connectionId}
                     value={organizations.find((org) => org.login === value) ?? null}
@@ -164,6 +165,7 @@ export const GitHubSyncFields = () => {
                   <FieldLabel>Selected Repositories</FieldLabel>
                   <FieldContent>
                     <Combobox
+                      isError={Boolean(error)}
                       isLoading={isRepositoriesPending && Boolean(currentOrg)}
                       isDisabled={!currentOrg || !connectionId}
                       multiple
@@ -195,6 +197,7 @@ export const GitHubSyncFields = () => {
               <FieldLabel>Repository</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isRepositoriesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={repositories.find((repo) => repo.name === value) ?? null}
@@ -228,6 +231,7 @@ export const GitHubSyncFields = () => {
               <FieldLabel>Environment</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
                   isDisabled={!connectionId || !currentRepo}
                   value={environments.find((env) => env.name === value) ?? null}

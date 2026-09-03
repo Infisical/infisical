@@ -121,6 +121,7 @@ export const TriggerDevSyncFields = () => {
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!selectedOrgId}
                 value={orgProjects.find((v) => v.id === value) ?? null}
@@ -149,6 +150,7 @@ export const TriggerDevSyncFields = () => {
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectRef)}
                 isDisabled={!projectRef}
                 value={environments?.find((env) => env.slug === value) ?? null}

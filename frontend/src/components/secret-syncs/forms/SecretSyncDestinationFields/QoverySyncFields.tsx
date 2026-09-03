@@ -69,6 +69,7 @@ export const QoverySyncFields = () => {
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.id === value) ?? null}
@@ -101,6 +102,7 @@ export const QoverySyncFields = () => {
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId && organizationId)}
                 isDisabled={!organizationId}
                 value={projects?.find((project) => project.id === value) ?? null}
@@ -133,6 +135,7 @@ export const QoverySyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectId)}
                 isDisabled={!projectId}
                 value={environments?.find((environment) => environment.id === value) ?? null}

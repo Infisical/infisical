@@ -61,6 +61,7 @@ export const HumanitecSyncFields = () => {
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.id === value) ?? null}
@@ -99,6 +100,7 @@ export const HumanitecSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                 isDisabled={!connectionId || !currentOrg}
                 value={
@@ -188,6 +190,7 @@ export const HumanitecSyncFields = () => {
               <FieldLabel>Environment</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={
                     isOrganizationsPending &&
                     Boolean(connectionId) &&

@@ -413,6 +413,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                 <Field className="mb-4">
                   <FieldLabel htmlFor="credentials.certificateBody">Certificate</FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN CERTIFICATE-----..."
@@ -428,6 +429,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                 <Field className="mb-4">
                   <FieldLabel htmlFor="credentials.privateKey">Private Key</FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     placeholder="-----BEGIN PRIVATE KEY-----..."
                     value={value}
                     onChange={(e) => onChange(e.target.value)}

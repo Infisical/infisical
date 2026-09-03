@@ -99,6 +99,7 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
@@ -135,6 +136,7 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !projectId}
                 value={environments.find((e) => e.slug === value) ?? null}
@@ -173,6 +175,7 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <SecretPathInput
+                isError={Boolean(error)}
                 disabled={!connectionId || !projectId || !environmentSlug}
                 value={value}
                 onChange={onChange}

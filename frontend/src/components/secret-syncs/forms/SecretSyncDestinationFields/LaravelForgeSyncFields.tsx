@@ -70,6 +70,7 @@ export const LaravelForgeSyncFields = () => {
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations?.find((org) => org.slug === value) ?? null}
@@ -100,6 +101,7 @@ export const LaravelForgeSyncFields = () => {
             <FieldLabel>Server</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isServersLoading && Boolean(connectionId && orgSlug)}
                 isDisabled={!connectionId || !orgSlug}
                 value={servers?.find((server) => server.id === value) ?? null}
@@ -129,6 +131,7 @@ export const LaravelForgeSyncFields = () => {
             <FieldLabel>Site</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isSitesLoading && Boolean(connectionId && orgSlug && serverId)}
                 isDisabled={!connectionId || !orgSlug || !serverId}
                 value={sites?.find((site) => site.id === value) ?? null}

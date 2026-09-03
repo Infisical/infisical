@@ -44,6 +44,7 @@ export const SupabaseSyncFields = () => {
             <FieldLabel>Select a project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}

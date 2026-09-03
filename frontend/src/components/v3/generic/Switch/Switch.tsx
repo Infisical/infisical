@@ -13,8 +13,8 @@ const switchVariants = cva(
     "data-[size=default]:h-5 data-[size=default]:w-9",
     "data-[size=sm]:h-4 data-[size=sm]:w-7",
     "border-border bg-transparent hover:border-foreground/25",
-    "aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20",
-    "dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+    "aria-invalid:border-danger aria-invalid:ring-[3px] aria-invalid:ring-danger/20",
+    "dark:aria-invalid:border-danger/50 dark:aria-invalid:ring-danger/40"
   ),
   {
     variants: {

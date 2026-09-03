@@ -44,6 +44,7 @@ export const DigitalOceanAppPlatformSyncFields = () => {
             <FieldLabel>Select an app</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps.find((p) => p.id === value) ?? null}

@@ -59,6 +59,7 @@ export const DatabricksSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isSecretScopesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={secretScopes.find((scope) => scope.name === value) ?? null}

@@ -535,6 +535,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                     </Tooltip>
                   </FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN CERTIFICATE-----..."
@@ -562,6 +563,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                     </Tooltip>
                   </FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN PRIVATE KEY-----..."

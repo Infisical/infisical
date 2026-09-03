@@ -56,6 +56,7 @@ export const AzureDevOpsSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((v) => v.appId === value) ?? null}

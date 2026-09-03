@@ -54,6 +54,7 @@ export const ChefSyncFields = () => {
             <FieldLabel>Data Bag</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isDataBagsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={dataBags?.find((dataBag) => dataBag.name === value) ?? null}
@@ -82,6 +83,7 @@ export const ChefSyncFields = () => {
             <FieldLabel>Data Bag Item</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isDataBagItemsLoading && Boolean(connectionId && dataBagName)}
                 isDisabled={!connectionId || !dataBagName}
                 value={dataBagItems?.find((dataBagItem) => dataBagItem.name === value) ?? null}

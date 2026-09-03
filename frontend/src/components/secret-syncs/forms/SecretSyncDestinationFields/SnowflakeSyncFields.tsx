@@ -69,6 +69,7 @@ export const SnowflakeSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isDatabasesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={databases.find((db) => db.name === value) ?? null}
@@ -107,6 +108,7 @@ export const SnowflakeSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
                 isDisabled={!connectionId || !database}
                 value={schemas.find((schema) => schema.name === value) ?? null}

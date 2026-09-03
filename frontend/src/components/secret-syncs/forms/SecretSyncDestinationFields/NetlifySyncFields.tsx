@@ -63,6 +63,7 @@ export const NetlifySyncFields = () => {
             <FieldLabel>Account</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={accounts.find((p) => p.id === value) ?? null}
@@ -90,6 +91,7 @@ export const NetlifySyncFields = () => {
             <FieldLabel>Site (Optional)</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isSitesLoading && Boolean(accountId)}
                 isDisabled={!accountId}
                 value={sites.find((p) => p.id === value) ?? null}
@@ -125,6 +127,7 @@ export const NetlifySyncFields = () => {
             <FieldLabel>Context (Optional)</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isDisabled={!accountId}
                 value={contexts.find((p) => p.value === value) ?? undefined}
                 onValueChange={(option) => {

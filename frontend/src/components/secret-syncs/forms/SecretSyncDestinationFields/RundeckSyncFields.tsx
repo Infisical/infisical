@@ -48,6 +48,7 @@ export const RundeckSyncFields = () => {
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((project) => project.name === value) ?? null}

@@ -13,14 +13,16 @@ const renderRegion = (option: (typeof AWS_REGIONS)[number]) => (
 type Props = {
   value: string;
   onChange: (value: string | undefined) => void;
+  isError?: boolean;
 };
 
-export const AwsRegionSelect = ({ value, onChange }: Props) => {
+export const AwsRegionSelect = ({ value, onChange, isError }: Props) => {
   return (
     <Combobox
       value={AWS_REGIONS.find((region) => region.slug === value)}
       onValueChange={(option) => onChange(option.slug)}
       options={AWS_REGIONS}
+      isError={isError}
       placeholder="Select region..."
       getOptionLabel={(option) => option.name}
       getOptionValue={(option) => option.slug}

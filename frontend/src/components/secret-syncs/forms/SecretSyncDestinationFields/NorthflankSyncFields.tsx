@@ -70,6 +70,7 @@ export const NorthflankSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
@@ -110,6 +111,7 @@ export const NorthflankSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isSecretGroupsLoading && Boolean(projectId)}
                 isDisabled={!projectId}
                 value={secretGroups.find((sg) => sg.id === value) ?? null}

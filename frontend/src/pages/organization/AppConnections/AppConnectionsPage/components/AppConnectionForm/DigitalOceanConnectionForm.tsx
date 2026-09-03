@@ -111,6 +111,7 @@ export const DigitalOceanConnectionForm = ({ appConnection, onSubmit }: Props) =
             <Field className="mb-4">
               <FieldLabel htmlFor="api-token">API Key Value</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="api-token"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

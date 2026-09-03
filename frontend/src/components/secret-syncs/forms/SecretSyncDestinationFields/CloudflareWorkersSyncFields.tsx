@@ -41,6 +41,7 @@ export const CloudflareWorkersSyncFields = () => {
             <FieldLabel>Worker Script</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isScriptsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={scripts?.find((script) => script.id === value) ?? null}

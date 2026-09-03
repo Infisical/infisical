@@ -58,6 +58,7 @@ export const CloudflarePagesSyncFields = () => {
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((project) => project.name === value) ?? null}

@@ -37,6 +37,9 @@ import { TSecretSyncForm } from "../schemas";
 
 const GITLAB_SYNC_LIST_LIMIT = 20;
 
+const getGitLabGroupOptionLabel = (group: TGitLabGroup) =>
+  group.fullPath === group.name ? group.name : `${group.name} · ${group.fullPath}`;
+
 const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
   <div className="flex min-w-0 items-center gap-2">
     <span className="shrink-0">{group.name}</span>
@@ -45,6 +48,11 @@ const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
     )}
   </div>
 );
+
+const getGitLabProjectOptionLabel = (project: TGitLabProject) => {
+  const shortName = project.name.split("/").pop() || project.name;
+  return shortName === project.name ? project.name : `${shortName} · ${project.name}`;
+};
 
 const formatGitLabProjectOptionLabel = (project: TGitLabProject) => {
   const fullPathWithNamespace = project.name;
@@ -220,6 +228,7 @@ export const GitLabSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isGroupsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={groupOptions.find((group) => group.id === value) ?? null}
@@ -234,7 +243,7 @@ export const GitLabSyncFields = () => {
                   shouldFilter={false}
                   options={groupOptions}
                   placeholder="Search for a group..."
-                  getOptionLabel={(option) => `${option.name} · ${option.fullPath}`}
+                  getOptionLabel={getGitLabGroupOptionLabel}
                   renderOption={formatGitLabGroupOptionLabel}
                   renderValue={formatGitLabGroupOptionLabel}
                   getOptionValue={(option) => option.id}
@@ -271,6 +280,7 @@ export const GitLabSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isProjectsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={projectOptions.find((project) => project.id === value) ?? null}
@@ -285,10 +295,7 @@ export const GitLabSyncFields = () => {
                   shouldFilter={false}
                   options={projectOptions}
                   placeholder="Search for a project..."
-                  getOptionLabel={(option) => {
-                    const shortName = option.name.split("/").pop() || option.name;
-                    return `${shortName} · ${option.name}`;
-                  }}
+                  getOptionLabel={getGitLabProjectOptionLabel}
                   renderOption={formatGitLabProjectOptionLabel}
                   renderValue={formatGitLabProjectOptionLabel}
                   getOptionValue={(option) => option.id}

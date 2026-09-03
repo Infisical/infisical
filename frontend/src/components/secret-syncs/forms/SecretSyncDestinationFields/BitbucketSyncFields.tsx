@@ -74,6 +74,7 @@ export const BitbucketSyncFields = () => {
             <FieldLabel>Bitbucket Workspace</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces.find((w) => w.slug === value) ?? null}
@@ -108,6 +109,7 @@ export const BitbucketSyncFields = () => {
             <FieldLabel>Bitbucket Repository</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isRepositoriesLoading && Boolean(workspace)}
                 isDisabled={!workspace}
                 value={repositories.find((r) => r.slug === value) ?? null}
@@ -143,6 +145,7 @@ export const BitbucketSyncFields = () => {
             <FieldLabel>Bitbucket Deployment Environment (Optional)</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(repository)}
                 isDisabled={!repository}
                 value={environments.find((e) => e.uuid === value) ?? null}

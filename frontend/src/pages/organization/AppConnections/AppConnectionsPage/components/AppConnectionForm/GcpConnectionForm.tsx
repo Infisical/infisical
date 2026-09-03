@@ -119,6 +119,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="group mb-4">
               <FieldLabel htmlFor="service-account-email">Service Account Email</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="service-account-email"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

@@ -142,6 +142,7 @@ export const RundeckConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="api-token">Rundeck API Token</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="api-token"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

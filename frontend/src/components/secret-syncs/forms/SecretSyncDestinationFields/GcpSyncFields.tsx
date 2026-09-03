@@ -176,6 +176,7 @@ export const GcpSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={projects?.find((project) => project.id === value) ?? null}
@@ -261,6 +262,7 @@ export const GcpSyncFields = () => {
                 <FieldLabel>Region</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     isLoading={areLocationsPending && Boolean(projectId)}
                     isDisabled={!projectId}
                     value={locations?.find((option) => option.locationId === value) ?? null}
@@ -313,6 +315,7 @@ export const GcpSyncFields = () => {
                       </FieldLabel>
                       <FieldContent>
                         <Combobox
+                          isError={Boolean(error)}
                           multiple
                           isLoading={areLocationsPending && Boolean(projectId)}
                           isDisabled={!projectId || lockReplicaRegions}

@@ -59,6 +59,7 @@ export const WindmillSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces?.find((workspace) => workspace.name === value) ?? null}

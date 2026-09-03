@@ -75,6 +75,7 @@ export const AzureEntraIdScimSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 value={options.find((sp) => sp.id === value) ?? null}
                 onValueChange={(option) => {
                   const selected = option as TAzureScimServicePrincipal | null;

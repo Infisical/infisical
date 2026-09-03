@@ -207,7 +207,11 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="flex-1">
                     <FieldLabel>Password</FieldLabel>
-                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                    <SecretInput
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
                     <FieldError errors={[error]} />
                   </Field>
                 )}
@@ -225,6 +229,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       <Label htmlFor="tls-enabled">Enable TLS</Label>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="tls-enabled"
                       variant={scopeVariant}
                       checked={value}
@@ -268,6 +273,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       </FieldDescription>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="tls-reject-unauthorized"
                       variant={scopeVariant}
                       checked={tlsEnabled ? value : false}

@@ -50,7 +50,7 @@ export const AwsSecretsManagerSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} />
+              <AwsRegionSelect value={value} onChange={onChange} isError={Boolean(error)} />
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>

@@ -60,6 +60,7 @@ export const ChecklySyncFields = () => {
             <FieldLabel>Select an account</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={accounts.find((p) => p.id === value) ?? null}
@@ -88,6 +89,7 @@ export const ChecklySyncFields = () => {
             <FieldLabel>Select a group (Optional)</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isGroupsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={groups.find((p) => p.id === value) ?? null}

@@ -60,6 +60,7 @@ export const CamundaSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={clusters?.find((cluster) => cluster.uuid === value) ?? null}

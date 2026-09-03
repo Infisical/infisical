@@ -137,6 +137,7 @@ export const GoDaddyConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="api-secret">API Secret</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="api-secret"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

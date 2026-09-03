@@ -65,6 +65,7 @@ export const TerraformCloudSyncFields = () => {
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={
@@ -211,6 +212,7 @@ export const TerraformCloudSyncFields = () => {
               <FieldLabel>Variable Set</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
                   value={variableSets.find((variableSet) => variableSet.id === value) ?? null}
@@ -245,6 +247,7 @@ export const TerraformCloudSyncFields = () => {
               <FieldLabel>Workspace</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
                   value={workspaces.find((workspace) => workspace.id === value) ?? null}

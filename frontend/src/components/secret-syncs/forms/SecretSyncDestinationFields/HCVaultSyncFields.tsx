@@ -63,6 +63,7 @@ export const HCVaultSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isMountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={value ? { label: value, value } : null}

@@ -49,6 +49,7 @@ export const Cloud66SyncFields = () => {
             <FieldLabel>Stack</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isStacksLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={stacks?.find((stack) => stack.id === value) ?? null}

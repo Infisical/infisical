@@ -43,6 +43,7 @@ export const OnaSyncFields = () => {
             <FieldLabel>Ona Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((p) => p.id === value) ?? null}

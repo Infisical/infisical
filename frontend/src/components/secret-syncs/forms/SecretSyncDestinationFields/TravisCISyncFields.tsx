@@ -55,6 +55,7 @@ export const TravisCISyncFields = () => {
             <FieldLabel>Repository</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isRepositoriesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={repositories.find((repo) => repo.id === value) ?? null}
@@ -83,6 +84,7 @@ export const TravisCISyncFields = () => {
             <FieldLabel>Branch (Optional)</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={
                   isBranchesPending && Boolean(connectionId) && Boolean(currentRepositoryId)
                 }

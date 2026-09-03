@@ -264,7 +264,11 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
                 <FieldLabel>Password</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <SecretInput
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
                 <FieldError errors={[error]} />
               </Field>
             )}
@@ -278,6 +282,7 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 <Field className="mb-4">
                   <FieldLabel>Private Key</FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     value={field.value}
                     onChange={(e) => field.onChange(e.target.value)}
                     placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
@@ -294,7 +299,11 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   <FieldLabel>
                     Passphrase <span className="text-muted">(optional)</span>
                   </FieldLabel>
-                  <SecretInput value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+                  <SecretInput
+                    isError={Boolean(error)}
+                    value={value ?? ""}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
                   <FieldError errors={[error]} />
                 </Field>
               )}

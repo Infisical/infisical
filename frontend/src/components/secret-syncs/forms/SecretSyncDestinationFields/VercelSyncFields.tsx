@@ -224,6 +224,7 @@ export const VercelSyncFields = () => {
                 <FieldLabel>Team</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     value={teamOptions.find((team) => team.id === value) ?? null}
                     onValueChange={(option: TVercelConnectionOrganization) => {
                       onChange(option.id);
@@ -249,6 +250,7 @@ export const VercelSyncFields = () => {
                 <FieldLabel>Target Environments</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     multiple
                     value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
                     onValueChange={(options) => onChange(options.map((option) => option.slug))}
@@ -272,6 +274,7 @@ export const VercelSyncFields = () => {
                 <FieldLabel>Target Projects (Optional)</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     multiple
                     value={availableApps.filter((app) => (value || []).includes(app.id))}
                     onValueChange={(options) => onChange(options.map((option) => option.id))}
@@ -342,6 +345,7 @@ export const VercelSyncFields = () => {
                 </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     emptyMessage={(inputValue) => {
                       return inputValue
                         ? "No projects found matching your search."
@@ -380,6 +384,7 @@ export const VercelSyncFields = () => {
                 <FieldLabel>Vercel Project Environment</FieldLabel>
                 <FieldContent>
                   <Combobox
+                    isError={Boolean(error)}
                     isDisabled={!connectionId || !currentApp}
                     value={
                       value
@@ -421,6 +426,7 @@ export const VercelSyncFields = () => {
                   <FieldLabel>Vercel Preview Branch (Optional)</FieldLabel>
                   <FieldContent>
                     <CreatableSelect
+                      isError={Boolean(error)}
                       className="w-full"
                       placeholder="Select a branch..."
                       isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}

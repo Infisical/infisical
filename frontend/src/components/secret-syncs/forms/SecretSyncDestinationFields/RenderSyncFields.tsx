@@ -117,6 +117,7 @@ export const RenderSyncFields = () => {
               <FieldLabel>Service</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isServicesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={services?.find((service) => service.id === value) ?? null}
@@ -146,6 +147,7 @@ export const RenderSyncFields = () => {
               <FieldLabel>Environment Group</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={groups?.find((group) => group.id === value) ?? null}

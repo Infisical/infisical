@@ -105,6 +105,7 @@ export const OctopusDeploySyncFields = () => {
                   </FieldLabel>
                   <FieldContent>
                     <Combobox
+                      isError={Boolean(error)}
                       isLoading={isSpacesLoading && Boolean(connectionId)}
                       isDisabled={!connectionId}
                       value={spaces?.find((space) => space.id === value) ?? null}
@@ -181,6 +182,7 @@ export const OctopusDeploySyncFields = () => {
                     </FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         isLoading={isProjectsLoading && Boolean(connectionId && spaceId)}
                         isDisabled={Boolean(!connectionId || !spaceId)}
                         value={projects?.find((project) => project.id === value) ?? null}
@@ -221,6 +223,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Environments</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={
@@ -257,6 +260,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Target Tags</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={
@@ -292,6 +296,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Targets</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={
@@ -328,6 +333,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Processes</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={
@@ -364,6 +370,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Deployment Steps</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={
@@ -400,6 +407,7 @@ export const OctopusDeploySyncFields = () => {
                     <FieldLabel>Channels</FieldLabel>
                     <FieldContent>
                       <Combobox
+                        isError={Boolean(error)}
                         multiple
                         isLoading={isScopeValuesLoading}
                         value={

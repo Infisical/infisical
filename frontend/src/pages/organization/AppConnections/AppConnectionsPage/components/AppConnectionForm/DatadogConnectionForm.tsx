@@ -154,7 +154,11 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
                 <FieldLabel htmlFor="token">Service Access Token</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <SecretInput
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
                 <FieldError errors={[error]} />
               </Field>
             )}
@@ -168,7 +172,11 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
                   <FieldLabel htmlFor="api-key">API Key</FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                  <SecretInput
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
                   <FieldError errors={[error]} />
                 </Field>
               )}
@@ -180,7 +188,11 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
                   <FieldLabel htmlFor="application-key">Application Key</FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                  <SecretInput
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
                   <FieldError errors={[error]} />
                 </Field>
               )}

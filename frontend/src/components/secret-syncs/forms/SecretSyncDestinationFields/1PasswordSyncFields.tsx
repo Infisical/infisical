@@ -60,6 +60,7 @@ export const OnePassSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={vaults?.find((v) => v.id === value) || null}

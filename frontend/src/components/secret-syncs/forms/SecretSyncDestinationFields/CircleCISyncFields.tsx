@@ -53,6 +53,7 @@ export const CircleCISyncFields = () => {
             <FieldLabel>Organization</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={organizations.find((org) => org.name === value) ?? null}
@@ -82,6 +83,7 @@ export const CircleCISyncFields = () => {
             <FieldLabel>Project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 emptyMessage={() =>
                   "No projects found. Please create a project in your selected organization."
                 }

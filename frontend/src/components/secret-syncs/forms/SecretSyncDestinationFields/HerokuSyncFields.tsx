@@ -56,6 +56,7 @@ export const HerokuSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps?.find((app) => app.id === value) ?? null}

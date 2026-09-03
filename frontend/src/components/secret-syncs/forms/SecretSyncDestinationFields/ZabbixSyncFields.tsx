@@ -117,6 +117,7 @@ export const ZabbixSyncFields = () => {
               <FieldLabel>Host</FieldLabel>
               <FieldContent>
                 <Combobox
+                  isError={Boolean(error)}
                   isLoading={isHostsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
                   value={hosts.find((host) => host.hostId === value) ?? null}

@@ -47,6 +47,7 @@ export const CredentialRotationForm = ({ children }: Props) => {
                   </FieldDescription>
                 </FieldContent>
                 <Switch
+                  aria-invalid={Boolean(error)}
                   id="auto-rotation-enabled"
                   variant={scopeVariant}
                   checked={value}

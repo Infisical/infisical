@@ -3,6 +3,7 @@ import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Code,
   Field,
   FieldContent,
   FieldError,
@@ -48,7 +49,7 @@ export const AwsParameterStoreSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} />
+              <AwsRegionSelect value={value} onChange={onChange} isError={Boolean(error)} />
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>
@@ -67,18 +68,9 @@ export const AwsParameterStoreSyncFields = () => {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-lg">
                   The path is required and will be prepended to the key schema. For example, if you
-                  have a path of{" "}
-                  <code className="rounded-sm bg-ring px-0.5 py-px text-sm text-label">
-                    /demo/path/
-                  </code>{" "}
-                  and a key schema of{" "}
-                  <code className="rounded-sm bg-ring px-0.5 py-px text-sm text-label">
-                    INFISICAL_{"{{secretKey}}"}
-                  </code>
-                  , then the result will be{" "}
-                  <code className="rounded-sm bg-ring px-0.5 py-px text-sm text-label">
-                    /demo/path/INFISICAL_{"{{secretKey}}"}
-                  </code>
+                  have a path of <Code>/demo/path/</Code> and a key schema of{" "}
+                  <Code>INFISICAL_{"{{secretKey}}"}</Code>, then the result will be{" "}
+                  <Code>/demo/path/INFISICAL_{"{{secretKey}}"}</Code>
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>

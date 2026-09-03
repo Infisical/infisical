@@ -71,6 +71,7 @@ export const SpaceliftSyncFields = () => {
             <FieldLabel>Context</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isContextsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={contexts.find((ctx) => ctx.id === value) ?? null}

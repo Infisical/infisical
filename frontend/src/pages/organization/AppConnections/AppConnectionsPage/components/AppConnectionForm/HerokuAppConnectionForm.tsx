@@ -248,7 +248,11 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                     <TooltipContent className="max-w-sm">Your Heroku Auth Token</TooltipContent>
                   </Tooltip>
                 </FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <SecretInput
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
                 <FieldError errors={[error]} />
               </Field>
             )}

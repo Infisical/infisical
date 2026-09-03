@@ -63,6 +63,7 @@ export const RailwaySyncFields = () => {
             <FieldLabel>Select a project</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
@@ -91,6 +92,7 @@ export const RailwaySyncFields = () => {
             <FieldLabel>Select an environment</FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={environments.find((p) => p.id === value) ?? null}
@@ -130,6 +132,7 @@ export const RailwaySyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={services.find((p) => p.id === value) ?? null}
