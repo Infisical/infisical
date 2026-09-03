@@ -79,16 +79,16 @@ export const runManagedPasswordChange = (
     secrets: [newPassword, appConnectionPassword],
 
     advance: (ctx) => {
-      const failure = MANAGED_PASSWORD_CHANGE_FAILED.exec(ctx.pending);
+      const failure = MANAGED_PASSWORD_CHANGE_FAILED.exec(ctx.unmatched);
       if (failure) {
-        errorMessage = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+        errorMessage = ctx.transcript.redact(lineAt(ctx.unmatched, failure.index));
         ctx.consume(failure);
         ctx.finish();
         return false;
       }
 
       if (step === 0) {
-        const sudoPrompt = SUDO_PROMPT.exec(ctx.pending);
+        const sudoPrompt = SUDO_PROMPT.exec(ctx.unmatched);
         if (sudoPrompt) {
           if (!appConnectionPassword) {
             ctx.safeReject(
@@ -103,7 +103,7 @@ export const runManagedPasswordChange = (
           return true;
         }
 
-        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.pending);
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (newPasswordPrompt) {
           ctx.consume(newPasswordPrompt);
           ctx.write(`${newPassword}\n`);
@@ -115,7 +115,7 @@ export const runManagedPasswordChange = (
       }
 
       if (step === 1) {
-        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.pending);
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (confirmPrompt) {
           ctx.consume(confirmPrompt);
           ctx.write(`${newPassword}\n`);
@@ -126,7 +126,7 @@ export const runManagedPasswordChange = (
         return false;
       }
 
-      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.pending);
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.unmatched);
       if (success) {
         ctx.consume(success);
         completed = true;
@@ -182,9 +182,9 @@ export const runSelfPasswordChange = (
 
     advance: (ctx) => {
       if (step >= 1) {
-        const failure = SELF_PASSWORD_CHANGE_FAILED.exec(ctx.pending);
+        const failure = SELF_PASSWORD_CHANGE_FAILED.exec(ctx.unmatched);
         if (failure) {
-          errorMessage = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+          errorMessage = ctx.transcript.redact(lineAt(ctx.unmatched, failure.index));
           ctx.consume(failure);
           ctx.finish();
           return false;
@@ -192,7 +192,7 @@ export const runSelfPasswordChange = (
       }
 
       if (step === 0) {
-        const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.pending);
+        const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (currentPasswordPrompt) {
           ctx.consume(currentPasswordPrompt);
           ctx.write(`${oldPassword}\n`);
@@ -204,7 +204,7 @@ export const runSelfPasswordChange = (
       }
 
       if (step === 1) {
-        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.pending);
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (newPasswordPrompt) {
           ctx.consume(newPasswordPrompt);
           ctx.write(`${newPassword}\n`);
@@ -216,7 +216,7 @@ export const runSelfPasswordChange = (
       }
 
       if (step === 2) {
-        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.pending);
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (confirmPrompt) {
           ctx.consume(confirmPrompt);
           ctx.write(`${newPassword}\n`);
@@ -227,7 +227,7 @@ export const runSelfPasswordChange = (
         return false;
       }
 
-      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.pending);
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.unmatched);
       if (success) {
         ctx.consume(success);
         completed = true;
@@ -277,9 +277,9 @@ export const runSuLoginVerification = (
 
     advance: (ctx) => {
       if (step >= 1) {
-        const failure = SU_LOGIN_FAILED.exec(ctx.pending);
+        const failure = SU_LOGIN_FAILED.exec(ctx.unmatched);
         if (failure) {
-          const diagnostic = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+          const diagnostic = ctx.transcript.redact(lineAt(ctx.unmatched, failure.index));
           ctx.consume(failure);
           ctx.safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${diagnostic}`));
           return false;
@@ -287,7 +287,7 @@ export const runSuLoginVerification = (
       }
 
       if (step === 0) {
-        const passwordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.pending);
+        const passwordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.unmatched);
         if (passwordPrompt) {
           ctx.consume(passwordPrompt);
           ctx.write(`${targetPassword}\n`);
@@ -299,14 +299,14 @@ export const runSuLoginVerification = (
       }
 
       if (step === 1) {
-        if (!ctx.pending.trim()) return false;
-        ctx.clearPending();
+        if (!ctx.unmatched.trim()) return false;
+        ctx.clearUnmatched();
         ctx.write("whoami\n");
         step = 2;
         return true;
       }
 
-      if (whoamiReply.test(ctx.pending)) {
+      if (whoamiReply.test(ctx.unmatched)) {
         completed = true;
         ctx.write("exit\n");
         ctx.finish();

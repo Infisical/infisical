@@ -42,9 +42,10 @@ export const lineAt = (text: string, index: number) => {
 };
 
 export type TExpectAdvanceContext = {
-  readonly pending: string;
+  /** Accumulated remote output not yet consumed by a successful match. */
+  readonly unmatched: string;
   consume: (match: RegExpExecArray) => void;
-  clearPending: () => void;
+  clearUnmatched: () => void;
   write: (data: string) => void;
   finish: () => void;
   safeReject: (error: Error) => void;
@@ -95,7 +96,7 @@ export const runExpectSession = ({
     const transcript = createTranscript(secrets);
     const decoder = new StringDecoder("utf8");
 
-    let pending = "";
+    let unmatched = "";
     let settled = false;
     let closing = false;
 
@@ -122,14 +123,14 @@ export const runExpectSession = ({
     }, timeoutMs);
 
     const ctx: TExpectAdvanceContext = {
-      get pending() {
-        return pending;
+      get unmatched() {
+        return unmatched;
       },
       consume: (match: RegExpExecArray) => {
-        pending = pending.slice(match.index + match[0].length);
+        unmatched = unmatched.slice(match.index + match[0].length);
       },
-      clearPending: () => {
-        pending = "";
+      clearUnmatched: () => {
+        unmatched = "";
       },
       write: (data: string) => stream.write(data),
       finish,
@@ -144,14 +145,14 @@ export const runExpectSession = ({
       if (!text) return;
 
       transcript.append(text);
-      pending += text;
+      unmatched += text;
 
       let progressed = true;
       while (progressed && !settled && !closing) {
         progressed = advance(ctx);
       }
 
-      if (!settled && !closing && pending.length > maxBufferSize) {
+      if (!settled && !closing && unmatched.length > maxBufferSize) {
         safeReject(new Error(overflowMessage(transcript.read())));
       }
     });
