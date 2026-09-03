@@ -25,8 +25,8 @@ import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-d
 import {
   TAddMemberDTO,
   TAgentVaultCredentialInput,
-  TAgentVaultCredentialUpdate,
   TAgentVaultCredentialSummary,
+  TAgentVaultCredentialUpdate,
   TCreateAccessBundleDTO,
   TCreateConnectionDTO,
   TDeleteAccessBundleDTO,
@@ -126,13 +126,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
    * create schema is deliberately not reused, because its `.default()`s would turn an omitted
    * headerName into a reset and quietly move a DD-API-KEY credential back onto Authorization.
    */
-  const mergeCredential = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultConnections): TCredentialWrite => {
+  const mergeCredential = (
+    credential: TAgentVaultCredentialUpdate,
+    stored: TAgentVaultConnections
+  ): TCredentialWrite => {
     // A different type has no stored config to merge onto, and the sealed secret belongs to the type
     // being replaced, so the credential has to arrive whole.
     if (credential.type !== stored.credentialType) {
       if (credential.type === AgentVaultCredentialType.Bearer && credential.value === undefined) {
         throw new BadRequestError({
-          message: "Changing the credential type to bearer needs the token, because the stored secret belongs to the old type"
+          message:
+            "Changing the credential type to bearer needs the token, because the stored secret belongs to the old type"
         });
       }
       return splitCredential(
@@ -142,7 +146,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
     }
 
-    const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string; username?: string; hasPassword?: boolean };
+    const prev = (stored.credentialConfig ?? {}) as {
+      headerName?: string;
+      headerPrefix?: string;
+      username?: string;
+      hasPassword?: boolean;
+    };
 
     switch (credential.type) {
       case AgentVaultCredentialType.Bearer:
@@ -157,7 +166,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       case AgentVaultCredentialType.Basic: {
         const username = credential.username ?? prev.username ?? "";
         // Rows written before hasPassword existed always carried a non-empty password, so they read as true.
-        const hasPassword = credential.password === undefined ? (prev.hasPassword ?? true) : credential.password.length > 0;
+        const hasPassword =
+          credential.password === undefined ? (prev.hasPassword ?? true) : credential.password.length > 0;
         if (!username && !hasPassword) {
           throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
         }

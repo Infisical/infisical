@@ -270,12 +270,6 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  const listProductMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
-    await assertReadable(projectId, ctx);
-    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
-    return resolveMemberships(memberships);
-  };
-
   /** Identity members with their name attached, so the page never joins against the org identity list. */
   const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
     await assertReadable(projectId, ctx);
@@ -394,6 +388,10 @@ export const agentVaultMembershipServiceFactory = ({
 
     const { column, id, label } = resolveActorColumn(dto);
 
+    let actorKind = AgentVaultMemberKind.Identity;
+    if (dto.userId) actorKind = AgentVaultMemberKind.User;
+    else if (dto.groupId) actorKind = AgentVaultMemberKind.Group;
+
     await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
@@ -406,15 +404,7 @@ export const agentVaultMembershipServiceFactory = ({
       // Losing the product means losing every bundle grant. Skipping this would leave rows the mint
       // path still honours, because they live outside the membership table the generic reaper walks.
       await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-        {
-          projectId,
-          actorKind: dto.userId
-            ? AgentVaultMemberKind.User
-            : dto.groupId
-              ? AgentVaultMemberKind.Group
-              : AgentVaultMemberKind.Identity,
-          actorId: id
-        },
+        { projectId, actorKind, actorId: id },
         tx
       );
 
@@ -449,7 +439,6 @@ export const agentVaultMembershipServiceFactory = ({
   return {
     addProductUserMembers,
     listProductIdentities,
-    listProductMembers,
     listProductIdentityMembers,
     addProductMember,
     updateProductMemberRole,
