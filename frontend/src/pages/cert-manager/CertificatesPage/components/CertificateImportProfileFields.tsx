@@ -63,7 +63,6 @@ const ProfileOptionRow = (props: OptionProps<ProfileOption>) => {
 export const CertificateImportProfileFields = ({ control, setValue, applicationId }: Props) => {
   const { data: profileData, isPending: isProfilesLoading } = useListCertificateProfiles({
     applicationId,
-    includeConfigs: true,
     limit: 100
   });
 

@@ -15,7 +15,7 @@ export type TAwsAcmPublicCaExternalMetadata = z.infer<typeof AwsAcmPublicCaExter
 
 export const DigiCertExternalMetadataSchema = z.object({
   type: z.literal(CaType.DIGICERT),
-  orderId: z.number().int().positive()
+  orderId: z.number().int().positive().safe()
 });
 
 export type TDigiCertExternalMetadata = z.infer<typeof DigiCertExternalMetadataSchema>;

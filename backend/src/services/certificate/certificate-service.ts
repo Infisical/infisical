@@ -36,6 +36,7 @@ import {
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts } from "@app/services/license-client";
@@ -59,6 +60,10 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import {
+  calculateFinalRenewBeforeDays,
+  resolveEffectiveApiConfig
+} from "../certificate-common/certificate-issuance-utils";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   CertificateThumbprintAlgorithm,
@@ -109,6 +114,7 @@ type TCertificateServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   digicertFns: Pick<ReturnType<typeof DigiCertCertificateAuthorityFns>, "assertOrderMatchesCertificate">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
@@ -156,6 +162,7 @@ export const certificateServiceFactory = ({
   pkiApplicationDAL,
   certificateProfileDAL,
   pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
   digicertFns,
   licenseService,
   usageMeteringService,
@@ -893,7 +900,14 @@ export const certificateServiceFactory = ({
         });
       }
 
-      return { caId: null, caType: null, externalMetadata: undefined, profileName: profile.slug, caName: null };
+      return {
+        caId: null,
+        caType: null,
+        externalMetadata: undefined,
+        profileName: profile.slug,
+        caName: null,
+        profileApiConfig: profile.apiConfig
+      };
     }
 
     const caType = (profile.certificateAuthority?.externalType as CaType) ?? CaType.INTERNAL;
@@ -911,7 +925,14 @@ export const certificateServiceFactory = ({
           message: `Certificate profile '${profile.slug}' issues from ${CA_TYPE_LABEL[caType] ?? caType}, which needs no identifier from an external provider. Remove 'externalMetadata' from the request.`
         });
       }
-      return { caId: profile.caId, caType, externalMetadata: undefined, profileName: profile.slug, caName };
+      return {
+        caId: profile.caId,
+        caType,
+        externalMetadata: undefined,
+        profileName: profile.slug,
+        caName,
+        profileApiConfig: profile.apiConfig
+      };
     }
 
     if (!externalMetadata) {
@@ -932,7 +953,8 @@ export const certificateServiceFactory = ({
       caType,
       externalMetadata: parsed.data as TImportExternalMetadata,
       profileName: profile.slug,
-      caName
+      caName,
+      profileApiConfig: profile.apiConfig
     };
   };
 
@@ -1151,6 +1173,19 @@ export const certificateServiceFactory = ({
       ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
       : null;
 
+    let renewBeforeDays: number | undefined;
+    if (profileId && linkage) {
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId,
+        profileApiConfig: linkage.profileApiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
+      const validityDays = Math.max(1, Math.ceil((notAfter.getTime() - notBefore.getTime()) / (24 * 60 * 60 * 1000)));
+      renewBeforeDays = calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, `${validityDays}d`, notAfter);
+    }
+
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
         // Extract certificate fields for storage
@@ -1172,6 +1207,7 @@ export const certificateServiceFactory = ({
             caId: linkage?.caId ?? null,
             externalMetadata: linkage?.externalMetadata ?? null,
             source: CertificateSource.Imported,
+            renewBeforeDays,
             keyUsages,
             extendedKeyUsages,
             ...parsedFields,
