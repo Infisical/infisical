@@ -20,6 +20,28 @@
 # removed. Also includes OpenSSL (Apache-2.0), SoftHSM2 (BSD-2-Clause), the Infisical
 # CLI, and Debian packages under their respective licenses.
 
+FROM debian:trixie-slim AS oracle
+RUN apt-get update && apt-get install -y unzip wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Own stage so the 127 MB fetch caches independently and runs in parallel. Better
+# still would be mirroring the zip on artifacts-cli.infisical.com, which drops the
+# third-party CDN dependency instead of retrying around it.
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.x64-23.26.0.0.0.zip" && \
+        EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
+        EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32"; \
+    fi && \
+    ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
+    wget -q "$ORACLE_URL" && \
+    echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
+    mkdir -p /opt/oracle && \
+    unzip "$ORACLE_ZIP" -d /opt/oracle && \
+    rm "$ORACLE_ZIP"
+
 FROM node:22.22.0-trixie-slim
 
 ARG SOFTHSM2_VERSION=2.5.0
@@ -76,20 +98,9 @@ RUN git checkout --detach "${SOFTHSM2_COMMIT}" \
 WORKDIR /root
 RUN rm -fr ${SOFTHSM2_SOURCES}
 
-RUN mkdir -p /opt/oracle && \
-    ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "arm64" ]; then \
-      EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
-      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.arm64-23.26.0.0.0.zip; \
-    else \
-      EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
-      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip; \
-    fi && \
-    echo "$EXPECTED_SHA  /tmp/instantclient.zip" | sha256sum -c - && \
-    unzip -oq /tmp/instantclient.zip -d /opt/oracle && \
-    rm /tmp/instantclient.zip && \
-    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
-    ldconfig
+# Oracle Instant Client for OracleDB mTLS (Wallet) support
+COPY --from=oracle /opt/oracle /opt/oracle
+RUN echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && ldconfig
 
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
