@@ -37,7 +37,7 @@ export const DiscoveryPage = () => {
   };
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between text-white">
+    <div className="mx-auto flex h-full flex-col justify-between bg-background text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
       </Helmet>

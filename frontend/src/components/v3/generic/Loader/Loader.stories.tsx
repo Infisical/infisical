@@ -212,7 +212,7 @@ export const ExamplePageLoader: Story = {
     }
   },
   render: () => (
-    <div className="h-96 bg-page">
+    <div className="bg-page h-96">
       <div className="flex h-full w-full items-center justify-center">
         <Loader className="w-24" label="Loading page" />
       </div>

@@ -175,10 +175,8 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                 <ShieldCheckIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Edit HSM Connector
-                </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Edit HSM Connector</div>
+                <p className="text-sm leading-4 text-muted">
                   Update name, description, Gateway, slot label, key label prefix, or rotate the
                   PIN. Changes to the PIN, slot, or Gateway re-run a Verify before saving.
                 </p>
@@ -348,7 +346,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                     PIN or point to a different slot on the same HSM.
                   </li>
                 </ul>
-                <div className="mt-6 rounded-md border border-border bg-mineshaft-800 p-3 text-xs text-muted">
+                <div className="mt-6 rounded-md border border-border bg-container p-3 text-xs text-muted">
                   If you change the PIN, slot, or Gateway, Infisical re-runs a Verify against the
                   HSM before saving. A bad PIN or unreachable Gateway will surface here.
                 </div>

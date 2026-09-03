@@ -95,7 +95,7 @@ export const LoginSsoPage = ({ type }: Props) => {
               >
                 <ChevronLeft />
               </IconButton>
-              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-label bg-clip-text font-alliance text-2xl font-normal text-transparent">
                 {type} Login
               </CardTitle>
             </div>

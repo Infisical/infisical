@@ -125,7 +125,7 @@ export const ScimEvents = () => {
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xl">
-                                  <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-border bg-bunker-800 p-2 font-mono leading-6 whitespace-pre-wrap">
+                                  <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-border bg-background p-2 font-mono leading-6 whitespace-pre-wrap">
                                     {JSON.stringify(scimEvent, null, 4)}
                                   </div>
                                 </TooltipContent>

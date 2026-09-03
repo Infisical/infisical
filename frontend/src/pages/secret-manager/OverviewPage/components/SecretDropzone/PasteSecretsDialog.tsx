@@ -87,9 +87,7 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
                   </div>
                   <pre className="rounded-md bg-container p-3 text-xs">
                     {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
-                    <p className="text-mineshaft-400">
-                      // .json — {"{ <secret-name>: <secret-value> }"}
-                    </p>
+                    <p className="text-muted">// .json — {"{ <secret-name>: <secret-value> }"}</p>
                     {JSON.stringify(
                       {
                         DATABASE_URL: "postgres://user:pass@host:5432/db",
@@ -101,13 +99,13 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
                     )}
                   </pre>
                   <pre className="rounded-md bg-container p-3 text-xs">
-                    <p className="text-mineshaft-400"># .env</p>
+                    <p className="text-muted"># .env</p>
                     <p>APP_NAME=&quot;example-service&quot;</p>
                     <p>APP_VERSION=&quot;1.2.3&quot;</p>
                     <p>NODE_ENV=&quot;production&quot;</p>
                   </pre>
                   <pre className="rounded-md bg-container p-3 text-xs">
-                    <p className="text-mineshaft-400"># .yml</p>
+                    <p className="text-muted"># .yml</p>
                     <p>APP_NAME: example-service</p>
                     <p>APP_VERSION: 1.2.3</p>
                     <p>NODE_ENV: production</p>

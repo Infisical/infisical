@@ -116,7 +116,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
             <p className="mr-4 break-all whitespace-pre-wrap">{privateKeyData?.privateKey}</p>
           </div>
         </>
@@ -154,7 +154,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
             <p className="mr-4 break-all whitespace-pre-wrap">{publicKeyData?.publicKey}</p>
           </div>
         </>

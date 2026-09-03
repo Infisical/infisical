@@ -8,7 +8,7 @@ export const AccordionItem = forwardRef<HTMLDivElement, AccordionPrimitive.Accor
   ({ children, className, ...props }, forwardedRef) => (
     <AccordionPrimitive.Item
       className={twMerge(
-        "mt-px overflow-hidden border-transparent transition-all first:mt-0 data-[state=open]:border-l data-[state=open]:border-primary",
+        "mt-px overflow-hidden border-transparent transition-all first:mt-0 data-[state=open]:border-l data-[state=open]:border-project",
         className
       )}
       {...props}
@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "group flex h-11 flex-1 items-center justify-between px-4 py-2 outline-hidden hover:text-primary data-[state=open]:text-primary",
+        "group flex h-11 flex-1 items-center justify-between px-4 py-2 outline-hidden hover:text-project data-[state=open]:text-project",
         className
       )}
       {...props}
@@ -70,7 +70,7 @@ export const Accordion = ({
   children,
   ...props
 }: AccordionPrimitive.AccordionSingleProps | AccordionPrimitive.AccordionMultipleProps) => (
-  <AccordionPrimitive.Root {...props} className={twMerge("w-80 text-bunker-300", props.className)}>
+  <AccordionPrimitive.Root {...props} className={twMerge("w-80 text-label", props.className)}>
     {children}
   </AccordionPrimitive.Root>
 );

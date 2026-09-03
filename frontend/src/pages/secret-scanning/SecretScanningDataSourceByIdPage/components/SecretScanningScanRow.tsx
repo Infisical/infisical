@@ -67,15 +67,15 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
-        status === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
+        "group h-10 transition-colors duration-100 hover:bg-container-hover",
+        status === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`scan-${id}`}
     >
       <Td>
         <p>
           {format(createdAt, "MMM dd yyyy")}{" "}
-          <span className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</span>
+          <span className="text-label">{format(createdAt, "h:mm aa")}</span>
         </p>
       </Td>
       <Td className="max-w-0 min-w-32!">
@@ -119,7 +119,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
               </Badge>
             </div>
           ) : status === SecretScanningScanStatus.Failed ? (
-            <span className="text-mineshaft-400">No findings</span>
+            <span className="text-muted">No findings</span>
           ) : (
             <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />

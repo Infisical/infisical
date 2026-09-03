@@ -248,7 +248,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
                           name={`groups.${pos}.groupSlug`}
                           render={({ field }) => (
                             <p className="truncate">
-                              <span className="text-sm font-medium text-mineshaft-100">
+                              <span className="text-sm font-medium text-foreground">
                                 {getGroupName(field.value)}
                               </span>
                             </p>

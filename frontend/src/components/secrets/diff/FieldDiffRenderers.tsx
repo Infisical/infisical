@@ -127,7 +127,7 @@ export const TagsDiffRenderer = ({
         return (
           <Tag
             className={twMerge(
-              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-mineshaft-900/60 py-0.5 text-xs",
+              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-card/60 py-0.5 text-xs",
               isRemoved && "border-danger/35 bg-danger/20",
               isAdded && "border-success/35 bg-success/20",
               !isRemoved && !isAdded && "border-border"
@@ -163,7 +163,7 @@ export const MetadataDiffRenderer = ({
   const otherMetaByValue = new Map(otherMetadata?.map((m) => [m.value, m.key]) ?? []);
 
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5 text-sm text-mineshaft-300">
+    <div className="mt-1 flex flex-wrap gap-1.5 text-sm text-label">
       {metadata.map((el) => {
         const keyExistsInOther = otherMetaByKey.has(el.key);
         const otherDataForKey = otherMetaByKey.get(el.key);
@@ -202,7 +202,7 @@ export const MetadataDiffRenderer = ({
 
         const valueBgClass = twMerge(
           valueHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30"),
-          !valueHighlighted && "bg-mineshaft-900/60"
+          !valueHighlighted && "bg-card/60"
         );
 
         const lockIconClass = twMerge(

@@ -47,15 +47,15 @@ type ResourceRowProps = {
 
 const ResourceRow = ({ name, subtitle, to, params, isLast }: ResourceRowProps) => {
   const className = `flex items-center justify-between px-4 py-2.5 ${
-    to ? "transition-colors hover:bg-mineshaft-700/30" : ""
-  } ${!isLast ? "border-b border-mineshaft-600" : ""}`;
+    to ? "transition-colors hover:bg-container-hover/30" : ""
+  } ${!isLast ? "border-b border-border" : ""}`;
   const inner = (
     <>
       <div className="flex flex-col gap-0.5">
-        <span className="text-sm text-mineshaft-100">{name}</span>
-        <span className="text-xs text-mineshaft-400">{subtitle}</span>
+        <span className="text-sm text-foreground">{name}</span>
+        <span className="text-xs text-muted">{subtitle}</span>
       </div>
-      {to ? <ExternalLinkIcon className="size-3.5 text-mineshaft-400" /> : null}
+      {to ? <ExternalLinkIcon className="size-3.5 text-muted" /> : null}
     </>
   );
 
@@ -87,7 +87,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto">
-        <SheetHeader className="border-b border-mineshaft-600">
+        <SheetHeader className="border-b border-border">
           <SheetTitle>Connected Resources</SheetTitle>
           <SheetDescription>{poolName}</SheetDescription>
         </SheetHeader>
@@ -99,7 +99,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-mineshaft-300">
+              <p className="text-sm text-label">
                 {totalCount > 0 ? (
                   <>
                     {totalCount} resource{totalCount !== 1 ? "s" : ""} connected

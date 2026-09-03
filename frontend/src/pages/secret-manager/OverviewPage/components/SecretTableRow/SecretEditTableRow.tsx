@@ -933,7 +933,7 @@ export const SecretEditTableRow = ({
           {...field}
           value={field.value ?? ""}
           className={twMerge(
-            "w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent",
+            "w-full px-0 text-foreground placeholder:text-danger focus:ring-transparent",
             isPendingDelete && "text-danger/75 line-through"
           )}
           onBlur={(e) => {
@@ -1474,7 +1474,7 @@ export const SecretEditTableRow = ({
             </Tooltip>
             <DropdownMenuContent
               align="end"
-              className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+              className="min-w-[200px] [&_[data-variant=default]]:text-foreground [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
                 if (pendingAnnotation === "comment") setIsCommentOpen(true);

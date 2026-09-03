@@ -210,8 +210,8 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
@@ -236,7 +236,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                   key={status}
                   icon={
                     filters.status.includes(status) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                      <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                     )
                   }
                   iconPos="right"
@@ -272,7 +272,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                     key={type}
                     icon={
                       filters.dataSourceTypes.includes(type) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                        <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                       )
                     }
                     iconPos="right"
@@ -428,7 +428,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         findings={popUp.updateFinding.data}
       />
       {selectedRows.length > 0 && (
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-2 pl-4">
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-container p-2 pl-4">
           <span>
             {selectedRows.length} finding{selectedRows.length === 1 ? "" : "s"} selected
           </span>

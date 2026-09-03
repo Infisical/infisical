@@ -46,7 +46,7 @@ const Node = ({
     className={`rounded-md border p-2.5 ${
       accent
         ? "border-proxied-service/30 bg-proxied-service/10"
-        : "border-border bg-mineshaft-700/40"
+        : "border-border bg-container-hover/40"
     }`}
   >
     <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
@@ -70,7 +70,7 @@ const ServiceIcon = ({ template }: { template?: ProxiedServiceTemplate }) => {
       />
     );
   }
-  return <GlobeIcon className="size-3.5 text-bunker-300" />;
+  return <GlobeIcon className="size-3.5 text-label" />;
 };
 
 export const ProxiedServiceSubstitutionDiagram = ({ template }: Props) => {
@@ -98,9 +98,9 @@ export const ProxiedServiceSubstitutionDiagram = ({ template }: Props) => {
         </Tooltip>
       </div>
 
-      <Node icon={<BotIcon className="size-3.5 text-bunker-300" />} title="Your Agent">
+      <Node icon={<BotIcon className="size-3.5 text-label" />} title="Your Agent">
         <p className="font-mono text-[11px] break-all">
-          <span className="text-bunker-300">{envVar}</span>
+          <span className="text-label">{envVar}</span>
           <span className="text-muted">=</span>
           <span className="text-foreground">{placeholder}</span>
         </p>

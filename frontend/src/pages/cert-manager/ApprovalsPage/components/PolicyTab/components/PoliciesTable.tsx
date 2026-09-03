@@ -88,9 +88,9 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                 <Tr key={policy.id} className="group">
                   <Td>
                     <div className="flex items-center gap-x-2">
-                      <span className="text-sm font-medium text-mineshaft-100">{policy.name}</span>
+                      <span className="text-sm font-medium text-foreground">{policy.name}</span>
                       {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
-                        <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
+                        <span className="rounded bg-foreground/10 px-2 py-0.5 text-[10px] tracking-wide text-foreground uppercase">
                           Legacy
                         </span>
                       )}
@@ -101,32 +101,30 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                       {profileNames.slice(0, 3).map((name) => (
                         <span
                           key={name}
-                          className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200"
+                          className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
                         >
                           {name}
                         </span>
                       ))}
                       {profileNames.length > 3 && (
-                        <span className="text-xs text-mineshaft-400">
-                          +{profileNames.length - 3} more
-                        </span>
+                        <span className="text-xs text-muted">+{profileNames.length - 3} more</span>
                       )}
                     </div>
                   </Td>
                   <Td>
-                    <span className="text-sm text-mineshaft-200">
+                    <span className="text-sm text-foreground">
                       {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
                     </span>
                   </Td>
                   <Td>
-                    <span className="text-sm text-mineshaft-400">
+                    <span className="text-sm text-muted">
                       {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
                     </span>
                   </Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <div className="hover:text-project data-[state=open]:text-project">
                           <Tooltip content="More options">
                             <IconButton
                               ariaLabel="More options"

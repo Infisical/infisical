@@ -43,7 +43,7 @@ export const PolicyKeyUsagesSection = ({ policy }: Props) => {
       <CardContent>
         <DetailGroup>
           {ku && (
-            <div className="flex flex-col gap-y-3 border-b border-mineshaft-700 pb-3 last:border-b-0 last:pb-0">
+            <div className="flex flex-col gap-y-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
               <div className="text-sm font-medium text-foreground">Key Usages</div>
               {kuEmpty ? (
                 <p className="text-sm text-muted">

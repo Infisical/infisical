@@ -181,10 +181,10 @@ const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: ()
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-container-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">
           {option.image ? (
             <img
               src={`/images/integrations/${option.image}`}

@@ -40,7 +40,7 @@ export const SecretDashboardPathBreadcrumb = ({
           <span
             className={twMerge(
               "text-sm transition-all",
-              isCopying ? "text-bunker-200" : "text-bunker-300"
+              isCopying ? "text-foreground" : "text-label"
             )}
           >
             {folderName}
@@ -59,7 +59,7 @@ export const SecretDashboardPathBreadcrumb = ({
                   type: "info"
                 });
               }}
-              className="opacity-0 transition duration-75 group-hover:opacity-100 hover:bg-bunker-100/10"
+              className="opacity-0 transition duration-75 group-hover:opacity-100 hover:bg-foreground/10"
             >
               <FontAwesomeIcon
                 icon={!isCopying ? faCopy : faCheck}
@@ -82,8 +82,8 @@ export const SecretDashboardPathBreadcrumb = ({
             environments: [environmentSlug]
           })}
           className={twMerge(
-            "text-sm transition-all hover:text-primary",
-            isCopying && "text-primary"
+            "text-sm transition-all hover:text-project",
+            isCopying && "text-project"
           )}
         >
           {folderName}

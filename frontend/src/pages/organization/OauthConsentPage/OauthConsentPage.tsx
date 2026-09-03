@@ -74,7 +74,7 @@ export const OauthConsentPage = () => {
 
   if (isRedirecting) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Card className="w-full max-w-md items-center text-center">
           <div className="flex size-16 items-center justify-center rounded-full bg-success/10">
             <CheckCircle2 className="size-8 text-success" />
@@ -90,7 +90,7 @@ export const OauthConsentPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <Helmet>
         <title>Authorize Application</title>
         <link rel="icon" href="/infisical.ico" />

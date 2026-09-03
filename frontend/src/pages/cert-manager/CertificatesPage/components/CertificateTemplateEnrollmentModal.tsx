@@ -163,7 +163,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           />
           {data && (
             <FormControl label="EST Label">
-              <Input value={data.certificateTemplateId} isDisabled className="bg-white/[0.07]" />
+              <Input value={data.certificateTemplateId} isDisabled className="bg-foreground/5" />
             </FormControl>
           )}
           <Controller
@@ -198,7 +198,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                   <TextArea
                     {...field}
                     isDisabled={disableBootstrapCertValidation}
-                    className="min-h-60 border-none bg-mineshaft-900 text-gray-400"
+                    className="min-h-60 border-none bg-card text-muted"
                     reSize="none"
                   />
                 </FormControl>

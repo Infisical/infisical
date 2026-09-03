@@ -14,9 +14,12 @@ import {
   Info,
   LogOut,
   Mail,
+  Monitor,
+  Moon,
   Plus,
   Settings,
   Slack,
+  Sun,
   TriangleAlertIcon,
   User,
   UserPlus,
@@ -45,6 +48,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
@@ -56,6 +62,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
+import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionActions,
@@ -139,6 +146,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 
 export const Navbar = () => {
   const { user } = useUser();
+  const { theme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -368,7 +376,7 @@ export const Navbar = () => {
             </Tooltip>
             <Link
               to="/admin"
-              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-white transition-all duration-100"
+              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-foreground transition-all duration-100"
             >
               <InstanceIcon className="size-3.5 text-admin" />
               <div className="whitespace-nowrap">Server Console</div>
@@ -383,7 +391,7 @@ export const Navbar = () => {
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
+                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                     type="button"
@@ -634,7 +642,7 @@ export const Navbar = () => {
               <CircleHelp />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+          <DropdownMenuContent align="end" side="bottom">
             {INFISICAL_SUPPORT_OPTIONS.map(([Icon, text, getUrl]) => {
               const url =
                 text === "Email Support"
@@ -695,7 +703,11 @@ export const Navbar = () => {
               <User />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
+          <DropdownMenuContent
+            side="bottom"
+            align="end"
+            className="[&_[data-slot=dropdown-menu-item]]:h-row-md [&_[data-slot=dropdown-menu-radio-item]]:h-row-md"
+          >
             <div className="cursor-default px-3 py-2">
               <div className="text-sm font-medium capitalize">
                 {user?.firstName} {user?.lastName}
@@ -728,6 +740,25 @@ export const Navbar = () => {
                 ) : null
               }
             </OrgPermissionCan>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={theme}
+              onValueChange={(value) => setTheme(value as Theme)}
+            >
+              <DropdownMenuRadioItem value="system" className="gap-2">
+                <Monitor className="size-4" />
+                System
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark" className="gap-2">
+                <Moon className="size-4" />
+                Dark
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="light" className="gap-2">
+                <Sun className="size-4" />
+                Light
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <a
@@ -777,7 +808,7 @@ export const Navbar = () => {
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-project" />
               Your payment could not be processed.
             </div>
           }

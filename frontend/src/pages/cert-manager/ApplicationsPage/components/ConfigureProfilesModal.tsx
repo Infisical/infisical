@@ -107,12 +107,12 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
             placeholder="Select profiles..."
           />
           {!profilesLoading && !profileOptions.length && (
-            <p className="mt-3 text-xs text-yellow-500">
+            <p className="mt-3 text-xs text-warning">
               No certificate profiles available.{" "}
               <Link
                 to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
                 params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                className="underline hover:text-yellow-400"
+                className="underline hover:text-warning"
               >
                 Create one in Certificate Profiles
               </Link>

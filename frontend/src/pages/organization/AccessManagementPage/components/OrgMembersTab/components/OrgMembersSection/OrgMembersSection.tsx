@@ -244,10 +244,8 @@ export const OrgMembersSection = () => {
         }
         buttonText="Remove"
       >
-        <div className="mt-4 text-sm text-mineshaft-400">
-          The following members will be removed:
-        </div>
-        <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+        <div className="mt-4 text-sm text-muted">The following members will be removed:</div>
+        <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border bg-danger/10 p-4 pl-8 text-sm text-danger">
           <ul className="list-disc">
             {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
               const email = member.user.email ?? member.user.username ?? member.inviteEmail;

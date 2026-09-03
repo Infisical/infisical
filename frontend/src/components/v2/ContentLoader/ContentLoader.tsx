@@ -30,7 +30,7 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
   return (
     <div
       className={twMerge(
-        "relative container mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:scheme-dark",
+        "relative container mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-foreground dark:scheme-dark",
         className
       )}
     >
@@ -38,7 +38,7 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div
-            className="text-primary"
+            className="text-project"
             key={`content-loader-${pos}`}
             initial={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -48,7 +48,7 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
           </motion.div>
         </AnimatePresence>
       )}
-      {text && !isTextArray && <div className="text-xs text-primary">{text}</div>}
+      {text && !isTextArray && <div className="text-xs text-project">{text}</div>}
     </div>
   );
 };

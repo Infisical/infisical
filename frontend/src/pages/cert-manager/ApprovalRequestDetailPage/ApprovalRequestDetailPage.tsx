@@ -47,12 +47,12 @@ const CodeSigningDetailsSection = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="text-lg font-medium text-mineshaft-100">
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-lg font-medium text-foreground">
           Signing access for {requestData.signerName}
         </h2>
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mineshaft-700 text-sm font-medium text-mineshaft-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-container-hover text-sm font-medium text-foreground">
             {(requesterName || "U")
               .split(" ")
               .map((n) => n[0])
@@ -61,37 +61,37 @@ const CodeSigningDetailsSection = ({
               .toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-medium text-mineshaft-100">{requesterName || "Unknown"}</p>
-            {requesterEmail && <p className="text-sm text-mineshaft-400">{requesterEmail}</p>}
+            <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
+            {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
           </div>
         </div>
       </div>
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-5">
-        <h3 className="mb-4 text-lg font-medium text-mineshaft-100">Signing Access Details</h3>
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h3 className="mb-4 text-lg font-medium text-foreground">Signing Access Details</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="text-xs text-mineshaft-400">Signer</span>
-            <p className="text-sm text-mineshaft-100">{requestData.signerName}</p>
+            <span className="text-xs text-muted">Signer</span>
+            <p className="text-sm text-foreground">{requestData.signerName}</p>
           </div>
           {requestData.requestedWindowDuration && (
             <div>
-              <span className="text-xs text-mineshaft-400">Access Duration</span>
-              <p className="text-sm text-mineshaft-100">
+              <span className="text-xs text-muted">Access Duration</span>
+              <p className="text-sm text-foreground">
                 {requestData.requestedWindowDuration} from approval
               </p>
             </div>
           )}
           {requestData.requestedSignings && (
             <div>
-              <span className="text-xs text-mineshaft-400">Allowed Sign Operations</span>
-              <p className="text-sm text-mineshaft-100">{requestData.requestedSignings}</p>
+              <span className="text-xs text-muted">Allowed Sign Operations</span>
+              <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
             </div>
           )}
         </div>
         {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
-          <div className="mt-4 border-t border-mineshaft-600 pt-4">
-            <h4 className="mb-1 text-sm font-medium text-mineshaft-100">Request Scope</h4>
-            <p className="mb-3 text-xs text-mineshaft-400">
+          <div className="mt-4 border-t border-border pt-4">
+            <h4 className="mb-1 text-sm font-medium text-foreground">Request Scope</h4>
+            <p className="mb-3 text-xs text-muted">
               Signing is only allowed when every parameter below matches exactly.
             </p>
             <div className="flex flex-col gap-4">
@@ -99,12 +99,10 @@ const CodeSigningDetailsSection = ({
                 .filter((field) => requestData.scope?.[field])
                 .map((field) => (
                   <div key={field}>
-                    <span className="text-xs text-mineshaft-400">
-                      {codeSigningScopeFieldLabels[field]}
-                    </span>
+                    <span className="text-xs text-muted">{codeSigningScopeFieldLabels[field]}</span>
                     <p
                       className={twMerge(
-                        "text-sm break-all text-mineshaft-100",
+                        "text-sm break-all text-foreground",
                         MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
                       )}
                     >
@@ -252,14 +250,14 @@ const PageContent = () => {
       return (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-mineshaft-100">Signing Request</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Signing Request</h1>
             <Badge variant={getStatusBadgeVariant(request.status)}>
               {getStatusLabel(request.status)}
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-mineshaft-400">
+          <p className="mt-1 text-sm text-muted">
             Signing request for signer{" "}
-            <span className="font-medium text-mineshaft-200">{reqData.signerName}</span> by{" "}
+            <span className="font-medium text-foreground">{reqData.signerName}</span> by{" "}
             {request.requesterName || "Unknown"}
           </p>
         </>
@@ -270,16 +268,14 @@ const PageContent = () => {
     return (
       <>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-mineshaft-100">
-            Certificate Approval Request
-          </h1>
+          <h1 className="text-2xl font-semibold text-foreground">Certificate Approval Request</h1>
           <Badge variant={getStatusBadgeVariant(request.status)}>
             {getStatusLabel(request.status)}
           </Badge>
         </div>
-        <p className="mt-1 text-sm text-mineshaft-400">
+        <p className="mt-1 text-sm text-muted">
           Certificate issuance request for{" "}
-          <span className="font-medium text-mineshaft-200">
+          <span className="font-medium text-foreground">
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
@@ -294,7 +290,7 @@ const PageContent = () => {
                   projectId: currentProject.id,
                   applicationName: requestApplication.name
                 }}
-                className="font-medium text-mineshaft-200 underline hover:text-mineshaft-100"
+                className="font-medium text-foreground underline hover:text-foreground"
               >
                 {requestApplication.name}
               </Link>
@@ -320,8 +316,7 @@ const PageContent = () => {
   };
 
   const renderBackLink = () => {
-    const linkClass =
-      "mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400 hover:text-mineshaft-200";
+    const linkClass = "mb-4 flex items-center gap-x-2 text-sm text-muted hover:text-foreground";
 
     if (applicationName) {
       return (
@@ -390,14 +385,14 @@ const PageContent = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between font-inter text-white">
+    <div className="container mx-auto flex flex-col justify-between bg-background font-inter text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         {renderBackLink()}
 
         <div className="mb-6 flex items-start justify-between">
           <div>{renderTitle()}</div>
           <div className="flex items-center gap-4">
-            <p className="text-sm text-mineshaft-400">
+            <p className="text-sm text-muted">
               Requested {format(new Date(request.createdAt), "yyyy-MM-dd, hh:mm aaa")}
             </p>
             {request.requesterId === currentUser.id &&

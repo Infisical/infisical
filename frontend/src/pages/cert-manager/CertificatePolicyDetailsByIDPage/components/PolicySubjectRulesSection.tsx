@@ -58,7 +58,7 @@ export const PolicySubjectRulesSection = ({ policy }: Props) => {
                 <div
                   // eslint-disable-next-line react/no-array-index-key
                   key={`${rule.type}-${idx}`}
-                  className="flex flex-col gap-y-3 border-b border-mineshaft-700 pb-3 last:border-b-0 last:pb-0"
+                  className="flex flex-col gap-y-3 border-b border-border pb-3 last:border-b-0 last:pb-0"
                 >
                   <div className="text-sm font-medium text-foreground">
                     {formatSubjectAttributeType(rule.type as CertSubjectAttributeType)}

@@ -57,27 +57,27 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
     <Tr>
       <Td>
         <div className="flex items-center gap-2">
-          <div className="font-medium text-gray-200">{alert.name}</div>
+          <div className="font-medium text-foreground">{alert.name}</div>
           {alert.description && (
             <Tooltip content={alert.description}>
-              <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+              <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
             </Tooltip>
           )}
         </div>
       </Td>
       <Td>
-        <span className="text-gray-300">{formatEventType(alert.eventType)}</span>
+        <span className="text-label">{formatEventType(alert.eventType)}</span>
       </Td>
       <Td>
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </Td>
-      <Td className="text-gray-300">
+      <Td className="text-label">
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-muted">—</span>
         )}
       </Td>
       <Td>
@@ -85,14 +85,14 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
           <Tooltip
             content={
               <div className="max-w-sm">
-                <div className="text-xs text-mineshaft-300">
+                <div className="text-xs text-label">
                   {new Date(alert.lastRun.timestamp)
                     .toISOString()
                     .replace("T", " ")
                     .replace("Z", " UTC")}
                 </div>
                 {alert.lastRun.error && (
-                  <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-red-400">
+                  <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
                     {alert.lastRun.error}
                   </div>
                 )}
@@ -104,7 +104,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
             </Badge>
           </Tooltip>
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-muted">—</span>
         )}
       </Td>
       <Td className="text-right">
@@ -127,7 +127,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
               <FontAwesomeIcon icon={alert.enabled ? faStop : faPlay} className="mr-2 h-4 w-4" />
               {alert.enabled ? "Disable" : "Enable"} alert
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-red-600">
+            <DropdownMenuItem onClick={onDelete} className="text-danger">
               <FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
               Delete alert
             </DropdownMenuItem>

@@ -95,7 +95,7 @@ const Content = ({ findings, onComplete }: ContentProps) => {
                 value={value}
                 placeholder="Select status..."
                 onValueChange={onChange}
-                className="w-full border border-mineshaft-500 capitalize"
+                className="w-full border border-border capitalize"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
                 LucideIcon={value ? SECRET_SCANNING_FINDING_STATUS_MAP[value].Icon : undefined}

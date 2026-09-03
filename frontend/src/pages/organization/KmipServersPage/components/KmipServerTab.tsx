@@ -78,10 +78,10 @@ export const KmipServerTab = withPermission(
     );
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-6 rounded-lg border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex grow items-center gap-x-2">
-            <h3 className="text-lg font-medium text-mineshaft-100">KMIP Servers</h3>
+            <h3 className="text-lg font-medium text-foreground">KMIP Servers</h3>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip" />
             <div className="flex grow" />
             <OrgPermissionCan
@@ -101,7 +101,7 @@ export const KmipServerTab = withPermission(
             </OrgPermissionCan>
           </div>
         </div>
-        <p className="mb-4 text-sm text-mineshaft-400">
+        <p className="mb-4 text-sm text-muted">
           Create and configure KMIP servers that proxy KMIP requests to Infisical KMS
         </p>
         <div>
@@ -130,7 +130,7 @@ export const KmipServerTab = withPermission(
                 {filteredKmipServers?.map((el) => (
                   <Tr
                     key={el.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-container-hover"
                     onClick={() => {
                       navigate({
                         to: "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
@@ -171,7 +171,7 @@ export const KmipServerTab = withPermission(
                                 <DropdownMenuItem
                                   isDisabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faTrash} />}
-                                  className="text-red"
+                                  className="text-danger"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("deleteKmipServer", el);

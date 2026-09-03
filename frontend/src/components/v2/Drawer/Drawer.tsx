@@ -17,7 +17,7 @@ export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
 } & VariantProps<typeof drawerContentVariation>;
 
 const drawerContentVariation = cva(
-  "fixed ease-in-out duration-300 z-90 border border-mineshaft-600 drop-shadow-2xl",
+  "fixed ease-in-out duration-300 z-90 border border-border drop-shadow-2xl",
   {
     variants: {
       direction: {
@@ -69,7 +69,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           props.onPointerDownOutside?.(e);
         }}
       >
-        <Card isRounded={false} className="dark h-full w-full">
+        <Card isRounded={false} className="dark h-full w-full bg-popover">
           {title && (
             <CardTitle subTitle={subTitle} className="mb-0 px-4">
               {title}
@@ -88,7 +88,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+              className="absolute top-4 right-6 rounded-sm text-muted hover:text-foreground"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>

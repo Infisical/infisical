@@ -87,7 +87,7 @@ export const SecretScanningFindingRow = ({
       <Tr
         onClick={setIsExpanded.toggle}
         className={twMerge(
-          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
         )}
         key={`resource-${id}`}
       >
@@ -114,13 +114,13 @@ export const SecretScanningFindingRow = ({
         <Td>
           <div className="flex items-center gap-1 whitespace-nowrap">
             <p>{format(createdAt, "MMM dd yyyy")}</p>
-            <p className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</p>
+            <p className="text-label">{format(createdAt, "h:mm aa")}</p>
           </div>
         </Td>
         <Td className="max-w-0 min-w-32!">
           <div className="w-full items-center">
             <p className="truncate">{resourceName}</p>
-            <p className="truncate text-xs text-mineshaft-400">{dataSourceName}</p>
+            <p className="truncate text-xs text-muted">{dataSourceName}</p>
           </div>
         </Td>
         <Td className="whitespace-nowrap">{rule}</Td>
@@ -163,7 +163,7 @@ export const SecretScanningFindingRow = ({
       <Tr>
         <Td colSpan={7} className="border-none! p-0">
           <div
-            className={`w-full bg-mineshaft-900/75 transition-all duration-500 ${
+            className={`w-full bg-card/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 overflow-y-auto opacity-100" : "max-h-0 overflow-hidden"
             }`}
           >
@@ -197,13 +197,13 @@ export const SecretScanningFindingRow = ({
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="cursor-pointer text-mineshaft-300 underline underline-offset-2 hover:text-mineshaft-100"
+                  className="cursor-pointer text-label underline underline-offset-2 hover:text-foreground"
                   href={details.link}
                 >
                   {details.link}
                 </a>
               </GenericFieldLabel>
-              <div className="col-span-full flex items-center border-t border-mineshaft-500" />
+              <div className="col-span-full flex items-center border-t border-border" />
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
                 a={ProjectPermissionSub.SecretScanningFindings}

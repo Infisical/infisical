@@ -141,14 +141,14 @@ export const SignerDetailPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: `Signer: ${signer.name}` })}</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
+      <div className="h-full bg-background">
+        <div className="mx-auto flex flex-col text-foreground">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <div className="mb-4">
               <Link
                 to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
                 params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+                className="flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
               >
                 <ChevronLeftIcon size={16} />
                 Back to Signers

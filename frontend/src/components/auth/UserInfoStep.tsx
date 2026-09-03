@@ -164,18 +164,18 @@ export default function UserInfoStep({
           >
             {isInvite ? (
               <>
-                <span className="shrink-0 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                <span className="shrink-0 bg-linear-to-b from-white to-label bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
                 <span
-                  className="min-w-0 truncate bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent"
+                  className="min-w-0 truncate bg-linear-to-b from-white to-label bg-clip-text text-transparent"
                   title={inviteOrganizationLabel}
                 >
                   {inviteOrganizationLabel}
                 </span>
               </>
             ) : (
-              <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+              <span className="bg-linear-to-b from-white to-label bg-clip-text text-transparent">
                 {stepTitle}
               </span>
             )}

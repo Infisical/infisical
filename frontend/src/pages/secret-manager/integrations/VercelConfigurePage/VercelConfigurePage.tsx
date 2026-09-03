@@ -175,7 +175,7 @@ export const VercelConfigurePage = () => {
       <Helmet>
         <title>Set Up Vercel Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
+      <Card className="max-w-lg rounded-md border border-border p-0">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to Vercel's environment variables."
@@ -190,7 +190,7 @@ export const VercelConfigurePage = () => {
               href="https://infisical.com/docs/integrations/cloud/vercel"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -205,7 +205,7 @@ export const VercelConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -233,7 +233,7 @@ export const VercelConfigurePage = () => {
             >
               <div>
                 <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
               </div>
             </Tooltip>
           }
@@ -248,7 +248,7 @@ export const VercelConfigurePage = () => {
 
               setTargetAppId(val);
             }}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -271,7 +271,7 @@ export const VercelConfigurePage = () => {
           <Select
             value={targetEnvironment}
             onValueChange={(val) => setTargetEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {selectedVercelEnvironments.map((vercelEnvironment) => (
               <SelectItem
@@ -288,7 +288,7 @@ export const VercelConfigurePage = () => {
             <Select
               value={targetBranch}
               onValueChange={(val) => setTargetBranch(val)}
-              className="w-full border border-mineshaft-500"
+              className="w-full border border-border"
             >
               {filteredBranches.map((branchName) => (
                 <SelectItem value={branchName} key={`target-branch-${branchName}`}>
@@ -303,7 +303,7 @@ export const VercelConfigurePage = () => {
           <Select
             value={initialSyncBehavior}
             onValueChange={(val) => setInitialSyncBehavior(val as IntegrationSyncBehavior)}
-            className="w-full border border-mineshaft-500 text-sm"
+            className="w-full border border-border text-sm"
           >
             {initialSyncBehaviors.map((syncBehavior) => (
               <SelectItem value={syncBehavior.value} key={`sync-behavior-${syncBehavior.value}`}>
@@ -315,7 +315,7 @@ export const VercelConfigurePage = () => {
 
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           variant="outline_bg"
           className="mt-2 mr-6 mb-6 ml-auto"
           isLoading={isLoading}
@@ -324,13 +324,13 @@ export const VercelConfigurePage = () => {
           Create Integration
         </Button>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+      <div className="mt-6 w-full max-w-md border-t border-border" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border bg-container p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground" />{" "}
+          <span className="text-md ml-3 text-foreground">Pro Tip</span>
         </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
+        <span className="mt-4 text-sm text-label">
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Vercel with secrets from Infisical.
         </span>
@@ -349,12 +349,12 @@ export const VercelConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

@@ -131,7 +131,7 @@ const RenderSecretChanges = ({
         content={
           <div className="max-w-xs">
             <p className="font-medium">References will be updated</p>
-            <p className="mt-1 text-xs text-mineshaft-300">
+            <p className="mt-1 text-xs text-label">
               This secret is referenced by {referenceCount} secret{referenceCount !== 1 ? "s" : ""}.
               References will be automatically updated to use the new key. This can trigger secret
               syncs in the respective environments.

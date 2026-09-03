@@ -725,7 +725,7 @@ export const CertificateIssuanceModal = ({
       {currentStepKey !== "profile" && (actualSelectedProfile || profileId) && (
         <div className="space-y-4">
           {currentStepKey === "options" && profileId && isAdcsProfile && (
-            <p className="mb-4 text-xs text-mineshaft-400">{EXTERNAL_CA_TEMPLATE_HINT}</p>
+            <p className="mb-4 text-xs text-muted">{EXTERNAL_CA_TEMPLATE_HINT}</p>
           )}
 
           {(currentStepKey === "subject" || currentStepKey === "csr") && digicertProductNameId && (

@@ -64,13 +64,13 @@ export const SecretSyncImportStatusBadge = ({ secretSync, mini }: Props) => {
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
             <div>
-              <div className="mb-2 flex self-start text-red">
+              <div className="mb-2 flex self-start text-danger">
                 <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">
                   {mini ? "Failed to Import Secrets" : "Failure Reason"}
                 </div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+              <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>

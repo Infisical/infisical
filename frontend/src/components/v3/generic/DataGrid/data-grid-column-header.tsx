@@ -36,11 +36,11 @@ export function DataGridColumnHeader<TData, TValue>({
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {/* eslint-disable-next-line no-nested-ternary */}
           {column.columnDef.meta?.columnIndicator?.type === "pk" ? (
-            <KeyRoundIcon size={12} className="shrink-0 text-yellow-500" />
+            <KeyRoundIcon size={12} className="shrink-0 text-warning" />
           ) : column.columnDef.meta?.columnIndicator?.type === "fk" ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link2Icon size={12} className="shrink-0 text-blue-400" />
+                <Link2Icon size={12} className="shrink-0 text-info" />
               </TooltipTrigger>
               {column.columnDef.meta.columnIndicator.tooltip && (
                 <TooltipContent side="bottom">
@@ -49,7 +49,7 @@ export function DataGridColumnHeader<TData, TValue>({
               )}
             </Tooltip>
           ) : null}
-          <span className="truncate text-mineshaft-200">{label}</span>
+          <span className="truncate text-foreground">{label}</span>
           {column.columnDef.meta?.typeLabel && (
             <span className="shrink-0 font-normal text-accent">
               {column.columnDef.meta.typeLabel}
@@ -60,8 +60,8 @@ export function DataGridColumnHeader<TData, TValue>({
               className={cn(
                 "shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium",
                 column.columnDef.meta.columnIndicator.type === "pk"
-                  ? "bg-yellow-500/15 text-yellow-500"
-                  : "bg-blue-400/15 text-blue-400"
+                  ? "bg-warning/15 text-warning"
+                  : "bg-info/15 text-info"
               )}
             >
               {column.columnDef.meta.columnIndicator.type === "pk" ? "PK" : "FK"}

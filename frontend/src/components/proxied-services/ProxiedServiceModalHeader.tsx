@@ -18,9 +18,9 @@ export const ProxiedServiceModalHeader = ({ title, subtitle, image }: Props) => 
     <>
       <div className="flex items-center gap-x-3">
         {image && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-mineshaft-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-container-hover">
             {imgError ? (
-              <GlobeIcon className="h-4 w-4 text-bunker-300" />
+              <GlobeIcon className="h-4 w-4 text-label" />
             ) : (
               <img
                 src={`/images/integrations/${image}`}

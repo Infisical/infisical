@@ -285,7 +285,7 @@ const Page = () => {
               applicationName: parentApplication
             }}
             search={{ selectedTab: ApplicationTab.Certificates }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             Go back to Application
@@ -299,7 +299,7 @@ const Page = () => {
               projectId,
               connectorId: fromHsmConnector
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             HSM Connector
@@ -312,7 +312,7 @@ const Page = () => {
               orgId: currentOrg.id,
               projectId
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             Certificates
@@ -488,7 +488,7 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       {pageBody}
       <CertificateCertModal
         popUp={popUp}

@@ -25,19 +25,18 @@ export const SecretTableResourceCount = ({
   secretRotationCount = 0
 }: Props) => {
   return (
-    <div className="flex items-center divide-x divide-mineshaft-500 text-sm text-mineshaft-400 [&>*]:pr-2">
+    <div className="flex items-center divide-x divide-border text-sm text-muted [&>*]:pr-2">
       {importCount > 0 && (
         <Tooltip
           className="max-w-sm"
           content={
             <p className="text-center whitespace-nowrap">
-              Total import count{" "}
-              <span className="text-center text-mineshaft-400">(matching filters)</span>
+              Total import count <span className="text-center text-muted">(matching filters)</span>
             </p>
           }
         >
           <div className="flex items-center gap-2">
-            <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+            <FontAwesomeIcon icon={faFileImport} className="text-success" />
             <span>{importCount}</span>
           </div>
         </Tooltip>
@@ -47,13 +46,12 @@ export const SecretTableResourceCount = ({
           className="max-w-sm"
           content={
             <p className="text-center whitespace-nowrap">
-              Total folder count{" "}
-              <span className="text-center text-mineshaft-400">(matching filters)</span>
+              Total folder count <span className="text-center text-muted">(matching filters)</span>
             </p>
           }
         >
           <div className="flex items-center gap-2 pl-2">
-            <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
+            <FontAwesomeIcon icon={faFolder} className="text-warning" />
             <span>{folderCount}</span>
           </div>
         </Tooltip>
@@ -64,12 +62,12 @@ export const SecretTableResourceCount = ({
           content={
             <p className="text-center whitespace-nowrap">
               Total dynamic secret count{" "}
-              <span className="text-center text-mineshaft-400">(matching filters)</span>
+              <span className="text-center text-muted">(matching filters)</span>
             </p>
           }
         >
           <div className="flex items-center gap-2 pl-2">
-            <FontAwesomeIcon icon={faFingerprint} className="text-yellow-700" />
+            <FontAwesomeIcon icon={faFingerprint} className="text-warning" />
             <span>{dynamicSecretCount}</span>
           </div>
         </Tooltip>
@@ -80,12 +78,12 @@ export const SecretTableResourceCount = ({
           content={
             <p className="text-center whitespace-nowrap">
               Total secret rotation count{" "}
-              <span className="text-center text-mineshaft-400">(matching filters)</span>
+              <span className="text-center text-muted">(matching filters)</span>
             </p>
           }
         >
           <div className="flex items-center gap-2 pl-2">
-            <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+            <FontAwesomeIcon icon={faRotate} className="text-muted" />
             <span>{secretRotationCount}</span>
           </div>
         </Tooltip>
@@ -95,13 +93,12 @@ export const SecretTableResourceCount = ({
           className="max-w-sm"
           content={
             <p className="text-center whitespace-nowrap">
-              Total secret count{" "}
-              <span className="text-center text-mineshaft-400">(matching filters)</span>
+              Total secret count <span className="text-center text-muted">(matching filters)</span>
             </p>
           }
         >
           <div className="flex items-center gap-2 pl-2">
-            <FontAwesomeIcon icon={faKey} className="text-bunker-300" />
+            <FontAwesomeIcon icon={faKey} className="text-label" />
             <span>{secretCount}</span>
           </div>
         </Tooltip>

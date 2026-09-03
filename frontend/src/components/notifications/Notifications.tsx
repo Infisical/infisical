@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { IconButton } from "@app/components/v3/generic/IconButton";
 import { Toaster } from "@app/components/v3/generic/Toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
+import { useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { useTimedReset } from "@app/hooks";
 
 export type NotificationType = "success" | "error" | "info" | "warning" | "loading" | "default";
@@ -84,9 +85,7 @@ const NotificationBody = ({
           >
             {copyActions.map((action) => (
               <div className="flex flex-row items-center gap-1.5" key={`copy-${action.name}`}>
-                {action.label && (
-                  <span className="ml-2 text-xs text-mineshaft-400">{action.label}</span>
-                )}
+                {action.label && <span className="ml-2 text-xs text-muted">{action.label}</span>}
                 <ToastCopyButton value={action.value} name={action.name} />
               </div>
             ))}
@@ -144,4 +143,7 @@ export const createNotification = (
 export const dismissNotification = (id: string | number) => toast.dismiss(id);
 
 // All styling/position/close-button config lives in the v3 Toaster itself.
-export const NotificationContainer = () => <Toaster />;
+export const NotificationContainer = () => {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} />;
+};

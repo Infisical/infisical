@@ -22,8 +22,8 @@ export const ExternalCaHeader = ({ name, subtitle, image, icon: Icon }: Props) =
         )}
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">{name}</div>
-        <p className="text-sm leading-4 font-normal text-mineshaft-400">{subtitle}</p>
+        <div className="flex items-center gap-x-2 text-label">{name}</div>
+        <p className="text-sm leading-4 font-normal text-muted">{subtitle}</p>
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
     <ol
       ref={ref}
       className={twMerge(
-        "flex flex-wrap items-center text-sm break-words text-bunker-100",
+        "flex flex-wrap items-center text-sm break-words text-foreground",
         className
       )}
       {...props}
@@ -55,7 +55,7 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={twMerge("transition-colors hover:text-primary", className)}
+      className={twMerge("transition-colors hover:text-project", className)}
       {...props}
     />
   );
@@ -69,7 +69,7 @@ const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWit
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={twMerge("font-normal text-bunker-200 last:text-bunker-300", className)}
+      className={twMerge("font-normal text-foreground last:text-label", className)}
       {...props}
     />
   )
@@ -78,7 +78,7 @@ BreadcrumbPage.displayName = "BreadcrumbPage";
 
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
   <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
-    {children ?? <p className="px-3 text-lg text-mineshaft-400/70">/</p>}
+    {children ?? <p className="px-3 text-lg text-muted/70">/</p>}
   </li>
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
@@ -126,7 +126,7 @@ const BreadcrumbContainer = ({
   breadcrumbs: TBreadcrumbFormat[];
   className?: string;
 }) => (
-  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-white", className)}>
+  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-foreground", className)}>
     <Breadcrumb className="overflow-hidden">
       <BreadcrumbList className="overflow-hidden">
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {
@@ -141,11 +141,7 @@ const BreadcrumbContainer = ({
                     <BreadcrumbItem>
                       <BreadcrumbSegment className="rounded-md py-1 py-2">
                         {el.label}{" "}
-                        <FontAwesomeIcon
-                          icon={faCaretDown}
-                          size="sm"
-                          className="ml-2 text-bunker-300"
-                        />
+                        <FontAwesomeIcon icon={faCaretDown} size="sm" className="ml-2 text-label" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>

@@ -55,7 +55,7 @@ export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
       return <NutanixPrismCentralPkiSyncFields />;
     default:
       return (
-        <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">
+        <div className="flex items-center justify-center rounded-md border border-danger bg-danger/10 p-4 text-danger">
           <p>Unsupported destination: {destination}</p>
         </div>
       );

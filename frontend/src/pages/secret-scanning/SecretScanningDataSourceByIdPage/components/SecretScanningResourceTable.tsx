@@ -217,8 +217,8 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
@@ -230,7 +230,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
               <Tooltip
                 content={`Inactive ${resourceDetails.pluralNoun} will not be scanned due to exclusion in Data Source configuration.`}
               >
-                <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
               </Tooltip>
             </DropdownMenuLabel>
             {Object.values(ResourceStatus).map((status) => (
@@ -247,7 +247,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                 key={status}
                 icon={
                   filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                   )
                 }
                 iconPos="right"
@@ -255,9 +255,7 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                 <div className="flex items-center gap-2">
                   <FontAwesomeIcon
                     icon={status === ResourceStatus.Active ? faBullseye : faBan}
-                    className={
-                      status === ResourceStatus.Active ? "text-primary" : "text-mineshaft-400"
-                    }
+                    className={status === ResourceStatus.Active ? "text-project" : "text-muted"}
                   />
                   <span className="capitalize">{status.replace("-", " ")}</span>
                 </div>

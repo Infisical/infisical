@@ -10,6 +10,7 @@ import NProgress from "nprogress";
 // the chunks and breaks module init order, which took the app down on boot.
 // Neither lint nor typecheck catches it, so only a real build does.
 import { Lottie } from "./components/v2";
+import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -33,6 +34,7 @@ import "./translation";
 // for passing in lng and translations on init/
 
 initializePlatform();
+initializeTheme();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);
@@ -72,7 +74,7 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="flex h-full w-full items-center justify-center bg-bunker-800 [#root>&]:h-screen">
+    <div className="flex h-full w-full items-center justify-center bg-background [#root>&]:h-screen">
       <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
     </div>
   ),

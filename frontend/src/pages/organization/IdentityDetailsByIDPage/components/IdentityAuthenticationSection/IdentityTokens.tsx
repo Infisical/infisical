@@ -28,8 +28,8 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
   return (
     <div>
       {tokens?.length ? (
-        <div className="flex items-center justify-between border-b border-bunker-400 pb-1">
-          <p className="text-sm font-medium text-bunker-300">{`Access Tokens (${tokens.length})`}</p>
+        <div className="flex items-center justify-between border-b border-border pb-1">
+          <p className="text-sm font-medium text-label">{`Access Tokens (${tokens.length})`}</p>
           <Button
             size="xs"
             className="underline"
@@ -54,16 +54,14 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
         );
         return (
           <div
-            className="group flex items-center justify-between border-b border-mineshaft-500 px-2 py-2 last:pb-0"
+            className="group flex items-center justify-between border-b border-border px-2 py-2 last:pb-0"
             key={`identity-token-${token.id}`}
           >
             <div className="flex items-center">
-              <FontAwesomeIcon size="xs" className="text-mineshaft-400" icon={faKey} />
+              <FontAwesomeIcon size="xs" className="text-muted" icon={faKey} />
               <div className="ml-3">
-                <p className="text-sm font-medium text-mineshaft-300">
-                  {token.name ? token.name : "-"}
-                </p>
-                <p className="text-xs text-mineshaft-400">
+                <p className="text-sm font-medium text-label">{token.name ? token.name : "-"}</p>
+                <p className="text-xs text-muted">
                   {token.isAccessTokenRevoked
                     ? "Revoked"
                     : `Expires on ${format(expiresAt, "yyyy-MM-dd")}`}

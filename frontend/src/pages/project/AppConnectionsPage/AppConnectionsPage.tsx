@@ -14,13 +14,13 @@ export const AppConnectionsPage = withProjectPermission(
     const { currentProject } = useProject();
 
     return (
-      <div className="bg-bunker-800">
+      <div className="bg-background">
         <Helmet>
           <title>Infisical | App Connections</title>
           <link rel="icon" href="/infisical.ico" />
           <meta property="og:image" content="/images/message.png" />
         </Helmet>
-        <div className="flex w-full justify-center bg-bunker-800 text-white">
+        <div className="flex w-full justify-center bg-background text-foreground">
           <div className="w-full max-w-8xl">
             <PageHeader
               scope={currentProject.type}

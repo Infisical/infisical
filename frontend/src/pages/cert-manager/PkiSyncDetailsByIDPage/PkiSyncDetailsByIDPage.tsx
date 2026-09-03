@@ -97,12 +97,12 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between font-inter text-white">
+      <div className="container mx-auto flex flex-col justify-between bg-background font-inter text-foreground">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <button
             type="button"
             onClick={handleBack}
-            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon className="size-4" />
             {applicationName ? "Back to Application" : "Certificate Syncs"}
@@ -114,7 +114,7 @@ const PageContent = () => {
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-white">{pkiSync.name}</p>
+              <p className="truncate text-2xl font-medium text-foreground">{pkiSync.name}</p>
               <p className="mt-1 leading-3 text-accent">
                 {pkiSync.description || `${destinationDetails.name} PKI Sync`}
               </p>

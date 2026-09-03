@@ -230,23 +230,21 @@ const KmipClientCertificateForm = ({
           />
 
           {kmipClient && (
-            <div className="mt-4 rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4">
-              <div className="mb-3 flex items-center text-sm font-medium text-mineshaft-200">
+            <div className="mt-4 rounded-md border border-border bg-container-hover p-4">
+              <div className="mb-3 flex items-center text-sm font-medium text-foreground">
                 <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
                 Certificate Subject Values
               </div>
-              <p className="mb-3 text-xs text-mineshaft-300">
+              <p className="mb-3 text-xs text-label">
                 The signed certificate will use these fixed values for CN and OU. If your device
                 requires you to specify subject values when generating the CSR, use the values
                 below.
               </p>
               <div className="space-y-2">
-                <div className="flex items-center justify-between rounded bg-mineshaft-600 px-3 py-2">
+                <div className="flex items-center justify-between rounded bg-foreground/10 px-3 py-2">
                   <div>
-                    <div className="text-xs text-mineshaft-400">
-                      CN (Common Name) = KMIP Client ID
-                    </div>
-                    <div className="font-mono text-sm text-mineshaft-100">{kmipClient.id}</div>
+                    <div className="text-xs text-muted">CN (Common Name) = KMIP Client ID</div>
+                    <div className="font-mono text-sm text-foreground">{kmipClient.id}</div>
                   </div>
                   <IconButton
                     ariaLabel="Copy Client ID"
@@ -257,14 +255,10 @@ const KmipClientCertificateForm = ({
                     <FontAwesomeIcon icon={faCopy} />
                   </IconButton>
                 </div>
-                <div className="flex items-center justify-between rounded bg-mineshaft-600 px-3 py-2">
+                <div className="flex items-center justify-between rounded bg-foreground/10 px-3 py-2">
                   <div>
-                    <div className="text-xs text-mineshaft-400">
-                      OU (Organizational Unit) = Project ID
-                    </div>
-                    <div className="font-mono text-sm text-mineshaft-100">
-                      {kmipClient.projectId}
-                    </div>
+                    <div className="text-xs text-muted">OU (Organizational Unit) = Project ID</div>
+                    <div className="font-mono text-sm text-foreground">{kmipClient.projectId}</div>
                   </div>
                   <IconButton
                     ariaLabel="Copy Project ID"
@@ -276,7 +270,7 @@ const KmipClientCertificateForm = ({
                   </IconButton>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-mineshaft-400">
+              <p className="mt-3 text-xs text-muted">
                 Note: Any O (Organization), L (Locality), ST (State), or C (Country) values in your
                 CSR will be included in the certificate.
               </p>

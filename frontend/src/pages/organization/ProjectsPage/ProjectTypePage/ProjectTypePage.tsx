@@ -208,7 +208,7 @@ const ProjectTypeContent = ({
       <Link
         to="/organizations/$orgId/projects"
         params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
       >
         <ChevronLeftIcon size={16} />
         Organization
@@ -462,21 +462,21 @@ const MyProjectsForType = ({
             <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
               <CardHeader>
                 <div className="flex items-start gap-3">
-                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-mineshaft-600" />
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-foreground/10" />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <Skeleton className="h-4 w-1/2 bg-mineshaft-600" />
-                    <Skeleton className="h-3 w-1/3 bg-mineshaft-600" />
+                    <Skeleton className="h-4 w-1/2 bg-foreground/10" />
+                    <Skeleton className="h-3 w-1/3 bg-foreground/10" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
-                  <Skeleton className="h-3 w-full bg-mineshaft-600" />
-                  <Skeleton className="h-3 w-2/3 bg-mineshaft-600" />
+                  <Skeleton className="h-3 w-full bg-foreground/10" />
+                  <Skeleton className="h-3 w-2/3 bg-foreground/10" />
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Skeleton className="h-3 w-16 bg-mineshaft-600" />
-                  <Skeleton className="h-3 w-24 bg-mineshaft-600" />
+                  <Skeleton className="h-3 w-16 bg-foreground/10" />
+                  <Skeleton className="h-3 w-24 bg-foreground/10" />
                 </div>
               </CardContent>
             </Card>
@@ -497,19 +497,19 @@ const MyProjectsForType = ({
             {Array.apply(0, Array(3)).map((_x, i) => (
               <TableRow key={`workspace-rows-loading-${i + 1}`}>
                 <TableCell>
-                  <Skeleton className="h-4 w-4 bg-mineshaft-600" />
+                  <Skeleton className="h-4 w-4 bg-foreground/10" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-1/2 bg-mineshaft-600" />
+                  <Skeleton className="h-4 w-1/2 bg-foreground/10" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-3/4 bg-mineshaft-600" />
+                  <Skeleton className="h-4 w-3/4 bg-foreground/10" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-24 bg-mineshaft-600" />
+                  <Skeleton className="h-4 w-24 bg-foreground/10" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-7 bg-mineshaft-600" />
+                  <Skeleton className="h-4 w-7 bg-foreground/10" />
                 </TableCell>
               </TableRow>
             ))}
@@ -592,12 +592,7 @@ const MyProjectsForType = ({
   }
 
   return (
-    <Card
-      className={twMerge(
-        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
-        "transition-all duration-100"
-      )}
-    >
+    <Card>
       <CardHeader>
         <Toolbar
           searchFilter={searchFilter}
@@ -731,19 +726,19 @@ const AllProjectsForType = ({
           {Array.apply(0, Array(3)).map((_x, i) => (
             <TableRow key={`workspace-rows-loading-${i + 1}`}>
               <TableCell>
-                <Skeleton className="h-4 w-4 bg-mineshaft-600" />
+                <Skeleton className="h-4 w-4 bg-foreground/10" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-1/2 bg-mineshaft-600" />
+                <Skeleton className="h-4 w-1/2 bg-foreground/10" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-3/4 bg-mineshaft-600" />
+                <Skeleton className="h-4 w-3/4 bg-foreground/10" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-24 bg-mineshaft-600" />
+                <Skeleton className="h-4 w-24 bg-foreground/10" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-20 bg-mineshaft-600" />
+                <Skeleton className="h-4 w-20 bg-foreground/10" />
               </TableCell>
             </TableRow>
           ))}

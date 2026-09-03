@@ -116,10 +116,10 @@ export const ProjectTemplateEditRoleForm = ({
   return (
     <form
       onSubmit={handleFormSubmit}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="w-full rounded-lg border border-border bg-card p-4"
     >
       <FormProvider {...formMethods}>
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <div className="flex items-center justify-between border-b border-border pb-2">
           <Button variant="ghost" disabled={isSubmitting} onClick={onGoBack}>
             <ChevronLeftIcon />
             {isDisabled ? "Back" : "Cancel"}
@@ -153,11 +153,11 @@ export const ProjectTemplateEditRoleForm = ({
             </div>
           )}
         </div>
-        <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
+        <div className="mt-2 border-b border-border p-4 pt-2 first:rounded-t-md last:rounded-b-md">
           {isDisabled ? (
             <div className="flex flex-col">
               <span className="text-lg font-medium">{role?.name}</span>
-              <span className="text-mineshaft-400">{role?.slug}</span>
+              <span className="text-muted">{role?.slug}</span>
             </div>
           ) : (
             <div className="flex w-full gap-2">

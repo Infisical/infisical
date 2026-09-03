@@ -64,8 +64,8 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading generated credentials...</p>
+        <Spinner size="lg" className="text-muted" />
+        <p className="mt-4 text-sm text-muted">Loading generated credentials...</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (!generatedCredentialsResponse) {
     return (
       <div className="flex w-full justify-center">
-        <p className="text-sm text-red">No generated credentials found for this rotation.</p>
+        <p className="text-sm text-danger">No generated credentials found for this rotation.</p>
       </div>
     );
   }
@@ -263,14 +263,14 @@ const Content = ({ secretRotation }: ContentProps) => {
       {Component}
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && (
         <NoticeBannerV2 title={`${appName} Retired Credentials Behavior`}>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-sm text-label">
             Due to {SECRET_ROTATION_MAP[type].name} Rotations utilizing a single credential set,
             retired credentials will not be able to authenticate with {appName} during their{" "}
             <a
               target="_blank"
               href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
               rel="noopener noreferrer"
-              className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+              className="underline decoration-project underline-offset-2 hover:text-foreground"
             >
               inactive period
             </a>
@@ -279,12 +279,11 @@ const Content = ({ secretRotation }: ContentProps) => {
         </NoticeBannerV2>
       )}
       {nextRotationAt && (
-        <div className="flex items-center gap-x-1.5 text-sm text-mineshaft-200">
-          <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+        <div className="flex items-center gap-x-1.5 text-sm text-foreground">
+          <FontAwesomeIcon icon={faRotate} className="text-muted" />
           <span>
             Next rotation occurs on: {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
-            {format(nextRotationAt, "h:mm aa")}{" "}
-            <span className="text-mineshaft-300">(Local Time)</span>
+            {format(nextRotationAt, "h:mm aa")} <span className="text-label">(Local Time)</span>
           </span>
         </div>
       )}

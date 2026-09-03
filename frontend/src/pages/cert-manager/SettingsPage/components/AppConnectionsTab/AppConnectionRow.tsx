@@ -90,7 +90,7 @@ export const AppConnectionRow = ({
               <FontAwesomeIcon
                 icon={connectionDetails.icon}
                 size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
+                className="absolute -right-0.5 -bottom-0.5 text-project"
               />
             )}
           </div>

@@ -33,15 +33,15 @@ export const PkiAlertsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">Alerts</p>
-          <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs tracking-wide text-mineshaft-200 uppercase">
+          <p className="text-xl font-medium text-foreground">Alerts</p>
+          <span className="rounded bg-foreground/10 px-2 py-0.5 text-xs tracking-wide text-foreground uppercase">
             Legacy
           </span>
         </div>
-        <p className="text-xs text-bunker-300">Create new alerts inside an Application.</p>
+        <p className="text-xs text-label">Create new alerts inside an Application.</p>
       </div>
       <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
       <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

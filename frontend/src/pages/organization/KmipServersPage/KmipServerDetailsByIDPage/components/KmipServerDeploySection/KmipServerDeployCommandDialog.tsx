@@ -81,7 +81,7 @@ export const KmipServerDeployCommandDialog = ({
             <FormLabel label="Auth Method" className="mb-0 text-foreground" />
             <Badge variant="info">{badgeLabel}</Badge>
           </div>
-          <p className="mt-1 text-xs text-mineshaft-400">{helperText}</p>
+          <p className="mt-1 text-xs text-muted">{helperText}</p>
         </div>
 
         <Tabs defaultValue="cli" className="mt-2">
@@ -136,7 +136,7 @@ export const KmipServerDeployCommandDialog = ({
           href="https://infisical.com/docs/cli/overview"
           target="_blank"
           rel="noreferrer"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors hover:border-yellow-400 hover:text-yellow-400"
+          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-border text-sm text-muted transition-colors hover:border-warning hover:text-warning"
         >
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />

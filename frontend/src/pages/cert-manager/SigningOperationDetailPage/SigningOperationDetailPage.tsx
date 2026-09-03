@@ -78,7 +78,7 @@ export const SigningOperationDetailPage = () => {
       </Link>
 
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-mineshaft-800 text-muted">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-container text-muted">
           <FileSignatureIcon className="h-5 w-5" />
         </div>
         <div className="min-w-0">

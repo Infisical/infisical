@@ -330,7 +330,7 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                 );
               })
             ) : (
-              <DropdownMenuLabel className="font-normal text-mineshaft-400">
+              <DropdownMenuLabel className="font-normal text-muted">
                 No Certificate Syncs Configured
               </DropdownMenuLabel>
             )}

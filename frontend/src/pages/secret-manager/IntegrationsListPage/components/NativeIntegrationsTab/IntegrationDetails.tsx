@@ -7,7 +7,7 @@ type Props = {
 };
 
 const FIELD_CLASSNAME =
-  "truncate rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200";
+  "truncate rounded-md border border-border bg-card px-3 py-2 font-inter text-sm text-foreground";
 
 export const getIntegrationDestination = (integration: TIntegration) =>
   (integration.integration === "hashicorp-vault" &&
@@ -126,7 +126,7 @@ export const IntegrationDetails = ({ integration }: Props) => {
           </div>
         )}
       {integration.integration === "github" && integration.metadata?.githubVisibility ? (
-        <div className="mt-2 text-xs text-mineshaft-200">
+        <div className="mt-2 text-xs text-foreground">
           {/* eslint-disable-next-line no-nested-ternary */}
           {integration.metadata?.githubVisibility === "selected"
             ? "* Syncing to selected repositories in the organization. "

@@ -411,7 +411,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <IconButton
                   aria-label="Filter requests"
                   variant={requestsStatusFilter !== "all" ? "project" : "outline"}
-                  className={twMerge(requestsStatusFilter !== "all" && "text-primary")}
+                  className={twMerge(requestsStatusFilter !== "all" && "text-project")}
                 >
                   <FilterIcon />
                 </IconButton>

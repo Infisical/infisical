@@ -98,9 +98,9 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
       />
 
       {!isLoading && options.length === 0 && (
-        <div className="rounded-md border border-border bg-mineshaft-800 p-4">
+        <div className="rounded-md border border-border bg-container p-4">
           <div className="flex items-start gap-3">
-            <ServerIcon className="mt-0.5 size-4 shrink-0 text-mineshaft-400" />
+            <ServerIcon className="mt-0.5 size-4 shrink-0 text-muted" />
             <div className="min-w-0 flex-1 space-y-2 text-sm">
               <p className="font-medium text-foreground">No Gateways are connected to an HSM yet</p>
               <p className="text-muted">
@@ -110,7 +110,7 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
                   href="https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary hover:underline"
+                  className="text-project hover:underline"
                 >
                   Read the HSM Connectors setup guide
                 </a>

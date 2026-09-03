@@ -49,7 +49,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
+          <div className="flex h-full items-center justify-center rounded-lg bg-container text-sm text-foreground">
             <div className="flex flex-col items-center gap-4 py-20">
               <FingerprintIcon className="size-8" />
               <p>
@@ -60,7 +60,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
                     params={{ orgId: currentOrg.id }}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
+                    className="cursor-pointer underline transition-all hover:text-foreground"
                   >
                     upgrade your subscription
                   </Link>
@@ -69,7 +69,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
                     href="https://infisical.com/scheduledemo"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
+                    className="cursor-pointer underline transition-all hover:text-foreground"
                   >
                     upgrade your subscription
                   </a>

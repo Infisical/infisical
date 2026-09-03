@@ -16,18 +16,18 @@ const docsBaseUrl = "https://infisical.com/docs/documentation/platform/sso";
 
 export const SSOModalHeader = ({ providerDetails, isConnected }: Props) => {
   return (
-    <div className="mb-4 flex w-full items-start gap-2 border-b border-mineshaft-500 pb-4">
+    <div className="mb-4 flex w-full items-start gap-2 border-b border-border pb-4">
       <img
         alt={`${providerDetails.label} logo`}
         src={`/images/sso/${providerDetails.image}`}
         className="h-10 w-10 rounded-md bg-foreground/5 p-1.5"
       />
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-label">
           {providerDetails.label}
           <DocumentationLinkBadge href={`${docsBaseUrl}/${providerDetails.docsUrl}`} />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           {isConnected
             ? `${providerDetails.label} Connection`
             : `Connect to ${providerDetails.label}`}

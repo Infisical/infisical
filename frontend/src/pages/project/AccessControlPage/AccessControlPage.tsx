@@ -64,7 +64,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           className={hasTabs ? "mb-6" : undefined}

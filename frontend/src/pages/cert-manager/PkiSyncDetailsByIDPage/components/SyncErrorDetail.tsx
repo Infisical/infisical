@@ -7,9 +7,9 @@ type Props = {
 
 export const SyncErrorDetail = ({ label, message }: Props) => (
   <Detail>
-    <DetailLabel className="text-red">{label}</DetailLabel>
+    <DetailLabel className="text-danger">{label}</DetailLabel>
     <DetailValue>
-      <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{message}</p>
+      <p className="rounded-sm bg-foreground/10 p-2 text-xs break-words">{message}</p>
     </DetailValue>
   </Detail>
 );

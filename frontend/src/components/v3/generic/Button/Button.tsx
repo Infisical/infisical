@@ -43,10 +43,10 @@ const buttonVariants = cva(
           "border-(--product-color)/30 bg-(--product-color)/25 text-foreground hover:bg-(--product-color)/30 hover:border-(--product-color)/35 data-[state=open]:bg-(--product-color)/30 data-[state=open]:border-(--product-color)/35 [--control-variant-color:var(--product-color)] [--control-variant-border-color:color-mix(in_oklab,var(--product-color)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--product-color)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--product-color)_35%,transparent)]"
       },
       size: {
-        xs: "h-7 gap-2 rounded-sm px-2 text-xs [&>svg]:size-3",
-        sm: "h-8 gap-2 px-2.5 text-sm [&>svg]:size-3",
-        md: "h-9 gap-2 px-3 text-sm [&>svg]:size-3.5",
-        lg: "h-10 gap-2 px-3 text-sm [&>svg]:size-4"
+        xs: "h-button-xs gap-2 rounded-sm px-2 text-xs [&>svg]:size-icon-xs",
+        sm: "h-button-sm gap-2 px-2.5 text-sm [&>svg]:size-icon-xs",
+        md: "h-button-md gap-2 px-3 text-sm [&>svg]:size-icon-sm",
+        lg: "h-button-lg gap-2 px-3 text-sm [&>svg]:size-icon-md"
       },
       isPending: {
         true: "text-transparent"

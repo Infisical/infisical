@@ -32,12 +32,12 @@ export const MetadataFilterSection = ({ entries, onChange }: Props) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
+        <span className="text-xs font-medium text-label uppercase">Metadata</span>
         {entries.length > 0 && (
           <button
             type="button"
             onClick={() => onChange([])}
-            className="cursor-pointer text-xs text-primary hover:text-primary-600"
+            className="cursor-pointer text-xs text-project hover:text-project"
           >
             Clear
           </button>

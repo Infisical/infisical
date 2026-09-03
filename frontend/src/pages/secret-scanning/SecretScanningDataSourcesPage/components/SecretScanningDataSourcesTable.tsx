@@ -227,8 +227,8 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
@@ -254,7 +254,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
                     key={type}
                     icon={
                       filters.types.includes(type) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                        <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                       )
                     }
                     iconPos="right"

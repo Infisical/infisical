@@ -93,7 +93,7 @@ export const CodefreshConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -116,7 +116,7 @@ export const CodefreshConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -137,7 +137,7 @@ export const CodefreshConfigurePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           className="mt-4"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}

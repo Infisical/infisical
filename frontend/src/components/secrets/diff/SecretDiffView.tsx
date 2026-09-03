@@ -140,9 +140,7 @@ export const SecretValueRenderer = ({
 
   const renderContent = () => {
     if (isLoading || !isVisible || value === HIDDEN_SECRET_VALUE_API_MASK) {
-      return (
-        <div className="font-mono text-sm break-words text-bunker-300">{HIDDEN_SECRET_VALUE}</div>
-      );
+      return <div className="font-mono text-sm break-words text-label">{HIDDEN_SECRET_VALUE}</div>;
     }
 
     // Show revealed value with diff highlighting if there are changes

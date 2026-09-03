@@ -14,7 +14,7 @@ export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
     <div
       ref={ref}
       className={twMerge(
-        "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
+        "relative w-full overflow-x-auto border border-solid border-border bg-container font-inter",
         isRounded && "rounded-lg",
         className
       )}
@@ -32,9 +32,7 @@ export type TableProps = {
 };
 
 export const Table = ({ children, className }: TableProps): JSX.Element => (
-  <table
-    className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300", className)}
-  >
+  <table className={twMerge("w-full bg-container p-2 text-left text-sm text-label", className)}>
     {children}
   </table>
 );
@@ -47,10 +45,7 @@ export type THeadProps = {
 };
 
 export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
-  <thead
-    className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}
-    style={style}
-  >
+  <thead className={twMerge("bg-container text-xs text-label uppercase", className)} style={style}>
     {children}
   </thead>
 );
@@ -61,7 +56,7 @@ export type TFootProps = {
 };
 
 export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
-  <tfoot className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}>
+  <tfoot className={twMerge("bg-container text-xs text-label uppercase", className)}>
     {children}
   </tfoot>
 );
@@ -83,8 +78,8 @@ export const Tr = ({
 }: TrProps): JSX.Element => (
   <tr
     className={twMerge(
-      "cursor-default border-b border-solid border-mineshaft-600 last:border-b-0",
-      isHoverable && "hover:bg-mineshaft-600",
+      "cursor-default border-b border-solid border-border last:border-b-0",
+      isHoverable && "hover:bg-foreground/10",
       isSelectable && "cursor-pointer",
       className
     )}
@@ -104,7 +99,7 @@ export type ThProps = {
 export const Th = ({ children, className, style }: ThProps): JSX.Element => (
   <th
     className={twMerge(
-      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-medium",
+      "border-b-2 border-border bg-container px-5 pt-4 pb-3.5 font-medium",
       className
     )}
     style={style}

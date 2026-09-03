@@ -45,7 +45,7 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
       </Helmet>
-      <div className="relative mx-auto max-w-8xl pb-12 text-white">
+      <div className="relative mx-auto max-w-8xl pb-12 text-foreground">
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.CertificateManager}

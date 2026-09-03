@@ -236,22 +236,21 @@ export const OrgGroupModal = ({
               </TabsList>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="inline-flex cursor-default text-mineshaft-400">
+                  <span className="inline-flex cursor-default text-muted">
                     <InfoIcon size={16} />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-sm">
-                  <p className="mb-2 text-mineshaft-300">
+                  <p className="mb-2 text-label">
                     You can add groups to your sub-organization in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="text-mineshaft-100">Create New</strong> – Create a new
-                      group for this sub-organization. It will be managed at the sub-organization
-                      level.
+                    <li className="text-foreground">
+                      <strong className="text-foreground">Create New</strong> – Create a new group
+                      for this sub-organization. It will be managed at the sub-organization level.
                     </li>
                     <li>
-                      <strong className="text-mineshaft-100">Assign Existing</strong> – Link an
+                      <strong className="text-foreground">Assign Existing</strong> – Link an
                       existing group from the parent organization. The group stays managed at the
                       parent level.
                     </li>

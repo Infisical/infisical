@@ -35,9 +35,7 @@ const formatDate = (dateString: string) =>
   });
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <h3 className="border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-100">
-    {title}
-  </h3>
+  <h3 className="border-b border-border pb-2 text-sm font-semibold text-foreground">{title}</h3>
 );
 
 export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) => {
@@ -64,7 +62,7 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
     return (
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
         <ModalContent title="Certificate Alert Details" className="max-w-3xl">
-          <p className="py-8 text-center text-sm text-mineshaft-400">Alert not found.</p>
+          <p className="py-8 text-center text-sm text-muted">Alert not found.</p>
         </ModalContent>
       </Modal>
     );
@@ -76,13 +74,9 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-mineshaft-400">Alert Name</p>
-              <p className="mt-1 truncate text-base font-semibold text-mineshaft-100">
-                {alert.name}
-              </p>
-              {alert.description && (
-                <p className="mt-1 text-sm text-mineshaft-400">{alert.description}</p>
-              )}
+              <p className="text-xs text-muted">Alert Name</p>
+              <p className="mt-1 truncate text-base font-semibold text-foreground">{alert.name}</p>
+              {alert.description && <p className="mt-1 text-sm text-muted">{alert.description}</p>}
             </div>
             <Badge variant={alert.enabled ? "success" : "neutral"}>
               {alert.enabled ? "Enabled" : "Disabled"}
@@ -112,33 +106,28 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
           <div className="space-y-3">
             <SectionHeader title="Notification Channels" />
             {(alert.channels || []).length === 0 ? (
-              <p className="text-sm text-mineshaft-400/70 italic">
-                No notification channels configured.
-              </p>
+              <p className="text-sm text-muted/70 italic">No notification channels configured.</p>
             ) : (
               <div className="space-y-2">
                 {(alert.channels || []).map((channel) => (
                   <div
                     key={channel.id}
-                    className="flex items-start gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-800/40 p-3"
+                    className="flex items-start gap-3 rounded-md border border-border bg-container/40 p-3"
                   >
                     <FontAwesomeIcon
                       icon={getChannelIcon(channel.channelType)}
-                      className="mt-0.5 shrink-0 text-mineshaft-400"
+                      className="mt-0.5 shrink-0 text-muted"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-mineshaft-100">
+                        <span className="text-sm font-medium text-foreground">
                           {getChannelDisplayName(channel.channelType)}
                         </span>
                         {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
                           (channel.config as TPkiAlertChannelConfigWebhookResponse)
                             ?.hasSigningSecret && (
                             <Tooltip content="Signed webhook">
-                              <FontAwesomeIcon
-                                icon={faKey}
-                                className="text-xs text-mineshaft-400"
-                              />
+                              <FontAwesomeIcon icon={faKey} className="text-xs text-muted" />
                             </Tooltip>
                           )}
                         {!channel.enabled && <Badge variant="neutral">Disabled</Badge>}
@@ -149,32 +138,30 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                           const recipients = config?.recipients || [];
                           const count = recipients.length;
                           if (count === 0) {
-                            return <p className="mt-1 text-xs text-mineshaft-400">No recipients</p>;
+                            return <p className="mt-1 text-xs text-muted">No recipients</p>;
                           }
                           const displayed = recipients.slice(0, 3).join(", ");
                           const text = count <= 3 ? displayed : `${displayed} +${count - 3} more`;
                           return count > 3 ? (
                             <Tooltip content={recipients.join(", ")}>
-                              <p className="mt-1 cursor-help text-xs text-mineshaft-400">{text}</p>
+                              <p className="mt-1 cursor-help text-xs text-muted">{text}</p>
                             </Tooltip>
                           ) : (
-                            <p className="mt-1 text-xs text-mineshaft-400">{text}</p>
+                            <p className="mt-1 text-xs text-muted">{text}</p>
                           );
                         })()}
                       {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
-                        <p className="mt-1 truncate text-xs text-mineshaft-400">
+                        <p className="mt-1 truncate text-xs text-muted">
                           {getWebhookHostname(
                             (channel.config as TPkiAlertChannelConfigWebhookResponse).url
                           )}
                         </p>
                       )}
                       {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
-                        <p className="mt-1 text-xs text-mineshaft-400">Slack webhook configured</p>
+                        <p className="mt-1 text-xs text-muted">Slack webhook configured</p>
                       )}
                       {channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY && (
-                        <p className="mt-1 text-xs text-mineshaft-400">
-                          PagerDuty integration configured
-                        </p>
+                        <p className="mt-1 text-xs text-muted">PagerDuty integration configured</p>
                       )}
                     </div>
                   </div>

@@ -139,7 +139,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-3">
+            <HoverCardContent className="border border-border bg-container p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>

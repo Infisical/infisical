@@ -103,7 +103,7 @@ export default function InitialSignupStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-label bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Sign up
           </CardTitle>
           <CardDescription className="ml-0.5 text-base">

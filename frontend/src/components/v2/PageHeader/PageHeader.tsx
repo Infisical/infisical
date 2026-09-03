@@ -35,7 +35,7 @@ export const PageHeader = ({ title, description, children, className, scope, ico
         <div className="mr-4 flex min-w-0 flex-1 items-center">
           <h1
             className={twMerge(
-              "truncate text-2xl font-medium text-white underline underline-offset-4",
+              "truncate text-2xl font-medium text-foreground underline underline-offset-4",
               scope === "org" && "decoration-org/90",
               scope === "instance" && "decoration-neutral/90",
               scope === "namespace" && "decoration-sub-org/90",
@@ -56,7 +56,7 @@ export const PageHeader = ({ title, description, children, className, scope, ico
         </div>
         <div className="flex items-center gap-2">{children}</div>
       </div>
-      <div className="mt-1.5 text-mineshaft-300">{description}</div>
+      <div className="mt-1.5 text-label">{description}</div>
     </div>
   );
 };

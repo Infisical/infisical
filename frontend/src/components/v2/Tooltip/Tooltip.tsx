@@ -52,7 +52,7 @@ export const Tooltip = ({
           sideOffset={5}
           {...props}
           className={twMerge(
-            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-[70] max-w-60 border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md select-none",
+            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-[70] max-w-60 border border-border bg-border font-light text-foreground shadow-md select-none",
             isDisabled && "hidden!",
             center && "text-center",
             size === "sm" && "rounded-xs px-2 py-1 text-xs",
@@ -61,7 +61,7 @@ export const Tooltip = ({
           )}
         >
           {content}
-          <TooltipPrimitive.Arrow width={11} height={5} className="fill-mineshaft-600" />
+          <TooltipPrimitive.Arrow width={11} height={5} className="fill-border" />
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>
     </TooltipPrimitive.Root>

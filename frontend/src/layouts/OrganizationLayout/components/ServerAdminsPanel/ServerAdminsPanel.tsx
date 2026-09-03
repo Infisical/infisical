@@ -50,7 +50,7 @@ export const ServerAdminsPanel = () => {
       <div className="flex-1 px-2">
         <TableContainer className="flex max-h-[30vh] flex-col overflow-auto">
           <Table className="w-full">
-            <THead className="sticky top-0 bg-bunker-800">
+            <THead className="sticky top-0 bg-background">
               <Tr>
                 <Th className="w-1/2">Name</Th>
                 <Th className="w-1/2">Email</Th>
@@ -74,7 +74,7 @@ export const ServerAdminsPanel = () => {
             </TBody>
           </Table>
           {isEmpty && (
-            <div className="flex h-32 items-center justify-center text-sm text-mineshaft-400">
+            <div className="flex h-32 items-center justify-center text-sm text-muted">
               No server administrators found
             </div>
           )}

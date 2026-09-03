@@ -16,8 +16,8 @@ export const HeaderResizer = ({
       <div
         tabIndex={-1}
         role="button"
-        className={`absolute left-0 z-40 h-0.5 w-full cursor-ns-resize hover:bg-blue-400/20 ${
-          isActive ? "bg-blue-400/75" : "bg-transparent"
+        className={`absolute left-0 z-40 h-0.5 w-full cursor-ns-resize hover:bg-info/20 ${
+          isActive ? "bg-info/75" : "bg-transparent"
         }`}
         onMouseDown={onMouseDown}
         style={{
@@ -29,7 +29,7 @@ export const HeaderResizer = ({
         style={{ left: `calc(50% + ${scrollOffset}px)`, top: heightOffset }}
         className="pointer-events-none absolute z-30 -translate-x-1/2"
       >
-        <div className="h-1 w-8 rounded-sm bg-gray-400 opacity-50" />
+        <div className="h-1 w-8 rounded-sm bg-muted opacity-50" />
       </div>
     </>
   );

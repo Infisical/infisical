@@ -521,7 +521,7 @@ const OrganizationsPanelTable = ({
                           {org.name ? (
                             <p className="truncate">{org.name}</p>
                           ) : (
-                            <span className="text-mineshaft-400">Not Set</span>
+                            <span className="text-muted">Not Set</span>
                           )}
                         </div>
                       </Td>
@@ -536,11 +536,7 @@ const OrganizationsPanelTable = ({
                           className="flex items-center hover:underline"
                         >
                           <Tooltip className="text-center" content="View Members">
-                            <FontAwesomeIcon
-                              icon={faEye}
-                              className="mr-1.5 text-mineshaft-300"
-                              size="sm"
-                            />
+                            <FontAwesomeIcon icon={faEye} className="mr-1.5 text-label" size="sm" />
                           </Tooltip>
                           {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
                           {!org.members.some(
@@ -550,7 +546,7 @@ const OrganizationsPanelTable = ({
                           ) && (
                             <Tooltip content="No admins have accepted their invitations.">
                               <div className="ml-1.5">
-                                <FontAwesomeIcon className="text-yellow" icon={faWarning} />
+                                <FontAwesomeIcon className="text-warning" icon={faWarning} />
                               </div>
                             </Tooltip>
                           )}
@@ -702,8 +698,8 @@ export const OrganizationsTable = () => {
     <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Organizations</p>
-          <p className="text-sm text-bunker-300">
+          <p className="text-xl font-medium text-foreground">Organizations</p>
+          <p className="text-sm text-label">
             Manage, join and view organizations across your instance.
           </p>
         </div>

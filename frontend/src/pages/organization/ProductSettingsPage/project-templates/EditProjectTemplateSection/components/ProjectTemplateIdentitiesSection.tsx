@@ -364,7 +364,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     <TableRow key={item.id}>
                       <TableCell className="py-2">
                         <p className="truncate">
-                          <span className="truncate text-sm font-medium text-mineshaft-100">
+                          <span className="truncate text-sm font-medium text-foreground">
                             {item.name}
                           </span>
                         </p>
@@ -492,16 +492,16 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
             </Tabs>
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon size={16} className="text-mineshaft-400" />
+                <InfoIcon size={16} className="text-muted" />
               </TooltipTrigger>
               <TooltipContent className="max-w-sm" side="right" align="start">
-                <p className="mb-2 text-mineshaft-300">
+                <p className="mb-2 text-label">
                   You can add machine identities to your template in one of two ways:
                 </p>
                 <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                  <li className="text-mineshaft-200">
-                    <strong className="font-medium text-mineshaft-100">Create New</strong> - Define
-                    a new machine identity that will be created when a project is made from this
+                  <li className="text-foreground">
+                    <strong className="font-medium text-foreground">Create New</strong> - Define a
+                    new machine identity that will be created when a project is made from this
                     template.
                     <p className="mt-2">
                       This method is recommended for autonomous teams that need to manage machine
@@ -509,7 +509,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     </p>
                   </li>
                   <li>
-                    <strong className="font-medium text-mineshaft-100">Assign Existing</strong> -
+                    <strong className="font-medium text-foreground">Assign Existing</strong> -
                     Assign an existing machine identity from your organization.
                     <p className="mt-2">
                       This method is recommended for organizations that need to maintain centralized
