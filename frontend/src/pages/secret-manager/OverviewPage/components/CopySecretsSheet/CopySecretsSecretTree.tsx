@@ -344,7 +344,7 @@ export const CopySecretsSecretTree = ({
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder="Filter keys..."
-        className="rounded-none border-0 bg-transparent pl-9 focus-visible:ring-0"
+        className="pl-9"
       />
     </div>
   );
@@ -369,7 +369,7 @@ export const CopySecretsSecretTree = ({
     );
 
   const rootClassName =
-    "h-full min-h-0 overflow-hidden rounded-md border border-border bg-container";
+    "h-full min-h-0 overflow-hidden rounded-md border border-border bg-container p-2";
 
   if (showChangesFilter) {
     return (
@@ -377,11 +377,11 @@ export const CopySecretsSecretTree = ({
         id={`${idPrefix}-selection`}
         value={previewFilter}
         onValueChange={(value) => setPreviewFilter(value as PreviewFilter)}
-        className={`${rootClassName} gap-0`}
+        className={rootClassName}
       >
-        <div className="flex items-center border-b border-border">
+        <div className="flex items-center gap-2">
           {searchInput}
-          <TabsList aria-label="Destination preview" className="h-8 border-0 bg-transparent">
+          <TabsList aria-label="Destination preview">
             <TabsTrigger value="all">
               All <span className="text-xs text-muted">{scopedSecrets.length}</span>
             </TabsTrigger>
@@ -390,10 +390,10 @@ export const CopySecretsSecretTree = ({
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="all" className="mt-0 min-h-0 flex-1 overflow-y-auto p-2">
+        <TabsContent value="all" className="min-h-0 overflow-y-auto">
           {renderTree()}
         </TabsContent>
-        <TabsContent value="changes" className="mt-0 min-h-0 flex-1 overflow-y-auto p-2">
+        <TabsContent value="changes" className="min-h-0 overflow-y-auto">
           {renderTree()}
         </TabsContent>
       </Tabs>
@@ -401,14 +401,14 @@ export const CopySecretsSecretTree = ({
   }
 
   return (
-    <div id={`${idPrefix}-selection`} className={`flex flex-col ${rootClassName}`}>
-      <div className="flex items-center border-b border-border">
+    <div id={`${idPrefix}-selection`} className={`flex flex-col gap-2 ${rootClassName}`}>
+      <div className="flex items-center gap-2">
         {searchInput}
         <span className="mr-3 shrink-0 text-xs text-muted" aria-live="polite">
           {countLabel}
         </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">{renderTree()}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{renderTree()}</div>
     </div>
   );
 };

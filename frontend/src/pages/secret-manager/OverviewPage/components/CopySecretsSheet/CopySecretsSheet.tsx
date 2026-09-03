@@ -44,11 +44,12 @@ import type {
 } from "./copySecrets.types";
 import {
   chunkCopySecretIds,
+  getCopyFolderCreationSteps,
   getCopyPathName,
   getCopySecretConflicts,
   getOtherCopyEnvironmentSlug,
-  getRelativeCopyPath,
   groupCopySecretsRequests,
+  isCopyingToSameLocation,
   joinCopyPath,
   normalizeCopyPath
 } from "./copySecrets.utils";
@@ -256,43 +257,37 @@ export const CopySecretsSheet = ({
   const isSourceLoading =
     !isSourceLocked && (!isSourcePathSettled || sourceQuery.isPending || sourceQuery.isFetching);
   const isSourceError = !isSourceLocked && sourceQuery.isError;
+  const isDestinationPathSettled =
+    normalizeCopyPath(destinationPath) === normalizeCopyPath(debouncedDestinationPath);
+  const isDestinationLoading =
+    !isDestinationPathSettled || destinationQuery.isPending || destinationQuery.isFetching;
   const cannotIncludeValues =
     isSourceLocked && sourceSecrets.some(({ isValueHidden }) => isValueHidden);
 
   const disabledReason = (() => {
     if (!sourceEnvironmentSlug || !destinationEnvironmentSlug)
       return "Choose source and destination environments";
-    if (sourceEnvironmentSlug === destinationEnvironmentSlug)
-      return "Choose different source and destination environments";
     if (!normalizedSourcePath || !normalizedDestinationPath)
       return "Choose source and destination paths";
+    if (
+      isCopyingToSameLocation({
+        sourceEnvironment: sourceEnvironmentSlug,
+        destinationEnvironment: destinationEnvironmentSlug,
+        sourcePath: normalizedSourcePath,
+        destinationPath: normalizedDestinationPath,
+        mode: effectiveMode
+      })
+    )
+      return "Choose a different destination path";
     if (isSourceLoading) return "Loading source secrets";
     if (isSourceError) return "Source secrets couldn't be loaded";
+    if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedIds.length) return "Select at least one secret";
     return undefined;
   })();
 
   const duplicateSecret = useDuplicateSecret();
   const getOrCreateFolder = useGetOrCreateFolder();
-
-  const ensureDestinationPath = async (targetPath: string) => {
-    const relativePath = getRelativeCopyPath(targetPath, normalizedDestinationPath);
-    if (!relativePath || relativePath === "/") return;
-
-    await relativePath
-      .split("/")
-      .filter(Boolean)
-      .reduce(async (previousPath, folderName) => {
-        const parentPath = await previousPath;
-        await getOrCreateFolder.mutateAsync({
-          projectId,
-          environment: destinationEnvironmentSlug,
-          path: parentPath,
-          name: folderName
-        });
-        return joinCopyPath(parentPath, folderName);
-      }, Promise.resolve(normalizedDestinationPath));
-  };
 
   const copySecrets = async ({
     shouldOverwrite,
@@ -314,9 +309,21 @@ export const CopySecretsSheet = ({
       const destinationPaths = [
         ...new Set(copyRequestGroups.map(({ destinationPath: path }) => path))
       ].sort((left, right) => left.split("/").length - right.split("/").length);
-      await destinationPaths.reduce(async (previous, path) => {
+      const destinationFolderSteps = [
+        ...new Map(
+          destinationPaths
+            .flatMap(getCopyFolderCreationSteps)
+            .map((step) => [joinCopyPath(step.parentPath, step.name), step])
+        ).values()
+      ];
+      await destinationFolderSteps.reduce(async (previous, { parentPath, name }) => {
         await previous;
-        await ensureDestinationPath(path);
+        await getOrCreateFolder.mutateAsync({
+          projectId,
+          environment: destinationEnvironmentSlug,
+          path: parentPath,
+          name
+        });
       }, Promise.resolve());
 
       const results = await copyRequestGroups.reduce<Promise<Array<{ approvalCount: number }>>>(
@@ -450,9 +457,7 @@ export const CopySecretsSheet = ({
       onSelectionChange={() => undefined}
     />
   );
-  const isDestinationPathSettled =
-    normalizeCopyPath(destinationPath) === normalizeCopyPath(debouncedDestinationPath);
-  if (!isDestinationPathSettled || destinationQuery.isPending || destinationQuery.isFetching) {
+  if (isDestinationLoading) {
     destinationContent = (
       <div
         className="flex h-full flex-col gap-3 rounded-md border border-border bg-container p-4"
@@ -499,7 +504,7 @@ export const CopySecretsSheet = ({
                   <div className="flex flex-col gap-2">
                     <h3
                       id="copy-source-contents-heading"
-                      className="text-xs font-medium tracking-wide text-muted uppercase"
+                      className="text-sm font-medium text-foreground"
                     >
                       Source
                     </h3>
@@ -519,7 +524,6 @@ export const CopySecretsSheet = ({
                           searchAriaLabel="Search source environments"
                           getOptionLabel={({ name }) => name}
                           getOptionValue={({ slug }) => slug}
-                          isOptionDisabled={({ slug }) => slug === destinationEnvironmentSlug}
                           onValueChange={(environment) => {
                             setSourceEnvironmentSlug(environment.slug);
                             setSelectedIds([]);
@@ -554,7 +558,7 @@ export const CopySecretsSheet = ({
                   <div className="flex flex-col gap-2">
                     <h3
                       id="copy-destination-contents-heading"
-                      className="text-xs font-medium tracking-wide text-muted uppercase"
+                      className="text-sm font-medium text-foreground"
                     >
                       Destination
                     </h3>
@@ -577,7 +581,6 @@ export const CopySecretsSheet = ({
                           searchAriaLabel="Search destination environments"
                           getOptionLabel={({ name }) => name}
                           getOptionValue={({ slug }) => slug}
-                          isOptionDisabled={({ slug }) => slug === sourceEnvironmentSlug}
                           onValueChange={(environment) =>
                             setDestinationEnvironmentSlug(environment.slug)
                           }

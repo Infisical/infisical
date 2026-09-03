@@ -4,10 +4,12 @@ import { describe, it } from "node:test";
 import {
   filterCopyPreviewSecrets,
   getCopyDestinationPath,
+  getCopyFolderCreationSteps,
   getCopySecretConflicts,
   getOtherCopyEnvironmentSlug,
   getRelativeCopyPath,
   groupCopySecretsRequests,
+  isCopyingToSameLocation,
   normalizeCopyPath
 } from "./copySecrets.utils";
 
@@ -72,6 +74,67 @@ describe("copy secrets paths", () => {
       }),
       "/services/session"
     );
+  });
+
+  it("allows same-environment copies unless the effective location is unchanged", () => {
+    assert.equal(
+      isCopyingToSameLocation({
+        sourceEnvironment: "development",
+        destinationEnvironment: "development",
+        sourcePath: "/",
+        destinationPath: "/services",
+        mode: "contents"
+      }),
+      false
+    );
+    assert.equal(
+      isCopyingToSameLocation({
+        sourceEnvironment: "development",
+        destinationEnvironment: "development",
+        sourcePath: "/services",
+        destinationPath: "/",
+        mode: "contents"
+      }),
+      false
+    );
+    assert.equal(
+      isCopyingToSameLocation({
+        sourceEnvironment: "development",
+        destinationEnvironment: "development",
+        sourcePath: "/services",
+        destinationPath: "/services",
+        mode: "contents"
+      }),
+      true
+    );
+    assert.equal(
+      isCopyingToSameLocation({
+        sourceEnvironment: "development",
+        destinationEnvironment: "development",
+        sourcePath: "/services",
+        destinationPath: "/",
+        mode: "folder"
+      }),
+      true
+    );
+    assert.equal(
+      isCopyingToSameLocation({
+        sourceEnvironment: "development",
+        destinationEnvironment: "production",
+        sourcePath: "/services",
+        destinationPath: "/services",
+        mode: "contents"
+      }),
+      false
+    );
+  });
+
+  it("creates every folder segment from the root", () => {
+    assert.deepEqual(getCopyFolderCreationSteps("/"), []);
+    assert.deepEqual(getCopyFolderCreationSteps("/services/auth"), [
+      { parentPath: "/", name: "services" },
+      { parentPath: "/services", name: "auth" }
+    ]);
   });
 
   it("groups requests by source and destination folders", () => {

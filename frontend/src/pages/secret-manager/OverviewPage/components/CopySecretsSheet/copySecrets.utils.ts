@@ -68,6 +68,45 @@ export const getCopyDestinationPath = ({
   return joinCopyPath(destinationRootPath, sourceFolderName ?? "", relativePath);
 };
 
+export const isCopyingToSameLocation = ({
+  sourceEnvironment,
+  destinationEnvironment,
+  sourcePath,
+  destinationPath,
+  mode
+}: {
+  sourceEnvironment: string;
+  destinationEnvironment: string;
+  sourcePath: string;
+  destinationPath: string;
+  mode: CopySecretsMode;
+}) =>
+  sourceEnvironment === destinationEnvironment &&
+  getCopyDestinationPath({
+    sourcePath,
+    sourceRootPath: sourcePath,
+    destinationRootPath: destinationPath,
+    mode
+  }) === normalizeCopyPath(sourcePath);
+
+export type CopyFolderCreationStep = {
+  parentPath: string;
+  name: string;
+};
+
+export const getCopyFolderCreationSteps = (path: string) => {
+  let parentPath = "/";
+
+  return normalizeCopyPath(path)
+    .split("/")
+    .filter(Boolean)
+    .map<CopyFolderCreationStep>((name) => {
+      const step = { parentPath, name };
+      parentPath = joinCopyPath(parentPath, name);
+      return step;
+    });
+};
+
 export type CopySecretsRequestGroup = {
   sourcePath: string;
   destinationPath: string;
