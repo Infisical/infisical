@@ -306,7 +306,7 @@ export const RequestAccessSheet = ({
                       </Select>
                       <FieldDescription>
                         {isCredentialRequest
-                          ? "How long you can reveal the credential for. Rotating the account is what actually cuts off a copy."
+                          ? "How long you can reveal the credential for."
                           : "How long you can launch sessions for once approved."}
                       </FieldDescription>
                     </FieldContent>

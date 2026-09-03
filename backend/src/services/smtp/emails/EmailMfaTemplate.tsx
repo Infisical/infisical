@@ -7,16 +7,24 @@ import { BaseLink } from "./BaseLink";
 interface EmailMfaTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   code: string;
   isCloud: boolean;
+  challengeFor?: string;
+  preview?: string;
 }
 
-export const EmailMfaTemplate = ({ code, siteUrl, isCloud }: EmailMfaTemplateProps) => {
+export const EmailMfaTemplate = ({
+  code,
+  siteUrl,
+  isCloud,
+  challengeFor = "this request",
+  preview = "Your request requires further verification."
+}: EmailMfaTemplateProps) => {
   return (
-    <BaseEmailWrapper title="MFA Code" preview="Your request requires further verification." siteUrl={siteUrl}>
+    <BaseEmailWrapper title="MFA Code" preview={preview} siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>MFA required</strong>
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[8px] text-center pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text>Enter the MFA code shown below in the browser where you started this request.</Text>
+        <Text>Enter the MFA code shown below in the browser where you started {challengeFor}.</Text>
         <Text className="text-[24px] mt-[16px]">
           <strong>{code}</strong>
         </Text>
