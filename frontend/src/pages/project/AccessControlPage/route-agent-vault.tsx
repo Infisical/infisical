@@ -8,7 +8,7 @@ import {
 } from "@app/pages/agent-vault/AgentVaultAccessControlPage/AgentVaultAccessControlPage";
 
 const AccessControlPageQuerySchema = z.object({
-  selectedTab: z.nativeEnum(AgentVaultAccessControlTab).catch(AgentVaultAccessControlTab.Members),
+  selectedTab: z.nativeEnum(AgentVaultAccessControlTab).catch(AgentVaultAccessControlTab.Users),
   requesterEmail: z.string().catch("")
 });
 

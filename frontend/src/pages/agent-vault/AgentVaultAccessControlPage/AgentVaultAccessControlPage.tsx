@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
 
-import { Badge, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { useListAgentVaultProductIdentityMembers } from "@app/hooks/api/agentVault";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupsTab } from "./components/GroupsTab";
@@ -14,28 +12,21 @@ import { IdentitiesTab } from "./components/IdentitiesTab";
 import { MembersTab } from "./components/MembersTab";
 
 export enum AgentVaultAccessControlTab {
-  Members = "members",
+  Users = "users",
   Groups = "groups",
-  Identities = "identities"
+  MachineIdentities = "identities"
 }
 
 export const AgentVaultAccessControlPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
 
   const selectedTab =
     useSearch({
       strict: false,
       select: (el) => (el as { selectedTab?: string })?.selectedTab
-    }) || AgentVaultAccessControlTab.Members;
-
-  // Members and groups come from the generic project hooks, which carry the names, emails and pending
-  // state the rows need. Only identities need our own endpoint, for the role beside each name.
-  const { data: members = [] } = useGetWorkspaceUsers(currentProject.id);
-  const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
-  const { data: identities = [] } = useListAgentVaultProductIdentityMembers();
+    }) || AgentVaultAccessControlTab.Users;
 
   const updateTab = (tab: string) => {
     navigate({
@@ -54,30 +45,23 @@ export const AgentVaultAccessControlPage = () => {
         scope={ProjectType.AgentVault}
         icon={ShieldIcon}
         title="Access Control"
-        description="Manage members, groups, and machine identities."
+        description="Manage access for users, groups, and machine identities."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="av" aria-label="Agent Vault access control sections">
-          <TabsTrigger value={AgentVaultAccessControlTab.Members}>
-            Members
-            <Badge variant="av">{members.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value={AgentVaultAccessControlTab.Groups}>
-            Groups
-            <Badge variant="av">{groups.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value={AgentVaultAccessControlTab.Identities}>
-            Identities
-            <Badge variant="av">{identities.length}</Badge>
+          <TabsTrigger value={AgentVaultAccessControlTab.Users}>Users</TabsTrigger>
+          <TabsTrigger value={AgentVaultAccessControlTab.Groups}>Groups</TabsTrigger>
+          <TabsTrigger value={AgentVaultAccessControlTab.MachineIdentities}>
+            Machine Identities
           </TabsTrigger>
         </TabsList>
-        <TabsContent value={AgentVaultAccessControlTab.Members}>
+        <TabsContent value={AgentVaultAccessControlTab.Users}>
           <MembersTab />
         </TabsContent>
         <TabsContent value={AgentVaultAccessControlTab.Groups}>
           <GroupsTab />
         </TabsContent>
-        <TabsContent value={AgentVaultAccessControlTab.Identities}>
+        <TabsContent value={AgentVaultAccessControlTab.MachineIdentities}>
           <IdentitiesTab />
         </TabsContent>
       </Tabs>
