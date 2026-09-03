@@ -150,7 +150,7 @@ export const IdentitiesTab = () => {
           {(isAllowed) => (
             <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
               <PlusIcon />
-              Add Identity
+              Add Machine Identity
             </Button>
           )}
         </ProjectPermissionCan>
@@ -161,7 +161,7 @@ export const IdentitiesTab = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
-                {search ? "No identities match your search" : "No machine identities yet"}
+                {search ? "No machine identities match your search" : "No machine identities yet"}
               </EmptyTitle>
               <EmptyDescription>
                 {search
