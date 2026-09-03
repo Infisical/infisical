@@ -103,7 +103,7 @@ export const SecretV2MigrationSection = () => {
     <div className="mt-4 flex w-full max-w-2xl flex-col gap-3">
       {isUpgrading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-page/80">
-          <Spinner size="lg" label="Upgrading secrets engine" className="fill-project" />
+          <Spinner size="lg" label="Upgrading secrets engine" />
           <div className="ml-4 flex flex-col gap-1 text-foreground">
             <div className="text-3xl font-medium">Please wait</div>
             <span>Upgrading secrets engine...</span>
