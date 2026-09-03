@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import {
@@ -50,6 +51,12 @@ export const CredentialFields = ({ isUpdate, storedHasPassword }: Props) => {
   // Removing the password is only ever offered when a username would be left behind to authenticate
   // with, and only when there is something to remove.
   const canClearPassword = isUpdate && isBasic && storedHasPassword && Boolean(username);
+
+  // The checkbox is conditional, so its value has to be too. Left set once it is hidden, clearing the
+  // username would submit a credential with neither half and fail against a control nobody can see.
+  useEffect(() => {
+    if (!canClearPassword) setValue("clearPassword", false);
+  }, [canClearPassword, setValue]);
 
   const secretDescription = () => {
     if (!isUpdate) {
