@@ -329,10 +329,7 @@ export const AgentVaultProxiesPage = () => {
               New enrollment token for &quot;{proxyToReissue?.name}&quot;
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The running proxy keeps serving until the replacement enrolls. Enrolling replaces the
-              proxy&apos;s certificate authority, which breaks anything holding a copy of the old
-              one: explicit --ca-fingerprint pins, Kubernetes Secrets mounting the certificate, and
-              macOS keychain entries that av run added.
+              The proxy keeps serving until it re-enrolls with the new token.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
