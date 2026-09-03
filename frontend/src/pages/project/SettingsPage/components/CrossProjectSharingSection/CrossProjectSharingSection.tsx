@@ -60,12 +60,12 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks/usePopUp";
 import {
   TProjectFolderGrant,
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ShareSecretsEditData, ShareSecretsSheet } from "./ShareSecretsSheet";
 

@@ -127,9 +127,7 @@ export const expandSecretReferencesFactory = ({
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(
-    actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService
-  );
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
     if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;

@@ -1,5 +1,4 @@
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
@@ -95,7 +94,6 @@ type TSecretReplicationServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -145,7 +143,6 @@ export const secretReplicationServiceFactory = ({
   folderCommitService,
   projectFolderGrantDAL,
   orgDAL,
-  licenseService,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (

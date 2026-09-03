@@ -89,7 +89,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const isPopupOpen = openRefLeft !== -1 && isFocused && !isCrossProjectRefWithoutAccess;
 
-    const handleWizardSelect = (referenceContent: string) => {
+    const handleWizardSelect = (selectedReference: string) => {
       const left = openRefLeft + 1; // position right after ${
       const rightBracketIndex = getIndexOfUnclosedRefToTheRight(value, left);
       const isEnclosed = rightBracketIndex !== -1;
@@ -99,13 +99,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         rightBracketIndex !== -1 ? rightBracketIndex + 1 : currentCursorPosition
       );
 
-      const newValue = `${lhsValue}${referenceContent}${isEnclosed ? "" : "}"}${rhsValue}`;
+      const newValue = `${lhsValue}${selectedReference}${isEnclosed ? "" : "}"}${rhsValue}`;
       onChange?.(newValue);
 
       const delay = setTimeout(() => {
         clearTimeout(delay);
         if (inputRef.current) {
-          const cursorPos = lhsValue.length + referenceContent.length + 1; // +1 for }
+          const cursorPos = lhsValue.length + selectedReference.length + 1; // +1 for }
           inputRef.current.selectionStart = cursorPos;
           inputRef.current.selectionEnd = cursorPos;
         }
