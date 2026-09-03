@@ -128,7 +128,7 @@ export const AgentVaultProxiesPage = () => {
         scope={ProjectType.AgentVault}
         icon={RouteIcon}
         title="Proxies"
-        description="Where traffic leaves. Each proxy holds its own certificate authority."
+        description="Manage the proxies your agents route through."
       />
 
       <Card>
@@ -137,10 +137,7 @@ export const AgentVaultProxiesPage = () => {
             Proxies
             <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
           </CardTitle>
-          <CardDescription>
-            An agent points its HTTP traffic at one of these. Settings reach a running proxy within
-            one poll interval.
-          </CardDescription>
+          <CardDescription>An agent points its HTTP traffic at one of these.</CardDescription>
           {isAdmin && (
             <CardAction>
               <Button variant="av" onClick={() => setIsCreateOpen(true)}>
