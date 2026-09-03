@@ -1,6 +1,9 @@
+import { Knex } from "knex";
+
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -13,11 +16,22 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import {
+  AgentVaultMemberKind,
+  TAgentVaultMembershipCleanupServiceFactory
+} from "./agent-vault-membership-cleanup-service";
 
 type TAgentVaultMembershipServiceFactoryDep = {
-  membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction">;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction" | "deleteById">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
+  // Bundle grants live in our own join table, so a removal here has to reap them itself. The generic
+  // membership service does it through the same cleanup for its own delete path.
+  agentVaultMembershipCleanupService: Pick<
+    TAgentVaultMembershipCleanupServiceFactory,
+    "cleanupActorAgentVaultMemberships"
+  >;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
@@ -29,6 +43,25 @@ type TAgentVaultMembershipServiceFactoryDep = {
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
 
 export type TListAgentVaultProductIdentitiesDTO = {
+  projectId: string;
+  ctx: TAgentVaultActorContext;
+};
+
+type TAgentVaultProductActor = {
+  userId?: string;
+  groupId?: string;
+  identityId?: string;
+};
+
+export type TAddAgentVaultProductMemberDTO = TAgentVaultProductActor & {
+  projectId: string;
+  role: string;
+  ctx: TAgentVaultActorContext;
+};
+
+export type TUpdateAgentVaultProductMemberDTO = TAddAgentVaultProductMemberDTO;
+
+export type TRemoveAgentVaultProductMemberDTO = TAgentVaultProductActor & {
   projectId: string;
   ctx: TAgentVaultActorContext;
 };
@@ -50,6 +83,8 @@ export const agentVaultMembershipServiceFactory = ({
   membershipDAL,
   identityDAL,
   membershipRoleDAL,
+  groupDAL,
+  agentVaultMembershipCleanupService,
   projectAccessRequestDAL,
   userDAL,
   userAliasDAL,
@@ -203,6 +238,194 @@ export const agentVaultMembershipServiceFactory = ({
 
   // The whole set rather than a page: the grant picker filters client-side, so a page would make
   // search unable to find an identity it never fetched. Mirrors PAM's product membership listing.
+  const assertReadable = async (projectId: string, ctx: TAgentVaultActorContext) =>
+    permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
+
+  // Roles come back in one query rather than one per membership: the pool is small and this list is
+  // rendered on every visit to Access Control.
+  const resolveMemberships = async (memberships: Awaited<ReturnType<typeof membershipDAL.find>>) => {
+    if (!memberships.length) return [];
+
+    const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } });
+    const roleByMembership = new Map(roles.map((r) => [r.membershipId, r]));
+
+    return memberships.map((m) => {
+      const role = roleByMembership.get(m.id);
+      return {
+        membershipId: m.id,
+        userId: m.actorUserId ?? null,
+        identityId: m.actorIdentityId ?? null,
+        groupId: m.actorGroupId ?? null,
+        role: role?.role ?? ProjectMembershipRole.Member,
+        isActive: m.isActive,
+        createdAt: m.createdAt
+      };
+    });
+  };
+
+  const listProductMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
+    await assertReadable(projectId, ctx);
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    return resolveMemberships(memberships);
+  };
+
+  /** Identity members with their name attached, so the page never joins against the org identity list. */
+  const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
+    await assertReadable(projectId, ctx);
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const identityMemberships = memberships.filter((m) => m.actorIdentityId);
+    const resolved = await resolveMemberships(identityMemberships);
+
+    const identityIds = resolved.map((m) => m.identityId).filter((v): v is string => Boolean(v));
+    const identities = identityIds.length ? await identityDAL.find({ $in: { id: identityIds } }) : [];
+    const nameById = new Map(identities.map((i) => [i.id, i.name]));
+
+    return resolved.map((m) => ({ ...m, name: (m.identityId && nameById.get(m.identityId)) || "" }));
+  };
+
+  const resolveActorColumn = (dto: { userId?: string; groupId?: string; identityId?: string }) => {
+    if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, label: "User" };
+    if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, label: "Group" };
+    if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, label: "Machine identity" };
+    throw new BadRequestError({ message: "Name exactly one user, group or machine identity" });
+  };
+
+  const assertValidRole = (role: string) => {
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+  };
+
+  // The last admin cannot be demoted or removed, or the product becomes unadministrable and only a
+  // server admin could put it right.
+  const assertNotLastAdmin = async (projectId: string, membershipId: string, tx: Knex) => {
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId }, { tx });
+    const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
+    const admins = roles.filter((r) => r.role === ProjectMembershipRole.Admin);
+
+    if (admins.length <= 1 && admins.some((r) => r.membershipId === membershipId)) {
+      throw new BadRequestError({ message: "Agent Vault must keep at least one admin" });
+    }
+  };
+
+  const addProductMember = async ({ projectId, role, ctx, ...dto }: TAddAgentVaultProductMemberDTO) => {
+    await checkProductAdmin(projectId, ctx);
+    assertValidRole(role);
+
+    const { column, id, label } = resolveActorColumn(dto);
+
+    if (dto.groupId) {
+      const [group] = await groupDAL.find({ id: dto.groupId, orgId: ctx.actorOrgId });
+      if (!group) throw new NotFoundError({ message: `Group with ID '${dto.groupId}' not found` });
+    }
+    if (dto.identityId) {
+      const [identity] = await identityDAL.find({ id: dto.identityId, orgId: ctx.actorOrgId });
+      if (!identity) throw new NotFoundError({ message: `Machine identity with ID '${dto.identityId}' not found` });
+    }
+
+    const result = await membershipDAL.transaction(async (tx) => {
+      const existing = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (existing.length) {
+        throw new BadRequestError({ message: `${label} already has access to Agent Vault` });
+      }
+
+      const membership = await membershipDAL.create(
+        {
+          scope: AccessScope.Project,
+          scopeOrgId: ctx.actorOrgId,
+          scopeProjectId: projectId,
+          [column]: id,
+          isActive: true
+        },
+        tx
+      );
+      const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+
+      if (dto.userId) await projectAccessRequestDAL.delete({ projectId, requesterUserId: dto.userId }, tx);
+
+      return { membershipId: membership.id, ...dto, role: membershipRole.role, createdAt: membership.createdAt };
+    });
+
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    return result;
+  };
+
+  const updateProductMemberRole = async ({ projectId, role, ctx, ...dto }: TUpdateAgentVaultProductMemberDTO) => {
+    await checkProductAdmin(projectId, ctx);
+    assertValidRole(role);
+
+    const { column, id, label } = resolveActorColumn(dto);
+
+    return membershipDAL.transaction(async (tx) => {
+      const [membership] = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (!membership) throw new NotFoundError({ message: `${label} does not have access to Agent Vault` });
+
+      if (role !== ProjectMembershipRole.Admin) await assertNotLastAdmin(projectId, membership.id, tx);
+
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+
+      return { membershipId: membership.id, ...dto, role: membershipRole.role };
+    });
+  };
+
+  const removeProductMember = async ({ projectId, ctx, ...dto }: TRemoveAgentVaultProductMemberDTO) => {
+    await checkProductAdmin(projectId, ctx);
+
+    if ((dto.userId && dto.userId === ctx.actorId) || (dto.identityId && dto.identityId === ctx.actorId)) {
+      throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
+    }
+
+    const { column, id, label } = resolveActorColumn(dto);
+
+    await membershipDAL.transaction(async (tx) => {
+      const [membership] = await membershipDAL.find(
+        { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
+        { tx }
+      );
+      if (!membership) throw new NotFoundError({ message: `${label} does not have access to Agent Vault` });
+
+      await assertNotLastAdmin(projectId, membership.id, tx);
+
+      // Losing the product means losing every bundle grant. Skipping this would leave rows the mint
+      // path still honours, because they live outside the membership table the generic reaper walks.
+      await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
+        {
+          projectId,
+          actorKind: dto.userId
+            ? AgentVaultMemberKind.User
+            : dto.groupId
+              ? AgentVaultMemberKind.Group
+              : AgentVaultMemberKind.Identity,
+          actorId: id
+        },
+        tx
+      );
+
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
+    });
+
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    return { ...dto };
+  };
+
   const listProductIdentities = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
     await permissionService.getProjectPermission({
       actor: ctx.actor,
@@ -223,5 +446,13 @@ export const agentVaultMembershipServiceFactory = ({
       .sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  return { addProductUserMembers, listProductIdentities };
+  return {
+    addProductUserMembers,
+    listProductIdentities,
+    listProductMembers,
+    listProductIdentityMembers,
+    addProductMember,
+    updateProductMemberRole,
+    removeProductMember
+  };
 };

@@ -755,6 +755,9 @@ export enum EventType {
   AGENT_VAULT_CONNECTION_CREATE = "agent-vault-connection-create",
   AGENT_VAULT_CONNECTION_UPDATE = "agent-vault-connection-update",
   AGENT_VAULT_CONNECTION_DELETE = "agent-vault-connection-delete",
+  AGENT_VAULT_PRODUCT_MEMBER_ADD = "agent-vault-product-member-add",
+  AGENT_VAULT_PRODUCT_MEMBER_UPDATE = "agent-vault-product-member-update",
+  AGENT_VAULT_PRODUCT_MEMBER_REMOVE = "agent-vault-product-member-remove",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
@@ -6174,6 +6177,36 @@ interface AgentVaultConnectionDeleteEvent {
   };
 }
 
+// Product membership: who can reach Agent Vault at all, as opposed to the bundle grants below.
+interface AgentVaultProductMemberAddEvent {
+  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD;
+  metadata: {
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberUpdateEvent {
+  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE;
+  metadata: {
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE;
+  metadata: {
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+  };
+}
+
 interface AgentVaultMemberAddEvent {
   type: EventType.AGENT_VAULT_MEMBER_ADD;
   metadata: {
@@ -7954,6 +7987,9 @@ export type Event =
   | AgentVaultConnectionCreateEvent
   | AgentVaultConnectionUpdateEvent
   | AgentVaultConnectionDeleteEvent
+  | AgentVaultProductMemberAddEvent
+  | AgentVaultProductMemberUpdateEvent
+  | AgentVaultProductMemberRemoveEvent
   | AgentVaultMemberAddEvent
   | AgentVaultMemberRemoveEvent
   | AgentVaultSessionMintEvent

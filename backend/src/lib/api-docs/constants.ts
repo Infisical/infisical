@@ -4185,6 +4185,7 @@ export const AGENT_VAULT = {
     groupId: "The ID of the group to grant the access bundle to."
   },
   MEMBERSHIP: {
+    role: "The Agent Vault role: admin or member.",
     identityName: "The name of the machine identity."
   },
   PROXY: {
