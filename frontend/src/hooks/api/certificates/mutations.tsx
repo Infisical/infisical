@@ -105,6 +105,9 @@ export const useImportCertificate = () => {
         queryKey: projectKeys.allProjectCertificates()
       });
       queryClient.invalidateQueries({
+        queryKey: certificateProfileKeys.lists()
+      });
+      queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
     }

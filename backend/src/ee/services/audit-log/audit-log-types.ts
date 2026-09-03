@@ -3080,6 +3080,10 @@ interface ImportCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    caName?: string;
   };
 }
 

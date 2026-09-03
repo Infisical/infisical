@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -149,6 +150,7 @@ export const getDigiCertOrgValidation = async (
 };
 
 type TDigiCertOrdersResponse = {
+  page?: { total?: number; limit?: number; offset?: number };
   orders?: {
     id: number;
     status?: string;
@@ -165,6 +167,9 @@ export type TDigiCertOrder = {
   validTill?: string;
 };
 
+const DIGICERT_ORDERS_PAGE_SIZE = 1000;
+const DIGICERT_ORDERS_MAX_PAGES = 20;
+
 export const listDigiCertOrders = async (
   appConnection: TDigiCertConnection,
   organizationId: number,
@@ -174,27 +179,48 @@ export const listDigiCertOrders = async (
   const { apiKey } = appConnection.credentials;
   const baseUrl = getDigiCertApiBaseUrl(appConnection.credentials);
 
-  try {
-    const { data } = await request.get<TDigiCertOrdersResponse>(`${baseUrl}/order/certificate`, {
-      headers: {
-        [DIGICERT_AUTH_HEADER]: apiKey,
-        "Content-Type": "application/json"
-      },
-      params: {
-        "filters[product_name_id]": productNameId,
-        "filters[organization_id]": organizationId,
-        "filters[status]": status,
-        limit: 1000
-      }
-    });
+  const collected: TDigiCertOrder[] = [];
 
-    return (data.orders ?? []).map((order) => ({
-      orderId: order.id,
-      commonName: order.certificate?.common_name ?? "",
-      organizationName: order.organization?.name ?? "",
-      status: order.status ?? "",
-      validTill: order.certificate?.valid_till
-    }));
+  try {
+    for (let page = 0; page < DIGICERT_ORDERS_MAX_PAGES; page += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await request.get<TDigiCertOrdersResponse>(`${baseUrl}/order/certificate`, {
+        headers: {
+          [DIGICERT_AUTH_HEADER]: apiKey,
+          "Content-Type": "application/json"
+        },
+        params: {
+          "filters[product_name_id]": productNameId,
+          "filters[organization_id]": organizationId,
+          "filters[status]": status,
+          limit: DIGICERT_ORDERS_PAGE_SIZE,
+          offset: page * DIGICERT_ORDERS_PAGE_SIZE
+        }
+      });
+
+      const orders = data.orders ?? [];
+      collected.push(
+        ...orders.map((order) => ({
+          orderId: order.id,
+          commonName: order.certificate?.common_name ?? "",
+          organizationName: order.organization?.name ?? "",
+          status: order.status ?? "",
+          validTill: order.certificate?.valid_till
+        }))
+      );
+
+      const total = data.page?.total;
+      const isComplete = total === undefined ? orders.length < DIGICERT_ORDERS_PAGE_SIZE : collected.length >= total;
+      if (isComplete) return collected;
+
+      if (page === DIGICERT_ORDERS_MAX_PAGES - 1) {
+        logger.warn(
+          `DigiCert order listing hit the page cap and is truncated [organizationId=${organizationId}] [productNameId=${productNameId}] [collected=${collected.length}] [total=${total ?? "unknown"}]`
+        );
+      }
+    }
+
+    return collected;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({

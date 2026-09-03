@@ -3439,6 +3439,18 @@ export const registerRoutes = async (
     telemetryService
   });
 
+  const digicertCaFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
   const certificateService = certificateServiceFactory({
     certificateDAL,
     certificateBodyDAL,
@@ -3459,21 +3471,12 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationDAL,
+    certificateProfileDAL,
+    pkiApplicationProfileDAL,
+    digicertFns: digicertCaFns,
     licenseService,
     usageMeteringService,
     hsmConnectorService
-  });
-
-  const digicertCaFns = DigiCertCertificateAuthorityFns({
-    appConnectionDAL,
-    appConnectionService,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({

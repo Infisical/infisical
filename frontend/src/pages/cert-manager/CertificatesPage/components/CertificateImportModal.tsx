@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck, CircleX, TriangleAlert } from "lucide-react";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -45,17 +44,14 @@ import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useGetCert, useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { getCertificateImportReference } from "./certificate-import-linkage";
 import { CertificateContent } from "./CertificateContent";
+import { CertificateImportProfileFields } from "./CertificateImportProfileFields";
+import { CertificateImportFormData, certificateImportSchema } from "./types";
 
 const MAX_KEYSTORE_BYTES = 1024 * 1024;
 
-const schema = z.object({
-  certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
-  privateKeyPem: z.string().trim().optional(),
-  chainPem: z.string().trim().optional()
-});
-
-export type FormData = z.infer<typeof schema>;
+export type FormData = CertificateImportFormData;
 
 type Props = {
   popUp: UsePopUpState<["certificateImport"]>;
@@ -103,12 +99,21 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(certificateImportSchema)
   });
 
-  const clearFields = () => reset({ certificatePem: "", chainPem: "", privateKeyPem: "" });
+  const clearFields = () =>
+    reset({
+      certificatePem: "",
+      chainPem: "",
+      privateKeyPem: "",
+      profileId: undefined,
+      linkedCaType: undefined,
+      providerReference: ""
+    });
 
   const resetAll = () => {
     clearFields();
@@ -122,13 +127,26 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     setFormat("pem");
   };
 
-  const onFormSubmit = async ({ certificatePem, privateKeyPem, chainPem }: FormData) => {
+  const onFormSubmit = async ({
+    certificatePem,
+    privateKeyPem,
+    chainPem,
+    profileId,
+    linkedCaType,
+    providerReference
+  }: FormData) => {
     const trimmedPrivateKey = privateKeyPem?.trim();
     const trimmedChain = chainPem?.trim();
+    const reference = getCertificateImportReference(linkedCaType);
+    const externalMetadata =
+      reference && providerReference ? reference.parse(providerReference) : undefined;
+
     const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
       certificatePem,
       ...(trimmedPrivateKey ? { privateKeyPem: trimmedPrivateKey } : {}),
       ...(trimmedChain ? { chainPem: trimmedChain } : {}),
+      ...(profileId ? { profileId } : {}),
+      ...(externalMetadata ? { externalMetadata } : {}),
       applicationId
     });
 
@@ -253,6 +271,13 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           </Field>
         )}
       />
+      {applicationId && !pemFieldsDisabled && (
+        <CertificateImportProfileFields
+          control={control}
+          setValue={setValue}
+          applicationId={applicationId}
+        />
+      )}
     </FieldGroup>
   );
 

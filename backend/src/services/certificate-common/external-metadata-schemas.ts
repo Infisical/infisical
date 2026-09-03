@@ -34,3 +34,26 @@ export const ExternalMetadataSchema = z.discriminatedUnion("type", [
 ]);
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;
+
+export const CertificateImportLinkageMap: Partial<
+  Record<CaType, { externalMetadataSchema: z.ZodTypeAny | null; referenceLabel?: string }>
+> = {
+  [CaType.INTERNAL]: { externalMetadataSchema: null },
+  [CaType.DIGICERT]: { externalMetadataSchema: DigiCertExternalMetadataSchema, referenceLabel: "DigiCert order ID" }
+};
+
+export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertExternalMetadataSchema]);
+
+export type TImportExternalMetadata = z.infer<typeof ImportExternalMetadataSchema>;
+
+export const CA_TYPE_LABEL: Record<CaType, string> = {
+  [CaType.INTERNAL]: "Internal CA",
+  [CaType.ACME]: "ACME",
+  [CaType.ADCS]: "Microsoft ADCS",
+  [CaType.AZURE_AD_CS]: "Azure ADCS",
+  [CaType.AWS_PCA]: "AWS Private CA",
+  [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",
+  [CaType.DIGICERT]: "DigiCert CertCentral",
+  [CaType.VENAFI_TPP]: "Venafi TPP",
+  [CaType.GODADDY]: "GoDaddy"
+};

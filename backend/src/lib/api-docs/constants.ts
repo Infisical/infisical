@@ -2232,6 +2232,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    externalMetadata:
+      "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
       "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
   },
@@ -2271,6 +2273,10 @@ export const CERTIFICATES = {
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    profileId:
+      "The certificate profile that will manage this certificate's lifecycle. Omit to track the certificate without renewal, reissue or revocation.",
+    externalMetadata:
+      'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.',
 
     certificate: "The imported certificate.",
     certificateChain:
