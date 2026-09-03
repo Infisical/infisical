@@ -438,7 +438,7 @@ catch, and reading that as a rename would let a stale alias rewrite somebody els
 consequence to know: a legacy unverified alias whose email changed before its next login is stale,
 so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
 
-Two invariants:
+Three invariants:
 
 - **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
   already had; a throw locks the person out of an org that has no other way in. Every failure path
@@ -449,12 +449,15 @@ Two invariants:
   its aliases and rewrite the identity every other org of that user sees. Every login path
   establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
   verified *for this org*, and the alias branch runs it against the existing account's username),
-  so the helper's copy is there to keep the rename from outliving those checks.
+  so the helper's copy is there to keep the rename from outliving those checks. It is unreachable
+  today, and audits the skip anyway (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "domain-not-owned"`) so a refactor that removes a caller's check leaves a trail rather
+  than a silently stale account.
 - **It never renames onto an occupied address.** `users.username` is globally unique and the row is
   global rather than org-scoped, so the asserted address may already be a personal signup or an
-  unmerged duplicate. The conflict is recorded (`SSO_USER_PROFILE_SYNC_CONFLICT`) and the email is
-  left alone; the name still syncs. The preceding read is not a lock, so a unique violation lands on
-  the same path.
+  unmerged duplicate. The conflict is recorded (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "address-taken"`) and the email is left alone; the name still syncs. The preceding read
+  is not a lock, so a unique violation lands on the same path.
 
 SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
 rejected every email change outright, which left the data stale *and* put the provisioning job in a

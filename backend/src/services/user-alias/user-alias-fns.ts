@@ -1,7 +1,11 @@
 import { Knex } from "knex";
 
 import { AccessScope, TableName, TUserAliases, TUsers } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import {
+  EventType,
+  TAuditLogServiceFactory,
+  TSsoUserEmailSyncSkipReason
+} from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership } from "@app/ee/services/email-domain/email-domain-fns";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -158,29 +162,40 @@ export const syncSsoUserProfile = async ({
 
   if (!isEmailChanged && !isNameChanged) return user;
 
-  const logConflict = async (conflictingUserId?: string) => {
+  const logSkippedEmailSync = async ({
+    reason,
+    conflictingUserId
+  }: {
+    reason: TSsoUserEmailSyncSkipReason;
+    conflictingUserId?: string;
+  }) => {
+    const detail =
+      reason === "domain-not-owned"
+        ? "the organization does not own both addresses"
+        : "the asserted address belongs to another account";
     logger.warn(
       { userId: user.id, orgId, externalId: userAlias.externalId, assertedEmail: assertedUsername, conflictingUserId },
-      `Skipped SSO email sync, the asserted address belongs to another account [userId=${user.id}] [orgId=${orgId}]`
+      `Skipped SSO email sync, ${detail} [userId=${user.id}] [orgId=${orgId}]`
     );
     await auditLogService
       .createAuditLog({
         actor: { type: ActorType.PLATFORM, metadata: {} },
         orgId,
         event: {
-          type: EventType.SSO_USER_PROFILE_SYNC_CONFLICT,
+          type: EventType.SSO_USER_EMAIL_SYNC_SKIPPED,
           metadata: {
             userId: user.id,
             aliasType: userAlias.aliasType,
             externalId: userAlias.externalId,
             currentEmail: user.username,
             assertedEmail: assertedUsername,
+            reason,
             conflictingUserId
           }
         }
       })
       .catch((err) => {
-        logger.error(err, `Failed to audit SSO profile sync conflict for user ${user.id} in org ${orgId}`);
+        logger.error(err, `Failed to audit the skipped SSO email sync for user ${user.id} in org ${orgId}`);
       });
   };
 
@@ -195,10 +210,7 @@ export const syncSsoUserProfile = async ({
 
     if (!isOrgOwnedRename) {
       isEmailApplied = false;
-      logger.warn(
-        { userId: user.id, orgId, externalId: userAlias.externalId },
-        `Skipped SSO email sync, the organization does not own both addresses [userId=${user.id}] [orgId=${orgId}]`
-      );
+      await logSkippedEmailSync({ reason: "domain-not-owned" });
       if (!isNameChanged) return user;
     }
   }
@@ -207,7 +219,7 @@ export const syncSsoUserProfile = async ({
     const conflictingUser = await userDAL.findOne({ username: assertedUsername });
     if (conflictingUser && conflictingUser.id !== user.id) {
       isEmailApplied = false;
-      await logConflict(conflictingUser.id);
+      await logSkippedEmailSync({ reason: "address-taken", conflictingUserId: conflictingUser.id });
       if (!isNameChanged) return user;
     }
   }
@@ -246,7 +258,7 @@ export const syncSsoUserProfile = async ({
       return user;
     }
 
-    await logConflict();
+    await logSkippedEmailSync({ reason: "address-taken" });
     isEmailApplied = false;
     if (!isNameChanged) return user;
 

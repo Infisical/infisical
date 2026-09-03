@@ -200,8 +200,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
     "OIDC login adopted provisioned placeholder account",
   [EventType.SSO_USER_PROFILE_SYNCED]: "Synced user profile from identity provider",
-  [EventType.SSO_USER_PROFILE_SYNC_CONFLICT]:
-    "Skipped user email sync from identity provider due to conflict",
+  [EventType.SSO_USER_EMAIL_SYNC_SKIPPED]: "Skipped user email sync from identity provider",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",

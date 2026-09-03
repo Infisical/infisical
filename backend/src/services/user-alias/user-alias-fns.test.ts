@@ -443,7 +443,8 @@ describe("syncSsoUserProfile", () => {
     expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
     expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: "new@example.com" });
     const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
-    expect(audited.event.type).toBe("sso-user-profile-sync-conflict");
+    expect(audited.event.type).toBe("sso-user-email-sync-skipped");
+    expect(audited.event.metadata.reason).toBe("address-taken");
     expect(audited.event.metadata.conflictingUserId).toBe("user-2");
   });
 
@@ -463,7 +464,8 @@ describe("syncSsoUserProfile", () => {
 
     expect(user.username).toBe("old@example.com");
     const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
-    expect(audited.event.type).toBe("sso-user-profile-sync-conflict");
+    expect(audited.event.type).toBe("sso-user-email-sync-skipped");
+    expect(audited.event.metadata.reason).toBe("address-taken");
   });
 
   test("keeps the name when the address is taken between the check and the write", async () => {
@@ -477,7 +479,8 @@ describe("syncSsoUserProfile", () => {
     expect(deps.updatedRows).toEqual([{ firstName: "Bob" }]);
 
     const [conflict] = deps.auditLogService.createAuditLog.mock.calls[0];
-    expect(conflict.event.type).toBe("sso-user-profile-sync-conflict");
+    expect(conflict.event.type).toBe("sso-user-email-sync-skipped");
+    expect(conflict.event.metadata.reason).toBe("address-taken");
     const [synced] = deps.auditLogService.createAuditLog.mock.calls[1];
     expect(synced.event.type).toBe("sso-user-profile-synced");
     expect(synced.event.metadata.newEmail).toBeUndefined();
@@ -499,6 +502,11 @@ describe("syncSsoUserProfile", () => {
     expect(user.username).toBe("old@example.com");
     expect(user.firstName).toBe("Bob");
     expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+
+    const [skipped] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(skipped.event.type).toBe("sso-user-email-sync-skipped");
+    expect(skipped.event.metadata.reason).toBe("domain-not-owned");
+    expect(skipped.event.metadata.conflictingUserId).toBeUndefined();
   });
 
   test("skips the email when the org does not own the address being written", async () => {
@@ -508,5 +516,9 @@ describe("syncSsoUserProfile", () => {
     expect(user.username).toBe("old@example.com");
     expect(deps.userDAL.updateById).not.toHaveBeenCalled();
     expect(deps.userDAL.findOne).not.toHaveBeenCalled();
+
+    const [skipped] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(skipped.event.type).toBe("sso-user-email-sync-skipped");
+    expect(skipped.event.metadata.reason).toBe("domain-not-owned");
   });
 });
