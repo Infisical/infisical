@@ -53,6 +53,26 @@ const memberDeleter = createMongoAbility<MongoAbility>([
   }
 ]);
 
+// Exactly what the invite guard's throwUnlessCan demands, and nothing more.
+const memberCreatorOnly = createMongoAbility<MongoAbility>([
+  {
+    action: [OrgPermissionMemberActions.Read, OrgPermissionMemberActions.Create],
+    subject: OrgPermissionSubjects.Member
+  }
+]);
+
+// The invite equivalent of memberPrivilegeGranter: create plus the action the new system asks for.
+const memberCreatorGranter = createMongoAbility<MongoAbility>([
+  {
+    action: [
+      OrgPermissionMemberActions.Read,
+      OrgPermissionMemberActions.Create,
+      OrgPermissionMemberActions.GrantPrivileges
+    ],
+    subject: OrgPermissionSubjects.Member
+  }
+]);
+
 const createGuard = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
@@ -295,5 +315,109 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
         createGuard({ actorPermission: memberDeleter, shouldUseNewPrivilegeSystem: true, data: both })()
       ).rejects.toThrow(PermissionBoundaryError);
     });
+  });
+});
+
+// An invite always carries a role, so create alone never gets the request through — except for
+// no-access, which confers nothing and so cannot escalate anything. Unlike the update guard, the
+// invite guard has no target to bound against, so the requested roles are the only thing it checks.
+describe("onCreateMembershipUserGuard privilege boundary", () => {
+  const createInviteGuard = ({
+    actorPermission,
+    shouldUseNewPrivilegeSystem,
+    incomingRoles = ["member"]
+  }: {
+    actorPermission: MongoAbility;
+    shouldUseNewPrivilegeSystem: boolean;
+    incomingRoles?: string[];
+  }) => {
+    const abilityByRole: Record<string, MongoAbility> = {
+      admin,
+      member,
+      "no-access": createMongoAbility<MongoAbility>(orgNoAccessPermissions)
+    };
+
+    const factory = newOrgMembershipUserFactory({
+      permissionService: {
+        getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+        getOrgPermissionByRoles: vi
+          .fn()
+          .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+      } as never,
+      orgDAL: {
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem, authEnforced: false, rootOrgId: null })
+      } as never,
+      licenseService: { getPlan: vi.fn().mockResolvedValue({}), getOrgSeatUsage: vi.fn() } as never,
+      membershipUserDAL: { find: vi.fn(), getUserById: vi.fn() } as never,
+      tokenService: {} as never,
+      userDAL: {} as never,
+      smtpService: {} as never,
+      userGroupMembershipDAL: {} as never,
+      emailDomainDAL: { find: vi.fn().mockResolvedValue([]) } as never,
+      oidcConfigDAL: {} as never,
+      samlConfigDAL: {} as never
+    });
+
+    return () =>
+      factory.onCreateMembershipUserGuard(
+        {
+          permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+          scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
+          data: { roles: incomingRoles.map((role) => ({ role, isTemporary: false })) }
+        } as never,
+        [{ id: "invitee-id", email: "invitee@example.com" }] as never
+      );
+  };
+
+  test("member:create alone cannot invite with a real role on the new system", async () => {
+    await expect(
+      createInviteGuard({ actorPermission: memberCreatorOnly, shouldUseNewPrivilegeSystem: true })()
+    ).rejects.toThrow(PermissionBoundaryError);
+
+    await expect(
+      createInviteGuard({ actorPermission: memberCreatorGranter, shouldUseNewPrivilegeSystem: true })()
+    ).resolves.toBeUndefined();
+  });
+
+  test("inviting with no-access is exempt on both systems", async () => {
+    // no-access resolves to an empty rule set, so there is no privilege to escalate and nothing for
+    // grant-privileges to be protecting. Requiring it here would block the one invite that is
+    // provably harmless.
+    await expect(
+      createInviteGuard({
+        actorPermission: memberCreatorOnly,
+        shouldUseNewPrivilegeSystem: true,
+        incomingRoles: ["no-access"]
+      })()
+    ).resolves.toBeUndefined();
+
+    await expect(
+      createInviteGuard({
+        actorPermission: memberCreatorOnly,
+        shouldUseNewPrivilegeSystem: false,
+        incomingRoles: ["no-access"]
+      })()
+    ).resolves.toBeUndefined();
+  });
+
+  test("the exemption is per role, not a way past the boundary", async () => {
+    // Pairing no-access with a real role must not launder the real one through.
+    await expect(
+      createInviteGuard({
+        actorPermission: memberCreatorOnly,
+        shouldUseNewPrivilegeSystem: true,
+        incomingRoles: ["no-access", "admin"]
+      })()
+    ).rejects.toThrow(PermissionBoundaryError);
+
+    await expect(
+      createInviteGuard({
+        actorPermission: memberCreatorOnly,
+        shouldUseNewPrivilegeSystem: false,
+        incomingRoles: ["no-access", "admin"]
+      })()
+    ).rejects.toThrow(PermissionBoundaryError);
   });
 });

@@ -75,18 +75,15 @@ const createService = ({
       getProjectPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      // Role name "no-access" skips the privilege-boundary comparison in the guards. An empty slug
-      // list resolves to no roles, matching the real implementation.
+      // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
+      // without a `role` field, and an empty target ability satisfies the boundary under both
+      // privilege systems given the `manage all` actor above. An empty slug list resolves to no roles.
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation(async (roles: string[]) =>
-          roles.length ? [{ role: { name: "no-access" }, permission: null }] : []
-        ),
+        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : [])),
       getProjectPermissionByRoles: vi
         .fn()
-        .mockImplementation(async (roles: string[]) =>
-          roles.length ? [{ role: { name: "no-access" }, permission: null }] : []
-        )
+        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,

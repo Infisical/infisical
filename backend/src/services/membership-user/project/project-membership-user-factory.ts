@@ -22,7 +22,10 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -116,7 +119,7 @@ export const newProjectMembershipUserFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
 
@@ -254,7 +257,7 @@ export const newProjectMembershipUserFactory = ({
     });
 
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
 

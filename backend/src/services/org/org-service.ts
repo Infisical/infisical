@@ -56,7 +56,7 @@ import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manag
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
-import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
@@ -918,7 +918,7 @@ export const orgServiceFactory = ({
       userRoleId = customRole.id;
     }
 
-    if (role) {
+    if (role && roleNeedsPrivilegeBoundary(role)) {
       const permissionRoles = await permissionService.getOrgPermissionByRoles([role], orgId);
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,

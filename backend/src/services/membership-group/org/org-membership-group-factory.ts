@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   OrgPermissionGroupActions,
@@ -16,7 +16,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
@@ -90,7 +93,7 @@ export const newOrgMembershipGroupFactory = ({
     }
 
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       dto.permission.orgId
     );
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
@@ -98,25 +101,23 @@ export const newOrgMembershipGroupFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.GrantPrivileges,
-          OrgPermissionSubjects.Groups,
-          permission,
-          permissionRole.permission
-        );
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to link group to sub-organization",
-              shouldUseNewPrivilegeSystem,
-              OrgPermissionGroupActions.GrantPrivileges,
-              OrgPermissionSubjects.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        permissionRole.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to link group to sub-organization",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: group.id, name: group.name } };
@@ -137,7 +138,7 @@ export const newOrgMembershipGroupFactory = ({
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       dto.permission.orgId
     );
 
@@ -165,25 +166,23 @@ export const newOrgMembershipGroupFactory = ({
     });
 
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.GrantPrivileges,
-          OrgPermissionSubjects.Groups,
-          permission,
-          permissionRole.permission
-        );
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create group org membership",
-              shouldUseNewPrivilegeSystem,
-              OrgPermissionGroupActions.GrantPrivileges,
-              OrgPermissionSubjects.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        permissionRole.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create group org membership",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };

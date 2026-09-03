@@ -16,7 +16,10 @@ import {
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -96,31 +99,29 @@ export const newProjectMembershipGroupFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-          ProjectPermissionSub.Groups,
-          permission,
-          permissionRole.permission,
-          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-        );
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        ProjectPermissionSub.Groups,
+        permission,
+        permissionRole.permission,
+        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
+      );
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create group project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.AssignRole,
-              ProjectPermissionSub.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create group project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.AssignRole,
+            ProjectPermissionSub.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -188,31 +189,29 @@ export const newProjectMembershipGroupFactory = ({
     });
 
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-          ProjectPermissionSub.Groups,
-          permission,
-          permissionRole.permission,
-          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-        );
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        ProjectPermissionSub.Groups,
+        permission,
+        permissionRole.permission,
+        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
+      );
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to update group project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.AssignRole,
-              ProjectPermissionSub.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update group project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.AssignRole,
+            ProjectPermissionSub.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };

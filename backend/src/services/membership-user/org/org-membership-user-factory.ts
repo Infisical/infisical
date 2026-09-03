@@ -19,7 +19,10 @@ import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -105,9 +108,10 @@ export const newOrgMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
-    if (dto.data.roles.length) {
+    const rolesToBound = filterRolesNeedingPrivilegeBoundary(dto.data.roles);
+    if (rolesToBound.length) {
       const permissionRoles = await permissionService.getOrgPermissionByRoles(
-        dto.data.roles.map((el) => el.role),
+        rolesToBound.map((el) => el.role),
         dto.permission.orgId
       );
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
@@ -369,9 +373,10 @@ export const newOrgMembershipUserFactory = ({
       }
     }
 
-    if (dto.data.roles.length) {
+    const rolesToBound = filterRolesNeedingPrivilegeBoundary(dto.data.roles);
+    if (rolesToBound.length) {
       const permissionRoles = await permissionService.getOrgPermissionByRoles(
-        dto.data.roles.map((el) => el.role),
+        rolesToBound.map((el) => el.role),
         dto.permission.orgId
       );
 

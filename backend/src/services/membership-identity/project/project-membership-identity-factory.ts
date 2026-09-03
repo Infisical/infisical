@@ -16,7 +16,10 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -108,34 +111,32 @@ export const newProjectMembershipIdentityFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-          ProjectPermissionSub.Identity,
-          permission,
-          permissionRole.permission,
-          {
-            identityId: identityDetails.id,
-            assignableRole: permissionRole.role?.slug
-          }
-        );
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        ProjectPermissionSub.Identity,
+        permission,
+        permissionRole.permission,
+        {
+          identityId: identityDetails.id,
+          assignableRole: permissionRole.role?.slug
+        }
+      );
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create identity project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.AssignRole,
-              ProjectPermissionSub.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create identity project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.AssignRole,
+            ProjectPermissionSub.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
   };
 
@@ -201,7 +202,7 @@ export const newProjectMembershipIdentityFactory = ({
     });
 
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {

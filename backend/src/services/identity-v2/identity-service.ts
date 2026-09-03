@@ -44,6 +44,7 @@ import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
@@ -171,30 +172,28 @@ export const identityV2ServiceFactory = ({
       );
 
       const permissionRoles = await permissionService.getProjectPermissionByRoles(
-        data.roles.map((el) => el.role),
+        filterRolesNeedingPrivilegeBoundary(data.roles).map((el) => el.role),
         scopeData.projectId
       );
       for (const permissionRole of permissionRoles) {
-        if (permissionRole?.role?.slug !== ProjectMembershipRole.NoAccess) {
-          const permissionBoundary = validatePrivilegeChangeOperation(
-            shouldUseNewPrivilegeSystem,
-            [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-            ProjectPermissionSub.Identity,
-            actorPermission,
-            permissionRole.permission,
-            { assignableRole: permissionRole.role?.slug }
-          );
-          if (!permissionBoundary.isValid) {
-            throw new PermissionBoundaryError({
-              message: constructPermissionErrorMessage(
-                "Failed to create identity project membership",
-                shouldUseNewPrivilegeSystem,
-                ProjectPermissionIdentityActions.AssignRole,
-                ProjectPermissionSub.Identity
-              ),
-              details: { missingPermissions: permissionBoundary.missingPermissions }
-            });
-          }
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+          ProjectPermissionSub.Identity,
+          actorPermission,
+          permissionRole.permission,
+          { assignableRole: permissionRole.role?.slug }
+        );
+        if (!permissionBoundary.isValid) {
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create identity project membership",
+              shouldUseNewPrivilegeSystem,
+              ProjectPermissionIdentityActions.AssignRole,
+              ProjectPermissionSub.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
         }
       }
 

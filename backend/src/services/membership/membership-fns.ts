@@ -53,6 +53,12 @@ type TMembershipRole = {
   temporaryAccessEndTime?: Date | null;
 };
 
+export const roleNeedsPrivilegeBoundary = (role: string) =>
+  role !== OrgMembershipRole.NoAccess && role !== ProjectMembershipRole.NoAccess;
+
+export const filterRolesNeedingPrivilegeBoundary = <T extends { role: string }>(roles: T[]) =>
+  roles.filter((el) => roleNeedsPrivilegeBoundary(el.role));
+
 // Resolves membership roles into the slug list that get{Org,Project}PermissionByRoles expects.
 export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
   ...new Set(
