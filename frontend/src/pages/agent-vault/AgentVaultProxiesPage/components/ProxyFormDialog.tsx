@@ -88,7 +88,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
   const saveDelayNote = (() => {
     if (!proxy?.heartbeat) return null;
     return proxy.isHealthy
-      ? "This proxy picks up the change on its next check."
+      ? "This proxy picks up the change on its next poll."
       : "This proxy is not connected right now. It picks up the change when it reconnects.";
   })();
 
