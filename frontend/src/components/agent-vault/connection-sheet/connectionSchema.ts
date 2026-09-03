@@ -12,13 +12,14 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 
 export enum ConnectionStep {
   Template = "template",
+  Details = "details",
   Credential = "credential",
-  Scope = "scope",
   Review = "review"
 }
 
 export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
   [ConnectionStep.Template]: [],
+  [ConnectionStep.Details]: ["name", "hostPattern"],
   [ConnectionStep.Credential]: [
     "credentialType",
     "headerName",
@@ -26,8 +27,7 @@ export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
     "username",
     "secret"
   ],
-  [ConnectionStep.Scope]: ["hostPattern"],
-  [ConnectionStep.Review]: ["name"]
+  [ConnectionStep.Review]: []
 };
 
 const credentialSettingsDiffer = (

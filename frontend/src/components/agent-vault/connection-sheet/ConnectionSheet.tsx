@@ -40,8 +40,8 @@ import {
   TConnectionForm
 } from "./connectionSchema";
 import { CredentialFields } from "./CredentialFields";
+import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
-import { ScopeFields } from "./ScopeFields";
 import { CONNECTION_DOCS_URL, CONNECTION_STEPS } from "./stepMeta";
 
 type Props = {
@@ -219,7 +219,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         serverResponse.message.includes("already covers")
       ) {
         setError("hostPattern", { type: "server", message: serverResponse.message });
-        setStep(stepKeys.indexOf(ConnectionStep.Scope));
+        setStep(stepKeys.indexOf(ConnectionStep.Details));
         return;
       }
 
@@ -232,7 +232,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             type: "server",
             message: hostIssues.map((issue) => issue.message).join(" ")
           });
-          setStep(stepKeys.indexOf(ConnectionStep.Scope));
+          setStep(stepKeys.indexOf(ConnectionStep.Details));
         }
         if (hostIssues.length < serverResponse.message.length) onRequestError(error);
       }
@@ -256,8 +256,17 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     setStep(target);
   };
 
+  const handleNext = async () => {
+    if (isLastStep) {
+      handleSubmit(onSubmit, onFormInvalid)();
+      return;
+    }
+    await goNext();
+  };
+
   const current = steps[step];
   const isTemplateStep = current.step === ConnectionStep.Template;
+  const saveLabel = isUpdate ? "Save" : "Add Connection";
 
   return (
     <Sheet
@@ -305,10 +314,11 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
               <ConnectionTemplateSelect onSelect={handleTemplatePicked} />
             </div>
           ) : (
-            <form
-              onSubmit={handleSubmit(onSubmit, onFormInvalid)}
-              className="flex min-h-0 flex-1 flex-col"
-            >
+            // Nothing submits the form natively. A type="submit" button on the last step would be
+            // the same reconciled DOM node as Continue, so the click that advances to Review lands
+            // on a submit button and saves before the step has been read; Enter in any field would
+            // do the same from any step.
+            <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
@@ -338,10 +348,10 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
+                  {current.step === ConnectionStep.Details && <DetailsFields />}
                   {current.step === ConnectionStep.Credential && (
                     <CredentialFields isUpdate={isUpdate} />
                   )}
-                  {current.step === ConnectionStep.Scope && <ScopeFields />}
                   {current.step === ConnectionStep.Review && <ReviewFields />}
                 </div>
 
@@ -372,15 +382,14 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   <Button type="button" variant="outline" onClick={goBack}>
                     Back
                   </Button>
-                  {isLastStep ? (
-                    <Button type="submit" variant="av" isPending={isSubmitting}>
-                      {isUpdate ? "Save" : "Add Connection"}
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="av" onClick={async () => goNext()}>
-                      Continue
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="av"
+                    onClick={handleNext}
+                    isPending={isLastStep && isSubmitting}
+                  >
+                    {isLastStep ? saveLabel : "Continue"}
+                  </Button>
                 </div>
               </SheetFooter>
             </form>

@@ -28,6 +28,16 @@ export const CONNECTION_STEPS: StepMeta[] = [
       "A template fills in the hosts and the credential type for a service we already know, so you only supply the secret. Custom leaves every field blank."
   },
   {
+    step: ConnectionStep.Details,
+    name: "Details",
+    shortDescription: "Name and hosts",
+    title: "Details",
+    subtitle: "What this connection is called, and the hosts it covers.",
+    rightLabel: "DETAILS",
+    rightDescription:
+      "Every request an agent makes to these hosts gets the credential. Requests to anything else leave the proxy without it, so keep the list to the hosts the service actually answers on."
+  },
+  {
     step: ConnectionStep.Credential,
     name: "Credential",
     shortDescription: "What the proxy sends",
@@ -38,23 +48,13 @@ export const CONNECTION_STEPS: StepMeta[] = [
       "The agent never holds this secret. The proxy attaches it as the request leaves, replacing whatever the agent sent under that header name."
   },
   {
-    step: ConnectionStep.Scope,
-    name: "Scope",
-    shortDescription: "Where it is sent",
-    title: "Scope",
-    subtitle: "The hosts this credential is attached to, and nowhere else.",
-    rightLabel: "SCOPE",
-    rightDescription:
-      "Every request an agent makes to these hosts gets the credential. Requests to anything else leave the proxy without it, so keep the list to the hosts the service actually answers on."
-  },
-  {
     step: ConnectionStep.Review,
     name: "Review",
-    shortDescription: "Name and confirm",
+    shortDescription: "Confirm and add",
     title: "Review",
-    subtitle: "Name the connection and check what it will send.",
+    subtitle: "Check what the proxy will send, and where.",
     rightLabel: "REVIEW",
     rightDescription:
-      "The name identifies this connection inside the access bundle. Everything here can be changed later from the bundle page."
+      "Nothing here is final. Every field can be changed later from the bundle page, and the secret can be replaced without touching the rest."
   }
 ];
