@@ -10,34 +10,37 @@ type Props = {
 };
 
 export const HoneyTokenConfigurationFields = ({ environments }: Props) => {
-  const { control } = useFormContext<THoneyTokenForm>();
+  const { control, setValue } = useFormContext<THoneyTokenForm>();
 
   return (
-    <>
-      <p className="mb-4 text-sm text-label">Select where to plant the honey token secrets.</p>
-      {environments && (
-        <Controller
-          control={control}
-          name="environment"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>Environment</FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  value={value}
-                  onChange={onChange}
-                  options={environments}
-                  placeholder="Select an environment..."
-                  getOptionLabel={(option) => option?.name}
-                  getOptionValue={(option) => option?.id}
-                  isError={Boolean(error)}
-                />
-              </FieldContent>
-              {error && <FieldError>{error.message}</FieldError>}
-            </Field>
-          )}
-        />
-      )}
-    </>
+    environments && (
+      <Controller
+        control={control}
+        name="environment"
+        render={({ field: { value }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Environment</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                value={value}
+                onChange={(environment) =>
+                  setValue("environment", environment as ProjectEnv, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true
+                  })
+                }
+                options={environments}
+                placeholder="Select an environment..."
+                getOptionLabel={(option) => option?.name}
+                getOptionValue={(option) => option?.id}
+                isError={Boolean(error)}
+              />
+            </FieldContent>
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
+        )}
+      />
+    )
   );
 };

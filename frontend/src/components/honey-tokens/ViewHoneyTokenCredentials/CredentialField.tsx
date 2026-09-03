@@ -1,9 +1,16 @@
-import { useReducer } from "react";
-import { faCopy, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useId, useReducer } from "react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
-import { Field, FieldContent, FieldLabel, IconButton, Input } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
+import {
+  CopyButton,
+  Field,
+  FieldContent,
+  FieldLabel,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from "@app/components/v3";
 
 type Props = {
   label: string;
@@ -12,40 +19,33 @@ type Props = {
 
 export const CredentialField = ({ label, value }: Props) => {
   const [showCredential, toggleShowCredential] = useReducer((prev) => !prev, false);
-  const [, isCopied, setCopied] = useTimedReset<boolean>({ initialState: false });
+  const inputId = useId();
 
   if (!value) return null;
 
   return (
     <Field>
-      <FieldLabel>{label}</FieldLabel>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <FieldContent>
         <div className="flex items-center gap-2">
-          <Input
-            value={value}
-            type={showCredential ? "text" : "password"}
-            readOnly
-            className="flex-1 font-mono"
-          />
-          <IconButton
-            aria-label={`${showCredential ? "Hide" : "Show"} ${label}`}
-            variant="outline"
-            size="md"
-            onClick={toggleShowCredential}
-          >
-            <FontAwesomeIcon icon={showCredential ? faEyeSlash : faEye} />
-          </IconButton>
-          <IconButton
-            aria-label={`Copy ${label}`}
-            variant="outline"
-            size="md"
-            onClick={() => {
-              navigator.clipboard.writeText(value);
-              setCopied(true);
-            }}
-          >
-            <FontAwesomeIcon icon={faCopy} className={isCopied ? "text-success" : ""} />
-          </IconButton>
+          <InputGroup className="flex-1">
+            <InputGroupInput
+              id={inputId}
+              value={value}
+              type={showCredential ? "text" : "password"}
+              readOnly
+              className="font-mono"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                aria-label={`${showCredential ? "Hide" : "Show"} ${label}`}
+                onClick={toggleShowCredential}
+              >
+                {showCredential ? <EyeOffIcon /> : <EyeIcon />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          <CopyButton value={value} ariaLabel={`Copy ${label}`} variant="outline" size="md" />
         </div>
       </FieldContent>
     </Field>

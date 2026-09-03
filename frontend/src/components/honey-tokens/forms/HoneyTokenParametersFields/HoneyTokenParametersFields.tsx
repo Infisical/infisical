@@ -18,7 +18,7 @@ export const HoneyTokenParametersFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-label">
+      <p className="mb-4 text-sm text-muted">
         Configure the required parameters for this Honey Token.
       </p>
       <Component />

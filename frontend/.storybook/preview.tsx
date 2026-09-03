@@ -9,6 +9,8 @@ import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "../src/index.css";
 
+import "../src/translation";
+
 initializePlatform();
 
 // Mirrors main.tsx: serve the Lottie player WASM from the local module instead of a CDN.

@@ -16,6 +16,7 @@ export enum PamAccountType {
 
 export enum PamResourceRole {
   Admin = "admin",
+  Operator = "operator",
   Connector = "connector",
   Auditor = "auditor"
 }
@@ -56,6 +57,11 @@ export enum PamSshAuthMethod {
 export enum PamPostgresAuthMethod {
   Password = "password",
   AwsIam = "aws-iam"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow

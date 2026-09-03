@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -7,7 +7,6 @@ import {
   CalendarIcon,
   ClockIcon,
   HexagonIcon,
-  KeyIcon,
   MapPinIcon,
   RotateCcw
 } from "lucide-react";
@@ -15,29 +14,25 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input,
   PageLoader,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Skeleton,
@@ -64,7 +59,7 @@ type Props = {
   onClose: () => void;
 };
 
-const DrawerContent = ({
+const HoneyTokenDetailsContent = ({
   honeyTokenId,
   projectId
 }: {
@@ -78,11 +73,10 @@ const DrawerContent = ({
   });
 
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
-  const { mutateAsync: revokeHoneyToken } = useRevokeHoneyToken();
+  const { mutateAsync: revokeHoneyToken, isPending: isRevoking } = useRevokeHoneyToken();
   const { permission } = useProjectPermission();
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
-  const [revokeInput, setRevokeInput] = useState("");
   const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
     environment: honeyToken?.environment?.slug ?? "",
     secretPath: honeyToken?.folder?.path ?? ""
@@ -98,20 +92,28 @@ const DrawerContent = ({
     enabled: Boolean(honeyTokenId && projectId && canReadCredentials)
   });
 
-  useEffect(() => {
-    setRevokeInput("");
-  }, [isRevokeOpen]);
-
   if (isPending) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-8">
-        <PageLoader />
-      </div>
+      <>
+        <SheetHeader className="sr-only">
+          <SheetTitle>Honey token details</SheetTitle>
+        </SheetHeader>
+        <div className="flex h-full w-full items-center justify-center p-8">
+          <PageLoader />
+        </div>
+      </>
     );
   }
 
   if (!honeyToken) {
-    return <div className="p-4 text-center text-sm text-muted">Could not find honey token.</div>;
+    return (
+      <>
+        <SheetHeader className="sr-only">
+          <SheetTitle>Honey token details</SheetTitle>
+        </SheetHeader>
+        <div className="p-4 text-center text-sm text-muted">Could not find honey token.</div>
+      </>
+    );
   }
 
   const isTriggered = honeyToken.status === HoneyTokenStatus.Triggered;
@@ -142,12 +144,13 @@ const DrawerContent = ({
       text: `Successfully revoked honey token "${honeyToken.name}"`,
       type: "success"
     });
+    setIsRevokeOpen(false);
   };
 
   return (
     <>
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex items-start justify-between">
+      <SheetHeader className="gap-4">
+        <div className="flex items-start pr-8">
           <div className="flex items-center gap-3">
             {tokenInfo && (
               <img
@@ -156,9 +159,9 @@ const DrawerContent = ({
                 alt={`${tokenInfo.name} logo`}
               />
             )}
-            <div className="min-w-0">
+            <div className="flex min-w-0 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate font-medium">{honeyToken.name}</p>
+                <SheetTitle className="truncate">{honeyToken.name}</SheetTitle>
                 <Badge variant={statusBadgeVariant}>
                   {isTriggered && <AlertTriangle size={12} className="mr-1" />}
                   {statusLabel}
@@ -169,81 +172,70 @@ const DrawerContent = ({
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {isTriggered && (
-              <ProjectPermissionCan
-                I={ProjectPermissionHoneyTokenActions.Reset}
-                a={honeyTokenSubject}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setIsResetOpen(true)}
-                    isDisabled={!isAllowed}
-                  >
-                    <RotateCcw size={14} />
-                    Reset
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            )}
-            {!isRevoked && (
-              <ProjectPermissionCan
-                I={ProjectPermissionHoneyTokenActions.Revoke}
-                a={honeyTokenSubject}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="danger"
-                    size="xs"
-                    onClick={() => setIsRevokeOpen(true)}
-                    isDisabled={!isAllowed}
-                  >
-                    <BanIcon size={14} />
-                    Revoke
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            )}
-          </div>
         </div>
+      </SheetHeader>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon size={13} />
-                <span>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="shaded" iconPosition="left">
+                  <CalendarIcon size={13} />
                   Created {formatDistanceToNow(new Date(honeyToken.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              {format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
-            </TooltipContent>
-          </Tooltip>
-          {honeyToken.environment && (
-            <div className="flex items-center gap-1.5">
-              <MapPinIcon size={13} />
-              <span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                {format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
+              </TooltipContent>
+            </Tooltip>
+            {honeyToken.environment && (
+              <Badge variant="shaded" iconPosition="left">
+                <MapPinIcon size={13} />
                 {honeyToken.environment.name}
                 {honeyToken.folder?.path && honeyToken.folder.path !== "/"
                   ? ` — ${honeyToken.folder.path}`
                   : ""}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <HexagonIcon size={13} />
-            <span>
+              </Badge>
+            )}
+            <Badge variant="shaded" iconPosition="left">
+              <HexagonIcon size={13} />
               {honeyToken.openEvents} open event{honeyToken.openEvents !== 1 && "s"}
-            </span>
+            </Badge>
+            <Badge variant="shaded" iconPosition="left">
+              <ClockIcon size={13} />
+              Active for {formatDistanceToNow(new Date(honeyToken.createdAt))}
+            </Badge>
           </div>
-          <div className="flex items-center gap-1.5">
-            <ClockIcon size={13} />
-            <span>Active for {formatDistanceToNow(new Date(honeyToken.createdAt))}</span>
-          </div>
+
+          {isRevoked && (
+            <Alert variant="info">
+              <BanIcon />
+              <AlertTitle>Honey token revoked</AlertTitle>
+              <AlertDescription>
+                The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
+                token record and its events are preserved for audit purposes.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isTriggered && (
+            <Alert variant="warning">
+              <AlertTriangle />
+              <AlertTitle>What to do now?</AlertTitle>
+              <AlertDescription className="gap-2">
+                <p>
+                  If this is a false alarm, reset the honey token to return it to active status and
+                  hide past events.
+                </p>
+                <p>
+                  If this activity is suspicious, follow your company&apos;s incident response plan,
+                  rotate any real secrets stored alongside the honey token, then revoke and replace
+                  the honey token.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {!isRevoked && (
@@ -253,11 +245,7 @@ const DrawerContent = ({
           >
             {(isAllowed) =>
               isAllowed && (
-                <div className="border-t border-border pt-4">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
-                    <KeyIcon size={13} />
-                    <span>Credentials</span>
-                  </div>
+                <div>
                   {isCredentialsPending && (
                     <div className="flex flex-col gap-2 py-2">
                       <Skeleton className="h-8 w-full rounded-md" />
@@ -286,65 +274,43 @@ const DrawerContent = ({
           </ProjectPermissionCan>
         )}
 
-        {isRevoked && (
-          <div className="rounded-md border border-border bg-container p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <BanIcon size={16} className="text-muted" />
-              <p className="text-sm font-medium text-muted">Honey token revoked</p>
-            </div>
-            <p className="text-xs text-foreground/85">
-              The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
-              token record and its events are preserved for audit purposes.
-            </p>
-          </div>
-        )}
-
-        {isTriggered && (
-          <Accordion
-            type="single"
-            collapsible
-            variant="ghost"
-            className="border-t border-border pt-2"
-          >
-            <AccordionItem value="response-guidance">
-              <AccordionTrigger className="text-sm font-medium">
-                How should I respond?
-              </AccordionTrigger>
-              <AccordionContent>
-                <Alert variant="info" className="flex flex-col gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-foreground">1. False alarm confirmed?</p>
-                    <p className="text-xs text-accent">
-                      You might want to <strong>reset the honey token</strong>. This will revert its
-                      status to active and hide the past events, so that the honey token can be
-                      triggered again.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-foreground">
-                      2. Malicious activity confirmed?
-                    </p>
-                    <p className="text-xs text-accent">
-                      1. Take immediate steps as per your company Incident Response Plan.
-                      <br />
-                      2. <strong>Rotate any real secrets</strong> that were stored alongside the
-                      honey token, as they may also be compromised.
-                      <br />
-                      3. <strong>Revoke the honey token</strong>. This will prevent any new
-                      connections while we keep the compromised key in our records.
-                      <br />
-                      4. Don&apos;t forget to recreate a new honey token to replace it in the same
-                      location.
-                    </p>
-                  </div>
-                </Alert>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
-
         <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
       </div>
+
+      {!isRevoked && (
+        <SheetFooter className="shrink-0 items-center border-t">
+          {isTriggered && (
+            <ProjectPermissionCan
+              I={ProjectPermissionHoneyTokenActions.Reset}
+              a={honeyTokenSubject}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsResetOpen(true)}
+                  isDisabled={!isAllowed}
+                >
+                  <RotateCcw />
+                  Reset
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          )}
+          <ProjectPermissionCan I={ProjectPermissionHoneyTokenActions.Revoke} a={honeyTokenSubject}>
+            {(isAllowed) => (
+              <Button
+                className="ml-auto"
+                variant="danger"
+                onClick={() => setIsRevokeOpen(true)}
+                isDisabled={!isAllowed}
+              >
+                <BanIcon />
+                Revoke
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </SheetFooter>
+      )}
 
       <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
         <AlertDialogContent>
@@ -355,7 +321,8 @@ const DrawerContent = ({
             <AlertDialogTitle>Reset {honeyToken.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will revert the honey token status to active and hide past events. The honey
-              token will be able to trigger again on new activity.
+              token will be able to trigger again on new activity. Its credentials will remain
+              unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -371,44 +338,38 @@ const DrawerContent = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isRevokeOpen} onOpenChange={setIsRevokeOpen}>
+      <AlertDialog
+        open={isRevokeOpen}
+        confirmationValue={honeyToken.name}
+        onOpenChange={setIsRevokeOpen}
+      >
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <BanIcon />
-            </AlertDialogMedia>
             <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will revoke the AWS IAM credentials and remove the associated decoy secrets from
-              this environment. The honey token record and its events will be preserved for audit
-              purposes.
+            <AlertDialogDescription asChild>
+              <Alert variant="danger" appearance="borderless">
+                <AlertDescription>
+                  This will revoke the AWS IAM credentials and remove the associated decoy secrets
+                  from this environment. The honey token record and its events will be preserved for
+                  audit purposes.
+                </AlertDescription>
+              </Alert>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (revokeInput === honeyToken.name) handleRevoke();
+          <AlertDialogConfirmationField
+            onConfirm={() => {
+              if (!isRevoking) handleRevoke().catch(() => undefined);
             }}
-          >
-            <Field>
-              <FieldLabel>
-                Type <span className="font-bold">{honeyToken.name}</span> to confirm
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  value={revokeInput}
-                  onChange={(e) => setRevokeInput(e.target.value)}
-                  placeholder={`Type ${honeyToken.name} here`}
-                />
-              </FieldContent>
-            </Field>
-          </form>
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              onClick={handleRevoke}
-              disabled={revokeInput !== honeyToken.name}
+              isPending={isRevoking}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!isRevoking) handleRevoke().catch(() => undefined);
+              }}
             >
               Revoke
             </AlertDialogAction>
@@ -429,12 +390,9 @@ export const HoneyTokenDetailsDrawer = ({ projectId, honeyTokenId, onClose }: Pr
         if (!open) onClose();
       }}
     >
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-3xl">
-        <SheetHeader className="border-b">
-          <SheetTitle>Honey Token Details</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-hidden sm:max-w-3xl">
         {isOpen && honeyTokenId && (
-          <DrawerContent honeyTokenId={honeyTokenId} projectId={projectId} />
+          <HoneyTokenDetailsContent honeyTokenId={honeyTokenId} projectId={projectId} />
         )}
       </SheetContent>
     </Sheet>

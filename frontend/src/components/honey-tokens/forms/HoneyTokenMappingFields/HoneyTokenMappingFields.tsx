@@ -16,12 +16,5 @@ export const HoneyTokenMappingFields = () => {
 
   const Component = COMPONENT_MAP[honeyTokenType];
 
-  return (
-    <>
-      <p className="mb-4 text-sm text-label">
-        Map the decoy credential&apos;s fields to secrets in your Infisical project.
-      </p>
-      <Component />
-    </>
-  );
+  return <Component />;
 };

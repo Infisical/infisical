@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, Clock, ShieldCheck, X } from "lucide-react";
+import { Check, Clock, KeyRound, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
-import { Button, TextArea, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
   PamAccessRequestStatus,
+  PamAccessType,
   useReviewPamAccessRequest,
   useRevokePamAccessRequest
 } from "@app/hooks/api/pam";
@@ -83,7 +93,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
         isOpen={isRevokeConfirmOpen}
         onChange={setIsRevokeConfirmOpen}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access? Any active session using it will be terminated immediately."
+        subTitle="Are you sure you want to revoke this user's approved access?"
         deleteKey="revoke"
         buttonText="Revoke"
         onDeleteApproved={handleRevoke}
@@ -112,6 +122,13 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
             ? { label: "Actor", value: "Machine Identity" }
             : { label: "Email", value: request?.requesterEmail ?? "-" },
           { label: "Folder", value: request?.folderName ?? "-" },
+          {
+            label: "Grants",
+            value:
+              request?.accessType === PamAccessType.Credential
+                ? "Credential access"
+                : "Session access"
+          },
           ...(request?.host ? [{ label: "Host", value: request.host }] : []),
           {
             label: "Requested At",
@@ -143,6 +160,17 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                   Visible to the requester and recorded in audit logs
                 </p>
               </div>
+            )}
+
+            {request?.accessType === PamAccessType.Credential && (
+              <Alert variant="warning">
+                <KeyRound />
+                <AlertTitle>Approving reveals the stored credential</AlertTitle>
+                <AlertDescription>
+                  The requester will be able to read this account&apos;s password or key directly
+                  for the duration below, outside a recorded session.
+                </AlertDescription>
+              </Alert>
             )}
 
             <div>

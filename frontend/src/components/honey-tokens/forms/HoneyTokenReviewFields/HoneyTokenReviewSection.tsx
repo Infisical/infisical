@@ -9,7 +9,7 @@ export const HoneyTokenReviewSection = ({ label, children }: Props) => {
   return (
     <div className="flex flex-col gap-3">
       <div className="w-full border-b border-border">
-        <span className="text-sm text-label">{label}</span>
+        <span className="text-sm text-muted">{label}</span>
       </div>
       <div className="flex flex-wrap gap-x-8 gap-y-2">{children}</div>
     </div>

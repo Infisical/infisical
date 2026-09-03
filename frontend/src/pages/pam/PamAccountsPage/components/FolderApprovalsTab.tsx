@@ -55,6 +55,7 @@ import {
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
+import { AccessTypeBadge } from "../../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
@@ -451,6 +452,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                   <TableRow>
                     <TableHead>Requester</TableHead>
                     <TableHead>Account</TableHead>
+                    <TableHead>Requesting</TableHead>
                     <TableHead>Status</TableHead>
                     {canRevoke && <TableHead variant="action" />}
                   </TableRow>
@@ -475,6 +477,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                             )}
                             {request.accountName ?? "-"}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <AccessTypeBadge accessType={request.accessType} />
                         </TableCell>
                         <TableCell>
                           <Badge variant={status.variant}>{status.label}</Badge>
@@ -532,7 +537,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           if (!open) setRequestToRevoke(null);
         }}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access? Any active session using it will be terminated immediately."
+        subTitle="Are you sure you want to revoke this user's approved access?"
         deleteKey="revoke"
         buttonText="Revoke"
         onDeleteApproved={confirmRevoke}
