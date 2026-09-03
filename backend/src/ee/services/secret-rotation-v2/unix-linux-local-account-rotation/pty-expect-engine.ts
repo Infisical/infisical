@@ -89,10 +89,10 @@ export type TExpectSessionConfig = {
  *
  * Callers provide:
  *   - `advance`: the state machine. Called repeatedly until it returns false (no progress).
- *     Reads `ctx.pending`, calls `ctx.consume` / `ctx.clearPending` / `ctx.write` /
- *     `ctx.finish` / `ctx.safeReject` as needed.
+ *     Reads `ctx.pending`, calls `ctx.consume`, `ctx.clearPending`, `ctx.write`,
+ *     `ctx.finish`, or `ctx.safeReject` as needed.
  *   - `resolveOnClose`: called once on stream close to decide resolve vs. reject.
- *   - `overflowMessage` / `timeoutMessage`: build the error string for each failure mode.
+ *   - `overflowMessage` or `timeoutMessage`: build the error string for each failure mode.
  */
 export const runExpectSession = ({
   stream,
