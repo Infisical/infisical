@@ -130,7 +130,7 @@ Redis is deployed using the [Bitnami Helm chart](https://github.com/bitnami/char
 - Restore from backup during failover
 
 <Note>
-Infisical does not support Redis cluster mode, and since this is an active-passive setup, we use a simple Redis deployment with backup/restore for failover.
+Infisical doesn't support Redis cluster mode, and since this is an active-passive setup, we use a simple Redis deployment with backup/restore for failover.
 </Note>
 
 #### PostgreSQL backup and restore
@@ -213,7 +213,7 @@ During failover:
 - Once database failover is complete, the global load balancer is updated to direct traffic to the new active data center
 
 <Note>
-This is an active-passive setup where failover must be initiated manually by an operator. Automatic failover between data centers is not recommended as it can lead to split-brain scenarios. The operator should verify the state of both data centers before initiating failover.
+This is an active-passive setup where failover must be initiated manually by an operator. Automatic failover between data centers isn't recommended as it can lead to split-brain scenarios. The operator should verify the state of both data centers before initiating failover.
 </Note>
 
 ## Data replication across data centers

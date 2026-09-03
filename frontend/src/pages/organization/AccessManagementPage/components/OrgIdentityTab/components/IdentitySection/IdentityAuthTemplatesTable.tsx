@@ -45,6 +45,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  type IdentityAuthTemplate,
   MachineIdentityAuthMethod,
   TEMPLATE_UI_LABELS,
   useGetIdentityAuthTemplates
@@ -57,6 +58,16 @@ enum TemplatesOrderBy {
   Name = "name",
   AuthMethod = "authMethod"
 }
+
+const getTemplateEndpoint = (template: IdentityAuthTemplate) => {
+  if (template.authMethod === MachineIdentityAuthMethod.KUBERNETES) {
+    return template.templateFields.kubernetesHost || "Gateway";
+  }
+  if (template.authMethod === MachineIdentityAuthMethod.OIDC) {
+    return template.templateFields.oidcDiscoveryUrl;
+  }
+  return template.templateFields.url;
+};
 
 type Props = {
   onEmptyStateChange?: (isEmpty: boolean) => void;
@@ -239,11 +250,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                         {methodOption?.label ?? template.authMethod}
                       </span>
                     </TableCell>
-                    <TableCell isTruncatable>
-                      {template.authMethod === MachineIdentityAuthMethod.KUBERNETES
-                        ? template.templateFields.kubernetesHost || "Gateway"
-                        : template.templateFields.url}
-                    </TableCell>
+                    <TableCell isTruncatable>{getTemplateEndpoint(template)}</TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

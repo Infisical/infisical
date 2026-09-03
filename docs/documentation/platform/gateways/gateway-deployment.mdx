@@ -15,12 +15,12 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 <Steps>
   <Step title="Set Up a Relay Server">
     Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
-    - **Managed relay (Infisical Cloud, US/EU only):** If you are using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
+    - **Managed relay (Infisical Cloud, US/EU only):** If you're using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
     - **Self-hosted relay:** For all other cases, you must deploy your own relay server. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
   </Step>
   <Step title="Create the Gateway in the UI">
     1. Navigate to **Organization Settings > Networking > Gateways**.
-    2. Click **Create Gateway**.
+    2. Select **Create Gateway**.
     ![Create Gateway button](/images/platform/gateways/gateway-create-button.png)
     3. Enter a name for the gateway.
     ![Create Gateway form](/images/platform/gateways/gateway-create-form.png)
@@ -28,7 +28,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
         - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
         - **Kubernetes**: the gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Configure the cluster's API server URL and the allowed namespaces and/or service account names.
-    5. Click **Show deploy command** in the **Deployment** card. Pick a relay (or "Auto Select Relay") and copy the generated CLI command.
+    5. Select **Show deploy command** in the **Deployment** card. Pick a relay (or "Auto Select Relay") and copy the generated CLI command.
   </Step>
   <Step title="Install the Infisical CLI">
     Make sure the Infisical CLI is installed on the target machine. See the [CLI Installation Guide](/cli/overview) for instructions.
@@ -255,14 +255,14 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 ### Managing a gateway
 
-From the gateway's detail page (click the gateway row in the list):
+From the gateway's detail page (select the gateway row in the list):
 
-- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Clicking this on a token-method gateway does **not** disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
 - **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
-To migrate a gateway to a different host with zero downtime: click **Show deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
+To migrate a gateway to a different host with zero downtime: select **Show deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
 
 ## Frequently asked questions
 

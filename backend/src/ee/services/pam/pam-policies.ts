@@ -67,7 +67,7 @@ type TPamPolicyDefinition = {
 export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition> = {
   [PamPolicyType.RequiresApproval]: {
     label: "Require Approval",
-    description: "Users must request and receive approval before launching sessions.",
+    description: "Users must request and receive approval before launching sessions and viewing credentials.",
     appliesTo: "all",
     schema: z.boolean()
   },

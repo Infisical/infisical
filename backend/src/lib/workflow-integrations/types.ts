@@ -84,6 +84,7 @@ export type TNotification =
         accountName: string;
         folderName: string;
         accessDuration: string;
+        accessTypeLabel?: string;
         reason?: string;
         approvalUrl: string;
       };

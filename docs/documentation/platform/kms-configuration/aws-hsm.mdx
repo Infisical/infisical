@@ -21,14 +21,14 @@ For more details on setting up your cluster, refer to the following [AWS documen
 
 ## Set up AWS KMS custom key store
 
-To set up an AWS KMS custom key store with AWS CloudHSM, you will need the following:
+To set up an AWS KMS custom key store with AWS CloudHSM, you'll need the following:
 
 - The trust anchor certificate of your AWS CloudHSM cluster.
 - A `kmsuser` user in the AWS CloudHSM cluster with the crypto-user role.
 
 <Steps>
   <Step title="Navigate to Key store creation page">
-    In the AWS console, head over to `AWS KMS` > `AWS CloudHSM key stores` and click **Create key store**.
+    In the AWS console, head over to `AWS KMS` > `AWS CloudHSM key stores` and select **Create key store**.
   </Step>
   <Step title="Add key store name">
     Input the custom key store name. ![Set key store name](../../../images/platform/kms/aws-hsm/create-key-store-name.png)
@@ -53,18 +53,18 @@ To set up an AWS KMS custom key store with AWS CloudHSM, you will need the follo
 For more details, refer to the following [AWS documentation](https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html#create-keystore-console).
 
 ## Create AWS KMS key
-Next, you'll need to create a AWS KMS key where you will set the key store you created previously. 
+Next, you'll need to create a AWS KMS key where you'll set the key store you created previously. 
 
 <Steps>
   <Step title="Navigate to AWS KMS key creation page">
-    In your AWS console, proceed to `AWS KMS` > `Customer managed keys` and click **Create**.
+    In your AWS console, proceed to `AWS KMS` > `Customer managed keys` and select **Create**.
   </Step>
   <Step title="Set key options">
     Set Key type to `Symmetric` and Key usage to `Encrypt and decrypt`. 
     ![Set key options 1](../../../images/platform/kms/aws-hsm/create-kms-key-1.png)
   </Step>
   <Step title="Select key material origin">
-    In the advanced options, for the Key material origin field, select `AWS CloudHSM key store`. Then, click next. 
+    In the advanced options, for the Key material origin field, select `AWS CloudHSM key store`. Then, select next. 
     ![Set key options 2](../../../images/platform/kms/aws-hsm/create-kms-key-2.png)
   </Step>
   <Step title="Choose key store">
@@ -79,4 +79,4 @@ Next, you'll need to create a AWS KMS key where you will set the key store you c
 ## Connect Infisical to AWS KMS key
 
 You should now have an AWS KMS that has a custom key store set to AWS CloudHSM. 
-To secure project resources, you will need to add this AWS KMS to your Infisical organization. To learn how, refer to the documentation [here](./aws-kms).
+To secure project resources, you'll need to add this AWS KMS to your Infisical organization. To learn how, refer to the documentation [here](./aws-kms).

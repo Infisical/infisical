@@ -1,7 +1,7 @@
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { PamNotificationEvent } from "../pam/pam-enums";
+import { PamAccessType, PamNotificationEvent } from "../pam/pam-enums";
 import { TActorContext } from "../pam/pam-permission";
 
 export type TGetApprovalConfigurationDTO = {
@@ -38,6 +38,7 @@ export type TCreateAccessRequestDTO = {
   projectId: string;
   reason?: string;
   duration: string;
+  accessType?: PamAccessType;
 } & TActorContext;
 
 export type TListAccessRequestsDTO = {
@@ -79,6 +80,7 @@ export type TCheckGrantDTO = {
   accountId: string;
   accountFolderId?: string | null;
   projectId: string;
+  accessType?: PamAccessType;
 } & TAccessRequestActor;
 
 export type TPamAccessRequestData = {
@@ -86,9 +88,11 @@ export type TPamAccessRequestData = {
   folderId: string;
   reason?: string;
   duration: string;
+  accessType?: PamAccessType;
 };
 
 export type TGetAccountApproversDTO = {
   accountId: string;
   projectId: string;
+  accessType?: PamAccessType;
 } & TActorContext;

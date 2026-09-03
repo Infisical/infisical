@@ -18,8 +18,8 @@ Groups have the following properties:
 
 - If a group is added to a project under specific role(s), all identities in the group will be provisioned access to the project with the role(s). Conversely, if a group is removed from a project, all identities in the group will lose access to the project.
 - If an identity is added to a group, they will inherit the access control properties of the group including access to project(s) under the role(s) assigned to the group. Conversely, if an identity is removed from a group, they will lose access to project(s) that the group has access to.
-- If an identity was previously added to a project under a role and is later added to a group that has access to the same project under a different role, then the identity will now have access to the project under the composite permissions of the two roles. If the group is subsequently removed from the project, the identity will not lose access to the project as they were previously added to the project separately.
-- An identity can be part of multiple groups. If an identity is part of multiple groups, they will inherit the composite permissions of all the groups that they are part of.
+- If an identity was previously added to a project under a role and is later added to a group that has access to the same project under a different role, then the identity will now have access to the project under the composite permissions of the two roles. If the group is subsequently removed from the project, the identity won't lose access to the project as they were previously added to the project separately.
+- An identity can be part of multiple groups. If an identity is part of multiple groups, they will inherit the composite permissions of all the groups that they're part of.
 
 ## Workflow
 
@@ -27,11 +27,11 @@ In the following steps, we explore how to create and use groups to provision acc
 
 <Steps>
    <Step title="Creating a group">
-        To create a group, head to your Organization Settings > Access Control > Groups and press **Create group**.
+        To create a group, go to **Access Control** > **Groups** in your organization and select **Create**.
         
         ![groups org](/images/platform/groups/groups-org.png)
 
-        When creating a group, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+        When creating a group, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in **Access Control** > **Roles**.
 
         ![groups org create](/images/platform/groups/groups-org-create.png)
 
@@ -42,7 +42,7 @@ In the following steps, we explore how to create and use groups to provision acc
 
    </Step>
    <Step title="Adding identities to the group">
-        Next, you'll want to assign identities (users and/or machine identities) to the group. To do this, click on the group row to open the group details page and click on the **+** button.
+        Next, you'll want to assign identities (users and/or machine identities) to the group. To do this, select the group row to open the group details page, then select the **+** button.
         
         ![groups org users details](/images/platform/groups/group-details.png)
         
@@ -53,7 +53,7 @@ In the following steps, we explore how to create and use groups to provision acc
    <Step title="Adding the group to a project">
         To enable the group to access project-level resources such as secrets within a specific project, you should add it to that project.
 
-        To do this, head over to the project you want to add the group to and go to Project Settings > Access Control > Groups and press **Add Group to Project**.
+        To do this, open the project you want to add the group to, go to **Access Control** > **Groups**, and select **Add Group to Project**.
 
         ![groups project](/images/platform/groups/groups-project.png)
 

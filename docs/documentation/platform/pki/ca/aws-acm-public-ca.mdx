@@ -12,13 +12,13 @@ Common use cases include securing public-facing websites and APIs, terminating T
 Each certificate has a fixed 198-day validity and is generated and stored by AWS. Infisical orchestrates the full lifecycle on top: domain validation via Route 53, saving the certificate and private key into Infisical, scheduled auto-renewal, and revocation.
 
 <Note>
-  Domain validation is performed exclusively through **Amazon Route 53**. Other DNS providers are not supported for this CA type.
+  Domain validation is performed exclusively through **Amazon Route 53**. Other DNS providers aren't supported for this CA type.
 </Note>
 
 ## Prerequisites
 
 - Two [AWS App Connections](/integrations/app-connections/aws): one for ACM, one for Route 53. They can be the same connection if it has permissions for both services.
-- A Route 53 **public** hosted zone for the domains you will issue certificates for.
+- A Route 53 **public** hosted zone for the domains you'll issue certificates for.
 
 ### IAM permissions
 
@@ -45,7 +45,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
 ```
 
 <Note>
-  `RequestCertificate` cannot be scoped below `"*"` because the certificate ARN does not exist until after the call succeeds.
+  `RequestCertificate` can't be scoped below `"*"` because the certificate ARN doesn't exist until after the call succeeds.
 </Note>
 
 **Route 53 connection** — needs the following on your hosted zone so Infisical can write the ACM validation CNAME records:
@@ -70,7 +70,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
 
 <Steps>
   <Step title="Copy Your Route 53 Hosted Zone ID">
-    In the AWS Console, navigate to **Route 53 → Hosted zones** and select the public hosted zone for the domain(s) you will issue certificates for. Copy the **Hosted Zone ID** from the details panel.
+    In the AWS Console, navigate to **Route 53 → Hosted zones** and select the public hosted zone for the domain(s) you'll issue certificates for. Copy the **Hosted Zone ID** from the details panel.
     ![Copy Hosted Zone ID](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-copy-hosted-zone-id.png)
   </Step>
 
@@ -79,7 +79,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
   </Step>
 
   <Step title="Create the CA">
-    Click **Create CA** and configure:
+    Select **Create CA** and configure:
     - **CA Type**: **AWS ACM Public CA**
     - **Name**: lowercase letters, numbers, and hyphens
     - **AWS Connection**: the connection with ACM permissions
@@ -118,7 +118,7 @@ Every certificate issued through that profile inherits these values. You can als
 When a certificate reaches the configured threshold, Infisical reconciles it with AWS:
 
 - If AWS has **already renewed** the certificate on its own, Infisical pulls in the new certificate and private key.
-- If AWS has **not yet renewed**, Infisical triggers renewal, waits for ACM to finish re-issuance, then saves the new material.
+- If AWS hasn't yet renewed, Infisical triggers renewal, waits for ACM to finish re-issuance, then saves the new material.
 
 In both cases the renewed certificate is stored as a new entry linked to the original and inherits the same auto-renewal settings — so the cycle continues automatically.
 
@@ -130,7 +130,7 @@ In both cases the renewed certificate is stored as a new entry linked to the ori
 
 **`Failed to reach AWS Certificate Manager`** — the ACM connection credentials are invalid or missing the IAM permissions above.
 
-**`Failed to access Route 53 hosted zone`** — the Route 53 connection cannot read the hosted zone, or the Hosted Zone ID is wrong. Check `route53:GetHostedZone` and that the zone is public.
+**`Failed to access Route 53 hosted zone`** — the Route 53 connection can't read the hosted zone, or the Hosted Zone ID is wrong. Check `route53:GetHostedZone` and that the zone is public.
 
 **Request stays pending** — DNS validation can take several minutes. Infisical retries automatically. Verify the CNAME records exist in Route 53 and that the hosted zone is authoritative for the requested domain.
 
@@ -156,7 +156,7 @@ In both cases the renewed certificate is stored as a new entry linked to the ori
   </Accordion>
 
   <Accordion title="Can I set subject fields like Organization or Country?">
-    No. ACM does not accept subject fields beyond the common name (O, OU, C, ST, L are ignored).
+    No. ACM doesn't accept subject fields beyond the common name (O, OU, C, ST, L are ignored).
   </Accordion>
 
   <Accordion title="Can I customize key usages or extended key usages?">
@@ -164,7 +164,7 @@ In both cases the renewed certificate is stored as a new entry linked to the ori
   </Accordion>
 
   <Accordion title="Which enrollment methods are supported?">
-    Certificate profiles backed by AWS ACM Public CA support only **API** enrollment. EST, SCEP, and ACME rely on submitting a CSR for the CA to sign, but ACM generates the private key itself and does not accept a CSR.
+    Certificate profiles backed by AWS ACM Public CA support only **API** enrollment. EST, SCEP, and ACME rely on submitting a CSR for the CA to sign, but ACM generates the private key itself and doesn't accept a CSR.
   </Accordion>
 
   <Accordion title="Can I issue a CA / intermediate certificate?">

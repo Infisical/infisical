@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Clock,
   GitBranch,
+  KeyRound,
   ListChecks,
+  Rocket,
   Send,
   ShieldAlert,
   User as UserIcon,
@@ -14,6 +16,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -35,6 +40,7 @@ import {
 } from "@app/components/v3";
 import {
   PamAccessStatus,
+  PamAccessType,
   PamAccountType,
   PamApproverType,
   TAccessiblePamAccount,
@@ -44,6 +50,7 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { AccessTypeBadge } from "./AccessTypeBadge";
 import { useAccountSheetDetails } from "./accountSheetDetails";
 import { PamDetailSheet } from "./PamDetailSheet";
 
@@ -73,6 +80,7 @@ type Props = {
   account: TAccessiblePamAccount | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  accessType?: PamAccessType;
 };
 
 const ApproverChip = ({
@@ -92,8 +100,16 @@ const ApproverChip = ({
   );
 };
 
-const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPending: boolean }) => {
-  const { data: steps } = useGetPamAccountApprovers(accountId);
+const ApprovalWorkflow = ({
+  accountId,
+  isPending,
+  accessType
+}: {
+  accountId?: string;
+  isPending: boolean;
+  accessType: PamAccessType;
+}) => {
+  const { data: steps } = useGetPamAccountApprovers(accountId, accessType);
   if (!steps?.length) return null;
 
   return (
@@ -144,13 +160,25 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
   );
 };
 
-export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => {
+export const RequestAccessSheet = ({
+  account,
+  isOpen,
+  onOpenChange,
+  accessType = PamAccessType.Session
+}: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
   const breakGlass = useBreakGlassPamAccessRequest();
   const [bypassReason, setBypassReason] = useState("");
-  const isPending = account?.accessStatus === PamAccessStatus.Pending;
-  const canBreakGlass = Boolean(account?.canBreakGlass && account?.pendingRequestId);
+  const isCredentialRequest = accessType === PamAccessType.Credential;
+  const isPending =
+    (isCredentialRequest ? account?.credentialAccessStatus : account?.accessStatus) ===
+    PamAccessStatus.Pending;
+  // Session and credential requests are separate rows, so break glass on the one this sheet is for.
+  const pendingRequestId = isCredentialRequest
+    ? account?.credentialPendingRequestId
+    : account?.pendingRequestId;
+  const canBreakGlass = Boolean(account?.canBreakGlass && pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
   const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
 
@@ -173,9 +201,9 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
   };
 
   const onBreakGlass = () => {
-    if (!account?.pendingRequestId) return;
+    if (!pendingRequestId) return;
     breakGlass.mutate(
-      { requestId: account.pendingRequestId, bypassReason: bypassReason.trim() },
+      { requestId: pendingRequestId, bypassReason: bypassReason.trim() },
       {
         onSuccess: () => {
           createNotification({
@@ -195,11 +223,17 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       {
         accountId: account.id,
         duration: data.duration,
-        reason: data.reason || undefined
+        reason: data.reason || undefined,
+        accessType
       },
       {
         onSuccess: () => {
-          createNotification({ text: "Access request submitted", type: "success" });
+          createNotification({
+            text: isCredentialRequest
+              ? "Credential access request submitted"
+              : "Access request submitted",
+            type: "success"
+          });
           reset();
           onOpenChange(false);
         }
@@ -216,6 +250,7 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       title={account?.name}
       subtitle={subtitle}
       typeBadge={typeName}
+      badges={<AccessTypeBadge accessType={accessType} />}
       metadata={metadata}
       isDirty={isDirty && !isPending}
     >
@@ -224,9 +259,13 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
           <div className="flex flex-1 flex-col gap-6">
             <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
               <Clock className="size-4 shrink-0 text-warning" />
-              <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
+              <p className="text-sm text-foreground">
+                {isCredentialRequest
+                  ? "Your credential request is awaiting approval."
+                  : "Your access request is awaiting approval."}
+              </p>
             </div>
-            <ApprovalWorkflow accountId={account?.id} isPending />
+            <ApprovalWorkflow accountId={account?.id} isPending accessType={accessType} />
             {canBreakGlass && (
               <Card>
                 <CardHeader className="border-b">
@@ -271,6 +310,26 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
             <div className="flex flex-1 flex-col gap-6">
+              {isCredentialRequest ? (
+                <Alert variant="warning">
+                  <KeyRound />
+                  <AlertTitle>You are requesting the stored credential</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can read this account&apos;s password or key directly. That
+                    happens outside a session, so nothing is recorded, and a credential you copy
+                    stays valid until the account is rotated.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="info">
+                  <Rocket />
+                  <AlertTitle>You are requesting session access</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can launch sessions on this account. The credential is
+                    injected for you and never shown, and the session is recorded.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Controller
                 control={control}
                 name="reason"
@@ -283,7 +342,11 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                       <TextArea
                         {...field}
                         rows={4}
-                        placeholder="What are you working on?"
+                        placeholder={
+                          isCredentialRequest
+                            ? "Why do you need this account's credentials?"
+                            : "What are you working on?"
+                        }
                         isError={!!fieldState.error}
                       />
                       <FieldDescription>
@@ -299,7 +362,9 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                 name="duration"
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel>Requested duration</FieldLabel>
+                    <FieldLabel>
+                      {isCredentialRequest ? "How long you need it" : "Requested duration"}
+                    </FieldLabel>
                     <FieldContent>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="w-full">
@@ -313,11 +378,16 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                           ))}
                         </SelectContent>
                       </Select>
+                      <FieldDescription>
+                        {isCredentialRequest
+                          ? "How long you can reveal the credential for."
+                          : "How long you can launch sessions for once approved."}
+                      </FieldDescription>
                     </FieldContent>
                   </Field>
                 )}
               />
-              <ApprovalWorkflow accountId={account?.id} isPending={false} />
+              <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
@@ -325,7 +395,7 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
               </Button>
               <Button type="submit" variant="pam" isPending={createRequest.isPending}>
                 <Send className="mr-1.5 size-4" />
-                Submit request
+                {isCredentialRequest ? "Request credentials" : "Request session access"}
               </Button>
             </div>
           </form>
