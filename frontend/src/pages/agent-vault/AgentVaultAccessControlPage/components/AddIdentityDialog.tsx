@@ -11,7 +11,6 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldDescription,
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
@@ -83,9 +82,6 @@ export const AddIdentityDialog = ({ isOpen, onOpenChange }: Props) => {
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
             />
-            <FieldDescription>
-              Organization identities only. Agent Vault never creates its own.
-            </FieldDescription>
           </FieldContent>
         </Field>
 

@@ -11,7 +11,6 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldDescription,
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
@@ -88,9 +87,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
             />
-            <FieldDescription>
-              Everyone already in Agent Vault is left out of this list.
-            </FieldDescription>
           </FieldContent>
         </Field>
 
