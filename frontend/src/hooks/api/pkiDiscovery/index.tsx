@@ -6,8 +6,8 @@ export {
   useUpdatePkiDiscovery,
   useUpdatePkiInstallation
 } from "./mutations";
+export { isPkiDiscoveryScanInFlight } from "./polling";
 export {
-  isPkiDiscoveryScanInFlight,
   pkiDiscoveryKeys,
   pkiInstallationKeys,
   useGetLatestScan,

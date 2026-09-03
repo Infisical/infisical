@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { getPkiDiscoveryRefetchInterval } from "./polling";
 import {
-  PkiDiscoveryScanStatus,
   TGetLatestScanDTO,
   TGetPkiDiscoveryDTO,
   TGetPkiInstallationDTO,
@@ -43,14 +43,6 @@ export const pkiInstallationKeys = {
 
 type TPollingOptions = { refetchInterval?: number | false };
 
-const SCAN_IN_FLIGHT_POLL_MS = 5000;
-// Slow background poll while idle so a scan started elsewhere (scheduled auto-scan, or a
-// stale terminal status read from a replica right after triggering) is still picked up.
-const SCAN_IDLE_POLL_MS = 30000;
-
-export const isPkiDiscoveryScanInFlight = (status?: PkiDiscoveryScanStatus | null) =>
-  status === PkiDiscoveryScanStatus.Pending || status === PkiDiscoveryScanStatus.Running;
-
 export const useListPkiDiscoveries = ({
   projectId,
   offset = 0,
@@ -88,10 +80,7 @@ export const useGetPkiDiscovery = ({ discoveryId }: TGetPkiDiscoveryDTO) => {
       return data;
     },
     enabled: Boolean(discoveryId),
-    refetchInterval: (query) =>
-      isPkiDiscoveryScanInFlight(query.state.data?.lastScanStatus)
-        ? SCAN_IN_FLIGHT_POLL_MS
-        : SCAN_IDLE_POLL_MS
+    refetchInterval: (query) => getPkiDiscoveryRefetchInterval(query.state.data?.lastScanStatus)
   });
 };
 
