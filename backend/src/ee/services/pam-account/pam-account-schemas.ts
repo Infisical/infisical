@@ -1309,6 +1309,25 @@ export const applyForcedFields = (accountType: PamAccountType, values: TPamField
   return result;
 };
 
+// The edit form resends username and auth method with an untouched password stripped, so a credentials object
+// on its own does not mean the caller held the credential.
+export const suppliesCredentialSecret = (
+  accountType: PamAccountType,
+  rawCredentials: Record<string, unknown> | undefined
+): boolean => {
+  if (!rawCredentials) return false;
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return fieldsFromSchema(config.credentials, config.ui)
+    .filter((field) => field.secret)
+    .some((field) => {
+      const value = credentials[field.key];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+};
+
 export const isCredentialConfigured = (
   accountType: PamAccountType,
   rawCredentials: Record<string, unknown>

@@ -39,6 +39,7 @@ import {
 } from "../pam/pam-enums";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
+  accountAccessAllows,
   checkAccountAccess,
   checkFolderPermission,
   getAccountPermissionRulesMap,
@@ -54,6 +55,10 @@ import {
   validateRecordingConnection
 } from "../pam/pam-validators";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import {
+  HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE,
+  pausesHeartbeatForRoutingChange
+} from "../pam-account-heartbeat/pam-heartbeat-fns";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
@@ -76,6 +81,7 @@ import {
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
+  suppliesCredentialSecret,
   type TSshInternalMetadata,
   validateConnectionDetails,
   validateCredentials
@@ -909,8 +915,35 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       );
     }
 
+    const credentialSecretSupplied = suppliesCredentialSecret(accountType, credentials);
+
+    // Only asked when it can change the outcome, so an ordinary edit costs no extra permission read.
+    const actorCanViewCredentials =
+      routingChanged && !credentialSecretSupplied
+        ? await accountAccessAllows(
+            permissionService,
+            accountId,
+            existing.folderId,
+            projectId,
+            ResourcePermissionPamResourceActions.ViewCredentials,
+            ctx
+          )
+        : true;
+    const pausedForRoutingChange = pausesHeartbeatForRoutingChange({
+      routingChanged,
+      credentialsSupplied: credentialSecretSupplied,
+      actorCanViewCredentials
+    });
+    if (pausedForRoutingChange) {
+      updateData.nextHeartbeatAt = null;
+      updateData.heartbeatStatus = PamHeartbeatStatus.Unknown;
+      updateData.encryptedLastHeartbeatMessage = await encrypt(projectId, {
+        message: HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE
+      });
+    }
+
     // Clearing the old verdict resumes checking; types unverifiable here would otherwise stay stopped.
-    if (credentials) {
+    if (credentialSecretSupplied) {
       updateData.heartbeatStatus = credentialVerified ? PamHeartbeatStatus.Healthy : null;
       updateData.encryptedLastHeartbeatMessage = null;
       if (credentialVerified) {
@@ -934,7 +967,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         // atomically with the write so a failure can't leave a stale nextRotationAt.
         if (templateId !== undefined || credentials || routingChanged) {
           await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
-          await pamAccountDAL.reconcileHeartbeatScheduleForAccount(accountId, tx);
+          if (!pausedForRoutingChange) {
+            await pamAccountDAL.reconcileHeartbeatScheduleForAccount(accountId, tx);
+          }
         }
         return updated;
       });

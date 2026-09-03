@@ -11,6 +11,7 @@ import {
   PamAccountTypeMetadataSchema,
   PamFieldDescriptorSchema,
   sanitizeCredentials,
+  suppliesCredentialSecret,
   validateCredentials
 } from "./pam-account-schemas";
 
@@ -391,5 +392,38 @@ describe("getAccountAccessibilityIssues", () => {
         credentialConfigured: true
       })
     ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);
+  });
+});
+
+describe("suppliesCredentialSecret", () => {
+  test("a resent username and auth method is not a supplied secret", () => {
+    expect(suppliesCredentialSecret(PamAccountType.Postgres, { authMethod: "password", username: "pamadmin" })).toBe(
+      false
+    );
+  });
+
+  test("a real password is", () => {
+    expect(
+      suppliesCredentialSecret(PamAccountType.Postgres, {
+        authMethod: "password",
+        username: "pamadmin",
+        password: "hunter2"
+      })
+    ).toBe(true);
+  });
+
+  test("an empty or whitespace password is not", () => {
+    expect(suppliesCredentialSecret(PamAccountType.Postgres, { password: "" })).toBe(false);
+    expect(suppliesCredentialSecret(PamAccountType.Postgres, { password: "   " })).toBe(false);
+  });
+
+  test("an absent credentials object is not", () => {
+    expect(suppliesCredentialSecret(PamAccountType.Postgres, undefined)).toBe(false);
+  });
+
+  test("a certificate account never supplies one", () => {
+    expect(suppliesCredentialSecret(PamAccountType.SSH, { authMethod: "certificate", username: "pamuser" })).toBe(
+      false
+    );
   });
 });

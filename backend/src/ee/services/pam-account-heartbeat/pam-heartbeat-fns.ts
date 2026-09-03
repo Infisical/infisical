@@ -33,6 +33,19 @@ export const computeNextHeartbeatAt = ({
 export const isHeartbeatScheduled = (heartbeat: TPamHeartbeatConfig | undefined): heartbeat is TPamHeartbeatConfig =>
   heartbeat?.enabled === true && heartbeat.intervalSeconds != null;
 
+export const pausesHeartbeatForRoutingChange = ({
+  routingChanged,
+  credentialsSupplied,
+  actorCanViewCredentials
+}: {
+  routingChanged: boolean;
+  credentialsSupplied: boolean;
+  actorCanViewCredentials: boolean;
+}): boolean => routingChanged && !credentialsSupplied && !actorCanViewCredentials;
+
+export const HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE =
+  "Scheduled checks are paused because the target changed. Enter the credential again, or run a check, to resume.";
+
 // Retrying a rejected credential is how a monitoring feature locks out a privileged account.
 export const stopsSchedule = (status: PamHeartbeatStatus) => status === PamHeartbeatStatus.InvalidCredentials;
 

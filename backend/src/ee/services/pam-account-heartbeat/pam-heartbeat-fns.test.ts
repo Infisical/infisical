@@ -9,6 +9,7 @@ import {
   classifyCloudProbeError,
   describeFailure,
   isHeartbeatScheduled,
+  pausesHeartbeatForRoutingChange,
   UNCLASSIFIED_FAILURE_NOTE
 } from "./pam-heartbeat-fns";
 
@@ -72,5 +73,25 @@ describe("describeFailure", () => {
     expect(describeFailure(null, "something went wrong")).toContain(UNCLASSIFIED_FAILURE_NOTE);
     expect(describeFailure(null, "something went wrong")).toContain("something went wrong");
     expect(describeFailure(null, undefined)).toBe(UNCLASSIFIED_FAILURE_NOTE);
+  });
+});
+
+describe("pausesHeartbeatForRoutingChange", () => {
+  const base = { routingChanged: true, credentialsSupplied: false, actorCanViewCredentials: false };
+
+  test("pauses when an actor who cannot read the credential repoints the account", () => {
+    expect(pausesHeartbeatForRoutingChange(base)).toBe(true);
+  });
+
+  test("leaves the schedule alone when the actor can already read the credential", () => {
+    expect(pausesHeartbeatForRoutingChange({ ...base, actorCanViewCredentials: true })).toBe(false);
+  });
+
+  test("leaves the schedule alone when a credential came with the change", () => {
+    expect(pausesHeartbeatForRoutingChange({ ...base, credentialsSupplied: true })).toBe(false);
+  });
+
+  test("leaves the schedule alone when nothing about the routing changed", () => {
+    expect(pausesHeartbeatForRoutingChange({ ...base, routingChanged: false })).toBe(false);
   });
 });
