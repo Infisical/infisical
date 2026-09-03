@@ -50,7 +50,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const handleAdd = async () => {
     if (!group) return;
-    await addMember.mutateAsync({ groupId: group.value, role });
+    await addMember.mutateAsync({ projectId: currentProject.id, groupId: group.value, role });
     createNotification({ text: `"${group.label}" now has Agent Vault`, type: "success" });
     setGroup(null);
     onOpenChange(false);

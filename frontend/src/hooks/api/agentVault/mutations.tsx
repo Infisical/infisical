@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { projectKeys } from "../projects/query-keys";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMemberDTO,
@@ -283,56 +284,80 @@ export const useRevokeAgentVaultProxyAccess = () => {
   });
 };
 
-const invalidateProductMembers = (queryClient: ReturnType<typeof useQueryClient>) => {
+// The Users and Groups tabs read from the generic project hooks, so invalidating our own keys alone
+// leaves them showing the role or the row that was just changed until the next reload.
+const invalidateProductMembers = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string
+) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers() });
   // Losing the product loses every bundle grant with it, so the bundle lists are stale too.
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles() });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities() });
+  queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+  queryClient.invalidateQueries({ queryKey: projectKeys.getProjectGroupMemberships(projectId) });
 };
 
 export const useAddAgentVaultProductUserMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: { userIds: string[]; emails: string[]; role: string }) => {
+    mutationFn: async ({
+      projectId: _projectId,
+      ...dto
+    }: {
+      projectId: string;
+      userIds: string[];
+      emails: string[];
+      role: string;
+    }) => {
       const { data } = await apiRequest.post<{ addedCount: number; skipped: string[] }>(
         "/api/v1/agent-vault/memberships/users",
         dto
       );
       return data;
     },
-    onSuccess: () => invalidateProductMembers(queryClient)
+    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, projectId)
   });
 };
 
 export const useAddAgentVaultProductMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TAgentVaultProductMemberActor & { role: string }) => {
+    mutationFn: async ({
+      projectId: _projectId,
+      ...dto
+    }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
       const { data } = await apiRequest.post("/api/v1/agent-vault/memberships", dto);
       return data;
     },
-    onSuccess: () => invalidateProductMembers(queryClient)
+    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, projectId)
   });
 };
 
 export const useUpdateAgentVaultProductMemberRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TAgentVaultProductMemberActor & { role: string }) => {
+    mutationFn: async ({
+      projectId: _projectId,
+      ...dto
+    }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
       const { data } = await apiRequest.patch("/api/v1/agent-vault/memberships", dto);
       return data;
     },
-    onSuccess: () => invalidateProductMembers(queryClient)
+    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, projectId)
   });
 };
 
 export const useRemoveAgentVaultProductMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TAgentVaultProductMemberActor) => {
+    mutationFn: async ({
+      projectId: _projectId,
+      ...dto
+    }: TAgentVaultProductMemberActor & { projectId: string }) => {
       const { data } = await apiRequest.delete("/api/v1/agent-vault/memberships", { data: dto });
       return data;
     },
-    onSuccess: () => invalidateProductMembers(queryClient)
+    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, projectId)
   });
 };

@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   useListAgentVaultProductIdentityMembers,
@@ -43,6 +43,7 @@ import { AddIdentityDialog } from "./AddIdentityDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
 export const IdentitiesTab = () => {
+  const { currentProject } = useProject();
   const { data: identities = [], isPending } = useListAgentVaultProductIdentityMembers();
   const removeMember = useRemoveAgentVaultProductMember();
 
@@ -58,7 +59,10 @@ export const IdentitiesTab = () => {
 
   const handleRemove = async () => {
     if (!toRemove?.identityId) return;
-    await removeMember.mutateAsync({ identityId: toRemove.identityId });
+    await removeMember.mutateAsync({
+      projectId: currentProject.id,
+      identityId: toRemove.identityId
+    });
     createNotification({
       text: `"${toRemove.name}" no longer has access to Agent Vault`,
       type: "success"

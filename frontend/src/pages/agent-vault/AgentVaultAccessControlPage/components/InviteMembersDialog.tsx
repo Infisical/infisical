@@ -56,6 +56,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const handleAdd = async () => {
     const { addedCount } = await addMembers.mutateAsync({
+      projectId: currentProject.id,
       userIds: selected.map((candidate) => candidate.value),
       emails: [],
       role

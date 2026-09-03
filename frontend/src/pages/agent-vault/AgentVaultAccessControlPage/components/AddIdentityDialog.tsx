@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useAddAgentVaultProductMember,
   useListAgentVaultProductIdentityMembers
@@ -37,6 +37,7 @@ type Props = {
 
 export const AddIdentityDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { data: orgIdentities } = useSearchOrgIdentityMemberships({
     orgId: currentOrg.id,
     limit: 100,
@@ -58,7 +59,7 @@ export const AddIdentityDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const handleAdd = async () => {
     if (!identity) return;
-    await addMember.mutateAsync({ identityId: identity.value, role });
+    await addMember.mutateAsync({ projectId: currentProject.id, identityId: identity.value, role });
     createNotification({ text: `"${identity.label}" now has Agent Vault`, type: "success" });
     setIdentity(null);
     onOpenChange(false);

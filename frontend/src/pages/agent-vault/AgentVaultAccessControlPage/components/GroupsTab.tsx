@@ -65,7 +65,7 @@ export const GroupsTab = () => {
 
   const handleRemove = async () => {
     if (!groupToRemove) return;
-    await removeMember.mutateAsync({ groupId: groupToRemove.id });
+    await removeMember.mutateAsync({ projectId: currentProject.id, groupId: groupToRemove.id });
     createNotification({
       text: `"${groupToRemove.name}" no longer has access to Agent Vault`,
       type: "success"
