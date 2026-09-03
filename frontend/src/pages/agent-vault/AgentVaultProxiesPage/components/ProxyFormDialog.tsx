@@ -158,7 +158,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
               name="unmatchedHost"
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>Hosts no access bundle covers</FieldLabel>
+                  <FieldLabel>Uncovered Hosts</FieldLabel>
                   <FieldContent>
                     <RadioGroup value={field.value} onValueChange={field.onChange}>
                       {UNMATCHED_HOST_CHOICES.map((choice) => {
