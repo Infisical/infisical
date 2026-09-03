@@ -289,6 +289,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.stackName;
       secondaryText = "Stack";
       break;
+    case SecretSync.Daytona:
+      primaryText = secretSync.connection.name;
+      secondaryText = "Daytona Organization";
+      break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;
       secondaryText =

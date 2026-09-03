@@ -259,6 +259,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Cloud66:
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;
       break;
+    case SecretSync.Daytona:
+      // The connection is the whole destination; it is already shown above.
+      break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
