@@ -168,6 +168,25 @@ describe("runManagedPasswordChange", () => {
     expect((error as Error).message).not.toContain("\ufffd");
   });
 
+  test("redacts overlapping secrets when one password is a substring of the other", async () => {
+    const shortPassword = "secret";
+    const longPassword = "my-secret-value";
+    const fake = createFakeStream();
+    const result = runManagedPasswordChange(fake.stream, shortPassword, longPassword);
+
+    // The sudo prompt echoes the long password (which contains the short one as a substring),
+    // then the session closes without completing passwd.
+    fake.feed(`[sudo] password for svc: ${longPassword}\r\n`);
+    fake.feed(`New password: ${shortPassword}\r\n`);
+    fake.close();
+
+    const error = await result.catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(shortPassword);
+    expect((error as Error).message).not.toContain(longPassword);
+  });
+
   test("rejects with sudoers guidance when sudo asks for a password we do not have", async () => {
     const fake = createFakeStream();
     const result = runManagedPasswordChange(fake.stream, ROTATED_SENTINEL);
@@ -221,6 +240,29 @@ describe("runSelfPasswordChange", () => {
     expect((error as Error).message).not.toContain(CURRENT_SENTINEL);
     expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
     expect((error as Error).message).toContain("***");
+  });
+
+  test("redacts a password that would straddle the 4 KiB transcript boundary", async () => {
+    const fake = createFakeStream();
+    const result = runSelfPasswordChange(fake.stream, CURRENT_SENTINEL, ROTATED_SENTINEL);
+
+    // Fill the transcript so the secret sits right at the 4 KiB truncation point.
+    // MAX_TRANSCRIPT_SIZE is 4096 internally; we pad with filler lines, then echo
+    // the password so it would straddle the boundary if redaction happened after truncation.
+    const fillerSize = 4096 - Math.floor(ROTATED_SENTINEL.length / 2);
+    const filler = "x".repeat(fillerSize);
+
+    fake.feed(filler);
+    fake.feed("Current password: ");
+    fake.feed(`${CURRENT_SENTINEL}\r\nNew password: `);
+    fake.feed(`${ROTATED_SENTINEL}\r\n`);
+    fake.close();
+
+    const error = await result.catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(CURRENT_SENTINEL);
+    expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
   });
 });
 

@@ -13,7 +13,9 @@ export type TInteractiveShellStream = {
 };
 
 const createTranscript = (secrets: (string | undefined)[]) => {
-  const knownSecrets = secrets.filter((secret): secret is string => Boolean(secret));
+  const knownSecrets = secrets
+    .filter((secret): secret is string => Boolean(secret))
+    .sort((a, b) => b.length - a.length);
   const redact = (value: string) =>
     knownSecrets.reduce((redacted, secret) => redacted.replaceAll(secret, "***"), value);
 
@@ -23,6 +25,7 @@ const createTranscript = (secrets: (string | undefined)[]) => {
   return {
     append: (chunk: string) => {
       text += chunk;
+      text = redact(text);
       if (text.length > MAX_TRANSCRIPT_SIZE) {
         text = text.slice(-MAX_TRANSCRIPT_SIZE);
         truncated = true;
