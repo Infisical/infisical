@@ -16,9 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
-  PageHeader,
   Tooltip
 } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";

@@ -48,7 +48,6 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
@@ -79,6 +78,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  PageHeader,
   Pagination,
   Sheet,
   SheetContent,

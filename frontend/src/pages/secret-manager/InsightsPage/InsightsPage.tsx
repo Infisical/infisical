@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import {
   ProjectPermissionInsightsActions,
   ProjectPermissionSub,

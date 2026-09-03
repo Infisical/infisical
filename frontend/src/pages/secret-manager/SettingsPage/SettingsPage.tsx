@@ -2,8 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
-import { LookingForOrgPageLink } from "@app/components/v3";
+import { LookingForOrgPageLink, PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
