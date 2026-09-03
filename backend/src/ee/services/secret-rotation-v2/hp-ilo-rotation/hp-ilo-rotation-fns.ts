@@ -38,7 +38,8 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
   allowedSymbols: ""
 };
 
-const ILO_PROMPT = "hpiLO->";
+// iLO 5/6 present the prompt as "hpiLO->", iLO 7 as "hpeiLO->"; match the common suffix
+const ILO_PROMPT = "iLO->";
 const COMMAND_COMPLETED = "status_tag=COMMAND COMPLETED";
 const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
 const CONNECTION_TIMEOUT = 45000;
