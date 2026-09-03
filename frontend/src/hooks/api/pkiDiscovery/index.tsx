@@ -7,6 +7,7 @@ export {
   useUpdatePkiInstallation
 } from "./mutations";
 export {
+  isPkiDiscoveryScanInFlight,
   pkiDiscoveryKeys,
   pkiInstallationKeys,
   useGetLatestScan,

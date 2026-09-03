@@ -32,24 +32,30 @@ type Props = {
   onTriggerScan: () => void;
   isTriggerDisabled: boolean;
   isTriggerPending: boolean;
+  isScanRunning: boolean;
 };
 
 const PER_PAGE_INIT = 10;
+const SCAN_IN_FLIGHT_POLL_MS = 5000;
 
 export const DiscoveryScanLogsSection = ({
   discoveryId,
   onTriggerScan,
   isTriggerDisabled,
-  isTriggerPending
+  isTriggerPending,
+  isScanRunning
 }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data, isPending } = useGetScanHistory({
-    discoveryId,
-    offset: (page - 1) * perPage,
-    limit: perPage
-  });
+  const { data, isPending } = useGetScanHistory(
+    {
+      discoveryId,
+      offset: (page - 1) * perPage,
+      limit: perPage
+    },
+    { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
+  );
 
   const scans = data?.scans || [];
   const totalCount = data?.totalCount || 0;

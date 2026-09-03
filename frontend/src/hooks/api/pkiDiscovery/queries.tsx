@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  PkiDiscoveryScanStatus,
   TGetLatestScanDTO,
   TGetPkiDiscoveryDTO,
   TGetPkiInstallationDTO,
@@ -25,8 +26,10 @@ export const pkiDiscoveryKeys = {
   discovery: (discoveryId: string) => [...pkiDiscoveryKeys.all, "detail", discoveryId] as const,
   latestScan: (discoveryId: string) =>
     [...pkiDiscoveryKeys.all, "latestScan", discoveryId] as const,
+  scanHistoryByDiscovery: (discoveryId: string) =>
+    [...pkiDiscoveryKeys.all, "scanHistory", discoveryId] as const,
   scanHistory: (filters: TGetScanHistoryDTO) =>
-    [...pkiDiscoveryKeys.all, "scanHistory", filters.discoveryId, filters] as const
+    [...pkiDiscoveryKeys.scanHistoryByDiscovery(filters.discoveryId), filters] as const
 };
 
 export const pkiInstallationKeys = {
@@ -37,6 +40,13 @@ export const pkiInstallationKeys = {
   installation: (installationId: string) =>
     [...pkiInstallationKeys.all, "detail", installationId] as const
 };
+
+type TPollingOptions = { refetchInterval?: number | false };
+
+const SCAN_IN_FLIGHT_POLL_MS = 5000;
+
+export const isPkiDiscoveryScanInFlight = (status?: PkiDiscoveryScanStatus | null) =>
+  status === PkiDiscoveryScanStatus.Pending || status === PkiDiscoveryScanStatus.Running;
 
 export const useListPkiDiscoveries = ({
   projectId,
@@ -74,7 +84,9 @@ export const useGetPkiDiscovery = ({ discoveryId }: TGetPkiDiscoveryDTO) => {
       );
       return data;
     },
-    enabled: Boolean(discoveryId)
+    enabled: Boolean(discoveryId),
+    refetchInterval: (query) =>
+      isPkiDiscoveryScanInFlight(query.state.data?.lastScanStatus) ? SCAN_IN_FLIGHT_POLL_MS : false
   });
 };
 
@@ -91,7 +103,10 @@ export const useGetLatestScan = ({ discoveryId }: TGetLatestScanDTO) => {
   });
 };
 
-export const useGetScanHistory = ({ discoveryId, offset = 0, limit = 25 }: TGetScanHistoryDTO) => {
+export const useGetScanHistory = (
+  { discoveryId, offset = 0, limit = 25 }: TGetScanHistoryDTO,
+  options?: TPollingOptions
+) => {
   return useQuery({
     queryKey: pkiDiscoveryKeys.scanHistory({ discoveryId, offset, limit }),
     queryFn: async () => {
@@ -105,18 +120,22 @@ export const useGetScanHistory = ({ discoveryId, offset = 0, limit = 25 }: TGetS
       return data;
     },
     enabled: Boolean(discoveryId),
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
+    refetchInterval: options?.refetchInterval
   });
 };
 
-export const useListPkiInstallations = ({
-  projectId,
-  discoveryId,
-  certificateId,
-  offset = 0,
-  limit = 25,
-  search
-}: TListPkiInstallationsDTO) => {
+export const useListPkiInstallations = (
+  {
+    projectId,
+    discoveryId,
+    certificateId,
+    offset = 0,
+    limit = 25,
+    search
+  }: TListPkiInstallationsDTO,
+  options?: TPollingOptions
+) => {
   return useQuery({
     queryKey: pkiInstallationKeys.listWithOpts({
       projectId,
@@ -147,7 +166,8 @@ export const useListPkiInstallations = ({
       return data;
     },
     enabled: Boolean(projectId),
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
+    refetchInterval: options?.refetchInterval
   });
 };
 

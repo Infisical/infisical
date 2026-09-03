@@ -97,7 +97,11 @@ export const useTriggerPkiDiscoveryScan = () => {
     onSuccess: (_, { discoveryId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.discovery(discoveryId) });
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.latestScan(discoveryId) });
+      queryClient.invalidateQueries({
+        queryKey: pkiDiscoveryKeys.scanHistoryByDiscovery(discoveryId)
+      });
       queryClient.invalidateQueries({ queryKey: pkiDiscoveryKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiInstallationKeys.list(projectId) });
       createNotification({
         text: "Scan triggered successfully",
         type: "success"
