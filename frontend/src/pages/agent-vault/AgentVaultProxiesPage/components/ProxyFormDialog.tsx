@@ -115,7 +115,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* DialogContent spaces its own children; the form is the only one, so it has to carry the layout. */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle>{isUpdate ? "Edit Proxy" : "Create Proxy"}</DialogTitle>
             <DialogDescription>
