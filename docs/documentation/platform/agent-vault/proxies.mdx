@@ -21,6 +21,17 @@ The proxy generates its own certificate authority, sends the certificate to Infi
 
 The same dialog has snippets for Docker and systemd. Select **New Enrollment Token** on a proxy's menu if the token expired before you used it.
 
+### Keeping the token off the command line
+
+Anything on a command line is readable by other users on the machine: `docker inspect` prints a container's arguments, a systemd unit file is world-readable, and both show up in `ps`. Pass the token through the environment instead, and give the file holding it mode `0600`:
+
+```bash
+# av.env
+INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>
+```
+
+Docker reads it with `--env-file ./av.env`, and a systemd unit with `EnvironmentFile=/etc/infisical/av.env`. Drop `--enrollment-token` from the command in both cases. The token is single-use and short-lived, so this matters most on a shared machine, and you can delete the file once the proxy has enrolled.
+
 <Note>
   Run `infisical av proxy --port 18000` to listen elsewhere. The default `17323` is chosen so that an Agent Vault proxy and a Secrets Management [Agent Proxy](/documentation/platform/agent-proxy/overview), which listens on `17322`, can share a machine.
 </Note>
