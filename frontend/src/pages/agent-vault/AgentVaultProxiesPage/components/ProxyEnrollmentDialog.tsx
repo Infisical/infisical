@@ -1,5 +1,3 @@
-import { formatDistanceToNow } from "date-fns";
-
 import {
   Button,
   CodeBlock,
@@ -58,10 +56,7 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
-            {enrollment &&
-              `This token is shown only once and expires in ${formatDistanceToNow(
-                new Date(enrollment.expiresAt)
-              )}.`}
+            This token is shown only once and expires in an hour.
           </DialogDescription>
         </DialogHeader>
 
