@@ -15,7 +15,6 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TProjectFolderGrantDALFactory } from "./project-folder-grant-dal";
-import { isCrossProjectEnabled } from "./project-folder-grant-fns";
 import {
   TCreateProjectFolderGrantDTO,
   TDeleteProjectFolderGrantDTO,
@@ -58,7 +57,8 @@ export const projectFolderGrantServiceFactory = ({
     targetProjectId
   }: TCreateProjectFolderGrantDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
