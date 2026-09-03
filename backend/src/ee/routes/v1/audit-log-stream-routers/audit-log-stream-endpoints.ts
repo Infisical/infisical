@@ -49,7 +49,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { logStreamId } = req.params;
 

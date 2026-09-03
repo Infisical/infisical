@@ -85,16 +85,13 @@ export type TServerConfig = {
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
-  isCrossProjectSecretSharingEnabled?: boolean;
   isClickhouseAuditLogEnabled?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   createdAt?: string;
-  trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
-  trustOidcEmails?: boolean;
   onboardingCompleted?: boolean;
   isSecretScanningDisabled?: boolean;
   kubernetesAutoFetchServiceAccountToken?: boolean;
@@ -238,4 +235,43 @@ export type TCreateOrganizationDTO = {
 export type TResendOrgInviteDTO = {
   organizationId: string;
   membershipId: string;
+};
+
+export type TEncryptionRootKey = {
+  encryptionStrategy: string | null;
+  active: { label: string | null; activatedAt: string };
+  staged: { label: string | null; createdAt: string } | null;
+  expiring: {
+    label: string | null;
+    supersededAt: string;
+    lastResolvedAt: string | null;
+    expiresAt: string;
+  } | null;
+};
+
+export type TEncryptionKeyRotation = {
+  label: string;
+  activatedAt: string;
+  supersededAt: string | null;
+  retiredAt: string | null;
+};
+
+export type TEncryptionKeyRotationsPage = {
+  rotations: TEncryptionKeyRotation[];
+  totalCount: number;
+};
+
+export type TCreatedEncryptionKeyRotation = {
+  label: string;
+  key: string;
+  removesExpiringKey?: { label: string | null; lastResolvedAt: string | null };
+};
+
+export type TDeleteStagedEncryptionKeyDTO = {
+  label: string;
+};
+
+export type TDeleteExpiringEncryptionKeyDTO = {
+  label: string;
+  force?: boolean;
 };

@@ -15,22 +15,29 @@ import {
 import { conditionsMatcher } from "@app/lib/casl";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { logger } from "@app/lib/logger";
 import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
   PamAccessStatus,
+  PamAccessType,
   PamAccountType,
   PamHeartbeatStatus,
   PamProductRole,
   PamSessionStatus
 } from "../pam/pam-enums";
+import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -49,6 +56,7 @@ import {
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
@@ -61,7 +69,9 @@ import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   applyForcedFields,
   getAccountAccessibilityIssues,
+  hasRevealableCredential,
   isCredentialConfigured,
+  noRevealableCredentialMessage,
   normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
@@ -73,6 +83,7 @@ import {
 import {
   TCreatePamAccountDTO,
   TDeletePamAccountDTO,
+  TGetPamAccountCredentialsDTO,
   TGetPamAccountDTO,
   TListAccessibleAccountsDTO,
   TListPamAccountsDTO,
@@ -86,7 +97,13 @@ type TPamAccountServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
@@ -104,7 +121,7 @@ type TPamAccountServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
-    "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
+    "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources" | "checkGrant"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -161,7 +178,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipDAL,
     membershipRoleDAL,
     pamSessionDAL,
+    pamDiscoverySourceDAL,
     userDAL,
+    orgDAL,
+    mfaSessionService,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -234,26 +254,45 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       (a) => resolveAccessControls(a.templatePolicies).requiresApproval
     );
     const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
+
     const folderIdsRequiringApproval = [
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
 
-    const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(
-        { actorId: ctx.actorId, actor: ctx.actor },
-        accountIdsRequiringApproval,
-        projectId
-      ),
-      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
-      // Resolve every account's effective permissions in one membership fetch
-      getAccountPermissionRulesMap(
-        membershipDAL,
-        membershipRoleDAL,
-        projectId,
-        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
-        ctx
-      )
-    ]);
+    const { decryptor } = await getProjectCipher(projectId);
+    const revealableById = new Map(
+      accounts.map((a) => [
+        a.id,
+        hasRevealableCredential(
+          a.accountType as PamAccountType,
+          JSON.parse(decryptor({ cipherTextBlob: a.encryptedCredentials }).toString("utf-8")) as Record<string, unknown>
+        )
+      ])
+    );
+
+    const [accessStatusMap, credentialAccessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] =
+      await Promise.all([
+        deps.pamAccessRequestService.getAccessStatusBatch(
+          { actorId: ctx.actorId, actor: ctx.actor },
+          accountIdsRequiringApproval,
+          projectId
+        ),
+        deps.pamAccessRequestService.getAccessStatusBatch(
+          { actorId: ctx.actorId, actor: ctx.actor },
+          accountIdsRequiringApproval,
+          projectId,
+          PamAccessType.Credential
+        ),
+        deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+        // Resolve every account's effective permissions in one membership fetch
+        getAccountPermissionRulesMap(
+          membershipDAL,
+          membershipRoleDAL,
+          projectId,
+          accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
+          ctx
+        )
+      ]);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
@@ -262,6 +301,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
       const statusEntry = accessStatusMap.get(a.id);
+      const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
       return {
         id: a.id,
         name: a.name,
@@ -281,9 +321,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         heartbeatStatus: (a.heartbeatStatus as PamHeartbeatStatus | null) ?? null,
         heartbeatEnabled: Boolean(a.heartbeatEnabled),
         requiresApproval,
+        supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+        credentialAccessStatus: requiresApproval
+          ? (credentialStatusEntry?.accessStatus ?? PamAccessStatus.None)
+          : PamAccessStatus.None,
         permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
@@ -335,6 +379,109 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       isStale: account.isStale,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
+    };
+  };
+
+  const getCredentials = async ({
+    accountId,
+    projectId,
+    actorEmail,
+    reason,
+    mfaSessionId,
+    tokenVersionId,
+    ...ctx
+  }: TGetPamAccountCredentialsDTO & TActorContext) => {
+    await verifyMembership(projectId, ctx);
+
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    await checkAccount(
+      accountId,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.ViewCredentials,
+      ctx
+    );
+
+    const accountType = account.accountType as PamAccountType;
+    const policy = resolveAccessControls(account.templatePolicies);
+    const trimmedReason = reason?.trim() || null;
+
+    let grantExpiresAt: Date | null = null;
+    if (policy.requiresApproval) {
+      const grant = await deps.pamAccessRequestService.checkGrant({
+        actorId: ctx.actorId,
+        actor: ctx.actor,
+        accountId: account.id,
+        accountFolderId: account.folderId,
+        projectId,
+        accessType: PamAccessType.Credential
+      });
+      if (!grant) {
+        throw new ForbiddenRequestError({
+          name: "PAM_APPROVAL_REQUIRED",
+          message: "Approval is required to view this account's credentials"
+        });
+      }
+
+      if (grant.expiresAt) {
+        if (new Date(grant.expiresAt).getTime() <= Date.now()) {
+          throw new ForbiddenRequestError({
+            name: "PAM_GRANT_EXPIRED",
+            message: "Your approved credential access has expired"
+          });
+        }
+        grantExpiresAt = new Date(grant.expiresAt);
+      }
+    }
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to view this account's credentials"
+      });
+    }
+
+    if (policy.requireMfa) {
+      if (ctx.actor !== ActorType.USER) {
+        throw new ForbiddenRequestError({
+          message:
+            "This account requires MFA verification, which machine identities cannot perform. Remove the MFA policy from the account's template to allow machine identity access."
+        });
+      }
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        {
+          userId: ctx.actorId,
+          orgId: ctx.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
+      );
+    }
+
+    const credentials = normalizeCredentialAuthMethod(
+      accountType,
+      await decrypt(projectId, account.encryptedCredentials)
+    );
+    if (!hasRevealableCredential(accountType, credentials)) {
+      throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
+    }
+
+    return {
+      accountId: account.id,
+      accountName: account.name,
+      folderName: account.folderName,
+      accountType,
+      folderId: account.folderId,
+      credentials,
+      grantExpiresAt,
+      reason: trimmedReason
     };
   };
 
@@ -884,12 +1031,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       sendSessionCancellations?.();
       return deleted;
     } catch (err) {
-      // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
-      // to name them (rather than paying for that lookup on every delete).
-      if (
-        err instanceof DatabaseError &&
-        (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation
-      ) {
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         const dependents = (await pamAccountDAL.find({ rotationAccountId: accountId })).filter(
           (dependent) => dependent.id !== accountId
         );
@@ -920,9 +1062,24 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
               : "This account is used as the rotation account for another account. Reassign it before deleting this one."
           });
         }
-        // The other restricting reference is a discovery source using this account as its credential
+        const sources = await pamDiscoverySourceDAL.find({ credentialAccountId: accountId });
+        if (sources.length) {
+          // Discovery is Admin-only, so a non-admin gets the count rather than the source names.
+          const { hasRole } = await verifyMembership(projectId, ctx);
+          const plural = sources.length > 1;
+          const subject = hasRole(PamProductRole.Admin)
+            ? `discovery source${plural ? "s" : ""} ${sources.map((source) => `'${source.name}'`).join(", ")}`
+            : `${sources.length} discovery source${plural ? "s" : ""}`;
+          throw new BadRequestError({
+            message: `This account is the credential for ${subject}. Point ${
+              plural ? "them" : "it"
+            } at another account, or delete ${plural ? "them" : "it"}, before deleting this account.`
+          });
+        }
+
+        logger.error(err, `Unhandled FK violation deleting PAM account [accountId=${accountId}]`);
         throw new BadRequestError({
-          message: "This account is used as the credential for a discovery source. Delete that source first."
+          message: "This account is still referenced by another resource. Remove that reference before deleting it."
         });
       }
       throw err;
@@ -1126,6 +1283,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     list,
     listAccessible,
     getById,
+    getCredentials,
     create,
     update,
     deleteAccount,

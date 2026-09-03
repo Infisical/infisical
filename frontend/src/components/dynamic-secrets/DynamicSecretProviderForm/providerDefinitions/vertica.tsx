@@ -24,14 +24,34 @@ import {
 } from "./verticaContract";
 
 const connectionFields = [
-  { name: "inputs.host", type: "text", label: "Host", placeholder: "Vertica Host", layout: "half" },
+  {
+    name: "inputs.host",
+    type: "text",
+    label: "Host",
+    placeholder: "vertica.example.com",
+    layout: "half"
+  },
   { name: "inputs.port", type: "number", label: "Port", layout: "half" },
-  { name: "inputs.database", type: "text", label: "Database", layout: "half" },
-  { name: "inputs.username", type: "text", label: "User", autoComplete: "off", layout: "half" },
+  {
+    name: "inputs.database",
+    type: "text",
+    label: "Database",
+    placeholder: "VMart",
+    layout: "half"
+  },
+  {
+    name: "inputs.username",
+    type: "text",
+    label: "User",
+    placeholder: "dbadmin",
+    autoComplete: "off",
+    layout: "half"
+  },
   {
     name: "inputs.password",
     type: "secret",
     label: "Password",
+    placeholder: "Enter database password",
     autoComplete: "new-password",
     layout: "half"
   }

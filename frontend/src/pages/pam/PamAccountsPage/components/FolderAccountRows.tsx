@@ -21,6 +21,8 @@ type Props = {
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onRequestAccess: (account: TAccessiblePamAccount) => void;
+  onViewCredentials: (account: TAccessiblePamAccount) => void;
+  onRequestCredentialAccess: (account: TAccessiblePamAccount) => void;
   onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
@@ -35,6 +37,8 @@ export const FolderAccountRows = ({
   onOpenAccount,
   onLaunchAccount,
   onRequestAccess,
+  onViewCredentials,
+  onRequestCredentialAccess,
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
@@ -76,6 +80,8 @@ export const FolderAccountRows = ({
           onOpenAccount={onOpenAccount}
           onLaunchAccount={onLaunchAccount}
           onRequestAccess={onRequestAccess}
+          onViewCredentials={onViewCredentials}
+          onRequestCredentialAccess={onRequestCredentialAccess}
           onDeleteAccount={onDeleteAccount}
         />
       ))}

@@ -27,11 +27,13 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
@@ -88,6 +90,29 @@ const validateIssuerTypeConstraints = (
         message: "Self-signed issuer type only supports API enrollment"
       });
     }
+  }
+};
+
+/**
+ * A default the issuing CA cannot sign is worse than an invalid request: it is stored, and then every
+ * request that omits a signature algorithm inherits it and fails at issuance.
+ */
+const validateDefaultSignatureAlgorithmAgainstCa = async (
+  signatureAlgorithm: string | undefined,
+  caId: string | null | undefined,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+) => {
+  if (!signatureAlgorithm || !caId) return;
+
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  const caKeyAlgorithm = ca?.internalCa?.keyAlgorithm;
+  // External CAs pick their own signing key, so there is nothing to check against here.
+  if (!caKeyAlgorithm) return;
+
+  if (!isSignatureAlgorithmCompatibleWithCaKey(signatureAlgorithm, caKeyAlgorithm)) {
+    throw new BadRequestError({
+      message: `Default signature algorithm ${signatureAlgorithm} is not compatible with the certificate authority's ${caKeyAlgorithm} key`
+    });
   }
 };
 
@@ -464,6 +489,12 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
+    await validateDefaultSignatureAlgorithmAgainstCa(
+      data.defaults?.signatureAlgorithm,
+      data.caId,
+      certificateAuthorityDAL
+    );
+
     // Validate external configs
     await validateExternalConfigs(
       data.externalConfigs,
@@ -774,6 +805,12 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
+
+    await validateDefaultSignatureAlgorithmAgainstCa(
+      data.defaults?.signatureAlgorithm,
+      finalCaId,
+      certificateAuthorityDAL
+    );
 
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
@@ -1365,7 +1402,7 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
     offset?: number;
     limit?: number;
-    status?: "active" | "expired" | "revoked";
+    status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
     const profile = await certificateProfileDAL.findById(profileId);

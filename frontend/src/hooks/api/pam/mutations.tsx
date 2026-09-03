@@ -23,9 +23,11 @@ import {
   TDeletePamAccountTemplateDTO,
   TDeletePamDiscoverySourceDTO,
   TDeletePamFolderDTO,
+  TGetPamAccountCredentialsDTO,
   TImportPamDiscoveredAccountResult,
   TImportPamDiscoveredAccountsDTO,
   TPamAccessResponse,
+  TPamAccountCredentials,
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
@@ -792,6 +794,19 @@ export const useCheckPamAccountHeartbeat = () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountHeartbeat(accountId) });
       // The row badge reads its status from lists keyed by filters this caller doesn't know.
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
+export const usePamAccountCredentials = () => {
+  return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
+    mutationFn: async ({ accountId, reason, mfaSessionId }: TGetPamAccountCredentialsDTO) => {
+      const { data } = await apiRequest.post<TPamAccountCredentials>(
+        `/api/v1/pam/accounts/${accountId}/credentials`,
+        { reason, mfaSessionId }
+      );
+      return data;
     }
   });
 };

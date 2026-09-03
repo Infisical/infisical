@@ -30,7 +30,8 @@ import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
   authAttemptCounter,
-  recordAuthAttemptMetric
+  recordAuthAttemptMetric,
+  recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
 import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -57,8 +58,7 @@ import {
   enforceUserLockStatus,
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
-  OAuthAuthMethod,
-  verifyCaptcha
+  OAuthAuthMethod
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -76,6 +76,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
@@ -169,7 +170,9 @@ export const authLoginServiceFactory = ({
         subjectLine: "Infisical MFA code",
         recipients: [email],
         substitutions: {
-          code
+          code,
+          challengeFor: "sign-in",
+          preview: "Sign-in attempt requires further verification."
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
@@ -483,6 +486,7 @@ export const authLoginServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
       const { iv, tag, ciphertext, encoding } = crypto
         .encryption()
         .symmetric()

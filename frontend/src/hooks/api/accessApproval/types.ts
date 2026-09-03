@@ -47,6 +47,30 @@ export type Bypasser = {
   type: BypasserType;
 };
 
+export type TApprovalPolicyApproverInput =
+  | {
+      type: "user";
+      id?: string;
+      username?: string;
+      sequence?: number;
+    }
+  | {
+      type: "group";
+      id: string;
+      sequence?: number;
+    };
+
+export type TApprovalPolicyBypasserInput =
+  | {
+      type: "user";
+      id?: string;
+      username?: string;
+    }
+  | {
+      type: "group";
+      id: string;
+    };
+
 export type TAccessApprovalRequest = {
   id: string;
   policyId: string;
@@ -205,8 +229,8 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environments: string[];
-  approvers?: Omit<Approver, "isOrgMembershipActive">[];
-  bypassers?: Bypasser[];
+  approvers?: TApprovalPolicyApproverInput[];
+  bypassers?: TApprovalPolicyBypasserInput[];
   approvals?: number;
   secretPath: string;
   enforcementLevel?: EnforcementLevel;
@@ -219,8 +243,8 @@ export type TCreateAccessPolicyDTO = {
 export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: Omit<Approver, "isOrgMembershipActive">[];
-  bypassers?: Bypasser[];
+  approvers?: TApprovalPolicyApproverInput[];
+  bypassers?: TApprovalPolicyBypasserInput[];
   secretPath?: string;
   environments?: string[];
   approvals?: number;

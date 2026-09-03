@@ -10,6 +10,7 @@ import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock"
 
 export const CronJobName = {
   HealthAlert: "health-alert",
+  KmsRootKeyCleanup: "kms-root-key-cleanup",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
   DailySecretVersionCleanup: "daily-secret-version-cleanup",
@@ -22,6 +23,7 @@ export const CronJobName = {
   DailyExpiringPkiItemAlert: "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing: "daily-pki-alert-v2-processing",
   PkiSyncCleanup: "pki-sync-cleanup",
+  PkiSyncHealthCheck: "pki-sync-health-check",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
   PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",

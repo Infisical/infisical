@@ -2,6 +2,7 @@ import z from "zod";
 
 import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -13,6 +14,7 @@ const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
   accountName: z.string().nullable(),
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
+  accessType: z.nativeEnum(PamAccessType),
   grantExpiresAt: z.date().nullable(),
   grantStatus: z.string().nullable()
 });
@@ -28,7 +30,11 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           accountId: z.string().uuid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
           reason: z.string().max(500).optional(),
-          duration: z.string().min(1)
+          duration: z.string().min(1),
+          accessType: z
+            .nativeEnum(PamAccessType)
+            .default(PamAccessType.Session)
+            .describe("Whether the request unlocks launching sessions or viewing the account's credentials")
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
           message: "Either 'accountId' or 'path' is required"
@@ -39,7 +45,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.createRequest({
         accountId: req.body.accountId,
@@ -47,6 +53,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         projectId: req.internalPamProjectId,
         reason: req.body.reason,
         duration: req.body.duration,
+        accessType: req.body.accessType,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -64,6 +71,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
             accountId: result.accountId,
             folderId: result.folderId,
             duration: req.body.duration,
+            accessType: result.accessType,
             reason: req.body.reason
           }
         }
@@ -103,7 +111,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.listRequests({
         projectId: req.internalPamProjectId,
@@ -134,7 +142,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
@@ -160,7 +168,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
         projectId: req.internalPamProjectId,
@@ -181,6 +189,9 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       params: z.object({
         accountId: z.string().uuid()
       }),
+      querystring: z.object({
+        accessType: z.nativeEnum(PamAccessType).default(PamAccessType.Session)
+      }),
       response: {
         200: z.object({
           steps: z.array(
@@ -198,11 +209,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getAccountApprovers({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
+        accessType: req.query.accessType,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -230,7 +242,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.reviewRequest({
         requestId: req.params.requestId,
@@ -293,7 +305,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.revokeGrant({
         requestId: req.params.requestId,

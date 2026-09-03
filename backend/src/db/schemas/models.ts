@@ -178,6 +178,8 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
@@ -390,6 +392,16 @@ export enum ResourceMembershipRole {
   Operator = "operator",
   Auditor = "auditor",
   Custom = "custom"
+}
+
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
 }
 
 export enum ResourceType {

@@ -4,7 +4,7 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -410,6 +410,13 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
+    if (templateId && !plan.machineIdentityAuthTemplates) {
+      throw new BadRequestError({
+        message:
+          "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+      });
+    }
+
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -438,6 +445,9 @@ export const identityLdapAuthServiceFactory = ({
       const template = templateId
         ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
         : undefined;
+      if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+        throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+      }
 
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
       if (template) {
@@ -618,6 +628,15 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
+    // only a link change is new template use; a re-sent current templateId must not
+    // break routine edits for orgs that have since downgraded
+    if (templateId && templateId !== identityLdapAuth.templateId && !plan.machineIdentityAuthTemplates) {
+      throw new BadRequestError({
+        message:
+          "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+      });
+    }
+
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -645,6 +664,9 @@ export const identityLdapAuthServiceFactory = ({
     const template = templateId
       ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
       : undefined;
+    if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+      throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+    }
     let config: {
       bindDN?: string;
       bindPass?: string;
@@ -786,12 +808,11 @@ export const identityLdapAuthServiceFactory = ({
     });
 
     const bindDN = decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedBindDN }).toString();
-    const bindPass = decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedBindPass }).toString();
     const ldapCaCertificate = ldapIdentityAuth.encryptedLdapCaCertificate
       ? decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedLdapCaCertificate }).toString()
       : undefined;
 
-    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, bindPass, ldapCaCertificate };
+    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, ldapCaCertificate };
   };
 
   const revokeIdentityLdapAuth = async ({

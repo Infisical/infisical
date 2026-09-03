@@ -22,6 +22,7 @@ import {
   PamAccessStatus,
   PamAccountType,
   PamPostgresAuthMethod,
+  PamProductRole,
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
@@ -71,6 +72,8 @@ import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
 import {
+  isPamSessionLive,
+  pamSessionRemainingSeconds,
   reportPamSessionEnded,
   resolvePamSessionDistinctId,
   sendPamSessionCancellationSignal
@@ -142,6 +145,25 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
 
+  const checkSession = async (
+    session: { accountId?: string | null; projectId: string },
+    action: ResourcePermissionPamResourceActions,
+    ctx: TActorContext
+  ) => {
+    if (session.accountId) {
+      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+      await checkAccount(session.accountId, account?.folderId, session.projectId, action, ctx);
+      return;
+    }
+
+    const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
+    if (!hasRole(PamProductRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only a project admin can access a session whose account has been deleted"
+      });
+    }
+  };
+
   const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
     const issues = getAccountAccessibilityIssues(account);
     if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
@@ -156,7 +178,7 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext,
     pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -169,22 +191,16 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
+      includeOrphaned: hasRole(PamProductRole.Admin),
       ...pagination
     });
   };
 
   const getSessionById = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
-    if (!session || !session.accountId) return null;
+    if (!session) return null;
 
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
 
     return session;
   };
@@ -196,7 +212,7 @@ export const pamSessionServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    if (session.status !== PamSessionStatus.Starting && session.status !== PamSessionStatus.Active) {
+    if (!isPamSessionLive(session)) {
       throw new BadRequestError({ message: "Session is not active" });
     }
 
@@ -211,6 +227,7 @@ export const pamSessionServiceFactory = ({
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+    const remainingSeconds = pamSessionRemainingSeconds(session);
 
     if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
       const internalMetadata = parseInternalMetadata(
@@ -228,7 +245,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: `${resolveAccessControls(account.templatePolicies).maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
+          requestedTtl: `${remainingSeconds}s`,
           certType: SshCertType.USER
         });
 
@@ -238,7 +255,6 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.GcpServiceAccount) {
-      const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       credentials.token = await mintGcpAccessToken({
         serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
         authMethod: credentials.authMethod as string,
@@ -423,6 +439,7 @@ export const pamSessionServiceFactory = ({
     reason,
     duration,
     mfaSessionId,
+    tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
     targetHost
   }: {
@@ -436,6 +453,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
   }) => {
@@ -469,7 +487,14 @@ export const pamSessionServiceFactory = ({
       }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: actor.actorId,
+          orgId: actor.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 
@@ -753,18 +778,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session is not active" });
     }
 
-    if (!session.accountId) {
-      throw new BadRequestError({ message: "Session has no linked account" });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.TerminateSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.TerminateSessions, ctx);
 
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {

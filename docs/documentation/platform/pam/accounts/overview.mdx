@@ -66,13 +66,15 @@ Go to **Privileged Access Management → Accounts**, find the account, and click
 
 ### CLI access
 
-Run the CLI command to start a local proxy:
+Run the CLI command for the account:
 
 ```bash
 infisical pam access <folder>/<account>
 ```
 
-The command outputs the local port to connect to. Then connect with your preferred client (psql, pgAdmin, ssh, etc.) against `localhost` using that port. The proxy handles authentication automatically.
+For SSH accounts this connects you straight to a shell on the server. Add `--proxy` if you would rather point your own SSH client at a local port.
+
+Every other account type starts a local proxy and outputs the port to connect to. Then connect with your preferred client (psql, pgAdmin, etc.) against `localhost` using that port. The proxy handles authentication automatically.
 
 **Flags:**
 
@@ -82,6 +84,18 @@ The command outputs the local port to connect to. Then connect with your preferr
 | `--reason` | Provide a reason (if required by the template) |
 
 To let an [AI agent](/documentation/platform/pam/ai-agents/overview) reach an account, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead.
+
+### Viewing credentials
+
+Some work needs the password itself, not a session: pasting it into a desktop client Infisical does not broker, or configuring an appliance by hand. Select **View Credentials** from the account's menu, give a reason, and the stored fields are shown with secrets masked until revealed.
+
+This needs the **Operator** or **Admin** [role](/documentation/platform/pam/concepts/access-control) on the folder or account, and an approval when the template requires one — the entry reads **Request Credentials** until you hold one. Sessions and credentials are approved separately, so an approved session request never reveals the credential. Accounts whose auth method stores no secret (SSH certificate, AWS IAM, PostgreSQL AWS IAM) have nothing to reveal and say so.
+
+Every reveal writes a **View PAM Account Credentials** entry to the [audit log](/documentation/platform/pam/auditing) with the member, account, and reason.
+
+<Warning>
+  A revealed credential is outside Infisical: no session recording, no command blocking, and revoking the grant stops further reveals but cannot take back a copied password. Prefer a session where one will do, and [rotate](/documentation/platform/pam/accounts/overview) the account after a checkout.
+</Warning>
 
 ## Direct account memberships
 

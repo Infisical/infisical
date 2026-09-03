@@ -740,7 +740,7 @@ export const dynamicSecretServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      ProjectPermissionSub.DynamicSecrets
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -787,6 +787,13 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path
+      })
+    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder)

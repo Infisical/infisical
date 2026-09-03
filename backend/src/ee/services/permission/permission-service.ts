@@ -26,6 +26,7 @@ import {
   pamResourceAdminPermissions,
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
+  pamResourceOperatorPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
   projectAdminSignerFallbackPermissions,
@@ -57,6 +58,7 @@ import {
 } from "@app/services/oauth-client/oauth-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -70,16 +72,23 @@ import {
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import {
+  buildFolderScopedPrivilegeRules,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
-  handlebarsClient,
+  fetchFolderScopedPrivileges,
+  filterOverriddenFolderScopedDenyRules,
+  getProjectPermissionFingerprint,
+  interpolatePermissionRules,
+  isActiveRole,
   validateOrgSSO
 } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
+  TCachedFolderScopedPrivileges,
   TGetServiceTokenProjectPermissionArg,
-  TPermissionServiceFactory
+  TPermissionServiceFactory,
+  TProjectFolderScopedPrivilege
 } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -89,9 +98,10 @@ import {
   ProjectPermissionSub
 } from "./project-permission";
 
-// Returns the delegated OAuth scopes for the current request, or undefined when this is not an
-// OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
-// narrowing applies, while undefined means a first-party session / background job is untouched.
+// Returns the scopes to narrow this request to, or undefined when no narrowing applies. Any array, even
+// an empty one, means narrowing applies, so [] denies all scope-guarded access. undefined covers
+// first-party sessions, background jobs and fully-delegated RFC 8693 tokens: inject-identity leaves the
+// key unset only for those, so a token carrying neither delegation marker ends up with zero permissions.
 const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   const raw = requestContext.get(RequestContextKey.OauthScopes);
   if (!raw) return undefined;
@@ -131,7 +141,11 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
-const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO, projectType?: string) => {
+export const buildProjectPermissionRules = (
+  projectUserRoles: TBuildProjectPermissionDTO,
+  projectType?: string,
+  folderScopedPrivileges?: TProjectFolderScopedPrivilege[]
+) => {
   const rules = expandLegacyForbidActions(
     projectUserRoles
       .map(({ role, permissions }) => {
@@ -165,6 +179,13 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
       .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])
   ).sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
+  // Appended after the sort so the folder rules end the array: CASL gives the last matching rule
+  // precedence, which is what lets the per-path folder deny/allow pairs override the base roles at
+  // the granted folder while leaving every other path untouched.
+  if (folderScopedPrivileges?.length) {
+    rules.push(...buildFolderScopedPrivilegeRules(folderScopedPrivileges));
+  }
+
   return rules;
 };
 
@@ -188,6 +209,8 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
     switch (role) {
       case PamResourceRole.Admin:
         return pamResourceAdminPermissions;
+      case PamResourceRole.Operator:
+        return pamResourceOperatorPermissions;
       case PamResourceRole.Connector:
         return pamResourceConnectorPermissions;
       case PamResourceRole.Auditor:
@@ -243,10 +266,6 @@ type MembershipWithRoles = {
   }>;
 };
 
-const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(role: U): boolean =>
-  !role.isTemporary ||
-  Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
-
 export const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
@@ -274,6 +293,12 @@ const membershipsHaveActiveRole = (
   role: string
 ): boolean => memberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role) && isActiveRole(r)));
 
+// built-in Admin only, deliberately not matching a custom role slugged "admin": this gates folder-scoped
+// grant evaluation, and a custom role cannot confer the project-admin bypass.
+const hasActiveProjectAdminRole = (
+  memberships: Array<{ roles: Array<{ role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }> }>
+): boolean => memberships.some((m) => m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r)));
+
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -282,8 +307,9 @@ type TPermissionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
 
 export const permissionServiceFactory = ({
@@ -295,7 +321,8 @@ export const permissionServiceFactory = ({
   keyStore,
   roleDAL,
   additionalPrivilegeDAL,
-  groupDAL
+  groupDAL,
+  secretFolderDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
@@ -433,7 +460,8 @@ export const permissionServiceFactory = ({
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
       memberships: [],
       hasRole: () => false,
-      hasProjectEnforcement: $checkProjectEnforcement(serviceTokenProject)
+      hasProjectEnforcement: $checkProjectEnforcement(serviceTokenProject),
+      folderScopedPrivileges: []
     };
   };
 
@@ -457,12 +485,43 @@ export const permissionServiceFactory = ({
     }
   };
 
+  const reviveCachedFolderGrants = (cached: TCachedProjectPermission): TCachedProjectPermission => {
+    const privileges = cached.folderScopedPrivileges ?? [];
+    for (const priv of privileges) {
+      if (priv.temporaryAccessEndTime) {
+        priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime);
+      }
+    }
+    return { ...cached, folderScopedPrivileges: privileges };
+  };
+
   type TCachedProjectPermission = {
     permissionData: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>;
     projectDetails: TProjects;
     username: string;
     canBypassSso: boolean;
+    folderScopedPrivileges: TCachedFolderScopedPrivileges["privileges"];
   };
+
+  // Postgres row expiry for the folder-permission version counter. Must comfortably exceed the 10m
+  // permission data TTL: an expired row reads as 0 and the next bump re-inserts at 1, so a short expiry
+  // lets a live cached blob's fingerprint collide with the resurrected counter and re-validate stale data.
+  const FOLDER_PERMISSION_VERSION_TTL = "2d";
+
+  const invalidateProjectFolderPermissionCache: TPermissionServiceFactory["invalidateProjectFolderPermissionCache"] =
+    async (projectId, tx) => {
+      const projectIds = [...new Set((Array.isArray(projectId) ? projectId : [projectId]).filter(Boolean))];
+      for await (const id of projectIds) {
+        await keyStore.pgIncrementBy(KeyStorePrefixes.ProjectFolderPermissionVersion(id), {
+          incr: 1,
+          tx,
+          expiry: FOLDER_PERMISSION_VERSION_TTL
+        });
+      }
+    };
+
+  const getProjectPermissionFingerprintForActor: TPermissionServiceFactory["getProjectPermissionFingerprint"] = (dto) =>
+    getProjectPermissionFingerprint(dto, { permissionDAL, keyStore });
 
   const $fetchProjectPermissionData = async (
     projectId: string,
@@ -538,7 +597,16 @@ export const permissionServiceFactory = ({
       }
     }
 
-    return { permissionData, projectDetails, username, canBypassSso };
+    // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
+    // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a
+    // stale grant never restricts an admin.
+    const folderScopedPrivileges =
+      projectDetails.type === ProjectType.SecretManager && !hasActiveProjectAdminRole(permissionData)
+        ? (await fetchFolderScopedPrivileges(projectId, actor, actorId, { additionalPrivilegeDAL, secretFolderDAL }))
+            .privileges
+        : [];
+
+    return { permissionData, projectDetails, username, canBypassSso, folderScopedPrivileges };
   };
 
   const getProjectPermission: TPermissionServiceFactory["getProjectPermission"] = async ({
@@ -610,7 +678,7 @@ export const permissionServiceFactory = ({
         markerTtlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
         dataTtlSeconds: KeyStoreTtls.ProjectPermissionDataTtlSeconds,
         fingerprintFetcher: () =>
-          permissionDAL.getPermissionFingerprint({
+          getProjectPermissionFingerprintForActor({
             projectId,
             orgId: actorOrgId,
             actorId,
@@ -620,6 +688,7 @@ export const permissionServiceFactory = ({
           $fetchProjectPermissionData(projectId, actorOrgId, actionProjectType, narrowedActor, actorId),
         reviver: (parsed: TCachedProjectPermission) => {
           reviveCachedPermissionDates(parsed.permissionData);
+          return reviveCachedFolderGrants(parsed);
         }
       });
 
@@ -633,6 +702,18 @@ export const permissionServiceFactory = ({
           message: `The project is of type ${projectDetails.type}. Operations of type ${actionProjectType} are not allowed.`
         });
       }
+
+      // Filtered per request rather than at fetch time, so a temporary grant lapsing takes effect
+      // immediately instead of waiting for the cached blob to be refetched.
+      const folderScopedPrivileges: TProjectFolderScopedPrivilege[] = cached.folderScopedPrivileges
+        .filter(isActiveRole)
+        .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+          id,
+          folderId,
+          role,
+          environmentSlug,
+          secretPath
+        }));
 
       const projectDetailsCtx = {
         id: projectDetails.id,
@@ -655,8 +736,7 @@ export const permissionServiceFactory = ({
         );
       }
 
-      const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type);
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
+      const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
         (i) => i.key,
@@ -671,30 +751,25 @@ export const permissionServiceFactory = ({
           ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
           : {};
 
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: actorId,
-            username,
-            metadata: metadataKeyValuePair,
-            auth: identityAuthInfo
-          }
-        },
-        { data: false }
-      );
-
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: actorId,
+          username,
+          metadata: metadataKeyValuePair,
+          auth: identityAuthInfo
         }
-      );
+      });
+
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       const result = {
         permission,
         memberships: permissionData,
         hasRole,
-        hasProjectEnforcement: $checkProjectEnforcement(projectDetails)
+        hasProjectEnforcement: $checkProjectEnforcement(projectDetails),
+        folderScopedPrivileges
       };
 
       return {
@@ -861,7 +936,6 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -870,22 +944,16 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: userProjectPermission.userId,
-            username: userProjectPermission.username,
-            metadata: metadataKeyValuePair
-          }
-        },
-        { data: false }
-      );
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
         }
-      );
+      });
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       return {
         permission,
@@ -907,7 +975,6 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,
@@ -916,22 +983,16 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolateRules = templatedRules(
-        {
-          identity: {
-            id: identityProjectPermission.identityId,
-            username: identityProjectPermission.username,
-            metadata: metadataKeyValuePair
-          }
-        },
-        { data: false }
-      );
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-        {
-          conditionsMatcher
+      const interpolatedRules = interpolatePermissionRules(rules, {
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair
         }
-      );
+      });
+      const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
+        conditionsMatcher
+      });
 
       return {
         permission,
@@ -1100,13 +1161,47 @@ export const permissionServiceFactory = ({
     return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
   };
 
+  const $folderGrantAuditSources = async (
+    projectId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY,
+    actorId: string,
+    privilegeById: Record<string, { name?: string | null; temporaryAccessStartTime?: Date | null }>
+  ) => {
+    const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.SecretManager) return sources;
+
+    const { privileges } = await fetchFolderScopedPrivileges(projectId, actorType, actorId, {
+      additionalPrivilegeDAL,
+      secretFolderDAL
+    });
+
+    privileges.filter(isActiveRole).forEach((priv) => {
+      sources.push({
+        id: priv.id,
+        type: "additional_privilege",
+        name: privilegeById[priv.id]?.name || "Folder Access",
+        isTemporary: Boolean(priv.isTemporary),
+        temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
+        temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+        permissions: packRules(filterOverriddenFolderScopedDenyRules(buildFolderScopedPrivilegeRules([priv])))
+      });
+    });
+
+    return sources;
+  };
+
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
     projectId,
-    targetUserId
+    targetUserId,
+    includeFolderPermissions
   }) => {
     const { permission } = await getProjectPermission({
       actor,
@@ -1146,9 +1241,9 @@ export const permissionServiceFactory = ({
       projectId,
       actorUserId: targetUserId
     });
-    const privilegeNameById: Record<string, string> = {};
+    const privilegeById: Record<string, (typeof targetPrivileges)[number]> = {};
     targetPrivileges.forEach((p) => {
-      privilegeNameById[p.id] = p.name;
+      privilegeById[p.id] = p;
     });
 
     const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
@@ -1192,7 +1287,7 @@ export const permissionServiceFactory = ({
         sources.push({
           id: priv.id,
           type: "additional_privilege",
-          name: privilegeNameById[priv.id] || "Additional Privilege",
+          name: privilegeById[priv.id]?.name || "Additional Privilege",
           isTemporary: Boolean(priv.isTemporary),
           temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
           temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
@@ -1200,6 +1295,10 @@ export const permissionServiceFactory = ({
         });
       });
     });
+
+    if (includeFolderPermissions && !hasActiveProjectAdminRole(targetMemberships)) {
+      sources.push(...(await $folderGrantAuditSources(projectId, ActorType.USER, targetUserId, privilegeById)));
+    }
 
     return { sources };
   };
@@ -1210,7 +1309,8 @@ export const permissionServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     projectId,
-    targetIdentityId
+    targetIdentityId,
+    includeFolderPermissions
   }) => {
     const { permission } = await getProjectPermission({
       actor,
@@ -1253,9 +1353,9 @@ export const permissionServiceFactory = ({
       projectId,
       actorIdentityId: targetIdentityId
     });
-    const privilegeNameById: Record<string, string> = {};
+    const privilegeById: Record<string, (typeof targetPrivileges)[number]> = {};
     targetPrivileges.forEach((p) => {
-      privilegeNameById[p.id] = p.name;
+      privilegeById[p.id] = p;
     });
 
     const sources: Awaited<ReturnType<TPermissionServiceFactory["getIdentityPermissionAudit"]>>["sources"] = [];
@@ -1299,7 +1399,7 @@ export const permissionServiceFactory = ({
         sources.push({
           id: priv.id,
           type: "additional_privilege",
-          name: privilegeNameById[priv.id] || "Additional Privilege",
+          name: privilegeById[priv.id]?.name || "Additional Privilege",
           isTemporary: Boolean(priv.isTemporary),
           temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
           temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
@@ -1307,6 +1407,10 @@ export const permissionServiceFactory = ({
         });
       });
     });
+
+    if (includeFolderPermissions && !hasActiveProjectAdminRole(targetMemberships)) {
+      sources.push(...(await $folderGrantAuditSources(projectId, ActorType.IDENTITY, targetIdentityId, privilegeById)));
+    }
 
     return { sources };
   };
@@ -1320,6 +1424,8 @@ export const permissionServiceFactory = ({
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
     getMembershipPermissionAudit,
-    getIdentityPermissionAudit
+    getIdentityPermissionAudit,
+    invalidateProjectFolderPermissionCache,
+    getProjectPermissionFingerprint: getProjectPermissionFingerprintForActor
   };
 };

@@ -1,7 +1,8 @@
 ---
 title: "Secrets management"
-sidebarTitle: "Overview"
 description: "Store, manage, and deliver secrets like API keys and database credentials across every environment, from local development to production."
+sidebarTitle: "Secrets Management"
+icon: "vault"
 ---
 
 Infisical Secrets Management centralizes secrets such as API keys, database credentials, and application configuration. Teams eliminate hardcoded secrets, scope access by environment and path, and deliver secrets to applications and infrastructure through the CLI, SDKs, agents, Kubernetes, and CI/CD.
@@ -12,46 +13,100 @@ Infisical Secrets Management centralizes secrets such as API keys, database cred
 
 ## Get started
 
-<Card title="Deliver Your First Secret" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
-  New to Infisical? Store a secret and deliver it to an application in under 10 minutes.
-</Card>
-
-## Learn more
+Store a secret and deliver it to a running application:
 
 <CardGroup cols={2}>
-  <Card title="Core Concepts" icon="book" href="/documentation/platform/secrets-mgmt/concepts/secrets-mgmt">
-    Understand how projects, environments, folders, and secrets fit together.
+  <Card title="Quickstart" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
+    Add your secrets and deliver them to your stack in under 10 minutes.
   </Card>
-  <Card title="Deliver Secrets" icon="map" href="/integrations/all">
-    Find a delivery workflow for your application or infrastructure.
-  </Card>
-  <Card title="Access Control" icon="shield-halved" href="/documentation/platform/secrets-mgmt/concepts/access-control">
-    Scope secrets by environment and path, and control who can access them.
-  </Card>
-  <Card title="Secrets Delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
-    Pick the right method to get secrets into your applications and infrastructure.
+  <Card title="Local development" icon="laptop-code" href="/documentation/guides/local-development">
+    Run your app on your own machine and pull secrets from Infisical.
   </Card>
 </CardGroup>
 
-## Go further
+## Manage secrets
+
+Work with secrets once they're in a project:
 
 <CardGroup cols={2}>
-  <Card title="Secret Rotation" icon="rotate" href="/documentation/platform/secrets-mgmt/concepts/secrets-rotation">
-    Replace database and cloud credentials automatically on a schedule.
+  <Card title="Organization" icon="folder-tree" href="/documentation/platform/secrets-mgmt/organization">
+    Projects, folders, and referencing one secret from another.
   </Card>
-  <Card title="Dynamic Secrets" icon="bolt" href="/documentation/platform/secrets-mgmt/concepts/dynamic-secrets">
-    Generate short-lived credentials on demand that expire after use.
+  <Card title="Versioning" icon="clock-rotate-left" href="/documentation/platform/secrets-mgmt/versioning">
+    Secret history, and rolling a secret or an environment back to an earlier state.
   </Card>
-  <Card title="Secret Syncs" icon="arrow-right-arrow-left" href="/integrations/secret-syncs/overview">
-    Push secrets to GitHub, AWS, Vercel, and other external platforms.
+  <Card title="Access control" icon="shield-halved" href="/documentation/platform/secrets-mgmt/access-control">
+    Validation rules, approval workflows, access requests, and folder-level roles.
   </Card>
-  <Card title="Honey Tokens" icon="jar" href="/documentation/platform/honey-tokens/overview">
-    Plant decoy credentials that alert you the moment an attacker uses them.
+  <Card title="Monitoring" icon="chart-line" href="/documentation/platform/secrets-mgmt/monitoring">
+    Insights into a project, plus webhooks and event subscriptions for its changes.
   </Card>
-  <Card title="Approval Workflows" icon="code-pull-request" href="/documentation/platform/secrets-mgmt/concepts/approval-workflows">
-    Require review before changes reach sensitive environments.
+</CardGroup>
+
+## Integrations
+
+Deliver secrets from your project to applications, infrastructure, and third-party stores:
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="plug" href="/integrations/overview">
+    What separates the three kinds of integration, and how to pick one.
   </Card>
-  <Card title="Point-in-Time Recovery" icon="clock-rotate-left" href="/documentation/platform/pit-recovery">
-    Roll back a secret or an entire environment to any previous state.
+  <Card title="Search integrations" icon="magnifying-glass" href="/integrations/all">
+    Every framework, platform, and sync destination in one searchable list.
+  </Card>
+</CardGroup>
+
+## Secret rotation
+
+Replace a long-lived credential on a schedule:
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="rotate" href="/documentation/platform/secret-rotation/overview">
+    Replace a credential on a schedule, with no gap where the old one stops working.
+  </Card>
+  <Card title="Search providers" icon="magnifying-glass" href="/integrations/secret-rotations">
+    Databases, cloud IAM, SaaS API keys, and local machine accounts.
+  </Card>
+</CardGroup>
+
+## Dynamic secrets
+
+Issue a credential per request and expire it after use:
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="bolt" href="/documentation/platform/dynamic-secrets/overview">
+    Generate a credential when someone asks for one, and revoke it when its lease ends.
+  </Card>
+  <Card title="Search services" icon="magnifying-glass" href="/integrations/dynamic-secrets">
+    Databases, cloud IAM, message queues, directories, and Kubernetes.
+  </Card>
+</CardGroup>
+
+## Honey tokens
+
+Plant decoy credentials and watch for anyone using them:
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="jar" href="/documentation/platform/honey-tokens/overview">
+    Plant a decoy credential that alerts you the moment someone uses it.
+  </Card>
+  <Card title="AWS" icon="aws" href="/documentation/platform/honey-tokens/aws/setup">
+    Set up AWS honey tokens and read the alerts they raise.
+  </Card>
+</CardGroup>
+
+## Agent proxy
+
+Broker credentials to AI agents:
+
+<CardGroup cols={3}>
+  <Card title="Overview" icon="shuffle" href="/documentation/platform/agent-proxy/overview">
+    Put a proxy in front of a service so your app never handles the credential.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-proxy/quickstart/credentials">
+    Set up credentials, then run the proxy locally or as a standalone service.
+  </Card>
+  <Card title="Reference" icon="list" href="/documentation/platform/agent-proxy/proxied-services">
+    Supported services, both proxy modes, and the activity log they write.
   </Card>
 </CardGroup>

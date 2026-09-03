@@ -191,10 +191,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
+  [EventType.PKI_SYNC_HEALTH_CHECK]: "PKI Sync health check ran",
+  [EventType.PKI_SYNC_TEST_HEALTH_CHECK]: "PKI Sync health check tested",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
     "OIDC group membership mapping removed user from groups",
+  [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
+    "OIDC login adopted provisioned placeholder account",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
@@ -358,6 +362,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS]: "Rotate PAM Account Credentials",
   [EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT]: "Set PAM Account Rotation Account",
   [EventType.PAM_ACCOUNT_SSH_CA_CREATE]: "Create PAM Account SSH CA",
+  [EventType.PAM_ACCOUNT_CREDENTIALS_VIEW]: "View PAM Account Credentials",
   [EventType.PAM_APPROVAL_CONFIG_UPDATE]: "Update PAM Approval Configuration",
   [EventType.PAM_DISCOVERY_SOURCE_CREATE]: "Create PAM Discovery Source",
   [EventType.PAM_DISCOVERY_SOURCE_UPDATE]: "Update PAM Discovery Source",
@@ -442,7 +447,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token",
 
   [EventType.CREATE_PROJECT_FOLDER_GRANT]: "Create project grant",
-  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant"
+  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant",
+
+  [EventType.CREATE_SECRET_FOLDER_ACCESS]: "Grant folder access",
+  [EventType.UPDATE_SECRET_FOLDER_ACCESS]: "Update folder access",
+  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -488,6 +497,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
     EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
     EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+    EventType.PAM_ACCOUNT_CREDENTIALS_VIEW,
     EventType.PAM_APPROVAL_CONFIG_UPDATE,
     EventType.PAM_DISCOVERY_SOURCE_CREATE,
     EventType.PAM_DISCOVERY_SOURCE_UPDATE,

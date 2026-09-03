@@ -242,6 +242,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           } else if (scopeData.scope === AccessScope.Project) {
             qb.andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`);
           }
+
+          // Folder-scoped privileges are resolved separately and must never reach the project
+          // ability: they would apply project-wide, and they carry a role slug with a NULL
+          // permissions blob that the unpackRules path cannot read.
+          qb.andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           if (actorType === ActorType.USER) {
@@ -628,10 +633,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`)
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are resolved separately, so they are not part of a
+            // project-wide listing.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
@@ -819,10 +825,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`)
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are resolved separately, so they are not part of a
+            // project-wide listing.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
@@ -978,10 +985,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             actorType === ActorType.IDENTITY
               ? `${TableName.AdditionalPrivilege}.actorIdentityId`
               : `${TableName.AdditionalPrivilege}.actorUserId`;
-          qb.on(privActorCol, db.raw("?", [actorId])).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(privActorCol, db.raw("?", [actorId]))
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are excluded from getPermission, so excluding them here too
+            // is what keeps the fingerprint aligned with the data it validates.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (qb) => {
           if (actorType === ActorType.IDENTITY) {

@@ -32,6 +32,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -83,7 +84,12 @@ const buildAdminPermissionRules = () => {
 
   // Folder read is implied for all, so admins only need write actions on folders
   can(
-    [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
+    [
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretFolderActions.ManageAccess
+    ],
     ProjectPermissionSub.SecretFolders
   );
 
@@ -295,7 +301,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.SyncCertificates,
       ProjectPermissionPkiSyncActions.ImportCertificates,
       ProjectPermissionPkiSyncActions.RemoveCertificates,
-      ProjectPermissionPkiSyncActions.SetPostSyncCommand
+      ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+      ProjectPermissionPkiSyncActions.SetHealthCheckCommand
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -863,7 +870,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.SyncCertificates,
       ResourcePermissionPkiSyncActions.ImportCertificates,
       ResourcePermissionPkiSyncActions.RemoveCertificates,
-      ResourcePermissionPkiSyncActions.SetPostSyncCommand
+      ResourcePermissionPkiSyncActions.SetPostSyncCommand,
+      ResourcePermissionPkiSyncActions.SetHealthCheckCommand
     ],
     ResourcePermissionSub.PkiSyncs
   );
@@ -1114,6 +1122,20 @@ const buildPamResourceAdminPermissionRules = () => {
   return rules;
 };
 
+const buildPamResourceOperatorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      ResourcePermissionPamResourceActions.ViewCredentials
+    ],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
 const buildPamResourceConnectorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
@@ -1145,5 +1167,6 @@ const buildPamResourceAuditorPermissionRules = () => {
 export const pamProjectAdminPermissions = projectAdminPermissions;
 export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
+export const pamResourceOperatorPermissions = buildPamResourceOperatorPermissionRules();
 export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();
 export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();

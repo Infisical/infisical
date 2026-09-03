@@ -501,6 +501,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           },
           isSelf: user.name === currentUser.username,
           canEdit:
+            currentProject.isLegacyAdditionalPrivilegesEnabled &&
             user.name !== currentUser.username &&
             permission.can(
               ProjectPermissionMemberActions.AssignAdditionalPrivileges,
@@ -528,10 +529,12 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             projectId: currentProject.id,
             identityId: identity.id
           },
-          canEdit: permission.can(
-            ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
-            subject(ProjectPermissionSub.Identity, { identityId: identity.id })
-          ),
+          canEdit:
+            currentProject.isLegacyAdditionalPrivilegesEnabled &&
+            permission.can(
+              ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+              subject(ProjectPermissionSub.Identity, { identityId: identity.id })
+            ),
           onEdit: () =>
             setEditingPrivilege({
               type: "identity",

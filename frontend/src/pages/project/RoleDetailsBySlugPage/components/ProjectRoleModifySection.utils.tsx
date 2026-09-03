@@ -46,6 +46,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -168,7 +169,8 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.SyncCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
-  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional()
+  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({
@@ -285,6 +287,10 @@ const ProjectFolderGrantPolicyActionSchema = z.object({
   [ProjectPermissionProjectFolderGrantActions.ReadGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.CreateGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: z.boolean().optional()
+});
+
+const SecretFolderPolicyActionSchema = GeneralPolicyActionSchema.extend({
+  [ProjectPermissionSecretFolderActions.ManageAccess]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -640,7 +646,7 @@ export const projectRoleFormSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: SecretPolicyActionWithConditionsSchema.array().default([]),
-      [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.SecretFolders]: SecretFolderPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -1107,6 +1113,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canRemoveCertificates = action.includes(
             ProjectPermissionPkiSyncActions.RemoveCertificates
           );
+          const canSetPostSyncCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetPostSyncCommand
+          );
+          const canSetHealthCheckCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetHealthCheckCommand
+          );
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
@@ -1119,6 +1131,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.SyncCertificates]: canSyncCertificates,
             [ProjectPermissionPkiSyncActions.ImportCertificates]: canImportCertificates,
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
+            [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
+            [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1423,23 +1437,44 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.SecretFolders) {
+          const canManageAccess = action.includes(
+            ProjectPermissionSecretFolderActions.ManageAccess
+          );
+          const canReadFolder = action.includes(ProjectPermissionActions.Read);
+          const canEditFolder = action.includes(ProjectPermissionActions.Edit);
+          const canDeleteFolder = action.includes(ProjectPermissionActions.Delete);
+          const canCreateFolder = action.includes(ProjectPermissionActions.Create);
+
+          // remove this condition later
+          // keeping when old routes create permission with folder read
+          if (
+            canReadFolder &&
+            !canEditFolder &&
+            !canDeleteFolder &&
+            !canCreateFolder &&
+            !canManageAccess
+          ) {
+            return;
+          }
+
+          formVal[subject]!.push({
+            read: canReadFolder,
+            create: canCreateFolder,
+            edit: canEditFolder,
+            delete: canDeleteFolder,
+            [ProjectPermissionSecretFolderActions.ManageAccess]: canManageAccess,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
         const canDelete = action.includes(ProjectPermissionActions.Delete);
         const canCreate = action.includes(ProjectPermissionActions.Create);
-
-        // remove this condition later
-        // keeping when old routes create permission with folder read
-        if (
-          subject === ProjectPermissionSub.SecretFolders &&
-          canRead &&
-          !canEdit &&
-          !canDelete &&
-          !canCreate
-        ) {
-          return;
-        }
 
         formVal[subject]!.push({
           read: canRead,
@@ -2895,6 +2930,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove Certificates from Destination",
         value: ProjectPermissionPkiSyncActions.RemoveCertificates,
         description: "Remove synced certificates from the destination"
+      },
+      {
+        label: "Set Health Check",
+        value: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+        description: "Set the command a sync runs on the destination host before delivering"
+      },
+      {
+        label: "Set Post-Sync Command",
+        value: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+        description: "Set the command a sync runs on the destination host after delivering"
       }
     ]
   },

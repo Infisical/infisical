@@ -308,6 +308,7 @@ export type TDashboardStats = {
   totals: {
     total: number;
     active: number;
+    renewed: number;
     expiringSoon: number;
     expired: number;
     revoked: number;

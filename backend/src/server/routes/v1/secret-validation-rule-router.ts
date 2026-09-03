@@ -19,7 +19,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     url: "/:projectId/secret-validation-rules",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretValidationRules",
       tags: [ApiDocsTags.SecretValidationRules],
       description: "List Secret Validation Rules",
@@ -32,7 +32,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const rules = await server.services.secretValidationRule.listByProjectId({
         actor: req.permission.type,
@@ -51,7 +51,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     url: "/:projectId/secret-validation-rules",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "createSecretValidationRule",
       tags: [ApiDocsTags.SecretValidationRules],
       description: "Create Secret Validation Rule",
@@ -126,7 +126,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     url: "/:projectId/secret-validation-rules/:ruleId",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretValidationRule",
       tags: [ApiDocsTags.SecretValidationRules],
       description: "Update Secret Validation Rule",
@@ -213,7 +213,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     url: "/:projectId/secret-validation-rules/:ruleId",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "deleteSecretValidationRule",
       tags: [ApiDocsTags.SecretValidationRules],
       description: "Delete Secret Validation Rule",

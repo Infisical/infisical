@@ -12,7 +12,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input,
   RadioGroup,
   RadioGroupItem,
   TextArea
@@ -24,6 +23,7 @@ import { IssuerType, useGetCertificateProfileById } from "@app/hooks/api/certifi
 import {
   certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -41,6 +41,7 @@ import {
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
+import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
@@ -56,6 +57,8 @@ import {
   deriveTemplateConstraints,
   useCertificatePolicyOptions
 } from "./useCertificatePolicy";
+import { usePolicyGuidance } from "./usePolicyGuidance";
+import { ValidityField } from "./ValidityField";
 
 const formSchema = z
   .object({
@@ -236,6 +239,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     watch,
     setValue,
     trigger,
+    clearErrors,
     formState,
     formState: { isSubmitting }
   } = useForm<RenewalFormData>({
@@ -310,6 +314,18 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     [availableSignatureAlgorithms, watchedSignatureAlgorithm]
   );
 
+  const caKeyAlgorithm = profile?.certificateAuthority?.keyAlgorithm;
+
+  // The form seeds this from the existing certificate, which the same fixed CA signed, so a mismatch
+  // should be unreachable. Kept as a guard because the seeded value is submitted untouched by default,
+  // and the field asking again beats posting one the CA is guaranteed to reject.
+  useEffect(() => {
+    if (!isOpen || !watchedSignatureAlgorithm) return;
+    if (getCaSignatureIncompatibilityReason(watchedSignatureAlgorithm, caKeyAlgorithm)) {
+      setValue("signatureAlgorithm", "");
+    }
+  }, [isOpen, watchedSignatureAlgorithm, caKeyAlgorithm, setValue]);
+
   const selectableSubjectAttributeTypes = useMemo(
     () =>
       Array.from(
@@ -357,11 +373,27 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     return keys;
   }, [keySource, constraints.shouldShowSubjectSection, constraints.shouldShowSanSection]);
 
+  const policy = usePolicyGuidance({
+    policy: policyData,
+    watch,
+    clearErrors,
+    isSubjectSectionShown: constraints.shouldShowSubjectSection,
+    isSanSectionShown: constraints.shouldShowSanSection,
+    isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr,
+    isValidityEvaluated: !isExternalTemplateProfile,
+    resetKey: certificate?.id
+  });
+
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
     stepKeys,
     stepFields: STEP_FIELDS,
     invalidMessage: "Please fix the highlighted fields before renewing.",
-    validateStep: (fields) => trigger(fields as (keyof RenewalFormData)[])
+    validateStep: async (fields) => {
+      // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
+      policy.reveal(fields);
+      if (!(await trigger(fields as (keyof RenewalFormData)[]))) return false;
+      return policy.findBlockedFields(fields).length === 0;
+    }
   });
 
   const steps = useMemo(
@@ -384,9 +416,20 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       return;
 
     seededCertificateIdRef.current = certificate.id;
-    reset(buildRenewalFormDefaults(certificate, constraints));
+    const renewalDefaults = buildRenewalFormDefaults(certificate, constraints);
+    // Seed the rows the policy requires so they are visible as fields from the start.
+    const seeded = withRequiredRows(
+      buildPolicyRules(policyData),
+      renewalDefaults.subjectAttributes ?? [],
+      renewalDefaults.subjectAltNames ?? []
+    );
+    reset({
+      ...renewalDefaults,
+      subjectAttributes: seeded.subjectAttributes,
+      subjectAltNames: seeded.subjectAltNames
+    });
     setStep(0);
-  }, [isOpen, certificate, isPolicyResolved, constraints, reset]);
+  }, [isOpen, certificate, isPolicyResolved, constraints, policyData, reset]);
 
   const closeWizard = () => {
     handlePopUpToggle("renewCertificate", false);
@@ -396,6 +439,20 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const onFormSubmit = async (formData: RenewalFormData) => {
     if (!certificateId) return;
+
+    // Reachable when a step was skipped or its values changed after it was cleared. Reveal the
+    // whole offending step, so the finding is visible wherever in it the requester lands.
+    const [blockedField] = policy.findBlockedFields(stepKeys.flatMap((key) => STEP_FIELDS[key]));
+    if (blockedField) {
+      const blockedStep = stepKeys.findIndex((key) => STEP_FIELDS[key].includes(blockedField));
+      policy.reveal(blockedStep >= 0 ? STEP_FIELDS[stepKeys[blockedStep]] : [blockedField]);
+      if (blockedStep >= 0) setStep(blockedStep);
+      createNotification({
+        text: "Resolve the policy violations before renewing this certificate.",
+        type: "error"
+      });
+      return;
+    }
 
     const result = await renewCertificate({
       certificateId,
@@ -541,18 +598,12 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               </Field>
             )}
           />
-          <Controller
+          <ValidityField
             control={control}
-            name="ttl"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>
-                  Validity (TTL) <span className="text-danger">*</span>
-                </FieldLabel>
-                <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(error)} />
-                <FieldError errors={[error]} />
-              </Field>
-            )}
+            label="Validity (TTL)"
+            hint={policy.ttlHint}
+            policyError={policy.ttlError}
+            revealPolicyError={policy.isRevealed("ttl")}
           />
         </div>
       )}
@@ -570,6 +621,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               rowErrors={rowErrorsOf(
                 (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
               )}
+              policyRows={policy.subject.rows}
+              policyNotices={policy.subject.notices}
+              revealPolicyErrors={policy.isRevealed("subjectAttributes")}
             />
           )}
           {constraints.shouldShowSanSection && (
@@ -583,6 +637,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               rowErrors={rowErrorsOf(
                 (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
               )}
+              policyRows={policy.sans.rows}
+              policyNotices={policy.sans.notices}
+              revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
           )}
         </div>
@@ -591,21 +648,14 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       {currentStepKey === "options" && (
         <div className="space-y-4">
           {!isExternalTemplateProfile && (
-            <Controller
+            <ValidityField
               control={control}
-              name="ttl"
-              render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel>
-                    Validity (TTL) <span className="text-danger">*</span>
-                  </FieldLabel>
-                  <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(error)} />
-                  <FieldDescription>
-                    The renewed certificate is valid for this long, starting now.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </Field>
-              )}
+              className="mb-4"
+              label="Validity (TTL)"
+              description="The renewed certificate is valid for this long, starting now."
+              hint={policy.ttlHint}
+              policyError={policy.ttlError}
+              revealPolicyError={policy.isRevealed("ttl")}
             />
           )}
 
@@ -613,6 +663,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
             control={control}
             availableSignatureAlgorithms={selectableSignatureAlgorithms}
             availableKeyAlgorithms={selectableKeyAlgorithms}
+            caKeyAlgorithm={caKeyAlgorithm}
             keyAlgorithmDisabledReason={
               keySource === CertificateRenewalKeySource.Reuse
                 ? "The key algorithm is fixed while the existing key pair is reused."

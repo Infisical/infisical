@@ -48,8 +48,13 @@ Once someone is a product member, they still need to be granted access to specif
 | Role | What they can do |
 |------|------------------|
 | **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Operator** | Launch sessions and [view account credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
 | **Connector** | Launch sessions and connect to accounts |
 | **Auditor** | View audit logs and session recordings |
+
+<Note>
+  **Operator** is Connector plus the right to read an account's stored password or key. Grant it only where someone genuinely needs the credential in hand, since a revealed credential leaves no session recording.
+</Note>
 
 ### Folder vs account memberships
 

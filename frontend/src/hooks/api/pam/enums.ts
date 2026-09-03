@@ -16,7 +16,8 @@ export enum PamAccountType {
 
 export enum PamDiscoveryType {
   ActiveDirectory = "active-directory",
-  Unix = "unix"
+  Unix = "unix",
+  Postgres = "postgres"
 }
 
 export enum PamDiscoverySchedule {
@@ -121,6 +122,11 @@ export enum PamResourcePermissionActions {
   ManageRotation = "manage-rotation",
   ManageMembers = "manage-members",
   ViewAuditLogs = "view-audit-logs"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow

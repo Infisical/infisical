@@ -97,7 +97,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
 
 #### Template helper functions
 
-In addition to referencing attributes directly, you can use the `stripPrefix` helper function to transform attribute values within your policy templates.
+In addition to referencing attributes directly, you can use helper functions to transform attribute values within your policy templates.
 
 **stripPrefix**
 
@@ -115,4 +115,41 @@ Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
 
 ```handlebars
 {{ stripPrefix identity.auth.aws.arn 'arn:aws:iam::123456789012:' }}  ->  user/example-user
+```
+
+**trimSuffix**
+
+Removes a suffix from the end of a string. The suffix is a glob pattern, using the same syntax as
+the **Glob Match** condition operator, so it can match a part of the value that varies. The
+shortest matching suffix is removed. If nothing at the end of the string matches the pattern, the
+string is returned unchanged.
+
+This is useful when a namespace or resource name carries a generated trailing segment. For
+example, an ArgoCD ApplicationSet using the pull request generator creates one namespace per open
+pull request, such as `myapp-pr-1` and `myapp-pr-42`. Trimming the generated segment lets every one
+of those namespaces resolve to the same secret path as the base namespace, without writing a
+condition for each pull request.
+
+A pattern can contain at most five `*` or `?` wildcards. A pattern with more than that trims
+nothing, and the string is returned unchanged.
+
+**Examples:**
+
+Given `identity.auth.kubernetes.namespace` = `myapp-pr-42`:
+
+```handlebars
+{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
+```
+
+Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the pattern):
+
+```handlebars
+{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}  ->  myapp
+```
+
+You can combine this with a secret path condition so both the base namespace and its pull request
+namespaces read from one path:
+
+```handlebars
+/{{ trimSuffix identity.auth.kubernetes.namespace '-pr-*' }}/**
 ```

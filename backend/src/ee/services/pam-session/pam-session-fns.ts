@@ -3,7 +3,7 @@ import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { createGatewayConnection, createRelayConnection, destroyGatewayTunnel } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -12,6 +12,15 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
+
+export const LIVE_PAM_SESSION_STATUSES = [PamSessionStatus.Active, PamSessionStatus.Starting];
+
+export const isPamSessionLive = (session: { status: string; expiresAt: Date }) =>
+  LIVE_PAM_SESSION_STATUSES.includes(session.status as PamSessionStatus) &&
+  new Date(session.expiresAt).getTime() > Date.now();
+
+export const pamSessionRemainingSeconds = (session: { expiresAt: Date }) =>
+  Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
 
 export const resolvePamSessionDistinctId = async ({
   session,
@@ -75,12 +84,13 @@ export const reportPamSessionEnded = async ({
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent
 // best-effort (fire-and-forget) so callers don't block on the gateway round-trip, and shared by every
-// termination path (manual terminate, grant revocation) so they can't drift.
+// termination path (manual terminate, grant revocation, expiry) so they can't drift.
 export const sendPamSessionCancellationSignal = ({
   sessionId,
   gatewayId,
   accountType,
   actorId,
+  actorType = ActorType.USER,
   actorEmail,
   gatewayV2Service
 }: {
@@ -88,11 +98,14 @@ export const sendPamSessionCancellationSignal = ({
   gatewayId: string;
   accountType: string;
   actorId: string;
+  actorType?: ActorType.USER | ActorType.IDENTITY;
   actorEmail: string;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
   void (async () => {
     let relayConn: net.Socket | null = null;
+    let cancelConn: net.Socket | null = null;
+    const tunnelId = sessionId;
     try {
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId,
@@ -100,7 +113,7 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: ActorType.USER, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
       });
       if (!certs) {
         logger.error(
@@ -113,18 +126,22 @@ export const sendPamSessionCancellationSignal = ({
         relayHost: certs.relayHost,
         clientCertificate: certs.relay.clientCertificate,
         clientPrivateKey: certs.relay.clientPrivateKey,
-        serverCertificateChain: certs.relay.serverCertificateChain
+        serverCertificateChain: certs.relay.serverCertificateChain,
+        tunnelId
       });
-      const cancelConn = await createGatewayConnection(
+      cancelConn = await createGatewayConnection(
         relayConn,
         certs.gateway,
-        GatewayProxyProtocol.PamSessionCancellation
+        GatewayProxyProtocol.PamSessionCancellation,
+        tunnelId
       );
       cancelConn.end();
     } catch (err) {
       logger.error({ sessionId, err }, `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`);
     } finally {
-      relayConn?.destroy();
+      // end() leaves the inner TLS session reading the gateway's close_notify through relayConn, so
+      // the transport must not be destroyed first.
+      destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
     }
   })();
 };
@@ -155,7 +172,7 @@ export const terminatePamSessions = async ({
     {
       $in: {
         id: sessions.map((session) => session.id),
-        status: [PamSessionStatus.Active, PamSessionStatus.Starting]
+        status: LIVE_PAM_SESSION_STATUSES
       }
     },
     { status: PamSessionStatus.Terminated, endedAt: new Date() },

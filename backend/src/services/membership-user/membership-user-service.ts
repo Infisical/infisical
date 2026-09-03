@@ -15,7 +15,7 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -45,6 +45,7 @@ import { getServerCfg } from "../super-admin/super-admin-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
 import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
@@ -143,12 +144,43 @@ export const membershipUserServiceFactory = ({
     })
   };
 
-  const $getUsers = async (usernames: string[]) => {
+  const $getUsers = async (usernames: string[], orgId: string, rootOrgId?: string | null) => {
     const existingUsers = await userDAL.find({ $in: { username: usernames } });
-    if (existingUsers.length !== usernames.length) {
-      const newUserEmails = usernames
-        .filter((inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail))
-        .map((el) => el.toLowerCase());
+    const unmatched = usernames.filter((username) => !existingUsers.some((el) => el.username === username));
+
+    // Something that isn't a username may still be an IdP identifier we already recorded on the
+    // member's SSO alias (a UPN, say). This is what lets a provisioning system that only knows IdP
+    // identifiers name existing users. Has to run before the email validation below, since an
+    // externalId needn't look like an email and "Invalid emails" would be a misleading failure.
+    let aliasResolvedIdentifiers: string[] = [];
+    if (unmatched.length) {
+      const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+        identifiers: unmatched,
+        orgId,
+        rootOrgId,
+        userAliasDAL,
+        userDAL
+      });
+
+      if (ambiguousIdentifiers.length) {
+        throw new BadRequestError({
+          message: `Identifier(s) ${ambiguousIdentifiers
+            .map((el) => `'${el}'`)
+            .join(
+              ", "
+            )} match more than one SSO account in this organization. Invite the user by their email address instead, or contact support to resolve the duplicate.`
+        });
+      }
+
+      // Track identifiers, not resolved usernames: an alias-resolved user's username is their
+      // email, which is never the identifier that found them.
+      aliasResolvedIdentifiers = [...resolved.keys()];
+      existingUsers.push(...resolved.values());
+    }
+
+    const stillUnmatched = unmatched.filter((username) => !aliasResolvedIdentifiers.includes(username));
+    if (stillUnmatched.length) {
+      const newUserEmails = stillUnmatched.map((el) => el.toLowerCase());
 
       const invalidEmails = newUserEmails.filter((el) => {
         try {
@@ -199,7 +231,11 @@ export const membershipUserServiceFactory = ({
         }
       });
     }
-    return existingUsers;
+
+    // A person can now arrive twice in one request, once by username and once by alias. Callers
+    // count this list against memberships and insert from it, so a dupe trips
+    // membership_unique_user_org.
+    return unique(existingUsers, (user) => user.id);
   };
 
   const createMembership = async (dto: TCreateMembershipUserDTO) => {
@@ -271,7 +307,7 @@ export const membershipUserServiceFactory = ({
     }
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
-    const users = await $getUsers(sanitizedEmails);
+    const users = await $getUsers(sanitizedEmails, dto.permission.orgId, orgDetails.rootOrgId);
     const existingMemberships = await membershipUserDAL.find({
       scope: scopeData.scope,
       ...scopeDatabaseFields,

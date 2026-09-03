@@ -1330,3 +1330,35 @@ export const isCredentialConfigured = (
     return typeof value === "string" && value.trim().length > 0;
   });
 };
+
+export const revealedCredentialsSchema = (accountType: TSupportedAccountType) => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType];
+  return config.sanitizedCredentials.extend(
+    Object.fromEntries(
+      fieldsFromSchema(config.credentials, config.ui)
+        .filter((field) => field.secret)
+        .map((field) => [field.key, z.string().optional()])
+    )
+  );
+};
+
+export const noRevealableCredentialMessage = (accountName: string) =>
+  `Account '${accountName}' has no stored credential to reveal. Its authentication method brokers access per session instead.`;
+
+export const hasRevealableCredential = (
+  accountType: PamAccountType,
+  rawCredentials?: Record<string, unknown>
+): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+
+  const secretFields = fieldsFromSchema(config.credentials, config.ui).filter((field) => field.secret);
+  if (!rawCredentials) return secretFields.length > 0;
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return secretFields.some((field) => {
+    if (field.showWhen && credentials[field.showWhen.field] !== field.showWhen.equals) return false;
+    const value = credentials[field.key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+};

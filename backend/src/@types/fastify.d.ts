@@ -101,9 +101,11 @@ import { TCertificateTemplateServiceFactory } from "@app/services/certificate-te
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TFolderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
@@ -295,6 +297,7 @@ declare module "fastify" {
       org: TOrgServiceFactory;
       oidc: TOidcConfigServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
+      encryptionKeyRotation: TEncryptionKeyRotationServiceFactory;
       user: TUserServiceFactory;
       group: TGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
@@ -452,6 +455,7 @@ declare module "fastify" {
       membershipIdentity: TMembershipIdentityServiceFactory;
       membershipGroup: TMembershipGroupServiceFactory;
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
+      folderPermission: TFolderPermissionServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;

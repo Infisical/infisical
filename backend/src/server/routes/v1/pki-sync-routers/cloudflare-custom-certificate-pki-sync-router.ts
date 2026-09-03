@@ -20,7 +20,8 @@ export const registerCloudflareCustomCertificatePkiSyncRouter = async (
     updateSchema: UpdateCloudflareCustomCertificatePkiSyncSchema,
     syncOptions: {
       canImportCertificates: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });
