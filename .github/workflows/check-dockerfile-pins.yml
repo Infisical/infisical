@@ -9,20 +9,30 @@ on:
 
 jobs:
     cli-pin:
-        name: CLI version comes from build-versions.env
+        name: CLI pin matches build-versions.env
         runs-on: ubuntu-latest
         steps:
             - name: ☁️ Checkout source
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-            # Five Dockerfiles install the CLI. The version is passed as a build arg
-            # from build-versions.env so there is one place to edit; this catches a
-            # version being hardcoded back into a Dockerfile.
-            - name: No hardcoded CLI version
+            # Five Dockerfiles install the CLI. They keep an ARG default so external
+            # builders (Northflank, Render, anyone running docker build) work without
+            # passing anything; CI and compose override it from build-versions.env.
+            # This asserts the defaults have not drifted from that file.
+            - name: Defaults match build-versions.env
               run: |
                   set -euo pipefail
-                  if grep -rnE 'infisical=[0-9]' --include='Dockerfile*' .; then
-                    echo "::error::Hardcoded Infisical CLI version. Use the INFISICAL_CLI_VERSION build arg and set it in build-versions.env"
-                    exit 1
+                  want="$(grep -oE '^INFISICAL_CLI_VERSION=.+' build-versions.env | cut -d= -f2)"
+                  echo "build-versions.env: $want"
+                  bad=0
+                  for f in $(grep -rl 'ARG INFISICAL_CLI_VERSION=' --include='Dockerfile*' .); do
+                    got="$(grep -oE '^ARG INFISICAL_CLI_VERSION=.+' "$f" | cut -d= -f2)"
+                    if [ "$got" != "$want" ]; then
+                      echo "::error file=$f::ARG default is $got, build-versions.env says $want"
+                      bad=1
+                    fi
+                  done
+                  if grep -rnE 'install -y infisical=[0-9]' --include='Dockerfile*' .; then
+                    echo "::error::Version hardcoded into the install. Use the ARG."
+                    bad=1
                   fi
-                  grep -qE '^INFISICAL_CLI_VERSION=[0-9]+\.[0-9]+\.[0-9]+$' build-versions.env
-                  echo "CLI version is sourced from build-versions.env"
+                  exit $bad

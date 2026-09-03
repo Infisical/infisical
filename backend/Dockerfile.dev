@@ -1,4 +1,4 @@
-ARG INFISICAL_CLI_VERSION
+ARG INFISICAL_CLI_VERSION=0.43.128
 
 FROM debian:trixie-slim AS oracle
 RUN apt-get update && apt-get install -y unzip wget ca-certificates \
