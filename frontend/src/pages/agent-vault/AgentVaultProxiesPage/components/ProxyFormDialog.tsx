@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,7 +21,10 @@ import {
   FieldTitle,
   Input,
   RadioGroup,
-  RadioGroupItem
+  RadioGroupItem,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   AgentVaultUnmatchedHost,
@@ -185,13 +189,20 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
               name="pollInterval"
               render={({ field, fieldState }) => (
                 <Field>
-                  <FieldLabel>Poll Interval</FieldLabel>
+                  <FieldLabel>
+                    Poll Interval
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        How often the proxy asks for its configuration, in seconds. It is how long a
+                        change here takes to reach a running agent.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <FieldContent>
                     <Input {...field} type="number" min={10} max={300} />
-                    <FieldDescription>
-                      How often the proxy asks for its configuration, in seconds. It is how long a
-                      change here takes to reach a running agent.
-                    </FieldDescription>
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>
