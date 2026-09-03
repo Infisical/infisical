@@ -131,7 +131,7 @@ export const AgentVaultAccessBundlesPage = () => {
     emptyDescription = "Create one to group the connections an agent may use.";
   } else {
     emptyTitle = "No access bundles available";
-    emptyDescription = "Ask an Agent Vault admin to grant you an access bundle.";
+    emptyDescription = "Ask an admin to grant you an access bundle.";
   }
 
   return (

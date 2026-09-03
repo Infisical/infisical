@@ -48,7 +48,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleAdd = async () => {
     if (!group) return;
     await addMember.mutateAsync({ projectId: currentProject.id, groupId: group.value, role });
-    createNotification({ text: `"${group.label}" now has Agent Vault`, type: "success" });
+    createNotification({ text: `"${group.label}" added`, type: "success" });
     setGroup(null);
     onOpenChange(false);
   };
@@ -59,7 +59,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Add Group</DialogTitle>
           <DialogDescription>
-            Everyone in the group gets Agent Vault, including people added to it later.
+            Everyone in the group gets access, including people added to it later.
           </DialogDescription>
         </DialogHeader>
 

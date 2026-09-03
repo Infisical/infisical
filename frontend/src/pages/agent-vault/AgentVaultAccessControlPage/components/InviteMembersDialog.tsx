@@ -58,7 +58,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
       role
     });
     createNotification({
-      text: `${addedCount} member${addedCount === 1 ? "" : "s"} added to Agent Vault`,
+      text: `${addedCount} user${addedCount === 1 ? "" : "s"} added`,
       type: "success"
     });
     setSelected([]);
@@ -69,14 +69,12 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Members</DialogTitle>
-          <DialogDescription>
-            Give people in {currentOrg.name} access to Agent Vault.
-          </DialogDescription>
+          <DialogTitle>Add Users</DialogTitle>
+          <DialogDescription>Add existing members of {currentOrg.name}.</DialogDescription>
         </DialogHeader>
 
         <Field>
-          <FieldLabel>Members</FieldLabel>
+          <FieldLabel>Users</FieldLabel>
           <FieldContent>
             <FilterableSelect
               isMulti
@@ -107,7 +105,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
             isDisabled={selected.length === 0}
             onClick={handleAdd}
           >
-            Add Members
+            Add Users
           </Button>
         </DialogFooter>
       </DialogContent>

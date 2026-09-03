@@ -50,7 +50,7 @@ export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Change Role</DialogTitle>
-          <DialogDescription>What {subject} can do across Agent Vault.</DialogDescription>
+          <DialogDescription>What {subject} can do here.</DialogDescription>
         </DialogHeader>
         <Field>
           <FieldLabel>Product Role</FieldLabel>

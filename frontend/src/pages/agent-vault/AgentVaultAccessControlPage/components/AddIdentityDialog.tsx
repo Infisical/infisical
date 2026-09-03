@@ -56,7 +56,7 @@ export const AddIdentityDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleAdd = async () => {
     if (!identity) return;
     await addMember.mutateAsync({ projectId: currentProject.id, identityId: identity.value, role });
-    createNotification({ text: `"${identity.label}" now has Agent Vault`, type: "success" });
+    createNotification({ text: `"${identity.label}" added`, type: "success" });
     setIdentity(null);
     onOpenChange(false);
   };
@@ -67,7 +67,7 @@ export const AddIdentityDialog = ({ isOpen, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Add Machine Identity</DialogTitle>
           <DialogDescription>
-            An identity with Agent Vault can mint its own sessions over the bundles granted to it.
+            Add an existing machine identity from your organization.
           </DialogDescription>
         </DialogHeader>
 

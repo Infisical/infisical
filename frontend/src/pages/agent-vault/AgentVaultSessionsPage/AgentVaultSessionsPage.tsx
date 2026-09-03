@@ -125,7 +125,7 @@ export const AgentVaultSessionsPage = () => {
     emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
     emptyDescription = isAdmin
       ? "Create an access bundle first, then mint a session over it. Agents also need a proxy to route through."
-      : "Ask an Agent Vault admin to grant you an access bundle.";
+      : "Ask an admin to grant you an access bundle.";
   } else {
     emptyTitle = "No sessions yet";
     emptyDescription = "Create a session to get a token an agent can run with.";

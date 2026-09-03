@@ -64,7 +64,7 @@ export const IdentitiesTab = () => {
       identityId: toRemove.identityId
     });
     createNotification({
-      text: `"${toRemove.name}" no longer has access to Agent Vault`,
+      text: `"${toRemove.name}" removed`,
       type: "success"
     });
     setToRemove(null);
@@ -106,7 +106,7 @@ export const IdentitiesTab = () => {
               <EmptyDescription>
                 {search
                   ? "Try a different search term."
-                  : "Add a machine identity so an agent can mint its own sessions."}
+                  : "Add a machine identity to give it access."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -188,8 +188,8 @@ export const IdentitiesTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setToRemove(null);
         }}
-        title={`Remove "${toRemove?.name ?? ""}" from Agent Vault`}
-        description="The identity itself is left alone. It loses Agent Vault and every bundle granted to it."
+        title={`Remove "${toRemove?.name ?? ""}"`}
+        description="The identity itself is left alone. It loses access and every bundle granted to it."
         confirmKey={toRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={removeMember.isPending}

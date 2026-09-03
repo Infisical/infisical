@@ -67,7 +67,7 @@ export const GroupsTab = () => {
     if (!groupToRemove) return;
     await removeMember.mutateAsync({ projectId: currentProject.id, groupId: groupToRemove.id });
     createNotification({
-      text: `"${groupToRemove.name}" no longer has access to Agent Vault`,
+      text: `"${groupToRemove.name}" removed`,
       type: "success"
     });
     setGroupToRemove(null);
@@ -104,7 +104,7 @@ export const GroupsTab = () => {
               <EmptyDescription>
                 {search
                   ? "Try a different search term."
-                  : "Add a group to give everyone in it Agent Vault."}
+                  : "Add a group to give everyone in it access."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -182,8 +182,8 @@ export const GroupsTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
-        title={`Remove "${groupToRemove?.name ?? ""}" from Agent Vault`}
-        description="Everyone in the group loses Agent Vault, along with every bundle granted to it."
+        title={`Remove "${groupToRemove?.name ?? ""}"`}
+        description="Everyone in the group loses access, along with every bundle granted to it."
         confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={removeMember.isPending}

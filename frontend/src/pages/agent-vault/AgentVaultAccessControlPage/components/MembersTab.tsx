@@ -75,7 +75,7 @@ export const MembersTab = () => {
       userId: memberToRemove.user.id
     });
     createNotification({
-      text: `${displayName(memberToRemove)} no longer has access to Agent Vault`,
+      text: `${displayName(memberToRemove)} removed`,
       type: "success"
     });
     setMemberToRemove(null);
@@ -91,14 +91,14 @@ export const MembersTab = () => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search members..."
+            placeholder="Search users..."
           />
         </InputGroup>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsInviteOpen(true)}>
               <PlusIcon />
-              Add Members
+              Add Users
             </Button>
           )}
         </ProjectPermissionCan>
@@ -108,9 +108,9 @@ export const MembersTab = () => {
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>{search ? "No members match your search" : "No members yet"}</EmptyTitle>
+              <EmptyTitle>{search ? "No users match your search" : "No users yet"}</EmptyTitle>
               <EmptyDescription>
-                {search ? "Try a different search term." : "Add members to give them Agent Vault."}
+                {search ? "Try a different search term." : "Add users to give them access."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -166,7 +166,7 @@ export const MembersTab = () => {
                       {!isSelf && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open member actions">
+                            <IconButton variant="ghost" size="xs" aria-label="Open user actions">
                               <MoreHorizontalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
@@ -205,7 +205,7 @@ export const MembersTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);
         }}
-        title={`Remove "${memberToRemove ? displayName(memberToRemove) : ""}" from Agent Vault`}
+        title={`Remove "${memberToRemove ? displayName(memberToRemove) : ""}"`}
         description="They lose every access bundle granted to them, and any live session stops reaching its hosts at the next proxy poll."
         confirmKey={memberToRemove ? displayName(memberToRemove) : ""}
         confirmLabel="Remove"
