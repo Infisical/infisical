@@ -1,5 +1,3 @@
-import { StringDecoder } from "node:string_decoder";
-
 import RE2 from "re2";
 import { Client, ClientChannel } from "ssh2";
 
@@ -22,6 +20,13 @@ import {
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { generatePassword } from "../shared/utils";
+import {
+  escapeForPattern,
+  lineAt,
+  MAX_BUFFER_SIZE,
+  runExpectSession,
+  TInteractiveShellStream
+} from "./pty-expect-engine";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation-schemas";
 import {
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
@@ -29,9 +34,7 @@ import {
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation-types";
 
-const SHELL_TIMEOUT = 15_000;
-const MAX_BUFFER_SIZE = 64 * 1024;
-const MAX_TRANSCRIPT_SIZE = 4 * 1024;
+export type { TInteractiveShellStream } from "./pty-expect-engine";
 
 const SUDO_PROMPT = new RE2("\\[sudo\\]", "i");
 const ANY_PASSWORD_PROMPT = new RE2("password", "i");
@@ -45,47 +48,11 @@ const MANAGED_PASSWORD_CHANGE_FAILED = new RE2(
 const SELF_PASSWORD_CHANGE_FAILED = new RE2("\\berror\\b|\\bfail(?:ed|ure|s)?\\b|\\bunchanged\\b", "i");
 const SU_LOGIN_FAILED = new RE2("\\bauthentication\\s+failure\\b|\\bincorrect\\s+password\\b|\\bsu:", "i");
 
-export type TInteractiveShellStream = {
-  on(event: "data", listener: (chunk: Buffer) => void): void;
-  on(event: "close", listener: () => void): void;
-  on(event: "error", listener: (err: Error) => void): void;
-  write(data: string): void;
-  end(): void;
-};
+const passwdOverflowMessage = (t: string) =>
+  `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${t}`;
 
-const escapeForPattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const passwdTimeoutMessage = (t: string) => `Password change timed out. Output: ${t}`;
 
-const lineAt = (text: string, index: number) => {
-  const start = text.lastIndexOf("\n", index) + 1;
-  const end = text.indexOf("\n", index);
-  return (end === -1 ? text.slice(start) : text.slice(start, end)).trim();
-};
-
-// The transcript is interpolated into rotation errors, which are persisted and rendered in the UI,
-// so bounding and redaction live here: no individual error site can forget to apply them.
-const createTranscript = (secrets: (string | undefined)[]) => {
-  const knownSecrets = secrets.filter((secret): secret is string => Boolean(secret));
-  const redact = (value: string) =>
-    knownSecrets.reduce((redacted, secret) => redacted.replaceAll(secret, "***"), value);
-
-  let text = "";
-  let truncated = false;
-
-  return {
-    append: (chunk: string) => {
-      text += chunk;
-      if (text.length > MAX_TRANSCRIPT_SIZE) {
-        text = text.slice(-MAX_TRANSCRIPT_SIZE);
-        truncated = true;
-      }
-    },
-    redact,
-    read: () => (truncated ? `...${redact(text)}` : redact(text))
-  };
-};
-
-// Execute a command via SSH exec with a PTY (no login shell, no MOTD)
-// Returns a stream that can be used for interactive I/O
 const execCommandWithPty = (client: Client, command: string): Promise<ClientChannel> => {
   return new Promise((resolve, reject) => {
     client.exec(command, { pty: true }, (err, stream) => {
@@ -98,84 +65,48 @@ const execCommandWithPty = (client: Client, command: string): Promise<ClientChan
   });
 };
 
-// Drives the prompts of `passwd <username>` for managed rotation (admin changing another user's
-// password). Prompts are matched against everything received so far, not just the arriving chunk:
-// a PTY behind an SSH channel and a gateway tunnel re-segments freely, so a prompt can straddle
-// two data events.
 export const runManagedPasswordChange = (
   stream: TInteractiveShellStream,
   newPassword: string,
   appConnectionPassword?: string
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const transcript = createTranscript([newPassword, appConnectionPassword]);
-    const decoder = new StringDecoder("utf8");
+  let step = 0;
+  let completed = false;
+  let errorMessage = "";
 
-    let pending = "";
-    let step = 0;
-    let completed = false;
-    let settled = false;
-    let closing = false;
-    let errorMessage = "";
+  return runExpectSession({
+    stream,
+    secrets: [newPassword, appConnectionPassword],
 
-    const safeReject = (error: Error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
-
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        stream.end();
-        safeReject(new Error(`Password change timed out. Output: ${transcript.read()}`));
-      }
-    }, SHELL_TIMEOUT);
-
-    const finish = () => {
-      closing = true;
-      clearTimeout(timeout);
-      stream.end();
-    };
-
-    // Matched text is dropped so the same bytes cannot satisfy a later step as well, which would
-    // send the new password a third time or read the first prompt as its own confirmation.
-    const consume = (match: RegExpExecArray) => {
-      pending = pending.slice(match.index + match[0].length);
-    };
-
-    const advance = (): boolean => {
-      const failure = MANAGED_PASSWORD_CHANGE_FAILED.exec(pending);
+    advance: (ctx) => {
+      const failure = MANAGED_PASSWORD_CHANGE_FAILED.exec(ctx.pending);
       if (failure) {
-        errorMessage = transcript.redact(lineAt(pending, failure.index));
-        consume(failure);
-        finish();
+        errorMessage = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+        ctx.consume(failure);
+        ctx.finish();
         return false;
       }
 
       if (step === 0) {
-        const sudoPrompt = SUDO_PROMPT.exec(pending);
+        const sudoPrompt = SUDO_PROMPT.exec(ctx.pending);
         if (sudoPrompt) {
           if (!appConnectionPassword) {
-            clearTimeout(timeout);
-            safeReject(
+            ctx.safeReject(
               new Error(
                 "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
               )
             );
-            stream.end();
             return false;
           }
-          consume(sudoPrompt);
-          stream.write(`${appConnectionPassword}\n`);
-          // Still step 0: the new-password prompt follows, and may already be in this buffer.
+          ctx.consume(sudoPrompt);
+          ctx.write(`${appConnectionPassword}\n`);
           return true;
         }
 
-        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(pending);
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.pending);
         if (newPasswordPrompt) {
-          consume(newPasswordPrompt);
-          stream.write(`${newPassword}\n`);
+          ctx.consume(newPasswordPrompt);
+          ctx.write(`${newPassword}\n`);
           step = 1;
           return true;
         }
@@ -184,10 +115,10 @@ export const runManagedPasswordChange = (
       }
 
       if (step === 1) {
-        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(pending);
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.pending);
         if (confirmPrompt) {
-          consume(confirmPrompt);
-          stream.write(`${newPassword}\n`);
+          ctx.consume(confirmPrompt);
+          ctx.write(`${newPassword}\n`);
           step = 2;
           return true;
         }
@@ -195,69 +126,34 @@ export const runManagedPasswordChange = (
         return false;
       }
 
-      const success = PASSWORD_CHANGE_SUCCEEDED.exec(pending);
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.pending);
       if (success) {
-        consume(success);
+        ctx.consume(success);
         completed = true;
-        finish();
+        ctx.finish();
       }
 
       return false;
-    };
+    },
 
-    stream.on("data", (chunk: Buffer) => {
-      if (settled || closing) return;
-
-      const text = decoder.write(chunk);
-      if (!text) return;
-
-      transcript.append(text);
-      pending += text;
-
-      // A host can coalesce several prompts into one chunk, and once it is waiting on our answer no
-      // further data event arrives, so advance until nothing more matches instead of once per event.
-      let progressed = true;
-      while (progressed && !settled && !closing) {
-        progressed = advance();
-      }
-
-      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
-        clearTimeout(timeout);
-        stream.end();
-        safeReject(
-          new Error(
-            `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
-          )
-        );
-      }
-    });
-
-    stream.on("close", () => {
-      clearTimeout(timeout);
-      const tail = decoder.end();
-      if (tail) transcript.append(tail);
-      if (settled) return;
-      settled = true;
-
+    resolveOnClose: (ctx) => {
       if (errorMessage && !completed) {
-        reject(new Error(`Password change failed: ${errorMessage}`));
-      } else if (completed || step >= 2) {
-        resolve();
-      } else {
-        reject(new Error(`Password change incomplete (step ${step}). Output: ${transcript.read()}`));
+        return { resolve: false, error: new Error(`Password change failed: ${errorMessage}`) };
       }
-    });
+      if (completed || step >= 2) {
+        return { resolve: true };
+      }
+      return {
+        resolve: false,
+        error: new Error(`Password change incomplete (step ${step}). Output: ${ctx.transcript.read()}`)
+      };
+    },
 
-    stream.on("error", (streamErr: Error) => {
-      clearTimeout(timeout);
-      safeReject(new Error(`Stream error: ${streamErr.message}`));
-    });
+    overflowMessage: passwdOverflowMessage,
+    timeoutMessage: passwdTimeoutMessage
   });
 };
 
-// Change password for managed rotation (admin changing another user's password)
-// Uses `sudo passwd <username>` (or `passwd <username>`) executed via PTY
-// LC_ALL=C forces English prompts regardless of system locale
 const changeManagedPassword = async (
   client: Client,
   targetUsername: string,
@@ -271,64 +167,35 @@ const changeManagedPassword = async (
   return runManagedPasswordChange(stream, newPassword, appConnectionPassword);
 };
 
-// Drives the prompts of `passwd` for self rotation (user changing their own password), matching
-// against everything received so far for the same reason as the managed handler.
 export const runSelfPasswordChange = (
   stream: TInteractiveShellStream,
   oldPassword: string,
   newPassword: string
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const transcript = createTranscript([oldPassword, newPassword]);
-    const decoder = new StringDecoder("utf8");
+  let step = 0;
+  let completed = false;
+  let errorMessage = "";
 
-    let pending = "";
-    let step = 0;
-    let completed = false;
-    let settled = false;
-    let closing = false;
-    let errorMessage = "";
+  return runExpectSession({
+    stream,
+    secrets: [oldPassword, newPassword],
 
-    const safeReject = (error: Error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
-
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        stream.end();
-        safeReject(new Error(`Password change timed out. Output: ${transcript.read()}`));
-      }
-    }, SHELL_TIMEOUT);
-
-    const finish = () => {
-      closing = true;
-      clearTimeout(timeout);
-      stream.end();
-    };
-
-    const consume = (match: RegExpExecArray) => {
-      pending = pending.slice(match.index + match[0].length);
-    };
-
-    const advance = (): boolean => {
+    advance: (ctx) => {
       if (step >= 1) {
-        const failure = SELF_PASSWORD_CHANGE_FAILED.exec(pending);
+        const failure = SELF_PASSWORD_CHANGE_FAILED.exec(ctx.pending);
         if (failure) {
-          errorMessage = transcript.redact(lineAt(pending, failure.index));
-          consume(failure);
-          finish();
+          errorMessage = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+          ctx.consume(failure);
+          ctx.finish();
           return false;
         }
       }
 
       if (step === 0) {
-        const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(pending);
+        const currentPasswordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.pending);
         if (currentPasswordPrompt) {
-          consume(currentPasswordPrompt);
-          stream.write(`${oldPassword}\n`);
+          ctx.consume(currentPasswordPrompt);
+          ctx.write(`${oldPassword}\n`);
           step = 1;
           return true;
         }
@@ -337,10 +204,10 @@ export const runSelfPasswordChange = (
       }
 
       if (step === 1) {
-        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(pending);
+        const newPasswordPrompt = NEW_PASSWORD_PROMPT.exec(ctx.pending);
         if (newPasswordPrompt) {
-          consume(newPasswordPrompt);
-          stream.write(`${newPassword}\n`);
+          ctx.consume(newPasswordPrompt);
+          ctx.write(`${newPassword}\n`);
           step = 2;
           return true;
         }
@@ -349,10 +216,10 @@ export const runSelfPasswordChange = (
       }
 
       if (step === 2) {
-        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(pending);
+        const confirmPrompt = CONFIRM_PASSWORD_PROMPT.exec(ctx.pending);
         if (confirmPrompt) {
-          consume(confirmPrompt);
-          stream.write(`${newPassword}\n`);
+          ctx.consume(confirmPrompt);
+          ctx.write(`${newPassword}\n`);
           step = 3;
           return true;
         }
@@ -360,133 +227,70 @@ export const runSelfPasswordChange = (
         return false;
       }
 
-      const success = PASSWORD_CHANGE_SUCCEEDED.exec(pending);
+      const success = PASSWORD_CHANGE_SUCCEEDED.exec(ctx.pending);
       if (success) {
-        consume(success);
+        ctx.consume(success);
         completed = true;
-        finish();
+        ctx.finish();
       }
 
       return false;
-    };
+    },
 
-    stream.on("data", (chunk: Buffer) => {
-      if (settled || closing) return;
-
-      const text = decoder.write(chunk);
-      if (!text) return;
-
-      transcript.append(text);
-      pending += text;
-
-      let progressed = true;
-      while (progressed && !settled && !closing) {
-        progressed = advance();
-      }
-
-      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
-        clearTimeout(timeout);
-        stream.end();
-        safeReject(
-          new Error(
-            `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
-          )
-        );
-      }
-    });
-
-    stream.on("close", () => {
-      clearTimeout(timeout);
-      const tail = decoder.end();
-      if (tail) transcript.append(tail);
-      if (settled) return;
-      settled = true;
-
+    resolveOnClose: (ctx) => {
       if (errorMessage && !completed) {
-        reject(new Error(`Password change failed: ${errorMessage}`));
-      } else if (completed || step >= 3) {
-        resolve();
-      } else {
-        reject(new Error(`Password change incomplete (step ${step}). Output: ${transcript.read()}`));
+        return { resolve: false, error: new Error(`Password change failed: ${errorMessage}`) };
       }
-    });
+      if (completed || step >= 3) {
+        return { resolve: true };
+      }
+      return {
+        resolve: false,
+        error: new Error(`Password change incomplete (step ${step}). Output: ${ctx.transcript.read()}`)
+      };
+    },
 
-    stream.on("error", (streamErr: Error) => {
-      clearTimeout(timeout);
-      safeReject(new Error(`Stream error: ${streamErr.message}`));
-    });
+    overflowMessage: passwdOverflowMessage,
+    timeoutMessage: passwdTimeoutMessage
   });
 };
 
-// Change password for self rotation (user changing their own password)
-// Uses `passwd` executed via PTY to handle interactive prompts
-// LC_ALL=C forces English prompts regardless of system locale
 const changeSelfPassword = async (client: Client, oldPassword: string, newPassword: string): Promise<void> => {
   const stream = await execCommandWithPty(client, "LC_ALL=C passwd");
 
   return runSelfPasswordChange(stream, oldPassword, newPassword);
 };
 
-// Drives the prompts of `su - <username>`, matching against everything received so far for the same
-// reason as the password handlers.
 export const runSuLoginVerification = (
   stream: TInteractiveShellStream,
   targetUsername: string,
   targetPassword: string
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const transcript = createTranscript([targetPassword]);
-    const decoder = new StringDecoder("utf8");
-    const whoamiReply = new RE2(escapeForPattern(targetUsername), "i");
+  const whoamiReply = new RE2(escapeForPattern(targetUsername), "i");
 
-    let pending = "";
-    let step = 0;
-    let completed = false;
-    let settled = false;
-    let closing = false;
+  let step = 0;
+  let completed = false;
 
-    const safeReject = (error: Error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
+  return runExpectSession({
+    stream,
+    secrets: [targetPassword],
 
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        stream.end();
-        safeReject(new Error(`su verification timed out. Output: ${transcript.read()}`));
-      }
-    }, SHELL_TIMEOUT);
-
-    const finish = () => {
-      closing = true;
-      clearTimeout(timeout);
-      stream.end();
-    };
-
-    const consume = (match: RegExpExecArray) => {
-      pending = pending.slice(match.index + match[0].length);
-    };
-
-    const advance = (): boolean => {
+    advance: (ctx) => {
       if (step >= 1) {
-        const failure = SU_LOGIN_FAILED.exec(pending);
+        const failure = SU_LOGIN_FAILED.exec(ctx.pending);
         if (failure) {
-          const diagnostic = transcript.redact(lineAt(pending, failure.index));
-          consume(failure);
-          clearTimeout(timeout);
-          safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${diagnostic}`));
-          stream.end();
+          const diagnostic = ctx.transcript.redact(lineAt(ctx.pending, failure.index));
+          ctx.consume(failure);
+          ctx.safeReject(new Error(`su authentication failed for user ${targetUsername}. Output: ${diagnostic}`));
           return false;
         }
       }
 
       if (step === 0) {
-        const passwordPrompt = ANY_PASSWORD_PROMPT.exec(pending);
+        const passwordPrompt = ANY_PASSWORD_PROMPT.exec(ctx.pending);
         if (passwordPrompt) {
-          consume(passwordPrompt);
-          stream.write(`${targetPassword}\n`);
+          ctx.consume(passwordPrompt);
+          ctx.write(`${targetPassword}\n`);
           step = 1;
           return true;
         }
@@ -495,73 +299,38 @@ export const runSuLoginVerification = (
       }
 
       if (step === 1) {
-        // Anything buffered here is su's own banner or shell prompt; only the reply to whoami names
-        // the user we ended up as, so it is dropped rather than sliced.
-        if (!pending.trim()) return false;
-        pending = "";
-        stream.write("whoami\n");
+        if (!ctx.pending.trim()) return false;
+        ctx.clearPending();
+        ctx.write("whoami\n");
         step = 2;
         return true;
       }
 
-      if (whoamiReply.test(pending)) {
+      if (whoamiReply.test(ctx.pending)) {
         completed = true;
-        stream.write("exit\n");
-        finish();
+        ctx.write("exit\n");
+        ctx.finish();
       }
 
       return false;
-    };
+    },
 
-    stream.on("data", (chunk: Buffer) => {
-      if (settled || closing) return;
-
-      const text = decoder.write(chunk);
-      if (!text) return;
-
-      transcript.append(text);
-      pending += text;
-
-      let progressed = true;
-      while (progressed && !settled && !closing) {
-        progressed = advance();
-      }
-
-      if (!settled && !closing && pending.length > MAX_BUFFER_SIZE) {
-        clearTimeout(timeout);
-        stream.end();
-        safeReject(
-          new Error(
-            `su verification failed for user ${targetUsername}: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${transcript.read()}`
-          )
-        );
-      }
-    });
-
-    stream.on("close", () => {
-      clearTimeout(timeout);
-      const tail = decoder.end();
-      if (tail) transcript.append(tail);
-      if (settled) return;
-      settled = true;
-
+    resolveOnClose: (ctx) => {
       if (completed) {
-        resolve();
-      } else {
-        reject(new Error(`su verification failed for user ${targetUsername}. Output: ${transcript.read()}`));
+        return { resolve: true };
       }
-    });
+      return {
+        resolve: false,
+        error: new Error(`su verification failed for user ${targetUsername}. Output: ${ctx.transcript.read()}`)
+      };
+    },
 
-    stream.on("error", (streamErr: Error) => {
-      clearTimeout(timeout);
-      safeReject(new Error(`Stream error: ${streamErr.message}`));
-    });
+    overflowMessage: (t) =>
+      `su verification failed for user ${targetUsername}: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${t}`,
+    timeoutMessage: (t) => `su verification timed out. Output: ${t}`
   });
 };
 
-// Verify credentials by using `su - <username>` via an existing SSH connection
-// Used as fallback when direct SSH login is not allowed for the target account
-// LC_ALL=C forces English prompts regardless of system locale
 const verifySuLogin = async (client: Client, targetUsername: string, targetPassword: string): Promise<void> => {
   const stream = await execCommandWithPty(client, `LC_ALL=C su - ${targetUsername}`);
 
@@ -617,14 +386,13 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       }
     };
 
-    // Attempt 1: Direct SSH login with target credentials
     let directSshError: string | undefined;
     try {
       await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
         const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
         client.destroy();
       });
-      return; // Direct SSH worked
+      return;
     } catch (error) {
       directSshError = (error as Error).message;
       logger.info(
@@ -634,7 +402,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       );
     }
 
-    // Attempt 2: SSH with app connection, then su to target user
     const appConnConfig: TSshConnectionConfig = {
       method: conn.method,
       app: conn.app,
@@ -664,7 +431,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     }
   };
 
-  // Main password rotation logic
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const conn = await getResolvedConnection();
     const { credentials } = conn;
@@ -728,7 +494,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
       }
     });
 
-    // Verify the new credentials work
     await $verifyCredentials(username, newPassword);
 
     return { username, password: newPassword };
@@ -746,9 +511,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     TUnixLinuxLocalAccountRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
     const currentPassword = credentialsToRevoke[activeIndex].password;
-    // We just rotate to a new password, essentially revoking old credentials
-    // For self rotation: we need current password to authenticate
-    // For managed rotation: admin uses their own credentials
     await $rotatePassword(currentPassword);
     return callback();
   };
@@ -756,9 +518,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TUnixLinuxLocalAccountRotationGeneratedCredentials
   > = async (_, callback, activeCredentials) => {
-    // For both methods, pass the current password
-    // Self rotation: needed to authenticate as the user
-    // Managed rotation: admin doesn't need it but it's harmless to pass
     const credentials = await $rotatePassword(activeCredentials.password);
     return callback(credentials);
   };
