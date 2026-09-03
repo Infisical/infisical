@@ -1,3 +1,9 @@
+# Versions pinned across multiple Dockerfiles live in one file and are exported
+# so compose can pass them as build args. Dockerfiles declare the ARG without a
+# default, so a build that misses this fails rather than installing an unpinned version.
+include build-versions.env
+export
+
 build:
 	docker-compose -f docker-compose.yml build
 

@@ -54,13 +54,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read pinned versions
+        run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
+
       - name: Compute image ref and tag
         id: meta
         run: |
           set -euo pipefail
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image=ghcr.io/${OWNER}/backend-fips-toolchain" >> "$GITHUB_OUTPUT"
-          echo "tag=${{ hashFiles('backend/Dockerfile.fips-toolchain') }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ hashFiles('backend/Dockerfile.fips-toolchain', 'build-versions.env') }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.arch }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -70,6 +73,8 @@ jobs:
           push: true
           platforms: linux/${{ matrix.arch }}
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}-${{ matrix.arch }}
+          build-args: |
+            INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
 
   manifest:
     name: Merge manifest
@@ -98,7 +103,7 @@ jobs:
           set -euo pipefail
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/backend-fips-toolchain"
-          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain') }}"
+          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain', 'build-versions.env') }}"
           for target in "$TAG" main; do
             docker buildx imagetools create \
               -t "${IMAGE}:${target}" \

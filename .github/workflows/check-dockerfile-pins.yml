@@ -5,24 +5,24 @@ on:
         types: [opened, synchronize]
         paths:
             - "**/Dockerfile*"
+            - "build-versions.env"
 
 jobs:
     cli-pin:
-        name: Infisical CLI pin is consistent
+        name: CLI version comes from build-versions.env
         runs-on: ubuntu-latest
         steps:
             - name: ☁️ Checkout source
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-            # Five Dockerfiles install the CLI and each carries its own pin, so they
-            # drift silently. Docker has no include, so this asserts instead.
-            - name: Every image pins the same CLI version
+            # Five Dockerfiles install the CLI. The version is passed as a build arg
+            # from build-versions.env so there is one place to edit; this catches a
+            # version being hardcoded back into a Dockerfile.
+            - name: No hardcoded CLI version
               run: |
                   set -euo pipefail
-                  pins="$(grep -rhoE 'infisical=[0-9]+\.[0-9]+\.[0-9]+' --include='Dockerfile*' . | sort -u)"
-                  count="$(printf '%s\n' "$pins" | grep -c . || true)"
-                  if [ "$count" -ne 1 ]; then
-                    echo "::error::Dockerfiles disagree on the Infisical CLI pin"
-                    grep -rnE 'infisical=[0-9]+\.[0-9]+\.[0-9]+' --include='Dockerfile*' .
+                  if grep -rnE 'infisical=[0-9]' --include='Dockerfile*' .; then
+                    echo "::error::Hardcoded Infisical CLI version. Use the INFISICAL_CLI_VERSION build arg and set it in build-versions.env"
                     exit 1
                   fi
-                  echo "All Dockerfiles pin ${pins}"
+                  grep -qE '^INFISICAL_CLI_VERSION=[0-9]+\.[0-9]+\.[0-9]+$' build-versions.env
+                  echo "CLI version is sourced from build-versions.env"

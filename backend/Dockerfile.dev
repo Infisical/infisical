@@ -1,3 +1,5 @@
+ARG INFISICAL_CLI_VERSION
+
 FROM debian:trixie-slim AS oracle
 RUN apt-get update && apt-get install -y unzip wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -30,6 +32,7 @@ ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
     SOFTHSM2_SOURCES=/tmp/softhsm2
 
 # Install all build and runtime dependencies
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y \
     build-essential \
     autoconf \
@@ -56,7 +59,8 @@ RUN apt-get update && apt-get install -y \
     opensc \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.128 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 # Create libaio symlink for Oracle Instant Client

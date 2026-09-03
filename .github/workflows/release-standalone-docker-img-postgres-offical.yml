@@ -54,6 +54,9 @@ jobs:
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+            - name: Read pinned versions
+              run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
+
             - name: 📦 Build backend and push to Docker Hub
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
@@ -68,6 +71,7 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   file: Dockerfile.standalone-infisical
                   build-args: |
+                      INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
@@ -152,6 +156,9 @@ jobs:
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+            - name: Read pinned versions
+              run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
+
             - name: 📦 Build backend and export to Docker
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
@@ -166,6 +173,7 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   file: Dockerfile.fips.standalone-infisical
                   build-args: |
+                      INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                   secrets: |

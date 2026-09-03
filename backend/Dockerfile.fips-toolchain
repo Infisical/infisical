@@ -20,6 +20,8 @@
 # removed. Also includes OpenSSL (Apache-2.0), SoftHSM2 (BSD-2-Clause), the Infisical
 # CLI, and Debian packages under their respective licenses.
 
+ARG INFISICAL_CLI_VERSION
+
 FROM debian:trixie-slim AS oracle
 RUN apt-get update && apt-get install -y unzip wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -50,6 +52,7 @@ ARG SOFTHSM2_COMMIT=369df0383d101bc8952692c2a368ac8bc887d1b4
 ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
     SOFTHSM2_SOURCES=/tmp/softhsm2
 
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y \
     build-essential \
     autoconf \
@@ -75,7 +78,8 @@ RUN apt-get update && apt-get install -y \
     opensc \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.128 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(dpkg --print-architecture) && \

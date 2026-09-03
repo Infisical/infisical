@@ -3,6 +3,8 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
+ARG INFISICAL_CLI_VERSION
+
 FROM node:22.22.0-trixie-slim AS base
 
 # Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
@@ -199,6 +201,7 @@ FROM base AS production
 
 # Runtime dependencies only. The PQC OpenSSL toolchain lives in
 # openssl-pqc-builder; nothing here compiles.
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     bash \
@@ -213,7 +216,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libaio1t64 \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.128 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     # Patch CVEs in base image packages (pinned versions for reproducibility)
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
