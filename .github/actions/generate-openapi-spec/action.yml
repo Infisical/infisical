@@ -29,10 +29,19 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Read pinned versions
+      shell: bash
+      # The base checkout predates this file, and its Dockerfile declares no ARG.
+      run: |
+        f="${{ inputs.source-path }}/build-versions.env"
+        if [ -f "$f" ]; then grep -E '^[A-Z_]+=' "$f" >> "$GITHUB_ENV"; fi
+
     - name: Build the API image
       uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
       with:
         context: ${{ inputs.source-path }}/backend
+        build-args: |
+          INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
         load: true
         tags: ${{ inputs.container-name }}
         cache-from: type=gha,scope=openapi-spec
