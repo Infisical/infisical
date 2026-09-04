@@ -2324,6 +2324,18 @@
                         ]
                       },
                       {
+                        "group": "ServiceNow",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/servicenow/list",
+                          "api-reference/endpoints/app-connections/servicenow/available",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-id",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-name",
+                          "api-reference/endpoints/app-connections/servicenow/create",
+                          "api-reference/endpoints/app-connections/servicenow/update",
+                          "api-reference/endpoints/app-connections/servicenow/delete"
+                        ]
+                      },
+                      {
                         "group": "Supabase",
                         "pages": [
                           "api-reference/endpoints/app-connections/supabase/list",

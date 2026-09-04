@@ -218,6 +218,10 @@ import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
+import {
+  SanitizedServiceNowConnectionSchema,
+  ServiceNowConnectionListItemSchema
+} from "@app/services/app-connection/servicenow";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import {
   SanitizedSnowflakeConnectionSchema,
@@ -350,7 +354,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedFireworksConnectionSchema.options,
   ...SanitizedNutanixPrismCentralConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
-  ...SanitizedDaytonaConnectionSchema.options
+  ...SanitizedDaytonaConnectionSchema.options,
+  ...SanitizedServiceNowConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -437,7 +442,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   FireworksConnectionListItemSchema,
   NutanixPrismCentralConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
-  DaytonaConnectionListItemSchema
+  DaytonaConnectionListItemSchema,
+  ServiceNowConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

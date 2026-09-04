@@ -84,6 +84,7 @@ import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
+import { ServiceNowConnectionForm } from "./ServiceNowConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
@@ -322,6 +323,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Cloud66:
@@ -599,6 +602,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Cloud66:

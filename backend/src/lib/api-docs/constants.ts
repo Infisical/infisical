@@ -2898,6 +2898,11 @@ export const AppConnections = {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
     },
+    SERVICENOW: {
+      instanceUrl: "The base URL of the ServiceNow instance to connect with, without a path or trailing slash.",
+      username: "The User ID of the ServiceNow integration user.",
+      password: "The password of the ServiceNow integration user."
+    },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
     },

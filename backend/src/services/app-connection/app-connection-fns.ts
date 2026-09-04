@@ -251,6 +251,11 @@ import {
   SalesforceConnectionMethod,
   validateSalesforceConnectionCredentials
 } from "./salesforce";
+import {
+  getServiceNowConnectionListItem,
+  ServiceNowConnectionMethod,
+  validateServiceNowConnectionCredentials
+} from "./servicenow";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -341,6 +346,10 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
+// Secret Manager connections that are not reached through a sync, rotation or external migration,
+// so none of the maps above surface them.
+const SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.ServiceNow];
+
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -426,7 +435,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
     getSpaceliftConnectionListItem(),
-    getDaytonaConnectionListItem()
+    getDaytonaConnectionListItem(),
+    getServiceNowConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -434,7 +444,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
           return (
             Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
             Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
-            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
+            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app) ||
+            SECRET_MANAGER_APP_CONNECTIONS.includes(option.app)
           );
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
@@ -680,7 +691,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -800,6 +812,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -952,7 +965,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
-  [AppConnection.Daytona]: platformManagedCredentialsNotSupported
+  [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
+  [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
