@@ -10,6 +10,10 @@ import { TDaytonaConnectionConfig } from "./daytona-connection-types";
 
 const DAYTONA_MANAGE_SECRETS_PERMISSION = "manage:secrets";
 
+type TDaytonaCurrentApiKeyResponse = {
+  organizationId?: string;
+};
+
 export const getDaytonaAuthHeaders = (apiKey: string) => ({
   Authorization: `Bearer ${apiKey}`,
   Accept: "application/json",
@@ -63,5 +67,30 @@ export const validateDaytonaConnectionCredentials = async (config: TDaytonaConne
     });
   }
 
-  return config.credentials;
+  // A Daytona API key is bound to one organization, so this is the only way to learn which one a
+  // connection writes to. It is stored on the connection and used to tell whether two syncs share a
+  // destination, which nothing else about the key reveals.
+  let organizationId: string | undefined;
+  try {
+    const { data } = await safeRequest.get<TDaytonaCurrentApiKeyResponse>(
+      `${IntegrationUrls.DAYTONA_API_URL}/api-keys/current`,
+      { headers: getDaytonaAuthHeaders(apiKey) }
+    );
+    organizationId = data.organizationId;
+  } catch (error: unknown) {
+    throw new BadRequestError({
+      message: `Unable to validate connection: Daytona returned ${
+        isAxiosError(error) ? (error.response?.status ?? "no") : "no"
+      } status when reading the API key's organization. Verify the API key and try again.`
+    });
+  }
+
+  if (!organizationId) {
+    throw new BadRequestError({
+      message:
+        "Unable to validate connection: Daytona did not report an organization for this API key. Create the key under the organization whose secrets you want to sync to."
+    });
+  }
+
+  return { ...config.credentials, organizationId };
 };

@@ -2882,7 +2882,9 @@ export const AppConnections = {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
     },
     DAYTONA: {
-      apiKey: "The Daytona API key used to authenticate with Daytona. It must carry the manage:secrets permission."
+      apiKey: "The Daytona API key used to authenticate with Daytona. It must carry the manage:secrets permission.",
+      organizationId:
+        "The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created."
     },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",

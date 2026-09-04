@@ -276,7 +276,10 @@ export const secretSyncServiceFactory = ({
       ProjectPermissionSub.SecretSyncs
     );
 
-    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
+    // An absent config means the caller has not filled the form in yet, so there is nothing to
+    // compare. An empty one is different: a destination whose scope comes entirely from its
+    // connection has no fields to send, and skipping those would leave them with no check at all.
+    if (!destinationConfig) {
       return { hasDuplicate: false, duplicateProjectId: undefined };
     }
 
