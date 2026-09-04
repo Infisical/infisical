@@ -27,7 +27,7 @@ The two run on different machines. Neither reads traffic settings from flags: wh
 <Accordion title="infisical av proxy" defaultOpen="true">
   Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created, then run it with no token to serve. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is recognized rather than re-enrolling.
 
-  The proxy listens for plain forward-proxy traffic and `CONNECT` tunnels. It attaches credentials only on TLS connections it terminates, and serves its own certificate authority at `/_agent-vault/ca` and a session's reachable hosts at `/_agent-vault/whoami` on the same port. See [Proxies](/documentation/platform/agent-vault/proxies).
+  The proxy listens for plain forward-proxy traffic and `CONNECT` tunnels. It attaches credentials only on TLS connections it terminates, and serves its own certificate authority at `/_agent-vault/ca` on the same port. See [Proxies](/documentation/platform/agent-vault/proxies).
 
 ```bash
 infisical av proxy --enrollment-token <enrollment-token>

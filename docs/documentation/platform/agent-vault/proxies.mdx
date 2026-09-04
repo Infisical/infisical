@@ -95,16 +95,6 @@ Selecting **New Enrollment Token** and enrolling again replaces the proxy's cert
 
 **Revoke Access** on a proxy's menu invalidates its token within one poll interval. Every agent routed through it loses credentials until the proxy is enrolled again. Use it when you believe the proxy host is compromised. **Delete** removes the proxy record; a running process for it stops being able to resolve sessions.
 
-## Checking what a session can reach
-
-The proxy answers on its own address. With a session token in hand:
-
-```bash
-curl -sS -H "X-Infisical-Agent-Session: <session-token>" http://<proxy-address>/_agent-vault/whoami
-```
-
-The response lists each connection the session can use through this proxy, with its hosts and bundle, plus the proxy's unmatched-host setting. Credential values are never included. `infisical av run` prints the same list before starting the agent.
-
 ## What the proxy can't carry
 
 Two kinds of traffic don't work through the proxy in this release. Each fails with an explicit error rather than hanging.
