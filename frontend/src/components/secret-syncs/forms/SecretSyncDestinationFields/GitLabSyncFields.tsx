@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import axios, { HttpStatusCode } from "axios";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -36,6 +37,17 @@ import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { TSecretSyncForm } from "../schemas";
 
 const GITLAB_SYNC_LIST_LIMIT = 20;
+const GITLAB_SEARCH_DEBOUNCE_MS = 500;
+
+const normalizeGitLabSearch = (value: string) => value.trim().toLocaleLowerCase();
+
+const getGitLabSearchErrorMessage = (error: unknown, resource: "groups" | "projects") => {
+  if (!error) return null;
+
+  return axios.isAxiosError(error) && error.response?.status === HttpStatusCode.TooManyRequests
+    ? `GitLab is rate limiting ${resource}. Wait a moment and try again.`
+    : `Unable to load GitLab ${resource}. Try again.`;
+};
 
 const getGitLabGroupOptionLabel = (group: TGitLabGroup) => group.fullPath;
 
@@ -102,9 +114,9 @@ export const GitLabSyncFields = () => {
   >();
 
   const [projectSearch, setProjectSearch] = useState("");
-  const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
+  const [debouncedProjectSearch] = useDebounce(projectSearch, GITLAB_SEARCH_DEBOUNCE_MS);
   const [groupSearch, setGroupSearch] = useState("");
-  const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
+  const [debouncedGroupSearch] = useDebounce(groupSearch, GITLAB_SEARCH_DEBOUNCE_MS);
 
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
@@ -114,7 +126,11 @@ export const GitLabSyncFields = () => {
   const groupId = useWatch({ name: "destinationConfig.groupId", control });
   const groupName = useWatch({ name: "destinationConfig.groupName", control });
 
-  const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(
+  const {
+    data: groups,
+    error: groupsError,
+    isFetching: isGroupsFetching
+  } = useGitLabConnectionListGroups(
     connectionId,
     debouncedGroupSearch || undefined,
     GITLAB_SYNC_LIST_LIMIT,
@@ -123,7 +139,11 @@ export const GitLabSyncFields = () => {
     }
   );
 
-  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
+  const {
+    data: projects,
+    error: projectsError,
+    isFetching: isProjectsFetching
+  } = useGitLabConnectionListProjects(
     connectionId,
     debouncedProjectSearch || undefined,
     GITLAB_SYNC_LIST_LIMIT,
@@ -132,26 +152,78 @@ export const GitLabSyncFields = () => {
     }
   );
 
+  const isGroupSearchPending =
+    Boolean(connectionId) &&
+    scope === GitLabSyncScope.Group &&
+    (normalizeGitLabSearch(groupSearch) !== normalizeGitLabSearch(debouncedGroupSearch) ||
+      isGroupsFetching);
+  const isProjectSearchPending =
+    Boolean(connectionId) &&
+    scope === GitLabSyncScope.Project &&
+    (normalizeGitLabSearch(projectSearch) !== normalizeGitLabSearch(debouncedProjectSearch) ||
+      isProjectsFetching);
+
   // The provider only returns the first page, so the currently-selected item may not be in the
-  // results. Surface it from the stored name so the selection always renders (e.g. when editing).
+  // results. Preserve it from the stored name when idle so the selection always renders when
+  // editing, but keep active search results limited to matches for the current query.
   const groupOptions = useMemo(() => {
-    const results = groups ?? [];
-    if (groupId && groupName && !results.some((group) => group.id === groupId)) {
+    const search = normalizeGitLabSearch(groupSearch);
+    const results = (groups ?? []).filter(
+      (group) =>
+        !search ||
+        [group.name, group.fullName, group.fullPath].some((field) =>
+          field.toLocaleLowerCase().includes(search)
+        )
+    );
+
+    if (!search && groupId && groupName && !results.some((group) => group.id === groupId)) {
       return [
         { id: groupId, name: groupName, fullName: groupName, fullPath: groupName },
         ...results
       ];
     }
     return results;
-  }, [groups, groupId, groupName]);
+  }, [groupId, groupName, groupSearch, groups]);
 
   const projectOptions = useMemo(() => {
-    const results = projects ?? [];
-    if (projectId && projectName && !results.some((project) => project.id === projectId)) {
+    const search = normalizeGitLabSearch(projectSearch);
+    const results = (projects ?? []).filter(
+      (project) => !search || project.name.toLocaleLowerCase().includes(search)
+    );
+
+    if (
+      !search &&
+      projectId &&
+      projectName &&
+      !results.some((project) => project.id === projectId)
+    ) {
       return [{ id: projectId, name: projectName }, ...results];
     }
     return results;
-  }, [projects, projectId, projectName]);
+  }, [projectId, projectName, projectSearch, projects]);
+
+  const selectedGroup = useMemo(() => {
+    if (!groupId) return null;
+
+    return (
+      groups?.find((group) => group.id === groupId) ??
+      (groupName
+        ? { id: groupId, name: groupName, fullName: groupName, fullPath: groupName }
+        : null)
+    );
+  }, [groupId, groupName, groups]);
+
+  const selectedProject = useMemo(() => {
+    if (!projectId) return null;
+
+    return (
+      projects?.find((project) => project.id === projectId) ??
+      (projectName ? { id: projectId, name: projectName } : null)
+    );
+  }, [projectId, projectName, projects]);
+
+  const groupsErrorMessage = getGitLabSearchErrorMessage(groupsError, "groups");
+  const projectsErrorMessage = getGitLabSearchErrorMessage(projectsError, "projects");
 
   return (
     <FieldGroup>
@@ -208,7 +280,7 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.groupId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
+          render={({ field: { onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
                 Group
@@ -225,9 +297,10 @@ export const GitLabSyncFields = () => {
               <FieldContent>
                 <Combobox
                   isError={Boolean(error)}
-                  isLoading={isGroupsLoading && Boolean(connectionId)}
+                  isLoading={isGroupSearchPending}
+                  loadingMessage="Loading GitLab groups..."
                   isDisabled={!connectionId}
-                  value={groupOptions.find((group) => group.id === value) ?? null}
+                  value={selectedGroup}
                   onValueChange={(option) => {
                     const selected = option as TGitLabGroup;
                     onChange(selected?.id ?? "");
@@ -235,6 +308,12 @@ export const GitLabSyncFields = () => {
                       shouldDirty: true
                     });
                   }}
+                  onClear={() => {
+                    onChange("");
+                    setValue("destinationConfig.groupName", "", { shouldDirty: true });
+                    setGroupSearch("");
+                  }}
+                  clearAriaLabel="Clear group"
                   onInputValueChange={(newValue) => setGroupSearch(newValue)}
                   shouldFilter={false}
                   options={groupOptions}
@@ -243,7 +322,8 @@ export const GitLabSyncFields = () => {
                   renderOption={renderGitLabGroupOption}
                   getOptionValue={(option) => option.id}
                   emptyMessage={(inputValue) =>
-                    inputValue ? "No groups found matching your search." : "No groups found."
+                    groupsErrorMessage ??
+                    (inputValue ? "No groups found matching your search." : "No groups found.")
                   }
                   modal
                 />
@@ -258,7 +338,7 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.projectId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
+          render={({ field: { onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
                 GitLab Project
@@ -276,9 +356,10 @@ export const GitLabSyncFields = () => {
               <FieldContent>
                 <Combobox
                   isError={Boolean(error)}
-                  isLoading={isProjectsLoading && Boolean(connectionId)}
+                  isLoading={isProjectSearchPending}
+                  loadingMessage="Loading GitLab projects..."
                   isDisabled={!connectionId}
-                  value={projectOptions.find((project) => project.id === value) ?? null}
+                  value={selectedProject}
                   onValueChange={(option) => {
                     const selected = option as TGitLabProject;
                     onChange(selected?.id ?? "");
@@ -286,6 +367,12 @@ export const GitLabSyncFields = () => {
                       shouldDirty: true
                     });
                   }}
+                  onClear={() => {
+                    onChange("");
+                    setValue("destinationConfig.projectName", "", { shouldDirty: true });
+                    setProjectSearch("");
+                  }}
+                  clearAriaLabel="Clear GitLab project"
                   onInputValueChange={(newValue) => setProjectSearch(newValue)}
                   shouldFilter={false}
                   options={projectOptions}
@@ -294,7 +381,8 @@ export const GitLabSyncFields = () => {
                   renderOption={renderGitLabProjectOption}
                   getOptionValue={(option) => option.id}
                   emptyMessage={(inputValue) =>
-                    inputValue ? "No projects found matching your search." : "No projects found."
+                    projectsErrorMessage ??
+                    (inputValue ? "No projects found matching your search." : "No projects found.")
                   }
                   modal
                 />

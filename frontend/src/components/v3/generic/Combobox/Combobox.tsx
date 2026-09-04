@@ -83,7 +83,8 @@ const preventComboboxFormSubmit = (event: React.KeyboardEvent<HTMLInputElement>)
 const useComboboxItems = <TOption,>(
   options: readonly TOption[],
   selectedOptions: readonly TOption[],
-  getOptionValue: (option: TOption) => string
+  getOptionValue: (option: TOption) => string,
+  includeMissingSelectedOptions: boolean
 ) =>
   React.useMemo(() => {
     const selectedByValue = new Map(
@@ -96,12 +97,14 @@ const useComboboxItems = <TOption,>(
       return selectedByValue.get(optionValue) ?? option;
     });
 
-    selectedOptions.forEach((option) => {
-      if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
-    });
+    if (includeMissingSelectedOptions) {
+      selectedOptions.forEach((option) => {
+        if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
+      });
+    }
 
     return stableOptions;
-  }, [getOptionValue, options, selectedOptions]);
+  }, [getOptionValue, includeMissingSelectedOptions, options, selectedOptions]);
 
 type ComboboxItem<TOption> = {
   option: TOption;
@@ -161,6 +164,7 @@ type ComboboxListProps<TOption> = Omit<
 > & {
   emptyMessage?: React.ReactNode;
   ariaLabel: string;
+  isEmpty: boolean;
   selectedValues: ReadonlySet<string>;
   maxHeight: string;
 };
@@ -175,6 +179,7 @@ const ComboboxList = <TOption,>({
   loadingMessage,
   renderOption,
   ariaLabel,
+  isEmpty,
   selectedValues,
   maxHeight
 }: ComboboxListProps<TOption>) => {
@@ -213,7 +218,12 @@ const ComboboxList = <TOption,>({
         aria-label={ariaLabel}
         aria-busy={isLoading || undefined}
         onWheel={(event) => event.stopPropagation()}
-        className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
+        className={() =>
+          cn(
+            "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
+            (isLoading || isEmpty) && "hidden"
+          )
+        }
         style={{ maxHeight }}
       >
         {getOptionGroup
@@ -227,9 +237,20 @@ const ComboboxList = <TOption,>({
             )
           : renderItem}
       </ComboboxPrimitive.List>
-      <ComboboxPrimitive.Empty className="py-6 text-center text-sm text-muted empty:hidden">
-        {isLoading ? loadingMessage : emptyMessage}
-      </ComboboxPrimitive.Empty>
+      {isLoading ? (
+        <div
+          role="status"
+          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+        >
+          <span>{loadingMessage}</span>
+        </div>
+      ) : (
+        isEmpty && (
+          <div role="status" className="py-6 text-center text-sm text-muted">
+            {emptyMessage}
+          </div>
+        )
+      )}
     </>
   );
 };
@@ -357,11 +378,14 @@ const SingleCombobox = <TOption,>({
   ...inputProps
 }: ComboboxSingleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue);
+  // Locally-filtered lists retain missing selections so the primitive can filter
+  // them normally. Externally-filtered lists must reflect only provider results.
+  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,
@@ -373,6 +397,14 @@ const SingleCombobox = <TOption,>({
   const primitiveFilter = React.useCallback(
     (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
     [filter]
+  );
+  const visibleOptions = React.useMemo(
+    () => items.filter((option) => !shouldFilter || filter(option, search)),
+    [filter, items, search, shouldFilter]
+  );
+  const selectableOptions = React.useMemo(
+    () => visibleOptions.filter((option) => !isOptionDisabled?.(option)),
+    [isOptionDisabled, visibleOptions]
   );
   const selectedValues = React.useMemo(
     () => new Set(value == null ? [] : [getOptionValue(value)]),
@@ -402,9 +434,13 @@ const SingleCombobox = <TOption,>({
           // this event instead of replacing the user's first keystroke.
           if (eventDetails.reason !== "input-change") setSearch(selectedLabel);
         } else {
+          highlightedOptionValueRef.current = null;
           setSearch("");
           onInputValueChange?.("");
         }
+      }}
+      onItemHighlighted={(item) => {
+        highlightedOptionValueRef.current = item ? getOptionValue(item.option) : null;
       }}
       inputValue={open ? search : selectedLabel}
       onInputValueChange={(nextValue, eventDetails) => {
@@ -434,6 +470,24 @@ const SingleCombobox = <TOption,>({
           placeholder={open ? searchPlaceholder : placeholder}
           onKeyDown={(event) => {
             onKeyDown?.(event);
+
+            const hasHighlightedOption = selectableOptions.some(
+              (option) => getOptionValue(option) === highlightedOptionValueRef.current
+            );
+            if (
+              !event.defaultPrevented &&
+              event.key === "Enter" &&
+              open &&
+              !isLoading &&
+              !hasHighlightedOption &&
+              selectableOptions[0]
+            ) {
+              onValueChange(selectableOptions[0]);
+              setOpen(false);
+              setSearch("");
+              onInputValueChange?.("");
+            }
+
             preventComboboxFormSubmit(event);
           }}
           className={cn(
@@ -500,6 +554,7 @@ const SingleCombobox = <TOption,>({
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
           ariaLabel={`${searchAriaLabel} suggestions`}
+          isEmpty={visibleOptions.length === 0}
           selectedValues={selectedValues}
           maxHeight={SINGLE_LIST_MAX_HEIGHT}
         />
@@ -549,7 +604,7 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue);
+  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,
@@ -568,16 +623,15 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
+  const visibleOptions = React.useMemo(
+    () => items.filter((option) => !shouldFilter || filter(option, search)),
+    [filter, items, search, shouldFilter]
+  );
   // Select all only covers the visible result set. External-search consumers
   // provide an already-filtered list, so do not apply the local filter again.
   const selectAllOptions = React.useMemo(
-    () =>
-      isSelectAll
-        ? items.filter(
-            (option) => !isOptionDisabled?.(option) && (!shouldFilter || filter(option, search))
-          )
-        : [],
-    [filter, isOptionDisabled, isSelectAll, items, search, shouldFilter]
+    () => (isSelectAll ? visibleOptions.filter((option) => !isOptionDisabled?.(option)) : []),
+    [isOptionDisabled, isSelectAll, visibleOptions]
   );
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
@@ -753,6 +807,7 @@ const MultipleCombobox = <TOption,>({
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
           ariaLabel={`${searchAriaLabel} suggestions`}
+          isEmpty={visibleOptions.length === 0}
           selectedValues={selectedValues}
           maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
         />
