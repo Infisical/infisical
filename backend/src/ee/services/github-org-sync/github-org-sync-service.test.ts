@@ -96,42 +96,98 @@ describe("buildGithubMemberMatcher", () => {
     user: email === null ? null : { email },
     inviteEmail
   });
+  const matched = (result: ReturnType<ReturnType<typeof buildGithubMemberMatcher>>) =>
+    result.status === "matched" ? { id: (result.member as { id: string }).id, rule: result.rule } : result;
 
-  test("matches a login equal to the email prefix", () => {
-    const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com")]);
-    expect(match("Jane.Doe")?.id).toBe("a");
-    expect(match("someone-else")).toBeUndefined();
+  describe("email rule", () => {
+    test("matches a login equal to the email prefix", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com")]);
+      expect(matched(match("Jane.Doe"))).toEqual({ id: "a", rule: "email" });
+    });
+
+    test("matches across separator differences between email and login", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com")]);
+      expect(matched(match("janedoe"))).toEqual({ id: "a", rule: "email" });
+      expect(matched(match("jane-doe"))).toEqual({ id: "a", rule: "email" });
+    });
   });
 
-  test("matches a login that appends the domain name to the email prefix", () => {
-    const match = buildGithubMemberMatcher([member("a", "jane@acme.com")]);
-    expect(match("janeacme")?.id).toBe("a");
-    expect(match("acme")).toBeUndefined();
+  describe("org suffix rule", () => {
+    test("matches a login that appends the organization name to the email prefix", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane@acme.com")]);
+      expect(matched(match("janeacme"))).toEqual({ id: "a", rule: "email-with-org-suffix" });
+    });
+
+    test("does not match the organization name alone", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane@acme.com")]);
+      expect(match("acme").status).toBe("unmatched");
+    });
   });
 
-  test("matches when the longest email part is contained in the login", () => {
-    const match = buildGithubMemberMatcher([member("a", "j.smithson@acme.com")]);
-    expect(match("smithson-dev")?.id).toBe("a");
+  describe("name part rule", () => {
+    test("matches when a login component equals the longest email part", () => {
+      const match = buildGithubMemberMatcher([member("a", "j.smithson@acme.com")]);
+      expect(matched(match("smithson-dev"))).toEqual({ id: "a", rule: "name-part" });
+    });
+
+    test("does not match a name part buried inside a login component", () => {
+      const match = buildGithubMemberMatcher([member("a", "deep@acme.com"), member("b", "nast@acme.com")]);
+      expect(match("0xarshdeep").status).toBe("unmatched");
+      expect(match("carlosmonastyrski").status).toBe("unmatched");
+    });
+
+    test("does not match a name part shorter than four characters", () => {
+      const match = buildGithubMemberMatcher([member("a", "j.li@acme.com")]);
+      expect(match("li-jones").status).toBe("unmatched");
+    });
   });
 
-  test("does not match on an email part shorter than four characters", () => {
-    const match = buildGithubMemberMatcher([member("a", "j.li@acme.com")]);
-    expect(match("xxliyy")).toBeUndefined();
+  describe("rule precedence", () => {
+    test("an exact email match beats a name part match found earlier in the list", () => {
+      const match = buildGithubMemberMatcher([
+        member("weak", "scott@infisical.com"),
+        member("exact", "scott-ray-wilson@acme.com")
+      ]);
+      expect(matched(match("scott-ray-wilson"))).toEqual({ id: "exact", rule: "email" });
+    });
+
+    test("falls through to the next rule only when no member matches the stronger one", () => {
+      const match = buildGithubMemberMatcher([member("weak", "scott@infisical.com")]);
+      expect(matched(match("scott-ray-wilson"))).toEqual({ id: "weak", rule: "name-part" });
+    });
   });
 
-  test("returns the first matching member, preserving input order", () => {
-    const match = buildGithubMemberMatcher([member("first", "bob@acme.com"), member("second", "bob@other.com")]);
-    expect(match("bob")?.id).toBe("first");
+  describe("ambiguity", () => {
+    test("reports rather than guesses when two members match the same rule", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com"), member("b", "janedoe@other.com")]);
+      const result = match("janedoe");
+      expect(result).toEqual({
+        status: "ambiguous",
+        rule: "email",
+        emails: ["jane.doe@acme.com", "janedoe@other.com"]
+      });
+    });
+
+    test("does not report ambiguity for a member listed twice with the same email", () => {
+      const match = buildGithubMemberMatcher([member("a", "jane@acme.com"), member("b", "jane@acme.com")]);
+      expect(match("jane").status).toBe("matched");
+    });
   });
 
-  test("falls back to inviteEmail and skips members with neither", () => {
-    const match = buildGithubMemberMatcher([member("no-email", null), member("invited", null, "bob@acme.com")]);
-    expect(match("bob")?.id).toBe("invited");
-  });
+  describe("input handling", () => {
+    test("falls back to inviteEmail and skips members with neither", () => {
+      const match = buildGithubMemberMatcher([member("no-email", null), member("invited", null, "bob@acme.com")]);
+      expect(matched(match("bob"))).toEqual({ id: "invited", rule: "email" });
+    });
 
-  test("ignores a malformed email instead of throwing", () => {
-    const match = buildGithubMemberMatcher([member("bad", "not-an-email"), member("good", "bob@acme.com")]);
-    expect(() => match("bob")).not.toThrow();
-    expect(match("bob")?.id).toBe("good");
+    test("ignores a malformed email instead of throwing", () => {
+      const match = buildGithubMemberMatcher([member("bad", "not-an-email"), member("good", "bob@acme.com")]);
+      expect(() => match("bob")).not.toThrow();
+      expect(matched(match("bob"))).toEqual({ id: "good", rule: "email" });
+    });
+
+    test("returns unmatched for an empty member list", () => {
+      expect(buildGithubMemberMatcher([])("anyone").status).toBe("unmatched");
+    });
   });
 });

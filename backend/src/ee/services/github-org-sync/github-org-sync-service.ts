@@ -206,36 +206,80 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
 
 type TMatchableMember<T> = { user?: { email?: string | null } | null; inviteEmail?: string | null } & T;
 
-// ~16M (login, member) comparisons on a 640-team org, so per-member fields are derived once per
-// sync. Order must stay input order, or `find` picks a different member than before.
+// Weakest rule a login is allowed to match on. A name part shorter than this collides constantly.
+const GITHUB_MIN_NAME_PART_LENGTH = 4;
+
+const AMBIGUOUS_LOGIN_REPORT_LIMIT = 20;
+
+export const GithubMemberMatchRule = {
+  Email: "email",
+  EmailWithOrgSuffix: "email-with-org-suffix",
+  NamePart: "name-part"
+} as const;
+
+export type TGithubMemberMatchRule = (typeof GithubMemberMatchRule)[keyof typeof GithubMemberMatchRule];
+
+export type TGithubMemberMatch<T> =
+  | { status: "matched"; member: T; rule: TGithubMemberMatchRule }
+  | { status: "ambiguous"; rule: TGithubMemberMatchRule; emails: string[] }
+  | { status: "unmatched" };
+
+const SEPARATORS = new RE2(/[._-]/g);
+const stripSeparators = (value: string) => value.replace(SEPARATORS, "");
+
+/**
+ * Resolves a GitHub login to the org member it belongs to.
+ *
+ * Rules are tried strongest first across every member, so an exact email match always beats a name
+ * fragment no matter what order members arrive in. A login that two members match equally well is
+ * reported as ambiguous rather than resolved, because guessing hands one of them the other's
+ * project access.
+ */
 export const buildGithubMemberMatcher = <T>(members: TMatchableMember<T>[]) => {
-  const emailSplitRegex = new RE2(/[._-]/);
+  // ~16M (login, member) comparisons on a 640-team org, so per-member fields are derived once per
+  // sync rather than once per comparison.
   const candidates = members.flatMap((member) => {
     const email = member.user?.email || member.inviteEmail;
     if (!email) return [];
     const [rawPrefix, rawDomain] = email.split("@");
     if (!rawPrefix || !rawDomain) return [];
     const emailPrefix = rawPrefix.toLowerCase();
+    const parts = emailPrefix.split(new RE2(/[._-]/));
     return [
       {
         member,
-        emailPrefix,
-        domainName: rawDomain.toLowerCase().split(".")[0],
-        longestEmailPart: emailPrefix.split(emailSplitRegex).reduce((a, b) => (a.length > b.length ? a : b), "")
+        email: email.toLowerCase(),
+        compactPrefix: stripSeparators(emailPrefix),
+        orgSuffixed: stripSeparators(emailPrefix) + stripSeparators(rawDomain.toLowerCase().split(".")[0]),
+        longestPart: parts.reduce((a, b) => (a.length > b.length ? a : b), "")
       }
     ];
   });
 
-  return (githubLogin: string) => {
-    const githubUsername = githubLogin.toLowerCase();
-    return candidates.find(
-      ({ emailPrefix, domainName, longestEmailPart }) =>
-        emailPrefix === githubUsername ||
-        (githubUsername.endsWith(domainName) &&
-          githubUsername.length > domainName.length &&
-          emailPrefix === githubUsername.slice(0, -domainName.length)) ||
-        (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart))
-    )?.member;
+  return (githubLogin: string): TGithubMemberMatch<T> => {
+    const login = githubLogin.toLowerCase();
+    const compactLogin = stripSeparators(login);
+    const loginParts = new Set(login.split(new RE2(/[._-]/)));
+
+    const rules: [TGithubMemberMatchRule, (c: (typeof candidates)[number]) => boolean][] = [
+      [GithubMemberMatchRule.Email, (c) => c.compactPrefix === compactLogin],
+      [GithubMemberMatchRule.EmailWithOrgSuffix, (c) => c.orgSuffixed === compactLogin],
+      [
+        GithubMemberMatchRule.NamePart,
+        (c) => c.longestPart.length >= GITHUB_MIN_NAME_PART_LENGTH && loginParts.has(c.longestPart)
+      ]
+    ];
+
+    for (const [rule, predicate] of rules) {
+      const hits = candidates.filter(predicate);
+      const distinct = [...new Map(hits.map((hit) => [hit.email, hit])).values()];
+      if (distinct.length === 1) return { status: "matched", member: distinct[0].member, rule };
+      if (distinct.length > 1) {
+        return { status: "ambiguous", rule, emails: distinct.map((hit) => hit.email).sort() };
+      }
+    }
+
+    return { status: "unmatched" };
   };
 };
 
@@ -796,6 +840,7 @@ export const githubOrgSyncServiceFactory = ({
 
     const startTime = Date.now();
     const syncErrors: string[] = [];
+    const ambiguousLogins = new Map<string, string[]>();
 
     const octokit = new Octokit({ auth: orgAccessToken });
 
@@ -907,13 +952,15 @@ export const githubOrgSyncServiceFactory = ({
         (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
           const githubUsername = login.toLowerCase();
 
-          const matchingMember = matchGithubLogin(githubUsername);
+          const result = matchGithubLogin(githubUsername);
 
-          if (matchingMember?.user?.id) {
-            expectedUserIds.add(matchingMember.user.id);
+          if (result.status === "matched" && result.member.user?.id) {
+            expectedUserIds.add(result.member.user.id);
             logger.info(
-              `Matched GitHub user ${githubUsername} to email ${matchingMember.user?.email || matchingMember.inviteEmail}`
+              `Matched GitHub user ${githubUsername} to email ${result.member.user?.email || result.member.inviteEmail} by ${result.rule}`
             );
+          } else if (result.status === "ambiguous") {
+            ambiguousLogins.set(githubUsername, result.emails);
           }
         });
 
@@ -967,6 +1014,26 @@ export const githubOrgSyncServiceFactory = ({
       // Team membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
       usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
+    }
+
+    if (ambiguousLogins.size) {
+      logger.warn(
+        { orgId: orgPermission.orgId, count: ambiguousLogins.size },
+        "GitHub org sync skipped logins that more than one organization member matched"
+      );
+      // Capped so a badly aliased org cannot return a response the client has to scroll through.
+      const listed = [...ambiguousLogins.entries()].slice(0, AMBIGUOUS_LOGIN_REPORT_LIMIT);
+      syncErrors.push(
+        ...listed.map(
+          ([login, emails]) =>
+            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so their team memberships were not synced. Align the member's email with their GitHub username.`
+        )
+      );
+      if (ambiguousLogins.size > listed.length) {
+        syncErrors.push(
+          `${ambiguousLogins.size - listed.length} further GitHub users were skipped for the same reason.`
+        );
+      }
     }
 
     const syncDuration = Date.now() - startTime;
