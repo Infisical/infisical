@@ -33,14 +33,14 @@ The scanning account needs no special grant or elevated privileges. Any role tha
 </Note>
 
 <Warning>
-Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. IAM accounts cannot be used as credential accounts.
+Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it can't be reused across the instances a source scans. IAM accounts can't be used as credential accounts.
 </Warning>
 
 ## Creating a source
 
 <Steps>
   <Step title="Start adding a source">
-    Go to **Privileged Access Manager → Discovery** and click **Add Source**, then choose **PostgreSQL**.
+    Go to **Privileged Access Manager → Discovery** and select **Add Source**, then choose **PostgreSQL**.
   </Step>
   <Step title="Configure the source">
     | Field | Description |
@@ -52,15 +52,15 @@ Only password authentication can drive a scan. An AWS IAM account's token is min
     | **Targets** | IP addresses or hostnames of the instances to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
   </Step>
   <Step title="Save">
-    Click **Add Source**. The source appears in the Discovery table.
+    Select **Add Source**. The source appears in the Discovery table.
   </Step>
 </Steps>
 
 ## Account filtering
 
-Discovery surfaces only roles that can log in. Group roles that exist purely to hold privileges cannot open a session, so they are not accounts and are dropped, as are PostgreSQL's own built-in roles.
+Discovery surfaces only roles that can log in. Group roles that exist purely to hold privileges can't open a session, so they're not accounts and are dropped, as are PostgreSQL's own built-in roles.
 
-Roles are cluster-wide rather than per-database, so the database your credential account connects to does not change which roles are found.
+Roles are cluster-wide rather than per-database, so the database your credential account connects to doesn't change which roles are found.
 
 ## Running a scan
 
@@ -70,7 +70,7 @@ If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it 
 
 ## Importing accounts
 
-From the **Staged Accounts** tab, select the accounts you want and click **Import Accounts**. Then choose:
+From the **Staged Accounts** tab, select the accounts you want and select **Import Accounts**. Then choose:
 
 | Field | Description |
 |-------|-------------|

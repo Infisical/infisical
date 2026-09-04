@@ -62,7 +62,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -175,7 +175,7 @@ function AddMemberPopover({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canGrantAccess =
-    orgPermission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) &&
+    orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
     permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
     permission.can(
       ProjectPermissionMemberActions.AssignAdditionalPrivileges,
@@ -185,7 +185,7 @@ function AddMemberPopover({
 
   const canAddParentOrgUsers =
     isSubOrganization &&
-    orgPermission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    orgPermission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: parentOrgAvailableUsers } = useGetAvailableOrgUsers(canAddParentOrgUsers);

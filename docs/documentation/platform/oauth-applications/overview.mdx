@@ -43,7 +43,7 @@ Access token lifetime is the shortest of the application's **access token lifeti
 
 ## What a delegated token can never do
 
-**It cannot change anything under Administration**, at either the organization or the project level. Creating, updating and deleting there stay with a person signed in to the dashboard:
+**It can't change anything under Administration**, at either the organization or the project level. Creating, updating and deleting there stay with a person signed in to the dashboard:
 
 - Access control: members, groups, machine identities, roles, and additional privileges
 - Usage and billing
@@ -51,9 +51,9 @@ Access token lifetime is the shortest of the application's **access token lifeti
 - Organization settings: SSO and provisioning, networking, encryption, project templates, sub-organizations, OAuth applications, and workflow integrations
 - Project settings: general settings, environments, tags, policies, webhooks, and encryption
 
-**It cannot manage the authorizing user's account.** Password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never take over the account behind it.
+**It can't manage the authorizing user's account.** Password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never take over the account behind it.
 
-**It cannot create an organization or change instance admin settings.** Both sit outside the organization the delegation was issued for, so neither is narrowed by it.
+**It can't create an organization or change instance admin settings.** Both sit outside the organization the delegation was issued for, so neither is narrowed by it.
 
 ## Revoking access
 
