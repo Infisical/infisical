@@ -14,7 +14,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { useDebounce } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
@@ -76,7 +75,7 @@ export const ResourceSearchInput = ({
 
   return (
     <>
-      <ButtonGroup className={cn("min-w-0 flex-1", className)}>
+      <ButtonGroup>
         <Tooltip>
           <TooltipTrigger asChild>
             <IconButton
@@ -91,8 +90,8 @@ export const ResourceSearchInput = ({
         </Tooltip>
         <Popover open={hasSearch && isFocused}>
           <PopoverTrigger asChild>
-            <div className="min-w-0 flex-1">
-              <InputGroup className="rounded-l-none">
+            <div>
+              <InputGroup className="w-[270px] rounded-l-none">
                 <InputGroupInput
                   ref={inputRef}
                   autoComplete="off"
@@ -146,7 +145,7 @@ export const ResourceSearchInput = ({
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="w-[var(--radix-popover-trigger-width)] p-1"
+            className="w-[270px] p-1"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <button
