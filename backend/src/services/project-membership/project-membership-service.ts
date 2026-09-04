@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -24,6 +25,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -51,7 +53,7 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -269,6 +271,7 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
@@ -294,6 +297,26 @@ export const projectMembershipServiceFactory = ({
         id: orgMembers.filter((el) => Boolean(el.actorUserId)).map((el) => el.actorUserId as string)
       }
     });
+
+    const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
+      [ProjectMembershipRole.Member],
+      projectId
+    );
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+    for (const addedUser of orgMembershipUsernames) {
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions: memberRolePermissions,
+        baseMessage: "Failed to add a member with a role exceeding your own privileges",
+        subjectFields: { userEmail: addedUser.email || undefined }
+      });
+    }
+
     const userIdsToExcludeForProjectKeyAddition = new Set(
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(
         orgMembershipUsernames.map(({ username }) => username),
@@ -386,6 +409,41 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({
         message: "Cannot remove yourself from project",
         name: "Delete project membership"
+      });
+    }
+
+    const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
+    const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
+    const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
+    const unattributableRoles: typeof resolvedRoles = [];
+    for (const resolved of resolvedRoles) {
+      if (resolved.role) resolvedRoleBySlug[resolved.role.slug] = resolved;
+      else unattributableRoles.push(resolved);
+    }
+    const roleRowsByMembershipId = groupBy(targetRoleRows, (el) => el.membershipId);
+
+    for (const projectMember of projectMembers) {
+      const targetPermissions = [
+        ...resolveMembershipRoleSlugs(roleRowsByMembershipId[projectMember.id] || [])
+          .map((slug) => resolvedRoleBySlug[slug])
+          .filter(Boolean),
+        ...unattributableRoles
+      ];
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionMemberActions.Delete,
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged member from the project",
+        subjectFields: { userEmail: projectMember.user.email || undefined }
       });
     }
 

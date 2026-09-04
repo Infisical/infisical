@@ -1029,7 +1029,7 @@ export const permissionServiceFactory = ({
 
   // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
   // admin member or user defined ones like biller etc
-  const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId) => {
+  const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId, opts) => {
     const formattedRoles = roles.map((role) => ({
       name: role,
       isCustom: !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole)
@@ -1044,24 +1044,25 @@ export const permissionServiceFactory = ({
           }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
+    if (customRoles.length !== customRoleDetails.length && !opts?.ignoreUnresolvedRoles) {
       const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the organization with ID '${orgId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
+    return formattedRoles.flatMap((el) => {
       if (el.isCustom) {
         const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        if (!roleDetails) return [];
         return {
           permission: createMongoAbility<OrgPermissionSet>(
-            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }]),
+            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails.permissions || [] }]),
             {
               conditionsMatcher
             }
           ),
-          role: roleDetails!
+          role: roleDetails
         };
       }
 
@@ -1078,7 +1079,8 @@ export const permissionServiceFactory = ({
 
   const getProjectPermissionByRoles: TPermissionServiceFactory["getProjectPermissionByRoles"] = async (
     roles,
-    projectId
+    projectId,
+    opts
   ) => {
     const formattedRoles = roles.map((role) => ({
       name: role,
@@ -1101,27 +1103,28 @@ export const permissionServiceFactory = ({
           }
         })
       : [];
-    if (customRoles.length !== customRoleDetails.length) {
+    if (customRoles.length !== customRoleDetails.length && !opts?.ignoreUnresolvedRoles) {
       const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the project with ID '${projectId}'`
       });
     }
 
-    return formattedRoles.map((el) => {
+    return formattedRoles.flatMap((el) => {
       if (el.isCustom) {
         const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        if (!roleDetails) return [];
         return {
           permission: createMongoAbility<ProjectPermissionSet>(
             buildProjectPermissionRules(
-              [{ role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }],
+              [{ role: ProjectMembershipRole.Custom, permissions: roleDetails.permissions || [] }],
               project?.type
             ),
             {
               conditionsMatcher
             }
           ),
-          role: roleDetails!
+          role: roleDetails
         };
       }
 
