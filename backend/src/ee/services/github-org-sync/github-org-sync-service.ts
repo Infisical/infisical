@@ -181,17 +181,20 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
         membersPageSize: GITHUB_TEAM_MEMBERS_PAGE_SIZE
       });
       const connection = data.organization.team?.members;
-      if (!connection) break;
+      if (!connection) {
+        throw new BadRequestError({
+          message: `GitHub team '${team.slug}' was renamed or deleted while its members were being listed. Please run the sync again.`
+        });
+      }
       team.members.push(...connection.edges.map((edge) => edge.node.login));
       team.membersCursor = nextCursor(connection.pageInfo);
       membersPage += 1;
     }
 
     if (team.membersCursor) {
-      logger.warn(
-        { org, team: team.slug, fetchedMembers: team.members.length },
-        "GitHub org team sync hit the page cap; team member list truncated"
-      );
+      throw new BadRequestError({
+        message: `GitHub team '${team.slug}' has more members than can be synced (${GITHUB_MAX_PAGES * GITHUB_TEAM_MEMBERS_PAGE_SIZE} member limit).`
+      });
     }
   }
 
@@ -758,6 +761,7 @@ export const githubOrgSyncServiceFactory = ({
     const octokit = new Octokit({ auth: orgAccessToken });
 
     const githubTeams = await fetchGithubOrgTeams(octokit, config.githubOrgName).catch((err) => {
+      if (err instanceof BadRequestError) throw err;
       logger.error(err, "GitHub GraphQL error for batched team sync");
 
       const gitHubError = err as GitHubApiError;
