@@ -46,23 +46,23 @@ The verification code expires after **7 days**. You must complete verification w
 
 <Steps>
   <Step title="Navigate to Email Domain Settings">
-    Go to **Organization Settings** → **SSO** → scroll down to the **Email Domains** section.
+    Go to **SSO & Provisioning** → **SSO** tab → **Email Domains** section.
 
     ![Email Domains Section](/images/platform/email-domain/email-domains-section.png)
 
   </Step>
 
   <Step title="Add an Email Domain">
-    Select **Add domain** and enter the domain you want to verify (e.g., `company.com`).
+    Select **Add Domain** and enter the domain you want to verify (e.g., `company.com`).
 
     ![Add Domain Modal](/images/platform/email-domain/add-domain-modal.png)
 
-    Click **Add Domain** to create the verification request.
+    Select **Add Domain** to create the verification request.
 
   </Step>
 
   <Step title="Copy DNS Verification Details">
-    After adding the domain, select the **eye icon** (View details & Verify) on the pending domain row.
+    After adding the domain, select **Verify Domain** on the pending domain row.
 
     A modal will show you the DNS TXT record details:
     - **Record Name** — The DNS hostname to add the TXT record to.
@@ -92,9 +92,9 @@ The verification code expires after **7 days**. You must complete verification w
   </Step>
 
   <Step title="Verify the Domain">
-    Return to the Infisical Email Domains section and select **View details & Verify** on the pending domain.
+    Return to the Infisical Email Domains section and select **Verify Domain** on the pending domain row.
 
-    Click the **Verify Domain** button. Infisical will perform a DNS TXT lookup to confirm the record exists and matches.
+    In the modal that opens, select **Verify Domain**. Infisical will perform a DNS TXT lookup to confirm the record exists and matches.
 
     Once verified, the domain status changes to **Verified** and it's exclusively linked to your organization.
 
