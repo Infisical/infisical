@@ -240,7 +240,8 @@ export const pkiSyncServiceFactory = ({
       config?.port,
       config?.sslEnabled,
       config?.sslRejectUnauthorized,
-      config?.sslCertificate
+      config?.sslCertificate,
+      config?.sshHostKeys
     ]);
   };
 

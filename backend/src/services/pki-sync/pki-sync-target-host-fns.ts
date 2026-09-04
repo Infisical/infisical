@@ -19,6 +19,7 @@ export type TPkiSyncDeliveryTarget = {
   sslEnabled?: boolean;
   sslRejectUnauthorized?: boolean;
   sslCertificate?: string;
+  sshHostKeys?: string;
 };
 
 const LDAP_ONLY_TARGET_FIELDS = [
@@ -26,7 +27,8 @@ const LDAP_ONLY_TARGET_FIELDS = [
   "port",
   "sslEnabled",
   "sslRejectUnauthorized",
-  "sslCertificate"
+  "sslCertificate",
+  "sshHostKeys"
 ] as const satisfies readonly (keyof TPkiSyncDeliveryTarget)[];
 
 export const getPkiSyncTargetHost = (

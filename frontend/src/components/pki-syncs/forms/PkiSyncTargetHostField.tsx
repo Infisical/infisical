@@ -218,6 +218,34 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
           )}
         </>
       )}
+      {destination === PkiSync.LinuxServer && (
+        <Controller
+          name="destinationConfig.sshHostKeys"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Trusted Host Keys <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <TextArea
+                value={(value as string) ?? ""}
+                onChange={(event) => onChange(event.target.value || undefined)}
+                placeholder={"ssh-rsa AAAAB3NzaC1yc2E...\necdsa-sha2-nistp256 AAAAE2VjZHNh..."}
+                disabled={!canSetTargetHost}
+                isError={Boolean(error)}
+                className="min-h-24 font-mono text-xs"
+              />
+              <FieldError errors={[error]} />
+              {!error && (
+                <FieldDescription>
+                  If set, the sync only connects when the host presents one of these keys. Paste the
+                  output of <code>ssh-keyscan &lt;host&gt;</code>.
+                </FieldDescription>
+              )}
+            </Field>
+          )}
+        />
+      )}
     </>
   );
 };

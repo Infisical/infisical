@@ -10,6 +10,8 @@ import {
   PkiSyncTargetPortSchema
 } from "./base-pki-sync-schema";
 
+const HOST_KEY_LINE = /(^|\s)(ssh-|ecdsa-)\S+\s+[A-Za-z0-9+/]+={0,2}/;
+
 const compileNameSchema = (val: string) =>
   val
     .replace(/\{\{shortCertificateId\}\}/g, "0".repeat(22))
@@ -96,7 +98,16 @@ export const LinuxServerPkiSyncDestinationSchema = BasePkiSyncSchema(
     destinationConfig: z.object({
       destinationPath: DestinationPathSchema,
       host: PkiSyncTargetHostSchema,
-      port: PkiSyncTargetPortSchema
+      port: PkiSyncTargetPortSchema,
+      sshHostKeys: z
+        .string()
+        .trim()
+        .max(8192)
+        .optional()
+        .refine((value) => !value || HOST_KEY_LINE.test(value), {
+          message:
+            "Paste the output of 'ssh-keyscan <host>', for example: ssh-rsa AAAAB3NzaC1yc2E..."
+        })
     }),
     credentials: z
       .object({

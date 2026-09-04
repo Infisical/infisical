@@ -37,6 +37,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
         4. Configure the **Target Host**. This step appears only when the connection is an LDAP Connection, because that connection reaches a whole domain rather than one machine:
             - **Target Host**: The machine this sync delivers to. Servers found in the directory are offered as suggestions, and you can enter a host that is not listed. Enter a host name or an IPv4 address. Underscores, ports and IPv6 literals are not accepted.
             - **Port**: Leave empty to use 22. Set a value only if the SSH listener is on a non-standard port.
+            - **Trusted Host Keys**: Optional. Paste the output of `ssh-keyscan <host>`. When set, the sync only connects if the host presents one of these keys.
 
         5. Configure the **Sync Options**:
             - **Export Format**: Choose **PEM** to write separate certificate, chain, and key files, or **PKCS#12** to write a single password-protected `.pfx` bundle.

@@ -13,6 +13,12 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { SshConnectionMethod } from "./ssh-connection-enums";
 import { TSshConnectionConfig } from "./ssh-connection-types";
+import {
+  describeKeyType,
+  negotiableAlgorithmsForKnownHosts,
+  presentedKeyMatchesKnownHosts,
+  SSH_SERVER_HOST_KEY_ALGORITHMS
+} from "./ssh-host-key-fns";
 
 const SSH_TIMEOUT = 50_000;
 const SSH_RETRY_DELAY = 5_000;
@@ -24,6 +30,7 @@ const delay = (ms: number): Promise<void> =>
   });
 
 export type TSshConnectionOptions = {
+  expectedHostKeys?: string;
   maxRetries?: number;
   retryDelay?: number;
 };
@@ -39,23 +46,49 @@ export const getSshConnectionListItem = () => {
 const attemptSshConnection = (
   credentials: TSshConnectionConfig,
   targetHost: string,
-  targetPort: number
+  targetPort: number,
+  expectedHostKeys?: string
 ): Promise<Client> => {
   return new Promise((resolve, reject) => {
     const client = new Client();
+
+    let hostKeyRejected = false;
+    let presentedKeyType: string | undefined;
 
     const connectConfig: ConnectConfig = {
       host: targetHost,
       port: targetPort,
       readyTimeout: SSH_TIMEOUT,
       tryKeyboard: false,
+      ...(expectedHostKeys
+        ? {
+            hostVerifier: (hostKey: Buffer) => {
+              const matches = presentedKeyMatchesKnownHosts(hostKey, expectedHostKeys);
+              if (!matches) {
+                hostKeyRejected = true;
+                presentedKeyType = describeKeyType(hostKey);
+              }
+              return matches;
+            }
+          }
+        : {}),
       algorithms: {
-        serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
+        serverHostKey: expectedHostKeys
+          ? negotiableAlgorithmsForKnownHosts(expectedHostKeys)
+          : [...SSH_SERVER_HOST_KEY_ALGORITHMS]
       }
     };
 
     client.on("error", (err: Error) => {
       client.destroy();
+      if (hostKeyRejected) {
+        reject(
+          new Error(
+            `SSH Error: the ${presentedKeyType} host key presented by ${credentials.credentials.host} is not one of this sync's trusted host keys, so no credential was sent. Either the host was rebuilt and its keys need re-reading, or this is not the host you expect.`
+          )
+        );
+        return;
+      }
       if (err instanceof Error) {
         if (
           err.message.includes("authentication") ||
@@ -132,7 +165,7 @@ export const getSshConnectionClient = async (
     try {
       logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection attempt ${attempt}/${maxRetries}`);
       // eslint-disable-next-line no-await-in-loop
-      const client = await attemptSshConnection(credentials, targetHost, targetPort);
+      const client = await attemptSshConnection(credentials, targetHost, targetPort, options?.expectedHostKeys);
       if (attempt > 1) {
         logger.info(`[host=${targetHost}] [port=${targetPort}] SSH connection succeeded on attempt ${attempt}`);
       }
@@ -219,13 +252,14 @@ export const withSshConnection = async <T>(
     gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
     gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   },
-  operation: (client: Client) => Promise<T>
+  operation: (client: Client) => Promise<T>,
+  options?: TSshConnectionOptions
 ): Promise<T> =>
   executeWithPotentialGateway(
     config,
     gatewayServices.gatewayV2Service,
     async (targetHost, targetPort) => {
-      const client = await getSshConnectionClient(config, targetHost, targetPort);
+      const client = await getSshConnectionClient(config, targetHost, targetPort, options);
       try {
         return await operation(client);
       } finally {
