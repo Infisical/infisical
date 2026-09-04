@@ -158,12 +158,11 @@ export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPatte
   return { patterns, errors };
 };
 
-/** The canonical form written to the column, so one host is never stored two ways. */
-export const normalizeHostPattern = (raw: string): string =>
-  parseHostPatterns(raw)
-    .patterns.map((pattern) => pattern.key)
-    .join(",");
-
+// Validated but not rewritten: the column keeps what the caller typed. Every comparison - the
+// same-bundle conflict rule, the cross-bundle warning, matchesHost, and both proxy matchers - parses the
+// value and derives `key` itself, so storing the canonical form bought nothing and cost the one thing it
+// could: normalising grows a string ([::1] becomes 45 characters), so an input well inside the column
+// could overflow it after the length check had already passed.
 export const hostPatternSchema = z
   .string()
   .trim()
@@ -173,8 +172,7 @@ export const hostPatternSchema = z
     parseHostPatterns(raw).errors.forEach((message) => {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message });
     });
-  })
-  .transform(normalizeHostPattern);
+  });
 
 /**
  * Whether a pattern covers a concrete host and port. The proxy does the real matching in Go; this exists

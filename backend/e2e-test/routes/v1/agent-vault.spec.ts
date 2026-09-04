@@ -153,7 +153,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(contained.statusCode).toBe(200);
     });
 
-    test("a connection never echoes its secret, and the host pattern is normalized", async () => {
+    test("a connection never echoes its secret, and its host pattern is kept as typed", async () => {
       const bundle = await createAccessBundle("secret-handling");
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
@@ -166,7 +166,9 @@ describe("Agent Vault V1 Router", async () => {
       const { connection } = JSON.parse(res.payload) as {
         connection: { id: string; hostPattern: string; credential: Record<string, unknown> };
       };
-      expect(connection.hostPattern).toBe("api.github.com:443");
+      // Stored as typed, only trimmed. The canonical form is derived per comparison instead, so a
+      // pattern cannot grow past the column between the length check and the insert.
+      expect(connection.hostPattern).toBe("API.GitHub.com");
       expect(connection.credential).toEqual({ type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" });
       expect(res.payload).not.toContain("ghp_secret_value");
 

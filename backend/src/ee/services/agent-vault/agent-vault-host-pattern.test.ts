@@ -5,7 +5,6 @@ import {
   hostPatternSchema,
   intersectHostPatterns,
   matchesHost,
-  normalizeHostPattern,
   parseHostPatterns,
   relateHostPatterns
 } from "./agent-vault-host-pattern";
@@ -29,9 +28,14 @@ describe("agent vault host pattern grammar", () => {
     expect(hostPatternSchema.safeParse(pattern).success).toBe(false);
   });
 
-  test.each(fixture.normalize)("normalizes $pattern", ({ pattern, normalized }) => {
-    expect(normalizeHostPattern(pattern)).toBe(normalized);
-    expect(hostPatternSchema.parse(pattern)).toBe(normalized);
+  // The canonical form is derived per comparison, not stored: `key` is what every overlap check works
+  // from, while the column keeps whatever the caller typed.
+  test.each(fixture.normalize)("derives the canonical key for $pattern", ({ pattern, normalized }) => {
+    expect(
+      parseHostPatterns(pattern)
+        .patterns.map((candidate) => candidate.key)
+        .join(",")
+    ).toBe(normalized);
   });
 
   test.each(fixture.relate)("$a vs $b is $relation", ({ a, b, relation }) => {
