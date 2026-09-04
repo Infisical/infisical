@@ -122,7 +122,13 @@ const initTelemetryInstrumentation = ({
   // a scanner sends. Stable drops it, normalizes the method to a fixed set, and adds error.type.
   // Assigning it (rather than defaulting it) keeps one metric name across cloud and self-hosted, and shuts
   // out "http/dup", which would emit both attribute sets and double the cardinality this is here to bound.
-  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = "http";
+  // Other namespace tokens are preserved: the value is a comma-separated list and a future
+  // instrumentation may read its own namespace out of it.
+  const semconvOptIn = (process.env.OTEL_SEMCONV_STABILITY_OPT_IN ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter((token) => token && token.toLowerCase() !== "http" && token.toLowerCase() !== "http/dup");
+  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = [...semconvOptIn, "http"].join(",");
 
   registerInstrumentations({
     instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]

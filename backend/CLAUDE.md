@@ -694,8 +694,9 @@ Key plugins in `src/server/plugins/`:
 OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
 
 **Meter split by cardinality:**
-- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the single choke point: any attribute passed at a call site that isn't in the allowlist is silently dropped.
+- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the choke point for our own call sites: any attribute passed at a call site that isn't in the allowlist is silently dropped.
 - **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — carry unbounded per-actor labels (`HIGH_CARDINALITY_METER_NAMES`). Disabled wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
+- **`@opentelemetry/instrumentation-http`** — the second allowlist (`HTTP_INSTRUMENTATION_METER_ATTRIBUTES`). `instrumentation.ts` forces the stable HTTP semconv (`OTEL_SEMCONV_STABILITY_OPT_IN`), because the old conventions label the server metric with the raw `Host` header.
 
 **Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
 
