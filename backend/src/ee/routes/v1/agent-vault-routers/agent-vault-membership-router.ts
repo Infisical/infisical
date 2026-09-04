@@ -93,6 +93,12 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId)
   });
 
+  // resolveActorColumn takes the first id it finds, so without this a body naming two actors would act on
+  // one of them and silently ignore the other - on a remove, that is the wrong principal losing access.
+  const isExactlyOneActor = (body: { userId?: string; groupId?: string; identityId?: string }) =>
+    [body.userId, body.groupId, body.identityId].filter(Boolean).length === 1;
+  const ONE_ACTOR_MESSAGE = "Name exactly one user, group or machine identity";
+
   server.route({
     method: "POST",
     url: "/users",
@@ -144,7 +150,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "addAgentVaultProductMember",
       description: "Give a user, group or machine identity access to Agent Vault",
       tags: [ApiDocsTags.AgentVaultMemberships],
-      body: actorBody.extend({ role: ProductRoleSchema }),
+      body: actorBody.extend({ role: ProductRoleSchema }).refine(isExactlyOneActor, ONE_ACTOR_MESSAGE),
       response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -182,7 +188,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "updateAgentVaultProductMemberRole",
       description: "Change the Agent Vault role of a user, group or machine identity",
       tags: [ApiDocsTags.AgentVaultMemberships],
-      body: actorBody.extend({ role: ProductRoleSchema }),
+      body: actorBody.extend({ role: ProductRoleSchema }).refine(isExactlyOneActor, ONE_ACTOR_MESSAGE),
       response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -220,7 +226,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "removeAgentVaultProductMember",
       description: "Remove a user, group or machine identity from Agent Vault, and with it every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMemberships],
-      body: actorBody,
+      body: actorBody.refine(isExactlyOneActor, ONE_ACTOR_MESSAGE),
       response: { 200: z.object({ removed: z.literal(true) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
