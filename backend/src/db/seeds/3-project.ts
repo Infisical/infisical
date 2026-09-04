@@ -22,7 +22,6 @@ import {
   OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
-  ProjectVersion,
   TableName
 } from "../schemas";
 import { seedData1 } from "../seed-data";
@@ -31,24 +30,6 @@ export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
   { name: "Staging", slug: "staging" },
   { name: "Production", slug: "prod" }
-];
-
-const DEFAULT_V1_PROJECTS = [
-  {
-    id: seedData1.project.id,
-    name: seedData1.project.name,
-    slug: seedData1.project.slug
-  },
-  {
-    id: "c6f7ec57-f7ca-4f2b-8b90-7b7a3f8b6d1a",
-    name: "second project",
-    slug: "second-project"
-  },
-  {
-    id: "d4e4a4d9-8c2e-4f9c-89c4-2dd9f0f2ab5d",
-    name: "third project",
-    slug: "third-project"
-  }
 ];
 
 const createUserWithGhostUser = async (
@@ -230,17 +211,16 @@ export async function seed(knex: Knex): Promise<void> {
 
   await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
-  const projects = await knex(TableName.Project)
-    .insert(
-      DEFAULT_V1_PROJECTS.map((project) => ({
-        id: project.id,
-        name: project.name,
-        orgId: seedData1.organization.id,
-        slug: project.slug,
-        type: ProjectType.SecretManager,
-        version: ProjectVersion.V1
-      }))
-    )
+  const [project] = await knex(TableName.Project)
+    .insert({
+      name: seedData1.project.name,
+      orgId: seedData1.organization.id,
+      slug: "first-project",
+      type: ProjectType.SecretManager,
+      // eslint-disable-next-line
+      // @ts-ignore
+      id: seedData1.project.id
+    })
     .returning("*");
 
   const userOrgMembership = await knex(TableName.Membership)
@@ -261,35 +241,31 @@ export async function seed(knex: Knex): Promise<void> {
     throw new Error("User public key not found");
   }
 
-  for (const project of projects) {
-    await createUserWithGhostUser(seedData1.organization.id, project.id, seedData1.id, userOrgMembership.id, knex);
-  }
+  await createUserWithGhostUser(seedData1.organization.id, project.id, seedData1.id, userOrgMembership.id, knex);
 
   // create default environments and default folders
-  for (const project of projects) {
-    const envs = await knex(TableName.Environment)
-      .insert(
+  const envs = await knex(TableName.Environment)
+    .insert(
       DEFAULT_PROJECT_ENVS.map(({ name, slug }, index) => ({
         name,
         slug,
         projectId: project.id,
         position: index + 1
       }))
-      )
-      .returning("*");
-    await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
+    )
+    .returning("*");
+  await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
 
-    // save secret secret blind index
-    const salt = crypto.randomBytes(16).toString("base64");
-    const secretBlindIndex = crypto.encryption().symmetric().encryptWithRootEncryptionKey(salt);
-    // insert secret blind index for project
-    await knex(TableName.SecretBlindIndex).insert({
-      projectId: project.id,
-      encryptedSaltCipherText: secretBlindIndex.ciphertext,
-      saltIV: secretBlindIndex.iv,
-      saltTag: secretBlindIndex.tag,
-      algorithm: secretBlindIndex.algorithm,
-      keyEncoding: secretBlindIndex.encoding
-    });
-  }
+  // save secret secret blind index
+  const salt = crypto.randomBytes(16).toString("base64");
+  const secretBlindIndex = crypto.encryption().symmetric().encryptWithRootEncryptionKey(salt);
+  // insert secret blind index for project
+  await knex(TableName.SecretBlindIndex).insert({
+    projectId: project.id,
+    encryptedSaltCipherText: secretBlindIndex.ciphertext,
+    saltIV: secretBlindIndex.iv,
+    saltTag: secretBlindIndex.tag,
+    algorithm: secretBlindIndex.algorithm,
+    keyEncoding: secretBlindIndex.encoding
+  });
 }
