@@ -11,11 +11,11 @@ Credential health checks each account on a schedule by signing in to its target 
 
 Checking is configured on the [account template](/documentation/platform/pam/templates/overview), which sets whether accounts are checked and how often. Every account created from the template inherits those settings. There is no per-account override, so accounts that need a different frequency belong on a different template.
 
-New templates are created with checking on, every 24 hours. Templates that existed before this feature were enabled with the same default.
+Templates have checking on by default, every 24 hours.
 
 ### Statuses
 
-An account's health is one of four states:
+An account's health is always in one of four states:
 
 | Status | Meaning |
 | --- | --- |
