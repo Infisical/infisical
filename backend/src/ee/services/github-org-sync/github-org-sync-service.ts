@@ -37,13 +37,11 @@ import {
 
 const OctokitWithPlugin = Octokit.plugin(paginateGraphql);
 
-// The sync only ever reads from GitHub, so read:org is the whole requirement. Both 403 handlers
-// share this so they cannot drift apart again.
+// The sync only reads from GitHub, so read:org is the whole requirement.
 const githubTeamAccessDeniedMessage = (githubOrgName: string) =>
   `GitHub denied access to the teams in organization '${githubOrgName}'. A classic access token needs the 'read:org' scope. A fine-grained token needs Organization permissions > Members set to read, with the organization as its resource owner. GitHub also hides secret teams from anyone who is not an organization owner or a member of the team.`;
 
-// GitHub's GraphQL API times out (502) when one page resolves too many nodes; nesting members
-// under teams multiplies the per-page node count, so the team page is kept small.
+// GitHub 502s when one page resolves too many nodes, and nesting members under teams multiplies it.
 const GITHUB_TEAMS_PAGE_SIZE = 20;
 const GITHUB_TEAM_MEMBERS_PAGE_SIZE = 100;
 const GITHUB_MAX_PAGES = 500;
@@ -208,11 +206,8 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
 
 type TMatchableMember<T> = { user?: { email?: string | null } | null; inviteEmail?: string | null } & T;
 
-// Matching runs once per (GitHub login, org member) pair, so for the reported org it is ~640 teams
-// x 7k memberships x 2.3k members. Deriving each member's comparison fields once per sync instead
-// of once per pair keeps that off the request's critical path; candidate order is preserved, so the
-// same member is still chosen. A member with no usable email could never match, so it is dropped
-// from the candidate list rather than re-tested and rejected on every comparison.
+// ~16M (login, member) comparisons on a 640-team org, so per-member fields are derived once per
+// sync. Order must stay input order, or `find` picks a different member than before.
 export const buildGithubMemberMatcher = <T>(members: TMatchableMember<T>[]) => {
   const emailSplitRegex = new RE2(/[._-]/);
   const candidates = members.flatMap((member) => {
