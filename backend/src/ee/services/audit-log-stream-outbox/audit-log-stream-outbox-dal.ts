@@ -167,7 +167,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const recoverStaleClaims = async (
     thresholdMs: number,
     maxAttempts: number
-  ): Promise<{ retried: number; dropped: { streamId: string; orgId: string }[] }> => {
+  ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
     try {
       return await db.transaction(async (tx) => {
         const staleRows = await tx(TableName.AuditLogStreamOutbox)
@@ -203,18 +203,27 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
             });
         }
 
-        if (exhausted.length > 0) {
-          await tx(TableName.AuditLogStreamOutbox)
-            .whereIn(
-              "id",
-              exhausted.map((row) => row.id)
-            )
-            .del();
-        }
+        if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
+
+        await tx(TableName.AuditLogStreamOutbox)
+          .whereIn(
+            "id",
+            exhausted.map((row) => row.id)
+          )
+          .del();
+
+        const streams = await tx(TableName.AuditLogStream)
+          .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
+          .select<{ id: string; provider: string }[]>("id", "provider");
+        const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
 
         return {
           retried: retriable.length,
-          dropped: exhausted.map((row) => ({ streamId: row.streamId, orgId: row.orgId }))
+          dropped: exhausted.map((row) => ({
+            streamId: row.streamId,
+            orgId: row.orgId,
+            provider: providerByStreamId.get(row.streamId) ?? null
+          }))
         };
       });
     } catch (error) {
