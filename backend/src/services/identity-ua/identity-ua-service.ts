@@ -320,27 +320,18 @@ export const identityUaServiceFactory = ({
       const clientSecretId = validClientSecretInfo.id;
       const hasFiniteUsageLimit = clientSecretNumUsesLimit > 0;
 
-      const [didClaimUse, shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
-        // the numUses read above is a stale snapshot, so the claim is what enforces the limit
-        hasFiniteUsageLimit ? identityUaClientSecretDAL.tryClaimUsage(clientSecretId) : Promise.resolve(false),
-        hasFiniteUsageLimit
-          ? // the claim already counted it
-            Promise.resolve(false)
-          : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
-            keyStore
-              .setItemWithExpiryNX(
-                KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
-                UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
-                "1"
-              )
-              .then(Boolean),
-        shouldRecordIdentityLastLogin(keyStore, identity.id)
-      ]);
-
-      if (hasFiniteUsageLimit && !didClaimUse) {
-        await identityUaClientSecretDAL.updateById(clientSecretId, {
-          isClientSecretRevoked: true
-        });
+      // the numUses read above is a stale snapshot, so the claim is what enforces the limit. It
+      // settles before the debounces below so a rejected login cannot consume one of their windows
+      if (hasFiniteUsageLimit && !(await identityUaClientSecretDAL.tryClaimUsage(clientSecretId))) {
+        // the deny is already decided, so a failure marking the spent secret revoked must not
+        // turn this into a 500; the daily cleanup reaps it on numUses >= numUsesLimit anyway
+        try {
+          await identityUaClientSecretDAL.updateById(clientSecretId, {
+            isClientSecretRevoked: true
+          });
+        } catch (error) {
+          logger.error(error, `Failed to revoke spent client secret [clientSecretId=${clientSecretId}]`);
+        }
         throw new UnauthorizedError({
           message: "Access denied due to client secret usage limit reached",
           detail: {
@@ -352,15 +343,39 @@ export const identityUaServiceFactory = ({
         });
       }
 
-      if (shouldIncrementUsage || shouldRecordLastLogin) {
-        await identityUaDAL.transaction(async (tx) => {
-          if (shouldIncrementUsage) {
-            await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
-          }
-          if (shouldRecordLastLogin) {
-            await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
-          }
-        });
+      // the use is claimed and cannot be given back, so the caller has earned its token: a failure
+      // past this point must not reject the login, or it would strand a single-use secret for good
+      try {
+        const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
+          hasFiniteUsageLimit
+            ? // the claim already counted it
+              Promise.resolve(false)
+            : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
+              keyStore
+                .setItemWithExpiryNX(
+                  KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
+                  UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+                  "1"
+                )
+                .then(Boolean),
+          shouldRecordIdentityLastLogin(keyStore, identity.id)
+        ]);
+
+        if (shouldIncrementUsage || shouldRecordLastLogin) {
+          await identityUaDAL.transaction(async (tx) => {
+            if (shouldIncrementUsage) {
+              await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
+            }
+            if (shouldRecordLastLogin) {
+              await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
+            }
+          });
+        }
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to record universal auth login bookkeeping [identityId=${identityUa.identityId}] [clientSecretId=${clientSecretId}]`
+        );
       }
 
       const subOrgDetails =
