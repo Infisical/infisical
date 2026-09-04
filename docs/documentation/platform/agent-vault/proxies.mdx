@@ -69,7 +69,7 @@ If Infisical is unreachable, the proxy keeps serving what it last knew for five 
 
 The proxy terminates TLS to see the request it's attaching a credential to, so each agent has to trust the proxy's certificate authority. Every proxy has its own; nothing is shared across proxies or with Infisical.
 
-`infisical av run` fetches the certificate from the proxy on every run, writes it to `~/.infisical/agent-vault/ca.pem`, and sets `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` for the agent. On macOS it also adds the certificate to your login keychain, because Go programs such as `gh` and `docker` read the system trust store rather than those variables. You can decline the keychain prompt; only those programs are affected.
+`infisical av run` fetches the certificate from the proxy on every run, writes it to `~/.infisical/agent-vault/ca.pem`, and sets `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` for the agent. On macOS it also adds the certificate to your login keychain, because Go programs such as `gh` and `docker` read the system trust store rather than those variables. You can decline the keychain prompt; only those programs are affected. The prompt is skipped where nothing can answer it, such as CI, and `--no-ca-trust` skips the step entirely.
 
 This means anything that can answer at the proxy's address can hand the agent a certificate the agent will trust, and the agent will send it the session token. That token then works against the real proxy. Reaching that position needs an attacker already inside your network, which is the accepted trade for not making every agent host carry a copy of the certificate.
 
