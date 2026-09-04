@@ -100,18 +100,30 @@ export const parseSecretFile = (
       return;
     }
 
-    const src = event.target.result as ArrayBuffer;
+    const src = event.target.result as string;
 
-    switch (file.type) {
-      case "application/json":
-        onParsedSecrets(parseJson(src));
-        break;
-      case "text/yaml":
-      case "application/x-yaml":
-      case "application/yaml":
+    // Browsers frequently report an empty type for .yml/.yaml/.csv, so the extension
+    // has to be considered too, otherwise the file falls through to the dotenv
+    // parser and its contents get mangled.
+    const isYaml =
+      extension === "yml" ||
+      extension === "yaml" ||
+      file.type === "text/yaml" ||
+      file.type === "application/x-yaml" ||
+      file.type === "application/yaml";
+
+    try {
+      if (isYaml) {
         onParsedSecrets(parseYaml(src));
-        break;
-      case "text/csv": {
+        return;
+      }
+
+      if (extension === "json" || file.type === "application/json") {
+        onParsedSecrets(parseJson(src));
+        return;
+      }
+
+      if (extension === "csv" || file.type === "text/csv") {
         const { matrix: fullMatrix, delimiter } = parseCsvToMatrix(src);
         if (!fullMatrix.length) {
           createNotification({
@@ -123,9 +135,16 @@ export const parseSecretFile = (
         onCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1), delimiter });
         return;
       }
-      default:
-        onParsedSecrets(parseDotEnv(src));
-        break;
+
+      onParsedSecrets(parseDotEnv(src));
+    } catch (error) {
+      createNotification({
+        type: "error",
+        text:
+          error instanceof Error
+            ? `Failed to parse ${file.name}: ${error.message}`
+            : `Failed to parse ${file.name}.`
+      });
     }
   };
 

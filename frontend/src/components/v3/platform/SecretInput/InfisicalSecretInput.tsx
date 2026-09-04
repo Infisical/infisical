@@ -248,6 +248,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             align="start"
+            collisionPadding={8}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
             className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"

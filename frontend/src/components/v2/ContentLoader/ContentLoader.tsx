@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "../Lottie";
+import { Loader } from "../../v3/generic/Loader";
 
 type Props = {
   text?: string | string[];
@@ -34,11 +34,7 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
         className
       )}
     >
-      <Lottie
-        isAutoPlay
-        icon="infisical_loading"
-        className={twMerge("h-32 w-32", lottieClassName)}
-      />
+      <Loader variant="brand" size="lg" className={twMerge("h-32", lottieClassName)} />
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div

@@ -24,11 +24,11 @@ This guide walks you through setting up Secure Enterprise Key Management (SEKM) 
     2. Navigate to **iDRAC Settings > Services**
     3. Expand **iDRAC Key Management** and select **SEKM**
     4. Enter the KMIP server address and port (default: 5696)
-    5. Click **Next**
+    5. Select **Next**
   </Step>
 
   <Step title="Generate Certificate Request on iDRAC">
-    When iDRAC prompts you to generate a certificate request, you'll need to enter subject values. You can find the required values in Infisical by clicking **Generate Certificate** on your KMIP client and selecting the **CSR** request method - the modal will display the exact **Client ID** and **Project ID** to use.
+    When iDRAC prompts you to generate a certificate request, you'll need to enter subject values. You can find the required values in Infisical by selecting **Generate Certificate** on your KMIP client and selecting the **CSR** request method - the modal will display the exact **Client ID** and **Project ID** to use.
     
     1. Click **Generate CSR** on iDRAC
     2. Enter the certificate information:
@@ -41,14 +41,14 @@ This guide walks you through setting up Secure Enterprise Key Management (SEKM) 
   <Step title="Sign the Certificate in Infisical">
     1. In the Infisical modal, paste the certificate request content from iDRAC
     2. Set the certificate validity period (e.g., "1y" for one year)
-    3. Click **Sign Certificate**
+    3. Select **Sign Certificate**
     4. Download the signed certificate and certificate chain
   </Step>
 
   <Step title="Upload Certificate to iDRAC">
     1. In iDRAC, upload the signed client certificate
     2. Upload the certificate chain as the KMS CA certificate
-    3. Click **Test Network Connection** to verify connectivity
+    3. Select **Test Network Connection** to verify connectivity
     4. Complete the SEKM configuration
   </Step>
 

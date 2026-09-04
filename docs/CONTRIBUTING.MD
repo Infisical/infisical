@@ -8,6 +8,32 @@
 - Cross-referencing related concepts
 - Using Mintlify components (`<Steps>`, `<Tabs>`, `<Card>`, etc.)
 - Page structure and formatting
+- Sentence-level writing rules, and the bolding and UI conventions
+
+## Using the docs-style skill
+
+Vale checks roughly a third of the style guide. The rest needs a reviewer.
+
+The `docs-style` skill in `.agents/skills/docs-style/` is that reviewer. Claude loads it on its
+own for any work under `docs/`, or you can invoke it explicitly with `/docs-style`. It runs the linter,
+checks the page structure, then goes sentence by sentence and reports each finding as
+`file:line` with a rewrite before changing anything.
+
+It's worth running on your own prose too, not only on a draft a model wrote.
+
+## Working from an AI draft
+
+Structure survives a model draft. Sentences do not, and that is where reviewers spend their
+time. The order that avoids it:
+
+1. **Brain dump first, in your own words.** Get everything you know onto the page before any
+   tool touches it. Write in whichever language is faster for you. The product knowledge is the
+   part only you have, and accuracy matters more than phrasing at this stage.
+2. **Use the model for structure.** Grouping, ordering, and spotting the section you forgot are
+   what it is good at. Ask it for headings and an outline.
+3. **Write the prose yourself.** Your own writing with a spell check, or a light review pass,
+   usually reads more like a person talking. Before you submit, go through the page and ask:
+   would I have written this sentence? Rewrite anywhere the answer is no.
 
 ## Linting prose
 
@@ -42,7 +68,22 @@ What it checks: sentence case in headings and in the `title`/`sidebarTitle` fron
 fields, the enforced spellings in
 `docs/.vale/styles/Infisical/Terminology.yml`, spelling against the vocabulary in
 `docs/.vale/styles/config/vocabularies/Infisical/`, `$` prompts that break copy-paste,
-placeholders like `foo`, and em dashes piling up in one paragraph.
+placeholders like `foo`, em dashes piling up in one paragraph, "click" and "tap" where the
+verb should be "select", and the full forms of common contractions.
+
+**`Infisical.UIActions` and `Infisical.Contractions` do not fail the run yet.** They report at
+warning and suggestion level, because the existing pages carry 561 and 1,229 of them
+respectively and a blocking rule would fail every pull request that touches one. The target is
+error level for both, by this route:
+
+1. The rules land non-blocking, so the count only goes down as people touch pages.
+2. A dedicated pull request per rule sweeps the corpus. Neither sweep is safe to apply
+   mechanically. "Click" as a noun and the deliberately formal phrasing in some reference
+   tables both need a person, so this is a reviewed pass, not `vale --fix`.
+3. Flip `level:` to `error` in the rule file once the count is zero.
+
+Nothing checks the two bolding rules in section 11 of the style guide, and nothing will.
+Whether a noun is a button that should be bold needs someone who knows the product.
 
 **Adding a word.** If Vale flags a term that is spelled correctly, add it to the vocabulary:
 
@@ -66,6 +107,15 @@ dropped for this reason: it reported a missing `description` on 148 files that a
 to see inside code blocks; they behave correctly locally, but treat their CI behavior as
 unverified. Anything that needs a whole-file view is safer as a separate check than as a Vale
 rule.
+
+**Write rules here rather than installing a style package.** The Google and Microsoft styles
+that `vale sync` can fetch cover some of the same ground, and `Microsoft.UIVerbs` is close to
+`Infisical.UIActions`. Installing one costs more than it saves. `Packages` requires a
+`vale sync` that Mintlify's runner does not perform, so a config naming a style it has not
+downloaded breaks that check; CI pins Vale by version and verified checksum, which a synced
+package cannot match; and enabling two rules out of forty-six means a long disable list that
+silently grows every time the package adds a rule. Copy the mechanics that are worth having and
+own the file.
 
 **Enforcing a spelling.** Add a swap to `Infisical/Terminology.yml`. List only forms that are
 always wrong, and remember the lowercase spelling of a product name is usually its binary,

@@ -68,7 +68,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
         data-slot="table-row"
         className={cn(
           "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
-          props.onClick && "cursor-pointer",
+          props.onClick && "cursor-pointer select-none",
           className
         )}
         {...props}

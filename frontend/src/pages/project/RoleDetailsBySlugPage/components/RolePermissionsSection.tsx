@@ -19,7 +19,6 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
-import { useServerConfig } from "@app/context/ServerConfigContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -149,7 +148,6 @@ export const renderConditionalComponents = (
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentProject, projectId } = useProject();
-  const { config } = useServerConfig();
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
@@ -193,9 +191,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     if (!projectId || !role?.id) return;
 
     const permissionsForm = { ...el.permissions };
-    if (!config?.isCrossProjectSecretSharingEnabled) {
-      permissionsForm[ProjectPermissionSub.ProjectFolderGrant] = [];
-    }
 
     const updatedRole = await updateRole({
       id: role?.id as string,
@@ -286,11 +281,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
-                    )
-                    .filter(
-                      (subject) =>
-                        subject !== ProjectPermissionSub.ProjectFolderGrant ||
-                        config?.isCrossProjectSecretSharingEnabled
                     )
                     .map((subject) => (
                       <GeneralPermissionPolicies

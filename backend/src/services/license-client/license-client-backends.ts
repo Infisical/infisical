@@ -224,7 +224,7 @@ export const licenseServerBackend = (
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, region }),
       redirect: "manual"
     });
     await throwIfResponseError(res);
@@ -281,7 +281,7 @@ export const licenseServerBackend = (
     const res = await fetch(url, {
       method: "PUT",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, region }),
       redirect: "manual"
     });
     await throwIfResponseError(res);
@@ -300,7 +300,8 @@ export const licenseServerBackend = (
         email: payload.email,
         name: payload.name,
         declaredUsage: payload.declaredUsage,
-        returnUrl: payload.returnUrl
+        returnUrl: payload.returnUrl,
+        region
       }),
       redirect: "manual"
     });

@@ -270,8 +270,9 @@ const buildSlackPayload = (notification: TNotification) => {
       const accountName = escapeSlackMrkdwn(payload.accountName);
       const folderName = escapeSlackMrkdwn(payload.folderName);
       const reason = payload.reason ? escapeSlackMrkdwn(payload.reason) : undefined;
+      const accessTypeLabel = escapeSlackMrkdwn(payload.accessTypeLabel ?? "access");
 
-      const messageBody = `${requesterFullName} (${requesterEmail}) has requested access to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
+      const messageBody = `${requesterFullName} (${requesterEmail}) has requested ${accessTypeLabel} to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
         reason ? `\n\nReason: ${reason}` : ""
       }`;
 
@@ -291,7 +292,7 @@ const buildSlackPayload = (notification: TNotification) => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${requesterFullName}* (${requesterEmail}) has requested access to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
+            text: `*${requesterFullName}* (${requesterEmail}) has requested ${accessTypeLabel} to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
               reason ? `\n\n*Reason:* ${reason}` : ""
             }`
           }

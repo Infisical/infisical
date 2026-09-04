@@ -18,7 +18,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "./HoverCard";
  *   forward props onto an inline link, badge, or button rather than rendering
  *   an extra wrapper.
  * - `HoverCardContent` — the floating panel. Accepts `align`, `side`, and
- *   `sideOffset`, just like `Popover`.
+ *   `sideOffset`, just like `Popover`, and preserves an 8px viewport gutter
+ *   by default.
  *
  * **Don't** put interactive controls (form fields, primary actions) inside a
  * hover card — the hover-then-click flow is fragile, and the panel is

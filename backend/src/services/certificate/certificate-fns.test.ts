@@ -108,4 +108,14 @@ describe("parseCertificateBody usages", () => {
     expect(fields).not.toHaveProperty("extendedKeyUsages");
     expect(fields.isCA).toBe(false);
   });
+
+  test("drops extended key usage OIDs it cannot map rather than leaving holes in the array", async () => {
+    const pem = await buildCert([
+      new x509.ExtendedKeyUsageExtension(["1.3.6.1.5.5.7.3.1", "1.3.6.1.4.1.311.20.2.2", "1.3.6.1.5.5.7.3.17"], false)
+    ]);
+
+    const fields = extractCertificateFields(pem);
+
+    expect(fields.extendedKeyUsages).toEqual(["serverAuth"]);
+  });
 });

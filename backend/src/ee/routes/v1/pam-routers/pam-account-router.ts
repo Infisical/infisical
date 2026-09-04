@@ -2,12 +2,13 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessStatus, PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
   PamAccountAccessibilityIssue,
-  PamAccountTypeMetadataSchema
+  PamAccountTypeMetadataSchema,
+  revealedCredentialsSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import {
@@ -22,6 +23,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -56,10 +58,20 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
   isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
+  heartbeatStatus: z
+    .nativeEnum(PamHeartbeatStatus)
+    .nullable()
+    .optional()
+    .describe("Result of the most recent credential health check, if one has run."),
+  heartbeatEnabled: z
+    .boolean()
+    .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  supportsCredentialReveal: z.boolean().describe("Whether this account type stores a credential that can be revealed"),
+  credentialAccessStatus: z.nativeEnum(PamAccessStatus).describe("Current credential-approval status for the caller"),
   permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
@@ -81,6 +93,23 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
 const SanitizedAccountDetailSchema = z.discriminatedUnion(
   "accountType",
   accountDetailVariants as [(typeof accountDetailVariants)[number], ...(typeof accountDetailVariants)[number][]]
+);
+
+const accountCredentialVariants = Object.keys(ACCOUNT_TYPE_CONFIGS).map((accountType) =>
+  z.object({
+    accountType: z.literal(accountType as TSupportedAccountType),
+    credentials: revealedCredentialsSchema(accountType as TSupportedAccountType).describe(
+      "The account's stored credentials, secrets included"
+    )
+  })
+);
+
+const PamAccountCredentialsSchema = z.discriminatedUnion(
+  "accountType",
+  accountCredentialVariants as [
+    (typeof accountCredentialVariants)[number],
+    ...(typeof accountCredentialVariants)[number][]
+  ]
 );
 
 const toPascalCase = (s: string) =>
@@ -623,6 +652,94 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:accountId/health",
+    schema: {
+      operationId: "getPamAccountCredentialHealth",
+      description: "Get a PAM account's credential health",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeat: z.object({
+            enabled: z.boolean(),
+            intervalSeconds: z.number().nullable(),
+            status: z.nativeEnum(PamHeartbeatStatus).nullable().describe("Most recent check result"),
+            lastCheckedAt: z.date().nullable(),
+            lastHealthyAt: z.date().nullable(),
+            nextCheckAt: z.date().nullable(),
+            templateName: z.string(),
+            lastMessage: z.string().nullable()
+          })
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const heartbeat = await server.services.pamAccountHeartbeat.getHeartbeat(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+      return { heartbeat };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/health/check",
+    schema: {
+      operationId: "checkPamAccountCredentialHealth",
+      description: "Run a credential health check on a PAM account now",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeatStatus: z.string(),
+          message: z.string().optional()
+        })
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccountHeartbeat.checkAccount(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_HEARTBEAT,
+          metadata: {
+            accountId: req.params.accountId,
+            accountName: result.accountName,
+            accountType: result.accountType,
+            heartbeatStatus: result.status,
+            manual: true,
+            ...(result.message ? { message: result.message } : {})
+          }
+        }
+      });
+
+      return { heartbeatStatus: result.status, ...(result.message ? { message: result.message } : {}) };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:accountId/rotation/rotate",
     schema: {
@@ -742,6 +859,71 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
       return { account } as unknown as { account: z.infer<typeof SanitizedAccountDetailSchema> };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/credentials",
+    schema: {
+      operationId: "getPamAccountCredentials",
+      description: "Reveal the stored credentials for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      body: z.object({
+        reason: z
+          .string()
+          .trim()
+          .max(500)
+          .optional()
+          .describe("Why the credentials are being viewed. Required when the template requires a reason."),
+        mfaSessionId: z
+          .string()
+          .max(64)
+          .optional()
+          .describe("A verified MFA session ID. Required when the template requires MFA.")
+      }),
+      response: {
+        200: PamAccountCredentialsSchema
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccount.getCredentials({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorEmail: isUserSessionAuth(req.auth) ? (req.auth.user.email ?? "") : "",
+        reason: req.body.reason,
+        mfaSessionId: req.body.mfaSessionId,
+        tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_CREDENTIALS_VIEW,
+          metadata: {
+            accountId: result.accountId,
+            accountName: result.accountName,
+            accountType: result.accountType,
+            folderId: result.folderId,
+            folderName: result.folderName,
+            reason: result.reason,
+            grantExpiresAt: result.grantExpiresAt?.toISOString() ?? null
+          }
+        }
+      });
+
+      return { accountType: result.accountType, credentials: result.credentials } as unknown as z.infer<
+        typeof PamAccountCredentialsSchema
+      >;
     }
   });
 

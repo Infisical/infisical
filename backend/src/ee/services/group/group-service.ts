@@ -31,6 +31,7 @@ import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-acces
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -41,7 +42,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
+import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
 import {
@@ -285,6 +290,20 @@ export const groupServiceFactory = ({
         orgDAL.findById(actorOrgId)
       );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
+
+      const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged group"
+      });
 
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
@@ -702,6 +721,23 @@ export const groupServiceFactory = ({
     }
     const { group } = groupMembership;
 
+    const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionGroupActions.Delete,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to delete a more privileged group"
+    });
+
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
@@ -1019,31 +1055,22 @@ export const groupServiceFactory = ({
       });
     }
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.AddMembers,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to add user to more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.AddMembers,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.AddMembers,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to add user to more privileged group"
+    });
 
     const user = await userDAL.findOne({
       username
@@ -1125,31 +1152,22 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.AddIdentities,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to add identity to more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.AddIdentities,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.AddIdentities,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to add identity to more privileged group"
+    });
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
@@ -1228,30 +1246,22 @@ export const groupServiceFactory = ({
       });
     }
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.RemoveMembers,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to delete user from more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.RemoveMembers,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.RemoveMembers,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to delete user from more privileged group"
+    });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
@@ -1312,30 +1322,22 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.RemoveIdentities,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to remove identity from more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.RemoveIdentities,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.RemoveIdentities,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to remove identity from more privileged group"
+    });
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,

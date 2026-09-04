@@ -85,4 +85,5 @@ export type SubscriptionPlan = {
   pam?: boolean | null;
   certManager?: boolean | null;
   secretsFolderRbac: boolean;
+  crossProjectSecretSharing: boolean;
 };

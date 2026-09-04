@@ -321,7 +321,7 @@ export const InitialSyncAlerts = ({
             Anything in {destinationName} not in Infisical will be removed. To keep them,{" "}
             {renderRemedy("import from provider", onGoToInitialSync)},{" "}
             {renderRemedy("customize key names", onGoToOptions)}, or{" "}
-            {renderRemedy("disable secret deletion", onGoToOptions)}.
+            {renderRemedy("prevent secret deletion", onGoToOptions)}.
           </p>
         </AlertDescription>
       </Alert>
@@ -376,7 +376,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
               !keySchema &&
               (syncOption?.supportsKeySchema !== false ||
                 syncOption?.supportsDisableSecretDeletion !== false) &&
-              " Secrets not in Infisical will be removed — add a key schema or disable secret deletion to keep them."}
+              " Secrets not in Infisical will be removed — add a key schema or prevent secret deletion to keep them."}
           </AlertDescription>
         </Alert>
       )}

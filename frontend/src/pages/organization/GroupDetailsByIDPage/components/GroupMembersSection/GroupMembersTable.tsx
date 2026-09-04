@@ -3,7 +3,6 @@ import { ChevronDownIcon, FilterIcon, HardDriveIcon, PlusIcon, UserIcon } from "
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Lottie } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
@@ -18,6 +17,7 @@ import {
   EmptyTitle,
   IconButton,
   Input,
+  Loader,
   Pagination,
   Table,
   TableBody,
@@ -119,7 +119,7 @@ export const GroupMembersTable = ({
   if (isPending) {
     return (
       <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+        <Loader />
       </div>
     );
   }

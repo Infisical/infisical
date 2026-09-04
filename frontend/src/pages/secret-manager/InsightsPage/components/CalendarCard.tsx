@@ -2,7 +2,6 @@ import { useState } from "react";
 import { addMonths, format, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Lottie } from "@app/components/v2";
 import {
   Card,
   CardAction,
@@ -10,7 +9,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  IconButton
+  IconButton,
+  Loader
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetCalendarInsights } from "@app/hooks/api";
@@ -66,7 +66,7 @@ export const CalendarCard = () => {
           />
           {isPending && (
             <div className="absolute inset-0 flex items-center justify-center bg-container/40">
-              <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+              <Loader />
             </div>
           )}
         </div>

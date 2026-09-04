@@ -27,7 +27,7 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -109,7 +109,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     ProjectPermissionSub.Member
   );
   const canInviteNewMembers = orgPermission.can(
-    OrgPermissionActions.Create,
+    OrgPermissionMemberActions.Create,
     OrgPermissionSubjects.Member
   );
   const isReferenceDataLoading = isMembersLoading || isOrgUsersLoading || isRolesLoading;
