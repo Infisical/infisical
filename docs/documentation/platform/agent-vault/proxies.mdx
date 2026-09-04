@@ -107,10 +107,11 @@ The response lists each connection the session can use through this proxy, with 
 
 ## What the proxy can't carry
 
-Three kinds of traffic don't work through the proxy in this release. Each fails with an explicit error rather than hanging.
+Two kinds of traffic don't work through the proxy in this release. Each fails with an explicit error rather than hanging.
 
 - **WebSockets.** Connections that upgrade from HTTP, such as MCP servers over WebSocket, Slack Socket Mode, the OpenAI Realtime API, and `kubectl exec`.
-- **Streams longer than 30 minutes.** A single response that stays open past 30 minutes, such as a long-lived MCP server over server-sent events, is closed at that point.
 - **HTTP/2-only clients.** Clients that refuse to speak HTTP/1.1, including gRPC, Google Cloud SDKs, and Temporal.
+
+Streaming responses are carried for as long as they keep producing, so server-sent events and other long-lived streams stay open. A response that produces nothing for five minutes is closed.
 
 Point clients that need any of these at the upstream directly, outside the proxy, until it supports them.
