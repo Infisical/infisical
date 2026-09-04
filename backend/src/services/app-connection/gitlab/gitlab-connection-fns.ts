@@ -391,7 +391,7 @@ export const listGitLabProjects = async ({
       id: project.id.toString()
     }));
   } catch (error: unknown) {
-    throwGitLabListError(error, "projects");
+    return throwGitLabListError(error, "projects");
   }
 };
 
@@ -429,6 +429,6 @@ export const listGitLabGroups = async ({
       fullPath: group.fullPath
     }));
   } catch (error: unknown) {
-    throwGitLabListError(error, "groups");
+    return throwGitLabListError(error, "groups");
   }
 };
