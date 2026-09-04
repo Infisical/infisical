@@ -312,6 +312,27 @@ const processTags = ({
   return { tagsToAdd, tagKeysToRemove };
 };
 
+const describeSecretIfExists = async (
+  client: SecretsManagerClient,
+  secretId: string,
+  attempt = 0
+): Promise<DescribeSecretResponse | null> => {
+  try {
+    return await client.send(new DescribeSecretCommand({ SecretId: secretId }));
+  } catch (e) {
+    if (isAwsError(e, "ResourceNotFoundException")) {
+      return null;
+    }
+
+    if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
+      await sleep();
+      return describeSecretIfExists(client, secretId, attempt + 1);
+    }
+
+    throw e;
+  }
+};
+
 const getSingleSecretValue = async (
   client: SecretsManagerClient,
   secretId: string,
@@ -467,12 +488,12 @@ export const AwsSecretsManagerSyncFns = {
         schema: syncOptions.keySchema
       });
 
-      const existingSecretValue = await getSingleSecretValue(client, secretName);
-      const secretExists = existingSecretValue !== null;
+      const existingDescription = await describeSecretIfExists(client, secretName);
+      const secretExists = existingDescription !== null;
 
-      let existingDescription: DescribeSecretResponse | undefined;
+      let existingSecretValue: SecretValueEntry | null = null;
       if (secretExists) {
-        existingDescription = await describeSecret(client, { SecretId: secretName });
+        existingSecretValue = await getSingleSecretValue(client, secretName);
       }
 
       const hasValueChanged = existingSecretValue?.SecretString !== secretValue;
