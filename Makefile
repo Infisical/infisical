@@ -1,8 +1,8 @@
-# Versions pinned across multiple Dockerfiles live in one file and are exported
-# so compose can pass them as build args. Dockerfiles declare the ARG without a
-# default, so a build that misses this fails rather than installing an unpinned version.
+# Canonical versions pinned across multiple Dockerfiles. The Dockerfiles carry
+# matching ARG defaults so external builders work unaided; this exports the value
+# so compose overrides them from one place. Export only this, not every variable.
 include build-versions.env
-export
+export INFISICAL_CLI_VERSION
 
 build:
 	docker-compose -f docker-compose.yml build

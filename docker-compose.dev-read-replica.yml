@@ -85,7 +85,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
       args:
-        INFISICAL_CLI_VERSION: ${INFISICAL_CLI_VERSION}
+        INFISICAL_CLI_VERSION: "${INFISICAL_CLI_VERSION:?not set - run via make, or source build-versions.env first}"
     env_file: .env
     environment:
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
@@ -99,7 +99,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
       args:
-        INFISICAL_CLI_VERSION: ${INFISICAL_CLI_VERSION}
+        INFISICAL_CLI_VERSION: "${INFISICAL_CLI_VERSION:?not set - run via make, or source build-versions.env first}"
     depends_on:
       db:
         condition: service_started
