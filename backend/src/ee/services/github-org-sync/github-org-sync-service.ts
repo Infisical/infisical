@@ -949,6 +949,7 @@ export const githubOrgSyncServiceFactory = ({
         )) as GroupMembership[];
 
         const expectedUserIds = new Set<string>();
+        let hasUnresolvedLogin = false;
         (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
           const githubUsername = login.toLowerCase();
 
@@ -960,6 +961,7 @@ export const githubOrgSyncServiceFactory = ({
               `Matched GitHub user ${githubUsername} to email ${result.member.user?.email || result.member.inviteEmail} by ${result.rule}`
             );
           } else if (result.status === "ambiguous") {
+            hasUnresolvedLogin = true;
             ambiguousLogins.set(githubUsername, result.emails);
           }
         });
@@ -974,10 +976,15 @@ export const githubOrgSyncServiceFactory = ({
 
         const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
 
-        const membershipsToRemove = currentMemberships.filter((membership) => {
-          const activeMember = activeMembersById.get(membership.orgMembershipId);
-          return activeMember?.user?.id && !expectedUserIds.has(activeMember.user.id);
-        });
+        // An ambiguous login means we do not know which member it is, not that nobody in the group
+        // belongs there. Removing on that basis would strip the whole team, so additions still run
+        // for the logins that did resolve and removals wait until the ambiguity is fixed.
+        const membershipsToRemove = hasUnresolvedLogin
+          ? []
+          : currentMemberships.filter((membership) => {
+              const activeMember = activeMembersById.get(membership.orgMembershipId);
+              return activeMember?.user?.id && !expectedUserIds.has(activeMember.user.id);
+            });
 
         if (usersToAdd.length > 0) {
           await userGroupMembershipDAL.insertMany(
@@ -1026,7 +1033,7 @@ export const githubOrgSyncServiceFactory = ({
       syncErrors.push(
         ...listed.map(
           ([login, emails]) =>
-            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so their team memberships were not synced. Align the member's email with their GitHub username.`
+            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so Infisical cannot tell which one they are. Their teams were left unchanged. Align one member's email with their GitHub username to resolve it.`
         )
       );
       if (ambiguousLogins.size > listed.length) {
