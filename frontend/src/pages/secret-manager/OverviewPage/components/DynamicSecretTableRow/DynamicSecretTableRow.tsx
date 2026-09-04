@@ -2,7 +2,6 @@ import { subject } from "@casl/ability";
 import {
   AlertTriangleIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   EditIcon,
   FileKeyIcon,
   FingerprintIcon,
@@ -281,7 +280,11 @@ export const DynamicSecretTableRow = ({
                 setIsExpanded.toggle();
               }}
             >
-              {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+              {isExpanded ? (
+                <ChevronDownIcon />
+              ) : (
+                <FingerprintIcon className="text-dynamic-secret" />
+              )}
             </IconButton>
           ) : (
             <FingerprintIcon className="text-dynamic-secret" />
