@@ -1933,6 +1933,7 @@ export const registerRoutes = async (
     agentVaultResolveDAL,
     agentVaultSessionDAL,
     agentVaultAccessBundleMemberDAL,
+    orgDAL,
     permissionService,
     kmsService,
     resourceAuthMethodService

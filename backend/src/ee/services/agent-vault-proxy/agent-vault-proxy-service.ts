@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
+import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -10,6 +10,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
@@ -46,6 +47,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash" | "updateById">;
   agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "findReachableAccessBundleIds">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "mintToken" | "loginWithToken">;
@@ -58,6 +60,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultResolveDAL,
   agentVaultSessionDAL,
   agentVaultAccessBundleMemberDAL,
+  orgDAL,
   permissionService,
   kmsService,
   resourceAuthMethodService
@@ -295,6 +298,22 @@ export const agentVaultProxyServiceFactory = ({
       ? { type: ActorType.USER as const, id: session.userId }
       : { type: ActorType.IDENTITY as const, id: session.identityId! };
 
+    // Deactivation writes isActive on the org-scope membership row, which getProjectPermission below never
+    // reads - it matches project-scope rows only. Without this a session outlives an offboarded actor
+    // indefinitely, and SCIM deprovisioning writes that flag straight through the DAL, so there is no
+    // service hook to hang it on either.
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: actor.type,
+      actorId: actor.id,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!orgMembership?.isActive) {
+      throw new UnauthorizedError({
+        message: "The identity this session belongs to is no longer active in this organization"
+      });
+    }
+
     // The role is re-derived here, never trusted from mint: an admin who minted over every bundle and is
     // then demoted must lose everything they were not explicitly granted.
     //
@@ -314,7 +333,7 @@ export const agentVaultProxyServiceFactory = ({
       });
       isAdmin = hasRole(ProjectMembershipRole.Admin);
     } catch (error) {
-      // An actor removed from the project (or deactivated, or gone from the org) surfaces here as a 403.
+      // An actor removed from the project surfaces here as a 403.
       // The wire contract promises the proxy only 200, 401 and 404, and it treats anything else as
       // "Infisical is unreachable" and keeps serving cached credentials through its grace window - so a
       // 403 would keep a removed member's agent running for five polls instead of one. To the proxy this

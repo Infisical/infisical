@@ -4,10 +4,15 @@ import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
+import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
+import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { UnauthorizedError } from "@app/lib/errors";
+import { orgDALFactory } from "@app/services/org/org-dal";
 import { initLogger } from "@app/lib/logger";
 
 declare const testKeyStore: TKeyStoreFactory;
@@ -455,6 +460,74 @@ describe("Agent Vault V1 Router", async () => {
       const list = await inject("GET", "/api/v1/agent-vault/sessions?status=revoked");
       const { sessions } = JSON.parse(list.payload) as { sessions: { id: string; status: string }[] };
       expect(sessions.find((row) => row.id === session.id)?.status).toBe("revoked");
+    });
+  });
+
+  describe("session resolve", async () => {
+    // The resolve endpoint authenticates as an enrolled proxy, which needs a CA and a CSR, so the service
+    // is built from the real DALs against the test database instead. Only the two collaborators resolve
+    // never reaches on this path are stubbed, and getProjectPermission deliberately succeeds: it does
+    // succeed for a deactivated actor, which is the whole point of the check under test.
+    const buildResolver = () =>
+      agentVaultProxyServiceFactory({
+        agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
+        agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        orgDAL: orgDALFactory(testDb),
+        permissionService: {
+          getProjectPermission: () => Promise.resolve({ hasRole: () => true })
+        } as never,
+        kmsService: {
+          createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
+        } as never,
+        resourceAuthMethodService: {} as never
+      });
+
+    test("a deactivated actor stops resolving, and resolves again once reactivated", async () => {
+      const bundle = await createAccessBundle("resolve-deactivation");
+      const connection = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+        name: "echo",
+        hostPattern: "echo.example.com",
+        credential: { type: "passthrough" }
+      });
+      expect(connection.statusCode).toBe(200);
+
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundleIds: [bundle.id],
+        ttl: "never"
+      });
+      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deactivation" });
+      expect(proxyRes.statusCode).toBe(200);
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
+
+      const resolver = buildResolver();
+      const resolve = () =>
+        resolver.resolveSession({
+          proxyId: proxy.id,
+          orgId: seedData1.organization.id,
+          sessionToken: session.token
+        });
+
+      const membership = await testDb("memberships")
+        .where({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorUserId: seedData1.id })
+        .first();
+
+      const before = await resolve();
+      expect(before.connections).toHaveLength(1);
+
+      try {
+        await testDb("memberships").where({ id: membership.id }).update({ isActive: false });
+        await expect(resolve()).rejects.toThrow(UnauthorizedError);
+      } finally {
+        await testDb("memberships").where({ id: membership.id }).update({ isActive: true });
+      }
+
+      // Reversible on purpose: deactivation is not a revoke, so the agent comes back with the person.
+      const after = await resolve();
+      expect(after.connections).toHaveLength(1);
     });
   });
 
