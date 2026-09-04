@@ -99,7 +99,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretVersionV2)
         .where(`${TableName.SecretVersionV2}.folderId`, folderId)
-        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
+        .leftJoin(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
         .join<TSecretVersionsV2, TSecretVersionsV2 & { secretId: string; max: number }>(
           (tx || db.replicaNode())(TableName.SecretVersionV2)
             .where(`${TableName.SecretVersionV2}.folderId`, folderId)
