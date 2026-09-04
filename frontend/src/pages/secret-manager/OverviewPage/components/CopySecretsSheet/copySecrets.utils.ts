@@ -1,5 +1,7 @@
 import type {
   CopySecretsEnvironment,
+  CopySecretsFolder,
+  CopySecretsInvocation,
   CopySecretsMode,
   CopySecretsSource
 } from "./copySecrets.types";
@@ -50,8 +52,8 @@ export const filterCopyPreviewSecrets = ({
       (!changesOnly || Boolean(secret.previewStatus))
   );
 
-export const isCopySecretSelectable = (secret: CopySecretsSource, includeValues: boolean) =>
-  !secret.isRotated && !secret.isHoneyToken && (!includeValues || !secret.isValueHidden);
+export const isCopySecretSelectable = (secret: CopySecretsSource) =>
+  !secret.isRotated && !secret.isHoneyToken;
 
 export const getCopyDestinationPath = ({
   sourcePath,
@@ -114,6 +116,7 @@ export type CopySecretsRequestGroup = {
   sourcePath: string;
   destinationPath: string;
   secretIds: string[];
+  includeValues: boolean;
 };
 
 export type CopySecretConflict = {
@@ -155,16 +158,19 @@ export const groupCopySecretsRequests = ({
   secrets,
   sourceRootPath,
   destinationRootPath,
-  mode
+  mode,
+  includeValues = true
 }: {
   secrets: CopySecretsSource[];
   sourceRootPath: string;
   destinationRootPath: string;
   mode: CopySecretsMode;
+  includeValues?: boolean;
 }) => {
   const groups = new Map<string, CopySecretsRequestGroup>();
 
   secrets.forEach((secret) => {
+    if (!isCopySecretSelectable(secret)) return;
     const sourcePath = normalizeCopyPath(secret.path);
     const destinationPath = getCopyDestinationPath({
       sourcePath,
@@ -174,8 +180,14 @@ export const groupCopySecretsRequests = ({
     });
     if (!destinationPath) return;
 
-    const key = `${sourcePath}\u0000${destinationPath}`;
-    const group = groups.get(key) ?? { sourcePath, destinationPath, secretIds: [] };
+    const copyValue = includeValues && !secret.isValueHidden;
+    const key = `${sourcePath}\u0000${destinationPath}\u0000${copyValue}`;
+    const group = groups.get(key) ?? {
+      sourcePath,
+      destinationPath,
+      secretIds: [],
+      includeValues: copyValue
+    };
     group.secretIds.push(secret.id);
     groups.set(key, group);
   });
@@ -187,3 +199,91 @@ export const chunkCopySecretIds = (secretIds: string[], size = 50) =>
   Array.from({ length: Math.ceil(secretIds.length / size) }, (_, index) =>
     secretIds.slice(index * size, (index + 1) * size)
   );
+
+export const getInitialCopyState = (
+  invocation: CopySecretsInvocation,
+  environments: CopySecretsEnvironment[]
+) => {
+  const availableSlugs =
+    invocation.origin === "bulk"
+      ? [
+          ...new Set([
+            ...Object.keys(invocation.secretsByEnvironment),
+            ...Object.keys(invocation.foldersByEnvironment)
+          ])
+        ]
+      : [];
+  const sourceEnvironmentSlug =
+    invocation.sourceEnvironmentSlug ?? (availableSlugs.length === 1 ? availableSlugs[0] : "");
+  return {
+    sourceEnvironmentSlug,
+    sourcePath: invocation.sourcePath,
+    destinationEnvironmentSlug: sourceEnvironmentSlug
+      ? getOtherCopyEnvironmentSlug(environments, sourceEnvironmentSlug) || sourceEnvironmentSlug
+      : "",
+    destinationPath: "/",
+    mode: (invocation.origin === "toolbar" && getCopyPathName(invocation.sourcePath)
+      ? "folder"
+      : "contents") as CopySecretsMode
+  };
+};
+
+export const getInvocationCopySelection = ({
+  invocation,
+  sourcePath,
+  secrets,
+  folders
+}: {
+  invocation: CopySecretsInvocation;
+  sourcePath: string;
+  secrets: CopySecretsSource[];
+  folders: CopySecretsFolder[];
+}) => {
+  let invocationSecrets: CopySecretsSource[] = [];
+  if (invocation.origin === "row") invocationSecrets = invocation.secrets;
+  if (invocation.origin === "bulk")
+    invocationSecrets = Object.values(invocation.secretsByEnvironment).flat();
+  const names = new Set(invocationSecrets.map(({ name }) => name));
+  const folderRoots =
+    invocation.origin === "bulk"
+      ? invocation.folderNames.map((name) => joinCopyPath(sourcePath, name))
+      : [];
+  const isInSelectedFolder = (path: string) =>
+    folderRoots.some((root) => getRelativeCopyPath(path, root) !== null);
+  return {
+    secretIds: secrets
+      .filter(
+        (secret) =>
+          isCopySecretSelectable(secret) &&
+          ((normalizeCopyPath(secret.path) === normalizeCopyPath(sourcePath) &&
+            names.has(secret.name)) ||
+            isInSelectedFolder(secret.path))
+      )
+      .map(({ id }) => id),
+    folderPaths: folders.filter(({ path }) => isInSelectedFolder(path)).map(({ path }) => path)
+  };
+};
+
+export const getCopyDestinationFolderPaths = ({
+  folderPaths,
+  sourceRootPath,
+  destinationRootPath,
+  mode
+}: {
+  folderPaths: string[];
+  sourceRootPath: string;
+  destinationRootPath: string;
+  mode: CopySecretsMode;
+}) => [
+  ...new Set(
+    folderPaths.flatMap((sourcePath) => {
+      const path = getCopyDestinationPath({
+        sourcePath,
+        sourceRootPath,
+        destinationRootPath,
+        mode
+      });
+      return path ? [path] : [];
+    })
+  )
+];

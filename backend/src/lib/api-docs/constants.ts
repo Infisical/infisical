@@ -1490,6 +1490,22 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_LIST: {
+    projectId: "The ID of the project containing the secrets.",
+    environment: "The slug of the environment containing the secrets.",
+    secretPath: "The root folder to list shared secret metadata from, including all descendant folders.",
+    offset: "The scan offset returned as nextOffset by the previous page. Start with zero.",
+    limit: "The maximum number of shared secrets to scan. Permission filtering may produce a shorter or empty page.",
+    secrets: "Shared secrets the caller can describe. Values, comments, tags and custom metadata are not returned.",
+    nextOffset: "The next scan offset, or null when complete. Continue even if the secrets array is empty.",
+    id: "The secret ID.",
+    secretKey: "The secret key.",
+    path: "The absolute folder path containing the secret.",
+    type: "The secret type. Only shared secrets are returned.",
+    isHoneyTokenSecret: "Whether the secret belongs to a honey token.",
+    isRotatedSecret: "Whether the secret is managed by a rotation.",
+    secretValueHidden: "Whether the caller lacks permission to read this secret's value. No values are returned."
+  },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
     environments:

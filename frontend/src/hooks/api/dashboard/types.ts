@@ -35,6 +35,27 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalUniqueSecretRotationsInPage: number;
 };
 
+export type TGetSecretMetadataDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  offset: number;
+  limit: number;
+};
+
+export type TSecretMetadataPage = {
+  secrets: {
+    id: string;
+    secretKey: string;
+    secretPath: string;
+    type: "shared";
+    secretValueHidden: boolean;
+    isHoneyTokenSecret: boolean;
+    isRotatedSecret: boolean;
+  }[];
+  nextOffset: number | null;
+};
+
 export type UsedBySecretSyncs = {
   name: string;
   destination: string;

@@ -11,8 +11,8 @@ export type CopySecretsSource = {
 export type CopySecretsInvocation =
   | {
       origin: "toolbar";
-      destinationEnvironmentSlug: string;
-      destinationPath: string;
+      sourceEnvironmentSlug: string;
+      sourcePath: string;
     }
   | {
       origin: "row";
@@ -25,7 +25,23 @@ export type CopySecretsInvocation =
       sourcePath: string;
       selectedSecretCount: number;
       secretsByEnvironment: Record<string, CopySecretsSource[]>;
+      sourceEnvironmentSlug?: string;
+      folderNames: string[];
+      foldersByEnvironment: Record<string, CopySecretsFolder[]>;
     };
+
+export type CopySecretsFolder = {
+  path: string;
+  previewStatus?: "new";
+};
+
+export type CopySecretsAttributes = {
+  value: boolean;
+  comment: boolean;
+  tags: boolean;
+  metadata: boolean;
+  skipMultilineEncoding: boolean;
+};
 
 export type CopySecretsEnvironment = {
   id: string;

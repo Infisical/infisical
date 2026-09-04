@@ -16,11 +16,14 @@ import {
   Tabs,
   TabsContent,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
-import type { CopySecretsSource } from "./copySecrets.types";
+import type { CopySecretsFolder, CopySecretsSource } from "./copySecrets.types";
 import {
   filterCopyPreviewSecrets,
   getRelativeCopyPath,
@@ -33,29 +36,24 @@ type FolderNode = {
   path: string;
   secrets: CopySecretsSource[];
   folders: FolderNode[];
+  previewStatus?: "new";
 };
 
 type Props = {
   secrets: CopySecretsSource[];
   sourcePath: string;
+  folders: CopySecretsFolder[];
   selectedIds: string[];
+  selectedFolderPaths?: string[];
   isDisabled?: boolean;
   isReadOnly?: boolean;
   includeValues?: boolean;
   showChangesFilter?: boolean;
   idPrefix?: string;
-  onSelectionChange: (selectedIds: string[]) => void;
+  onSelectionChange: (selectedIds: string[], folderPaths: string[]) => void;
 };
 
 type PreviewFilter = "all" | "changes";
-
-const getDisabledReason = (secret: CopySecretsSource, includeValues: boolean) => {
-  if (secret.isRotated) return "Managed rotation secrets cannot be copied";
-  if (secret.isHoneyToken) return "Honey tokens cannot be copied";
-  if (includeValues && secret.isValueHidden)
-    return "You do not have permission to copy this secret's value";
-  return undefined;
-};
 
 const getRestrictionLabel = (secret: CopySecretsSource) => {
   if (secret.isRotated) return "Managed rotation";
@@ -64,7 +62,11 @@ const getRestrictionLabel = (secret: CopySecretsSource) => {
   return undefined;
 };
 
-const createTree = (secrets: CopySecretsSource[], sourcePath: string): FolderNode => {
+const createTree = (
+  secrets: CopySecretsSource[],
+  folders: CopySecretsFolder[],
+  sourcePath: string
+): FolderNode => {
   const root: FolderNode = {
     name: normalizeCopyPath(sourcePath),
     path: normalizeCopyPath(sourcePath),
@@ -72,10 +74,9 @@ const createTree = (secrets: CopySecretsSource[], sourcePath: string): FolderNod
     folders: []
   };
 
-  secrets.forEach((secret) => {
-    const relativePath = getRelativeCopyPath(secret.path, sourcePath);
-    if (relativePath === null) return;
-
+  const ensureFolder = (path: string) => {
+    const relativePath = getRelativeCopyPath(path, sourcePath);
+    if (relativePath === null) return null;
     let node = root;
     relativePath
       .split("/")
@@ -93,17 +94,25 @@ const createTree = (secrets: CopySecretsSource[], sourcePath: string): FolderNod
         }
         node = child;
       });
-    node.secrets.push(secret);
+    return node;
+  };
+  folders.forEach((folder) => {
+    const node = ensureFolder(folder.path);
+    if (node) node.previewStatus = folder.previewStatus;
   });
+  secrets.forEach((secret) => ensureFolder(secret.path)?.secrets.push(secret));
 
   return root;
 };
 
-const getSelectableIds = (node: FolderNode, includeValues: boolean): string[] => [
-  ...node.secrets
-    .filter((secret) => isCopySecretSelectable(secret, includeValues))
-    .map(({ id }) => id),
-  ...node.folders.flatMap((folder) => getSelectableIds(folder, includeValues))
+const getSelectableIds = (node: FolderNode): string[] => [
+  ...node.secrets.filter(isCopySecretSelectable).map(({ id }) => id),
+  ...node.folders.flatMap((folder) => getSelectableIds(folder))
+];
+
+const getFolderPaths = (node: FolderNode): string[] => [
+  ...(node.path === "/" ? [] : [node.path]),
+  ...node.folders.flatMap(getFolderPaths)
 ];
 
 const getAllIds = (node: FolderNode): string[] => [
@@ -119,7 +128,9 @@ const getPreviewLabel = (status: NonNullable<CopySecretsSource["previewStatus"]>
 
 const Folder = ({
   node,
+  selectionNode,
   selectedIds,
+  selectedFolderPaths,
   isDisabled,
   isReadOnly,
   includeValues,
@@ -128,23 +139,33 @@ const Folder = ({
   isRoot = false
 }: {
   node: FolderNode;
+  selectionNode: FolderNode;
   selectedIds: Set<string>;
+  selectedFolderPaths: Set<string>;
   isDisabled: boolean;
   isReadOnly: boolean;
   includeValues: boolean;
   idPrefix: string;
-  onSelectionChange: (ids: string[]) => void;
+  onSelectionChange: (ids: string[], folderPaths: string[]) => void;
   isRoot?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const selectableIds = getSelectableIds(node, includeValues);
+  const selectableIds = getSelectableIds(selectionNode);
+  const folderPaths = getFolderPaths(selectionNode);
+  const selectedFolderCount = folderPaths.filter((path) => selectedFolderPaths.has(path)).length;
+  const allSelected =
+    selectableIds.every((id) => selectedIds.has(id)) &&
+    folderPaths.every((path) => selectedFolderPaths.has(path)) &&
+    selectableIds.length + folderPaths.length > 0;
   const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
-  const checkboxId = `${idPrefix}-folder-${node.path.replaceAll("/", "-") || "root"}`;
+  const checkboxId = `${idPrefix}-folder-${encodeURIComponent(node.path)}`;
 
   const toggleFolder = (isChecked: boolean) => {
     const next = new Set(selectedIds);
     selectableIds.forEach((id) => (isChecked ? next.add(id) : next.delete(id)));
-    onSelectionChange([...next]);
+    const nextFolders = new Set(selectedFolderPaths);
+    folderPaths.forEach((path) => (isChecked ? nextFolders.add(path) : nextFolders.delete(path)));
+    onSelectionChange([...next], [...nextFolders]);
   };
 
   return (
@@ -178,9 +199,9 @@ const Folder = ({
             <Checkbox
               id={checkboxId}
               variant="project"
-              isChecked={selectedCount > 0}
-              isIndeterminate={selectedCount > 0 && selectedCount < selectableIds.length}
-              isDisabled={isDisabled || selectableIds.length === 0}
+              isChecked={allSelected || selectedCount > 0 || selectedFolderCount > 0}
+              isIndeterminate={!allSelected && (selectedCount > 0 || selectedFolderCount > 0)}
+              isDisabled={isDisabled || selectableIds.length + folderPaths.length === 0}
               onCheckedChange={(checked) => toggleFolder(checked === true)}
             />
           )}
@@ -205,7 +226,11 @@ const Folder = ({
             </label>
           )}
           <span className="text-xs text-muted">
-            {isReadOnly ? getAllIds(node).length : selectableIds.length}
+            {node.previewStatus ? (
+              <Badge variant="outline">New folder</Badge>
+            ) : (
+              `${isReadOnly ? getAllIds(node).length : selectableIds.length} secrets`
+            )}
           </span>
         </div>
         <CollapsiblePrimitive.Content>
@@ -214,7 +239,13 @@ const Folder = ({
               .sort((left, right) => left.name.localeCompare(right.name))
               .map((secret) => {
                 const secretId = `${idPrefix}-secret-${secret.id}`;
-                const disabledReason = getDisabledReason(secret, includeValues);
+                const disabledReason = !isCopySecretSelectable(secret)
+                  ? "This managed secret cannot be copied"
+                  : undefined;
+                const valueNote =
+                  includeValues && secret.isValueHidden
+                    ? "No value access: this key will be copied without its value. Existing destination values are preserved."
+                    : undefined;
                 const restrictionLabel = getRestrictionLabel(secret);
                 return (
                   <li
@@ -225,12 +256,6 @@ const Folder = ({
                         ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
                         : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
                     )}
-                    title={
-                      disabledReason ??
-                      (secret.isValueHidden
-                        ? "This secret can be copied without its value"
-                        : undefined)
-                    }
                   >
                     <span className="size-4" aria-hidden />
                     <KeyRoundIcon className="size-4 text-secret" aria-hidden />
@@ -244,7 +269,7 @@ const Folder = ({
                           const next = new Set(selectedIds);
                           if (checked === true) next.add(secret.id);
                           else next.delete(secret.id);
-                          onSelectionChange([...next]);
+                          onSelectionChange([...next], [...selectedFolderPaths]);
                         }}
                       />
                     )}
@@ -266,17 +291,42 @@ const Folder = ({
                       </label>
                     )}
                     {restrictionLabel && !isReadOnly && (
-                      <Badge variant="neutral" className="shrink-0">
-                        {restrictionLabel}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`${secret.name}: ${restrictionLabel}`}
+                          >
+                            <Badge variant="neutral">{restrictionLabel}</Badge>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          {valueNote ?? "This secret will be copied without its value."}
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {secret.previewStatus && (
-                      <Badge
-                        variant={secret.previewStatus === "new" ? "outline" : "warning"}
-                        className="shrink-0"
-                      >
-                        {getPreviewLabel(secret.previewStatus)}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`${secret.name}: ${getPreviewLabel(secret.previewStatus)}`}
+                          >
+                            <Badge variant={secret.previewStatus === "new" ? "outline" : "warning"}>
+                              {getPreviewLabel(secret.previewStatus)}
+                            </Badge>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          {secret.previewStatus === "conflict"
+                            ? "This key already exists. Choose whether to overwrite or skip it when you copy."
+                            : "This key will be created at the destination."}
+                          {secret.isValueHidden &&
+                            " Its source value is unavailable; existing destination values are preserved."}
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </li>
                 );
@@ -287,7 +337,11 @@ const Folder = ({
                 <Folder
                   key={folder.path}
                   node={folder}
+                  selectionNode={
+                    selectionNode.folders.find(({ path }) => path === folder.path) ?? folder
+                  }
                   selectedIds={selectedIds}
+                  selectedFolderPaths={selectedFolderPaths}
                   isDisabled={isDisabled}
                   isReadOnly={isReadOnly}
                   includeValues={includeValues}
@@ -305,7 +359,9 @@ const Folder = ({
 export const CopySecretsSecretTree = ({
   secrets,
   sourcePath,
+  folders,
   selectedIds,
+  selectedFolderPaths = [],
   isDisabled = false,
   isReadOnly = false,
   includeValues = false,
@@ -340,20 +396,29 @@ export const CopySecretsSecretTree = ({
         name.toLocaleLowerCase().includes(query) || path.toLocaleLowerCase().includes(query)
     );
   }, [previewSecrets, search]);
-  const tree = useMemo(
-    () => createTree(filteredSecrets, sourcePath),
-    [filteredSecrets, sourcePath]
+  const scopedFolders = folders.filter(
+    ({ path }) => getRelativeCopyPath(path, sourcePath) !== null
   );
-  let countLabel = `${selectedIds.length} selected`;
+  const previewFolders = scopedFolders.filter(
+    (folder) => !showChangesFilter || previewFilter === "all" || folder.previewStatus
+  );
+  const filteredFolders = previewFolders.filter(
+    ({ path }) =>
+      !search.trim() || path.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+  );
+  const tree = createTree(filteredSecrets, filteredFolders, sourcePath);
+  const selectionTree = createTree(scopedSecrets, scopedFolders, sourcePath);
+  let countLabel = `${selectedIds.length} secrets, ${selectedFolderPaths.length} folders selected`;
   if (isReadOnly) {
     let countUnit = previewSecrets.length === 1 ? "item" : "items";
     if (previewFilter === "changes") countUnit = "changes";
     countLabel = `${previewSecrets.length} ${countUnit}`;
   }
 
-  let emptyMessage = scopedSecrets.length
-    ? "No secrets match this filter."
-    : "No accessible secrets found.";
+  let emptyMessage =
+    scopedSecrets.length || scopedFolders.length
+      ? "No secrets or folders match this filter."
+      : "No accessible secrets or folders found.";
   if (showChangesFilter && previewFilter === "changes" && !previewSecrets.length) {
     emptyMessage = "No changes to preview.";
   }
@@ -365,21 +430,26 @@ export const CopySecretsSecretTree = ({
         aria-hidden
       />
       <Input
-        aria-label="Filter secrets"
+        aria-label="Filter secrets and folders"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="Filter keys..."
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.preventDefault();
+        }}
+        placeholder="Filter keys or folders..."
         className="pl-9"
       />
     </div>
   );
 
   const renderTree = () =>
-    filteredSecrets.length ? (
+    filteredSecrets.length || filteredFolders.length ? (
       <ul aria-label={`Secrets under ${normalizeCopyPath(sourcePath)}`}>
         <Folder
           node={tree}
+          selectionNode={selectionTree}
           selectedIds={new Set(selectedIds)}
+          selectedFolderPaths={new Set(selectedFolderPaths)}
           isDisabled={isDisabled}
           isReadOnly={isReadOnly}
           includeValues={includeValues}
@@ -409,10 +479,17 @@ export const CopySecretsSecretTree = ({
           {searchInput}
           <TabsList aria-label="Destination preview">
             <TabsTrigger value="all">
-              All <span className="text-xs text-muted">{scopedSecrets.length}</span>
+              All{" "}
+              <span className="text-xs text-muted">
+                {scopedSecrets.length + scopedFolders.length}
+              </span>
             </TabsTrigger>
             <TabsTrigger value="changes">
-              Changes <span className="text-xs text-muted">{changedSecrets.length}</span>
+              Changes{" "}
+              <span className="text-xs text-muted">
+                {changedSecrets.length +
+                  scopedFolders.filter((folder) => folder.previewStatus).length}
+              </span>
             </TabsTrigger>
           </TabsList>
         </div>

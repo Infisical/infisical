@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -29,9 +29,9 @@ import {
   EmptyHeader,
   EmptyTitle,
   Field,
-  FieldContent,
   FieldDescription,
   FieldLabel,
+  Label,
   SecretPathInput,
   Sheet,
   SheetContent,
@@ -40,33 +40,45 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
-  Switch
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
-import { useGetAccessibleSecrets } from "@app/hooks/api/dashboard";
-import { useGetOrCreateFolder } from "@app/hooks/api/secretFolders";
+import {
+  useGetOrCreateFolder,
+  useListProjectEnvironmentsFolders
+} from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
 import type {
+  CopySecretsAttributes,
   CopySecretsEnvironment,
+  CopySecretsFolder,
   CopySecretsInvocation,
   CopySecretsMode,
   CopySecretsSource
 } from "./copySecrets.types";
 import {
   chunkCopySecretIds,
+  getCopyDestinationFolderPaths,
+  getCopyDestinationPath,
   getCopyFolderCreationSteps,
   getCopyPathName,
   getCopySecretConflicts,
-  getOtherCopyEnvironmentSlug,
+  getInitialCopyState,
+  getInvocationCopySelection,
+  getRelativeCopyPath,
   groupCopySecretsRequests,
   isCopyingToSameLocation,
   isCopySecretSelectable,
   joinCopyPath,
   normalizeCopyPath
 } from "./copySecrets.utils";
+import { CopySecretsProperties } from "./CopySecretsProperties";
 import { CopySecretsSecretTree } from "./CopySecretsSecretTree";
+import { useCopySecretsQuery } from "./useCopySecretsQuery";
 
 type Props = {
   projectId: string;
@@ -80,73 +92,15 @@ type Props = {
 const DOCUMENTATION_URL =
   "https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents";
 
-const getInitialState = (
-  invocation: CopySecretsInvocation,
-  environments: CopySecretsEnvironment[]
-) => {
-  if (invocation.origin === "toolbar") {
-    return {
-      sourceEnvironmentSlug: invocation.destinationEnvironmentSlug
-        ? getOtherCopyEnvironmentSlug(environments, invocation.destinationEnvironmentSlug)
-        : "",
-      sourcePath: "/",
-      destinationEnvironmentSlug: invocation.destinationEnvironmentSlug,
-      destinationPath: invocation.destinationPath,
-      selectedIds: [] as string[],
-      includeValues: true,
-      mode: "contents" as CopySecretsMode
-    };
-  }
-
-  if (invocation.origin === "bulk") {
-    const sourceEnvironmentSlugs = Object.keys(invocation.secretsByEnvironment);
-    const sourceEnvironmentSlug =
-      sourceEnvironmentSlugs.length === 1 ? sourceEnvironmentSlugs[0] : "";
-    const sourceSecrets = sourceEnvironmentSlug
-      ? invocation.secretsByEnvironment[sourceEnvironmentSlug]
-      : [];
-
-    return {
-      sourceEnvironmentSlug,
-      sourcePath: invocation.sourcePath,
-      destinationEnvironmentSlug: sourceEnvironmentSlug
-        ? getOtherCopyEnvironmentSlug(environments, sourceEnvironmentSlug)
-        : "",
-      destinationPath: "/",
-      selectedIds: sourceSecrets.map(({ id }) => id),
-      includeValues: sourceSecrets.every(({ isValueHidden }) => !isValueHidden),
-      mode: getCopyPathName(invocation.sourcePath) ? ("folder" as const) : ("contents" as const)
-    };
-  }
-
-  return {
-    sourceEnvironmentSlug: invocation.sourceEnvironmentSlug,
-    sourcePath: invocation.sourcePath,
-    destinationEnvironmentSlug: getOtherCopyEnvironmentSlug(
-      environments,
-      invocation.sourceEnvironmentSlug
-    ),
-    destinationPath: "/",
-    selectedIds: invocation.secrets.map(({ id }) => id),
-    includeValues: invocation.secrets.every(({ isValueHidden }) => !isValueHidden),
-    mode: getCopyPathName(invocation.sourcePath) ? ("folder" as const) : ("contents" as const)
-  };
-};
-
-export const CopySecretsSheet = ({
+const CopySecretsSession = ({
   projectId,
   isOpen,
   invocation,
   environments,
   onOpenChange,
   onCompleted
-}: Props) => {
-  const fallbackInvocation: CopySecretsInvocation = invocation ?? {
-    origin: "toolbar",
-    destinationEnvironmentSlug: "",
-    destinationPath: "/"
-  };
-  const initialState = getInitialState(fallbackInvocation, environments);
+}: Props & { invocation: CopySecretsInvocation }) => {
+  const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
     initialState.sourceEnvironmentSlug
   );
@@ -155,127 +109,139 @@ export const CopySecretsSheet = ({
     initialState.destinationEnvironmentSlug
   );
   const [destinationPath, setDestinationPath] = useState(initialState.destinationPath);
-  const [selectedIds, setSelectedIds] = useState(initialState.selectedIds);
-  const [includeValues, setIncludeValues] = useState(initialState.includeValues);
+  // Null keeps invocation selection pending until the current source has loaded.
+  const [selection, setSelection] = useState<{ secretIds: string[]; folderPaths: string[] } | null>(
+    null
+  );
+  const [attributes, setAttributes] = useState<CopySecretsAttributes>({
+    value: true,
+    comment: true,
+    tags: true,
+    metadata: true,
+    skipMultilineEncoding: true
+  });
+  const includeValues = attributes.value;
   const [mode, setMode] = useState<CopySecretsMode>(initialState.mode);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debouncedSourcePath] = useDebounce(sourcePath, 250);
   const [debouncedDestinationPath] = useDebounce(destinationPath, 250);
-  const invocationKey = JSON.stringify(invocation);
-  const hasInvocationSourceSecrets = invocation?.origin === "row" || invocation?.origin === "bulk";
-  const isSourceEnvironmentLocked = invocation?.origin === "row";
-  const isSourcePathLocked = hasInvocationSourceSecrets;
-
-  useEffect(() => {
-    if (!isOpen || !invocation) return;
-    const next = getInitialState(invocation, environments);
-    setSourceEnvironmentSlug(next.sourceEnvironmentSlug);
-    setSourcePath(next.sourcePath);
-    setDestinationEnvironmentSlug(next.destinationEnvironmentSlug);
-    setDestinationPath(next.destinationPath);
-    setSelectedIds(next.selectedIds);
-    setIncludeValues(next.includeValues);
-    setMode(next.mode);
-    setIsConflictDialogOpen(false);
-  }, [environments, invocationKey, isOpen]);
-
-  const sourceQuery = useGetAccessibleSecrets({
-    projectId,
-    environment: sourceEnvironmentSlug,
-    secretPath: normalizeCopyPath(debouncedSourcePath),
-    recursive: true,
-    filterByAction: ProjectPermissionSecretActions.DescribeSecret,
-    options: {
-      enabled:
-        isOpen &&
-        !hasInvocationSourceSecrets &&
-        Boolean(projectId && sourceEnvironmentSlug && debouncedSourcePath)
-    }
-  });
-
-  const sourceSecrets = useMemo<CopySecretsSource[]>(() => {
-    if (invocation?.origin === "row") return invocation.secrets;
-    if (invocation?.origin === "bulk") {
-      return invocation.secretsByEnvironment[sourceEnvironmentSlug] ?? [];
-    }
-    return (sourceQuery.data ?? []).map((secret) => ({
-      id: secret.id,
-      name: secret.secretKey,
-      path: secret.secretPath,
-      isValueHidden: secret.secretValueHidden,
-      isRotated: secret.isRotatedSecret,
-      isHoneyToken: secret.isHoneyTokenSecret
-    }));
-  }, [invocation, sourceEnvironmentSlug, sourceQuery.data]);
-
-  const destinationQuery = useGetAccessibleSecrets({
-    projectId,
-    environment: destinationEnvironmentSlug,
-    secretPath: normalizeCopyPath(debouncedDestinationPath),
-    recursive: true,
-    filterByAction: ProjectPermissionSecretActions.DescribeSecret,
-    options: {
-      enabled:
-        isOpen && Boolean(projectId && destinationEnvironmentSlug && debouncedDestinationPath)
-    }
-  });
-
-  useEffect(() => {
-    const availableIds = new Set(
-      sourceSecrets
-        .filter((secret) => isCopySecretSelectable(secret, includeValues))
-        .map(({ id }) => id)
-    );
-    setSelectedIds((current) => {
-      const next = current.filter((id) => availableIds.has(id));
-      return next.length === current.length ? current : next;
-    });
-  }, [includeValues, sourceSecrets]);
-
-  const sourceEnvironment = environments.find(({ slug }) => slug === sourceEnvironmentSlug) ?? null;
-  const sourceEnvironmentOptions =
-    invocation?.origin === "bulk"
-      ? environments.filter(({ slug }) => Boolean(invocation.secretsByEnvironment[slug]?.length))
-      : environments;
-  const destinationEnvironment =
-    environments.find(({ slug }) => slug === destinationEnvironmentSlug) ?? null;
-  const unavailableBulkSecretCount =
-    invocation?.origin === "bulk" && sourceEnvironmentSlug
-      ? Math.max(invocation.selectedSecretCount - sourceSecrets.length, 0)
-      : 0;
-  let bulkSelectionSummary: string | undefined;
-  if (invocation?.origin === "bulk") {
-    const selectedSecretLabel = invocation.selectedSecretCount === 1 ? "secret" : "secrets";
-    if (!sourceEnvironment) {
-      bulkSelectionSummary = `${invocation.selectedSecretCount} selected ${selectedSecretLabel}. Choose a source environment to confirm availability.`;
-    } else if (unavailableBulkSecretCount > 0) {
-      const unavailableSecretLabel = unavailableBulkSecretCount === 1 ? "secret" : "secrets";
-      const availabilityVerb = sourceSecrets.length === 1 ? "is" : "are";
-      bulkSelectionSummary = `${sourceSecrets.length} of ${invocation.selectedSecretCount} selected ${selectedSecretLabel} ${availabilityVerb} available in ${sourceEnvironment.name}. The other ${unavailableBulkSecretCount} ${unavailableSecretLabel} won’t be copied.`;
-    } else {
-      bulkSelectionSummary =
-        invocation.selectedSecretCount === 1
-          ? `The selected secret is available in ${sourceEnvironment.name}.`
-          : `All ${invocation.selectedSecretCount} selected secrets are available in ${sourceEnvironment.name}.`;
-    }
-  }
-  const selectedSecrets = sourceSecrets.filter(({ id }) => selectedIds.includes(id));
   const normalizedSourcePath = normalizeCopyPath(sourcePath);
   const normalizedDestinationPath = normalizeCopyPath(destinationPath);
+  const foldersQuery = useListProjectEnvironmentsFolders(projectId, {
+    enabled: isOpen,
+    staleTime: 0
+  });
+  const sourceFolders = (foldersQuery.data?.[sourceEnvironmentSlug]?.folders ?? [])
+    .filter(({ path }) => getRelativeCopyPath(path, normalizedSourcePath) !== null)
+    .map(({ path }) => ({ path: normalizeCopyPath(path) }));
+  const destinationFolders = (foldersQuery.data?.[destinationEnvironmentSlug]?.folders ?? [])
+    .filter(({ path }) => getRelativeCopyPath(path, normalizedDestinationPath) !== null)
+    .map(({ path }) => ({ path: normalizeCopyPath(path) }));
+  const isSourcePathSettled = normalizedSourcePath === normalizeCopyPath(debouncedSourcePath);
+  const isDestinationPathSettled =
+    normalizedDestinationPath === normalizeCopyPath(debouncedDestinationPath);
+  const sourceQuery = useCopySecretsQuery({
+    projectId,
+    environment: sourceEnvironmentSlug,
+    secretPath: normalizedSourcePath,
+    enabled: isOpen && foldersQuery.isSuccess && isSourcePathSettled
+  });
+  const destinationQuery = useCopySecretsQuery({
+    projectId,
+    environment: destinationEnvironmentSlug,
+    secretPath: normalizedDestinationPath,
+    enabled: isOpen && foldersQuery.isSuccess && isDestinationPathSettled
+  });
+  const sourceSecrets = useMemo(
+    () => (sourceQuery.data ?? []).filter(isCopySecretSelectable),
+    [sourceQuery.data]
+  );
+  const invocationSelection = getInvocationCopySelection({
+    invocation,
+    sourcePath: normalizedSourcePath,
+    secrets: sourceSecrets,
+    folders: sourceFolders
+  });
+  const currentSelection = selection ?? invocationSelection;
+  const selectedSecrets = sourceSecrets.filter(({ id }) => currentSelection.secretIds.includes(id));
+  const selectedIds = selectedSecrets.map(({ id }) => id);
+  const selectedFolderPaths = sourceFolders
+    .filter(({ path }) => path !== "/" && currentSelection.folderPaths.includes(path))
+    .map(({ path }) => path);
+  const sourceEnvironment = environments.find(({ slug }) => slug === sourceEnvironmentSlug) ?? null;
+  const destinationEnvironment =
+    environments.find(({ slug }) => slug === destinationEnvironmentSlug) ?? null;
   const sourceFolderName = getCopyPathName(normalizedSourcePath);
   const effectiveMode = sourceFolderName ? mode : "contents";
   const requestGroups = groupCopySecretsRequests({
     secrets: selectedSecrets,
     sourceRootPath: normalizedSourcePath,
     destinationRootPath: normalizedDestinationPath,
+    mode: effectiveMode,
+    includeValues
+  });
+  const destinationFolderPaths = getCopyDestinationFolderPaths({
+    folderPaths: selectedFolderPaths,
+    sourceRootPath: normalizedSourcePath,
+    destinationRootPath: normalizedDestinationPath,
     mode: effectiveMode
   });
+  const previewFolders: CopySecretsFolder[] = [...destinationFolders];
+  const existingFolderPaths = new Set(destinationFolders.map(({ path }) => path));
+  [...destinationFolderPaths, ...requestGroups.map((group) => group.destinationPath)]
+    .flatMap(getCopyFolderCreationSteps)
+    .forEach(({ parentPath, name }) => {
+      const path = joinCopyPath(parentPath, name);
+      if (!existingFolderPaths.has(path)) {
+        previewFolders.push({ path, previewStatus: "new" });
+        existingFolderPaths.add(path);
+      }
+    });
+  const isSourceLoading =
+    !isSourcePathSettled ||
+    foldersQuery.isPending ||
+    foldersQuery.isFetching ||
+    sourceQuery.isPending ||
+    sourceQuery.isFetching;
+  const isSourceError = sourceQuery.isError || foldersQuery.isError;
+  const isDestinationLoading =
+    !isDestinationPathSettled ||
+    foldersQuery.isPending ||
+    foldersQuery.isFetching ||
+    destinationQuery.isPending ||
+    destinationQuery.isFetching;
+  const unavailableValueCount = includeValues
+    ? selectedSecrets.filter(({ isValueHidden }) => isValueHidden).length
+    : 0;
+  const selectedItemCount = selectedIds.length + selectedFolderPaths.length;
+  const selectionLabel = selectedFolderPaths.length
+    ? `${selectedIds.length} secrets and ${selectedFolderPaths.length} folders`
+    : `${selectedIds.length} ${selectedIds.length === 1 ? "secret" : "secrets"}`;
+  let bulkSelectionSummary: string | undefined;
+  if (invocation.origin === "bulk") {
+    const count = invocation.selectedSecretCount + invocation.folderNames.length;
+    const availableSecretCount = sourceSecrets.filter(
+      ({ name, path }) =>
+        normalizeCopyPath(path) === normalizedSourcePath &&
+        Object.values(invocation.secretsByEnvironment)
+          .flat()
+          .some((secret) => secret.name === name)
+    ).length;
+    const availableFolderCount = invocation.folderNames.filter((name) =>
+      sourceFolders.some(({ path }) => path === joinCopyPath(normalizedSourcePath, name))
+    ).length;
+    if (!sourceEnvironment) {
+      bulkSelectionSummary = `${count} selected items. Choose a source environment to confirm availability.`;
+    } else if (isSourceLoading && !isSourceError) {
+      bulkSelectionSummary = "Checking selected items in this source…";
+    } else {
+      bulkSelectionSummary = `${availableSecretCount + availableFolderCount} of ${count} originally selected items are available in ${sourceEnvironment.name} at ${normalizedSourcePath}. Unavailable items won’t be copied.`;
+    }
+  }
   const destinationContents = useMemo<CopySecretsSource[]>(() => {
     const contents: CopySecretsSource[] = (destinationQuery.data ?? []).map((secret) => ({
-      id: secret.id,
-      name: secret.secretKey,
-      path: secret.secretPath
+      ...secret
     }));
     const byLocation = new Map(
       contents.map((secret) => [`${normalizeCopyPath(secret.path)}\u0000${secret.name}`, secret])
@@ -291,11 +257,13 @@ export const CopySecretsSheet = ({
       const existing = byLocation.get(key);
       if (existing) {
         existing.previewStatus = "conflict";
+        existing.isValueHidden = secret.isValueHidden;
         return;
       }
       const incoming = {
         id: `incoming-${secret.id}`,
         name: secret.name,
+        isValueHidden: secret.isValueHidden,
         path,
         previewStatus: "new" as const
       };
@@ -307,28 +275,10 @@ export const CopySecretsSheet = ({
   }, [destinationQuery.data, requestGroups, selectedSecrets]);
   const conflictingSecrets = getCopySecretConflicts({
     secrets: selectedSecrets,
-    destinationSecrets:
-      destinationQuery.data?.map((secret) => ({
-        id: secret.id,
-        name: secret.secretKey,
-        path: secret.secretPath
-      })) ?? [],
+    destinationSecrets: destinationQuery.data ?? [],
     requestGroups
   });
-  const isSourcePathSettled =
-    normalizeCopyPath(sourcePath) === normalizeCopyPath(debouncedSourcePath);
-  const isSourceLoading =
-    !hasInvocationSourceSecrets &&
-    (!isSourcePathSettled || sourceQuery.isPending || sourceQuery.isFetching);
-  const isSourceError = !hasInvocationSourceSecrets && sourceQuery.isError;
-  const isDestinationPathSettled =
-    normalizeCopyPath(destinationPath) === normalizeCopyPath(debouncedDestinationPath);
-  const isDestinationLoading =
-    !isDestinationPathSettled || destinationQuery.isPending || destinationQuery.isFetching;
   const hasDestinationConflicts = !isDestinationLoading && conflictingSecrets.length > 0;
-  const cannotIncludeValues =
-    hasInvocationSourceSecrets && sourceSecrets.some(({ isValueHidden }) => isValueHidden);
-
   const disabledReason = (() => {
     if (!sourceEnvironmentSlug || !destinationEnvironmentSlug)
       return "Choose source and destination environments";
@@ -344,10 +294,10 @@ export const CopySecretsSheet = ({
       })
     )
       return "Choose a different destination path";
-    if (isSourceLoading) return "Loading source secrets";
     if (isSourceError) return "Source secrets couldn't be loaded";
+    if (isSourceLoading) return "Loading source secrets";
     if (isDestinationLoading) return "Loading destination secrets";
-    if (!selectedIds.length) return "Select at least one secret";
+    if (!selectedItemCount) return "Select at least one secret or folder";
     return undefined;
   })();
 
@@ -372,7 +322,10 @@ export const CopySecretsSheet = ({
         }))
         .filter(({ secretIds }) => secretIds.length > 0);
       const destinationPaths = [
-        ...new Set(copyRequestGroups.map(({ destinationPath: path }) => path))
+        ...new Set([
+          ...destinationFolderPaths,
+          ...copyRequestGroups.map(({ destinationPath: path }) => path)
+        ])
       ].sort((left, right) => left.split("/").length - right.split("/").length);
       const destinationFolderSteps = [
         ...new Map(
@@ -407,11 +360,8 @@ export const CopySecretsSheet = ({
               secretIds,
               shouldOverwrite,
               attributesToCopy: {
-                value: includeValues,
-                comment: true,
-                tags: true,
-                metadata: true,
-                skipMultilineEncoding: true
+                ...attributes,
+                value: group.includeValues
               }
             });
             return [
@@ -429,6 +379,9 @@ export const CopySecretsSheet = ({
       let notificationText = `${copiedSecretIds.length} ${
         copiedSecretIds.length === 1 ? "secret" : "secrets"
       } copied`;
+      if (selectedFolderPaths.length > 0) {
+        notificationText += `; ${selectedFolderPaths.length} ${selectedFolderPaths.length === 1 ? "folder" : "folders"} copied`;
+      }
       if (approvalCount > 0) {
         notificationText = `${approvalCount} ${
           approvalCount === 1 ? "copy requires" : "copies require"
@@ -444,7 +397,10 @@ export const CopySecretsSheet = ({
         } skipped`;
       }
       createNotification({
-        type: approvalCount > 0 || copiedSecretIds.length === 0 ? "info" : "success",
+        type:
+          approvalCount > 0 || (!copiedSecretIds.length && !selectedFolderPaths.length)
+            ? "info"
+            : "success",
         text: notificationText
       });
       onCompleted?.(copiedSecretIds);
@@ -456,8 +412,7 @@ export const CopySecretsSheet = ({
     }
   };
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     if (disabledReason || isSubmitting) return;
 
     if (conflictingSecrets.length > 0) {
@@ -469,6 +424,7 @@ export const CopySecretsSheet = ({
   };
 
   const handleConflictResolution = async (resolution: "override" | "skip") => {
+    if (disabledReason || isSubmitting) return;
     setIsConflictDialogOpen(false);
     await copySecrets({
       shouldOverwrite: resolution === "override",
@@ -480,11 +436,13 @@ export const CopySecretsSheet = ({
   let sourceContent = (
     <CopySecretsSecretTree
       secrets={sourceSecrets}
+      folders={sourceFolders}
+      selectedFolderPaths={selectedFolderPaths}
       sourcePath={normalizedSourcePath}
       selectedIds={selectedIds}
       isDisabled={isSubmitting}
       includeValues={includeValues}
-      onSelectionChange={setSelectedIds}
+      onSelectionChange={(secretIds, folderPaths) => setSelection({ secretIds, folderPaths })}
     />
   );
   if (!sourceEnvironmentSlug) {
@@ -496,7 +454,7 @@ export const CopySecretsSheet = ({
         </EmptyHeader>
       </Empty>
     );
-  } else if (isSourceLoading) {
+  } else if (isSourceLoading && !isSourceError) {
     sourceContent = (
       <div
         className="flex h-full flex-col gap-3 rounded-md border border-border bg-container p-4"
@@ -513,7 +471,15 @@ export const CopySecretsSheet = ({
         <AlertTitle>Couldn&apos;t load secrets</AlertTitle>
         <AlertDescription>
           Check your source location and access, then try again.
-          <Button type="button" size="xs" variant="outline" onClick={() => sourceQuery.refetch()}>
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={() => {
+              foldersQuery.refetch();
+              sourceQuery.refetch();
+            }}
+          >
             Retry
           </Button>
         </AlertDescription>
@@ -524,6 +490,7 @@ export const CopySecretsSheet = ({
   let destinationContent = (
     <CopySecretsSecretTree
       secrets={destinationContents}
+      folders={previewFolders}
       sourcePath={normalizedDestinationPath}
       selectedIds={[]}
       isReadOnly
@@ -568,7 +535,10 @@ export const CopySecretsSheet = ({
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
         <SheetContent className="w-full sm:w-3/4 sm:max-w-[1500px]">
-          <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          <form
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={(event) => event.preventDefault()}
+          >
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
                 Copy Secrets
@@ -601,22 +571,23 @@ export const CopySecretsSheet = ({
                           id="copy-secrets-source-environment"
                           modal
                           value={sourceEnvironment}
-                          options={sourceEnvironmentOptions}
-                          isDisabled={isSubmitting || isSourceEnvironmentLocked}
+                          options={environments}
+                          isDisabled={isSubmitting}
                           placeholder="Environment..."
                           searchPlaceholder="Search environments..."
                           searchAriaLabel="Search source environments"
                           getOptionLabel={({ name }) => name}
                           getOptionValue={({ slug }) => slug}
                           renderOptionIndicator={
-                            invocation?.origin === "bulk"
+                            invocation.origin === "bulk" &&
+                            normalizedSourcePath === normalizeCopyPath(invocation.sourcePath)
                               ? ({ slug }, { isSelected }) => (
                                   <span className="flex items-center gap-2">
                                     <span className="flex size-4 items-center justify-center">
                                       {isSelected && <CheckIcon className="size-4" />}
                                     </span>
                                     <span className="text-xs text-muted">
-                                      {`${invocation.secretsByEnvironment[slug]?.length ?? 0}/${invocation.selectedSecretCount}`}
+                                      {`${(invocation.secretsByEnvironment[slug]?.length ?? 0) + (invocation.foldersByEnvironment[slug]?.length ?? 0)}/${invocation.selectedSecretCount + invocation.folderNames.length}`}
                                     </span>
                                   </span>
                                 )
@@ -624,15 +595,7 @@ export const CopySecretsSheet = ({
                           }
                           onValueChange={(environment) => {
                             setSourceEnvironmentSlug(environment.slug);
-                            if (invocation?.origin === "bulk") {
-                              setSelectedIds(
-                                (invocation.secretsByEnvironment[environment.slug] ?? [])
-                                  .filter((secret) => isCopySecretSelectable(secret, includeValues))
-                                  .map(({ id }) => id)
-                              );
-                              return;
-                            }
-                            setSelectedIds([]);
+                            setSelection(null);
                           }}
                         />
                       </Field>
@@ -645,21 +608,17 @@ export const CopySecretsSheet = ({
                           projectId={projectId}
                           environment={sourceEnvironmentSlug}
                           value={sourcePath}
-                          disabled={isSubmitting || isSourcePathLocked}
+                          disabled={isSubmitting}
                           onChange={(path) => {
                             setSourcePath(path);
-                            setSelectedIds([]);
+                            setSelection(null);
                             if (!getCopyPathName(path)) setMode("contents");
                           }}
                         />
                       </Field>
                     </div>
                     {bulkSelectionSummary && (
-                      <FieldDescription
-                        isOpen
-                        aria-live="polite"
-                        className={unavailableBulkSecretCount > 0 ? "text-warning" : undefined}
-                      >
+                      <FieldDescription isOpen aria-live="polite">
                         {bulkSelectionSummary}
                       </FieldDescription>
                     )}
@@ -722,14 +681,15 @@ export const CopySecretsSheet = ({
                         />
                       </Field>
                     </div>
-                    <FieldDescription isOpen={hasDestinationConflicts}>
-                      Options to handle conflicts available in confirmation step.
-                    </FieldDescription>
                   </div>
                   <div className="min-h-0 flex-1">{destinationContent}</div>
                 </section>
               </div>
 
+              <p className="text-xs text-muted">
+                Copies shared secrets and selected folders, including empty folders. Managed
+                secrets, dynamic secrets, and imports are excluded.
+              </p>
               {sourceFolderName && (
                 <div className="flex flex-wrap items-center gap-3">
                   <ButtonGroup aria-label="Folder copy mode">
@@ -741,7 +701,7 @@ export const CopySecretsSheet = ({
                       isDisabled={isSubmitting}
                       onClick={() => setMode("folder")}
                     >
-                      As folder {sourceFolderName}/
+                      Include {sourceFolderName}/
                     </Button>
                     <Button
                       type="button"
@@ -751,41 +711,41 @@ export const CopySecretsSheet = ({
                       isDisabled={isSubmitting}
                       onClick={() => setMode("contents")}
                     >
-                      Contents only
+                      Selected contents only
                     </Button>
                   </ButtonGroup>
                   <span className="font-mono text-xs text-muted">
                     {normalizedSourcePath} →{" "}
-                    {requestGroups[0]?.destinationPath ?? normalizedDestinationPath}
+                    {getCopyDestinationPath({
+                      sourcePath: normalizedSourcePath,
+                      sourceRootPath: normalizedSourcePath,
+                      destinationRootPath: normalizedDestinationPath,
+                      mode: effectiveMode
+                    })}
                   </span>
                 </div>
               )}
             </div>
 
             <SheetFooter className="flex-wrap items-center border-t">
-              <div className="mr-auto flex min-w-0 flex-wrap items-center">
-                <Field
-                  orientation="horizontal"
-                  className="w-auto"
-                  data-disabled={isSubmitting || cannotIncludeValues}
-                >
+              <div className="mr-auto flex min-w-0 flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Switch
                     id="copy-secrets-values"
                     variant="project"
                     checked={includeValues}
-                    disabled={isSubmitting || cannotIncludeValues}
-                    aria-describedby="copy-secrets-values-description"
-                    onCheckedChange={setIncludeValues}
+                    disabled={isSubmitting}
+                    onCheckedChange={(value) => setAttributes((current) => ({ ...current, value }))}
                   />
-                  <FieldContent>
-                    <FieldLabel htmlFor="copy-secrets-values" className="cursor-pointer">
-                      <LockIcon aria-hidden /> Include secret values
-                    </FieldLabel>
-                    <FieldDescription id="copy-secrets-values-description">
-                      Enabling this will also exclude secrets you have no value access to.
-                    </FieldDescription>
-                  </FieldContent>
-                </Field>
+                  <Label htmlFor="copy-secrets-values">
+                    <LockIcon className="size-4" aria-hidden /> Include secret values
+                  </Label>
+                </div>
+                <CopySecretsProperties
+                  attributes={attributes}
+                  onChange={setAttributes}
+                  isDisabled={isSubmitting}
+                />
               </div>
               <Button
                 type="button"
@@ -795,15 +755,32 @@ export const CopySecretsSheet = ({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="project"
-                isDisabled={Boolean(disabledReason)}
-                isPending={isSubmitting}
-              >
-                <ClipboardCopyIcon /> Copy {selectedIds.length}{" "}
-                {selectedIds.length === 1 ? "secret" : "secrets"}
-              </Button>
+              <Tooltip open={disabledReason ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex" aria-label={disabledReason}>
+                    <Button
+                      type="button"
+                      onClick={handleSubmit}
+                      variant="project"
+                      isDisabled={Boolean(disabledReason)}
+                      isPending={isSubmitting}
+                    >
+                      <ClipboardCopyIcon /> Copy{" "}
+                      {selectedFolderPaths.length ? `${selectedItemCount} items` : selectionLabel}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{disabledReason}</TooltipContent>
+              </Tooltip>
+              {(unavailableValueCount > 0 || hasDestinationConflicts || disabledReason) && (
+                <p className="w-full text-xs text-muted" aria-live="polite">
+                  {disabledReason && `${disabledReason}. `}
+                  {unavailableValueCount > 0 &&
+                    `${unavailableValueCount} selected ${unavailableValueCount === 1 ? "key has" : "keys have"} no value access and will be copied without values. Existing destination values are preserved. `}
+                  {hasDestinationConflicts &&
+                    "Choose whether to overwrite or skip conflicting keys when you copy."}
+                </p>
+              )}
             </SheetFooter>
           </form>
         </SheetContent>
@@ -850,3 +827,14 @@ export const CopySecretsSheet = ({
     </>
   );
 };
+
+// Mount a fresh session for each entry point; don't synchronize invocation and selection in competing effects.
+export const CopySecretsSheet = ({ invocation, isOpen, ...props }: Props) =>
+  invocation && isOpen ? (
+    <CopySecretsSession
+      key={JSON.stringify(invocation)}
+      {...props}
+      invocation={invocation}
+      isOpen={isOpen}
+    />
+  ) : null;

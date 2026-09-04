@@ -2634,8 +2634,8 @@ const OverviewPageContent = () => {
                     onCopySecrets={() =>
                       handleOpenCopySecrets({
                         origin: "toolbar",
-                        destinationPath: secretPath,
-                        destinationEnvironmentSlug: singleVisibleEnv?.slug ?? ""
+                        sourcePath: secretPath,
+                        sourceEnvironmentSlug: singleVisibleEnv?.slug ?? ""
                       })
                     }
                     isCopySecretsDisabled={hasPendingBatchChanges}

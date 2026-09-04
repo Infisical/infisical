@@ -3,9 +3,12 @@ import { describe, it } from "node:test";
 
 import {
   filterCopyPreviewSecrets,
+  getCopyDestinationFolderPaths,
   getCopyDestinationPath,
   getCopyFolderCreationSteps,
   getCopySecretConflicts,
+  getInitialCopyState,
+  getInvocationCopySelection,
   getOtherCopyEnvironmentSlug,
   getRelativeCopyPath,
   groupCopySecretsRequests,
@@ -56,7 +59,7 @@ describe("copy secrets paths", () => {
     );
   });
 
-  it("keeps hidden-value secrets selectable only when values are omitted", () => {
+  it("keeps hidden-value secrets selectable and excludes managed secrets", () => {
     const hiddenSecret = {
       id: "hidden",
       name: "HIDDEN",
@@ -64,14 +67,13 @@ describe("copy secrets paths", () => {
       isValueHidden: true
     };
 
-    assert.equal(isCopySecretSelectable(hiddenSecret, true), false);
-    assert.equal(isCopySecretSelectable(hiddenSecret, false), true);
+    assert.equal(isCopySecretSelectable(hiddenSecret), true);
     assert.equal(
-      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isRotated: true }, false),
+      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isRotated: true }),
       false
     );
     assert.equal(
-      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isHoneyToken: true }, false),
+      isCopySecretSelectable({ ...hiddenSecret, isValueHidden: false, isHoneyToken: true }),
       false
     );
   });
@@ -171,11 +173,12 @@ describe("copy secrets paths", () => {
         mode: "folder"
       }),
       [
-        { sourcePath: "/auth", destinationPath: "/auth", secretIds: ["one"] },
+        { sourcePath: "/auth", destinationPath: "/auth", secretIds: ["one"], includeValues: true },
         {
           sourcePath: "/auth/session",
           destinationPath: "/auth/session",
-          secretIds: ["two", "three"]
+          secretIds: ["two", "three"],
+          includeValues: true
         }
       ]
     );
@@ -212,6 +215,199 @@ describe("copy secrets paths", () => {
           destinationPath: "/services/session"
         }
       ]
+    );
+  });
+});
+
+describe("copy invocation selection", () => {
+  const environments = [
+    { id: "dev", slug: "dev", name: "Development" },
+    { id: "prod", slug: "prod", name: "Production" }
+  ];
+  const invocation = {
+    origin: "bulk" as const,
+    sourcePath: "/app",
+    selectedSecretCount: 2,
+    secretsByEnvironment: {
+      dev: [{ id: "old-key", name: "KEY", path: "/app", isValueHidden: true }],
+      prod: [
+        { id: "prod-key", name: "KEY", path: "/app" },
+        { id: "other", name: "OTHER", path: "/app" }
+      ]
+    },
+    folderNames: ["empty", "nested"],
+    foldersByEnvironment: { dev: [{ path: "/app/empty" }, { path: "/app/nested" }] }
+  };
+
+  it("opens the dropdown from the current source environment and folder", () => {
+    assert.deepEqual(
+      getInitialCopyState(
+        { origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "/app" },
+        environments
+      ),
+      {
+        sourceEnvironmentSlug: "dev",
+        sourcePath: "/app",
+        destinationEnvironmentSlug: "prod",
+        destinationPath: "/",
+        mode: "folder"
+      }
+    );
+  });
+
+  it("uses the current environment for bulk entry and leaves multi-environment sources to the user", () => {
+    assert.equal(getInitialCopyState(invocation, environments).sourceEnvironmentSlug, "");
+    assert.equal(
+      getInitialCopyState({ ...invocation, sourceEnvironmentSlug: "prod" }, environments)
+        .sourceEnvironmentSlug,
+      "prod"
+    );
+  });
+
+  it("permits single-environment projects to choose another destination folder", () => {
+    assert.equal(
+      getInitialCopyState({ origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "/" }, [
+        environments[0]
+      ]).destinationEnvironmentSlug,
+      "dev"
+    );
+  });
+
+  it("preselects the invocation after initially empty loading data, using the current environment's IDs", () => {
+    assert.deepEqual(
+      getInvocationCopySelection({ invocation, sourcePath: "/app", secrets: [], folders: [] }),
+      { secretIds: [], folderPaths: [] }
+    );
+    assert.deepEqual(
+      getInvocationCopySelection({
+        invocation,
+        sourcePath: "/app",
+        secrets: [
+          { id: "current-key", name: "KEY", path: "/app", isValueHidden: true },
+          { id: "unselected", name: "UNSELECTED", path: "/app" },
+          { id: "nested-key", name: "NESTED", path: "/app/nested/child" },
+          { id: "honey", name: "HONEY", path: "/app/nested", isHoneyToken: true },
+          { id: "wrong-path", name: "KEY", path: "/elsewhere" }
+        ],
+        folders: [
+          { path: "/app/empty" },
+          { path: "/app/nested" },
+          { path: "/app/nested/child" },
+          { path: "/app/other" }
+        ]
+      }),
+      {
+        secretIds: ["current-key", "nested-key"],
+        folderPaths: ["/app/empty", "/app/nested", "/app/nested/child"]
+      }
+    );
+  });
+
+  it("keeps selection scoped to the edited source path", () => {
+    assert.deepEqual(
+      getInvocationCopySelection({
+        invocation,
+        sourcePath: "/different",
+        secrets: [
+          { id: "original", name: "KEY", path: "/app" },
+          { id: "edited", name: "KEY", path: "/different" }
+        ],
+        folders: [{ path: "/different/empty" }, { path: "/app/empty" }]
+      }),
+      {
+        secretIds: ["edited"],
+        folderPaths: ["/different/empty"]
+      }
+    );
+  });
+
+  it("does not auto-select unrequested secrets from a toolbar invocation", () => {
+    assert.deepEqual(
+      getInvocationCopySelection({
+        invocation: { origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "/app" },
+        sourcePath: "/app",
+        secrets: [{ id: "one", name: "KEY", path: "/app" }],
+        folders: [{ path: "/app" }]
+      }),
+      { secretIds: [], folderPaths: [] }
+    );
+  });
+});
+
+describe("copy requests", () => {
+  const secrets = [
+    { id: "readable", name: "READABLE", path: "/app" },
+    { id: "hidden", name: "HIDDEN", path: "/app", isValueHidden: true },
+    { id: "nested", name: "NESTED", path: "/app/nested" },
+    { id: "honey", name: "HONEY", path: "/app", isHoneyToken: true },
+    { id: "rotated", name: "ROTATED", path: "/app", isRotated: true }
+  ];
+  it("copies readable values while batching restricted keys without values", () => {
+    const groups = groupCopySecretsRequests({
+      secrets,
+      sourceRootPath: "/app",
+      destinationRootPath: "/copy",
+      mode: "contents",
+      includeValues: true
+    });
+    assert.deepEqual(groups, [
+      {
+        sourcePath: "/app",
+        destinationPath: "/copy",
+        secretIds: ["readable"],
+        includeValues: true
+      },
+      { sourcePath: "/app", destinationPath: "/copy", secretIds: ["hidden"], includeValues: false },
+      {
+        sourcePath: "/app/nested",
+        destinationPath: "/copy/nested",
+        secretIds: ["nested"],
+        includeValues: true
+      }
+    ]);
+    assert.equal(
+      getCopySecretConflicts({
+        secrets,
+        requestGroups: groups,
+        destinationSecrets: [{ id: "existing", name: "HIDDEN", path: "/copy" }]
+      })[0].sourceSecretId,
+      "hidden"
+    );
+  });
+  it("omits all values when the property is deselected without dropping restricted keys", () => {
+    const groups = groupCopySecretsRequests({
+      secrets,
+      sourceRootPath: "/app",
+      destinationRootPath: "/",
+      mode: "folder",
+      includeValues: false
+    });
+    assert.deepEqual(
+      groups.map(({ secretIds, includeValues }) => ({ secretIds, includeValues })),
+      [
+        { secretIds: ["readable", "hidden"], includeValues: false },
+        { secretIds: ["nested"], includeValues: false }
+      ]
+    );
+  });
+  it("maps empty and nested folders even when there are no secrets", () => {
+    assert.deepEqual(
+      getCopyDestinationFolderPaths({
+        folderPaths: ["/app/empty", "/app/nested", "/app/nested/empty", "/unrelated"],
+        sourceRootPath: "/app",
+        destinationRootPath: "/copy",
+        mode: "contents"
+      }),
+      ["/copy/empty", "/copy/nested", "/copy/nested/empty"]
+    );
+    assert.deepEqual(
+      getCopyDestinationFolderPaths({
+        folderPaths: ["/app"],
+        sourceRootPath: "/app",
+        destinationRootPath: "/copy",
+        mode: "folder"
+      }),
+      ["/copy/app"]
     );
   });
 });

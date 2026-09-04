@@ -32,6 +32,7 @@ import {
   TSecretFolder
 } from "@app/hooks/api/types";
 import type {
+  CopySecretsFolder,
   CopySecretsInvocation,
   CopySecretsSource
 } from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet";
@@ -339,14 +340,13 @@ export const SelectionPanel = ({
     (perEnv) => Object.keys(perEnv).length === 0
   );
   const isCopyDisabled =
-    areFoldersSelected ||
     hasImportedSecretSelection ||
     hasUnmaterializedSecretSelection ||
     isHoneyTokenSelected ||
     areRotationsSelected ||
     isManagedSecretSelected;
 
-  let copyDisabledReason = "Folders cannot be copied";
+  let copyDisabledReason = "";
   if (hasImportedSecretSelection) {
     copyDisabledReason =
       "Imported secrets must be materialized as shared secrets before they can be copied";
@@ -376,7 +376,13 @@ export const SelectionPanel = ({
       ]
     };
   }, {});
-  const shouldShowBulkCopy = selectedKeysCount > 0;
+  const copyFoldersByEnvironment = Object.values(selectedEntries[EntryType.FOLDER])
+    .flatMap(Object.entries)
+    .reduce<Record<string, CopySecretsFolder[]>>((byEnvironment, [environment, folder]) => {
+      const path = `${secretPath === "/" ? "" : secretPath}/${folder.name}`;
+      return { ...byEnvironment, [environment]: [...(byEnvironment[environment] ?? []), { path }] };
+    }, {});
+  const shouldShowBulkCopy = selectedKeysCount > 0 || selectedFolderCount > 0;
 
   return (
     <>
@@ -425,7 +431,11 @@ export const SelectionPanel = ({
                     origin: "bulk",
                     sourcePath: secretPath,
                     selectedSecretCount: selectedKeysCount,
-                    secretsByEnvironment: copySecretsByEnvironment
+                    secretsByEnvironment: copySecretsByEnvironment,
+                    sourceEnvironmentSlug:
+                      visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
+                    folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
+                    foldersByEnvironment: copyFoldersByEnvironment
                   });
                 }}
                 size="xs"
