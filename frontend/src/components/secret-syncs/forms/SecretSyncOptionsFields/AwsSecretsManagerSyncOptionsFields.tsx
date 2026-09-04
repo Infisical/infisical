@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  Code,
   Combobox,
   Field,
   FieldContent,
@@ -173,7 +174,12 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                     <TooltipTrigger asChild>
                       <CircleHelp className="size-3 cursor-help text-muted" />
                     </TooltipTrigger>
-                    <TooltipContent>The AWS KMS key to encrypt secrets with.</TooltipContent>
+                    <TooltipContent className="max-w-sm">
+                      The AWS KMS key to encrypt secrets with. Custom keys require{" "}
+                      <Code>kms:ListAliases</Code>, <Code>kms:DescribeKey</Code>,{" "}
+                      <Code>kms:Encrypt</Code>, and <Code>kms:Decrypt</Code> on the selected IAM
+                      role.
+                    </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
@@ -183,33 +189,13 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                     value={kmsKeys.find((org) => org.alias === value) ?? null}
                     onValueChange={(option) => onChange(option.alias ?? null)}
                     isError={Boolean(error)}
-                    // eslint-disable-next-line react/no-unstable-nested-components
                     emptyMessage={(inputValue) =>
-                      inputValue ? undefined : (
-                        <p>
-                          To configure a KMS key, ensure the following permissions are present on
-                          the selected IAM role:{" "}
-                          <span className="rounded-sm bg-ring text-label">
-                            &#34;kms:ListAliases&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-ring text-label">
-                            &#34;kms:DescribeKey&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-ring text-label">
-                            &#34;kms:Encrypt&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-ring text-label">
-                            &#34;kms:Decrypt&#34;
-                          </span>
-                          .
-                        </p>
-                      )
+                      inputValue ? "No KMS keys match your search." : "No KMS keys found."
                     }
                     options={kmsKeys}
                     placeholder="Leave blank to use default KMS key"
+                    searchPlaceholder="Search KMS keys..."
+                    searchAriaLabel="Search KMS keys"
                     getOptionLabel={(option) =>
                       option.alias === "alias/aws/secretsmanager"
                         ? `${option.alias} (Default)`

@@ -103,28 +103,47 @@ const useComboboxItems = <TOption,>(
     return stableOptions;
   }, [getOptionValue, options, selectedOptions]);
 
-type ComboboxGroup<TOption> = {
-  value: string;
-  items: TOption[];
+type ComboboxItem<TOption> = {
+  option: TOption;
 };
 
-const useGroupedComboboxItems = <TOption,>(
+type ComboboxGroup<TOption> = {
+  value: string;
+  items: ComboboxItem<TOption>[];
+};
+
+const usePrimitiveComboboxItems = <TOption,>(
   items: readonly TOption[],
+  getOptionValue: (option: TOption) => string,
   getOptionGroup?: (option: TOption) => string
 ) =>
   React.useMemo(() => {
-    if (!getOptionGroup) return items;
+    // Base UI treats any object with an `items` property as a group. Wrapping every
+    // consumer option keeps provider-specific fields opaque to the primitive and
+    // reserves the grouped shape for groups created explicitly below.
+    const flatItems = items.map((option) => ({ option }));
+    const itemsByValue = new Map(
+      flatItems.map((item) => [getOptionValue(item.option), item] as const)
+    );
 
-    const groupedItems = new Map<string, TOption[]>();
-    items.forEach((option) => {
-      const group = getOptionGroup(option);
+    if (!getOptionGroup) return { itemsByValue, rootItems: flatItems };
+
+    const groupedItems = new Map<string, ComboboxItem<TOption>[]>();
+    flatItems.forEach((item) => {
+      const group = getOptionGroup(item.option);
       const groupItems = groupedItems.get(group);
-      if (groupItems) groupItems.push(option);
-      else groupedItems.set(group, [option]);
+      if (groupItems) groupItems.push(item);
+      else groupedItems.set(group, [item]);
     });
 
-    return Array.from(groupedItems, ([value, groupItems]) => ({ value, items: groupItems }));
-  }, [getOptionGroup, items]);
+    return {
+      itemsByValue,
+      rootItems: Array.from(groupedItems, ([value, groupItems]) => ({
+        value,
+        items: groupItems
+      }))
+    };
+  }, [getOptionGroup, getOptionValue, items]);
 
 type ComboboxListProps<TOption> = Omit<
   Pick<
@@ -159,14 +178,15 @@ const ComboboxList = <TOption,>({
   selectedValues,
   maxHeight
 }: ComboboxListProps<TOption>) => {
-  const renderItem = (option: TOption) => {
+  const renderItem = (item: ComboboxItem<TOption>) => {
+    const { option } = item;
     const optionValue = getOptionValue(option);
     const isSelected = selectedValues.has(optionValue);
 
     return (
       <ComboboxPrimitive.Item
         key={optionValue}
-        value={option}
+        value={item}
         disabled={isOptionDisabled?.(option)}
         className={cn(
           COMBOBOX_ROW_CLASS,
@@ -338,47 +358,67 @@ const SingleCombobox = <TOption,>({
 }: ComboboxSingleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = React.useState(false);
+  const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
-  const rootItems = useGroupedComboboxItems(items, getOptionGroup);
+  const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
+    items,
+    getOptionValue,
+    getOptionGroup
+  );
+  const selectedItem =
+    value == null ? null : (itemsByValue.get(getOptionValue(value)) ?? { option: value });
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const primitiveFilter = React.useCallback(
+    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    [filter]
+  );
   const selectedValues = React.useMemo(
     () => new Set(value == null ? [] : [getOptionValue(value)]),
     [getOptionValue, value]
   );
 
   return (
-    <ComboboxPrimitive.Root<TOption, false>
+    <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
       items={rootItems}
-      value={value ?? null}
+      value={selectedItem}
       onValueChange={(nextValue, eventDetails) => {
         if (nextValue == null) {
-          if (eventDetails.reason === "clear-press") onClear?.();
+          if (eventDetails.reason === "clear-press") {
+            setSearch("");
+            onClear?.();
+          }
           return;
         }
-        onValueChange(nextValue);
+        onValueChange(nextValue.option);
       }}
       open={open}
-      onOpenChange={(nextOpen) => {
+      onOpenChange={(nextOpen, eventDetails) => {
         setOpen(nextOpen);
-        if (!nextOpen) {
+        if (nextOpen) {
+          // Clicking into a selected combobox starts from its current label. When
+          // typing itself opens the popup, preserve the query emitted just before
+          // this event instead of replacing the user's first keystroke.
+          if (eventDetails.reason !== "input-change") setSearch(selectedLabel);
+        } else {
           setSearch("");
           onInputValueChange?.("");
         }
       }}
+      inputValue={open ? search : selectedLabel}
       onInputValueChange={(nextValue, eventDetails) => {
-        setSearch(nextValue);
         if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+          setSearch(nextValue);
           onInputValueChange?.(nextValue);
         }
       }}
-      itemToStringLabel={getOptionLabel}
-      itemToStringValue={getOptionValue}
+      itemToStringLabel={(item) => getOptionLabel(item.option)}
+      itemToStringValue={(item) => getOptionValue(item.option)}
       isItemEqualToValue={(option, selectedOption) =>
-        getOptionValue(option) === getOptionValue(selectedOption)
+        getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={shouldFilter ? filter : null}
+      filter={shouldFilter ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
       autoHighlight
@@ -510,8 +550,20 @@ const MultipleCombobox = <TOption,>({
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
-  const rootItems = useGroupedComboboxItems(items, getOptionGroup);
+  const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
+    items,
+    getOptionValue,
+    getOptionGroup
+  );
+  const selectedItems = React.useMemo(
+    () => selectedOptions.map((option) => itemsByValue.get(getOptionValue(option)) ?? { option }),
+    [getOptionValue, itemsByValue, selectedOptions]
+  );
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const primitiveFilter = React.useCallback(
+    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    [filter]
+  );
   const selectedValues = React.useMemo(
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
@@ -545,10 +597,10 @@ const MultipleCombobox = <TOption,>({
   };
 
   return (
-    <ComboboxPrimitive.Root<TOption, true>
+    <ComboboxPrimitive.Root<ComboboxItem<TOption>, true>
       multiple
       items={rootItems}
-      value={selectedOptions}
+      value={selectedItems}
       onValueChange={(nextValue, eventDetails) => {
         if (eventDetails.reason === "item-press") {
           eventDetails.cancel();
@@ -562,7 +614,7 @@ const MultipleCombobox = <TOption,>({
           return;
         }
 
-        onValueChange(nextValue);
+        onValueChange(nextValue.map((item) => item.option));
       }}
       open={open}
       onOpenChange={(nextOpen) => {
@@ -579,12 +631,12 @@ const MultipleCombobox = <TOption,>({
           onInputValueChange?.(nextValue);
         }
       }}
-      itemToStringLabel={getOptionLabel}
-      itemToStringValue={getOptionValue}
+      itemToStringLabel={(item) => getOptionLabel(item.option)}
+      itemToStringValue={(item) => getOptionValue(item.option)}
       isItemEqualToValue={(option, selectedOption) =>
-        getOptionValue(option) === getOptionValue(selectedOption)
+        getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={shouldFilter ? filter : null}
+      filter={shouldFilter ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
       autoHighlight
@@ -614,9 +666,9 @@ const MultipleCombobox = <TOption,>({
           data-scrollable-end={scrollEdges.end}
         >
           <ComboboxPrimitive.Value>
-            {(selectedValue: TOption[]) => (
+            {(selectedValue: ComboboxItem<TOption>[]) => (
               <>
-                {selectedValue.map((option) => {
+                {selectedValue.map(({ option }) => {
                   const label = getOptionLabel(option);
                   return (
                     <ComboboxPrimitive.Chip

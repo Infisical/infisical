@@ -37,32 +37,28 @@ import { TSecretSyncForm } from "../schemas";
 
 const GITLAB_SYNC_LIST_LIMIT = 20;
 
-const getGitLabGroupOptionLabel = (group: TGitLabGroup) =>
-  group.fullPath === group.name ? group.name : `${group.name} · ${group.fullPath}`;
+const getGitLabGroupOptionLabel = (group: TGitLabGroup) => group.fullPath;
 
-const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
-  <div className="flex min-w-0 items-center gap-2">
-    <span className="shrink-0">{group.name}</span>
+const renderGitLabGroupOption = (group: TGitLabGroup) => (
+  <div className="min-w-0">
+    <p className="truncate">{group.name}</p>
     {group.fullPath !== group.name && (
-      <span className="min-w-0 truncate text-muted">{group.fullPath}</span>
+      <p className="truncate text-xs leading-4 text-muted">{group.fullPath}</p>
     )}
   </div>
 );
 
-const getGitLabProjectOptionLabel = (project: TGitLabProject) => {
-  const shortName = project.name.split("/").pop() || project.name;
-  return shortName === project.name ? project.name : `${shortName} · ${project.name}`;
-};
+const getGitLabProjectOptionLabel = (project: TGitLabProject) => project.name;
 
-const formatGitLabProjectOptionLabel = (project: TGitLabProject) => {
+const renderGitLabProjectOption = (project: TGitLabProject) => {
   const fullPathWithNamespace = project.name;
   const shortName = fullPathWithNamespace.split("/").pop() || fullPathWithNamespace;
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="shrink-0">{shortName}</span>
+    <div className="min-w-0">
+      <p className="truncate">{shortName}</p>
       {fullPathWithNamespace !== shortName && (
-        <span className="min-w-0 truncate text-muted">{fullPathWithNamespace}</span>
+        <p className="truncate text-xs leading-4 text-muted">{fullPathWithNamespace}</p>
       )}
     </div>
   );
@@ -244,8 +240,7 @@ export const GitLabSyncFields = () => {
                   options={groupOptions}
                   placeholder="Search for a group..."
                   getOptionLabel={getGitLabGroupOptionLabel}
-                  renderOption={formatGitLabGroupOptionLabel}
-                  renderValue={formatGitLabGroupOptionLabel}
+                  renderOption={renderGitLabGroupOption}
                   getOptionValue={(option) => option.id}
                   emptyMessage={(inputValue) =>
                     inputValue ? "No groups found matching your search." : "No groups found."
@@ -296,8 +291,7 @@ export const GitLabSyncFields = () => {
                   options={projectOptions}
                   placeholder="Search for a project..."
                   getOptionLabel={getGitLabProjectOptionLabel}
-                  renderOption={formatGitLabProjectOptionLabel}
-                  renderValue={formatGitLabProjectOptionLabel}
+                  renderOption={renderGitLabProjectOption}
                   getOptionValue={(option) => option.id}
                   emptyMessage={(inputValue) =>
                     inputValue ? "No projects found matching your search." : "No projects found."

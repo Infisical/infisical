@@ -177,6 +177,9 @@ export const CreateSecretSyncForm = ({
       },
       ...initialFormData
     } as Partial<TSecretSyncForm>,
+    // Step validation uses trigger(), which does not put the form into its submitted state.
+    // Validate changes from the start so a field's error clears as soon as it is corrected.
+    mode: "onChange",
     reValidateMode: "onChange"
   });
 
