@@ -2934,7 +2934,7 @@ const OverviewPageContent = () => {
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />
-              <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 @4xl/card-header:flex-1 @4xl/card-header:justify-between">
+              <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 @4xl/card-header:justify-between">
                 <div className="flex max-w-full min-w-0 flex-1 items-center gap-2">
                   <EnvironmentSelect
                     selectedEnvs={filteredEnvs}

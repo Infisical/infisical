@@ -1086,7 +1086,7 @@ const Toolbar = ({
 }) => (
   <div className="flex w-full flex-wrap items-center justify-between gap-2">
     <div className="flex min-w-72 flex-1 items-center gap-2">
-      <InputGroup className="max-w-lg min-w-48 flex-1">
+      <InputGroup className="min-w-48 flex-1">
         <InputGroupAddon align="inline-start">
           <SearchIcon />
         </InputGroupAddon>

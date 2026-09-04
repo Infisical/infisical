@@ -14,6 +14,7 @@ import { cn } from "@app/components/v3/utils";
 import { useDebounce } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
+import { getResourceSearchStateTransition } from "./resourceSearchState";
 
 type Props = Omit<QuickSearchModalProps, "isOpen" | "onClose" | "onOpenChange" | "initialValue"> & {
   value: string;
@@ -37,21 +38,29 @@ export const ResourceSearchInput = ({
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
   const [debouncedInputValue] = useDebounce(inputValue);
+  const previousExternalValue = useRef(externalValue);
   const lastEmittedValue = useRef(externalValue);
 
   useEffect(() => {
-    if (externalValue !== lastEmittedValue.current) {
-      setInputValue(externalValue);
-      lastEmittedValue.current = externalValue;
-    }
-  }, [externalValue]);
+    const transition = getResourceSearchStateTransition({
+      externalValue,
+      previousExternalValue: previousExternalValue.current,
+      debouncedInputValue,
+      lastEmittedValue: lastEmittedValue.current
+    });
 
-  useEffect(() => {
-    if (debouncedInputValue !== lastEmittedValue.current) {
-      lastEmittedValue.current = debouncedInputValue;
-      onChange(debouncedInputValue);
+    if (!transition) return;
+
+    if (transition.type === "sync") {
+      previousExternalValue.current = transition.value;
+      lastEmittedValue.current = transition.value;
+      setInputValue(transition.value);
+      return;
     }
-  }, [debouncedInputValue, onChange]);
+
+    lastEmittedValue.current = transition.value;
+    onChange(transition.value);
+  }, [debouncedInputValue, externalValue, onChange]);
 
   const handleClear = () => {
     setInputValue("");
@@ -146,9 +155,9 @@ export const ResourceSearchInput = ({
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         initialValue={inputValue}
-        onClose={() => {
+        onClose={(clearSearch = true) => {
           setIsOpen(false);
-          handleClear();
+          if (clearSearch) handleClear();
         }}
         {...props}
       />

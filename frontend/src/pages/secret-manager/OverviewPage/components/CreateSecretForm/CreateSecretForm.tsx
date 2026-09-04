@@ -58,6 +58,8 @@ import {
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { didAllSecretCreationsSucceed } from "./createSecretFormState";
+
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
     .object({
@@ -276,6 +278,7 @@ export const CreateSecretForm = ({
     );
 
     const results = await Promise.allSettled(promises);
+    const allRequestsSucceeded = didAllSecretCreationsSucceed(results);
     const forApprovalEnvs = [
       ...new Set(
         results
@@ -324,7 +327,9 @@ export const CreateSecretForm = ({
     if (!updatedEnvs.length && !forApprovalEnvs.length) {
       // this should only occur when a toast notifcation is created from failed mutation
       console.warn("failed to create secrets");
-    } else {
+    }
+
+    if (allRequestsSucceeded) {
       onClose();
       reset();
     }
