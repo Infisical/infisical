@@ -113,7 +113,6 @@ export type TAgentVaultProxy = {
   name: string;
   heartbeat: string | null;
   isHealthy: boolean;
-  version: string | null;
   rootCaFingerprint: string | null;
   rootCaExpiresAt: string | null;
   // Administrator-only projection. A member receives the row without these.

@@ -26,7 +26,6 @@ const ProxyMemberViewSchema = z.object({
   name: z.string().describe(AGENT_VAULT.PROXY.name),
   heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
   isHealthy: z.boolean().describe(AGENT_VAULT.PROXY.isHealthy),
-  version: z.string().nullable().describe(AGENT_VAULT.PROXY.version),
   rootCaFingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
   rootCaExpiresAt: z.date().nullable().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
 });

@@ -209,7 +209,6 @@ export async function up(knex: Knex): Promise<void> {
 
       // Last successful heartbeat. Health is derived (heartbeat > now() - pollInterval * 3), never stored.
       t.timestamp("heartbeat", { useTz: true });
-      t.string("version", 32);
 
       t.string("unmatchedHost", 16).notNullable().defaultTo("allow");
       t.string("bypassHosts", 1024);

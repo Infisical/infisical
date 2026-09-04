@@ -4193,7 +4193,6 @@ export const AGENT_VAULT = {
     name: "The name of the proxy.",
     heartbeat: "When the proxy last checked in, or null if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
-    version: "The proxy build, as the proxy reports it.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
     rootCaCertificate:
       "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",

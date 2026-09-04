@@ -36,7 +36,6 @@ export type TEnrollProxyDTO = {
 
 export type THeartbeatDTO = {
   proxyId: string;
-  version?: string;
 };
 
 export type TResolveSessionDTO = {

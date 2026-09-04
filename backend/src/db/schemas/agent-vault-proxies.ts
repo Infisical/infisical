@@ -15,7 +15,6 @@ export const AgentVaultProxiesSchema = z.object({
   rootCaFingerprint: z.string().nullable().optional(),
   rootCaExpiresAt: z.date().nullable().optional(),
   heartbeat: z.date().nullable().optional(),
-  version: z.string().nullable().optional(),
   unmatchedHost: z.string().default("allow"),
   bypassHosts: z.string().nullable().optional(),
   pollInterval: z.number().default(60),

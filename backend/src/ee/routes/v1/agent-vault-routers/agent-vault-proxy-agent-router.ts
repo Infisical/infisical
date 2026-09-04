@@ -90,18 +90,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       operationId: "agentVaultProxyHeartbeat",
       description: "Report a proxy as alive and read back its settings",
       tags: [ApiDocsTags.AgentVaultProxies],
-      body: z.object({
-        version: z.string().trim().max(32).optional().describe(AGENT_VAULT.PROXY.version)
-      }),
+      // No body: the proxy has nothing to tell us that the token and the timestamp do not already say.
       // The full settings block comes back every time, unconditionally.
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultProxy.heartbeat({
-        proxyId: req.permission.id,
-        version: req.body.version
-      })
+    handler: async (req) => server.services.agentVaultProxy.heartbeat({ proxyId: req.permission.id })
   });
 
   server.route({

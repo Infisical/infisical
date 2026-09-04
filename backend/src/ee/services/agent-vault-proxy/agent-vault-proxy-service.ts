@@ -83,7 +83,6 @@ export const agentVaultProxyServiceFactory = ({
     name: proxy.name,
     heartbeat: proxy.heartbeat ?? null,
     isHealthy: isHealthy(proxy),
-    version: proxy.version ?? null,
     rootCaFingerprint: proxy.rootCaFingerprint ?? null,
     rootCaExpiresAt: proxy.rootCaExpiresAt ?? null
   });
@@ -242,13 +241,8 @@ export const agentVaultProxyServiceFactory = ({
 
   // The full settings block comes back every time, unconditionally: three fields on a call the proxy
   // already makes, so there is nothing worth saving by diffing or versioning.
-  const heartbeat = async ({ proxyId, version }: THeartbeatDTO) => {
-    // version is left alone when the heartbeat omits it, rather than nulled: it is a display field on the
-    // Proxies page, and a client that does not report its build should not erase the last one that did.
-    const proxy = await agentVaultProxyDAL.updateById(proxyId, {
-      heartbeat: new Date(),
-      ...(version ? { version } : {})
-    });
+  const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
+    const proxy = await agentVaultProxyDAL.updateById(proxyId, { heartbeat: new Date() });
     return { config: toConfig(proxy) };
   };
 

@@ -221,7 +221,6 @@ export const AgentVaultProxiesPage = () => {
                     </HeadWithHint>
                   </TableHead>
                 )}
-                <TableHead>Version</TableHead>
                 <TableHead>
                   <HeadWithHint hint="Pass it to infisical av run --ca-fingerprint so the agent refuses any proxy but this one.">
                     Certificate Authority
@@ -244,7 +243,7 @@ export const AgentVaultProxiesPage = () => {
                 Array.from({ length: 3 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`proxy-skeleton-${index}`}>
-                    {Array.from({ length: isAdmin ? 8 : 5 }).map((__, cell) => (
+                    {Array.from({ length: isAdmin ? 7 : 4 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`proxy-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -288,9 +287,6 @@ export const AgentVaultProxiesPage = () => {
                         </Badge>
                       </TableCell>
                     )}
-                    <TableCell>
-                      {proxy.version ?? <span className="text-muted">&mdash;</span>}
-                    </TableCell>
                     <TableCell>
                       {proxy.rootCaFingerprint ? (
                         <div className="flex items-center gap-1">
