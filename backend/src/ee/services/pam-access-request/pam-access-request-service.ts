@@ -737,6 +737,267 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
+  const notifyOfBreakGlass = async ({
+    request,
+    steps,
+    account,
+    folderId,
+    duration,
+    bypassReason,
+    actorId,
+    orgId
+  }: {
+    request: { id: string; requesterName?: string | null; requesterEmail?: string | null };
+    steps: { approvers: { type: string; id: string }[] }[];
+    account: { name: string; folderName: string | null };
+    folderId: string;
+    duration: string;
+    bypassReason: string;
+    actorId: string;
+    orgId: string;
+  }) => {
+    try {
+      const approverUserIds = new Set<string>();
+      const approverGroupIds = new Set<string>();
+      for (const step of steps) {
+        for (const approver of step.approvers) {
+          if (approver.type === ApproverType.User) approverUserIds.add(approver.id);
+          else approverGroupIds.add(approver.id);
+        }
+      }
+
+      const groupMemberLists = await Promise.all(
+        [...approverGroupIds].map((groupId) => userGroupMembershipDAL.find({ groupId }))
+      );
+      groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
+      approverUserIds.delete(actorId);
+
+      if (approverUserIds.size > 0) {
+        const approverUsers = await userDAL.find({ $in: { id: [...approverUserIds] } });
+
+        await notificationService.createUserNotifications(
+          [...approverUserIds].map((userId) => ({
+            userId,
+            orgId,
+            type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
+            title: "Access approval bypassed",
+            body: `**${escapeMarkdown(request.requesterName ?? "A user")}** used break-glass to self-approve access to **${escapeMarkdown(account.name)}**. Reason: "${escapeMarkdown(bypassReason)}"`
+          }))
+        );
+
+        const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
+        if (recipients.length > 0) {
+          await smtpService.sendMail({
+            recipients,
+            subjectLine: "PAM Access Approval Bypassed",
+            template: SmtpTemplates.AccessPamRequestBypassed,
+            substitutions: {
+              requesterFullName: request.requesterName ?? "A user",
+              requesterEmail: request.requesterEmail ?? "",
+              resourceName: account.folderName ?? undefined,
+              accountName: account.name,
+              accessDuration: formatDuration(duration),
+              bypassReason
+            }
+          });
+        }
+      }
+    } catch (err) {
+      logger.error(err, `Failed to send PAM break-glass notifications [requestId=${request.id}]`);
+    }
+
+    void triggerFolderSlackNotifications({
+      folderId,
+      event: PamNotificationEvent.AccessRequestBypassed,
+      orgId,
+      notification: {
+        type: TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED,
+        payload: {
+          requesterFullName: request.requesterName ?? "A user",
+          requesterEmail: request.requesterEmail ?? "",
+          accountName: account.name,
+          folderName: account.folderName ?? "",
+          accessDuration: formatDuration(duration),
+          bypassReason
+        }
+      }
+    });
+  };
+
+  const breakGlassRequest = async ({ requestId, projectId, bypassReason, ...ctx }: TBreakGlassAccessRequestDTO) => {
+    await verifyProductMembership(permissionService, projectId, ctx);
+
+    const trimmedReason = bypassReason.trim();
+    if (trimmedReason.length < 10) {
+      throw new BadRequestError({
+        message: "A break-glass reason of at least 10 characters is required. It is recorded in the audit log."
+      });
+    }
+
+    if (ctx.actor !== ActorType.USER) {
+      throw new ForbiddenRequestError({ message: "Only users can break glass on an access request" });
+    }
+
+    const request = await approvalRequestDAL.findById(requestId);
+    if (!request || request.projectId !== projectId || request.type !== ApprovalPolicyType.PamAccess) {
+      throw new NotFoundError({ message: "Request not found" });
+    }
+
+    if (request.requesterId !== ctx.actorId) {
+      throw new ForbiddenRequestError({ message: "You can only break glass on your own access request" });
+    }
+
+    if (request.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({ message: "Request is not pending" });
+    }
+
+    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
+      throw new BadRequestError({ message: "Request has expired" });
+    }
+
+    const requestData = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
+    const folderId = requestData?.requestData?.folderId;
+    const accountId = requestData?.requestData?.accountId;
+    if (!folderId || !accountId) {
+      throw new BadRequestError({ message: "This request is missing the account it was raised for" });
+    }
+
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId || account.folderId !== folderId) {
+      throw new BadRequestError({
+        message: "This request is no longer valid because the account has moved or been removed"
+      });
+    }
+
+    const { allowBreakGlass } = resolveAccessControls(account.templatePolicies);
+    if (!allowBreakGlass) {
+      throw new ForbiddenRequestError({
+        message: `Break-glass is not enabled for '${account.name}'. Ask a PAM admin to turn on the Allow Break-Glass policy on its template.`
+      });
+    }
+
+    const policy = await findFolderPolicy(folderId);
+    if (!policy) {
+      throw new ForbiddenRequestError({ message: "Approval policy no longer exists for this folder" });
+    }
+
+    const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
+    if (!(await isFolderBreakGlassApprover(policy.id, ctx.actorId, userGroupIds))) {
+      throw new ForbiddenRequestError({
+        message: "You are not a break-glass approver for this folder"
+      });
+    }
+
+    const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
+    const hasActiveMembership = activeMemberships.some(
+      (m) => m.actorUserId === ctx.actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
+    );
+    if (!hasActiveMembership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this folder" });
+    }
+
+    // Break-glass skips the approver, not the permission the request itself needed.
+    const accessType = requestData.requestData.accessType ?? PamAccessType.Session;
+    await checkAccountAccess(
+      permissionService,
+      account.id,
+      account.folderId,
+      projectId,
+      accessType === PamAccessType.Credential
+        ? ResourcePermissionPamResourceActions.ViewCredentials
+        : ResourcePermissionPamResourceActions.LaunchSessions,
+      ctx
+    );
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const bypassedApproverCount = new Set(steps.flatMap((s) => s.approvers.map((a) => `${a.type}:${a.id}`))).size;
+    const durationMs = parseDurationMs(requestData.requestData.duration);
+
+    const { updatedRequest, grant } = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
+        throw new BadRequestError({ message: "Request is not pending" });
+      }
+
+      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+        await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired }, tx);
+        throw new BadRequestError({ message: "Request has expired" });
+      }
+
+      await Promise.all(
+        steps.map((step) =>
+          approvalRequestStepsDAL.updateById(
+            step.id,
+            { status: ApprovalRequestStepStatus.Completed, completedAt: new Date() },
+            tx
+          )
+        )
+      );
+
+      const currentStep = steps.find((s) => s.stepNumber === locked.currentStep);
+      if (currentStep) {
+        await approvalRequestApprovalsDAL.create(
+          {
+            stepId: currentStep.id,
+            approverUserId: ctx.actorId,
+            decision: ApprovalRequestApprovalDecision.Approved,
+            comment: `Break-glass: ${trimmedReason}`
+          },
+          tx
+        );
+      }
+
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
+
+      const createdGrant = await approvalRequestGrantsDAL.create(
+        {
+          projectId: request.projectId,
+          requestId: request.id,
+          granteeUserId: request.requesterId,
+          status: ApprovalRequestGrantStatus.Active,
+          type: ApprovalPolicyType.PamAccess,
+          attributes: { accountId, folderId, accessType },
+          expiresAt: new Date(Date.now() + durationMs),
+          isBreakGlass: true,
+          bypassReason: trimmedReason
+        },
+        tx
+      );
+
+      return { updatedRequest: await approvalRequestDAL.findById(requestId, tx), grant: createdGrant };
+    });
+
+    void notifyOfBreakGlass({
+      request,
+      steps,
+      account,
+      folderId,
+      duration: requestData.requestData.duration,
+      bypassReason: trimmedReason,
+      actorId: ctx.actorId,
+      orgId: ctx.actorOrgId
+    }).catch((err) => {
+      logger.error(err, `Failed to send PAM break-glass notifications [requestId=${requestId}]`);
+    });
+
+    return {
+      request: updatedRequest,
+      accountId,
+      folderId,
+      accountType: account.accountType,
+      grantId: grant.id,
+      policyId: policy.id,
+      policyName: policy.name,
+      accountName: account.name,
+      folderName: account.folderName,
+      granteeName: request.requesterName,
+      granteeEmail: request.requesterEmail,
+      accessDuration: requestData.requestData.duration,
+      approverCount: bypassedApproverCount
+    };
+  };
+
   const createRequest = async ({
     accountId,
     path,
@@ -744,6 +1005,7 @@ export const pamAccessRequestServiceFactory = ({
     reason,
     duration,
     accessType = PamAccessType.Session,
+    breakGlass = false,
     ...ctx
   }: TCreateAccessRequestDTO) => {
     const isCredentialRequest = accessType === PamAccessType.Credential;
@@ -752,6 +1014,12 @@ export const pamAccessRequestServiceFactory = ({
 
     if (!accountId && !path) {
       throw new BadRequestError({ message: "Either 'accountId' or 'path' is required" });
+    }
+
+    if (breakGlass && (trimmedReason?.length ?? 0) < 10) {
+      throw new BadRequestError({
+        message: "A reason of at least 10 characters is required to break glass. It is recorded in the audit log."
+      });
     }
 
     // The CLI supplies a 'folderName/accountName' path; the dashboard supplies an accountId.
@@ -911,7 +1179,7 @@ export const pamAccessRequestServiceFactory = ({
     const approvalUrl = `${getConfig().SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
 
     const firstStep = stepsForRequest[0];
-    if (firstStep) {
+    if (firstStep && !breakGlass) {
       try {
         await notifyApproversForStep({ ...firstStep, notifyApprovers: true }, request, {
           userGroupMembershipDAL,
@@ -958,6 +1226,24 @@ export const pamAccessRequestServiceFactory = ({
       }
     }
 
+    if (breakGlass) {
+      const result = await breakGlassRequest({
+        requestId: request.id,
+        projectId,
+        bypassReason: trimmedReason as string,
+        ...ctx
+      });
+      return {
+        request: result.request,
+        accountId: account.id,
+        folderId: account.folderId,
+        accountType: account.accountType,
+        accessType,
+        brokeGlass: true as const,
+        breakGlassMetadata: result
+      };
+    }
+
     void triggerFolderSlackNotifications({
       folderId: account.folderId,
       event: PamNotificationEvent.AccessRequested,
@@ -982,7 +1268,9 @@ export const pamAccessRequestServiceFactory = ({
       accountId: account.id,
       folderId: account.folderId,
       accountType: account.accountType,
-      accessType
+      accessType,
+      brokeGlass: false as const,
+      breakGlassMetadata: undefined
     };
   };
 
@@ -1422,267 +1710,6 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
-  };
-
-  const notifyOfBreakGlass = async ({
-    request,
-    steps,
-    account,
-    folderId,
-    duration,
-    bypassReason,
-    actorId,
-    orgId
-  }: {
-    request: { id: string; requesterName?: string | null; requesterEmail?: string | null };
-    steps: { approvers: { type: string; id: string }[] }[];
-    account: { name: string; folderName: string | null };
-    folderId: string;
-    duration: string;
-    bypassReason: string;
-    actorId: string;
-    orgId: string;
-  }) => {
-    try {
-      const approverUserIds = new Set<string>();
-      const approverGroupIds = new Set<string>();
-      for (const step of steps) {
-        for (const approver of step.approvers) {
-          if (approver.type === ApproverType.User) approverUserIds.add(approver.id);
-          else approverGroupIds.add(approver.id);
-        }
-      }
-
-      const groupMemberLists = await Promise.all(
-        [...approverGroupIds].map((groupId) => userGroupMembershipDAL.find({ groupId }))
-      );
-      groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
-      approverUserIds.delete(actorId);
-
-      if (approverUserIds.size > 0) {
-        const approverUsers = await userDAL.find({ $in: { id: [...approverUserIds] } });
-
-        await notificationService.createUserNotifications(
-          [...approverUserIds].map((userId) => ({
-            userId,
-            orgId,
-            type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
-            title: "Access approval bypassed",
-            body: `**${escapeMarkdown(request.requesterName ?? "A user")}** used break-glass to self-approve access to **${escapeMarkdown(account.name)}**. Reason: "${escapeMarkdown(bypassReason)}"`
-          }))
-        );
-
-        const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
-        if (recipients.length > 0) {
-          await smtpService.sendMail({
-            recipients,
-            subjectLine: "PAM Access Approval Bypassed",
-            template: SmtpTemplates.AccessPamRequestBypassed,
-            substitutions: {
-              requesterFullName: request.requesterName ?? "A user",
-              requesterEmail: request.requesterEmail ?? "",
-              resourceName: account.folderName ?? undefined,
-              accountName: account.name,
-              accessDuration: formatDuration(duration),
-              bypassReason
-            }
-          });
-        }
-      }
-    } catch (err) {
-      logger.error(err, `Failed to send PAM break-glass notifications [requestId=${request.id}]`);
-    }
-
-    void triggerFolderSlackNotifications({
-      folderId,
-      event: PamNotificationEvent.AccessRequestBypassed,
-      orgId,
-      notification: {
-        type: TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED,
-        payload: {
-          requesterFullName: request.requesterName ?? "A user",
-          requesterEmail: request.requesterEmail ?? "",
-          accountName: account.name,
-          folderName: account.folderName ?? "",
-          accessDuration: formatDuration(duration),
-          bypassReason
-        }
-      }
-    });
-  };
-
-  const breakGlassRequest = async ({ requestId, projectId, bypassReason, ...ctx }: TBreakGlassAccessRequestDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
-
-    const trimmedReason = bypassReason.trim();
-    if (trimmedReason.length < 10) {
-      throw new BadRequestError({
-        message: "A break-glass reason of at least 10 characters is required. It is recorded in the audit log."
-      });
-    }
-
-    if (ctx.actor !== ActorType.USER) {
-      throw new ForbiddenRequestError({ message: "Only users can break glass on an access request" });
-    }
-
-    const request = await approvalRequestDAL.findById(requestId);
-    if (!request || request.projectId !== projectId || request.type !== ApprovalPolicyType.PamAccess) {
-      throw new NotFoundError({ message: "Request not found" });
-    }
-
-    if (request.requesterId !== ctx.actorId) {
-      throw new ForbiddenRequestError({ message: "You can only break glass on your own access request" });
-    }
-
-    if (request.status !== ApprovalRequestStatus.Pending) {
-      throw new BadRequestError({ message: "Request is not pending" });
-    }
-
-    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
-      throw new BadRequestError({ message: "Request has expired" });
-    }
-
-    const requestData = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
-    const folderId = requestData?.requestData?.folderId;
-    const accountId = requestData?.requestData?.accountId;
-    if (!folderId || !accountId) {
-      throw new BadRequestError({ message: "This request is missing the account it was raised for" });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
-    if (!account || account.projectId !== projectId || account.folderId !== folderId) {
-      throw new BadRequestError({
-        message: "This request is no longer valid because the account has moved or been removed"
-      });
-    }
-
-    const { allowBreakGlass } = resolveAccessControls(account.templatePolicies);
-    if (!allowBreakGlass) {
-      throw new ForbiddenRequestError({
-        message: `Break-glass is not enabled for '${account.name}'. Ask a PAM admin to turn on the Allow Break-Glass policy on its template.`
-      });
-    }
-
-    const policy = await findFolderPolicy(folderId);
-    if (!policy) {
-      throw new ForbiddenRequestError({ message: "Approval policy no longer exists for this folder" });
-    }
-
-    const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
-    if (!(await isFolderBreakGlassApprover(policy.id, ctx.actorId, userGroupIds))) {
-      throw new ForbiddenRequestError({
-        message: "You are not a break-glass approver for this folder"
-      });
-    }
-
-    const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
-    const hasActiveMembership = activeMemberships.some(
-      (m) => m.actorUserId === ctx.actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
-    );
-    if (!hasActiveMembership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this folder" });
-    }
-
-    // Break-glass skips the approver, not the permission the request itself needed.
-    const accessType = requestData.requestData.accessType ?? PamAccessType.Session;
-    await checkAccountAccess(
-      permissionService,
-      account.id,
-      account.folderId,
-      projectId,
-      accessType === PamAccessType.Credential
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
-      ctx
-    );
-
-    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
-    const bypassedApproverCount = new Set(steps.flatMap((s) => s.approvers.map((a) => `${a.type}:${a.id}`))).size;
-    const durationMs = parseDurationMs(requestData.requestData.duration);
-
-    const { updatedRequest, grant } = await approvalRequestDAL.transaction(async (tx) => {
-      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
-      if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
-        throw new BadRequestError({ message: "Request is not pending" });
-      }
-
-      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
-        await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired }, tx);
-        throw new BadRequestError({ message: "Request has expired" });
-      }
-
-      await Promise.all(
-        steps.map((step) =>
-          approvalRequestStepsDAL.updateById(
-            step.id,
-            { status: ApprovalRequestStepStatus.Completed, completedAt: new Date() },
-            tx
-          )
-        )
-      );
-
-      const currentStep = steps.find((s) => s.stepNumber === locked.currentStep);
-      if (currentStep) {
-        await approvalRequestApprovalsDAL.create(
-          {
-            stepId: currentStep.id,
-            approverUserId: ctx.actorId,
-            decision: ApprovalRequestApprovalDecision.Approved,
-            comment: `Break-glass: ${trimmedReason}`
-          },
-          tx
-        );
-      }
-
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-
-      const createdGrant = await approvalRequestGrantsDAL.create(
-        {
-          projectId: request.projectId,
-          requestId: request.id,
-          granteeUserId: request.requesterId,
-          status: ApprovalRequestGrantStatus.Active,
-          type: ApprovalPolicyType.PamAccess,
-          attributes: { accountId, folderId, accessType },
-          expiresAt: new Date(Date.now() + durationMs),
-          isBreakGlass: true,
-          bypassReason: trimmedReason
-        },
-        tx
-      );
-
-      return { updatedRequest: await approvalRequestDAL.findById(requestId, tx), grant: createdGrant };
-    });
-
-    void notifyOfBreakGlass({
-      request,
-      steps,
-      account,
-      folderId,
-      duration: requestData.requestData.duration,
-      bypassReason: trimmedReason,
-      actorId: ctx.actorId,
-      orgId: ctx.actorOrgId
-    }).catch((err) => {
-      logger.error(err, `Failed to send PAM break-glass notifications [requestId=${requestId}]`);
-    });
-
-    return {
-      request: updatedRequest,
-      accountId,
-      folderId,
-      accountType: account.accountType,
-      grantId: grant.id,
-      policyId: policy.id,
-      policyName: policy.name,
-      accountName: account.name,
-      folderName: account.folderName,
-      granteeName: request.requesterName,
-      granteeEmail: request.requesterEmail,
-      accessDuration: requestData.requestData.duration,
-      approverCount: bypassedApproverCount
-    };
   };
 
   // Marks a grant Revoked and terminates the grantee's live sessions on the granted account.

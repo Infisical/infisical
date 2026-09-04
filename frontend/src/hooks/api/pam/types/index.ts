@@ -757,6 +757,7 @@ export type TPamAccessGrant = {
 };
 
 export type TCreatePamAccessRequestDTO = {
+  breakGlass?: boolean;
   accountId: string;
   reason?: string;
   duration: string;

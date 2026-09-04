@@ -148,11 +148,13 @@ graph TD
 
 ### Breaking glass
 
-A break-glass approver files a request the usual way, with a reason and a duration. While it's pending, the request sheet offers **Break glass** below the approval workflow.
+There are two ways in, and both need a reason of at least 10 characters explaining why this can't wait for an approver. The reason is recorded in the audit log and sent to the approvers who were skipped.
 
-Breaking glass takes a second reason, at least 10 characters, for why this can't wait for an approver. Select **Break glass** and the grant opens straight away, for the duration the request asked for.
+If you already know nobody is available to approve, turn on **Break glass** in the request form before you submit. The request is raised and granted in one step, and the reason you gave doubles as the bypass reason.
 
-Nothing else about the grant changes. It expires on the same clock, a Folder Admin can revoke it the same way, and sessions on it are recorded like any other.
+If you filed a request and then decided not to wait, reopen the account from the **Accounts** page while the request is pending. The sheet offers **Break glass** below the approval workflow.
+
+Either way, the grant is the one the request asked for. It expires on the same clock, a Folder Admin can revoke it the same way, and sessions on it are recorded like any other. Breaking glass on a credential request grants a credential reveal, not a session.
 
 ### What happens next
 

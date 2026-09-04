@@ -33,6 +33,7 @@ export type TBreakGlassAccessRequestDTO = {
 } & TActorContext;
 
 export type TCreateAccessRequestDTO = {
+  breakGlass?: boolean;
   accountId?: string;
   path?: string;
   projectId: string;

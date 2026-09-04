@@ -40,7 +40,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           accessType: z
             .nativeEnum(PamAccessType)
             .default(PamAccessType.Session)
-            .describe("Whether the request unlocks launching sessions or viewing the account's credentials")
+            .describe("Whether the request unlocks launching sessions or viewing the account's credentials"),
+          breakGlass: z
+            .boolean()
+            .optional()
+            .describe(
+              "Self-approve the request immediately instead of waiting for an approver. Requires break-glass eligibility and a reason of at least 10 characters, which is reused as the bypass reason."
+            )
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
           message: "Either 'accountId' or 'path' is required"
@@ -60,6 +66,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         reason: req.body.reason,
         duration: req.body.duration,
         accessType: req.body.accessType,
+        breakGlass: req.body.breakGlass,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -82,6 +89,36 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      if (result.brokeGlass) {
+        const bypass = result.breakGlassMetadata;
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCESS_POLICY_BYPASSED,
+            metadata: {
+              policyType: ApprovalPolicyType.PamAccess,
+              policyId: bypass.policyId,
+              policyName: bypass.policyName,
+              requestId: result.request.id,
+              grantId: bypass.grantId,
+              granteeUserId: req.permission.id,
+              granteeName: bypass.granteeName ?? undefined,
+              granteeEmail: bypass.granteeEmail ?? undefined,
+              accountId: bypass.accountId,
+              folderId: bypass.folderId,
+              folderName: bypass.folderName ?? undefined,
+              resourceName: bypass.folderName ?? undefined,
+              accountName: bypass.accountName,
+              accessDuration: bypass.accessDuration,
+              bypassReason: req.body.reason as string,
+              approverCount: bypass.approverCount
+            }
+          }
+        });
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
