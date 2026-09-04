@@ -37,6 +37,167 @@ import {
 
 const OctokitWithPlugin = Octokit.plugin(paginateGraphql);
 
+// GitHub's GraphQL API times out (502) when one page resolves too many nodes; nesting members
+// under teams multiplies the per-page node count, so the team page is kept small.
+const GITHUB_TEAMS_PAGE_SIZE = 20;
+const GITHUB_TEAM_MEMBERS_PAGE_SIZE = 100;
+const GITHUB_MAX_PAGES = 500;
+const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
+
+type TGithubPageInfo = { hasNextPage: boolean; endCursor: string | null };
+
+type TGithubTeamMembersConnection = {
+  edges: { node: { login: string } }[];
+  pageInfo: TGithubPageInfo;
+};
+
+type TGithubOrgTeamsResponse = {
+  organization: {
+    teams: {
+      edges: {
+        node: {
+          slug: string;
+          name: string;
+          description: string | null;
+          members: TGithubTeamMembersConnection;
+        };
+      }[];
+      pageInfo: TGithubPageInfo;
+    };
+  };
+};
+
+type TGithubTeamMembersResponse = {
+  organization: {
+    team: { members: TGithubTeamMembersConnection } | null;
+  };
+};
+
+export type TGithubTeam = {
+  slug: string;
+  name: string;
+  description: string | null;
+  members: string[];
+};
+
+const ORG_TEAMS_QUERY = `
+  query orgTeams($org: String!, $cursor: String, $teamsPageSize: Int!, $membersPageSize: Int!) {
+    organization(login: $org) {
+      teams(first: $teamsPageSize, after: $cursor) {
+        edges {
+          node {
+            slug
+            name
+            description
+            members(first: $membersPageSize) {
+              edges {
+                node {
+                  login
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+const TEAM_MEMBERS_QUERY = `
+  query teamMembers($org: String!, $slug: String!, $cursor: String, $membersPageSize: Int!) {
+    organization(login: $org) {
+      team(slug: $slug) {
+        members(first: $membersPageSize, after: $cursor) {
+          edges {
+            node {
+              login
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
+
+const nextCursor = (pageInfo: TGithubPageInfo) => (pageInfo.hasNextPage ? pageInfo.endCursor : null);
+
+export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org: string): Promise<TGithubTeam[]> => {
+  const graphql = <T>(query: string, variables: Record<string, string | number | null>) =>
+    retryWithBackoff(() =>
+      octokit.graphql<T>(query, {
+        ...variables,
+        request: { signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS) }
+      })
+    );
+
+  const teams: (TGithubTeam & { membersCursor: string | null })[] = [];
+
+  let teamsCursor: string | null = null;
+  let teamsPage = 0;
+  do {
+    const data: TGithubOrgTeamsResponse = await graphql<TGithubOrgTeamsResponse>(ORG_TEAMS_QUERY, {
+      org,
+      cursor: teamsCursor,
+      teamsPageSize: GITHUB_TEAMS_PAGE_SIZE,
+      membersPageSize: GITHUB_TEAM_MEMBERS_PAGE_SIZE
+    });
+    const connection = data.organization.teams;
+    connection.edges.forEach(({ node }) => {
+      teams.push({
+        slug: node.slug,
+        name: node.name,
+        description: node.description,
+        members: node.members.edges.map((edge) => edge.node.login),
+        membersCursor: nextCursor(node.members.pageInfo)
+      });
+    });
+    teamsCursor = nextCursor(connection.pageInfo);
+    teamsPage += 1;
+  } while (teamsCursor && teamsPage < GITHUB_MAX_PAGES);
+
+  if (teamsCursor) {
+    logger.warn({ org, fetchedTeams: teams.length }, "GitHub org team sync hit the page cap; team list truncated");
+  }
+
+  for (const team of teams) {
+    let membersPage = 0;
+    while (team.membersCursor && membersPage < GITHUB_MAX_PAGES) {
+      const data: TGithubTeamMembersResponse = await graphql<TGithubTeamMembersResponse>(TEAM_MEMBERS_QUERY, {
+        org,
+        slug: team.slug,
+        cursor: team.membersCursor,
+        membersPageSize: GITHUB_TEAM_MEMBERS_PAGE_SIZE
+      });
+      const connection = data.organization.team?.members;
+      if (!connection) break;
+      team.members.push(...connection.edges.map((edge) => edge.node.login));
+      team.membersCursor = nextCursor(connection.pageInfo);
+      membersPage += 1;
+    }
+
+    if (team.membersCursor) {
+      logger.warn(
+        { org, team: team.slug, fetchedMembers: team.members.length },
+        "GitHub org team sync hit the page cap; team member list truncated"
+      );
+    }
+  }
+
+  return teams.map(({ slug, name, description, members }) => ({ slug, name, description, members }));
+};
+
 // Type definitions for GitHub API errors
 interface GitHubApiError extends Error {
   status?: number;
@@ -594,121 +755,53 @@ export const githubOrgSyncServiceFactory = ({
     const startTime = Date.now();
     const syncErrors: string[] = [];
 
-    const octokit = new OctokitWithPlugin({
-      auth: orgAccessToken,
-      request: {
-        signal: AbortSignal.timeout(30000)
+    const octokit = new Octokit({ auth: orgAccessToken });
+
+    const githubTeams = await fetchGithubOrgTeams(octokit, config.githubOrgName).catch((err) => {
+      logger.error(err, "GitHub GraphQL error for batched team sync");
+
+      const gitHubError = err as GitHubApiError;
+      const statusCode = gitHubError.status || gitHubError.response?.status;
+      if (statusCode) {
+        if (statusCode === 401) {
+          throw new BadRequestError({
+            message: "GitHub access token is invalid or expired. Please provide a new token."
+          });
+        }
+        if (statusCode === 403) {
+          throw new BadRequestError({
+            message:
+              "GitHub access token lacks required permissions for organization team sync. Required: 1) 'admin:org' scope, 2) Token owner must be organization owner or have team read permissions, 3) Organization settings must allow team visibility. Check token scopes and user role."
+          });
+        }
+        if (statusCode === 404) {
+          throw new BadRequestError({
+            message: `Organization ${config.githubOrgName} not found or access token does not have sufficient permissions to read it.`
+          });
+        }
+        if (statusCode >= 500) {
+          throw new BadRequestError({
+            message: `GitHub did not respond in time while listing teams for organization ${config.githubOrgName}. Please try again later.`
+          });
+        }
       }
-    });
 
-    const data = await retryWithBackoff(async () => {
-      return octokit.graphql
-        .paginate<{
-          organization: {
-            teams: {
-              totalCount: number;
-              edges: {
-                node: {
-                  name: string;
-                  description: string;
-                  members: {
-                    edges: {
-                      node: {
-                        login: string;
-                      };
-                    }[];
-                  };
-                };
-              }[];
-            };
-          };
-        }>(
-          `
-        query orgTeams($cursor: String, $org: String!) {
-          organization(login: $org) {
-            teams(first: 100, after: $cursor) {
-              totalCount
-              edges {
-                node {
-                  name
-                  description
-                  members(first: 100) {
-                    edges {
-                      node {
-                        login
-                      }
-                    }
-                  }
-                }
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        }
-        `,
-          {
-            org: config.githubOrgName
-          }
-        )
-        .catch((err) => {
-          logger.error(err, "GitHub GraphQL error for batched team sync");
-
-          const gitHubError = err as GitHubApiError;
-          const statusCode = gitHubError.status || gitHubError.response?.status;
-          if (statusCode) {
-            if (statusCode === 401) {
-              throw new BadRequestError({
-                message: "GitHub access token is invalid or expired. Please provide a new token."
-              });
-            }
-            if (statusCode === 403) {
-              throw new BadRequestError({
-                message:
-                  "GitHub access token lacks required permissions for organization team sync. Required: 1) 'admin:org' scope, 2) Token owner must be organization owner or have team read permissions, 3) Organization settings must allow team visibility. Check token scopes and user role."
-              });
-            }
-            if (statusCode === 404) {
-              throw new BadRequestError({
-                message: `Organization ${config.githubOrgName} not found or access token does not have sufficient permissions to read it.`
-              });
-            }
-          }
-
-          if ((err as Error)?.message?.includes("Although you appear to have the correct authorization credential")) {
-            throw new BadRequestError({
-              message:
-                "Organization has restricted OAuth app access. Please check that: 1) Your organization has approved the Infisical OAuth application, 2) The token owner has sufficient organization permissions."
-            });
-          }
-          throw new BadRequestError({ message: `GitHub GraphQL query failed: ${(err as Error)?.message}` });
+      if ((err as Error)?.message?.includes("Although you appear to have the correct authorization credential")) {
+        throw new BadRequestError({
+          message:
+            "Organization has restricted OAuth app access. Please check that: 1) Your organization has approved the Infisical OAuth application, 2) The token owner has sufficient organization permissions."
         });
+      }
+      throw new BadRequestError({ message: `GitHub GraphQL query failed: ${(err as Error)?.message}` });
     });
 
-    const {
-      organization: { teams }
-    } = data;
-
-    const userTeamMap = new Map<string, string[]>();
-    const allGithubUsernamesInTeams = new Set<string>();
-
-    teams?.edges?.forEach((teamEdge) => {
-      const teamName = teamEdge.node.name.toLowerCase();
-
-      teamEdge.node.members.edges.forEach((memberEdge) => {
-        const username = memberEdge.node.login.toLowerCase();
-        allGithubUsernamesInTeams.add(username);
-
-        if (!userTeamMap.has(username)) {
-          userTeamMap.set(username, []);
-        }
-        userTeamMap.get(username)!.push(teamName);
-      });
+    const githubTeamMembersByName = new Map<string, string[]>();
+    githubTeams.forEach((team) => {
+      const teamName = team.name.toLowerCase();
+      githubTeamMembersByName.set(teamName, [...(githubTeamMembersByName.get(teamName) ?? []), ...team.members]);
     });
 
-    const allGithubTeamNames = Array.from(new Set(teams?.edges?.map((edge) => edge.node.name.toLowerCase()) || []));
+    const allGithubTeamNames = Array.from(githubTeamMembersByName.keys());
 
     const existingTeamsOnInfisical = await groupDAL.find({
       orgId: orgPermission.orgId,
@@ -770,44 +863,40 @@ export const githubOrgSyncServiceFactory = ({
         )) as GroupMembership[];
 
         const expectedUserIds = new Set<string>();
-        teams?.edges?.forEach((teamEdge) => {
-          if (teamEdge.node.name.toLowerCase() === teamName) {
-            teamEdge.node.members.edges.forEach((memberEdge) => {
-              const githubUsername = memberEdge.node.login.toLowerCase();
+        (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
+          const githubUsername = login.toLowerCase();
 
-              const matchingMember = activeMembers.find((member) => {
-                const email = member.user?.email || member.inviteEmail;
-                if (!email) return false;
+          const matchingMember = activeMembers.find((member) => {
+            const email = member.user?.email || member.inviteEmail;
+            if (!email) return false;
 
-                const emailPrefix = email.split("@")[0].toLowerCase();
-                const emailDomain = email.split("@")[1].toLowerCase();
+            const emailPrefix = email.split("@")[0].toLowerCase();
+            const emailDomain = email.split("@")[1].toLowerCase();
 
-                if (emailPrefix === githubUsername) {
-                  return true;
-                }
-                const domainName = emailDomain.split(".")[0];
-                if (githubUsername.endsWith(domainName) && githubUsername.length > domainName.length) {
-                  const baseUsername = githubUsername.slice(0, -domainName.length);
-                  if (emailPrefix === baseUsername) {
-                    return true;
-                  }
-                }
-                const emailSplitRegex = new RE2(/[._-]/);
-                const emailParts = emailPrefix.split(emailSplitRegex);
-                const longestEmailPart = emailParts.reduce((a, b) => (a.length > b.length ? a : b), "");
-                if (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart)) {
-                  return true;
-                }
-                return false;
-              });
-
-              if (matchingMember?.user?.id) {
-                expectedUserIds.add(matchingMember.user.id);
-                logger.info(
-                  `Matched GitHub user ${githubUsername} to email ${matchingMember.user?.email || matchingMember.inviteEmail}`
-                );
+            if (emailPrefix === githubUsername) {
+              return true;
+            }
+            const domainName = emailDomain.split(".")[0];
+            if (githubUsername.endsWith(domainName) && githubUsername.length > domainName.length) {
+              const baseUsername = githubUsername.slice(0, -domainName.length);
+              if (emailPrefix === baseUsername) {
+                return true;
               }
-            });
+            }
+            const emailSplitRegex = new RE2(/[._-]/);
+            const emailParts = emailPrefix.split(emailSplitRegex);
+            const longestEmailPart = emailParts.reduce((a, b) => (a.length > b.length ? a : b), "");
+            if (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart)) {
+              return true;
+            }
+            return false;
+          });
+
+          if (matchingMember?.user?.id) {
+            expectedUserIds.add(matchingMember.user.id);
+            logger.info(
+              `Matched GitHub user ${githubUsername} to email ${matchingMember.user?.email || matchingMember.inviteEmail}`
+            );
           }
         });
 
