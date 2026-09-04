@@ -15,7 +15,11 @@ import {
   resolveLdapBackedHostCredentials
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connection-enums";
-import { executeSshCommandViaGateway, withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
+import {
+  executeSshCommand,
+  TSshConnectionOptions,
+  withSshConnection
+} from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
@@ -311,12 +315,18 @@ const executeLinuxServerHostCommand = (
   kind: HostCommandKind,
   plan: { command: string; context: THostCommandContext },
   sshConfig: TSshConnectionConfig,
-  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">,
+  pinOptions?: TSshConnectionOptions
 ) =>
-  executeSshCommandViaGateway(sshConfig, gatewayServices, {
-    command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
-    timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
-  });
+  executeSshCommand(
+    sshConfig,
+    gatewayServices,
+    {
+      command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
+      timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
+    },
+    pinOptions
+  );
 
 const runLinuxServerHealthCheckCommand = async ({
   pkiSync,
@@ -351,7 +361,13 @@ const runLinuxServerHealthCheckCommand = async ({
     secretsToRedact: [plan.context.pkcs12Password],
     execute: async () => {
       if (sshConfig instanceof Error) throw sshConfig;
-      return executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, sshConfig, gatewayServices);
+      return executeLinuxServerHostCommand(
+        HostCommandKind.HealthCheck,
+        plan,
+        sshConfig,
+        gatewayServices,
+        sshPinOptions(pkiSync)
+      );
     }
   });
 };
@@ -360,17 +376,19 @@ const runLinuxServerPostSyncCommand = ({
   syncId,
   plan,
   sshConfig,
-  gatewayServices
+  gatewayServices,
+  pinOptions
 }: {
   syncId: string;
   plan: TPostSyncCommandPlan;
   sshConfig: TSshConnectionConfig;
   gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+  pinOptions?: TSshConnectionOptions;
 }) =>
   runPostSyncCommand({
     syncId,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices)
+    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices, pinOptions)
   });
 
 export const linuxServerPkiSyncFactory = ({
@@ -546,7 +564,8 @@ export const linuxServerPkiSyncFactory = ({
           syncId: pkiSync.id,
           plan: postSyncCommandPlan,
           sshConfig,
-          gatewayServices: { gatewayV2Service, gatewayPoolService }
+          gatewayServices: { gatewayV2Service, gatewayPoolService },
+          pinOptions: sshPinOptions(pkiSync)
         })
       : undefined;
 

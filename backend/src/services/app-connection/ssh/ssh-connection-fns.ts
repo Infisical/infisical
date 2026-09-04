@@ -355,6 +355,65 @@ export const executeSshCommandViaGateway = async (
   return response.result;
 };
 
+const MAX_SSH_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024;
+
+const execOverSshClient = (client: Client, command: string, timeoutMs: number): Promise<SshExecResult> =>
+  new Promise((resolve, reject) => {
+    let settled = false;
+    let timer: NodeJS.Timeout;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+
+    timer = setTimeout(
+      () => finish(() => reject(new Error(`Command did not finish within ${Math.round(timeoutMs / 1000)}s`))),
+      timeoutMs
+    );
+
+    client.exec(command, (err, stream) => {
+      if (err) {
+        finish(() => reject(err));
+        return;
+      }
+
+      let stdout = "";
+      let stderr = "";
+      let exitCode = 0;
+      const append = (current: string, chunk: Buffer) =>
+        current.length >= MAX_SSH_COMMAND_OUTPUT_BYTES ? current : current + chunk.toString("utf8");
+
+      stream.on("data", (chunk: Buffer) => {
+        stdout = append(stdout, chunk);
+      });
+      stream.stderr.on("data", (chunk: Buffer) => {
+        stderr = append(stderr, chunk);
+      });
+      stream.on("exit", (code: number | null) => {
+        exitCode = typeof code === "number" ? code : 1;
+      });
+      stream.on("close", () => finish(() => resolve({ stdout, stderr, exitCode })));
+    });
+  });
+
+export const executeSshCommand = async (
+  config: TSshConnectionConfig,
+  gatewayServices: TSshGatewayServices,
+  args: { command: string; timeoutMs: number },
+  options?: TSshConnectionOptions
+): Promise<SshExecResult> => {
+  if (!options?.expectedHostKeys) return executeSshCommandViaGateway(config, gatewayServices, args);
+
+  return withSshConnection(
+    config,
+    gatewayServices,
+    (client) => execOverSshClient(client, args.command, args.timeoutMs),
+    options
+  );
+};
+
 export const validateSshConnectionCredentials = async (
   config: TSshConnectionConfig,
   _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
