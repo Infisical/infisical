@@ -491,6 +491,10 @@ export type TFindSecretsByFolderIdsFilter = {
   excludeRotatedSecrets?: boolean;
 };
 
+export type TSecretSortCandidate = Pick<TSecretsV2, "id" | "key" | "folderId" | "createdAt" | "updatedAt"> & {
+  tags: { id: string; slug: string }[];
+};
+
 export type TGetSecretsRawByFolderMappingsDTO = {
   projectId: string;
   folderMappings: { folderId: string; path: string; environment: string }[];
