@@ -17,7 +17,7 @@ import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vaul
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { hashResolvedConnectionIds, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -45,7 +45,7 @@ const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
-  agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash" | "updateById">;
+  agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
   agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "findReachableAccessBundleIds">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -366,24 +366,14 @@ export const agentVaultProxyServiceFactory = ({
       credential: $decryptCredential(row, decryptor)
     }));
 
-    // The audit hint, and the one deliberate exception to "a read path never writes": written only when
-    // the returned set differs from last time, so the steady-state poll writes nothing.
-    const resolvedHash = hashResolvedConnectionIds(connections.map((connection) => connection.id));
-    const isFirstResolve = !session.lastResolvedHash;
-    const hasChanged = session.lastResolvedHash !== resolvedHash;
-    if (hasChanged) {
-      await agentVaultSessionDAL.updateById(session.id, { lastResolvedHash: resolvedHash });
-    } else {
-      logger.info(
-        `agentVaultResolve: steady-state resolve [sessionId=${session.id}] [proxyId=${proxyId}] [connections=${connections.length}]`
-      );
-    }
+    logger.info(
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [connections=${connections.length}]`
+    );
 
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
-      connections,
-      audit: hasChanged ? { isFirstResolve, connectionCount: connections.length } : null
+      connections
     };
   };
 

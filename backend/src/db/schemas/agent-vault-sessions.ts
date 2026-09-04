@@ -15,7 +15,6 @@ export const AgentVaultSessionsSchema = z.object({
   tokenHash: z.string(),
   expiresAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
-  lastResolvedHash: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -23,7 +23,3 @@ export const deriveSessionStatus = (
   if (session.expiresAt && session.expiresAt <= now) return AgentVaultSessionStatus.Expired;
   return AgentVaultSessionStatus.Active;
 };
-
-/** sha256 of the ordered connection ids a resolve returned; only used to decide whether to audit. */
-export const hashResolvedConnectionIds = (connectionIds: string[]) =>
-  crypto.createHash("sha256").update(connectionIds.join(",")).digest("hex");

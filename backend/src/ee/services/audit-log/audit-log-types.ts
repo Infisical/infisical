@@ -763,7 +763,6 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_SESSION_EXPIRE = "agent-vault-session-expire",
-  AGENT_VAULT_SESSION_RESOLVE = "agent-vault-session-resolve",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
@@ -6052,18 +6051,6 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
-// Deliberately not one row per poll: at a 60s interval one active session would write ~1,440 rows a day
-// into the partitioned audit table and into every customer's audit stream. Emitted on a session's first
-// resolve and whenever the returned connection set changes; the steady-state poll is a log line.
-interface AgentVaultSessionResolveEvent {
-  type: EventType.AGENT_VAULT_SESSION_RESOLVE;
-  metadata: {
-    sessionId: string;
-    connectionCount: number;
-    isFirstResolve: boolean;
-  };
-}
-
 interface AgentVaultProxyRegisterEvent {
   type: EventType.AGENT_VAULT_PROXY_REGISTER;
   metadata: {
@@ -7995,7 +7982,6 @@ export type Event =
   | AgentVaultSessionMintEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultSessionExpireEvent
-  | AgentVaultSessionResolveEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
   | AgentVaultProxyEnrollEvent

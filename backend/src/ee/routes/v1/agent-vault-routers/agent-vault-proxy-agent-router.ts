@@ -152,31 +152,13 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { audit, ...result } = await server.services.agentVaultProxy.resolveSession({
+      // Deliberately unaudited: a resolve happens once per poll interval per session, so a row each
+      // would be ~144k a day for a hundred sessions, in the audit table and in every customer's stream.
+      return server.services.agentVaultProxy.resolveSession({
         proxyId: req.permission.id,
         orgId: req.permission.orgId,
         sessionToken: req.headers[SESSION_HEADER]
       });
-
-      // Never one row per poll: at 60s a hundred active sessions would write 144k rows a day into the
-      // partitioned audit table and into every customer's audit stream. The service returns a non-null
-      // audit hint only on the first resolve and whenever the connection set changes.
-      if (audit) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          event: {
-            type: EventType.AGENT_VAULT_SESSION_RESOLVE,
-            metadata: {
-              sessionId: result.sessionId,
-              connectionCount: audit.connectionCount,
-              isFirstResolve: audit.isFirstResolve
-            }
-          }
-        });
-      }
-
-      return result;
     }
   });
 };
