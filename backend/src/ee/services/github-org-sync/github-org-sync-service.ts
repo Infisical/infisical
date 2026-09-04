@@ -37,6 +37,11 @@ import {
 
 const OctokitWithPlugin = Octokit.plugin(paginateGraphql);
 
+// The sync only ever reads from GitHub, so read:org is the whole requirement. Both 403 handlers
+// share this so they cannot drift apart again.
+const githubTeamAccessDeniedMessage = (githubOrgName: string) =>
+  `GitHub denied access to the teams in organization '${githubOrgName}'. A classic access token needs the 'read:org' scope. A fine-grained token needs Organization permissions > Members set to read, with the organization as its resource owner. GitHub also hides secret teams from anyone who is not an organization owner or a member of the team.`;
+
 // GitHub's GraphQL API times out (502) when one page resolves too many nodes; nesting members
 // under teams multiplies the per-page node count, so the team page is kept small.
 const GITHUB_TEAMS_PAGE_SIZE = 20;
@@ -672,8 +677,7 @@ export const githubOrgSyncServiceFactory = ({
         }
         if (statusCode === 403) {
           throw new BadRequestError({
-            message:
-              "GitHub access token lacks required permissions. Required: 1) 'read:org' scope for organization teams, 2) Token owner must be an organization member with team visibility access, 3) Organization settings must allow team visibility. Check GitHub token scopes and organization member permissions."
+            message: githubTeamAccessDeniedMessage(config.githubOrgName)
           });
         }
         if (statusCode === 404) {
@@ -773,8 +777,7 @@ export const githubOrgSyncServiceFactory = ({
         }
         if (statusCode === 403) {
           throw new BadRequestError({
-            message:
-              "GitHub access token lacks required permissions for organization team sync. Required: 1) 'admin:org' scope, 2) Token owner must be organization owner or have team read permissions, 3) Organization settings must allow team visibility. Check token scopes and user role."
+            message: githubTeamAccessDeniedMessage(config.githubOrgName)
           });
         }
         if (statusCode === 404) {

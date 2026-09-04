@@ -105,10 +105,17 @@ You can manually synchronize GitHub teams for all organization members who have 
 
 ## Troubleshooting
 
-<Accordion title="Please check if your organization has approved the Infisical OAuth application.">
-    If you encounter an error related to this, it indicates that you need to approve the Infisical OAuth application within your GitHub organization.
+<AccordionGroup>
+  <Accordion title="Please check if your organization has approved the Infisical OAuth application.">
+      If you encounter an error related to this, it indicates that you need to approve the Infisical OAuth application within your GitHub organization.
 
-    You can verify the application's approval status by navigating to **https://github.com/organizations/__your-organization__/settings/oauth_application_policy**. Replace `__your-organization__` with the actual name of your GitHub organization.
+      You can verify the application's approval status by navigating to **https://github.com/organizations/__your-organization__/settings/oauth_application_policy**. Replace `__your-organization__` with the actual name of your GitHub organization.
 
-    ![check-approval](../../images/platform/external-syncs/github-org-sync-approved-oauth-apps.png)
-</Accordion>
+      ![check-approval](../../images/platform/external-syncs/github-org-sync-approved-oauth-apps.png)
+  </Accordion>
+  <Accordion title="Why did the sync skip some of my GitHub teams?">
+      GitHub shows secret teams only to organization owners and to the team's own members. The manual sync reads the teams the token owner can see, so a sync run with a regular member's token skips every secret team that member doesn't belong to.
+
+      Infisical leaves a skipped team's group alone, so no memberships are lost. To cover every team, create the token as an organization owner.
+  </Accordion>
+</AccordionGroup>
