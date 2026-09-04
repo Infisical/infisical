@@ -24,7 +24,13 @@ jobs:
                   want="$(grep -oE '^INFISICAL_CLI_VERSION=.+' build-versions.env | cut -d= -f2)"
                   echo "build-versions.env: $want"
                   bad=0
-                  for f in $(grep -rl 'ARG INFISICAL_CLI_VERSION=' --include='Dockerfile*' .); do
+                  files="$(grep -rl 'ARG INFISICAL_CLI_VERSION=' --include='Dockerfile*' . || true)"
+                  n="$(printf '%s\n' "$files" | grep -c . || true)"
+                  if [ "$n" -lt 5 ]; then
+                    echo "::error::Expected 5 Dockerfiles declaring the ARG, found $n. A rename would make this check pass while asserting nothing."
+                    bad=1
+                  fi
+                  for f in $files; do
                     got="$(grep -oE '^ARG INFISICAL_CLI_VERSION=.+' "$f" | cut -d= -f2)"
                     if [ "$got" != "$want" ]; then
                       echo "::error file=$f::ARG default is $got, build-versions.env says $want"

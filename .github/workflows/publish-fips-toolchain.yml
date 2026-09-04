@@ -18,6 +18,7 @@ on:
     paths:
       - "backend/Dockerfile.fips-toolchain"
       - ".github/workflows/publish-fips-toolchain.yml"
+      - "build-versions.env"
   workflow_dispatch:
 
 concurrency:

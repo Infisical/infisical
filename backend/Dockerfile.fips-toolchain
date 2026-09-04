@@ -36,6 +36,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
     elif [ "$ARCH" = "arm64" ]; then \
         ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
         EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32"; \
+    else \
+        echo "Unsupported architecture: $ARCH" >&2 && exit 1; \
     fi && \
     ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
     wget -q "$ORACLE_URL" && \
@@ -68,7 +70,6 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     perl \
     wget \
-    unzip \
     libaio1t64 \
     unixodbc \
     unixodbc-dev \

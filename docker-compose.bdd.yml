@@ -42,7 +42,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
       args:
-        INFISICAL_CLI_VERSION: "${INFISICAL_CLI_VERSION:?not set - run via make, or source build-versions.env first}"
+        INFISICAL_CLI_VERSION: "${INFISICAL_CLI_VERSION:?not set - run: set -a; . ./build-versions.env; set +a}"
     depends_on:
       db:
         condition: service_started

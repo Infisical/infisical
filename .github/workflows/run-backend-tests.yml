@@ -8,6 +8,7 @@ on:
       - "!backend/README.md"
       - "!backend/.*"
       - "backend/.eslintrc.js"
+      - "build-versions.env"
   workflow_call:
 
 concurrency:
@@ -81,7 +82,7 @@ jobs:
             echo "Using published toolchain $IMAGE:$TAG"
             TOOLCHAIN="$IMAGE:$TAG"
           else
-            echo "::notice::No published toolchain for $TAG (this PR changes backend/Dockerfile.fips-toolchain); building from source."
+            echo "::notice::No published toolchain for $TAG (this PR changes backend/Dockerfile.fips-toolchain or build-versions.env); building from source."
             TOOLCHAIN="backend-fips-toolchain:$TAG"
             set -a; . ./build-versions.env; set +a
             docker build \

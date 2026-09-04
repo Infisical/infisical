@@ -8,6 +8,7 @@ on:
       - "!backend/README.md"
       - "!backend/.*"
       - "backend/.eslintrc.js"
+      - "build-versions.env"
   workflow_call:
 
 jobs:
