@@ -5,7 +5,7 @@ description: "Learn how to verify your organization's email domains for secure S
 
 <Info>
   Email Domain Verification is a paid feature. If you're using Infisical Cloud,
-  then it is available under the **Pro Tier**. If you're self-hosting Infisical,
+  then it's available under the **Pro Tier**. If you're self-hosting Infisical,
   then you should contact sales@infisical.com to purchase an enterprise license
   to use it.
 </Info>
@@ -53,7 +53,7 @@ The verification code expires after **7 days**. You must complete verification w
   </Step>
 
   <Step title="Add an Email Domain">
-    Click **Add domain** and enter the domain you want to verify (e.g., `company.com`).
+    Select **Add domain** and enter the domain you want to verify (e.g., `company.com`).
 
     ![Add Domain Modal](/images/platform/email-domain/add-domain-modal.png)
 
@@ -62,7 +62,7 @@ The verification code expires after **7 days**. You must complete verification w
   </Step>
 
   <Step title="Copy DNS Verification Details">
-    After adding the domain, click the **eye icon** (View details & Verify) on the pending domain row.
+    After adding the domain, select the **eye icon** (View details & Verify) on the pending domain row.
 
     A modal will show you the DNS TXT record details:
     - **Record Name** — The DNS hostname to add the TXT record to.
@@ -92,7 +92,7 @@ The verification code expires after **7 days**. You must complete verification w
   </Step>
 
   <Step title="Verify the Domain">
-    Return to the Infisical Email Domains section and click **View details & Verify** on the pending domain.
+    Return to the Infisical Email Domains section and select **View details & Verify** on the pending domain.
 
     Click the **Verify Domain** button. Infisical will perform a DNS TXT lookup to confirm the record exists and matches.
 
@@ -136,7 +136,7 @@ Email domains are verified at the exact domain level:
 
 Each domain can only be verified by **one organization** across the entire Infisical instance:
 
-- If Organization A verifies `company.com`, Organization B cannot verify or claim the same domain.
+- If Organization A verifies `company.com`, Organization B can't verify or claim the same domain.
 - This prevents cross-organization user provisioning attacks where a malicious org could claim users by email domain.
 
 ## SCIM integration
@@ -144,14 +144,14 @@ Each domain can only be verified by **one organization** across the entire Infis
 When [SCIM provisioning](/documentation/platform/scim/overview) is enabled, email domain verification is **required**:
 
 - SCIM `POST /Users` requests are validated against the organization's verified domains.
-- If the user's email domain is not verified by the SCIM token's organization, the request is rejected.
+- If the user's email domain isn't verified by the SCIM token's organization, the request is rejected.
 - SCIM `PATCH` and `PUT` operations that change a user's email are blocked — email is treated as an immutable identifier.
 
 ## FAQ
 
 <AccordionGroup>
   <Accordion title="What happens if DNS verification fails?">
-    If the DNS TXT record is not found or doesn't match, verification will fail with an error message.
+    If the DNS TXT record isn't found or doesn't match, verification will fail with an error message.
     Common causes include DNS propagation delays (wait and retry), incorrect record name (some providers
     auto-append the domain), or extra whitespace/quotes in the record value.
   </Accordion>
@@ -180,6 +180,6 @@ When [SCIM provisioning](/documentation/platform/scim/overview) is enabled, emai
 
 <Accordion title="Does verifying a parent domain cover all subdomains?">
   No. Each subdomain must be verified independently. Verifying `company.com`
-  does not automatically cover `app.company.com` or `dev.company.com`.
+  doesn't automatically cover `app.company.com` or `dev.company.com`.
 </Accordion>
 </AccordionGroup>

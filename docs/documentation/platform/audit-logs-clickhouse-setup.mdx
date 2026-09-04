@@ -50,7 +50,7 @@ Once `CLICKHOUSE_URL` is set, audit log writes switch from PostgreSQL to ClickHo
 **Recommended approach for existing deployments:**
 
 <Warning>
-Enabling ClickHouse is a hard cutover. All reads immediately route to ClickHouse — the application will no longer query PostgreSQL for audit logs. Any historical data that has not been migrated to ClickHouse first will be invisible in the UI until it is migrated. The data is not deleted from PostgreSQL, but the application will not read from it while ClickHouse is enabled.
+Enabling ClickHouse is a hard cutover. All reads immediately route to ClickHouse — the application will no longer query PostgreSQL for audit logs. Any historical data that hasn't been migrated to ClickHouse first will be invisible in the UI until it's migrated. The data isn't deleted from PostgreSQL, but the application won't read from it while ClickHouse is enabled.
 </Warning>
 
 1. **Phase 1** — Migrate historical data (recommended):

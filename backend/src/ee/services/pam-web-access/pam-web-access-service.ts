@@ -237,7 +237,14 @@ export const pamWebAccessServiceFactory = ({
     if (policy.requireMfa) {
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: actor.id, orgId: actor.orgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: actor.id,
+          orgId: actor.orgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 
