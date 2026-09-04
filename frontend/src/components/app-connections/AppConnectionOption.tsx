@@ -1,7 +1,5 @@
 import { components, OptionProps } from "react-select";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, PlusIcon } from "lucide-react";
 
 import {
   Badge,
@@ -34,7 +32,7 @@ export const AppConnectionOptionContent = ({
         <div
           className={`flex items-center gap-x-1 ${isOnlyOption ? "text-foreground" : "text-accent"}`}
         >
-          <FontAwesomeIcon icon={faPlus} size="sm" />
+          <PlusIcon className="size-4" />
           <span className="mr-auto">Create New Connection</span>
         </div>
       ) : (
