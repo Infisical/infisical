@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
+  BoxesIcon,
   BuildingIcon,
   CalendarIcon,
   CheckIcon,
@@ -11,6 +12,7 @@ import {
   UserIcon
 } from "lucide-react";
 
+import { Badge } from "../Badge";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
@@ -249,6 +251,20 @@ const GlobalNavigationStory = () => {
           icon: FileIcon,
           keywords: ["documents"],
           onSelect: () => setDestination("Files selected")
+        },
+        {
+          id: "navigation-sub-org-files",
+          label: "Files",
+          breadcrumb: "Acme / Engineering / Documents",
+          icon: FileIcon,
+          badge: (
+            <Badge variant="sub-org">
+              <BoxesIcon aria-hidden="true" />
+              Sub-organization
+            </Badge>
+          ),
+          keywords: ["documents", "engineering"],
+          onSelect: () => setDestination("Engineering files selected")
         }
       ]
     },
@@ -386,7 +402,8 @@ const AsyncGlobalNavigationStory = () => {
         <CommandShortcut>⌘/Ctrl K</CommandShortcut>
       </Button>
       <p className="text-sm text-accent">
-        Type at least two characters. Type “error” to preview the failure state.
+        Type at least two characters. Type “missing” to compare searching and empty states, or
+        “error” to preview the failure state.
       </p>
       <GlobalCommandMenu
         groups={[]}

@@ -20,6 +20,7 @@ import {
   UsersIcon
 } from "lucide-react";
 
+import { Badge } from "@app/components/v3/generic/Badge";
 import {
   GlobalCommandMenu,
   type GlobalCommandMenuGroup,
@@ -55,12 +56,9 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
-import {
-  useGetOrganizationGroups,
-  useGetOrganizationsWithSubOrgs,
-  useGetUserProjects
-} from "@app/hooks/api";
-import type { Project } from "@app/hooks/api/projects/types";
+import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
+import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
+import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetUserOrgPermissions } from "@app/hooks/api/roles";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -73,6 +71,7 @@ export type RootCommandMenuShell = "organization" | "admin" | "personal-settings
 type CommandContent = {
   browseGroups: GlobalCommandMenuGroup[];
   searchGroups: GlobalCommandMenuGroup[];
+  searchStatus?: GlobalCommandMenuSearchStatus;
 };
 
 type AsyncCommandSearch = {
@@ -92,16 +91,18 @@ const projectIconClassNames: Record<ProjectType, string> = {
 const NavigationCommandMenu = ({
   browseGroups,
   searchGroups,
+  searchStatus,
   asyncSearch
-}: {
-  browseGroups: GlobalCommandMenuGroup[];
-  searchGroups: GlobalCommandMenuGroup[];
+}: CommandContent & {
   asyncSearch?: AsyncCommandSearch;
 }) => (
   <GlobalCommandMenu
     groups={browseGroups}
     searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
-    searchStatus={asyncSearch?.searchStatus}
+    searchStatus={
+      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "loading") ??
+      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "error")
+    }
     onSearchChange={asyncSearch?.onSearchChange}
     title="Search Infisical"
     description="Search pages, projects, organizations, teams, and commands."
@@ -111,7 +112,10 @@ const NavigationCommandMenu = ({
   />
 );
 
-const navigateToProject = (navigate: ReturnType<typeof useNavigate>, project: Project) => {
+const navigateToProject = (
+  navigate: ReturnType<typeof useNavigate>,
+  project: TProjectNavigation
+) => {
   switch (project.type) {
     case ProjectType.SecretManager:
       return navigate({
@@ -150,8 +154,10 @@ const useEntityCommandGroups = ({
   currentOrganizationName?: string;
 }) => {
   const navigate = useNavigate();
-  const { data: projects = [] } = useGetUserProjects();
-  const { data: rootOrganizations = [] } = useGetOrganizationsWithSubOrgs();
+  const projectsQuery = useGetAccessibleProjectsWithSubOrgs(currentOrganizationId ?? "");
+  const organizationsQuery = useGetOrganizationsWithSubOrgs();
+  const { data: projects = [] } = projectsQuery;
+  const { data: rootOrganizations = [] } = organizationsQuery;
   const { data: orgPermissionData } = useGetUserOrgPermissions({
     orgId: currentOrganizationId ?? ""
   });
@@ -169,18 +175,38 @@ const useEntityCommandGroups = ({
       isSubOrganization: true
     }))
   ]);
-  const organizationNames = new Map(organizations.map(({ id, name }) => [id, name]));
+  const organizationsById = new Map(
+    organizations.map((organization) => [organization.id, organization])
+  );
 
-  const projectItems: GlobalCommandMenuItem[] = projects.map((project) => ({
-    id: `entity-project-${project.id}`,
-    label: project.name,
-    breadcrumb: `${organizationNames.get(project.orgId) ?? "Organization"} / ${getProjectTitle(project.type)}`,
-    icon: getProjectLucideIcon(project.type),
-    iconClassName: projectIconClassNames[project.type],
-    keywords: [project.slug, project.type, getProjectTitle(project.type), "project"],
-    priority: project.orgId === currentOrganizationId ? 20 : 0,
-    onSelect: () => navigateToProject(navigate, project)
-  }));
+  const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
+    const organization = organizationsById.get(project.orgId);
+    const isSubOrganization =
+      project.orgId !== currentOrganizationId || organization?.isSubOrganization;
+    const organizationPath = [
+      organization?.rootOrganizationName,
+      organization?.name ?? "Organization"
+    ]
+      .filter(Boolean)
+      .join(" / ");
+
+    return {
+      id: `entity-project-${project.id}`,
+      label: project.name,
+      breadcrumb: `${organizationPath} / ${getProjectTitle(project.type)}`,
+      icon: getProjectLucideIcon(project.type),
+      iconClassName: projectIconClassNames[project.type],
+      badge: isSubOrganization ? (
+        <Badge variant="sub-org">
+          <SubOrgIcon aria-hidden="true" />
+          Sub-organization
+        </Badge>
+      ) : undefined,
+      keywords: [project.slug, project.type, getProjectTitle(project.type), "project"],
+      priority: project.orgId === currentOrganizationId ? 20 : 0,
+      onSelect: () => navigateToProject(navigate, project)
+    };
+  });
 
   const organizationItems: GlobalCommandMenuItem[] = organizations.map((organization) => ({
     id: `entity-organization-${organization.id}`,
@@ -219,10 +245,18 @@ const useEntityCommandGroups = ({
       })
   }));
 
+  let searchStatus: GlobalCommandMenuSearchStatus = { state: "idle" };
+  if (projectsQuery.isLoading || organizationsQuery.isLoading) {
+    searchStatus = { state: "loading", message: "Loading projects and organizations…" };
+  } else if (projectsQuery.isError || organizationsQuery.isError) {
+    searchStatus = { state: "error", message: "Could not load projects or organizations." };
+  }
+
   return {
     projectItems,
     organizationItems,
     teamItems,
+    searchStatus,
     searchGroups: [
       { heading: "Projects", items: projectItems },
       { heading: "Organizations", items: organizationItems },
@@ -319,6 +353,7 @@ const PersonalSettingsCommandMenu = () => {
 
   return (
     <NavigationCommandMenu
+      searchStatus={entityGroups.searchStatus}
       browseGroups={[{ heading: "Account", items: accountItems }, nestedGroup]}
       searchGroups={[
         { heading: "Pages & Settings", items: accountItems },
@@ -372,6 +407,7 @@ const AdminCommandMenu = () => {
 
   return (
     <NavigationCommandMenu
+      searchStatus={entityGroups.searchStatus}
       browseGroups={[
         { heading: "Server Console", items: adminItems },
         { heading: "Global", items: accountItems.slice(0, 1) },
@@ -877,6 +913,7 @@ const CertificateProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
         ...content.browseGroups
@@ -898,6 +935,7 @@ const SecretManagerProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
         ...content.browseGroups
@@ -941,6 +979,7 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 
   return (
     <NavigationCommandMenu
+      searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
         ...content.browseGroups
@@ -1010,6 +1049,7 @@ const OrganizationCommandMenu = () => {
       : [])
   ];
   const content: CommandContent = {
+    searchStatus: entityGroups.searchStatus,
     browseGroups: [
       { heading: currentOrg.name, items: organizationItems.slice(0, 3) },
       { heading: "Global", items: globalItems.slice(0, user.superAdmin ? 2 : 1) },

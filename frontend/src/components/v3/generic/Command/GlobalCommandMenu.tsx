@@ -31,6 +31,7 @@ export type GlobalCommandMenuItem = {
   breadcrumb: string;
   icon?: LucideIcon;
   iconClassName?: string;
+  badge?: React.ReactNode;
   keywords?: string[];
   shortcut?: React.ReactNode;
   priority?: number;
@@ -144,7 +145,10 @@ const CommandResult = ({ item }: { item: GlobalCommandMenuItem }) => {
         </div>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-foreground">{item.label}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium text-foreground">{item.label}</span>
+          {item.badge}
+        </span>
         <span className="block truncate text-xs text-muted">{item.breadcrumb}</span>
       </span>
       {item.shortcut && <CommandShortcut>{item.shortcut}</CommandShortcut>}
@@ -338,7 +342,7 @@ export const GlobalCommandMenu = ({
             </CommandGroup>
           ))}
         {isSearching && (
-          <div className="flex items-center justify-center gap-2 py-2.5 text-sm text-muted">
+          <div className="flex h-14 items-center justify-center gap-2 py-2.5 text-sm text-muted">
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             <span>{searchStatus.message ?? "Searching resources…"}</span>
           </div>
@@ -346,7 +350,7 @@ export const GlobalCommandMenu = ({
         {searchError && (
           <div
             role="alert"
-            className="flex items-center justify-center gap-2 py-2.5 text-sm text-danger"
+            className="flex h-14 items-center justify-center gap-2 py-2.5 text-sm text-danger"
           >
             <CircleAlertIcon aria-hidden="true" className="size-4" />
             <span>{searchError}</span>

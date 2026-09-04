@@ -308,7 +308,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
+  const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
     try {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
@@ -320,7 +320,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
         .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
