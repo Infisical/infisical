@@ -1,4 +1,4 @@
-import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion, SecretType } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
@@ -40,7 +40,10 @@ export const secretMetadataServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: "Project not found" });
     if (project.version !== ProjectVersion.V3) {
-      throw new BadRequestError({ message: "Upgrade this project to use secret metadata browsing.", name: "ProjectVersionNotSupported" });
+      throw new BadRequestError({
+        message: "Upgrade this project to use secret metadata browsing.",
+        name: "ProjectVersionNotSupported"
+      });
     }
 
     // Folder-only users can still copy empty folders. Never infer permission at a
@@ -81,7 +84,7 @@ export const secretMetadataServiceFactory = ({
           id: secret.id,
           secretKey: secret.key,
           secretPath: path,
-          type: secret.type,
+          type: SecretType.Shared as const,
           isHoneyTokenSecret: secret.isHoneyTokenSecret,
           isRotatedSecret: secret.isRotatedSecret,
           secretValueHidden: !hasSecretReadValueOrDescribePermission(

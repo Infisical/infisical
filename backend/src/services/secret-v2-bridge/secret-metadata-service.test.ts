@@ -1,4 +1,4 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { vi } from "vitest";
 
 import { ProjectVersion, SecretType, TSecretFolders } from "@app/db/schemas";
@@ -41,7 +41,7 @@ const dto = {
 } as TGetSecretMetadataDTO;
 
 const setup = (
-  rules: Parameters<typeof createMongoAbility<ProjectPermissionSet>>[0] = [
+  rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] = [
     { action: Actions.DescribeSecret, subject: ProjectPermissionSub.Secrets }
   ]
 ) => {
