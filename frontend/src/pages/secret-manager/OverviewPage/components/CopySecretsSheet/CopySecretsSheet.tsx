@@ -325,6 +325,7 @@ export const CopySecretsSheet = ({
     normalizeCopyPath(destinationPath) === normalizeCopyPath(debouncedDestinationPath);
   const isDestinationLoading =
     !isDestinationPathSettled || destinationQuery.isPending || destinationQuery.isFetching;
+  const hasDestinationConflicts = !isDestinationLoading && conflictingSecrets.length > 0;
   const cannotIncludeValues =
     hasInvocationSourceSecrets && sourceSecrets.some(({ isValueHidden }) => isValueHidden);
 
@@ -579,9 +580,9 @@ export const CopySecretsSheet = ({
             </SheetHeader>
 
             <div className="@container/copy-sheet flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-              <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] @xl/copy-sheet:gap-2">
+              <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] @xl/copy-sheet:grid-rows-[auto_minmax(0,1fr)] @xl/copy-sheet:gap-x-2 @xl/copy-sheet:gap-y-3">
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-1 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-source-contents-heading"
                 >
                   <div className="flex flex-col gap-2">
@@ -665,12 +666,15 @@ export const CopySecretsSheet = ({
                   </div>
                   <div className="min-h-0 flex-1">{sourceContent}</div>
                 </section>
-                <div className="flex items-center justify-center text-muted" aria-hidden>
+                <div
+                  className="flex items-center justify-center text-muted @xl/copy-sheet:col-start-2 @xl/copy-sheet:row-start-2"
+                  aria-hidden
+                >
                   <ArrowDownIcon className="size-4 @xl/copy-sheet:hidden" />
                   <ArrowRightIcon className="hidden size-4 @xl/copy-sheet:block" />
                 </div>
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-3 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-destination-contents-heading"
                 >
                   <div className="flex flex-col gap-2">
@@ -718,7 +722,7 @@ export const CopySecretsSheet = ({
                         />
                       </Field>
                     </div>
-                    <FieldDescription isOpen>
+                    <FieldDescription isOpen={hasDestinationConflicts}>
                       Options to handle conflicts available in confirmation step.
                     </FieldDescription>
                   </div>
