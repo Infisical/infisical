@@ -51,12 +51,9 @@ const resetRedirectingFlag = () => {
 
 let refreshPromise: Promise<string> | null = null;
 
-const isTokenExpiredError = (data?: { message?: string; error?: string } | string) => {
+export const isTokenExpiredError = (data?: { message?: string; error?: string } | string) => {
   if (!data) return false;
   const message = typeof data === "string" ? data : data.message || "";
-  const errorType = typeof data === "string" ? "" : data.error || "";
-  if (errorType === "TokenError") return true;
-
   const lower = message.toLowerCase();
   return (
     lower.includes("token expired") ||
@@ -69,12 +66,15 @@ apiRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { response, config } = error;
+    const currentToken = getAuthToken();
+    const reqAuthHeader = config?.headers?.Authorization;
+    const isSessionToken = currentToken && reqAuthHeader === `Bearer ${currentToken}`;
 
     if (
       response &&
       (response.status === 401 || response.status === 403) &&
       isTokenExpiredError(response.data) &&
-      getAuthToken() &&
+      isSessionToken &&
       !(config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry
     ) {
       (config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry = true;
