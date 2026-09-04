@@ -335,7 +335,9 @@ export const identityUaServiceFactory = ({
         throw new UnauthorizedError({
           message: "Access denied due to client secret usage limit reached",
           detail: {
-            reasonCode: "client_secret_usage_limit_reached",
+            // distinct from the same rejection above: that one reads a spent counter, this one lost
+            // the claim to a concurrent login, so only this code tracks the behaviour change
+            reasonCode: "client_secret_usage_limit_raced",
             identityId: identityUa.identityId,
             orgId: identity.orgId,
             identityName: identity.name
