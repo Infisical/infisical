@@ -158,14 +158,14 @@ describe("buildGithubMemberMatcher", () => {
   });
 
   describe("ambiguity", () => {
-    test("reports rather than guesses when two members match the same rule", () => {
+    test("reports the candidate members rather than guessing between them", () => {
       const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com"), member("b", "janedoe@other.com")]);
       const result = match("janedoe");
-      expect(result).toEqual({
-        status: "ambiguous",
-        rule: "email",
-        emails: ["jane.doe@acme.com", "janedoe@other.com"]
-      });
+      expect(result.status).toBe("ambiguous");
+      if (result.status !== "ambiguous") return;
+      expect(result.rule).toBe("email");
+      // Callers need the members, not just their emails, so only these two are held back from removal.
+      expect(result.members.map((m) => m.id)).toEqual(["a", "b"]);
     });
 
     test("does not report ambiguity for a member listed twice with the same email", () => {

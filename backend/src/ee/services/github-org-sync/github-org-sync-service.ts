@@ -221,7 +221,7 @@ export type TGithubMemberMatchRule = (typeof GithubMemberMatchRule)[keyof typeof
 
 export type TGithubMemberMatch<T> =
   | { status: "matched"; member: T; rule: TGithubMemberMatchRule }
-  | { status: "ambiguous"; rule: TGithubMemberMatchRule; emails: string[] }
+  | { status: "ambiguous"; rule: TGithubMemberMatchRule; members: T[] }
   | { status: "unmatched" };
 
 const SEPARATORS = new RE2(/[._-]/g);
@@ -275,7 +275,11 @@ export const buildGithubMemberMatcher = <T>(members: TMatchableMember<T>[]) => {
       const distinct = [...new Map(hits.map((hit) => [hit.email, hit])).values()];
       if (distinct.length === 1) return { status: "matched", member: distinct[0].member, rule };
       if (distinct.length > 1) {
-        return { status: "ambiguous", rule, emails: distinct.map((hit) => hit.email).sort() };
+        return {
+          status: "ambiguous",
+          rule,
+          members: distinct.sort((a, b) => a.email.localeCompare(b.email)).map((hit) => hit.member)
+        };
       }
     }
 
@@ -949,7 +953,7 @@ export const githubOrgSyncServiceFactory = ({
         )) as GroupMembership[];
 
         const expectedUserIds = new Set<string>();
-        let hasUnresolvedLogin = false;
+        const unresolvedUserIds = new Set<string>();
         (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
           const githubUsername = login.toLowerCase();
 
@@ -961,8 +965,13 @@ export const githubOrgSyncServiceFactory = ({
               `Matched GitHub user ${githubUsername} to email ${result.member.user?.email || result.member.inviteEmail} by ${result.rule}`
             );
           } else if (result.status === "ambiguous") {
-            hasUnresolvedLogin = true;
-            ambiguousLogins.set(githubUsername, result.emails);
+            const emails: string[] = [];
+            result.members.forEach((candidate) => {
+              if (candidate.user?.id) unresolvedUserIds.add(candidate.user.id);
+              const email = candidate.user?.email || candidate.inviteEmail;
+              if (email) emails.push(email);
+            });
+            ambiguousLogins.set(githubUsername, emails);
           }
         });
 
@@ -976,15 +985,14 @@ export const githubOrgSyncServiceFactory = ({
 
         const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
 
-        // An ambiguous login means we do not know which member it is, not that nobody in the group
-        // belongs there. Removing on that basis would strip the whole team, so additions still run
-        // for the logins that did resolve and removals wait until the ambiguity is fixed.
-        const membershipsToRemove = hasUnresolvedLogin
-          ? []
-          : currentMemberships.filter((membership) => {
-              const activeMember = activeMembersById.get(membership.orgMembershipId);
-              return activeMember?.user?.id && !expectedUserIds.has(activeMember.user.id);
-            });
+        // An ambiguous login says we cannot tell which of its candidates belongs here, not that the
+        // team is empty. Only those candidates are held back; anyone else who left the GitHub team
+        // is still removed, so one unresolved collision cannot preserve unrelated stale access.
+        const membershipsToRemove = currentMemberships.filter((membership) => {
+          const userId = activeMembersById.get(membership.orgMembershipId)?.user?.id;
+          if (!userId) return false;
+          return !expectedUserIds.has(userId) && !unresolvedUserIds.has(userId);
+        });
 
         if (usersToAdd.length > 0) {
           await userGroupMembershipDAL.insertMany(
@@ -1033,7 +1041,7 @@ export const githubOrgSyncServiceFactory = ({
       syncErrors.push(
         ...listed.map(
           ([login, emails]) =>
-            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so Infisical cannot tell which one they are. Their teams were left unchanged. Align one member's email with their GitHub username to resolve it.`
+            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so Infisical cannot tell which one they are. Their existing group access was left as it is. Align one member's email with their GitHub username to resolve it.`
         )
       );
       if (ambiguousLogins.size > listed.length) {
