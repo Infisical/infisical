@@ -721,6 +721,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
+                  "documentation/platform/pam/product-reference/credential-health/overview",
                   {
                     "group": "Discovery",
                     "pages": [
