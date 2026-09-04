@@ -258,6 +258,7 @@ export type DeleteIdentityGcpAuthDTO = {
 
 export type IdentityOidcAuth = {
   identityId: string;
+  templateId?: string | null;
   oidcDiscoveryUrl: string;
   caCert: string;
   boundIssuer: string;
@@ -275,10 +276,11 @@ export type AddIdentityOidcAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
-  oidcDiscoveryUrl: string;
-  caCert: string;
-  boundIssuer: string;
-  boundAudiences: string;
+  templateId?: string;
+  oidcDiscoveryUrl?: string;
+  caCert?: string;
+  boundIssuer?: string;
+  boundAudiences?: string;
   boundClaims: Record<string, string>;
   claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
@@ -294,6 +296,7 @@ export type UpdateIdentityOidcAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
+  templateId?: string | null;
   oidcDiscoveryUrl?: string;
   caCert?: string;
   boundIssuer?: string;

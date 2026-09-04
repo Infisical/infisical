@@ -29,13 +29,13 @@ Before adding the account, create a service principal in Azure and give it acces
     In the Azure Portal, go to **Microsoft Entra ID → App registrations → New registration**, give it a name (e.g., `infisical-pam`), and register it. From the app's **Overview**, record the **Application (client) ID** and **Directory (tenant) ID**.
   </Step>
   <Step title="Create a client secret">
-    In the app, go to **Certificates & secrets → New client secret**, then copy the secret **Value** immediately (it is shown only once). This is the secret you paste into Infisical, not the Secret ID.
+    In the app, go to **Certificates & secrets → New client secret**, then copy the secret **Value** immediately (it's shown only once). This is the secret you paste into Infisical, not the Secret ID.
   </Step>
   <Step title="Grant the service principal access">
     RBAC role assignments are made on the resource, not on the app. Open the subscription (or a resource group) you want to grant access to, go to **Access control (IAM) → Add role assignment**, pick a role (for example **Reader**), and on the **Members** tab select your app registration. Assign a more privileged role only if the session needs write access.
   </Step>
   <Step title="Start adding the account in Infisical">
-    Go to **Privileged Access Management → Accounts** and click **Add Account**. Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an Azure CLI [template](/documentation/platform/pam/templates/overview).
+    Go to **Privileged Access Management → Accounts** and select **Add Account**. Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an Azure CLI [template](/documentation/platform/pam/templates/overview).
 
     The template (or the account) must be assigned a [Gateway](/documentation/platform/gateways/overview): Azure traffic is proxied through it, so the Gateway needs outbound access on port `443` to `login.microsoftonline.com`, `management.azure.com`, `graph.microsoft.com`, `*.vault.azure.net`, and `*.core.windows.net`.
   </Step>
@@ -49,7 +49,7 @@ Before adding the account, create a service principal in Azure and give it acces
     | **Client Secret** | A client secret for the service principal. Stored encrypted and never returned to clients |
   </Step>
   <Step title="Save">
-    Click **Create**.
+    Select **Create**.
   </Step>
 </Steps>
 
@@ -61,7 +61,7 @@ Use the CLI to start a session. This requires the [Azure CLI (`az`)](https://lea
 infisical pam access my-folder/prod-reader
 ```
 
-The command starts an isolated, authenticated shell for the session. It does not touch your own `az` login. Run `az` commands as normal:
+The command starts an isolated, authenticated shell for the session. It doesn't touch your own `az` login. Run `az` commands as normal:
 
 ```bash
 az account show

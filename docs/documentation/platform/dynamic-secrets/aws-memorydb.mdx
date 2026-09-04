@@ -125,7 +125,7 @@ A few notes on the policy:
     Infisical will verify it can reach the cluster with the provided credentials and validate the statements.
   </Step>
   <Step title="Generate dynamic secrets">
-    Once configured, click `Generate` on the dynamic secret row (or `New Lease` in the lease list) to provision a lease.
+    Once configured, select `Generate` on the dynamic secret row (or `New Lease` in the lease list) to provision a lease.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
@@ -142,16 +142,16 @@ A few notes on the policy:
 
 ## Audit or revoke leases
 
-Click any dynamic secret on the dashboard to see active leases, their expiration times, and revoke them early if needed.
+Select any dynamic secret on the dashboard to see active leases, their expiration times, and revoke them early if needed.
 
 ![Lease Data](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
 
-Click `Renew` on an active lease to extend its TTL.
+Select `Renew` on an active lease to extend its TTL.
 
 ![Renew Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Renewals cannot exceed the Max TTL set when the dynamic secret was configured.
+  Renewals can't exceed the Max TTL set when the dynamic secret was configured.
 </Warning>

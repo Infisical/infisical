@@ -154,6 +154,14 @@ export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
 
+export enum OrgPermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -194,7 +202,7 @@ export type OrgPermissionSet =
   | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
-  | [OrgPermissionActions, OrgPermissionSubjects.Member]
+  | [OrgPermissionMemberActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]

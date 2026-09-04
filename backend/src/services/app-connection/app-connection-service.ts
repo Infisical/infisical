@@ -96,6 +96,7 @@ import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
 import { datadogConnectionService } from "./datadog/datadog-connection-service";
+import { ValidateDaytonaConnectionCredentialsSchema } from "./daytona";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -305,7 +306,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
-  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema
+  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
