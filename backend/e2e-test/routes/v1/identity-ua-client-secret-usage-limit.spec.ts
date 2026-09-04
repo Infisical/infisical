@@ -141,6 +141,9 @@ describe("Universal Auth client secret usage limit", async () => {
           body: { clientId, clientSecret }
         });
         expect(afterBurst.statusCode).toBe(401);
+        // and it says why. Revoking mid-burst would make this attempt miss the secret entirely and
+        // answer "Invalid credentials", which is both untrue and a failed-credential strike
+        expect(afterBurst.json().message).toBe(USAGE_LIMIT_REACHED_MESSAGE);
         expect((await readClientSecretRow(clientSecretId))?.isClientSecretRevoked).toBe(true);
       } finally {
         await deleteIdentity(identityId);
