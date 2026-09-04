@@ -136,6 +136,7 @@ const ActionsMultiSelect = ({
 
         // Hide legacy "grant-privileges" actions unless already selected
         if (
+          subjectScope === PermissionScope.Project &&
           subject === ProjectPermissionSub.Member &&
           value === ProjectPermissionMemberActions.GrantPrivileges
         ) {

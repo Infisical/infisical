@@ -28,13 +28,13 @@ Agents like Claude Code or OpenClaw route HTTP requests through the proxy, which
 
 Traditional secrets management involves returning credentials back to applications and services.
 
-This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
+This isn't suitable for AI agents because they're vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
 Enter Infisical Agent Proxy - a proxy service backed by Infisical that prevents credential exfiltration by brokering access to credentials stored in Infisical at the network boundary.
 
 ## What you configure in Infisical
 
-Two things, and they are the same no matter where your agent runs:
+Two things, and they're the same no matter where your agent runs:
 
 1. Add the credential as a secret in Infisical; this can be a static secret or a [dynamic secret](/documentation/platform/dynamic-secrets/overview).
 

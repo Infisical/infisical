@@ -132,6 +132,6 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 **BYOK** (Bring Your Own Key) on OpenRouter lets you use your own provider API keys (e.g. OpenAI, Anthropic) so you pay providers directly; OpenRouter charges a small fee on those requests. The **Include BYOK in limit** option controls whether that BYOK usage counts toward this key's spending limit:
 
 - **Enabled (Yes)** – Usage from your own provider keys is included in the limit. Once the limit is reached, the key is subject to OpenRouter's rate limits until the next reset.
-- **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and does not consume the limit.
+- **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and doesn't consume the limit.
 
 This is optional; if you don't use BYOK or don't set a limit, you can leave it off. For more details, see [OpenRouter BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) and [OpenRouter limits](https://openrouter.ai/docs/api/reference/limits).

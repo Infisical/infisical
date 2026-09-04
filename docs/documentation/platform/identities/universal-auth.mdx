@@ -185,13 +185,13 @@ In many automated, cloud-native, or ephemeral environments (such as VMs, contain
 
 - When you set the **Access Token Period** in the Universal Auth configuration, the issued access token can be renewed by your workload for the specified period (in seconds).
 - The token can be renewed any number of times, each time for the same period, with no maximum lifetime (unless you set a use limit).
-- As long as the token is renewed before its period expires, it remains valid, so you do not need to re-issue static credentials.
+- As long as the token is renewed before its period expires, it remains valid, so you don't need to re-issue static credentials.
 - TTL and Max TTL are ignored when Access Token Period is set.
 
 ### Example: Bootstrapping with a periodic token
 
 1. Configure Universal Auth for your identity and set **Access Token Period** (e.g., `3600` for 1 hour).
-2. For improved security, configure the Client Secret with a low number of uses (e.g., `1`) or a short TTL. This ensures that after the initial login, the Client Secret cannot be reused, and any disruption in token renewal will require manual intervention.
+2. For improved security, configure the Client Secret with a low number of uses (e.g., `1`) or a short TTL. This ensures that after the initial login, the Client Secret can't be reused, and any disruption in token renewal will require manual intervention.
 3. Deploy your workload with the **Client Secret** and **Client ID**.
 4. The workload authenticates with Infisical using the Client Secret and Client ID to obtain the initial access token (JWT).
 5. The workload uses the access token to authenticate and continuously renews it before expiration:

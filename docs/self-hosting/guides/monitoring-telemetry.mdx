@@ -346,7 +346,7 @@ Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
 - **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, product analytics aggregation, alert dispatch, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
-All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
+All meters emit at the same time. If you're a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
 To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. Infisical then stops recording to the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters altogether, so nothing is measured, stored, exported, or held in memory for them. The instruments still exist in code, so nothing errors. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
 
@@ -366,7 +366,7 @@ To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HI
   instead.
 
   This tradeoff applies only to Prometheus export. With `OTEL_EXPORT_TYPE=otlp`, memory for these
-  meters does not accumulate across the process lifetime.
+  meters doesn't accumulate across the process lifetime.
 </Warning>
 
 For per-user / per-identity / per-IP / per-project breakdowns, query the audit log table. It carries `actorId`, `actorType`, `projectId`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who* and *where*.
@@ -876,7 +876,7 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
 
 ### Product analytics aggregation metrics (InfisicalCore)
 
-High-volume product analytics events (secret pulls, machine identity logins, certificate issuance, and similar) are buffered in Redis and rolled up by a cron every 10 minutes instead of being sent one by one. The buffer is deliberately bounded, so events that the roll-up does not reach in time are discarded. These metrics tell you whether that is happening. They are only emitted when product analytics is enabled (`TELEMETRY_ENABLED`), since the roll-up does not run otherwise.
+High-volume product analytics events (secret pulls, machine identity logins, certificate issuance, and similar) are buffered in Redis and rolled up by a cron every 10 minutes instead of being sent one by one. The buffer is deliberately bounded, so events that the roll-up doesn't reach in time are discarded. These metrics tell you whether that is happening. They're only emitted when product analytics is enabled (`TELEMETRY_ENABLED`), since the roll-up doesn't run otherwise.
 
 <AccordionGroup>
   <Accordion title="Aggregation Published">
@@ -920,7 +920,7 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
   </Accordion>
 </AccordionGroup>
 
-**What to alarm on**: a sustained `retention` drop rate, and any `unparseable` drop at all. Losing a few analytics events occasionally costs nothing, but a rate that does not return to zero means the roll-up is permanently behind the write rate. The backlog histogram is the early warning: it rises before drops start, and a shard sitting near 100,000 entries is also shedding the oldest events on write, invisibly to the drop counter.
+**What to alarm on**: a sustained `retention` drop rate, and any `unparseable` drop at all. Losing a few analytics events occasionally costs nothing, but a rate that doesn't return to zero means the roll-up is permanently behind the write rate. The backlog histogram is the early warning: it rises before drops start, and a shard sitting near 100,000 entries is also shedding the oldest events on write, invisibly to the drop counter.
 
 ### Alert dispatch metrics (InfisicalCore)
 
@@ -1085,7 +1085,7 @@ These low-level HTTP metrics are automatically collected by OpenTelemetry's inst
 ## Troubleshooting
 
 <Accordion title="Metrics not appearing">
-  If your metrics are not showing up in Prometheus or your monitoring system, check the following:
+  If your metrics aren't showing up in Prometheus or your monitoring system, check the following:
 
   - Verify `OTEL_TELEMETRY_COLLECTION_ENABLED=true` is set in your Infisical environment variables
   - Ensure the correct `OTEL_EXPORT_TYPE` is set (`prometheus` or `otlp`)

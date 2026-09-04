@@ -28,6 +28,7 @@ on:
       - "backend/**"
       - ".github/workflows/check-api-for-breaking-changes.yml"
       - ".github/actions/generate-openapi-spec/**"
+      - "build-versions.env"
 
 concurrency:
   group: check-api-breaking-${{ github.event.pull_request.number }}

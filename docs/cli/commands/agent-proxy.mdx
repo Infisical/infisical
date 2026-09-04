@@ -51,7 +51,7 @@ Each arrangement stands on its own: `run` is complete by itself, and a deployed 
 <Accordion title="infisical secrets agent-proxy run" defaultOpen="true">
   Launch an agent on your own computer, sandboxed, with credentials brokered on the wire. Everything after `--` is the agent's own start command. `run` starts a proxy alongside the agent, authenticating as your logged-in user, and stops it when the agent exits. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) for the full picture.
 
-  Because the proxy and the agent share a machine, the sandbox is the boundary: the agent cannot read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
+  Because the proxy and the agent share a machine, the sandbox is the boundary: the agent can't read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
 
   Requires macOS, or Linux with `bubblewrap` installed; see [Requirements](/documentation/platform/agent-proxy/local-agent-proxy#requirements) for the per-distribution command. Where no OS sandbox is available, `run` refuses to start unless you pass `--no-sandbox`.
 
@@ -83,7 +83,7 @@ infisical secrets agent-proxy run -- claude
   </Accordion>
 
   <Accordion title="INFISICAL_AGENT_PROXY_SANDBOX">
-    Set to `0`, `false`, or `off` to disable the OS sandbox, the same as `--no-sandbox`. Deliberately cannot be set from `.infisical.json`, so a committed file cannot silently disable the boundary.
+    Set to `0`, `false`, or `off` to disable the OS sandbox, the same as `--no-sandbox`. Deliberately can't be set from `.infisical.json`, so a committed file can't silently disable the boundary.
 
     ```bash
       # Example
