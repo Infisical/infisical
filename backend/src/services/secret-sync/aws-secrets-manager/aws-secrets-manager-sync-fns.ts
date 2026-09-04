@@ -8,6 +8,7 @@ import {
   DescribeSecretCommand,
   type DescribeSecretCommandInput,
   type DescribeSecretResponse,
+  GetSecretValueCommand,
   ListSecretsCommand,
   type SecretListEntry,
   SecretsManagerClient,
@@ -311,6 +312,27 @@ const processTags = ({
   return { tagsToAdd, tagKeysToRemove };
 };
 
+const getSingleSecretValue = async (
+  client: SecretsManagerClient,
+  secretId: string,
+  attempt = 0
+): Promise<SecretValueEntry | null> => {
+  try {
+    return await client.send(new GetSecretValueCommand({ SecretId: secretId }));
+  } catch (e) {
+    if (isAwsError(e, "ResourceNotFoundException")) {
+      return null;
+    }
+
+    if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
+      await sleep();
+      return getSingleSecretValue(client, secretId, attempt + 1);
+    }
+
+    throw e;
+  }
+};
+
 export const AwsSecretsManagerSyncFns = {
   syncSecrets: async (
     secretSync: TAwsSecretsManagerSyncWithCredentials,
@@ -321,12 +343,6 @@ export const AwsSecretsManagerSyncFns = {
 
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
-
-    const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
-
-    const awsDescriptionsRecord = await getSecretDescriptionsRecord(client, awsSecretsRecord);
-
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
     const keyId = syncOptions.keyId ?? "alias/aws/secretsmanager";
@@ -336,6 +352,11 @@ export const AwsSecretsManagerSyncFns = {
     const deletedSecretKeys: string[] = [];
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
+      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+
+      const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
+
+      const awsDescriptionsRecord = await getSecretDescriptionsRecord(client, awsSecretsRecord);
       for await (const entry of Object.entries(secretMap)) {
         const [key, { value, secretMetadata }] = entry;
 
@@ -434,7 +455,7 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
     } else {
-      // Many-To-One Mapping
+      // Many-To-One Mapping: only fetch the single target secret instead of listing all secrets
 
       const secretValue = JSON.stringify(
         Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
@@ -446,9 +467,16 @@ export const AwsSecretsManagerSyncFns = {
         schema: syncOptions.keySchema
       });
 
-      const secretExists = Boolean(awsSecretsRecord[secretName]);
-      const hasValueChanged = awsValuesRecord[secretName]?.SecretString !== secretValue;
-      const hasKmsKeyChanged = keyId !== awsDescriptionsRecord[secretName]?.KmsKeyId;
+      const existingSecretValue = await getSingleSecretValue(client, secretName);
+      const secretExists = existingSecretValue !== null;
+
+      let existingDescription: DescribeSecretResponse | undefined;
+      if (secretExists) {
+        existingDescription = await describeSecret(client, { SecretId: secretName });
+      }
+
+      const hasValueChanged = existingSecretValue?.SecretString !== secretValue;
+      const hasKmsKeyChanged = keyId !== existingDescription?.KmsKeyId;
 
       if (secretExists && (hasValueChanged || hasKmsKeyChanged)) {
         await updateSecret(client, {
@@ -470,7 +498,7 @@ export const AwsSecretsManagerSyncFns = {
         const { tagsToAdd, tagKeysToRemove } = processTags({
           syncTagsRecord,
           awsTagsRecord: Object.fromEntries(
-            awsDescriptionsRecord[secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+            existingDescription?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
           )
         });
 
@@ -503,16 +531,12 @@ export const AwsSecretsManagerSyncFns = {
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(
-      client,
-      secretSync.environment?.slug || "",
-      secretSync.syncOptions.keySchema
-    );
-    const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
-
     const { destinationConfig, environment, syncOptions } = secretSync;
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
+      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+      const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
+
       return Object.fromEntries(
         Object.keys(awsSecretsRecord)
           .filter((key) => Object.hasOwn(awsValuesRecord, key))
@@ -520,7 +544,7 @@ export const AwsSecretsManagerSyncFns = {
       );
     }
 
-    // Many-To-One Mapping
+    // Many-To-One Mapping: fetch only the single target secret
 
     const secretName = getKeyWithSchema({
       key: destinationConfig.secretName,
@@ -528,7 +552,7 @@ export const AwsSecretsManagerSyncFns = {
       schema: syncOptions.keySchema
     });
 
-    const secretValueEntry = awsValuesRecord[secretName];
+    const secretValueEntry = await getSingleSecretValue(client, secretName);
 
     if (!secretValueEntry) return {};
 
@@ -552,9 +576,9 @@ export const AwsSecretsManagerSyncFns = {
 
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
-
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
+      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         if (secretKey in secretMap) {
           try {
