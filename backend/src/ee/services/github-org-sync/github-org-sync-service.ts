@@ -540,7 +540,6 @@ export const githubOrgSyncServiceFactory = ({
           const newGroups = await groupDAL.insertMany(
             newTeams.map((newGroupName) => ({
               name: newGroupName,
-              role: OrgMembershipRole.Member,
               slug: newGroupName,
               orgId
             })),
@@ -823,7 +822,6 @@ export const githubOrgSyncServiceFactory = ({
         const newGroups = await groupDAL.insertMany(
           teamsToCreate.map((teamName) => ({
             name: teamName,
-            role: OrgMembershipRole.Member,
             slug: teamName,
             orgId: orgPermission.orgId
           })),
