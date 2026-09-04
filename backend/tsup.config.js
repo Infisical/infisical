@@ -30,7 +30,7 @@ export default defineConfig({
   external: ["../../../frontend/node_modules/next/dist/server/next-server.js"],
   outDir: "dist",
   tsconfig: "./tsconfig.json",
-  entry: ["./src", "!./src/**/*.dev.ts"],
+  entry: ["./src", "!./src/**/*.dev.ts", "!./src/**/*.c", "!./src/**/*.h"],
   sourceMap: true,
   skipNodeModulesBundle: true,
   // ts-node/register is only needed when running TS files directly (knex CLI in dev).

@@ -76,12 +76,12 @@ jobs:
           # Lowercased: GHCR rejects uppercase repository names and the owner is "Infisical".
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/backend-fips-toolchain"
-          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain') }}"
+          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain', 'backend/src/lib/openssl-ext/**') }}"
           if docker pull --quiet "$IMAGE:$TAG"; then
             echo "Using published toolchain $IMAGE:$TAG"
             TOOLCHAIN="$IMAGE:$TAG"
           else
-            echo "::notice::No published toolchain for $TAG (this PR changes backend/Dockerfile.fips-toolchain); building from source."
+            echo "::notice::No published toolchain for $TAG (this PR changes the FIPS toolchain inputs); building from source."
             TOOLCHAIN="backend-fips-toolchain:$TAG"
             docker build \
               -f backend/Dockerfile.fips-toolchain \

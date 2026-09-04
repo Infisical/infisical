@@ -4171,6 +4171,7 @@ interface CmekSignEvent {
   metadata: {
     keyId: string;
     signingAlgorithm: SigningAlgorithm;
+    isDigest: boolean;
     signature: string;
   };
 }
@@ -4180,6 +4181,7 @@ interface CmekVerifyEvent {
   metadata: {
     keyId: string;
     signingAlgorithm: SigningAlgorithm;
+    isDigest: boolean;
     signature: string;
     signatureValid: boolean;
   };

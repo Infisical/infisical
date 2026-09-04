@@ -114,11 +114,13 @@ export const useCmekSign = () => {
       keyId,
       data,
       signingAlgorithm,
-      isBase64Encoded
+      isBase64Encoded,
+      isDigest = false,
     }: TCmekSign & { isBase64Encoded: boolean }) => {
       const res = await apiRequest.post<TCmekSignResponse>(`/api/v1/kms/keys/${keyId}/sign`, {
         data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
-        signingAlgorithm
+        signingAlgorithm,
+        isDigest,
       });
 
       return res.data;
@@ -133,12 +135,14 @@ export const useCmekVerify = () => {
       data,
       signature,
       signingAlgorithm,
-      isBase64Encoded
+      isBase64Encoded,
+      isDigest,
     }: TCmekVerify & { isBase64Encoded: boolean }) => {
       const res = await apiRequest.post<TCmekVerifyResponse>(`/api/v1/kms/keys/${keyId}/verify`, {
         data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
         signature,
-        signingAlgorithm
+        signingAlgorithm,
+        isDigest
       });
 
       return res.data;

@@ -40,11 +40,12 @@ export type TRotateCmek = KeyRef & ProjectRef;
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };
 
-export type TCmekSign = KeyRef & { data: string; signingAlgorithm: SigningAlgorithm };
+export type TCmekSign = KeyRef & { data: string; signingAlgorithm: SigningAlgorithm , isDigest : boolean};
 export type TCmekVerify = KeyRef & {
   data: string;
   signature: string;
   signingAlgorithm: SigningAlgorithm;
+  isDigest: boolean;
 };
 
 export type TCmekGenerateMac = KeyRef & { data: string };
@@ -154,7 +155,12 @@ export enum CmekOrderBy {
 
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
+
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ECC_NIST_P384 = "ECC_NIST_P384",
+  ECC_NIST_P521 = "ECC_NIST_P521",
+
+  ECC_NIST_EDWARDS25519 = "ECC_NIST_ED25519",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
@@ -199,5 +205,8 @@ export enum SigningAlgorithm {
   // ML-DSA (post-quantum) — signing algorithm equals key algorithm
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
-  ML_DSA_87 = "ML_DSA_87"
+  ML_DSA_87 = "ML_DSA_87",
+
+  ED25519_SHA_512 = "ED25519_SHA_512",
+  ED25519_PH_SHA_512 = "ED25519_PH_SHA_512"
 }

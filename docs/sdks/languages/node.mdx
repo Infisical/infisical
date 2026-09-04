@@ -620,7 +620,7 @@ console.log(signingKey);
 - `keyUsage` (KeyUsage): Either `KeyUsage.ENCRYPTION` for encrypt/decrypt operations or `KeyUsage.SIGNING` for sign/verify operations.
 - `encryptionAlgorithm` (EncryptionAlgorithm): The algorithm to use. Options include:
   - For encryption: `AES_256_GCM`, `AES_128_GCM`, `RSA_4096`, `ECC_NIST_P256`
-  - For signing: `RSA_4096`, `ECC_NIST_P256`
+  - For signing: `RSA_4096`, `ECC_NIST_P256`, `ECC_NIST_ED25519`
 
 **Returns:**
 - `KmsKey`: The created KMS key object.
@@ -725,6 +725,8 @@ console.log(signature);
   - **RSA PSS** (non-deterministic): `RSASSA_PSS_SHA_256`, `RSASSA_PSS_SHA_384`, `RSASSA_PSS_SHA_512`
   - **RSA PKCS#1 v1.5** (deterministic): `RSASSA_PKCS1_V1_5_SHA_256`, `RSASSA_PKCS1_V1_5_SHA_384`, `RSASSA_PKCS1_V1_5_SHA_512`
   - **ECDSA** (non-deterministic): `ECDSA_SHA_256`, `ECDSA_SHA_384`, `ECDSA_SHA_512`
+  - **Ed25519** (`ECC_NIST_ED25519`): `ED25519_SHA_512`, `ED25519_PH_SHA_512`
+- `ED25519_PH_SHA_512` requires `isDigest: true` and a 64-byte SHA-512 digest.
 - `isDigest` (boolean, optional): Whether the data is already a hash digest. Defaults to `false`.
 
 **Returns:**
