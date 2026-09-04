@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosHeaders, AxiosRequestConfig } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,9 +19,20 @@ export const apiRequest = axios.create({
   }
 });
 
+const TOKEN_EXPIRED_MESSAGE = "your token has expired. please re-authenticate.";
+
+const getAuthorizationHeader = (config?: AxiosRequestConfig) => {
+  const headers = config?.headers;
+  const header = headers instanceof AxiosHeaders ? headers.get("Authorization") : undefined;
+  if (typeof header === "string") return header;
+  if (typeof headers?.Authorization === "string") return headers.Authorization;
+  if (typeof headers?.authorization === "string") return headers.authorization;
+  return undefined;
+};
+
 apiRequest.interceptors.request.use((config) => {
   // Skip auto-injection if the caller already set an Authorization header
-  if (config.headers?.Authorization) return config;
+  if (getAuthorizationHeader(config)) return config;
 
   const signupTempToken = getSignupTempToken();
   const mfaTempToken = getMfaTempToken();
@@ -31,12 +42,12 @@ apiRequest.interceptors.request.use((config) => {
     if (mfaTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${mfaTempToken}`;
-    } else if (token) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers.Authorization = `Bearer ${token}`;
     } else if (signupTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${signupTempToken}`;
+    } else if (token) {
+      // eslint-disable-next-line no-param-reassign
+      config.headers.Authorization = `Bearer ${token}`;
     }
   }
 
@@ -53,13 +64,18 @@ let refreshPromise: Promise<string> | null = null;
 
 export const isTokenExpiredError = (data?: { message?: string; error?: string } | string) => {
   if (!data) return false;
-  const message = typeof data === "string" ? data : data.message || "";
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("token expired") ||
-    lower.includes("token has expired") ||
-    lower.includes("stalesession")
-  );
+
+  if (typeof data === "string") {
+    const lower = data.toLowerCase();
+    return lower.includes("token expired") || lower.includes("stalesession");
+  }
+
+  if (data.error === "TokenError") return data.message?.toLowerCase() === TOKEN_EXPIRED_MESSAGE;
+  if (data.error === "StaleSession") return true;
+  if (data.error) return false;
+
+  const lower = data.message?.toLowerCase() || "";
+  return lower.includes("token expired") || lower.includes("stalesession");
 };
 
 apiRequest.interceptors.response.use(
@@ -67,8 +83,8 @@ apiRequest.interceptors.response.use(
   async (error) => {
     const { response, config } = error;
     const currentToken = getAuthToken();
-    const reqAuthHeader = config?.headers?.Authorization;
-    const isSessionToken = currentToken && reqAuthHeader === `Bearer ${currentToken}`;
+    const reqAuthHeader = getAuthorizationHeader(config);
+    const isSessionToken = Boolean(currentToken && reqAuthHeader === `Bearer ${currentToken}`);
 
     if (
       response &&
