@@ -10,12 +10,7 @@ import {
 } from "@opentelemetry/sdk-metrics";
 import Fastify, { type FastifyInstance } from "fastify";
 
-import {
-  HIGH_CARDINALITY_METER_NAMES,
-  HTTP_INSTRUMENTATION_METER_ATTRIBUTES,
-  HTTP_INSTRUMENTATION_METER_NAME,
-  INFISICAL_CORE_METER_ATTRIBUTES
-} from "./telemetry-attributes";
+import { HIGH_CARDINALITY_METER_NAMES, INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
 
 const mockConfig = {
   OTEL_TELEMETRY_COLLECTION_ENABLED: true,
@@ -32,8 +27,11 @@ const LEGACY_REQUEST_COUNT = "infisical.http.server.request.count";
 
 let reader: PeriodicExportingMetricReader;
 
-// Mirrors initTelemetryInstrumentation() in instrumentation.ts. The Views are the thing under test as
-// much as the plugin is: an attribute added at a call site is only bounded because the allowlist drops it.
+// Mirrors the InfisicalCore half of initTelemetryInstrumentation(). The View is under test as much as the
+// plugin is: an attribute added at a call site is only bounded because the allowlist drops it. The HTTP
+// instrumentation meter is deliberately NOT wired up here, because nothing in this file registers
+// HttpInstrumentation and a View with no instrument behind it would imply coverage that does not exist.
+// That pipeline is covered by http-instrumentation.test.ts and http-semconv-baseline.test.ts.
 //
 // Two things make a per-test provider necessary, and both fail silently rather than erroring:
 // the OpenTelemetry API ignores a second setGlobalMeterProvider() unless the global is disabled first,
@@ -46,10 +44,6 @@ const installMeterProvider = () => {
     {
       meterName: "InfisicalCore",
       attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
-    },
-    {
-      meterName: HTTP_INSTRUMENTATION_METER_NAME,
-      attributesProcessors: [createAllowListAttributesProcessor(HTTP_INSTRUMENTATION_METER_ATTRIBUTES)]
     }
   ];
   if (mockConfig.OTEL_DROP_HIGH_CARDINALITY_METERS) {

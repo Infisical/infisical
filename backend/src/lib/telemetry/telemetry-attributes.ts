@@ -58,6 +58,16 @@ export const HIGH_CARDINALITY_METER_NAMES = ["Infisical", "API", "SecretSyncs", 
 // Meter used by @opentelemetry/instrumentation-http for http.server.duration / http.client.duration.
 export const HTTP_INSTRUMENTATION_METER_NAME = "@opentelemetry/instrumentation-http";
 
+// HttpInstrumentation reads OTEL_SEMCONV_STABILITY_OPT_IN in its constructor (no config hook), so instrumentation.ts
+// forces the "http" token via resolveHttpSemconvOptIn — not "http/dup", which doubles cardinality; other namespaces are preserved.
+export const resolveHttpSemconvOptIn = (current?: string): string => {
+  const otherNamespaces = (current ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter((token) => token && token.toLowerCase() !== "http" && token.toLowerCase() !== "http/dup");
+  return [...otherNamespaces, "http"].join(",");
+};
+
 // This View keeps http.server.duration bounded if an upgrade reintroduces unbounded host related attributes like net.host.name and constant labels like url.scheme
 export const HTTP_INSTRUMENTATION_METER_ATTRIBUTES = [
   "http.request.method",

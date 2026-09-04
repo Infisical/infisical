@@ -22,7 +22,8 @@ import {
   HIGH_CARDINALITY_METER_NAMES,
   HTTP_INSTRUMENTATION_METER_ATTRIBUTES,
   HTTP_INSTRUMENTATION_METER_NAME,
-  INFISICAL_CORE_METER_ATTRIBUTES
+  INFISICAL_CORE_METER_ATTRIBUTES,
+  resolveHttpSemconvOptIn
 } from "./telemetry-attributes";
 
 dotenv.config();
@@ -116,19 +117,7 @@ const initTelemetryInstrumentation = ({
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
 
-  // HttpInstrumentation reads this in its constructor and exposes no config equivalent, so it has to be set
-  // here rather than left to the deployment. Unset means the old HTTP semconv, whose http.server.duration
-  // carries net.host.name, the raw client-controlled Host header, and so grows a new series for every value
-  // a scanner sends. Stable drops it, normalizes the method to a fixed set, and adds error.type.
-  // Assigning it (rather than defaulting it) keeps one metric name across cloud and self-hosted, and shuts
-  // out "http/dup", which would emit both attribute sets and double the cardinality this is here to bound.
-  // Other namespace tokens are preserved: the value is a comma-separated list and a future
-  // instrumentation may read its own namespace out of it.
-  const semconvOptIn = (process.env.OTEL_SEMCONV_STABILITY_OPT_IN ?? "")
-    .split(",")
-    .map((token) => token.trim())
-    .filter((token) => token && token.toLowerCase() !== "http" && token.toLowerCase() !== "http/dup");
-  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = [...semconvOptIn, "http"].join(",");
+  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = resolveHttpSemconvOptIn(process.env.OTEL_SEMCONV_STABILITY_OPT_IN);
 
   registerInstrumentations({
     instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]
