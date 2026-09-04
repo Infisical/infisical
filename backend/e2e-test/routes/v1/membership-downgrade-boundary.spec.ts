@@ -308,8 +308,7 @@ describe("Privilege boundary on org membership downgrade", () => {
 
       const res = await patchMembership(target.membershipId, { isActive: false }, asIdentity(actor.token));
       expect(res.statusCode).toBe(newSystem ? 200 : 403);
-      if (!newSystem)
-        expect(res.json().message).toContain("Failed to change the activation status of this org member");
+      if (!newSystem) expect(res.json().message).toContain("Failed to change the activation status of this org member");
     });
   });
 
