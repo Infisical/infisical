@@ -898,6 +898,7 @@ export const registerRoutes = async (
     licenseService,
     membershipRoleDAL,
     alertChannelRecipientDAL,
+    agentVaultAccessBundleMemberDAL,
     membershipUserDAL,
     orgDAL,
     permissionService,
@@ -1290,6 +1291,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     alertChannelRecipientDAL,
+    agentVaultAccessBundleMemberDAL,
     emailDomainDAL,
     telemetryService,
     usageMeteringService
@@ -1500,7 +1502,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     certificatePolicyDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    agentVaultAccessBundleMemberDAL
   });
 
   const subOrgService = subOrgServiceFactory({

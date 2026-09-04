@@ -162,6 +162,9 @@ export const agentVaultAccessBundleMemberDALFactory = (db: TDbClient) => {
   const bundleIdsInProject = (projectId: string, tx: Knex) =>
     tx(TableName.AgentVaultAccessBundle).where("projectId", projectId).select("id");
 
+  const bundleIdsInProjects = (projectIds: string[], tx: Knex) =>
+    tx(TableName.AgentVaultAccessBundle).whereIn("projectId", projectIds).select("id");
+
   const deleteActorGrantsInProject = async (
     { projectId, actorFilter }: { projectId: string; actorFilter: Record<string, string> },
     tx: Knex
@@ -173,6 +176,24 @@ export const agentVaultAccessBundleMemberDALFactory = (db: TDbClient) => {
         .delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete agent vault grants for actor" });
+    }
+  };
+
+  // The org-removal path knows the project memberships it is deleting, not which of them is the Agent
+  // Vault one, and resolving that would bootstrap a project as a side effect of a removal. Bundles only
+  // exist in the Agent Vault project, so passing every project the actor is losing filters itself.
+  const deleteUserGrantsInProjects = async (
+    { projectIds, userIds }: { projectIds: string[]; userIds: string[] },
+    tx: Knex
+  ) => {
+    if (!projectIds.length || !userIds.length) return;
+    try {
+      await tx(TableName.AgentVaultAccessBundleMember)
+        .whereIn("userId", userIds)
+        .whereIn("accessBundleId", bundleIdsInProjects(projectIds, tx))
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete agent vault grants for users in projects" });
     }
   };
 
@@ -196,6 +217,7 @@ export const agentVaultAccessBundleMemberDALFactory = (db: TDbClient) => {
     findByAccessBundleId,
     countByAccessBundleIds,
     deleteActorGrantsInProject,
-    deleteUserGrantsInProject
+    deleteUserGrantsInProject,
+    deleteUserGrantsInProjects
   };
 };

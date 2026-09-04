@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -132,6 +133,7 @@ type TOrgServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
@@ -170,6 +172,7 @@ export const orgServiceFactory = ({
   additionalPrivilegeDAL,
   approvalPolicyDAL,
   alertChannelRecipientDAL,
+  agentVaultAccessBundleMemberDAL,
   certificatePolicyDAL,
   usageMeteringService
 }: TOrgServiceFactoryDep) => {
@@ -1233,7 +1236,8 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      agentVaultAccessBundleMemberDAL
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
@@ -1287,7 +1291,8 @@ export const orgServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      agentVaultAccessBundleMemberDAL
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.

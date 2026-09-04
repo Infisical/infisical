@@ -309,6 +309,57 @@ describe("Agent Vault V1 Router", async () => {
       await deleteOrgIdentity(identity.id);
     });
 
+    test("removing a user from the organization takes their grants too", async () => {
+      const bundle = await createAccessBundle("org-removal-reap");
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+
+      // A second user, so the seed admin stays available to make the calls.
+      const [user] = (await testDb("users")
+        .insert({ username: `av-org-reap-${Date.now()}@example.com`, isAccepted: true, isGhost: false })
+        .returning("*")) as { id: string }[];
+      const [orgMembership] = (await testDb("memberships")
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: seedData1.organization.id,
+          actorUserId: user.id,
+          status: "accepted"
+        })
+        .returning("*")) as { id: string }[];
+      const [projectMembership] = (await testDb("memberships")
+        .insert({
+          scope: AccessScope.Project,
+          scopeOrgId: seedData1.organization.id,
+          scopeProjectId: projectId,
+          actorUserId: user.id
+        })
+        .returning("*")) as { id: string }[];
+      await testDb("membership_roles").insert({
+        membershipId: projectMembership.id,
+        role: ProjectMembershipRole.Member
+      });
+
+      const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        userId: user.id
+      });
+      expect(granted.statusCode).toBe(200);
+      expect(await testDb("agent_vault_access_bundle_members").where({ userId: user.id })).toHaveLength(1);
+
+      // Removal from the organization takes a different path from removal from the project, and these
+      // grants are keyed on the user rather than on the membership, so nothing cascades them away.
+      const removed = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${orgMembership.id}`,
+        headers: authHeader
+      });
+      expect(removed.statusCode).toBe(200);
+
+      expect(await testDb("agent_vault_access_bundle_members").where({ userId: user.id })).toHaveLength(0);
+
+      await testDb("users").where({ id: user.id }).delete();
+    });
+
     test("removing a member takes their access bundle grants with them", async () => {
       const bundle = await createAccessBundle("membership-reap");
 

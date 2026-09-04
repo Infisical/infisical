@@ -12,6 +12,7 @@ import {
   AgentVaultMemberKind,
   TAgentVaultMembershipCleanupServiceFactory
 } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
+import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -99,6 +100,7 @@ type TMembershipUserServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -126,7 +128,8 @@ export const membershipUserServiceFactory = ({
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  agentVaultAccessBundleMemberDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -602,7 +605,8 @@ export const membershipUserServiceFactory = ({
           membershipRoleDAL,
           additionalPrivilegeDAL,
           approvalPolicyDAL,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          agentVaultAccessBundleMemberDAL
         });
         return doc;
       }
