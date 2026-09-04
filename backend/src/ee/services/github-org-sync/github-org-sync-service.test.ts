@@ -1,6 +1,8 @@
 import { Octokit } from "@octokit/core";
 import { describe, expect, test, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
+
 import { fetchGithubOrgTeams } from "./github-org-sync-service";
 
 type TVariables = { cursor: string | null; slug?: string; teamsPageSize?: number; membersPageSize?: number };
@@ -65,6 +67,17 @@ describe("fetchGithubOrgTeams", () => {
     expect(teams.find((t) => t.slug === "big")?.members).toEqual(["u1", "u2", "u3"]);
     expect(teams.find((t) => t.slug === "small")?.members).toEqual(["u9"]);
     expect(graphql).toHaveBeenCalledTimes(3);
+  });
+
+  test("fails instead of returning a partial member list when the team disappears mid-pagination", async () => {
+    const { octokit } = buildOctokit((query) => {
+      if (query.includes("query orgTeams")) {
+        return { organization: { teams: page([team("big", ["u1"], "m1")], null) } };
+      }
+      return { organization: { team: null } };
+    });
+
+    await expect(fetchGithubOrgTeams(octokit, "acme")).rejects.toThrow(BadRequestError);
   });
 
   test("passes a per-request abort signal", async () => {
