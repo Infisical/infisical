@@ -34,6 +34,7 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
@@ -1006,7 +1007,7 @@ const OrganizationCommandMenu = () => {
     organizationName: currentOrg.name,
     isRootOrganization,
     canReadAccessControl:
-      permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) ||
+      permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) ||
       permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) ||
       permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups) ||
       permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
