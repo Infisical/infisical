@@ -103,6 +103,26 @@ You can manually synchronize GitHub teams for all organization members who have 
     </Step>
 </Steps>
 
+## How members are matched
+
+Manual sync compares each GitHub username against the email address of every member in your
+organization. It tries three rules in order and stops at the first rule that identifies exactly one
+member:
+
+1. The part of the email address before the `@` equals the username, ignoring dots, hyphens and
+   underscores. `jane.doe@acme.com` matches `janedoe`.
+2. The username is that same email prefix followed by your organization's name. `jane@acme.com`
+   matches `janeacme`.
+3. The longest part of the email prefix is one whole part of the username. `j.smithson@acme.com`
+   matches `smithson-dev`.
+
+When two members match the same rule, the sync skips that GitHub user and lists them in the
+**Sync Now** result instead of choosing between them. Give one of the members an email address whose
+prefix matches their GitHub username to resolve it.
+
+A GitHub user who matches no member isn't added to any group. That's expected for accounts with no
+Infisical member, such as bots and outside collaborators.
+
 ## Troubleshooting
 
 <AccordionGroup>
