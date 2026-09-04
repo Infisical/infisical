@@ -739,7 +739,7 @@ export type TPamApprovalConfig = {
     integration: string;
     integrationSlug: string;
   })[];
-  breakGlassApprovers: { type: PamApproverType; id: string }[];
+  breakGlassUsers: { type: PamApproverType; id: string }[];
 };
 
 export type TPamAccessGrant = {
@@ -785,5 +785,5 @@ export type TSetPamApprovalConfigDTO = {
     approvers: { type: PamApproverType; id: string }[];
   }[];
   notificationConfigs?: TPamNotificationConfig[];
-  breakGlassApprovers?: { type: PamApproverType; id: string }[];
+  breakGlassUsers?: { type: PamApproverType; id: string }[];
 };

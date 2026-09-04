@@ -112,7 +112,7 @@ type TPamAccountServiceFactoryDep = {
     TPamAccessRequestServiceFactory,
     | "getAccessStatusBatch"
     | "getFolderPolicyConfigured"
-    | "getBreakGlassApproverFolders"
+    | "getBreakGlassUserFolders"
     | "cleanupAccountResources"
     | "checkGrant"
   >;
@@ -282,7 +282,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         PamAccessType.Credential
       ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
-      deps.pamAccessRequestService.getBreakGlassApproverFolders(
+      deps.pamAccessRequestService.getBreakGlassUserFolders(
         folderIdsRequiringApproval,
         { actorId: ctx.actorId, actor: ctx.actor },
         ctx.actorOrgId
@@ -1112,7 +1112,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         projectId
       ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
-      deps.pamAccessRequestService.getBreakGlassApproverFolders(
+      deps.pamAccessRequestService.getBreakGlassUserFolders(
         folderIdsRequiringApproval,
         { actorId: ctx.actorId, actor: ctx.actor },
         ctx.actorOrgId

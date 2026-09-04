@@ -144,7 +144,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
-  const [breakGlassApprovers, setBreakGlassApprovers] = useState<ApproverEntry[]>([]);
+  const [breakGlassUsers, setBreakGlassApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [notificationConfigs, setNotificationConfigs] = useState<TPamNotificationConfig[]>([]);
 
@@ -153,8 +153,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     return config.steps[0].approvers.map((a) => ({ type: a.type, id: a.id }));
   }, [config]);
 
-  const savedBreakGlassApprovers = useMemo(
-    () => (config?.breakGlassApprovers ?? []).map((a) => ({ type: a.type, id: a.id })),
+  const savedBreakGlassUsers = useMemo(
+    () => (config?.breakGlassUsers ?? []).map((a) => ({ type: a.type, id: a.id })),
     [config]
   );
 
@@ -182,8 +182,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   }, [savedApprovers]);
 
   useEffect(() => {
-    setBreakGlassApprovers(savedBreakGlassApprovers);
-  }, [savedBreakGlassApprovers]);
+    setBreakGlassApprovers(savedBreakGlassUsers);
+  }, [savedBreakGlassUsers]);
 
   useEffect(() => {
     setNotificationConfigs(savedNotificationConfigs);
@@ -194,8 +194,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     [notificationConfigs, savedNotificationConfigs]
   );
   const isBreakGlassDirty = useMemo(
-    () => JSON.stringify(breakGlassApprovers) !== JSON.stringify(savedBreakGlassApprovers),
-    [breakGlassApprovers, savedBreakGlassApprovers]
+    () => JSON.stringify(breakGlassUsers) !== JSON.stringify(savedBreakGlassUsers),
+    [breakGlassUsers, savedBreakGlassUsers]
   );
   const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty;
 
@@ -210,8 +210,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
 
   const selectedBreakGlassIds = useMemo(
-    () => new Set(breakGlassApprovers.map((a) => `${a.type}:${a.id}`)),
-    [breakGlassApprovers]
+    () => new Set(breakGlassUsers.map((a) => `${a.type}:${a.id}`)),
+    [breakGlassUsers]
   );
 
   const userMap = useMemo(
@@ -303,12 +303,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setIsDirty(true);
   };
 
-  const addBreakGlassApprover = (opt: ApproverOption | null) => {
+  const addBreakGlassUser = (opt: ApproverOption | null) => {
     if (!opt) return;
     setBreakGlassApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
   };
 
-  const removeBreakGlassApprover = (index: number) => {
+  const removeBreakGlassUser = (index: number) => {
     setBreakGlassApprovers((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -326,10 +326,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       return;
     }
 
-    if (breakGlassApprovers.length > 0 && approvers.length === 0) {
+    if (breakGlassUsers.length > 0 && approvers.length === 0) {
       createNotification({
         type: "error",
-        text: "Break-glass approvers need at least one approver to bypass"
+        text: "Break-glass users need at least one approver to skip"
       });
       return;
     }
@@ -338,7 +338,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       {
         folderId,
         steps: [{ approvers }],
-        breakGlassApprovers,
+        breakGlassUsers,
         // undefined leaves server-side configs untouched when the plan doesn't include the feature
         notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
       },
@@ -356,7 +356,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const handleDiscard = () => {
     setApprovers(savedApprovers);
-    setBreakGlassApprovers(savedBreakGlassApprovers);
+    setBreakGlassApprovers(savedBreakGlassUsers);
     setNotificationConfigs(savedNotificationConfigs);
     setIsDirty(false);
   };
@@ -461,12 +461,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="text-base">
-            Break-Glass Approvers
-            <Badge variant="pam">{breakGlassApprovers.length}</Badge>
+            Break-Glass Users
+            <Badge variant="pam">{breakGlassUsers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Users and groups who may self-approve their own request for accounts in this folder,
-            skipping the approvers above. Only applies to accounts whose template has the Allow
+            Users and groups who can grant themselves access to accounts in this folder in an
+            emergency, without an approver. Only applies to accounts whose template has the Allow
             Break-Glass policy on. Every use is recorded in the audit log and emailed to the
             approvers who were skipped.
           </CardDescription>
@@ -475,7 +475,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           <FilterableSelect
             value={null}
             options={breakGlassOptions}
-            onChange={(opt) => addBreakGlassApprover(opt as ApproverOption | null)}
+            onChange={(opt) => addBreakGlassUser(opt as ApproverOption | null)}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
             components={{ Option: ApproverSelectOption }}
@@ -485,9 +485,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
             }
           />
 
-          {breakGlassApprovers.length === 0 ? (
+          {breakGlassUsers.length === 0 ? (
             <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
-              No break-glass approvers configured. Nobody can bypass approval in this folder.
+              No break-glass users configured. Nobody can bypass approval in this folder.
             </div>
           ) : (
             <Table>
@@ -499,7 +499,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {breakGlassApprovers.map((approver, idx) => {
+                {breakGlassUsers.map((approver, idx) => {
                   const Icon = KIND_ICON[approver.type];
                   const displayName =
                     approver.type === PamApproverType.User
@@ -530,9 +530,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         <IconButton
                           variant="ghost"
                           size="xs"
-                          aria-label="Remove break-glass approver"
+                          aria-label="Remove break-glass user"
                           className="text-muted hover:text-danger"
-                          onClick={() => removeBreakGlassApprover(idx)}
+                          onClick={() => removeBreakGlassUser(idx)}
                         >
                           <Trash2 className="size-4" />
                         </IconButton>
@@ -651,7 +651,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  Self-approved, skipping the approvers.
                                   {request.bypassReason ? ` Reason: "${request.bypassReason}"` : ""}
                                 </TooltipContent>
                               </Tooltip>

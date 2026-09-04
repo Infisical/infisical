@@ -74,7 +74,7 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.AllowBreakGlass]: {
     label: "Allow Break-Glass",
     description:
-      "Designated break-glass users may self-approve their own request in an emergency. Has no effect until a folder admin names them under the folder's Approvals tab.",
+      "Designated break-glass users can grant themselves access in an emergency, without an approver. Has no effect until a folder admin names them under the folder's Approvals tab.",
     appliesTo: "all",
     schema: z.boolean()
   },

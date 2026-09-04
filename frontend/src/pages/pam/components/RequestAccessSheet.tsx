@@ -90,6 +90,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   accessType?: PamAccessType;
+  onGranted?: (account: TAccessiblePamAccount, accessType: PamAccessType) => void;
 };
 
 const ApproverChip = ({
@@ -173,7 +174,8 @@ export const RequestAccessSheet = ({
   account,
   isOpen,
   onOpenChange,
-  accessType = PamAccessType.Session
+  accessType = PamAccessType.Session,
+  onGranted
 }: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
@@ -228,6 +230,7 @@ export const RequestAccessSheet = ({
           });
           setBypassReason("");
           onOpenChange(false);
+          if (account) onGranted?.(account, accessType);
         }
       }
     );
@@ -256,6 +259,7 @@ export const RequestAccessSheet = ({
           });
           reset();
           onOpenChange(false);
+          if (breakGlassOnSubmit && account) onGranted?.(account, accessType);
         }
       }
     );

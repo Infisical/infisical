@@ -207,7 +207,7 @@ export const pamAccessRequestServiceFactory = ({
     return policy ?? null;
   };
 
-  const isFolderBreakGlassApprover = async (
+  const isFolderBreakGlassUser = async (
     policyId: string,
     userId: string,
     userGroupIds: Set<string>
@@ -491,18 +491,18 @@ export const pamAccessRequestServiceFactory = ({
 
     const policy = await findFolderPolicy(folderId);
     if (!policy) {
-      return { steps: [], notificationConfigs, breakGlassApprovers: [] };
+      return { steps: [], notificationConfigs, breakGlassUsers: [] };
     }
 
     // The policy row and step tuning fields are internal; the UI only needs the approver lists.
-    const [steps, breakGlassApprovers] = await Promise.all([
+    const [steps, breakGlassUsers] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policy.id),
       approvalPolicyDAL.findBypassersByPolicyId(policy.id)
     ]);
     return {
       steps: steps.map((s) => ({ approvers: s.approvers })),
       notificationConfigs,
-      breakGlassApprovers: breakGlassApprovers.map((b) => ({ type: b.type, id: b.id }))
+      breakGlassUsers: breakGlassUsers.map((b) => ({ type: b.type, id: b.id }))
     };
   };
 
@@ -511,7 +511,7 @@ export const pamAccessRequestServiceFactory = ({
     projectId,
     steps,
     notificationConfigs,
-    breakGlassApprovers,
+    breakGlassUsers,
     ...ctx
   }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
@@ -521,13 +521,13 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "Phase 1 only supports a single approval step" });
     }
 
-    // Approvers and break-glass approvers must be active members of the folder. This keeps both lists in
+    // Approvers and break-glass users must be active members of the folder. This keeps both lists in
     // sync with membership so that removing someone from the folder (which strips their approver rows)
     // can't be circumvented by designating a non-member or expired member.
     const requestedApprovers = steps.flatMap((s) => s.approvers);
-    const managesBreakGlass = breakGlassApprovers !== undefined;
-    const requestedBreakGlassApprovers = breakGlassApprovers ?? [];
-    if (requestedApprovers.length > 0 || requestedBreakGlassApprovers.length > 0) {
+    const managesBreakGlass = breakGlassUsers !== undefined;
+    const requestedBreakGlassUsers = breakGlassUsers ?? [];
+    if (requestedApprovers.length > 0 || requestedBreakGlassUsers.length > 0) {
       const memberships = await findActiveFolderMemberships(projectId, folderId);
       const memberUserIds = new Set(memberships.map((m) => m.actorUserId).filter(Boolean));
       const memberGroupIds = new Set(memberships.map((m) => m.actorGroupId).filter(Boolean));
@@ -540,27 +540,25 @@ export const pamAccessRequestServiceFactory = ({
         }
       }
 
-      for (const bypasser of requestedBreakGlassApprovers) {
+      for (const bypasser of requestedBreakGlassUsers) {
         if (!isFolderMember(bypasser)) {
-          throw new BadRequestError({ message: "Break-glass approvers must be members of the folder" });
+          throw new BadRequestError({ message: "Break-glass users must be members of the folder" });
         }
       }
     }
 
-    const dedupedBreakGlassApprovers = [
-      ...new Map(requestedBreakGlassApprovers.map((b) => [`${b.type}:${b.id}`, b])).values()
-    ];
+    const dedupedBreakGlassUsers = [...new Map(requestedBreakGlassUsers.map((b) => [`${b.type}:${b.id}`, b])).values()];
 
-    if (dedupedBreakGlassApprovers.length > 0 && requestedApprovers.length === 0) {
+    if (dedupedBreakGlassUsers.length > 0 && requestedApprovers.length === 0) {
       throw new BadRequestError({
-        message: "Break-glass approvers can only be configured on a folder that has approvers"
+        message: "Break-glass users can only be configured on a folder that has approvers"
       });
     }
 
-    const replaceBreakGlassApprovers = async (policyId: string, tx: Knex) => {
+    const replaceBreakGlassUsers = async (policyId: string, tx: Knex) => {
       if (!managesBreakGlass) return;
       await approvalPolicyBypassersDAL.delete({ policyId }, tx);
-      for (const bypasser of dedupedBreakGlassApprovers) {
+      for (const bypasser of dedupedBreakGlassUsers) {
         // eslint-disable-next-line no-await-in-loop
         await approvalPolicyBypassersDAL.create(
           {
@@ -633,12 +631,12 @@ export const pamAccessRequestServiceFactory = ({
         folderId,
         stepCount: steps.length,
         notificationConfigCount,
-        breakGlassApproverCount: 0
+        breakGlassUserCount: 0
       };
     }
 
     if (!hasApprovers) {
-      return { policyId: null, folderId, stepCount: 0, notificationConfigCount, breakGlassApproverCount: 0 };
+      return { policyId: null, folderId, stepCount: 0, notificationConfigCount, breakGlassUserCount: 0 };
     }
 
     if (existingPolicy) {
@@ -670,7 +668,7 @@ export const pamAccessRequestServiceFactory = ({
           }
         }
 
-        await replaceBreakGlassApprovers(existingPolicy.id, tx);
+        await replaceBreakGlassUsers(existingPolicy.id, tx);
       });
 
       return {
@@ -678,7 +676,7 @@ export const pamAccessRequestServiceFactory = ({
         folderId,
         stepCount: steps.length,
         notificationConfigCount,
-        breakGlassApproverCount: managesBreakGlass ? dedupedBreakGlassApprovers.length : undefined
+        breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined
       };
     }
 
@@ -723,7 +721,7 @@ export const pamAccessRequestServiceFactory = ({
         }
       }
 
-      await replaceBreakGlassApprovers(policy.id, tx);
+      await replaceBreakGlassUsers(policy.id, tx);
 
       return policy;
     });
@@ -733,7 +731,7 @@ export const pamAccessRequestServiceFactory = ({
       folderId,
       stepCount: steps.length,
       notificationConfigCount,
-      breakGlassApproverCount: managesBreakGlass ? dedupedBreakGlassApprovers.length : undefined
+      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined
     };
   };
 
@@ -883,9 +881,9 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
-    if (!(await isFolderBreakGlassApprover(policy.id, ctx.actorId, userGroupIds))) {
+    if (!(await isFolderBreakGlassUser(policy.id, ctx.actorId, userGroupIds))) {
       throw new ForbiddenRequestError({
-        message: "You are not a break-glass approver for this folder"
+        message: "You are not a break-glass user for this folder"
       });
     }
 
@@ -2005,9 +2003,9 @@ export const pamAccessRequestServiceFactory = ({
     return new Set(scopeIds);
   };
 
-  // Of the given folders, the ones where this actor is a named break-glass approver. Drives whether the
+  // Of the given folders, the ones where this actor is a named break-glass user. Drives whether the
   // account list offers the break-glass action at all.
-  const getBreakGlassApproverFolders = async (
+  const getBreakGlassUserFolders = async (
     folderIds: string[],
     actorCtx: TAccessRequestActor,
     orgId: string
@@ -2155,7 +2153,7 @@ export const pamAccessRequestServiceFactory = ({
     checkGrant,
     getAccessStatusBatch,
     getFolderPolicyConfigured,
-    getBreakGlassApproverFolders,
+    getBreakGlassUserFolders,
     cleanupFolderResources,
     cleanupAccountResources
   };

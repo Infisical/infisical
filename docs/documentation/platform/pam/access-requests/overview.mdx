@@ -115,7 +115,7 @@ It grants no standing access. The responder still files a request, still gives a
 Break-glass needs two switches on, and a different person owns each one:
 
 - The **Product Admin** turns on **Allow Break-Glass** on the [template](/documentation/platform/pam/templates/overview). This sets which accounts can ever be broken into.
-- The **Folder Admin** names the break-glass approvers on the folder's **Approvals** tab. This sets who can do it.
+- The **Folder Admin** names the break-glass users on the folder's **Approvals** tab. This sets who can do it.
 
 An empty break-glass list means nobody, not everybody, so the template policy on its own changes nothing until a Folder Admin names someone.
 
@@ -126,7 +126,7 @@ An empty break-glass list means nobody, not everybody, so the template policy on
 ```mermaid
 graph TD
     T["Product Admin<br/>turns on Allow Break-Glass<br/>on the template"]
-    F["Folder Admin<br/>names break-glass approvers<br/>on the Approvals tab"]
+    F["Folder Admin<br/>names break-glass users<br/>on the Approvals tab"]
     B["Responder can break glass"]
 
     T --> B
@@ -140,9 +140,9 @@ graph TD
     Go to **Privileged Access Management → Account Templates**, open the template, and turn on **Allow Break-Glass** alongside **Require Approval**.
   </Step>
   <Step title="Name the responders (Folder Admin)">
-    Open the folder, go to its **Approvals** tab, and add users or groups under **Break-Glass Approvers**.
+    Open the folder, go to its **Approvals** tab, and add users or groups under **Break-Glass Users**.
 
-    Break-glass approvers must be members of the folder, same as ordinary approvers, so the picker only offers people who already belong to it. Keep the list to your on-call responders rather than everyone who might need the account.
+    Break-glass users must be members of the folder, same as ordinary approvers, so the picker only offers people who already belong to it. Keep the list to your on-call responders rather than everyone who might need the account.
   </Step>
 </Steps>
 
@@ -164,7 +164,7 @@ Every use of break-glass:
 - Notifies them in the app
 - Posts to the folder's Slack channels, if you've configured notifications on the folder
 - Writes a **PAM Access Policy Bypassed** entry to the [audit log](/documentation/platform/pam/auditing) with the reason, the account, the folder, and how many approvers were skipped
-- Marks the request with a **Break-glass** badge, in the folder's request history and in the approver's own queue
+- Marks the request with a **Break-glass** badge in the folder's request history
 
 The badge and the audit entry are permanent.
 

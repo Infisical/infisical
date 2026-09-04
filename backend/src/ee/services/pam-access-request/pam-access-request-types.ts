@@ -23,7 +23,7 @@ export type TSetApprovalConfigurationDTO = {
   }[];
   // undefined leaves existing configs unchanged so older clients that only manage steps can't wipe them
   notificationConfigs?: TPamNotificationConfigInput[];
-  breakGlassApprovers?: { type: ApproverType; id: string }[];
+  breakGlassUsers?: { type: ApproverType; id: string }[];
 } & TActorContext;
 
 export type TBreakGlassAccessRequestDTO = {

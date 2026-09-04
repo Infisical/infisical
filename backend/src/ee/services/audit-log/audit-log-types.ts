@@ -6183,7 +6183,7 @@ interface PamApprovalConfigUpdateEvent {
     policyId: string | null;
     stepCount: number;
     notificationConfigCount?: number;
-    breakGlassApproverCount?: number;
+    breakGlassUserCount?: number;
   };
 }
 
