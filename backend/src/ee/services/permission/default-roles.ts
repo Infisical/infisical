@@ -884,14 +884,16 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 };
 
 // A member reaches bundles through the Agent Vault membership table, not through project role rules, so
-// their project ability is directory visibility plus the two things a member genuinely does: mint and
+// their project ability is the three things a member genuinely does: read the bundles they hold, mint and
 // revoke their own sessions, and read a proxy's fingerprint so they can pin it.
+//
+// Deliberately narrower than PAM's member set, which also carries Member, Groups and Identity read as
+// directory visibility. Nothing a member sees here needs a roster: Access Control is an admin page with
+// no member nav entry, and the Sessions page takes actor names from the sessions response. Granting the
+// reads anyway would let any member enumerate every person, group and machine identity in the product,
+// through this product's routes and through the generic project ones alike.
 const buildAgentVaultProjectMemberPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can([ProjectPermissionMemberActions.Read], ProjectPermissionSub.Member);
-  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
-  can([ProjectPermissionIdentityActions.Read], ProjectPermissionSub.Identity);
 
   can([ProjectPermissionAgentVaultAccessBundleActions.Read], ProjectPermissionSub.AgentVaultAccessBundles);
   can(

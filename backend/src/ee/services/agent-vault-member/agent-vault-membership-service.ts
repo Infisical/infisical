@@ -1,8 +1,10 @@
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
@@ -236,10 +238,10 @@ export const agentVaultMembershipServiceFactory = ({
     return { memberships, skipped };
   };
 
-  // The whole set rather than a page: the grant picker filters client-side, so a page would make
-  // search unable to find an identity it never fetched. Mirrors PAM's product membership listing.
-  const assertReadable = async (projectId: string, ctx: TAgentVaultActorContext) =>
-    permissionService.getProjectPermission({
+  // The roster is administrative: the member role carries no Identity read, so a member enumerating
+  // every machine identity in the product is refused here rather than gated on membership alone.
+  const assertCanReadIdentities = async (projectId: string, ctx: TAgentVaultActorContext) => {
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -247,6 +249,11 @@ export const agentVaultMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.AgentVault
     });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
+  };
 
   // Roles come back in one query rather than one per membership: the pool is small and this list is
   // rendered on every visit to Access Control.
@@ -272,7 +279,7 @@ export const agentVaultMembershipServiceFactory = ({
 
   /** Identity members with their name attached, so the page never joins against the org identity list. */
   const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
-    await assertReadable(projectId, ctx);
+    await assertCanReadIdentities(projectId, ctx);
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityMemberships = memberships.filter((m) => m.actorIdentityId);
@@ -426,15 +433,10 @@ export const agentVaultMembershipServiceFactory = ({
     return { ...dto };
   };
 
+  // The whole set rather than a page: the grant picker filters client-side, so a page would make search
+  // unable to find an identity it never fetched.
   const listProductIdentities = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
-    await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.AgentVault
-    });
+    await assertCanReadIdentities(projectId, ctx);
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityIds = memberships.map((m) => m.actorIdentityId).filter((id): id is string => Boolean(id));

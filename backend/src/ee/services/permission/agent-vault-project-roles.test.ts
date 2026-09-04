@@ -12,6 +12,9 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionCmekActions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -72,6 +75,13 @@ describe("agent vault project roles", () => {
       )
     ).toBe(false);
     expect(member.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
+
+    // No directory visibility, unlike PAM's member set: a member holding these could enumerate every
+    // person, group and machine identity in the product, through the generic project routes as well as
+    // this product's own.
+    expect(member.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member)).toBe(false);
+    expect(member.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups)).toBe(false);
+    expect(member.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)).toBe(false);
   });
 
   test("a custom role carrying the full admin rules still resolves to the member set", () => {

@@ -63,7 +63,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/identities",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "listAgentVaultProductIdentityMembers",
+      operationId: "listAgentVaultProductIdentities",
       description: "List the machine identities that are members of Agent Vault",
       tags: [ApiDocsTags.AgentVaultMemberships],
       response: {
