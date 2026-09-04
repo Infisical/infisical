@@ -18,9 +18,9 @@ You'll do four things: create an access bundle with one connection, enroll a pro
 
 In the dashboard, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
 
-Select **Add Connection**. Pick the **GitHub** template, paste your token as the **Value**, and keep the pre-filled hosts. Select **Save**.
+Select **Add Connection**. Pick the **GitHub** template, keep the hosts it fills in, paste your token into **Token**, and select **Add Connection** on the review step.
 
-The connection now says what the proxy will send: `Authorization: Bearer <your token>` on requests to `api.github.com:443`, and nothing anywhere else.
+The connection now says what the proxy will send: `Authorization: Bearer <your token>` on requests to `api.github.com`, and nothing anywhere else.
 
 <Note>
   The template fills in the hosts and how the header is built. A custom connection lets you set the header name and prefix yourself, for APIs that expect `X-API-Key` or a bare token. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
@@ -30,7 +30,7 @@ You're an admin, so you can already mint sessions over this bundle. To let a tea
 
 ## 2. Create and enroll a proxy
 
-Go to **Proxies** and select **Create Proxy**. Name it `egress`, leave **Unmatched Hosts** on **Allow**, and select **Create Proxy**.
+Go to **Proxies** and select **Create Proxy**. Name it `egress`, leave **Uncovered Hosts** on **Allow**, and select **Create Proxy**.
 
 The dialog that follows shows a one-time enrollment token and the command to run. On the machine that will be the proxy:
 

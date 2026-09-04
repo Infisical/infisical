@@ -59,7 +59,7 @@ A bundle has a name, an optional description, its connections, and its members. 
 Bundles are how access is scoped: an agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
 
 <Warning>
-  Deleting a bundle removes it from every live session that carries it. Agents running with those sessions lose the bundle's connections within one poll interval. The delete dialog tells you how many live sessions that affects.
+  Deleting a bundle removes it from every live session that carries it. Agents running with those sessions lose the bundle's connections within one poll interval.
 </Warning>
 
 Removing a member from a bundle, or from Agent Vault itself, has the same effect on their running sessions: the proxy stops attaching that bundle's credentials on its next poll. See [Sessions](/documentation/platform/agent-vault/sessions) for how that re-check works.

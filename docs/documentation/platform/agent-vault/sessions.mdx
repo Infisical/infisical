@@ -32,17 +32,17 @@ Anyone with a grant on at least one bundle can mint a session, from the dashboar
   </Tab>
 </Tabs>
 
-The Create Session dialog shows every host the session can reach, as the union of its bundles' connections. It says nothing about hosts outside that list, because what happens to them depends on the proxy the agent ends up using. See [Proxies](/documentation/platform/agent-vault/proxies#unmatched-hosts).
+The Create Session dialog lists each bundle you pick with the hosts its connections cover. It says nothing about hosts outside those, because what happens to them depends on the proxy the agent ends up using. See [Proxies](/documentation/platform/agent-vault/proxies#unmatched-hosts).
 
 ### Bundle order
 
-When two chosen bundles cover the same host with identical patterns, the bundle listed first wins. The dialog warns you when that's the case and lets you reorder. An exact host in a later bundle still beats a wildcard in an earlier one; order only decides ties.
+When two chosen bundles cover the same host with identical patterns, the bundle listed first wins, and the dialog lets you reorder them. An exact host in a later bundle still beats a wildcard in an earlier one; order only decides ties.
 
 ### How long a session lives
 
 Pick one of 1 hour, 8 hours, 24 hours, 7 days, or never. Seven days is the default.
 
-**Never** is allowed for every member and is marked in the Sessions list so it stands out. A session that never expires is a standing token that makes a proxy attach production credentials, so revoke it when the agent that used it's gone.
+**Never** is allowed for every member, and the Sessions list shows it in place of an expiry date. A session that never expires is a standing token that makes a proxy attach production credentials, so revoke it when the agent that used it's gone.
 
 ## What a running agent can reach
 
@@ -61,7 +61,7 @@ Select the session's menu on the Sessions page and choose **Revoke Session**. Th
 
 An expired session stops working the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days before deleting them, so you have a month to reconstruct what an agent could reach.
 
-Admins see every session in the organization under **Everyone**; members see only their own.
+Admins can switch the Sessions list between **All Sessions** and **My Sessions**; members see only their own.
 
 ## Audit trail
 
