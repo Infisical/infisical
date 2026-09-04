@@ -152,10 +152,15 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: z.object({
-        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.ACCESS_BUNDLE.name),
-        description: AccessBundleDescriptionSchema.nullable().optional()
-      }),
+      body: z
+        .object({
+          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.ACCESS_BUNDLE.name),
+          description: AccessBundleDescriptionSchema.nullable().optional()
+        })
+        .refine(
+          (body) => body.name !== undefined || body.description !== undefined,
+          "Provide at least one of 'name' or 'description' to update"
+        ),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -284,13 +289,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         connectionId: z.string().uuid().describe(AGENT_VAULT.CONNECTION.connectionId)
       }),
-      body: z.object({
-        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.CONNECTION.name),
-        hostPattern: AgentVaultHostPatternSchema.optional(),
-        // A patch, not a replacement: omit the credential to leave it alone, or send it with only the
-        // fields that change. See AgentVaultCredentialUpdateSchema.
-        credential: AgentVaultCredentialUpdateSchema.optional()
-      }),
+      body: z
+        .object({
+          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.CONNECTION.name),
+          hostPattern: AgentVaultHostPatternSchema.optional(),
+          // A patch, not a replacement: omit the credential to leave it alone, or send it with only the
+          // fields that change. See AgentVaultCredentialUpdateSchema.
+          credential: AgentVaultCredentialUpdateSchema.optional()
+        })
+        .refine(
+          (body) => body.name !== undefined || body.hostPattern !== undefined || body.credential !== undefined,
+          "Provide at least one of 'name', 'hostPattern' or 'credential' to update"
+        ),
       response: {
         200: z.object({
           connection: AgentVaultConnectionSchema,

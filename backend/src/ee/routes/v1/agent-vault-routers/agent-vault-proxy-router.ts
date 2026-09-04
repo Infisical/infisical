@@ -120,12 +120,21 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       description: "Update an Agent Vault proxy's name or settings",
       tags: [ApiDocsTags.AgentVaultProxies],
       params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
-      body: z.object({
-        name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
-        unmatchedHost: ProxySettingsSchema.unmatchedHost.optional(),
-        bypassHosts: ProxySettingsSchema.bypassHosts.optional(),
-        pollInterval: ProxySettingsSchema.pollInterval.optional()
-      }),
+      body: z
+        .object({
+          name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
+          unmatchedHost: ProxySettingsSchema.unmatchedHost.optional(),
+          bypassHosts: ProxySettingsSchema.bypassHosts.optional(),
+          pollInterval: ProxySettingsSchema.pollInterval.optional()
+        })
+        .refine(
+          (body) =>
+            body.name !== undefined ||
+            body.unmatchedHost !== undefined ||
+            body.bypassHosts !== undefined ||
+            body.pollInterval !== undefined,
+          "Provide at least one setting to update"
+        ),
       response: { 200: z.object({ proxy: ProxyAdminViewSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
