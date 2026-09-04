@@ -1,7 +1,6 @@
 import { subject } from "@casl/ability";
 import {
   AlertTriangleIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   EditIcon,
   FileKeyIcon,
@@ -32,6 +31,13 @@ import { useToggle } from "@app/hooks";
 import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_EXPAND_ICON_CLASS_NAME,
+  TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_RESOURCE_ICON_CLASS_NAME
+} from "../tableRowActionStyles";
 
 type DynamicSecretWithEnv = TDynamicSecret & { environment: string };
 
@@ -105,7 +111,12 @@ export const DynamicSecretTableRow = ({
     const isRevoking = dynamicSecret.status === DynamicSecretStatus.Deleting;
 
     return (
-      <div className="flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5 shadow-md">
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover p-0.5",
+          TABLE_ROW_ACTION_BAR_CLASS_NAME
+        )}
+      >
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.Lease}
           a={subject(ProjectPermissionSub.DynamicSecrets, {
@@ -121,7 +132,7 @@ export const DynamicSecretTableRow = ({
                   aria-label="View leases"
                   variant="ghost"
                   size="xs"
-                  className="border-0"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -150,7 +161,7 @@ export const DynamicSecretTableRow = ({
                   aria-label="Generate lease"
                   variant="ghost"
                   size="xs"
-                  className="border-0"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -179,7 +190,7 @@ export const DynamicSecretTableRow = ({
                   aria-label="Edit dynamic secret"
                   variant="ghost"
                   size="xs"
-                  className="border-0"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -209,7 +220,7 @@ export const DynamicSecretTableRow = ({
                     aria-label="Force delete dynamic secret"
                     variant="ghost"
                     size="xs"
-                    className="border-0 hover:text-danger"
+                    className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                     isDisabled={!isAllowed}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -239,7 +250,7 @@ export const DynamicSecretTableRow = ({
                   aria-label="Delete dynamic secret"
                   variant="ghost"
                   size="xs"
-                  className="border-0 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -265,27 +276,28 @@ export const DynamicSecretTableRow = ({
       >
         <TableCell
           className={twMerge(
+            "w-10 max-w-10 min-w-10 p-0",
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
-          {!isSingleEnvView ? (
-            <IconButton
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${dynamicSecretName}`}
-              aria-expanded={isExpanded}
-              variant="ghost-muted"
-              size="2xs"
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsExpanded.toggle();
-              }}
-            >
-              {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            </IconButton>
-          ) : (
-            <FingerprintIcon className="text-dynamic-secret" />
-          )}
+          <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            <FingerprintIcon
+              className={twMerge(
+                "text-dynamic-secret",
+                !isSingleEnvView && !isExpanded && TABLE_ROW_RESOURCE_ICON_CLASS_NAME,
+                !isSingleEnvView && isExpanded && "hidden"
+              )}
+            />
+            {!isSingleEnvView && (
+              <ChevronRightIcon
+                className={
+                  isExpanded ? TABLE_ROW_EXPANDED_ICON_CLASS_NAME : TABLE_ROW_EXPAND_ICON_CLASS_NAME
+                }
+              />
+            )}
+          </div>
         </TableCell>
         <TableCell
           className={twMerge(
@@ -351,17 +363,18 @@ export const DynamicSecretTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
+              className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader>
+              <Table containerClassName="rounded-none border-0">
+                <TableHeader className="bg-container-hover">
                   <TableRow>
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className="w-full">Environment</TableHead>
-                    <TableHead />
+                    <TableHead variant="action" className="w-px" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -375,6 +388,7 @@ export const DynamicSecretTableRow = ({
 
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
+                          <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                           <TableCell colSpan={2}>
                             <div className="relative flex w-full flex-wrap items-center pr-40">
                               <span>{envName}</span>

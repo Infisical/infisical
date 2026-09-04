@@ -9,12 +9,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
+  ArrowDownZAIcon,
+  ArrowUpAZIcon,
   ArrowUpDownIcon,
+  CalendarArrowDownIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockArrowDownIcon,
+  ClockArrowUpIcon,
   CopyIcon,
   DownloadIcon,
-  EllipsisIcon,
   EyeIcon,
   EyeOffIcon,
   GitCommitIcon,
@@ -309,40 +314,47 @@ const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: Or
 
 const SECRET_RECENCY_SORT_OPTIONS = [
   {
-    label: "Last edited — newest first",
+    label: "Last edited (New)",
+    Icon: ClockArrowUpIcon,
     orderBy: DashboardSecretsOrderBy.UpdatedAt,
     orderDirection: OrderByDirection.DESC
   },
   {
-    label: "Last edited — oldest first",
+    label: "Last edited (Old)",
+    Icon: ClockArrowDownIcon,
     orderBy: DashboardSecretsOrderBy.UpdatedAt,
     orderDirection: OrderByDirection.ASC
   },
   {
-    label: "Created — newest first",
+    label: "Created (New)",
+    Icon: CalendarArrowDownIcon,
     orderBy: DashboardSecretsOrderBy.CreatedAt,
     orderDirection: OrderByDirection.DESC
   },
   {
-    label: "Created — oldest first",
+    label: "Created (Old)",
+    Icon: CalendarArrowDownIcon,
     orderBy: DashboardSecretsOrderBy.CreatedAt,
     orderDirection: OrderByDirection.ASC
   }
 ] as const;
 
-const SECRET_SORT_OPTIONS = [
+const SECRET_NAME_SORT_OPTIONS = [
   {
-    label: "Name — A to Z",
+    label: "Name (A to Z)",
+    Icon: ArrowUpAZIcon,
     orderBy: DashboardSecretsOrderBy.Name,
     orderDirection: OrderByDirection.ASC
   },
   {
-    label: "Name — Z to A",
+    label: "Name (Z to A)",
+    Icon: ArrowDownZAIcon,
     orderBy: DashboardSecretsOrderBy.Name,
     orderDirection: OrderByDirection.DESC
-  },
-  ...SECRET_RECENCY_SORT_OPTIONS
+  }
 ] as const;
+
+const SECRET_SORT_OPTIONS = [...SECRET_NAME_SORT_OPTIONS, ...SECRET_RECENCY_SORT_OPTIONS] as const;
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -564,15 +576,28 @@ const OverviewPageContent = () => {
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
 
   useEffect(() => {
-    if (
+    const shouldClearSortEnvironment =
       sortEnvironment &&
       (visibleEnvs.length === 1 ||
-        !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
-    ) {
+        !visibleEnvs.some((environment) => environment.slug === sortEnvironment));
+    const wouldAggregateRecency =
+      orderBy !== DashboardSecretsOrderBy.Name &&
+      visibleEnvs.length > 1 &&
+      (!sortEnvironment || shouldClearSortEnvironment);
+
+    if (shouldClearSortEnvironment) {
       setSortEnvironment(undefined);
+    }
+
+    if (wouldAggregateRecency) {
+      setOrderBy(DashboardSecretsOrderBy.Name);
+      setOrderDirection(OrderByDirection.ASC);
+    }
+
+    if (shouldClearSortEnvironment || wouldAggregateRecency) {
       setPage(1);
     }
-  }, [sortEnvironment, visibleEnvs, setPage]);
+  }, [orderBy, sortEnvironment, visibleEnvs, setOrderBy, setOrderDirection, setPage]);
 
   const handleSecretSortChange = useCallback(
     (value: string, environment?: string) => {
@@ -596,14 +621,14 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
+  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  const NameHeaderSortIcon = sortEnvironment ? ArrowUpDownIcon : ActiveSecretSortIcon;
   let activeSecretSortScope = "";
   if (sortEnvironment) {
     activeSecretSortScope = ` in ${
       visibleEnvs.find((environment) => environment.slug === sortEnvironment)?.name ??
       sortEnvironment
     }`;
-  } else if (visibleEnvs.length > 1 && orderBy !== DashboardSecretsOrderBy.Name) {
-    activeSecretSortScope = " across visible environments";
   }
 
   const relevantPendingApprovalsCount = useMemo(() => {
@@ -2890,7 +2915,7 @@ const OverviewPageContent = () => {
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex min-w-0 items-center overflow-hidden px-2 whitespace-nowrap">
+            <div className="flex min-w-0 items-center overflow-hidden px-1 whitespace-nowrap">
               <FolderBreadcrumb
                 secretPath={secretPath}
                 onManageFolderAccess={
@@ -3055,17 +3080,19 @@ const OverviewPageContent = () => {
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
-                          "left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container"
+                          "left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container p-0"
                         )}
                       >
-                        <Checkbox
-                          variant="project"
-                          isDisabled={!hasSelectableRows || hasPendingBatchChanges}
-                          id="checkbox-select-all-rows"
-                          isChecked={allRowsSelectedOnPage.isChecked}
-                          isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
-                          onCheckedChange={toggleSelectAllRows}
-                        />
+                        <div className="flex h-full items-center justify-center [&>svg]:size-4">
+                          <Checkbox
+                            variant="project"
+                            isDisabled={!hasSelectableRows || hasPendingBatchChanges}
+                            id="checkbox-select-all-rows"
+                            isChecked={allRowsSelectedOnPage.isChecked}
+                            isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                            onCheckedChange={toggleSelectAllRows}
+                          />
+                        </div>
                       </TableHead>
                       <TableHead
                         className={twMerge(
@@ -3077,18 +3104,27 @@ const OverviewPageContent = () => {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="flex h-full w-full items-center gap-2 px-3 text-left hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name — A to Z"}${activeSecretSortScope}`}
+                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}${activeSecretSortScope}`}
                             >
-                              <span>Name</span>
-                              <ArrowUpDownIcon className="size-3.5 shrink-0" />
+                              <span className={twMerge(!sortEnvironment && "text-foreground")}>
+                                Name
+                              </span>
+                              <NameHeaderSortIcon
+                                className={twMerge(
+                                  "size-3.5 shrink-0",
+                                  !sortEnvironment && "text-foreground"
+                                )}
+                              />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-64">
+                          <DropdownMenuContent
+                            align="start"
+                            className="w-64"
+                            onCloseAutoFocus={(event) => event.preventDefault()}
+                          >
                             <DropdownMenuLabel>
-                              {visibleEnvs.length > 1
-                                ? "Sort across visible environments"
-                                : "Sort secrets"}
+                              {visibleEnvs.length > 1 ? "Sort secret names" : "Sort secrets"}
                             </DropdownMenuLabel>
                             <DropdownMenuRadioGroup
                               value={
@@ -3096,11 +3132,15 @@ const OverviewPageContent = () => {
                               }
                               onValueChange={(value) => handleSecretSortChange(value)}
                             >
-                              {SECRET_SORT_OPTIONS.map((option) => (
+                              {(visibleEnvs.length > 1
+                                ? SECRET_NAME_SORT_OPTIONS
+                                : SECRET_SORT_OPTIONS
+                              ).map((option) => (
                                 <DropdownMenuRadioItem
                                   key={getSecretSortValue(option.orderBy, option.orderDirection)}
                                   value={getSecretSortValue(option.orderBy, option.orderDirection)}
                                 >
+                                  <option.Icon />
                                   {option.label}
                                 </DropdownMenuRadioItem>
                               ))}
@@ -3125,16 +3165,27 @@ const OverviewPageContent = () => {
                                         ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
                                         : ""
                                     }`}
-                                    className="flex h-full min-w-40 items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                                    className="flex h-full w-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
-                                    <span className="whitespace-nowrap">{name}</span>
-                                    {sortEnvironment === slug && (
-                                      <ArrowUpDownIcon className="size-3.5 shrink-0 text-primary" />
+                                    <span
+                                      className={twMerge(
+                                        "whitespace-nowrap",
+                                        sortEnvironment === slug && "text-foreground"
+                                      )}
+                                    >
+                                      {name}
+                                    </span>
+                                    {sortEnvironment === slug ? (
+                                      <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                                    ) : (
+                                      <ChevronDownIcon className="size-3.5 shrink-0" />
                                     )}
-                                    <EllipsisIcon className="size-3.5 shrink-0" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent
+                                  align="end"
+                                  onCloseAutoFocus={(event) => event.preventDefault()}
+                                >
                                   <DropdownMenuSub>
                                     <DropdownMenuSubTrigger>
                                       <ArrowUpDownIcon />
@@ -3163,6 +3214,7 @@ const OverviewPageContent = () => {
                                               option.orderDirection
                                             )}
                                           >
+                                            <option.Icon />
                                             {option.label}
                                           </DropdownMenuRadioItem>
                                         ))}
@@ -3349,7 +3401,7 @@ const OverviewPageContent = () => {
                           <TableCell
                             className={twMerge(
                               !isSingleEnvView && "sticky",
-                              "left-0 z-10 bg-container group-hover:bg-container-hover"
+                              "left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 group-hover:bg-container-hover"
                             )}
                           >
                             <Skeleton className="h-4 w-full" />

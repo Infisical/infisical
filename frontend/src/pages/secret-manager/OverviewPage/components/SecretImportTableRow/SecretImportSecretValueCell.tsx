@@ -14,6 +14,11 @@ import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+} from "../tableRowActionStyles";
+
 type Props = {
   secretKey: string;
   environment: string;
@@ -99,16 +104,16 @@ export const SecretImportSecretValueCell = ({
         className={twMerge(
           "absolute top-1/2 -right-1.5 z-20 -translate-y-1/2",
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          TABLE_ROW_ACTION_BAR_CLASS_NAME
         )}
       >
         <Tooltip>
           <TooltipTrigger>
             <IconButton
+              aria-label={`Copy value for ${secretKey}`}
               variant="ghost"
               size="xs"
-              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
               onClick={handleCopyValue}
             >
               {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}

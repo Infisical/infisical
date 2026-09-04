@@ -62,6 +62,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
+  DashboardSecretsOrderBy,
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
   type SecretOrderBy,
@@ -1269,8 +1270,17 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
-    const sortFolderIds = params.sortEnvironment
-      ? folders.filter((folder) => folder.environment.slug === params.sortEnvironment).map((folder) => folder.id)
+    const isRecencySort = params.orderBy && params.orderBy !== DashboardSecretsOrderBy.Name;
+    const recencySortEnvironment = params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined);
+
+    if (isRecencySort && !recencySortEnvironment) {
+      throw new BadRequestError({
+        message: "A sort environment is required for recency sorting when multiple environments are requested"
+      });
+    }
+
+    const sortFolderIds = recencySortEnvironment
+      ? folders.filter((folder) => folder.environment.slug === recencySortEnvironment).map((folder) => folder.id)
       : undefined;
 
     const { secrets } = await getSecretsByFolderMappings(

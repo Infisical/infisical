@@ -52,6 +52,10 @@ import { ProjectEnv } from "@app/hooks/api/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+} from "../tableRowActionStyles";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -267,6 +271,7 @@ export const SecretTableRow = ({
       >
         <TableCell
           className={twMerge(
+            "w-10 max-w-10 min-w-10 p-0",
             !isSingleEnvView && "sticky left-0 z-10",
             !singleEnvPendingAction &&
               "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -276,57 +281,59 @@ export const SecretTableRow = ({
             pendingActionBorderClass(singleEnvPendingAction)
           )}
         >
-          <Checkbox
-            variant="project"
-            id={`checkbox-${secretKey}`}
-            isChecked={isSelected}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSecretSelect(secretKey, e.shiftKey);
-            }}
-            className={twMerge(
-              "hidden",
-              !isSelectionDisabled && "group-hover:flex",
-              isSelected && "flex"
-            )}
-          />
-          {!isSingleEnvView && isFormExpanded ? (
-            <ChevronDownIcon
+          <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            <Checkbox
+              variant="project"
+              id={`checkbox-${secretKey}`}
+              isChecked={isSelected}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSecretSelect(secretKey, e.shiftKey);
+              }}
               className={twMerge(
-                "block",
-                !isSelectionDisabled && "group-hover:!hidden",
-                isSelected && "!hidden"
+                "hidden",
+                !isSelectionDisabled && "group-hover:flex",
+                isSelected && "flex"
               )}
             />
-          ) : (
-            <>
-              <KeyIcon
+            {!isSingleEnvView && isFormExpanded ? (
+              <ChevronDownIcon
                 className={twMerge(
-                  "block text-secret",
+                  "block",
                   !isSelectionDisabled && "group-hover:!hidden",
                   isSelected && "!hidden"
                 )}
               />
-              {singleEnvSecret?.isRotatedSecret && isSingleEnvView && (
-                <RefreshCwIcon
+            ) : (
+              <>
+                <KeyIcon
                   className={twMerge(
-                    "absolute right-2 bottom-2 !size-2.5 text-secret-rotation",
+                    "block text-secret",
                     !isSelectionDisabled && "group-hover:!hidden",
                     isSelected && "!hidden"
                   )}
                 />
-              )}
-              {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
-                <HexagonIcon
-                  className={twMerge(
-                    "absolute right-2 bottom-2 !size-2.5 text-warning",
-                    !isSelectionDisabled && "group-hover:!hidden",
-                    isSelected && "!hidden"
-                  )}
-                />
-              )}
-            </>
-          )}
+                {singleEnvSecret?.isRotatedSecret && isSingleEnvView && (
+                  <RefreshCwIcon
+                    className={twMerge(
+                      "absolute right-2 bottom-2 !size-2.5 text-secret-rotation",
+                      !isSelectionDisabled && "group-hover:!hidden",
+                      isSelected && "!hidden"
+                    )}
+                  />
+                )}
+                {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
+                  <HexagonIcon
+                    className={twMerge(
+                      "absolute right-2 bottom-2 !size-2.5 text-warning",
+                      !isSelectionDisabled && "group-hover:!hidden",
+                      isSelected && "!hidden"
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </TableCell>
         {isSingleEnvView ? (
           <SecretEditTableRow
@@ -407,14 +414,14 @@ export const SecretTableRow = ({
               className={twMerge(
                 "absolute z-20",
                 "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                "pointer-events-none opacity-0 transition-all duration-300",
-                "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+                TABLE_ROW_ACTION_BAR_CLASS_NAME,
                 "top-1/2 right-[3px] -translate-y-1/2"
               )}
             >
               <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Copy secret name"
                     variant="ghost"
                     size="xs"
                     onClick={(e) => {
@@ -422,7 +429,7 @@ export const SecretTableRow = ({
                       e.stopPropagation();
                       copyTokenToClipboard();
                     }}
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   >
                     {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
                   </IconButton>
@@ -432,13 +439,14 @@ export const SecretTableRow = ({
               <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Edit secret name"
                     variant="ghost"
                     size="xs"
                     onClick={(e) => {
                       setIsEditSecretNameOpen(true);
                       e.stopPropagation();
                     }}
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   >
                     <EditIcon />
                   </IconButton>
@@ -547,7 +555,7 @@ export const SecretTableRow = ({
               <Table containerClassName="rounded-none border-0">
                 <TableHeader className="bg-container-hover">
                   <TableRow>
-                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10" />
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
                       className="w-px min-w-40 lg:min-w-64 xl:min-w-80"
@@ -598,7 +606,7 @@ export const SecretTableRow = ({
                           <TableCell
                             aria-hidden="true"
                             className={twMerge(
-                              "w-10 max-w-10 min-w-10",
+                              "w-10 max-w-10 min-w-10 p-0",
                               hasOverride && "border-b-border/50"
                             )}
                           />
@@ -690,7 +698,7 @@ export const SecretTableRow = ({
                             className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
                             key={`secret-override-${slug}-${secretKey}`}
                           >
-                            <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10" />
+                            <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />

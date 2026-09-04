@@ -2,7 +2,7 @@ import { subject } from "@casl/ability";
 import { formatDistanceToNow } from "date-fns";
 import {
   BanIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   ChevronsLeftRightEllipsisIcon,
   EditIcon,
   Trash2Icon
@@ -32,6 +32,13 @@ import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_EXPAND_ICON_CLASS_NAME,
+  TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_RESOURCE_ICON_CLASS_NAME
+} from "../tableRowActionStyles";
 
 // Returns null (renders nothing) for a never-used service rather than "Never".
 const formatLastUsed = (lastUsedAt?: string | null) => {
@@ -75,8 +82,7 @@ export const ProxiedServiceTableRow = ({
     <div
       className={twMerge(
         "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-        "pointer-events-none opacity-0 transition-all duration-300",
-        "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        TABLE_ROW_ACTION_BAR_CLASS_NAME
       )}
     >
       <ProjectPermissionCan
@@ -92,9 +98,10 @@ export const ProxiedServiceTableRow = ({
           <Tooltip>
             <TooltipTrigger>
               <IconButton
+                aria-label="Edit proxied service"
                 variant="ghost"
                 size="xs"
-                className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                 isDisabled={!isAllowed}
                 onClick={() => onEdit(proxiedService)}
               >
@@ -118,9 +125,10 @@ export const ProxiedServiceTableRow = ({
           <Tooltip>
             <TooltipTrigger>
               <IconButton
+                aria-label="Delete proxied service"
                 variant="ghost"
                 size="xs"
-                className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                 isDisabled={!isAllowed}
                 onClick={() => onDelete(proxiedService)}
               >
@@ -147,8 +155,8 @@ export const ProxiedServiceTableRow = ({
         </span>
         <div
           className={twMerge(
-            "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
-            "group-hover:mr-24"
+            "ml-auto flex items-center gap-x-2 transition-[margin] duration-300 motion-reduce:transition-none",
+            "mr-24 [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-24 [@media(hover:hover)]:group-hover:mr-24"
           )}
         >
           {!proxiedService.isEnabled && (
@@ -182,16 +190,28 @@ export const ProxiedServiceTableRow = ({
       >
         <TableCell
           className={twMerge(
+            "w-10 max-w-10 min-w-10 p-0",
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
-          {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon className="block" />
-          ) : (
-            <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-          )}
+          <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            <ChevronsLeftRightEllipsisIcon
+              className={twMerge(
+                "text-proxied-service",
+                !isSingleEnvView && !isExpanded && TABLE_ROW_RESOURCE_ICON_CLASS_NAME,
+                !isSingleEnvView && isExpanded && "hidden"
+              )}
+            />
+            {!isSingleEnvView && (
+              <ChevronRightIcon
+                className={
+                  isExpanded ? TABLE_ROW_EXPANDED_ICON_CLASS_NAME : TABLE_ROW_EXPAND_ICON_CLASS_NAME
+                }
+              />
+            )}
+          </div>
         </TableCell>
         <TableCell
           className={twMerge(

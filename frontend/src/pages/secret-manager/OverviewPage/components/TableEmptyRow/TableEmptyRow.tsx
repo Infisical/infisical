@@ -83,7 +83,7 @@ export const TableEmptyRow = ({ colSpan, onAddSecret, onImportFile, onImportSecr
               >
                 <EmptyHeader>
                   <EmptyTitle>This table is empty.</EmptyTitle>
-                  <EmptyDescription>Drag and drop your .env file here</EmptyDescription>
+                  <EmptyDescription>Drag and drop a secrets file here</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent className="max-w-none flex-row flex-wrap justify-center gap-2">
                   <Tooltip open={!isAllowed ? undefined : false}>
@@ -94,7 +94,7 @@ export const TableEmptyRow = ({ colSpan, onAddSecret, onImportFile, onImportSecr
                         onClick={() => onImportSecrets("upload")}
                       >
                         <UploadIcon />
-                        Import .env
+                        Upload Secrets
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Access Denied</TooltipContent>

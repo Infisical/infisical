@@ -192,11 +192,13 @@ export const QuickAddSecretRow = ({
       <TableCell
         className={
           isMultiEnvironmentView
-            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container px-2 group-hover:bg-container-hover"
-            : "w-10 max-w-10 min-w-10 px-2"
+            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 group-hover:bg-container-hover"
+            : "w-10 max-w-10 min-w-10 p-0"
         }
       >
-        {renderResourceTypeTrigger(isDraftActive)}
+        <div className="flex h-full items-center justify-center">
+          {renderResourceTypeTrigger(isDraftActive)}
+        </div>
       </TableCell>
       <TableCell
         className={

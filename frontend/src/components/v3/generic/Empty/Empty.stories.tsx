@@ -144,14 +144,14 @@ export const WithLink: Story = {
         </EmptyMedia>
         <EmptyTitle>Import your secrets</EmptyTitle>
         <EmptyDescription>
-          Upload a `.env` or CSV file to import secrets in bulk. See the{" "}
+          Upload a secrets file to import secrets in bulk. See the{" "}
           <a href="#">import documentation</a> for supported formats.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <Button variant="outline">
           <UploadIcon />
-          Import file
+          Upload Secrets
         </Button>
       </EmptyContent>
     </Empty>

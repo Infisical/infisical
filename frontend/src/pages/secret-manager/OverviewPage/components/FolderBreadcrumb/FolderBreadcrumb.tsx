@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CopyIcon, EllipsisIcon, FolderIcon, SlashIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -9,8 +9,8 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -133,12 +133,12 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
       (sum, w) => sum + w + separatorWidth + GAP * 2,
       0
     );
-    // The action-menu button is a fixed-width sibling after the breadcrumb; subtract its
+    // The folder access button is a fixed-width sibling after the breadcrumb; subtract its
     // footprint so the path collapses before it would collide with the button.
     // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
-    const ACTION_MENU_BUTTON_WIDTH = 28;
-    const actionMenuReserve = folderPaths.length > 0 ? ACTION_MENU_BUTTON_WIDTH + GAP : 0;
-    const availableWidth = containerWidth - folderIconWidth - GAP - actionMenuReserve;
+    const ACCESS_BUTTON_WIDTH = 28;
+    const accessButtonReserve = onManageFolderAccess ? ACCESS_BUTTON_WIDTH + GAP : 0;
+    const availableWidth = containerWidth - folderIconWidth - GAP - accessButtonReserve;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -196,7 +196,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
       endCount: needsCollapse ? end : 0,
       needsEllipsis: needsCollapse
     };
-  }, [measurements, folderPaths.length]);
+  }, [measurements, folderPaths.length, Boolean(onManageFolderAccess)]);
 
   // Derive visible segments
   const startSegments = needsEllipsis ? folderPaths.slice(0, startCount) : folderPaths;
@@ -216,6 +216,30 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
       createNotification({ type: "error", text: "Failed to copy folder path to clipboard" });
     }
   }, [fullPath]);
+
+  const renderCurrentFolder = (path: string) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="xs"
+          aria-current="page"
+          aria-label={`Open actions for ${path}`}
+          title={path}
+          className={`${breadcrumbLinkClassName} max-w-full min-w-0 shrink gap-1 text-sm font-normal focus-visible:ring-inset`}
+        >
+          <span className="truncate">{path}</span>
+          <ChevronDownIcon className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onSelect={handleCopyPath}>
+          <CopyIcon />
+          Copy path
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div
@@ -238,9 +262,12 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
           <span
             key={`measure-${path}-${index + 1}`}
             data-measure="segment"
-            className="inline-flex items-center px-1.5 text-sm"
+            className={`inline-flex items-center px-1.5 text-sm ${
+              index === folderPaths.length - 1 ? "gap-1" : ""
+            }`}
           >
             {path}
+            {index === folderPaths.length - 1 && <ChevronDownIcon className="size-3.5" />}
           </span>
         ))}
         <span data-measure="ellipsis" className="inline-flex size-6 items-center justify-center">
@@ -248,7 +275,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
         </span>
       </div>
 
-      {/* Visible breadcrumb (shrinks/clips on its own so the action menu is never clipped) */}
+      {/* Visible breadcrumb (shrinks/clips on its own so the access button is never clipped) */}
       <Breadcrumb className="min-w-0 overflow-hidden">
         <BreadcrumbList className="flex-nowrap">
           {/* Root folder icon */}
@@ -273,9 +300,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
                 <SlashIcon className="size-3 -rotate-12" />
               </BreadcrumbSeparator>
               {!needsEllipsis && index === startSegments.length - 1 ? (
-                <BreadcrumbPage title={path} className="truncate">
-                  {path}
-                </BreadcrumbPage>
+                <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
                 <BreadcrumbItem>
                   <BreadcrumbLink
@@ -352,9 +377,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
                   <SlashIcon className="size-3 -rotate-12" />
                 </BreadcrumbSeparator>
                 {isLast ? (
-                  <BreadcrumbPage title={path} className="truncate">
-                    {path}
-                  </BreadcrumbPage>
+                  <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
                   <BreadcrumbItem>
                     <BreadcrumbLink
@@ -381,33 +404,16 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
         </BreadcrumbList>
       </Breadcrumb>
 
-      {(folderPaths.length > 0 || onManageFolderAccess) && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              className="shrink-0"
-              aria-label="Folder actions"
-            >
-              <EllipsisIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {folderPaths.length > 0 && (
-              <DropdownMenuItem onSelect={handleCopyPath}>
-                <CopyIcon />
-                Copy path
-              </DropdownMenuItem>
-            )}
-            {onManageFolderAccess && (
-              <DropdownMenuItem onSelect={onManageFolderAccess}>
-                <UsersIcon />
-                Manage folder access
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {onManageFolderAccess && (
+        <IconButton
+          variant="ghost-muted"
+          size="xs"
+          className="shrink-0"
+          aria-label="Manage folder access"
+          onClick={onManageFolderAccess}
+        >
+          <UsersIcon />
+        </IconButton>
       )}
     </div>
   );

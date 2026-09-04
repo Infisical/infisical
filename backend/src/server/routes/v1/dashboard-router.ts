@@ -335,6 +335,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      if (orderBy !== DashboardSecretsOrderBy.Name && environments.length > 1 && !sortEnvironment) {
+        throw new BadRequestError({
+          message:
+            "The 'sortEnvironment' query parameter is required for recency sorting when multiple environments are requested"
+        });
+      }
+
       const resourceOrderDirection = orderBy === DashboardSecretsOrderBy.Name ? orderDirection : OrderByDirection.ASC;
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);

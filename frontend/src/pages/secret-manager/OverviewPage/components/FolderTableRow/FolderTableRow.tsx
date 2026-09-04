@@ -23,6 +23,10 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+} from "../tableRowActionStyles";
 
 type Props = {
   folderName: string;
@@ -81,33 +85,36 @@ export const FolderTableRow = ({
     >
       <TableCell
         className={twMerge(
+          "w-10 max-w-10 min-w-10 p-0",
           isSingleEnvView
             ? ""
             : "sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover",
           pendingActionBorderClass(pendingAction)
         )}
       >
-        <Checkbox
-          variant="project"
-          id={`checkbox-${folderName}`}
-          isChecked={isSelected}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFolderSelect(folderName, e.shiftKey);
-          }}
-          className={twMerge(
-            "hidden",
-            !isSelectionDisabled && "group-hover:flex",
-            isSelected && "flex"
-          )}
-        />
-        <FolderIcon
-          className={twMerge(
-            "block text-folder",
-            !isSelectionDisabled && "group-hover:!hidden",
-            isSelected && "!hidden"
-          )}
-        />
+        <div className="flex h-full items-center justify-center [&>svg]:size-4">
+          <Checkbox
+            variant="project"
+            id={`checkbox-${folderName}`}
+            isChecked={isSelected}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFolderSelect(folderName, e.shiftKey);
+            }}
+            className={twMerge(
+              "hidden",
+              !isSelectionDisabled && "group-hover:flex",
+              isSelected && "flex"
+            )}
+          />
+          <FolderIcon
+            className={twMerge(
+              "block text-folder",
+              !isSelectionDisabled && "group-hover:!hidden",
+              isSelected && "!hidden"
+            )}
+          />
+        </div>
       </TableCell>
       <TableCell
         isTruncatable
@@ -139,8 +146,7 @@ export const FolderTableRow = ({
           className={twMerge(
             "absolute z-20",
             "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+            TABLE_ROW_ACTION_BAR_CLASS_NAME,
             isSingleEnvView
               ? "top-1/2 right-[2px] -translate-y-1/2"
               : "top-1/2 right-[3px] -translate-y-1/2"
@@ -153,7 +159,7 @@ export const FolderTableRow = ({
                   aria-label="Move folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderMove(folderName);
@@ -173,7 +179,7 @@ export const FolderTableRow = ({
                   aria-label="Edit folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderEdit(folderName);
@@ -192,9 +198,10 @@ export const FolderTableRow = ({
               <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Manage folder access"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                     onClick={(e) => {
                       onToggleFolderAccess(folderName);
                       e.stopPropagation();
@@ -212,7 +219,7 @@ export const FolderTableRow = ({
                 <IconButton
                   aria-label="Discard pending folder changes"
                   variant="ghost"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   size="xs"
                   onClick={(e) => {
                     onBatchRevert?.(folderName);
@@ -231,7 +238,7 @@ export const FolderTableRow = ({
                   aria-label="Delete folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   isDisabled={!canDeleteFolder}
                   onClick={(e) => {
                     onToggleFolderDelete(folderName);

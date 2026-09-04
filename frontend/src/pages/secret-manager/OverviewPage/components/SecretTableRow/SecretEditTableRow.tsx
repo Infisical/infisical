@@ -104,6 +104,10 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import {
+  TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME
+} from "../tableRowActionStyles";
 import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
@@ -1045,7 +1049,7 @@ export const SecretEditTableRow = ({
           />
         </div>
         {!isDirtyState && !isFieldActive && (
-          <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-hover:pointer-events-none group-hover:opacity-0">
+          <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
             <div className="flex items-center gap-1">
               {comment && !isImportedSecret && (
                 <Tooltip>
@@ -1106,7 +1110,8 @@ export const SecretEditTableRow = ({
           <div
             className={twMerge(
               "ml-auto flex shrink-0 items-center",
-              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView &&
+                "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
               isSingleEnvView && isFieldActive && "mr-8"
             )}
           >
@@ -1171,13 +1176,12 @@ export const SecretEditTableRow = ({
           className={twMerge(
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:opacity-100",
-            shouldStayExpanded && "pointer-events-auto opacity-100",
+            TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
+            shouldStayExpanded && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
             isFieldActive &&
               !showMenuWhileFocused &&
-              "group-hover:pointer-events-none group-hover:opacity-0",
-            isFieldActive && showMenuWhileFocused && "pointer-events-auto opacity-100",
+              "[@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0",
+            isFieldActive && showMenuWhileFocused && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
@@ -1274,6 +1278,7 @@ export const SecretEditTableRow = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton
+                  aria-label="Discard pending secret changes"
                   variant="ghost"
                   className="hover:text-error size-7 border-0"
                   size="xs"
@@ -1294,6 +1299,7 @@ export const SecretEditTableRow = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
+                        aria-label="View secret comment"
                         variant="ghost"
                         size="xs"
                         className="size-7 border-0 text-muted hover:text-foreground"
@@ -1309,6 +1315,7 @@ export const SecretEditTableRow = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
+                        aria-label="View secret tags"
                         variant="ghost"
                         size="xs"
                         className="size-7 border-0 text-muted hover:text-foreground"
@@ -1324,6 +1331,7 @@ export const SecretEditTableRow = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
+                        aria-label="View secret reminder"
                         variant="ghost"
                         size="xs"
                         className="size-7 border-0 text-muted hover:text-foreground"
@@ -1339,6 +1347,7 @@ export const SecretEditTableRow = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <IconButton
+                        aria-label="View secret metadata"
                         variant="ghost"
                         size="xs"
                         className="size-7 border-0 text-muted hover:text-foreground"
@@ -1356,6 +1365,7 @@ export const SecretEditTableRow = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <IconButton
+                aria-label="Edit secret value"
                 variant="ghost"
                 size="xs"
                 className="size-7 border-0 text-muted hover:text-foreground"
@@ -1389,6 +1399,7 @@ export const SecretEditTableRow = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <IconButton
+                aria-label="Copy secret value"
                 variant="ghost"
                 size="xs"
                 className="size-7 border-0 text-muted hover:text-foreground"
@@ -1417,6 +1428,7 @@ export const SecretEditTableRow = ({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <IconButton
+                    aria-label="More secret actions"
                     variant="ghost"
                     size="xs"
                     className="size-7 border-0 text-muted hover:text-foreground"
