@@ -30,8 +30,8 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
-import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { agentVaultKeys, useAddAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { pamKeys, useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
