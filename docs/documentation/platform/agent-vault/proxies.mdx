@@ -49,7 +49,7 @@ What the proxy does with a request to a host no connection in the session covers
 
 Under **Allow**, a pass-through connection changes nothing, since the host would pass anyway. Under **Deny**, a pass-through connection is how you make a host reachable without giving it a credential.
 
-Private and link-local addresses, such as `169.254.169.254`, are blocked under both settings, so a shared proxy can't be used to reach cloud metadata endpoints or other hosts inside your network.
+Addresses on a private network are reachable, so an internal API inside your own network can be a connection like any other. Under **Deny** the proxy reaches only the hosts you configure, which is what to use when the proxy sits somewhere it could reach more than you intend.
 
 ### Bypass hosts
 
