@@ -1,11 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -37,7 +38,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
@@ -329,20 +330,54 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
+  // A member is someone who can mint sessions, and resolveSession refuses any actor without an active org
+  // membership - so admitting one without it would create a row that could never work. Users reach this
+  // through the email path in the UI, which checks the same thing; this is the direct-API route to it, and
+  // it validated groups and identities while letting any userId through to the foreign key as a 500.
+  //
+  // Deliberately no estate-wide lookup first: whether some user id exists in another organization is not
+  // an answer this endpoint owes its caller.
+  const assertActorIsInOrg = async (
+    dto: { userId?: string; groupId?: string; identityId?: string },
+    orgId: string,
+    label: string
+  ) => {
+    // A group never mints a session; its members do, each checked on their own at resolve. Groups and
+    // identities carry an orgId, so a scoped miss can say "not found" without telling the caller whether
+    // that id exists in someone else's organization.
+    if (dto.groupId) {
+      const [group] = await groupDAL.find({ id: dto.groupId, orgId });
+      if (!group) throw new NotFoundError({ message: `Group with ID '${dto.groupId}' not found` });
+      return;
+    }
+    if (dto.identityId) {
+      const [identity] = await identityDAL.find({ id: dto.identityId, orgId });
+      if (!identity) throw new NotFoundError({ message: `Machine identity with ID '${dto.identityId}' not found` });
+    }
+
+    // A user has no owning org, so membership is the only scope there is: one message whether the id
+    // belongs to another organization or to nobody. Deactivated actors are refused here too, since
+    // resolveSession turns their sessions down anyway.
+    const actorId = dto.userId ?? dto.identityId!;
+    const membership = await orgDAL.findEffectiveOrgMembership({
+      actorType: dto.userId ? ActorType.USER : ActorType.IDENTITY,
+      actorId,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!membership?.isActive) {
+      throw new BadRequestError({
+        message: `Cannot add ${label.toLowerCase()} '${actorId}' to Agent Vault because they are not an active member of this organization. Invite them to the organization first.`
+      });
+    }
+  };
+
   const addProductMember = async ({ projectId, role, ctx, ...dto }: TAddAgentVaultProductMemberDTO) => {
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
 
     const { column, id, label } = resolveActorColumn(dto);
-
-    if (dto.groupId) {
-      const [group] = await groupDAL.find({ id: dto.groupId, orgId: ctx.actorOrgId });
-      if (!group) throw new NotFoundError({ message: `Group with ID '${dto.groupId}' not found` });
-    }
-    if (dto.identityId) {
-      const [identity] = await identityDAL.find({ id: dto.identityId, orgId: ctx.actorOrgId });
-      if (!identity) throw new NotFoundError({ message: `Machine identity with ID '${dto.identityId}' not found` });
-    }
+    await assertActorIsInOrg(dto, ctx.actorOrgId, label);
 
     const result = await membershipDAL.transaction(async (tx) => {
       const existing = await membershipDAL.find(

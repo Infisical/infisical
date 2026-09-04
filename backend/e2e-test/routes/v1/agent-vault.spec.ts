@@ -25,6 +25,26 @@ const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
 const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
   testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
 
+// identityService.create writes the org membership alongside the identity row, and an identity without
+// one cannot authenticate at all, so a fixture that inserts only the identity is not a shape production
+// can produce - and the membership endpoint now checks for it.
+const createOrgIdentity = async (name: string) => {
+  const [identity] = (await testDb("identities")
+    .insert({ name, orgId: seedData1.organization.id })
+    .returning("*")) as { id: string }[];
+  await testDb("memberships").insert({
+    scope: AccessScope.Organization,
+    scopeOrgId: seedData1.organization.id,
+    actorIdentityId: identity.id
+  });
+  return identity;
+};
+
+const deleteOrgIdentity = async (identityId: string) => {
+  await testDb("memberships").where({ actorIdentityId: identityId }).del();
+  await testDb("identities").where({ id: identityId }).delete();
+};
+
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
   expect(res.statusCode).toBe(200);
@@ -258,9 +278,7 @@ describe("Agent Vault V1 Router", async () => {
     const memberships = "/api/v1/agent-vault/memberships";
 
     test("a machine identity can be given Agent Vault, have its role changed, and lose it again", async () => {
-      const [identity] = (await testDb("identities")
-        .insert({ name: `av-membership-${Date.now()}`, orgId: seedData1.organization.id })
-        .returning("*")) as { id: string }[];
+      const identity = await createOrgIdentity(`av-membership-${Date.now()}`);
 
       const added = await inject("POST", memberships, { identityId: identity.id, role: "member" });
       expect(added.statusCode).toBe(200);
@@ -286,15 +304,13 @@ describe("Agent Vault V1 Router", async () => {
       };
       expect(after.members.some((m) => m.identityId === identity.id)).toBe(false);
 
-      await testDb("identities").where({ id: identity.id }).delete();
+      await deleteOrgIdentity(identity.id);
     });
 
     test("removing a member takes their access bundle grants with them", async () => {
       const bundle = await createAccessBundle("membership-reap");
 
-      const [identity] = (await testDb("identities")
-        .insert({ name: `av-reap-${Date.now()}`, orgId: seedData1.organization.id })
-        .returning("*")) as { id: string }[];
+      const identity = await createOrgIdentity(`av-reap-${Date.now()}`);
 
       expect((await inject("POST", memberships, { identityId: identity.id, role: "member" })).statusCode).toBe(200);
       expect(
@@ -311,7 +327,7 @@ describe("Agent Vault V1 Router", async () => {
       const afterRemoval = await testDb("agent_vault_access_bundle_members").where({ identityId: identity.id });
       expect(afterRemoval).toHaveLength(0);
 
-      await testDb("identities").where({ id: identity.id }).delete();
+      await deleteOrgIdentity(identity.id);
     });
 
     test("the guards that keep the product administrable hold", async () => {
@@ -641,9 +657,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // The seeded machine identity is an org admin, so the bootstrap already made it a project member.
       // A grant only does something for someone the project can see, so use one it cannot.
-      const [outsider] = (await testDb("identities")
-        .insert({ name: `av-outsider-${Date.now()}`, orgId: seedData1.organization.id })
-        .returning("*")) as { id: string }[];
+      const outsider = await createOrgIdentity(`av-outsider-${Date.now()}`);
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         identityId: outsider.id
@@ -651,7 +665,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toContain("not a member of Agent Vault");
 
-      await testDb("identities").where({ id: outsider.id }).delete();
+      await deleteOrgIdentity(outsider.id);
     });
 
     test("exactly one actor id is required", async () => {
@@ -665,6 +679,48 @@ describe("Agent Vault V1 Router", async () => {
         identityId: seedData1.machineIdentity.id
       });
       expect(both.statusCode).toBe(400);
+    });
+
+    test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
+      // The UI adds people through the email path, which checks org membership. This is the direct-API
+      // route to the same table, and it let any userId through to the foreign key.
+      const stranger = await inject("POST", "/api/v1/agent-vault/memberships", {
+        userId: "99999999-8888-7777-6666-555555555555",
+        role: ProjectMembershipRole.Member
+      });
+      expect(stranger.statusCode).toBe(400);
+      expect(JSON.parse(stranger.payload).message).toContain("not an active member of this organization");
+
+      const rows = await testDb("memberships").where({ actorUserId: "99999999-8888-7777-6666-555555555555" });
+      expect(rows).toHaveLength(0);
+    });
+
+    test("a deactivated machine identity cannot be added", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const identityId = seedData1.machineIdentity.id;
+      const orgMembership = await testDb("memberships")
+        .where({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorIdentityId: identityId })
+        .first();
+
+      // Left in place by an earlier test in this file, and the check under test runs before the
+      // already-a-member one, so remove it rather than depending on the order.
+      await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identityId })
+        .del();
+
+      try {
+        await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: false });
+        const res = await inject("POST", "/api/v1/agent-vault/memberships", {
+          identityId,
+          role: ProjectMembershipRole.Member
+        });
+        expect(res.statusCode).toBe(400);
+        expect(JSON.parse(res.payload).message).toContain("not an active member of this organization");
+      } finally {
+        await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
+      }
     });
 
     test("a machine identity inherits a group's access bundles", async () => {
