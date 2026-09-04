@@ -102,8 +102,10 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       description: "Give one or more users access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMemberships],
       body: z.object({
-        userIds: z.string().uuid().array().default([]),
-        emails: z.string().email().array().default([]),
+        // Bounded like the org invite route, which caps its own invitee list at 100. Unbounded, one
+        // rejected address per entry made the 400's message as long as the array was.
+        userIds: z.string().uuid().array().max(100).default([]),
+        emails: z.string().email().array().max(100).default([]),
         role: ProductRoleSchema
       }),
       response: { 200: z.object({ addedCount: z.number(), skipped: z.string().array() }) }
