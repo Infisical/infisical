@@ -19,7 +19,7 @@ These subcommands are the CLI half of [Agent Vault](/documentation/platform/agen
 The two run on different machines. Neither reads traffic settings from flags: which hosts stay reachable under Deny, what happens to unmatched hosts, and how often the proxy refreshes are set on the Proxies page and reach a running proxy on its next poll.
 
 <Note>
-  `infisical av run` doesn't sandbox the agent. It sets environment variables and starts the process. The agent can read files and reach the network like any other program you run; what it can't do is hold a credential, because none is given to it. The [Agent Proxy](/cli/commands/agent-proxy)'s `run` is the sandboxed alternative for secrets held in a project.
+  `infisical av run` doesn't sandbox the agent. It sets environment variables and starts the process. The agent can read files and reach the network like any other program you run; what it can't do is hold a credential, because none is given to it. Stopping `infisical av run` stops the agent, but not programs the agent itself started, so run it under something that cleans up a process tree if that matters to you. The [Agent Proxy](/cli/commands/agent-proxy)'s `run` is the sandboxed alternative for secrets held in a project.
 </Note>
 
 ## Subcommands & flags
