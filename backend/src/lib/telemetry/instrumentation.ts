@@ -18,7 +18,12 @@ import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { getTelemetryConfig } from "../config/env";
-import { HIGH_CARDINALITY_METER_NAMES, INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
+import {
+  HIGH_CARDINALITY_METER_NAMES,
+  HTTP_INSTRUMENTATION_METER_ATTRIBUTES,
+  HTTP_INSTRUMENTATION_METER_NAME,
+  INFISICAL_CORE_METER_ATTRIBUTES
+} from "./telemetry-attributes";
 
 dotenv.config();
 
@@ -80,6 +85,10 @@ const initTelemetryInstrumentation = ({
     {
       meterName: "InfisicalCore",
       attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
+    },
+    {
+      meterName: HTTP_INSTRUMENTATION_METER_NAME,
+      attributesProcessors: [createAllowListAttributesProcessor(HTTP_INSTRUMENTATION_METER_ATTRIBUTES)]
     }
   ];
 
@@ -106,6 +115,14 @@ const initTelemetryInstrumentation = ({
   });
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
+
+  // HttpInstrumentation reads this in its constructor and exposes no config equivalent, so it has to be set
+  // here rather than left to the deployment. Unset means the old HTTP semconv, whose http.server.duration
+  // carries net.host.name, the raw client-controlled Host header, and so grows a new series for every value
+  // a scanner sends. Stable drops it, normalizes the method to a fixed set, and adds error.type.
+  // Assigning it (rather than defaulting it) keeps one metric name across cloud and self-hosted, and shuts
+  // out "http/dup", which would emit both attribute sets and double the cardinality this is here to bound.
+  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = "http";
 
   registerInstrumentations({
     instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]

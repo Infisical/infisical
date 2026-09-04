@@ -2,7 +2,13 @@ import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { highCardinalityMeter, shouldRecordHighCardinalityMetrics } from "@app/lib/telemetry/metrics";
+import {
+  coreHttpRequestCounter,
+  highCardinalityMeter,
+  isTelemetryEnabled,
+  normalizeHttpMethod,
+  shouldRecordHighCardinalityMetrics
+} from "@app/lib/telemetry/metrics";
 
 const apiMeter = highCardinalityMeter("API");
 
@@ -24,13 +30,22 @@ const requestDurationHistogram = infisicalMeter.createHistogram("infisical.http.
 
 export const apiMetrics = fp(async (fastify) => {
   fastify.addHook("onResponse", async (request, reply) => {
-    // Checked before assembling the attribute object below: it is built per response and every label on
-    // it is per-actor, so it is the largest source of the cardinality these meters would retain.
-    if (!shouldRecordHighCardinalityMetrics()) return;
+    if (!isTelemetryEnabled()) return;
 
-    const { method } = request;
+    const method = normalizeHttpMethod(request.method);
     const route = request.routeOptions.url;
     const { statusCode } = reply;
+
+    // Recorded ahead of the high-cardinality gate: these three labels are bounded (the route is Fastify's
+    // template, never the raw path), and they are the denominator for coreHttpErrorCounter, so a deployment
+    // that drops the per-actor meters must not lose them too.
+    coreHttpRequestCounter.add(1, {
+      "http.request.method": method,
+      "http.route": route ?? "unknown",
+      "http.response.status_code": statusCode
+    });
+
+    if (!shouldRecordHighCardinalityMetrics()) return;
 
     latencyHistogram.record(reply.elapsedTime, {
       route,

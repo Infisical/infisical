@@ -461,6 +461,21 @@ These metrics track all HTTP API requests to Infisical, including request counts
       - `user_agent.original` (string, optional): User agent information
   </Accordion>
 
+  <Accordion title="Total API Requests (InfisicalCore)">
+    **Metric Name**: `infisical.core.http.request.count`
+
+    **Type**: Counter
+
+    **Unit**: `{request}`
+
+    **Description**: Total API requests with bounded labels. The low-cardinality counterpart to `infisical.http.server.request.count`; same request volume, but labels are restricted to the InfisicalCore allowlist so the series count stays independent of org/user/identity count. Divide `infisical.core.http.error.count` by this to get an error rate per route. Unlike its high-cardinality twin, it is emitted even when `OTEL_DROP_HIGH_CARDINALITY_METERS=true`.
+
+    **Attributes**:
+      - `http.request.method` (string): HTTP method
+      - `http.route` (string): Parameterized route template (e.g. `/api/v1/secrets/:secretName`), never the raw path. `unknown` for a request that matched no route.
+      - `http.response.status_code` (int): HTTP status code
+  </Accordion>
+
   <Accordion title="API Errors (InfisicalCore)">
     **Metric Name**: `infisical.core.http.error.count`
 
@@ -1073,12 +1088,36 @@ Heap usage, GC pause, event loop lag, and other Node runtime metrics are auto-em
 These low-level HTTP metrics are automatically collected by OpenTelemetry's instrumentation layer, providing baseline performance data for all HTTP traffic.
 
 <AccordionGroup>
-  <Accordion title="http_server_duration">
-    HTTP server request duration metrics (histogram buckets, count, sum)
+  <Accordion title="http_server_request_duration">
+    **Metric Name**: `http.server.request.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s` (seconds)
+
+    **Description**: Inbound HTTP request duration, measured at the socket rather than at the route handler, so it also covers requests that never matched a route.
+
+    **Attributes**:
+      - `http.request.method` (string): HTTP method, normalized to a fixed set (`_OTHER` for anything unrecognized)
+      - `http.response.status_code` (int): HTTP status code
+      - `error.type` (string, optional): Present only when the response failed
+
+    Infisical opts in to the stable OpenTelemetry HTTP semantic conventions. The older conventions labelled this metric with `net.host.name`, the raw `Host` request header, which is client-controlled and grows a new time series per value; the stable conventions omit it. `http.route` is not populated, so use `infisical.core.http.request.count` for a per-route breakdown.
   </Accordion>
-  
-  <Accordion title="http_client_duration">
-    HTTP client request duration metrics (histogram buckets, count, sum)
+
+  <Accordion title="http_client_request_duration">
+    **Metric Name**: `http.client.request.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s` (seconds)
+
+    **Description**: Outbound HTTP request duration.
+
+    **Attributes**:
+      - `http.request.method` (string): HTTP method, normalized to a fixed set
+      - `http.response.status_code` (int): HTTP status code
+      - `error.type` (string, optional): Present only when the request failed
   </Accordion>
 </AccordionGroup>
 

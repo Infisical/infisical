@@ -54,3 +54,14 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
 // labels (user.email, client.address, syncId, ...) flow through unchanged unless dropped wholesale via
 // OTEL_DROP_HIGH_CARDINALITY_METERS. Kept on by default for self-hosted; dropped in multi-tenant/cloud.
 export const HIGH_CARDINALITY_METER_NAMES = ["Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations"];
+
+// Meter used by @opentelemetry/instrumentation-http for http.server.duration / http.client.duration.
+export const HTTP_INSTRUMENTATION_METER_NAME = "@opentelemetry/instrumentation-http";
+
+// This View keeps http.server.duration bounded if an upgrade reintroduces unbounded host related attributes like net.host.name and constant labels like url.scheme
+export const HTTP_INSTRUMENTATION_METER_ATTRIBUTES = [
+  "http.request.method",
+  "http.response.status_code",
+  "http.route",
+  "error.type"
+];
