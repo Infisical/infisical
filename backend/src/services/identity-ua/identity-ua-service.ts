@@ -318,11 +318,14 @@ export const identityUaServiceFactory = ({
       }
 
       const clientSecretId = validClientSecretInfo.id;
+      const hasFiniteUsageLimit = clientSecretNumUsesLimit > 0;
 
-      const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
-        clientSecretNumUsesLimit > 0
-          ? // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
-            Promise.resolve(true)
+      const [didClaimUse, shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
+        // the numUses read above is a stale snapshot, so the claim is what enforces the limit
+        hasFiniteUsageLimit ? identityUaClientSecretDAL.tryClaimUsage(clientSecretId) : Promise.resolve(false),
+        hasFiniteUsageLimit
+          ? // the claim already counted it
+            Promise.resolve(false)
           : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
             keyStore
               .setItemWithExpiryNX(
@@ -333,6 +336,21 @@ export const identityUaServiceFactory = ({
               .then(Boolean),
         shouldRecordIdentityLastLogin(keyStore, identity.id)
       ]);
+
+      if (hasFiniteUsageLimit && !didClaimUse) {
+        await identityUaClientSecretDAL.updateById(clientSecretId, {
+          isClientSecretRevoked: true
+        });
+        throw new UnauthorizedError({
+          message: "Access denied due to client secret usage limit reached",
+          detail: {
+            reasonCode: "client_secret_usage_limit_reached",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
 
       if (shouldIncrementUsage || shouldRecordLastLogin) {
         await identityUaDAL.transaction(async (tx) => {
