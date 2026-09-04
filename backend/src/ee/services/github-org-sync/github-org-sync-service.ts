@@ -206,6 +206,44 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
   return teams.map(({ slug, name, description, members }) => ({ slug, name, description, members }));
 };
 
+type TMatchableMember<T> = { user?: { email?: string | null } | null; inviteEmail?: string | null } & T;
+
+// Matching runs once per (GitHub login, org member) pair, so for the reported org it is ~640 teams
+// x 7k memberships x 2.3k members. Deriving each member's comparison fields once per sync instead
+// of once per pair keeps that off the request's critical path; candidate order is preserved, so the
+// same member is still chosen. A member with no usable email could never match, so it is dropped
+// from the candidate list rather than re-tested and rejected on every comparison.
+export const buildGithubMemberMatcher = <T>(members: TMatchableMember<T>[]) => {
+  const emailSplitRegex = new RE2(/[._-]/);
+  const candidates = members.flatMap((member) => {
+    const email = member.user?.email || member.inviteEmail;
+    if (!email) return [];
+    const [rawPrefix, rawDomain] = email.split("@");
+    if (!rawPrefix || !rawDomain) return [];
+    const emailPrefix = rawPrefix.toLowerCase();
+    return [
+      {
+        member,
+        emailPrefix,
+        domainName: rawDomain.toLowerCase().split(".")[0],
+        longestEmailPart: emailPrefix.split(emailSplitRegex).reduce((a, b) => (a.length > b.length ? a : b), "")
+      }
+    ];
+  });
+
+  return (githubLogin: string) => {
+    const githubUsername = githubLogin.toLowerCase();
+    return candidates.find(
+      ({ emailPrefix, domainName, longestEmailPart }) =>
+        emailPrefix === githubUsername ||
+        (githubUsername.endsWith(domainName) &&
+          githubUsername.length > domainName.length &&
+          emailPrefix === githubUsername.slice(0, -domainName.length)) ||
+        (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart))
+    )?.member;
+  };
+};
+
 // Type definitions for GitHub API errors
 interface GitHubApiError extends Error {
   status?: number;
@@ -758,6 +796,9 @@ export const githubOrgSyncServiceFactory = ({
       (member) => member.status === "accepted" && member.isActive
     ) as OrgMembershipWithUser[];
 
+    const matchGithubLogin = buildGithubMemberMatcher(activeMembers);
+    const activeMembersById = new Map(activeMembers.map((member) => [member.id, member]));
+
     const startTime = Date.now();
     const syncErrors: string[] = [];
 
@@ -871,31 +912,7 @@ export const githubOrgSyncServiceFactory = ({
         (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
           const githubUsername = login.toLowerCase();
 
-          const matchingMember = activeMembers.find((member) => {
-            const email = member.user?.email || member.inviteEmail;
-            if (!email) return false;
-
-            const emailPrefix = email.split("@")[0].toLowerCase();
-            const emailDomain = email.split("@")[1].toLowerCase();
-
-            if (emailPrefix === githubUsername) {
-              return true;
-            }
-            const domainName = emailDomain.split(".")[0];
-            if (githubUsername.endsWith(domainName) && githubUsername.length > domainName.length) {
-              const baseUsername = githubUsername.slice(0, -domainName.length);
-              if (emailPrefix === baseUsername) {
-                return true;
-              }
-            }
-            const emailSplitRegex = new RE2(/[._-]/);
-            const emailParts = emailPrefix.split(emailSplitRegex);
-            const longestEmailPart = emailParts.reduce((a, b) => (a.length > b.length ? a : b), "");
-            if (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart)) {
-              return true;
-            }
-            return false;
-          });
+          const matchingMember = matchGithubLogin(githubUsername);
 
           if (matchingMember?.user?.id) {
             expectedUserIds.add(matchingMember.user.id);
@@ -907,7 +924,7 @@ export const githubOrgSyncServiceFactory = ({
 
         const currentUserIds = new Set<string>();
         currentMemberships.forEach((membership) => {
-          const activeMember = activeMembers.find((am) => am.id === membership.orgMembershipId);
+          const activeMember = activeMembersById.get(membership.orgMembershipId);
           if (activeMember?.user?.id) {
             currentUserIds.add(activeMember.user.id);
           }
@@ -916,7 +933,7 @@ export const githubOrgSyncServiceFactory = ({
         const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
 
         const membershipsToRemove = currentMemberships.filter((membership) => {
-          const activeMember = activeMembers.find((am) => am.id === membership.orgMembershipId);
+          const activeMember = activeMembersById.get(membership.orgMembershipId);
           return activeMember?.user?.id && !expectedUserIds.has(activeMember.user.id);
         });
 
@@ -942,7 +959,7 @@ export const githubOrgSyncServiceFactory = ({
           );
 
           const removedUserIds = membershipsToRemove
-            .map((membership) => activeMembers.find((am) => am.id === membership.orgMembershipId)?.user?.id)
+            .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
             .filter(Boolean) as string[];
           await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
 

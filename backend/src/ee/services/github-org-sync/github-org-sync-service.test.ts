@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { fetchGithubOrgTeams } from "./github-org-sync-service";
+import { buildGithubMemberMatcher, fetchGithubOrgTeams } from "./github-org-sync-service";
 
 type TVariables = { cursor: string | null; slug?: string; teamsPageSize?: number; membersPageSize?: number };
 
@@ -87,5 +87,51 @@ describe("fetchGithubOrgTeams", () => {
 
     const options = graphql.mock.calls[0][1] as unknown as { request: { signal: AbortSignal } };
     expect(options.request.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe("buildGithubMemberMatcher", () => {
+  const member = (id: string, email: string | null, inviteEmail: string | null = null) => ({
+    id,
+    user: email === null ? null : { email },
+    inviteEmail
+  });
+
+  test("matches a login equal to the email prefix", () => {
+    const match = buildGithubMemberMatcher([member("a", "jane.doe@acme.com")]);
+    expect(match("Jane.Doe")?.id).toBe("a");
+    expect(match("someone-else")).toBeUndefined();
+  });
+
+  test("matches a login that appends the domain name to the email prefix", () => {
+    const match = buildGithubMemberMatcher([member("a", "jane@acme.com")]);
+    expect(match("janeacme")?.id).toBe("a");
+    expect(match("acme")).toBeUndefined();
+  });
+
+  test("matches when the longest email part is contained in the login", () => {
+    const match = buildGithubMemberMatcher([member("a", "j.smithson@acme.com")]);
+    expect(match("smithson-dev")?.id).toBe("a");
+  });
+
+  test("does not match on an email part shorter than four characters", () => {
+    const match = buildGithubMemberMatcher([member("a", "j.li@acme.com")]);
+    expect(match("xxliyy")).toBeUndefined();
+  });
+
+  test("returns the first matching member, preserving input order", () => {
+    const match = buildGithubMemberMatcher([member("first", "bob@acme.com"), member("second", "bob@other.com")]);
+    expect(match("bob")?.id).toBe("first");
+  });
+
+  test("falls back to inviteEmail and skips members with neither", () => {
+    const match = buildGithubMemberMatcher([member("no-email", null), member("invited", null, "bob@acme.com")]);
+    expect(match("bob")?.id).toBe("invited");
+  });
+
+  test("ignores a malformed email instead of throwing", () => {
+    const match = buildGithubMemberMatcher([member("bad", "not-an-email"), member("good", "bob@acme.com")]);
+    expect(() => match("bob")).not.toThrow();
+    expect(match("bob")?.id).toBe("good");
   });
 });
