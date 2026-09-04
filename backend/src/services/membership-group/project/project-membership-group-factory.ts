@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -15,6 +16,10 @@ import {
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -24,7 +29,7 @@ import { TMembershipGroupScopeFactory } from "../membership-group-types";
 type TProjectMembershipGroupScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne" | "getGroupById">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
@@ -94,31 +99,29 @@ export const newProjectMembershipGroupFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-          ProjectPermissionSub.Groups,
-          permission,
-          permissionRole.permission,
-          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-        );
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        ProjectPermissionSub.Groups,
+        permission,
+        permissionRole.permission,
+        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
+      );
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create group project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.AssignRole,
-              ProjectPermissionSub.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create group project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.AssignRole,
+            ProjectPermissionSub.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -165,32 +168,50 @@ export const newProjectMembershipGroupFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipGroupDAL.getGroupById({
+      scopeData: dto.scopeData,
+      groupId: dto.selector.groupId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+      opSubject: ProjectPermissionSub.Groups,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged group",
+      subjectFields: { groupName: groupDetails.name }
+    });
+
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-          ProjectPermissionSub.Groups,
-          permission,
-          permissionRole.permission,
-          { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
-        );
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
+        ProjectPermissionSub.Groups,
+        permission,
+        permissionRole.permission,
+        { groupName: groupDetails.name, assignableRole: permissionRole.role?.slug }
+      );
 
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to update group project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionGroupActions.AssignRole,
-              ProjectPermissionSub.Groups
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update group project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionGroupActions.AssignRole,
+            ProjectPermissionSub.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -211,6 +232,29 @@ export const newProjectMembershipGroupFactory = ({
 
     const groupDetails = await groupDAL.findById(dto.selector.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
+
+    const targetMembership = await membershipGroupDAL.getGroupById({
+      scopeData: dto.scopeData,
+      groupId: dto.selector.groupId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: ProjectPermissionGroupActions.Delete,
+      opSubject: ProjectPermissionSub.Groups,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged group from the project",
+      subjectFields: { groupName: groupDetails.name }
+    });
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
   };
