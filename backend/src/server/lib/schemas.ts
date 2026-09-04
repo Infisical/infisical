@@ -10,9 +10,16 @@ interface SlugSchemaInputs {
   max?: number;
   field?: string;
   trim?: boolean;
+  allowUnderscore?: boolean;
 }
 
-export const slugSchema = ({ min = 1, max = 64, field = "Slug", trim = true }: SlugSchemaInputs = {}) => {
+export const slugSchema = ({
+  min = 1,
+  max = 64,
+  field = "Slug",
+  trim = true,
+  allowUnderscore = false
+}: SlugSchemaInputs = {}) => {
   const base = trim ? z.string().trim() : z.string();
   return base
     .min(min, {
@@ -21,9 +28,17 @@ export const slugSchema = ({ min = 1, max = 64, field = "Slug", trim = true }: S
     .max(max, {
       message: `${field} field must be at most ${max} lowercase character${max === 1 ? "" : "s"}`
     })
-    .refine((v) => slugify(v, { lowercase: true }) === v, {
-      message: `${field} field can only contain lowercase letters, numbers, and hyphens`
-    });
+    .refine(
+      (v) =>
+        allowUnderscore
+          ? characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen, CharacterType.Underscore])(v)
+          : slugify(v, { lowercase: true }) === v,
+      {
+        message: allowUnderscore
+          ? `${field} field can only contain letters, numbers, hyphens, and underscores`
+          : `${field} field can only contain lowercase letters, numbers, and hyphens`
+      }
+    );
 };
 
 export const GenericResourceNameSchema = z

@@ -213,7 +213,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.CREATE.projectDescription),
-        slug: slugSchema({ min: 5, max: 64 }).optional().describe(PROJECTS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 64, allowUnderscore: true }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
@@ -380,7 +380,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
+        slug: slugSchema({ max: 64, allowUnderscore: true }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
