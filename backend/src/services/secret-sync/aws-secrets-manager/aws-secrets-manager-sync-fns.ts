@@ -518,9 +518,7 @@ export const AwsSecretsManagerSyncFns = {
       if (syncOptions.tags !== undefined) {
         const { tagsToAdd, tagKeysToRemove } = processTags({
           syncTagsRecord,
-          awsTagsRecord: Object.fromEntries(
-            existingDescription?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
-          )
+          awsTagsRecord: Object.fromEntries(existingDescription?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? [])
         });
 
         if (tagsToAdd.length) {
