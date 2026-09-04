@@ -85,6 +85,7 @@ const AzureEntraIdFields = ({
                     {...field}
                     id={`azure-entra-${key}`}
                     isReadOnly={isReadOnly}
+                    isError={Boolean(error)}
                     aria-describedby={error ? `azure-entra-${key}-error` : undefined}
                   />
                   <FieldError id={`azure-entra-${key}-error`}>{error?.message}</FieldError>

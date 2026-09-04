@@ -626,6 +626,7 @@ const SqlDatabaseFields = ({
                 {...field}
                 value={field.value ?? ""}
                 id="sql-database-ca"
+                isError={Boolean(error)}
                 aria-describedby={error ? "sql-database-ca-error" : undefined}
               />
               <FieldError id="sql-database-ca-error">{error?.message}</FieldError>
