@@ -343,18 +343,19 @@ export const identityUaServiceFactory = ({
       // the use is claimed and cannot be given back, so a bookkeeping failure must not reject the
       // login and strand a single-use secret. Token issuance below can still throw and consume one
       try {
+        // the claim counted finite-use secrets; for unlimited ones numUses is informational, so one write per window
+        const usageWrite = hasFiniteUsageLimit
+          ? Promise.resolve(false)
+          : keyStore
+              .setItemWithExpiryNX(
+                KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
+                UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+                "1"
+              )
+              .then(Boolean);
+
         const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
-          hasFiniteUsageLimit
-            ? // the claim already counted it
-              Promise.resolve(false)
-            : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
-              keyStore
-                .setItemWithExpiryNX(
-                  KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
-                  UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
-                  "1"
-                )
-                .then(Boolean),
+          usageWrite,
           shouldRecordIdentityLastLogin(keyStore, identity.id)
         ]);
 

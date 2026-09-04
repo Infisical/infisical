@@ -44,6 +44,7 @@ const createUaIdentity = async (name: string, numUsesLimit: number) => {
     body: {
       accessTokenTTL: 2592000,
       accessTokenMaxTTL: 2592000,
+      // a different counter from the client secret's own numUsesLimit; 0 is unlimited
       accessTokenNumUsesLimit: 0,
       // a burst of rejections must not be able to trip the lockout and change what these assert
       lockoutEnabled: false

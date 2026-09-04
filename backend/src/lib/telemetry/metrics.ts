@@ -532,7 +532,7 @@ export const recordAuthAttemptMetric = (params: {
   if (params.error !== undefined) {
     attributes["error.type"] = classifyError(params.error);
     const reason = classifyAuthReason(params.error);
-    if (reason) attributes["infisical.auth.reason"] = reason;
+    if (reason) attributes["infisical.auth.failure_reason"] = reason;
   }
   authAttemptDurationHistogram.record((performance.now() - params.startTime) / 1000, attributes);
 };
