@@ -1,7 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -75,6 +77,7 @@ type TUserServiceFactoryDep = {
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -92,7 +95,8 @@ export const userServiceFactory = ({
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  emailDomainDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -268,23 +272,60 @@ export const userServiceFactory = ({
     return updatedUser;
   };
 
-  const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
+  /**
+   * Returns why this account's email is managed elsewhere, or null when the user owns it. SCIM
+   * provisions the address from the directory; SSO enforcement makes the IdP authoritative for it
+   * and overwrites whatever is set here on the next login, so offering the change would be a lie.
+   *
+   * Enforcement only reaches an address on a domain the enforcing org has verified, since
+   * syncSsoUserProfile refuses to rename anything else. The user row is global, so membership in an
+   * enforced org is not on its own a claim over the address: someone whose mailbox sits outside that
+   * org's domains still owns it and keeps the change.
+   */
+  const $getManagedEmailReason = async (user: Pick<TUsers, "id" | "username">, tx?: Knex) => {
     const userOrgs = await membershipUserDAL.find(
       {
-        actorUserId: userId,
+        actorUserId: user.id,
         scope: AccessScope.Organization
       },
       { tx }
     );
 
     if (userOrgs.length === 0) {
-      return false;
+      return null;
     }
 
     const orgIds = userOrgs.map((membership) => membership.scopeOrgId);
     const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
 
-    return organizations.some((org) => org.scimEnabled);
+    if (organizations.some((org) => org.scimEnabled)) {
+      return "Email changes are disabled because SCIM is enabled for one or more of your organizations";
+    }
+
+    const authEnforcedOrgIds = organizations.filter((org) => org.authEnforced).map((org) => org.id);
+    if (!authEnforcedOrgIds.length) {
+      return null;
+    }
+
+    const emailDomain = user.username.split("@")[1]?.toLowerCase().trim();
+    if (!emailDomain) {
+      return null;
+    }
+
+    const [managedDomain] = await emailDomainDAL.find(
+      {
+        domain: emailDomain,
+        status: EmailDomainStatus.Verified,
+        $in: { orgId: authEnforcedOrgIds }
+      },
+      { tx, limit: 1 }
+    );
+
+    if (managedDomain) {
+      return "Email changes are disabled because your address is on a domain belonging to an organization that enforces SSO. Your email address is managed by your identity provider.";
+    }
+
+    return null;
   };
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
@@ -314,12 +355,9 @@ export const userServiceFactory = ({
         });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "RequestEmailChangeOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "RequestEmailChangeOTP" });
       }
 
       // Availability of the requested address is deliberately NOT checked here: step 1
@@ -363,12 +401,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "VerifyCurrentEmailOTP" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "VerifyCurrentEmailOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "VerifyCurrentEmailOTP" });
       }
 
       let tokenData;
@@ -443,12 +478,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "You are part of an organization that has SCIM enabled, and email changes are not allowed",
-          name: "UpdateUserEmail"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "UpdateUserEmail" });
       }
 
       // Validate OTP and get the new email from token aliasId field

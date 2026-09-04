@@ -12,7 +12,7 @@ A certificate policy defines the rules that certificates must follow — allowed
 
 ## How policies work
 
-When a certificate is requested, Certificate Manager validates the request against the policy bound to its profile. If the request violates any policy constraint, the certificate is not issued.
+When a certificate is requested, Certificate Manager validates the request against the policy bound to its profile. If the request violates any policy constraint, the certificate isn't issued.
 
 This enforcement happens automatically — teams don't need to know the policy details. They just request certificates, and the policy ensures compliance.
 
@@ -32,7 +32,7 @@ Each policy field (Subject Attributes, SANs, Key Usages, etc.) follows a three-s
 
 ## Create a certificate policy
 
-Navigate to **Certificate Manager → Certificate Policies** and click **Create**.
+Navigate to **Certificate Manager → Certificate Policies** and select **Create**.
 
 ### Policy presets
 
@@ -186,7 +186,7 @@ Control whether certificates can act as CAs:
 
 | Setting | Effect |
 |---------|--------|
-| **Forbid CA** | Certificates are end-entity only — cannot sign other certificates |
+| **Forbid CA** | Certificates are end-entity only — can't sign other certificates |
 | **Allow CA** | Certificates can be either CA or end-entity based on request |
 | **Require CA** | All certificates must be CAs (for Root/Intermediate CA policies) |
 

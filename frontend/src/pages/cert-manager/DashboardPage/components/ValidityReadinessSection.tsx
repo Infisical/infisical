@@ -23,7 +23,7 @@ import {
 } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import { CHART_COLORS, CHART_COLORS_HEX, formatShare } from "./chart-theme";
 
 type Props = {
   stats: TDashboardStats;
@@ -292,7 +292,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
           <div className="min-w-0 flex-1">
             <div className="space-y-1.5">
               {chartData.map((item) => {
-                const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                const pct = formatShare(item.count, total);
                 return (
                   <div
                     key={item.bucket}
@@ -310,7 +310,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
                       </TooltipTrigger>
                       <TooltipContent side="top">{item.compliance}</TooltipContent>
                     </Tooltip>
-                    <span className="shrink-0 text-right text-muted">{pct}%</span>
+                    <span className="shrink-0 text-right text-muted">{pct}</span>
                     <span className="shrink-0 text-right font-medium text-foreground">
                       {item.count}
                     </span>

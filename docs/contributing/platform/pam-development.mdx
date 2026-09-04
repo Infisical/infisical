@@ -110,7 +110,7 @@ For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
 
 ## Seed test resources
 
-Once your relay and gateway are up, you still need actual databases and SSH servers to point PAM at. Spinning those up by hand — running each container, creating users, then clicking through the UI to register every resource and account — is the slow part of any PAM dev loop.
+Once your relay and gateway are up, you still need actual databases and SSH servers to point PAM at. Spinning those up by hand — running each container, creating users, then working through the UI to register every resource and account — is the slow part of any PAM dev loop.
 
 The [`dev/pam`](https://github.com/infisical/cli/tree/main/dev/pam) dev stack in the Infisical CLI repo does both in one shot: it boots the resources you pick in `.env`, pre-seeded with users and sample data, then registers each one as a PAM resource + account in your local Infisical against the gateway you just started.
 
@@ -159,7 +159,7 @@ docker compose -f docker-compose.dev.yml logs -f backend
 <Accordion title="Gateway cannot connect to relay">
 - Verify relay is running and registered in the UI
 - Check `--target-relay-name` matches relay's `--name`
-- Ensure port 2222 is not blocked
+- Ensure port 2222 isn't blocked
 </Accordion>
 
 <Accordion title="Cannot reach local resources through gateway">

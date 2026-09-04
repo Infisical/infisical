@@ -26,6 +26,7 @@ import {
   pamResourceAdminPermissions,
   pamResourceAuditorPermissions,
   pamResourceConnectorPermissions,
+  pamResourceOperatorPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
   projectAdminSignerFallbackPermissions,
@@ -208,6 +209,8 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
     switch (role) {
       case PamResourceRole.Admin:
         return pamResourceAdminPermissions;
+      case PamResourceRole.Operator:
+        return pamResourceOperatorPermissions;
       case PamResourceRole.Connector:
         return pamResourceConnectorPermissions;
       case PamResourceRole.Auditor:
