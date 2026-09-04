@@ -15,10 +15,6 @@ type TGetAppConnectionFunc = (
 export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listAccounts = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
-    if (process.env.NODE_ENV === "development" && appConnection.credentials.accessToken === "local-netlify-fixture") {
-      return [{ id: "local-netlify-account", name: "Local Netlify Account" }];
-    }
-
     try {
       const accounts = await NetlifyPublicAPI.getNetlifyAccounts(appConnection);
       return accounts;
@@ -30,14 +26,6 @@ export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc
 
   const listSites = async (connectionId: string, actor: OrgServiceActor, accountId: string) => {
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
-    if (
-      process.env.NODE_ENV === "development" &&
-      appConnection.credentials.accessToken === "local-netlify-fixture" &&
-      accountId === "local-netlify-account"
-    ) {
-      return [{ id: "local-netlify-site", name: "Local Netlify Site" }];
-    }
-
     try {
       const sites = await NetlifyPublicAPI.getSites(appConnection, accountId);
       return sites;
