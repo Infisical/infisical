@@ -44,7 +44,9 @@ const createUaIdentity = async (name: string, numUsesLimit: number) => {
     body: {
       accessTokenTTL: 2592000,
       accessTokenMaxTTL: 2592000,
-      accessTokenNumUsesLimit: 0
+      accessTokenNumUsesLimit: 0,
+      // a burst of rejections must not be able to trip the lockout and change what these assert
+      lockoutEnabled: false
     }
   });
   expect(attachRes.statusCode).toBe(200);
@@ -127,7 +129,19 @@ describe("Universal Auth client secret usage limit", async () => {
         // exactly the limit: no increments lost by the winners, none burned by the losers
         const row = await readClientSecretRow(clientSecretId);
         expect(row?.clientSecretNumUses).toBe(numUsesLimit);
-        expect(row?.isClientSecretRevoked).toBe(true);
+
+        // a spent secret is revoked by the next attempt rather than mid-burst. Revoking during the
+        // burst would hide it from the secret lookup and send the rest of the burst down the
+        // invalid-credential path, which feeds the lockout counter for the whole clientId
+        expect(row?.isClientSecretRevoked).toBe(false);
+
+        const afterBurst = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/auth/universal-auth/login",
+          body: { clientId, clientSecret }
+        });
+        expect(afterBurst.statusCode).toBe(401);
+        expect((await readClientSecretRow(clientSecretId))?.isClientSecretRevoked).toBe(true);
       } finally {
         await deleteIdentity(identityId);
       }

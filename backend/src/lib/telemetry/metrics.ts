@@ -503,7 +503,6 @@ export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("
 // surfaces it as a label. The list is the label's cardinality bound: add a code here to see it
 // broken out, and anything unlisted reports as "other".
 const AUTH_ATTEMPT_REASONS = new Set([
-  "client_id_not_found",
   "invalid_client_secret",
   "client_secret_expired",
   "client_secret_usage_limit_reached",

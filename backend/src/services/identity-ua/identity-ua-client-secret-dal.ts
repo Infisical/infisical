@@ -27,11 +27,12 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
   };
 
   // The limit is in the WHERE so the check and the increment are one statement: concurrent
-  // callers serialize on the row and only numUsesLimit of them can claim a use.
+  // callers serialize on the row and only numUsesLimit of them can claim a use. The revoked
+  // flag rides along so a secret revoked after the caller's lookup cannot still claim one.
   const tryClaimUsage = async (id: string, tx?: Knex): Promise<boolean> => {
     try {
       const claimed = await (tx || db)(TableName.IdentityUaClientSecret)
-        .where({ id })
+        .where({ id, isClientSecretRevoked: false })
         .where("clientSecretNumUsesLimit", ">", 0)
         .andWhere(
           "clientSecretNumUses",

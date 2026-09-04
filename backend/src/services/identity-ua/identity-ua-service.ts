@@ -323,15 +323,10 @@ export const identityUaServiceFactory = ({
       // the numUses read above is a stale snapshot, so the claim is what enforces the limit. It
       // settles before the debounces below so a rejected login cannot consume one of their windows
       if (hasFiniteUsageLimit && !(await identityUaClientSecretDAL.tryClaimUsage(clientSecretId))) {
-        // the deny is already decided, so a failure marking the spent secret revoked must not
-        // turn this into a 500; the daily cleanup reaps it on numUses >= numUsesLimit anyway
-        try {
-          await identityUaClientSecretDAL.updateById(clientSecretId, {
-            isClientSecretRevoked: true
-          });
-        } catch (error) {
-          logger.error(error, `Failed to revoke spent client secret [clientSecretId=${clientSecretId}]`);
-        }
+        // no revoke here on purpose: the lookup above skips revoked rows, so revoking mid-burst makes
+        // the rest of the burst miss the secret and take the invalid-credential path, which feeds the
+        // lockout counter and locks every secret under this clientId. The stale-read check above still
+        // revokes on the next attempt, and the daily cleanup reaps numUses >= numUsesLimit
         throw new UnauthorizedError({
           message: "Access denied due to client secret usage limit reached",
           detail: {
@@ -345,8 +340,8 @@ export const identityUaServiceFactory = ({
         });
       }
 
-      // the use is claimed and cannot be given back, so the caller has earned its token: a failure
-      // past this point must not reject the login, or it would strand a single-use secret for good
+      // the use is claimed and cannot be given back, so a bookkeeping failure must not reject the
+      // login and strand a single-use secret. Token issuance below can still throw and consume one
       try {
         const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
           hasFiniteUsageLimit
