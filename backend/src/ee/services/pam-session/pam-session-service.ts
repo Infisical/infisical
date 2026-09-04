@@ -441,7 +441,8 @@ export const pamSessionServiceFactory = ({
     mfaSessionId,
     tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
-    targetHost
+    targetHost,
+    supportedTransports
   }: {
     path: string;
     projectId: string;
@@ -456,6 +457,7 @@ export const pamSessionServiceFactory = ({
     tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
+    supportedTransports?: ("relay" | "direct")[];
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
@@ -711,7 +713,8 @@ export const pamSessionServiceFactory = ({
         id: actor.actorId,
         type: actor.actor,
         name: user?.email ?? actorName
-      }
+      },
+      supportedTransports
     });
 
     if (!certs) {
@@ -759,9 +762,10 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs,
       accessMethod: PamAccessMethod.Cli,
       relayHost: certs.relayHost,
-      relayClientCertificate: certs.relay.clientCertificate,
-      relayClientPrivateKey: certs.relay.clientPrivateKey,
-      relayServerCertificateChain: certs.relay.serverCertificateChain,
+      directAddress: certs.directAddress,
+      relayClientCertificate: certs.relay?.clientCertificate,
+      relayClientPrivateKey: certs.relay?.clientPrivateKey,
+      relayServerCertificateChain: certs.relay?.serverCertificateChain,
       gatewayClientCertificate: certs.gateway.clientCertificate,
       gatewayClientPrivateKey: certs.gateway.clientPrivateKey,
       gatewayServerCertificateChain: certs.gateway.serverCertificateChain

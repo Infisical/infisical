@@ -27,14 +27,13 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
-        // Gateway is stale when: heartbeat + heartbeatTTL + buffer < NOW(), OR heartbeatTTL = 0
-        // Only consider gateways that have heartbeat (registered and probed at least once)
-        void query.whereNotNull(`${TableName.GatewayV2}.heartbeat`);
+        const effectiveHeartbeat = `CASE WHEN "${TableName.GatewayV2}"."directAddress" IS NOT NULL THEN "${TableName.GatewayV2}"."directHeartbeat" ELSE "${TableName.GatewayV2}"."heartbeat" END`;
+        void query.whereRaw(`${effectiveHeartbeat} IS NOT NULL`);
         void query.where((builder) => {
           void builder
             .where(
               db.raw(
-                `"${TableName.GatewayV2}"."heartbeat" + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) < NOW()`
+                `${effectiveHeartbeat} + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) < NOW()`
               )
             )
             .orWhere(`${TableName.GatewayV2}.heartbeatTTL`, 0);

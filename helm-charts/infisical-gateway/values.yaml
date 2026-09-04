@@ -54,6 +54,9 @@ gateway:
   # Specific relay to connect to. Leave empty for automatic selection.
   relayName: ""
 
+  # Stable host:port advertised by a gateway accepting direct connections.
+  listenAddress: ""
+
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 # Persistent storage for the gateway (credentials and session recordings).

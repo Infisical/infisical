@@ -28,11 +28,14 @@ const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
+  relayId: true,
   name: true,
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  heartbeatTTL: true
+  heartbeatTTL: true,
+  directAddress: true,
+  directHeartbeat: true
 }).extend({
   canRevoke: z.boolean()
 });
@@ -717,22 +720,26 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "connectGateway",
       body: z.object({
-        relayName: z.string().trim().min(1).max(32).optional()
+        relayName: z.string().trim().min(1).max(32).optional(),
+        directAddress: z.string().trim().min(3).max(255).optional()
       }),
       response: {
         200: z.object({
           gatewayId: z.string(),
-          relayHost: z.string(),
+          directAddress: z.string().optional(),
+          relayHost: z.string().optional(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
             clientCertificateChain: z.string()
           }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
+          ssh: z
+            .object({
+              clientCertificate: z.string(),
+              clientPrivateKey: z.string(),
+              serverCAPublicKey: z.string()
+            })
+            .optional()
         })
       }
     },
@@ -742,7 +749,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         actorId: req.permission.id,
         actorType: req.permission.type,
-        relayName: req.body.relayName
+        relayName: req.body.relayName,
+        directAddress: req.body.directAddress
       });
     }
   });

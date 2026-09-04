@@ -6,12 +6,19 @@ import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 export const GatewayHealthStatus = ({
   heartbeat,
+  relayId,
+  directAddress,
+  directHeartbeat,
   heartbeatTTL
 }: {
   heartbeat?: string | null;
+  relayId?: string | null;
+  directAddress?: string | null;
+  directHeartbeat?: string | null;
   heartbeatTTL?: number | null;
 }) => {
-  if (!heartbeat && !heartbeatTTL) {
+  const effectiveHeartbeat = directAddress ? directHeartbeat : heartbeat;
+  if (!effectiveHeartbeat && heartbeatTTL === null && !directAddress && !relayId) {
     return (
       <Badge variant="warning" iconPosition="left">
         <CircleDashedIcon />
@@ -20,8 +27,8 @@ export const GatewayHealthStatus = ({
     );
   }
 
-  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const isHealthy = isGatewayHealthy({ heartbeat, heartbeatTTL });
+  const heartbeatDate = effectiveHeartbeat ? new Date(effectiveHeartbeat) : null;
+  const isHealthy = isGatewayHealthy({ heartbeat, directAddress, directHeartbeat, heartbeatTTL });
 
   return (
     <Tooltip>

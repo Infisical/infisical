@@ -122,12 +122,21 @@ spec:
             {{- end }}
             {{- end }}
             {{- if .Values.gateway.relayName }}
-            - --target-relay-name={{ .Values.gateway.relayName }}
+            - --relay={{ .Values.gateway.relayName }}
+            {{- end }}
+            {{- if .Values.gateway.listenAddress }}
+            - --listen-address={{ .Values.gateway.listenAddress }}
             {{- end }}
             - --pam-session-recording-path={{ $sessionPath }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- if .Values.gateway.listenAddress }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- end }}
           volumeMounts:
             {{- if $usePVC }}
             - name: gateway-data

@@ -127,7 +127,9 @@ export const createGatewayConnection = async (
   relayConn: net.Socket,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
   protocol: GatewayProxyProtocol,
-  tunnelId?: string
+  tunnelId?: string,
+  serverName = "localhost",
+  timeoutMs = 120000
 ): Promise<net.Socket> => {
   const appCfg = getConfig();
 
@@ -154,6 +156,7 @@ export const createGatewayConnection = async (
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
     rejectUnauthorized: true,
+    servername: serverName,
     ALPNProtocols: protocolToAlpn[protocol],
     checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
   };
@@ -181,7 +184,7 @@ export const createGatewayConnection = async (
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
-      gatewaySocket.setTimeout(120000);
+      gatewaySocket.setTimeout(timeoutMs);
       gatewaySocket.on("timeout", () => {
         destroyGatewayTunnel({ gatewayConn: gatewaySocket, tunnelId, trigger: "gatewayTimeout" });
         reject(new Error("Gateway connection timeout"));
@@ -197,6 +200,7 @@ export const createGatewayConnection = async (
 export const setupRelayServer = async ({
   gatewayId,
   protocol,
+  directAddress,
   relayHost,
   gateway,
   relay,
@@ -206,9 +210,10 @@ export const setupRelayServer = async ({
 }: {
   gatewayId: string;
   protocol: GatewayProxyProtocol;
-  relayHost: string;
+  directAddress?: string;
+  relayHost?: string;
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-  relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+  relay?: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   httpsAgent?: https.Agent;
   longLived?: boolean;
   /**
@@ -236,26 +241,48 @@ export const setupRelayServer = async ({
 
   const openUpstream = async (): Promise<TUpstream> => {
     const tunnelId = crypto.randomBytes(4).toString("hex");
-
-    // Stage 1: Connect to relay with TLS
     let relayConn: net.Socket;
+    let gatewayServerName = "localhost";
     try {
-      relayConn = await createRelayConnection({
-        relayHost,
-        clientCertificate: relay.clientCertificate,
-        clientPrivateKey: relay.clientPrivateKey,
-        serverCertificateChain: relay.serverCertificateChain,
-        tunnelId
-      });
+      if (directAddress) {
+        const parsed = new URL(`tcp://${directAddress}`);
+        gatewayServerName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
+        const [targetHost] = await verifyHostInputValidity({
+          host: gatewayServerName,
+          isGateway: true,
+          isDynamicSecret: false
+        });
+        relayConn = net.connect({ host: targetHost, port: Number(parsed.port) });
+      } else {
+        if (!relayHost || !relay) throw new Error("Gateway has no reachable transport");
+        relayConn = await createRelayConnection({
+          relayHost,
+          clientCertificate: relay.clientCertificate,
+          clientPrivateKey: relay.clientPrivateKey,
+          serverCertificateChain: relay.serverCertificateChain,
+          tunnelId
+        });
+      }
     } catch (err) {
-      tunnelLog(tunnelId, "relay connect failed", ` [err=${err instanceof Error ? err.message : String(err)}]`);
+      tunnelLog(
+        tunnelId,
+        directAddress ? "direct connect failed" : "relay connect failed",
+        ` [err=${err instanceof Error ? err.message : String(err)}]`
+      );
       throw err;
     }
 
     let gatewayConn: net.Socket;
     try {
       // Stage 2: Establish mTLS connection to gateway through the relay
-      gatewayConn = await createGatewayConnection(relayConn, gateway, protocol, tunnelId);
+      gatewayConn = await createGatewayConnection(
+        relayConn,
+        gateway,
+        protocol,
+        tunnelId,
+        gatewayServerName,
+        directAddress ? 3000 : undefined
+      );
     } catch (err) {
       tunnelLog(tunnelId, "gateway mTLS failed", ` [err=${err instanceof Error ? err.message : String(err)}]`);
       destroyGatewayTunnel({ relayConn, tunnelId, trigger: "gatewayHandshakeFailed" });
@@ -463,13 +490,14 @@ export const withGatewayV2Proxy = async <T>(
     longLived?: boolean;
   } & TGatewayV2ConnectionDetails
 ): Promise<T> => {
-  const { gatewayId, protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
+  const { gatewayId, protocol, directAddress, relayHost, gateway, relay, httpsAgent, longLived } = options;
 
   let relayServer;
   try {
     relayServer = await setupRelayServer({
       gatewayId,
       protocol,
+      directAddress,
       relayHost,
       gateway,
       relay,

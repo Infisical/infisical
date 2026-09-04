@@ -16,11 +16,26 @@ import { useGetRelays } from "@app/hooks/api/relays/queries";
 type Props = {
   gatewayId: string;
   gatewayName: string;
+  isDirect: boolean;
+  listenAddress: string;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-export const KubernetesStartCommandContent = ({ gatewayId, gatewayName }: Props) => {
+const getListenPort = (address: string) => {
+  try {
+    return new URL(`tcp://${address}`).port || "8443";
+  } catch {
+    return "8443";
+  }
+};
+
+export const KubernetesStartCommandContent = ({
+  gatewayId,
+  gatewayName,
+  isDirect,
+  listenAddress
+}: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
@@ -31,6 +46,15 @@ export const KubernetesStartCommandContent = ({ gatewayId, gatewayName }: Props)
   const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
 
   const helmCommand = useMemo(() => {
+    const advertisedAddress = listenAddress.trim() || "<gateway-address>:8443";
+    const directPart = isDirect
+      ? [
+          " \\",
+          `  --set gateway.listenAddress=${advertisedAddress}`,
+          " \\",
+          `  --set service.port=${getListenPort(advertisedAddress)}`
+        ].join("\n")
+      : "";
     const relayPart = resolvedRelayName
       ? ` \\\n  --set gateway.relayName=${resolvedRelayName}`
       : "";
@@ -40,13 +64,16 @@ helm install infisical-gateway infisical/infisical-gateway \\
   --set gateway.name=${gatewayName} \\
   --set gateway.domain=${siteURL} \\
   --set gateway.enrollment.method=kubernetes \\
-  --set gateway.enrollment.kubernetes.gatewayId=${gatewayId}${relayPart}`;
-  }, [gatewayName, gatewayId, resolvedRelayName, siteURL]);
+  --set gateway.enrollment.kubernetes.gatewayId=${gatewayId}${relayPart}${directPart}`;
+  }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const cliCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `infisical gateway start ${gatewayName} --enroll-method=kubernetes --gateway-id=${gatewayId}${relayPart} --domain=${siteURL}`;
-  }, [gatewayName, gatewayId, resolvedRelayName, siteURL]);
+    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const directPart = isDirect
+      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
+      : "";
+    return `infisical gateway start ${gatewayName} --enroll-method=kubernetes --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
+  }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   return (
     <div className="min-w-0 space-y-4">
@@ -60,34 +87,36 @@ helm install infisical-gateway infisical/infisical-gateway \\
           must be reachable from the pod, so a loopback address will not work.
         </p>
       </TabsContent>
-      <Field>
-        <Select
-          value={relay.id}
-          onValueChange={(id) =>
-            setRelay(
-              [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
-                AUTO_RELAY_OPTION
-            )
-          }
-          disabled={isRelaysLoading}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select relay" />
-          </SelectTrigger>
-          <SelectContent>
-            {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {relay.id !== "_auto" && (
-          <FieldDescription>
-            * Auto Select chooses a healthy relay and fails over if needed.
-          </FieldDescription>
-        )}
-      </Field>
+      {!isDirect && (
+        <Field>
+          <Select
+            value={relay.id}
+            onValueChange={(id: string) =>
+              setRelay(
+                [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
+                  AUTO_RELAY_OPTION
+              )
+            }
+            disabled={isRelaysLoading}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select relay" />
+            </SelectTrigger>
+            <SelectContent>
+              {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {relay.id !== "_auto" && (
+            <FieldDescription>
+              * Auto Select chooses a healthy relay and fails over if needed.
+            </FieldDescription>
+          )}
+        </Field>
+      )}
       <p className="text-xs text-muted">
         The gateway must run in a namespace and service account matching the configured allowlists.
       </p>

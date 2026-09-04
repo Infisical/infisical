@@ -14,6 +14,15 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tabs,
   TabsList,
   TabsTrigger
@@ -23,6 +32,7 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 
@@ -33,11 +43,22 @@ import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesSt
 type Props = {
   gatewayId: string;
   gatewayName: string;
+  directAddress?: string | null;
   authMethod: GatewayAuthMethodView;
 };
 
-export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Props) => {
+export const GatewayDeploySection = ({
+  gatewayId,
+  gatewayName,
+  directAddress,
+  authMethod
+}: Props) => {
+  const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
+  const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
+    isCloud ? "relay" : "direct"
+  );
+  const [listenAddress, setListenAddress] = useState(directAddress ?? "");
   const [deploymentMethod, setDeploymentMethod] = useState("");
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
@@ -112,12 +133,55 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
             </Alert>
           ) : (
             <>
+              {!isCloud && (
+                <Field>
+                  <FieldLabel htmlFor="gateway-connection-mode">Connection Mode</FieldLabel>
+                  <Select
+                    value={connectionMode}
+                    onValueChange={(value) => setConnectionMode(value as "relay" | "direct")}
+                  >
+                    <SelectTrigger id="gateway-connection-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Direct Listen</SelectItem>
+                      <SelectItem value="relay">Relay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              {connectionMode === "direct" && (
+                <Field>
+                  <FieldLabel htmlFor="gateway-listen-address">Listen Address</FieldLabel>
+                  <Input
+                    id="gateway-listen-address"
+                    value={listenAddress}
+                    onChange={(event) => setListenAddress(event.target.value)}
+                    placeholder="gateway.internal:8443"
+                  />
+                  <FieldDescription>
+                    Enter the stable address Infisical will use to reach this gateway.
+                  </FieldDescription>
+                </Field>
+              )}
+
               {authMethod.method === "aws" && (
-                <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+                <AwsStartCommandContent
+                  gatewayId={gatewayId}
+                  gatewayName={gatewayName}
+                  isDirect={connectionMode === "direct"}
+                  listenAddress={listenAddress}
+                />
               )}
 
               {isKubernetes && (
-                <KubernetesStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+                <KubernetesStartCommandContent
+                  gatewayId={gatewayId}
+                  gatewayName={gatewayName}
+                  isDirect={connectionMode === "direct"}
+                  listenAddress={listenAddress}
+                />
               )}
 
               {authMethod.method === "token" && !enrollment && (
@@ -139,6 +203,8 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
                     gatewayName={gatewayName}
                     enrollmentToken={enrollment.token}
                     expiresAt={enrollment.expiresAt}
+                    isDirect={connectionMode === "direct"}
+                    listenAddress={listenAddress}
                     onCommandDirtyChange={setIsCommandDirty}
                   />
                   <Button
