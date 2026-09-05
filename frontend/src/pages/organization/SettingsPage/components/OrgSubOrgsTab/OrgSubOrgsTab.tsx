@@ -55,6 +55,10 @@ import {
 import { OrgPermissionSubjects, useOrgPermission, useUser } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import {
+  notifyOrgSelectionFailed,
+  refreshOrgListsOnAccessRevoked
+} from "@app/helpers/organization";
+import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
@@ -161,9 +165,19 @@ export const OrgSubOrgsTab = () => {
   useResetPageHelper({ setPage, offset, totalCount });
 
   const handleLoginSubOrg = async (subOrgId: string) => {
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-      organizationId: subOrgId
-    });
+    let selection: Awaited<ReturnType<typeof selectOrganization>>;
+    try {
+      selection = await selectOrganization({ organizationId: subOrgId });
+    } catch (error) {
+      await refreshOrgListsOnAccessRevoked(queryClient, error);
+      notifyOrgSelectionFailed(
+        error,
+        paginatedSubOrgs.find((subOrg) => subOrg.id === subOrgId)?.name
+      );
+      return;
+    }
+
+    const { token, isMfaEnabled, mfaMethod } = selection;
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);

@@ -1172,8 +1172,10 @@ export const authLoginServiceFactory = ({
     });
 
     if (!orgMembership) {
+      // The UI tells revoked membership apart from enforced SSO by this name, since both are 403s
       throw new ForbiddenRequestError({
-        message: `User does not have access to the organization with ID ${organizationId}`
+        message: `User does not have access to the organization with ID ${organizationId}`,
+        name: "OrgAccessRevoked"
       });
     }
 
@@ -1187,7 +1189,10 @@ export const authLoginServiceFactory = ({
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
     if (!orgMembership.isActive) {
-      throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+      throw new ForbiddenRequestError({
+        message: "User organization membership is inactive",
+        name: "OrgAccessRevoked"
+      });
     }
 
     let rootOrg = selectedOrg;
@@ -1217,12 +1222,16 @@ export const authLoginServiceFactory = ({
 
       if (!rootOrgMembership) {
         throw new ForbiddenRequestError({
-          message: "User does not have access to the root organization"
+          message: "User does not have access to the root organization",
+          name: "OrgAccessRevoked"
         });
       }
 
       if (!rootOrgMembership.isActive) {
-        throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+        throw new ForbiddenRequestError({
+          message: "User organization membership is inactive",
+          name: "OrgAccessRevoked"
+        });
       }
     }
 

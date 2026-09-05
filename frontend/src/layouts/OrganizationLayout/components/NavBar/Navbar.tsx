@@ -66,6 +66,10 @@ import {
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
+import {
+  notifyOrgSelectionFailed,
+  refreshOrgListsOnAccessRevoked
+} from "@app/helpers/organization";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -204,7 +208,20 @@ export const Navbar = () => {
 
     if (organizationId === currentOrg.id) return;
 
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
+    let selection: Awaited<ReturnType<typeof selectOrganization>>;
+    try {
+      selection = await selectOrganization({ organizationId });
+    } catch (error) {
+      await refreshOrgListsOnAccessRevoked(queryClient, error);
+      notifyOrgSelectionFailed(
+        error,
+        orgs?.find((org) => org.id === organizationId)?.name ??
+          subOrganizations.find((subOrg) => subOrg.id === organizationId)?.name
+      );
+      return;
+    }
+
+    const { token, isMfaEnabled, mfaMethod } = selection;
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
