@@ -2,7 +2,8 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TVercelBranches } from "@app/services/integration-auth/integration-auth-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -14,9 +15,12 @@ import {
   VercelApp,
   VercelEnvironment,
   VercelOrgWithApps,
+  VercelProject,
   VercelTeam,
   VercelUserResponse
 } from "./vercel-connection-types";
+
+const VERCEL_PROJECT_LIST_LIMIT = 100;
 
 export const getVercelConnectionListItem = () => {
   return {
@@ -132,41 +136,47 @@ async function fetchOrgProjects(orgId: string, apiToken: string, projectSearch?:
   const params: Record<string, string | number> = {
     teamId: orgId,
     ...(projectSearch ? { search: projectSearch } : {}),
-    limit: 10
+    limit: VERCEL_PROJECT_LIST_LIMIT
   };
   return fetchAllPages<VercelApp>({
     apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v10/projects`,
     apiToken,
     initialParams: params,
     dataPath: "projects",
-    maxItems: 10
+    maxItems: VERCEL_PROJECT_LIST_LIMIT
   });
 }
 
 async function fetchProjectEnvironments(
   projectId: string,
-  teamId: string,
+  teamId: string | undefined,
   apiToken: string
 ): Promise<VercelEnvironment[]> {
   try {
     return await fetchAllPages<VercelEnvironment>({
-      apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${projectId}/custom-environments?teamId=${teamId}`,
-      initialParams: {},
+      apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${projectId}/custom-environments`,
+      initialParams: teamId ? { teamId } : {},
       dataPath: "environments",
       apiToken
     });
   } catch (error) {
+    logger.warn(error, `Failed to fetch Vercel custom environments for project ${projectId}`);
     return [];
   }
 }
 
-async function fetchPreviewBranches(projectId: string, apiToken: string): Promise<string[]> {
+async function fetchPreviewBranches(
+  projectId: string,
+  teamId: string | undefined,
+  apiToken: string
+): Promise<string[]> {
   try {
     const { data } = await request.get<TVercelBranches[]>(
       `${IntegrationUrls.VERCEL_API_URL}/v1/integrations/git-branches`,
       {
         params: {
-          projectId
+          projectId,
+          ...(teamId ? { teamId } : {})
         },
         headers: {
           Authorization: `Bearer ${apiToken}`,
@@ -174,8 +184,9 @@ async function fetchPreviewBranches(projectId: string, apiToken: string): Promis
         }
       }
     );
-    return data.filter((b) => b.ref !== "main").map((b) => b.ref);
+    return data.map((b) => b.ref);
   } catch (error) {
+    logger.warn(error, `Failed to fetch Vercel git branches for project ${projectId}`);
     return [];
   }
 }
@@ -225,36 +236,12 @@ export const listProjects = async (
     try {
       const projects = await fetchOrgProjects(org.id, apiToken, projectSearch);
 
-      const enhancedProjectsPromises = projects.map(async (project) => {
-        try {
-          const [environments, previewBranches] = await Promise.all([
-            fetchProjectEnvironments(project.name, org.id, apiToken),
-            fetchPreviewBranches(project.id, apiToken)
-          ]);
-
-          return {
-            name: project.name,
-            id: project.id,
-            envs: environments,
-            previewBranches
-          };
-        } catch (error) {
-          return {
-            name: project.name,
-            id: project.id,
-            envs: [],
-            previewBranches: []
-          };
-        }
-      });
-
-      const enhancedProjects = await Promise.all(enhancedProjectsPromises);
-
       return {
         ...org,
-        apps: enhancedProjects
+        apps: projects.map((project) => ({ id: project.id, name: project.name }))
       };
     } catch (error) {
+      logger.warn(error, `Failed to fetch Vercel projects for team ${org.id}`);
       return null;
     }
   });
@@ -270,17 +257,52 @@ export const listProjects = async (
   return orgsWithApps;
 };
 
-export const getProjectEnvironmentVariables = (project: VercelApp): Record<string, string> => {
-  const envVars: Record<string, string> = {};
+export const getProject = async (
+  appConnection: TVercelConnection,
+  projectId: string,
+  teamId?: string
+): Promise<VercelProject> => {
+  const { apiToken } = appConnection.credentials;
 
-  if (!project.envs) return envVars;
+  let project: VercelApp;
 
-  project.envs.forEach((env) => {
-    if (env.slug && env.type !== "gitBranch") {
-      const { id, slug } = env;
-      envVars[id] = slug;
+  try {
+    const { data } = await request.get<VercelApp>(
+      `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${encodeURIComponent(projectId)}`,
+      {
+        params: teamId ? { teamId } : {},
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+    project = data;
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      throw new NotFoundError({
+        message: `Could not find Vercel project with ID ${projectId}. Verify that the project exists and that the connection's API token has access to it.`
+      });
     }
-  });
 
-  return envVars;
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to fetch Vercel project ${projectId}: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw error;
+  }
+
+  const [envs, previewBranches] = await Promise.all([
+    fetchProjectEnvironments(project.id, teamId, apiToken),
+    fetchPreviewBranches(project.id, teamId, apiToken)
+  ]);
+
+  return {
+    id: project.id,
+    name: project.name,
+    envs,
+    previewBranches
+  };
 };

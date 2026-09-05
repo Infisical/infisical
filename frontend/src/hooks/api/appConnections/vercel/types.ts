@@ -17,9 +17,11 @@ export type TVercelConnectionEnvironment = {
 export type TVercelConnectionApp = {
   id: string;
   name: string;
-  envs?: TVercelConnectionEnvironment[];
-  previewBranches?: string[];
-  projectId: string;
+};
+
+export type TVercelConnectionProject = TVercelConnectionApp & {
+  envs: TVercelConnectionEnvironment[];
+  previewBranches: string[];
 };
 
 export type TVercelConnectionOrganization = {
