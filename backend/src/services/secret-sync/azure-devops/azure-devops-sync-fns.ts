@@ -73,10 +73,10 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
 
     for (const group of response.data.value) {
       if (group.name === environmentName) {
-        return { groupId: group.id.toString(), groupName: group.name };
+        return { groupId: group.id.toString(), groupName: group.name, variables: group.variables ?? {} };
       }
     }
-    return { groupId: "", groupName: "" };
+    return { groupId: "", groupName: "", variables: {} };
   };
 
   const syncSecrets = async (secretSync: TAzureDevOpsSyncWithCredentials, secretMap: TSecretMap) => {
@@ -94,7 +94,11 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
 
     const { accessToken, orgName, isOAuth } = await getConnectionAuth(secretSync);
 
-    const { groupId, groupName } = await $getEnvGroupId(
+    const {
+      groupId,
+      groupName,
+      variables: existingVariables
+    } = await $getEnvGroupId(
       accessToken,
       orgName,
       secretSync.destinationConfig.devopsProjectId,
@@ -103,6 +107,20 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
     );
 
     const variables: Record<string, { value: string; isSecret: boolean }> = {};
+
+    // The update below sets the group's whole variable collection, so anything left out of the
+    // request body is dropped. Carry over the variables Infisical does not manage when deletion
+    // is disabled, otherwise this destination would remove them regardless of the option.
+    // Azure DevOps returns secret values as null, and treats a null value on update as "keep the
+    // existing one", so round-tripping a secret variable here does not clear it.
+    if (secretSync.syncOptions.disableSecretDeletion) {
+      for (const [key, variable] of Object.entries(existingVariables)) {
+        if (!(key in secretMap)) {
+          variables[key] = variable;
+        }
+      }
+    }
+
     for (const [key, secret] of Object.entries(secretMap)) {
       if (secret?.value !== undefined) {
         variables[key] = { value: secret.value, isSecret: true };
