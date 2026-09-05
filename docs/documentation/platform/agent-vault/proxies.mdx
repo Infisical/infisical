@@ -53,9 +53,9 @@ Addresses on a private network are reachable, so an internal API inside your own
 
 ### Bypass hosts
 
-A comma-separated list of hosts that stay reachable under **Deny**. They are handled like every other host, with the proxy's certificate and no credential attached, so this is the proxy-wide equivalent of giving each of them a pass-through connection.
+A comma-separated list of hosts that stay reachable under **Deny**. They're handled like every other host, with the proxy's certificate and no credential attached, so this is the proxy-wide equivalent of giving each of them a pass-through connection.
 
-Use it when the hosts are a property of the deployment rather than of one bundle, such as a documentation site or a package registry every agent needs. It is set by whoever runs the proxy; pass-through connections are set by whoever owns the bundle.
+Use it when the hosts are a property of the deployment rather than of one bundle, such as a documentation site or a package registry every agent needs. It's set by whoever runs the proxy; pass-through connections are set by whoever owns the bundle.
 
 Under **Allow** the list changes nothing, since those hosts are reachable anyway. A host one of your bundles covers still gets its credential.
 

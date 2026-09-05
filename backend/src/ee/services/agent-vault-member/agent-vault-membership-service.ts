@@ -205,8 +205,7 @@ export const agentVaultMembershipServiceFactory = ({
     }
 
     const memberships = await membershipDAL.transaction(async (tx) => {
-      const results: { membershipId: string; userId: string; userName?: string; role: string; createdAt: Date }[] =
-        [];
+      const results: { membershipId: string; userId: string; userName?: string; role: string; createdAt: Date }[] = [];
       for (const { userId, label } of toCreate) {
         // eslint-disable-next-line no-await-in-loop
         const membership = await membershipDAL.create(
