@@ -13,6 +13,7 @@ import {
   TCmekBulkImportKeysDTO,
   TCmekBulkImportKeysResult,
   TCmekDecryptDTO,
+  TCmekDeriveSharedSecretDTO,
   TCmekEncryptDTO,
   TCmekGenerateMacDTO,
   TCmekGetPrivateKeyDTO,
@@ -651,6 +652,44 @@ export const cmekServiceFactory = ({
     };
   };
 
+  const cmekDeriveSharedSecret = async ({ keyId, publicKey }: TCmekDeriveSharedSecretDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCmekActions.DeriveSharedSecret,
+      ProjectPermissionSub.Cmek
+    );
+
+    if (key.keyUsage !== KmsKeyUsage.KEY_AGREEMENT) {
+      throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for shared secret derivation` });
+    }
+
+    const derive = await kmsService.deriveSharedSecret({ kmsId: keyId });
+
+    const { secret } = await derive({ publicKey: Buffer.from(publicKey, "base64") });
+
+    return {
+      secret,
+      keyId: key.id,
+      projectId: key.projectId
+    };
+  };
+
   const bulkImportKeys = async (
     { projectId, keys }: TCmekBulkImportKeysDTO,
     actor: OrgServiceActor
@@ -730,6 +769,7 @@ export const cmekServiceFactory = ({
     listCmeksByProjectId,
     cmekEncrypt,
     cmekDecrypt,
+    cmekDeriveSharedSecret,
     findCmekById,
     findCmekByName,
     cmekSign,

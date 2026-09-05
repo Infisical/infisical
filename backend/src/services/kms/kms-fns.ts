@@ -4,7 +4,7 @@ import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
 import { BadRequestError } from "@app/lib/errors";
 
-import { KmsKeyUsage } from "./kms-types";
+import { EccNistKeyAlgorithm, KeyAgreementAlgorithm, KmsKeyUsage } from "./kms-types";
 
 export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 16;
 export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
@@ -72,9 +72,33 @@ export const getByteLengthForSymmetricEncryptionAlgorithm = (encryptionAlgorithm
   }
 };
 
+type TKeyUsageAlgorithmConfig = {
+  algorithmEnum: Record<string, string>;
+  errorMessage: string;
+};
+
+const keyUsageAlgorithmMap: Record<KmsKeyUsage, TKeyUsageAlgorithmConfig> = {
+  [KmsKeyUsage.ENCRYPT_DECRYPT]: {
+    algorithmEnum: SymmetricKeyAlgorithm,
+    errorMessage: "Unsupported encryption algorithm for encrypt/decrypt key"
+  },
+  [KmsKeyUsage.SIGN_VERIFY]: {
+    algorithmEnum: AsymmetricKeyAlgorithm,
+    errorMessage: "Unsupported sign/verify algorithm for sign/verify key"
+  },
+  [KmsKeyUsage.GENERATE_VERIFY_MAC]: {
+    algorithmEnum: HmacAlgorithm,
+    errorMessage: "Unsupported HMAC algorithm for generate/verify MAC key"
+  },
+  [KmsKeyUsage.KEY_AGREEMENT]: {
+    algorithmEnum: EccNistKeyAlgorithm,
+    errorMessage: "Unsupported key agreement algorithm for derive secret key"
+  }
+};
+
 export const verifyKeyTypeAndAlgorithm = (
   keyUsage: KmsKeyUsage,
-  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm,
+  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm | KeyAgreementAlgorithm,
   extra?: {
     forceType?: KmsKeyUsage;
   }
@@ -85,37 +109,18 @@ export const verifyKeyTypeAndAlgorithm = (
     });
   }
 
-  if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-    if (!Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)) {
-      throw new BadRequestError({
-        message: `Unsupported encryption algorithm for encrypt/decrypt key: ${algorithm as string}`
-      });
-    }
-
-    return true;
+  const config = keyUsageAlgorithmMap[keyUsage];
+  if (!config) {
+    throw new BadRequestError({
+      message: `Unsupported key type: ${keyUsage as string}`
+    });
   }
 
-  if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
-    if (!Object.values(AsymmetricKeyAlgorithm).includes(algorithm as AsymmetricKeyAlgorithm)) {
-      throw new BadRequestError({
-        message: `Unsupported sign/verify algorithm for sign/verify key: ${algorithm as string}`
-      });
-    }
-
-    return true;
+  if (!Object.values(config.algorithmEnum).includes(algorithm)) {
+    throw new BadRequestError({
+      message: `${config.errorMessage}: ${algorithm as string}`
+    });
   }
 
-  if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
-    if (!Object.values(HmacAlgorithm).includes(algorithm as HmacAlgorithm)) {
-      throw new BadRequestError({
-        message: `Unsupported HMAC algorithm for generate/verify MAC key: ${algorithm as string}`
-      });
-    }
-
-    return true;
-  }
-
-  throw new BadRequestError({
-    message: `Unsupported key type: ${keyUsage as string}`
-  });
+  return true;
 };

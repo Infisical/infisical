@@ -139,6 +139,7 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.Verify]: z.boolean().optional(),
   [ProjectPermissionCmekActions.GenerateMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.VerifyMac]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.DeriveSharedSecret]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
   [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
 });
@@ -1647,6 +1648,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
       const canGenerateMac = action.includes(ProjectPermissionCmekActions.GenerateMac);
       const canVerifyMac = action.includes(ProjectPermissionCmekActions.VerifyMac);
+      const canDeriveSharedSecret = action.includes(
+        ProjectPermissionCmekActions.DeriveSharedSecret
+      );
       const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
 
@@ -1663,6 +1667,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canVerify) formVal[subject]![0][ProjectPermissionCmekActions.Verify] = true;
       if (canGenerateMac) formVal[subject]![0][ProjectPermissionCmekActions.GenerateMac] = true;
       if (canVerifyMac) formVal[subject]![0][ProjectPermissionCmekActions.VerifyMac] = true;
+      if (canDeriveSharedSecret)
+        formVal[subject]![0][ProjectPermissionCmekActions.DeriveSharedSecret] = true;
       if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
@@ -2158,6 +2164,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Verify MAC",
         value: ProjectPermissionCmekActions.VerifyMac,
         description: "Verify MACs using KMS keys"
+      },
+      {
+        label: "Derive Shared Secret",
+        value: ProjectPermissionCmekActions.DeriveSharedSecret,
+        description: "Derive shared secrets using key agreement KMS keys"
       },
       {
         label: "Rotate",
