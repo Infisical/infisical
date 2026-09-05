@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "vitest run",
     "preview": "vite preview",
     "lint": "eslint ./src --max-warnings 0",
     "lint:fix": "eslint --fix ./src --max-warnings 0",
@@ -186,6 +187,7 @@
     "vite-plugin-node-polyfills": "^0.23.0",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.7"
   }
 }
