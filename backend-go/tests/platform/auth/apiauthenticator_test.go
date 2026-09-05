@@ -981,6 +981,39 @@ func TestValidateIdentityAccessToken_OrgMembershipInactive(t *testing.T) {
 	assert.Contains(t, err.Error(), "inactive")
 }
 
+func TestValidateIdentityAccessToken_NonAcceptedStatus(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	projName := "test-invited-" + uuid.New().String()[:8]
+	proj := nodejs.CreateProject(t, projName)
+	t.Cleanup(func() {
+		nodejs.DeleteProject(t, proj.ID)
+	})
+
+	identity := nodejs.CreateIdentity(t, "invited-identity-"+uuid.New().String()[:8])
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	token := nodejs.GetIdentityAccessToken(t, identity.ID)
+
+	// Set the org membership status to a non-accepted, non-null value.
+	_, err := stack.DB().Primary().Exec(context.Background(), `
+		UPDATE memberships
+		SET status = 'invited'
+		WHERE "actorIdentityId" = @identityID AND scope = 'organization'
+	`, pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = stack.DB().Primary().Exec(context.Background(),
+			`UPDATE memberships SET status = NULL WHERE "actorIdentityId" = @identityID AND scope = 'organization'`,
+			pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
+	})
+
+	_, err = authenticator.ValidateIdentityAccessToken(context.Background(), token, "")
+
+	assertUnauthorized(t, err)
+	assert.Contains(t, err.Error(), "not a member")
+}
+
 // =============================================================================
 // Identity IP Blocklist Tests
 // =============================================================================
