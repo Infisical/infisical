@@ -206,7 +206,7 @@ postgresql:
     database: infisicalDB
 
   useExistingPostgresSecret:
-    # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string
+    # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string. Also set `postgresql.enabled: false` or the bundled PostgreSQL instance is deployed and left unused.
     enabled: false
     existingConnectionStringSecret:
       # -- Kubernetes secret name containing the PostgreSQL connection string
@@ -241,6 +241,15 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
+
+  useExistingRedisSecret:
+    # -- Set to true if using an existing Kubernetes secret that contains the Redis connection string. Also set `redis.enabled: false` or the bundled Redis instance is deployed and left unused.
+    enabled: false
+    existingConnectionStringSecret:
+      # -- Kubernetes secret name containing the Redis connection string
+      name: ""
+      # -- Key name in the Kubernetes secret that holds the connection string
+      key: ""
 
 # -- Configuration for the bundled ingress-nginx subchart (only applies when ingress.nginx.enabled=true)
 ingress-nginx:
