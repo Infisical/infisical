@@ -257,6 +257,11 @@ describe("Agent Vault V1 Router", async () => {
       const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
 
+      // A type change has no stored half to fall back on, so neither half supplied is refused here,
+      // where the same-type path would have kept what was stored.
+      const emptyBasic = await inject("PATCH", url, { credential: { type: "basic" } });
+      expect(emptyBasic.statusCode).toBe(400);
+
       // The sealed secret belongs to the old type, so there is nothing to carry over.
       const noSecret = await inject("PATCH", url, { credential: { type: "basic", username: "bot" } });
       expect(noSecret.statusCode).toBe(200);

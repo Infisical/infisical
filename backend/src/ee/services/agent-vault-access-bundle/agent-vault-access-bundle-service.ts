@@ -110,6 +110,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return { config: { type: credential.type, ...config }, secret: { value: credential.value } };
       }
       case AgentVaultCredentialType.Basic: {
+        // The create schema refuses two empty halves, but a type change reaches here with whatever the
+        // patch omitted, and an empty pair seals `Basic ` over a bare colon, which authenticates nobody.
+        if (!credential.username && !credential.password) {
+          throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
+        }
         const config = AgentVaultBasicConfigSchema.parse({
           username: credential.username,
           hasPassword: credential.password.length > 0
