@@ -52,7 +52,11 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     description: "Claude models from Anthropic.",
     hostPattern: "api.anthropic.com",
     aliases: ["claude"],
-    credential: { type: AgentVaultCredentialType.Bearer }
+    credential: {
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "x-api-key",
+      headerPrefix: ""
+    }
   },
   {
     key: "gemini",
@@ -62,7 +66,11 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     description: "Google's Gemini models.",
     hostPattern: "generativelanguage.googleapis.com",
     aliases: ["google", "bard", "vertex"],
-    credential: { type: AgentVaultCredentialType.Bearer }
+    credential: {
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "x-goog-api-key",
+      headerPrefix: ""
+    }
   },
   {
     key: "mistral",
@@ -189,15 +197,6 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     category: AgentVaultTemplateCategory.Communication,
     description: "Post messages and build Slack apps.",
     hostPattern: "slack.com",
-    credential: { type: AgentVaultCredentialType.Bearer }
-  },
-  {
-    key: "telegram",
-    name: "Telegram",
-    image: "Telegram.svg",
-    category: AgentVaultTemplateCategory.Communication,
-    description: "Build and run Telegram bots.",
-    hostPattern: "api.telegram.org",
     credential: { type: AgentVaultCredentialType.Bearer }
   },
   {
