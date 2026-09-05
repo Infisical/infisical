@@ -440,6 +440,32 @@ export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.
   unit: "{error}"
 });
 
+// Denominator for coreHttpErrorCounter so error rate per route survives OTEL_DROP_HIGH_CARDINALITY_METERS.
+// normalizeHttpMethod mirrors @opentelemetry/instrumentation-http KNOWN_METHODS (_OTHER for the rest) for joinable labels.
+const KNOWN_HTTP_METHODS = new Set([
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "DELETE",
+  "CONNECT",
+  "OPTIONS",
+  "TRACE",
+  "PATCH",
+  "QUERY"
+]);
+
+export const normalizeHttpMethod = (method?: string): string => {
+  if (!method) return "GET";
+  const upper = method.toUpperCase();
+  return KNOWN_HTTP_METHODS.has(upper) ? upper : "_OTHER";
+};
+
+export const coreHttpRequestCounter = infisicalCoreMeter.createCounter("infisical.core.http.request.count", {
+  description: "API requests with bounded labels. Labels limited to InfisicalCore View allowlist.",
+  unit: "{request}"
+});
+
 // -- Signup abuse (InfisicalCore meter) -------------------------------------------------------------
 
 export enum EmailDispatchPurpose {

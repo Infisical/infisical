@@ -18,7 +18,14 @@ import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { getTelemetryConfig } from "../config/env";
-import { HIGH_CARDINALITY_METER_NAMES, INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
+import {
+  HIGH_CARDINALITY_METER_NAMES,
+  HTTP_INSTRUMENTATION_METER_ATTRIBUTES,
+  HTTP_INSTRUMENTATION_METER_NAME,
+  INFISICAL_CORE_METER_ATTRIBUTES,
+  METER_AGGREGATION_CARDINALITY_LIMIT,
+  resolveHttpSemconvOptIn
+} from "./telemetry-attributes";
 
 dotenv.config();
 
@@ -79,7 +86,13 @@ const initTelemetryInstrumentation = ({
   const views: ViewOptions[] = [
     {
       meterName: "InfisicalCore",
+      aggregationCardinalityLimit: METER_AGGREGATION_CARDINALITY_LIMIT,
       attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
+    },
+    {
+      meterName: HTTP_INSTRUMENTATION_METER_NAME,
+      aggregationCardinalityLimit: METER_AGGREGATION_CARDINALITY_LIMIT,
+      attributesProcessors: [createAllowListAttributesProcessor(HTTP_INSTRUMENTATION_METER_ATTRIBUTES)]
     }
   ];
 
@@ -106,6 +119,20 @@ const initTelemetryInstrumentation = ({
   });
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
+
+  const requestedSemconvOptIn = process.env.OTEL_SEMCONV_STABILITY_OPT_IN;
+  const resolvedSemconvOptIn = resolveHttpSemconvOptIn(requestedSemconvOptIn);
+  if (requestedSemconvOptIn !== resolvedSemconvOptIn) {
+    // The value an operator set is not the value the instrumentation ends up reading, so say so at boot.
+    // The logger is not available here: instrumentation is imported before the app config is loaded.
+    // eslint-disable-next-line no-console
+    console.log(
+      `Telemetry: set OTEL_SEMCONV_STABILITY_OPT_IN to "${resolvedSemconvOptIn}"${
+        requestedSemconvOptIn ? ` (from "${requestedSemconvOptIn}")` : ""
+      }. Infisical requires the stable HTTP semantic conventions. Set "http/dup" to also emit the old metric names while migrating dashboards.`
+    );
+  }
+  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = resolvedSemconvOptIn;
 
   registerInstrumentations({
     instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]
