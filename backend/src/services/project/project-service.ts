@@ -7,6 +7,7 @@ import {
   ActionProjectType,
   OrganizationActionScope,
   OrgMembershipRole,
+  OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -908,10 +909,17 @@ export const projectServiceFactory = ({
   }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
     const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
     const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
-    const organizationIds = [
-      actorOrgId,
-      ...(currentOrganization?.subOrganizations.map((organization) => organization.id) ?? [])
-    ];
+    const organizationIds = [actorOrgId];
+    for (const organization of currentOrganization?.subOrganizations ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Keep membership reads bounded to one database connection.
+      const membership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId,
+        orgId: organization.id,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (membership?.isActive) organizationIds.push(organization.id);
+    }
 
     const projects = await projectDAL.findUserProjects(actorId, organizationIds);
     return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
