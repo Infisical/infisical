@@ -473,7 +473,7 @@ These metrics track all HTTP API requests to Infisical, including request counts
     For HTTP error rate per route, divide the `http.response.status_code >= 400` series by the total on this metric. Do not use `infisical.core.http.error.count` as the numerator: it counts thrown errors, and a response that sets a 4xx or 5xx status without throwing (an unmatched route, for example) never reaches it.
 
     **Attributes**:
-      - `http.request.method` (string): HTTP method
+      - `http.request.method` (string): HTTP method, normalized to the ten names the OpenTelemetry HTTP conventions define, with anything else reported as `_OTHER` so this metric joins against `http.server.request.duration`. The Infisical meter keep the method as sent, so use those to see an unusual method such as `PROPFIND` on its own
       - `http.route` (string): Parameterized route template (e.g. `/api/v1/secrets/:secretName`), never the raw path. `unknown` for a request that matched no route.
       - `http.response.status_code` (int): HTTP status code
   </Accordion>
@@ -488,7 +488,7 @@ These metrics track all HTTP API requests to Infisical, including request counts
     **Description**: API errors with bounded error classification. The low-cardinality counterpart to `infisical.http.server.error.count`; same error volume, but labels are restricted to the InfisicalCore allowlist so the series count stays independent of org/user/identity count. Use this for alerting and dashboards at scale; use `infisical.http.server.error.count` (high-cardinality meter) when you need per-actor attribution. For per-org error breakdowns, query the audit log.
 
     **Attributes**:
-      - `http.request.method` (string): HTTP method
+      - `http.request.method` (string): HTTP method, normalized to the ten names the OpenTelemetry HTTP conventions define, with anything else reported as `_OTHER` so this metric joins against `http.server.request.duration`. The Infisical meter keep the method as sent, so use those to see an unusual method such as `PROPFIND` on its own
       - `http.route` (string): Parameterized route template where the error occurred (e.g. `/api/v1/secrets/:secretName`), never the raw path
       - `error.type` (string): Bounded error classification
   </Accordion>
@@ -1088,6 +1088,21 @@ Heap usage, GC pause, event loop lag, and other Node runtime metrics are auto-em
 ### System metrics
 
 These low-level HTTP metrics are automatically collected by OpenTelemetry's instrumentation layer, providing baseline performance data for all HTTP traffic.
+
+<Warning>
+  Infisical now follows the stable OpenTelemetry HTTP semantic conventions, which renamed both of these metrics and changed their unit from milliseconds to seconds.
+
+  | Old name | New name |
+  | --- | --- |
+  | `http.server.duration` (ms) | `http.server.request.duration` (s) |
+  | `http.client.duration` (ms) | `http.client.request.duration` (s) |
+
+  Their attributes were renamed too. `http.method` became `http.request.method`, and `http.status_code` became `http.response.status_code`.
+
+  A dashboard or alert built on the old names stops returning data once you upgrade, and a latency threshold carried across unchanged is wrong by a factor of 1000. To emit both name sets at the same time while you move dashboards over, set `OTEL_SEMCONV_STABILITY_OPT_IN=http/dup`, then unset it when you're done. That roughly doubles the volume of these two metrics for as long as it's set.
+
+  Under `http/dup` the old metrics keep `http.method` and `http.status_code`, so your existing queries keep working. They don't get `net.host.name` back, because that label is the reason for the change: it carries the client-controlled `Host` header, and it grows a new time series for every value a client sends.
+</Warning>
 
 <AccordionGroup>
   <Accordion title="http_server_request_duration">

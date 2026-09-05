@@ -32,7 +32,13 @@ export const apiMetrics = fp(async (fastify) => {
   fastify.addHook("onResponse", async (request, reply) => {
     if (!isTelemetryEnabled()) return;
 
-    const method = normalizeHttpMethod(request.method);
+    // the line detects @fastify/static routes via config.rootPath and excludes frontend asset traffic
+    // so http.route stays low-cardinality and metrics stay comparable across deployment modes.
+    if ((request.routeOptions.config as { rootPath?: string } | undefined)?.rootPath) return;
+
+    // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+    const coreMethod = normalizeHttpMethod(request.method);
+    const { method } = request;
     const route = request.routeOptions.url;
     const { statusCode } = reply;
 
@@ -40,7 +46,7 @@ export const apiMetrics = fp(async (fastify) => {
     // template, never the raw path), and they are the denominator for coreHttpErrorCounter, so a deployment
     // that drops the per-actor meters must not lose them too.
     coreHttpRequestCounter.add(1, {
-      "http.request.method": method,
+      "http.request.method": coreMethod,
       "http.route": route ?? "unknown",
       "http.response.status_code": statusCode
     });

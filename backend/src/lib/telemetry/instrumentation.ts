@@ -23,6 +23,7 @@ import {
   HTTP_INSTRUMENTATION_METER_ATTRIBUTES,
   HTTP_INSTRUMENTATION_METER_NAME,
   INFISICAL_CORE_METER_ATTRIBUTES,
+  METER_AGGREGATION_CARDINALITY_LIMIT,
   resolveHttpSemconvOptIn
 } from "./telemetry-attributes";
 
@@ -85,10 +86,12 @@ const initTelemetryInstrumentation = ({
   const views: ViewOptions[] = [
     {
       meterName: "InfisicalCore",
+      aggregationCardinalityLimit: METER_AGGREGATION_CARDINALITY_LIMIT,
       attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
     },
     {
       meterName: HTTP_INSTRUMENTATION_METER_NAME,
+      aggregationCardinalityLimit: METER_AGGREGATION_CARDINALITY_LIMIT,
       attributesProcessors: [createAllowListAttributesProcessor(HTTP_INSTRUMENTATION_METER_ATTRIBUTES)]
     }
   ];
@@ -117,7 +120,19 @@ const initTelemetryInstrumentation = ({
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
 
-  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = resolveHttpSemconvOptIn(process.env.OTEL_SEMCONV_STABILITY_OPT_IN);
+  const requestedSemconvOptIn = process.env.OTEL_SEMCONV_STABILITY_OPT_IN;
+  const resolvedSemconvOptIn = resolveHttpSemconvOptIn(requestedSemconvOptIn);
+  if (requestedSemconvOptIn !== resolvedSemconvOptIn) {
+    // The value an operator set is not the value the instrumentation ends up reading, so say so at boot.
+    // The logger is not available here: instrumentation is imported before the app config is loaded.
+    // eslint-disable-next-line no-console
+    console.log(
+      `Telemetry: set OTEL_SEMCONV_STABILITY_OPT_IN to "${resolvedSemconvOptIn}"${
+        requestedSemconvOptIn ? ` (from "${requestedSemconvOptIn}")` : ""
+      }. Infisical requires the stable HTTP semantic conventions. Set "http/dup" to also emit the old metric names while migrating dashboards.`
+    );
+  }
+  process.env.OTEL_SEMCONV_STABILITY_OPT_IN = resolvedSemconvOptIn;
 
   registerInstrumentations({
     instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]

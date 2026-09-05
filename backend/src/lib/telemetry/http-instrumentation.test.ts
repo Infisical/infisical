@@ -29,10 +29,13 @@ describe("resolveHttpSemconvOptIn", () => {
     expect(resolveHttpSemconvOptIn("database,messaging")).toBe("database,messaging,http");
   });
 
-  // http/dup emits the old attribute set alongside the stable one, which puts net.host.name back.
-  test("strips http/dup rather than letting it through", () => {
-    expect(resolveHttpSemconvOptIn("http/dup")).toBe("http");
-    expect(resolveHttpSemconvOptIn("database,HTTP/DUP")).toBe("database,http");
+  // http/dup is the OTel migration path: it emits the old metric names alongside the stable ones so an
+  // operator can cut dashboards over before the old names go away. An explicit opt-in is theirs to make.
+  test("honours an explicitly set http/dup", () => {
+    expect(resolveHttpSemconvOptIn("http/dup")).toBe("http/dup");
+    expect(resolveHttpSemconvOptIn("database,HTTP/DUP")).toBe("database,HTTP/DUP");
+    // http/dup takes precedence in the SDK's own parser, so both tokens together still mean duplicate.
+    expect(resolveHttpSemconvOptIn("http,http/dup")).toBe("http,http/dup");
   });
 
   test("does not duplicate an http token that is already present", () => {

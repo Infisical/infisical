@@ -109,7 +109,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     }
 
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-      const method = normalizeHttpMethod(req.method);
+      // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+      const coreMethod = normalizeHttpMethod(req.method);
+      const { method } = req;
       const route = req.routeOptions.url;
 
       if (shouldRecordHighCardinalityMetrics()) {
@@ -186,7 +188,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       }
 
       const coreAttrs: Record<string, string | number> = {
-        "http.request.method": method,
+        "http.request.method": coreMethod,
         "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };

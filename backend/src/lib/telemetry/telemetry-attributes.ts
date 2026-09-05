@@ -55,23 +55,36 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
 // OTEL_DROP_HIGH_CARDINALITY_METERS. Kept on by default for self-hosted; dropped in multi-tenant/cloud.
 export const HIGH_CARDINALITY_METER_NAMES = ["Infisical", "API", "SecretSyncs", "PkiSyncs", "Integrations"];
 
+// Per-instrument series ceiling on the two allowlisted Views. This is the SDK's own default made explicit.
+export const METER_AGGREGATION_CARDINALITY_LIMIT = 2000;
+
 // Meter used by @opentelemetry/instrumentation-http for http.server.duration / http.client.duration.
 export const HTTP_INSTRUMENTATION_METER_NAME = "@opentelemetry/instrumentation-http";
 
-// HttpInstrumentation reads OTEL_SEMCONV_STABILITY_OPT_IN in its constructor (no config hook), so instrumentation.ts
-// forces the "http" token via resolveHttpSemconvOptIn — not "http/dup", which doubles cardinality; other namespaces are preserved.
+// HttpInstrumentation reads OTEL_SEMCONV_STABILITY_OPT_IN at construction; default to stable "http".
+// Honour explicit "http/dup" unchanged so old and stable HTTP metrics can run side by side during migration.
 export const resolveHttpSemconvOptIn = (current?: string): string => {
-  const otherNamespaces = (current ?? "")
+  const tokens = (current ?? "")
     .split(",")
     .map((token) => token.trim())
-    .filter((token) => token && token.toLowerCase() !== "http" && token.toLowerCase() !== "http/dup");
+    .filter(Boolean);
+
+  if (tokens.some((token) => token.toLowerCase() === "http/dup")) return tokens.join(",");
+
+  const otherNamespaces = tokens.filter((token) => token.toLowerCase() !== "http");
   return [...otherNamespaces, "http"].join(",");
 };
 
-// This View keeps http.server.duration bounded if an upgrade reintroduces unbounded host related attributes like net.host.name and constant labels like url.scheme
+// Allowlist for http.server.duration: bounded labels only; drops unbounded host/peer attrs an upgrade might reintroduce.
 export const HTTP_INSTRUMENTATION_METER_ATTRIBUTES = [
   "http.request.method",
   "http.response.status_code",
   "http.route",
-  "error.type"
+  "error.type",
+  // Old names for "http/dup" migration; inert under plain "http" but needed so dup'd metrics stay filterable.
+  "http.method",
+  "http.status_code",
+  "http.flavor",
+  "http.scheme"
+  // net.host.* / net.peer.* omitted on purpose; client-controlled or per-destination, and unbounded.
 ];
