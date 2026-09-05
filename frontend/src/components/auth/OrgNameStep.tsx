@@ -15,12 +15,15 @@ import {
   Input
 } from "@app/components/v3";
 import { useCreateOrg } from "@app/hooks/api";
-import { useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { submitSignupOnboarding, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import { AuthPagePanel } from "./AuthPagePanel";
 
-const formSchema = z.object({ organizationName: GenericResourceNameSchema });
+const formSchema = z.object({
+  organizationName: GenericResourceNameSchema,
+  attributionSource: z.string().trim().max(512).optional()
+});
 
 type OrgNameFormData = z.infer<typeof formSchema>;
 
@@ -39,10 +42,10 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
     formState: { errors }
   } = useForm<OrgNameFormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: { organizationName: "" }
+    defaultValues: { organizationName: "", attributionSource: "" }
   });
 
-  const onSubmit = async ({ organizationName }: OrgNameFormData) => {
+  const onSubmit = async ({ organizationName, attributionSource }: OrgNameFormData) => {
     try {
       const organization = await createOrg({ name: organizationName });
       const { isMfaEnabled } = await selectOrganization({ organizationId: organization.id });
@@ -54,6 +57,9 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
         return;
       }
       localStorage.setItem("orgData.id", organization.id);
+      if (attributionSource) {
+        submitSignupOnboarding({ attributionSource }).catch(() => {});
+      }
       onComplete(organization.id);
     } catch {
       // The global mutation error handler already surfaces a toast; stay on this step.
@@ -89,6 +95,19 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
               {errors.organizationName ? (
                 <FieldError>{errors.organizationName.message}</FieldError>
               ) : null}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="signup-attribution-source">
+                Where did you hear about us?{" "}
+                <span className="font-normal text-muted">(optional)</span>
+              </FieldLabel>
+              <Input
+                variant="outlined"
+                {...register("attributionSource")}
+                id="signup-attribution-source"
+                placeholder="e.g. Hacker News, a friend, GitHub..."
+                maxLength={512}
+              />
             </Field>
             <Button
               type="submit"
