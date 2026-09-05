@@ -11,6 +11,9 @@ export type TLoginAliCloudAuthDTO = {
   SignatureVersion: string;
   SignatureNonce: string;
   Signature: string;
+  // Required when authenticating with Alibaba Cloud STS temporary credentials —
+  // forwarded as the SecurityToken parameter on the GetCallerIdentity call.
+  SecurityToken?: string;
   organizationSlug?: string;
 };
 
