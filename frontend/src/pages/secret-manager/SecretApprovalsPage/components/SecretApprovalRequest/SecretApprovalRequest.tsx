@@ -171,6 +171,8 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
 
   // Change requests are only ever created by change policies. When the project
   // has none, point users at the Policies tab so the empty state is actionable.
+  // Listing policies requires Read, so a role with Create but not Read cannot
+  // check whether any exist; it can still create one, so always show the CTA.
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretApproval
@@ -181,10 +183,10 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   );
   const { data: secretPolicies, isSuccess: arePoliciesLoaded } = useGetSecretApprovalPolicies({
     projectId,
-    options: { enabled: canReadPolicies }
+    options: { enabled: canCreatePolicies && canReadPolicies }
   });
   const showConfigurePoliciesCta =
-    canCreatePolicies && arePoliciesLoaded && secretPolicies?.length === 0;
+    canCreatePolicies && (!canReadPolicies || (arePoliciesLoaded && secretPolicies?.length === 0));
 
   const { requestId } = search;
   const handleCloseRequestDetail = () => {
