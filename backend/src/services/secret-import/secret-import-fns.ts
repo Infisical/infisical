@@ -1,14 +1,12 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { groupBy, unique } from "@app/lib/fn";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -258,8 +256,7 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL,
   kmsService,
   actorOrgId,
-  orgDAL,
-  licenseService
+  orgDAL
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -285,7 +282,6 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
@@ -401,8 +397,8 @@ export const fnSecretsV2FromImports = async ({
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
-    const plan = await licenseService.getPlan(actorOrgId);
-    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
+    const org = await orgDAL.findOrgById(actorOrgId);
+    const crossProjectAllowed = org?.allowCrossProjectSecretSharing ?? false;
     if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {

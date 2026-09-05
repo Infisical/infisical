@@ -56,7 +56,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TCheckRevokedGrantsDTO } from "../project-folder-grant/project-folder-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
@@ -3805,8 +3804,8 @@ export const secretServiceFactory = ({
 
     if (secretRefMap.size === 0) return revokedSecretIds;
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return revokedSecretIds;
     }
 

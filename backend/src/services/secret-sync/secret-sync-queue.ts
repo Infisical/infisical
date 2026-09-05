@@ -294,7 +294,6 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -347,7 +346,6 @@ export const secretSyncQueueFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        licenseService,
         kmsService
       });
 
