@@ -19,7 +19,7 @@ Anyone with a grant on at least one bundle can mint a session, from the dashboar
 
     Copy it now. Nothing stores the token, and the dialog can't be reopened.
 
-    Use this when the agent runs somewhere the CLI can't log in as you, such as a container or a scheduled job.
+    This is the usual way to start an agent. The machine that runs the agent needs no Infisical login, and the token is the only thing you hand over.
   </Tab>
   <Tab title="CLI">
     `infisical av run` mints a session for you when you name the bundles:
@@ -29,6 +29,8 @@ Anyone with a grant on at least one bundle can mint a session, from the dashboar
     ```
 
     The CLI authenticates as your login, or as a machine identity if you pass `--client-id` and `--client-secret`. It revokes the session when the agent exits unless you pass `--keep-session`. A session started with `--token` is never revoked by the CLI, because that token isn't the CLI's to kill.
+
+    This suits a machine you're already signed in on, where minting and running are one step. Anywhere else, mint in the dashboard and pass the token.
   </Tab>
 </Tabs>
 

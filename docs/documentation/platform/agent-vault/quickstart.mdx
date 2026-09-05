@@ -44,19 +44,33 @@ The proxy enrolls, generates its own certificate authority, and starts listening
   The enrollment token is shown once and expires in an hour. Run the same command again on a restart: the proxy remembers it has enrolled and serves without asking Infisical for a new token. For Docker and systemd the same dialog has ready-made snippets.
 </Note>
 
-## 3. Run an agent through it
+## 3. Mint a session
 
-On the machine where the agent runs, point the CLI at the proxy and name the bundle:
+Go to **Sessions** and select **Create Session**. Add `coding-agent`, leave the lifetime at 7 days, and select **Create Session**.
+
+The token appears once, with the command to run. Copy it now: nothing stores the token, and the dialog can't be reopened.
+
+A session carries a fixed set of bundles and an expiry, and nothing else. The proxy re-checks what the agent may use on every poll, so revoking the session or removing a grant stops the credentials flowing within a minute. See [Sessions](/documentation/platform/agent-vault/sessions).
+
+## 4. Run an agent with it
+
+On the machine where the agent runs, pass the token and the proxy address:
 
 ```bash
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- claude
 ```
 
-The CLI mints a session over `coding-agent` as you, fetches the proxy's certificate authority, and starts `claude` with its HTTP traffic routed through the proxy. Everything after `--` is the agent's own command. When the agent exits, the CLI revokes the session.
+The CLI fetches the proxy's certificate authority, trusts it for the agent, and starts `claude` with its HTTP traffic routed through the proxy. Everything after `--` is the agent's own command.
+
+That machine needs no Infisical login. The only thing on it is the session token, which identifies the agent to a proxy in your organization. The credentials stay on the proxy.
 
 Use the address the proxy answers on from where the agent runs. The same proxy has a different address from every network, which is why you pass it rather than pick it from a list.
 
-## 4. Verify it works
+<Note>
+  Working on your own machine and signed in with `infisical login`? You can skip the dashboard. `infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude` mints a session over the bundle and revokes it when the agent exits.
+</Note>
+
+## Verify it works
 
 Inside the agent, ask it to call GitHub:
 
@@ -67,7 +81,7 @@ GitHub answers with your profile. The agent sent no `Authorization` header; the 
 Not driving an interactive agent? Run the check directly:
 
 ```bash
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
+infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
 ```
 
 The CLI prints which hosts the session can reach before the agent starts, so a `401` from GitHub with `api.github.com:443` missing from that list means the bundle no longer covers it, and a `401` with it present means the token itself is wrong.
@@ -76,7 +90,7 @@ The CLI prints which hosts the session can reach before the agent starts, so a `
 
 <CardGroup cols={2}>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Mint a session from the dashboard for an agent you don't launch from the CLI, and choose how long it lives.
+    Choose how long a session lives, order the bundles on it, and revoke one while an agent is still running.
   </Card>
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
     Run the proxy on a server, decide what happens to hosts no connection covers, and pin its certificate.

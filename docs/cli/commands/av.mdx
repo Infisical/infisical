@@ -8,8 +8,8 @@ description: "Run an Agent Vault proxy, and launch agents that hold no credentia
 infisical av proxy --enrollment-token <enrollment-token>
 
 # Where the agent runs
-infisical av run --access-bundle <bundle-name> --proxy <proxy-host>:17323 -- claude
 infisical av run --token <session-token> --proxy <proxy-host>:17323 -- claude
+infisical av run --access-bundle <bundle-name> --proxy <proxy-host>:17323 -- claude
 ```
 
 ## Description
@@ -125,7 +125,7 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
 <Accordion title="infisical av run">
   Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. Before starting it, the CLI:
 
-  - Gets a session: minted now over the bundles named with `--access-bundle`, or the one you pass with `--token`. Exactly one of the two is required.
+  - Gets a session: the one you pass with `--token`, or minted now over the bundles named with `--access-bundle`. Exactly one of the two is required.
   - Fetches the proxy's certificate authority from the proxy itself, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
   - Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, the session token as the proxy password, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
 
@@ -134,13 +134,13 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
   The session token travels to the proxy in the clear, in the `Proxy-Authorization` header of every request, so keep proxies on networks you control. See [Certificate trust](/documentation/platform/agent-vault/proxies#certificate-trust) for the trade this makes and when to pin.
 
 ```bash
-infisical av run --access-bundle <bundle-name> --proxy <proxy-host>:17323 -- [agent start command]
+infisical av run --token <session-token> --proxy <proxy-host>:17323 -- [agent start command]
 
-# Mint over two bundles; the first wins where both cover the same host
-infisical av run --access-bundle on-call-infrastructure --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
-
-# Run with a session minted in the dashboard, pinned to the proxy's certificate
+# Pin the certificate authority the proxy serves
 infisical av run --token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
+
+# Mint the session here instead, over two bundles; the first wins where both cover the same host
+infisical av run --access-bundle on-call-infrastructure --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
 ```
 
 ### Environment variables
@@ -175,21 +175,21 @@ infisical av run --token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint
 
 ### Flags
 
-  <Accordion title="--access-bundle">
-    Mint a session over this access bundle, by name. Repeatable. The order you pass them is the session's priority order when two bundles cover the same host with identical patterns. Needs a login or a machine identity, and can't be combined with `--token`.
-
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
-    ```
-  </Accordion>
-
   <Accordion title="--token">
     Run with a session token minted in the dashboard. The token is the credential, so no login is needed, and the CLI never revokes it. Can't be combined with `--access-bundle`.
 
     ```bash
     # Example
     infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--access-bundle">
+    Mint a session over this access bundle, by name. Repeatable. The order you pass them is the session's priority order when two bundles cover the same host with identical patterns. Needs a login or a machine identity, and can't be combined with `--token`.
+
+    ```bash
+    # Example
+    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
     ```
   </Accordion>
 
