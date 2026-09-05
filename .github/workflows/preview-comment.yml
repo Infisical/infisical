@@ -1,0 +1,70 @@
+name: Update preview comment
+
+on:
+  status:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to refresh
+        type: number
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'status' && github.event.context == 'northflank/infisical/infisical-preview/infisical-core') ||
+      (github.event_name == 'deployment_status' && github.event.deployment.creator.login == 'northflank-cloud-build-run[bot]' && startsWith(github.event.deployment.environment, 'pr-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      prs: ${{ steps.resolve.outputs.result }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Deployment events refer to PR commits. Only execute trusted main code.
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - id: resolve
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { resolvePullRequests } = require('./.github/scripts/preview-comment.cjs');
+            return await resolvePullRequests({ github, context });
+
+  comment:
+    needs: resolve
+    if: needs.resolve.outputs.prs != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        pr: ${{ fromJSON(needs.resolve.outputs.prs) }}
+    concurrency:
+      group: northflank-preview-comment-${{ matrix.pr }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: read
+      deployments: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PREVIEW_PR: ${{ matrix.pr }}
+        with:
+          script: |
+            const { reconcile } = require('./.github/scripts/preview-comment.cjs');
+            await reconcile({ github, context, pr: Number(process.env.PREVIEW_PR) });
