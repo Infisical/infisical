@@ -1807,7 +1807,9 @@ export const registerRoutes = async (
     agentVaultAccessBundleMemberDAL,
     permissionService,
     kmsService,
-    membershipDAL
+    membershipDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const agentVaultSessionService = agentVaultSessionServiceFactory({

@@ -54,7 +54,7 @@ The proxy never falls back. If the winning connection's credential is rejected w
 
 ## Access bundles
 
-A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**.
+A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**, and at the same level: a group that was added to Agent Vault is granted as a group, and each of its members then mints sessions as themselves.
 
 Bundles are how access is scoped: an agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
 

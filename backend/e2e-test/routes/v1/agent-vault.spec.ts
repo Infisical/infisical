@@ -840,6 +840,49 @@ describe("Agent Vault V1 Router", async () => {
       await deleteOrgIdentity(outsider.id);
     });
 
+    test("a grant to someone who is in the product only through a group says so", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const bundle = await createAccessBundle("member-via-group");
+      const insider = await createOrgIdentity(`av-via-group-${Date.now()}`);
+
+      const [group] = (await testDb("groups")
+        .insert({ orgId: seedData1.organization.id, name: "av-via-group", slug: `av-via-group-${Date.now()}` })
+        .returning("*")) as { id: string }[];
+      const [groupMembership] = (await testDb("memberships")
+        .insert({
+          scope: AccessScope.Project,
+          scopeOrgId: seedData1.organization.id,
+          scopeProjectId: projectId,
+          actorGroupId: group.id,
+          isActive: true
+        })
+        .returning("*")) as { id: string }[];
+      await testDb("membership_roles").insert({ membershipId: groupMembership.id, role: ProjectMembershipRole.Member });
+      await testDb("identity_group_membership").insert({ groupId: group.id, identityId: insider.id });
+
+      try {
+        // Grants follow membership at the same level: the group is the member, so the group is what gets
+        // the bundle. The refusal has to say that rather than "not a member", which would be false.
+        const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          identityId: insider.id
+        });
+        expect(res.statusCode).toBe(400);
+        expect(JSON.parse(res.payload).message).toContain("through a group");
+
+        const asGroup = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          groupId: group.id
+        });
+        expect(asGroup.statusCode).toBe(200);
+      } finally {
+        await testDb("identity_group_membership").where({ groupId: group.id }).delete();
+        await testDb("memberships").where({ id: groupMembership.id }).delete();
+        await testDb("groups").where({ id: group.id }).delete();
+        await deleteOrgIdentity(insider.id);
+      }
+    });
+
     test("exactly one actor id is required", async () => {
       const bundle = await createAccessBundle("member-one-actor");
 

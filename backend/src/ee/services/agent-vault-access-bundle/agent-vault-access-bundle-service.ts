@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, TAgentVaultConnections } from "@app/db/schemas";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -45,7 +47,9 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleMemberDAL: TAgentVaultAccessBundleMemberDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  membershipDAL: Pick<TMembershipDALFactory, "findOne" | "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
@@ -57,8 +61,35 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultAccessBundleMemberDAL,
     permissionService,
     kmsService,
-    membershipDAL
+    membershipDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   } = deps;
+
+  // Grants follow product membership at the same level: a group that is in Agent Vault is granted as a
+  // group, and its members mint as themselves. So a person who is in the product only through a group
+  // is turned away here as well, but told why, since "not a member" would be wrong.
+  const isInProjectThroughGroup = async ({
+    projectId,
+    userId,
+    identityId
+  }: {
+    projectId: string;
+    userId?: string;
+    identityId?: string;
+  }) => {
+    const groups = userId
+      ? await userGroupMembershipDAL.find({ userId })
+      : await identityGroupMembershipDAL.find({ identityId: identityId! });
+    if (!groups.length) return false;
+
+    const viaGroup = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId,
+      $in: { actorGroupId: groups.map((group) => group.groupId) }
+    });
+    return viaGroup.length > 0;
+  };
 
   // A grant to someone outside the Agent Vault project does nothing: reachability is intersected with
   // project membership on every resolve, so the row would sit there looking like access that works.
@@ -81,12 +112,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ...(groupId ? { actorGroupId: groupId } : {})
     });
 
-    if (!membership) {
+    if (membership) return;
+
+    if (!groupId && (await isInProjectThroughGroup({ projectId, userId, identityId }))) {
       throw new BadRequestError({
         message:
-          "That user, machine identity or group is not a member of Agent Vault. Add them under Access Control first."
+          "That user or machine identity is in Agent Vault through a group. Grant the access bundle to the group, or add them directly under Access Control first."
       });
     }
+
+    throw new BadRequestError({
+      message:
+        "That user, machine identity or group is not a member of Agent Vault. Add them under Access Control first."
+    });
   };
 
   // Project scope, not org scope: org scope has no cache and costs three DB queries every time.
