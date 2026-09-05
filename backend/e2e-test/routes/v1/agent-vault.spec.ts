@@ -692,6 +692,33 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("proxies", async () => {
+    test("revoking access also burns an enrollment token minted before the revoke", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "revoke-burns-token" });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as { proxy: { id: string } };
+
+      const pendingTokens = async () => {
+        const row = (await testDb("resource_token_auths")
+          .join("resource_auth_methods", "resource_auth_methods.id", "resource_token_auths.authMethodId")
+          .where("resource_auth_methods.agentVaultProxyId", proxy.id)
+          .count("resource_token_auths.id as count")
+          .first()) as { count: string };
+        return Number(row.count);
+      };
+      expect(await pendingTokens()).toBe(1);
+
+      // Bumping tokenVersion on its own would leave this token able to enroll right after the revoke.
+      const revoked = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/revoke`);
+      expect(revoked.statusCode).toBe(200);
+      expect(await pendingTokens()).toBe(0);
+
+      const row = await testDb("agent_vault_proxies").where({ id: proxy.id }).first();
+      expect(row.tokenVersion).toBe(1);
+      expect(row.heartbeat).toBeNull();
+    });
+  });
+
   describe("retention sweep", async () => {
     test("reaps sessions a month after they stopped working and leaves live ones alone", async () => {
       const bundle = await createAccessBundle("sweep-bundle");

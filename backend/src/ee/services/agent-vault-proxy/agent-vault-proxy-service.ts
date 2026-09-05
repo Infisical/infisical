@@ -49,7 +49,10 @@ type TAgentVaultProxyServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "mintToken" | "loginWithToken">;
+  resourceAuthMethodService: Pick<
+    TResourceAuthMethodServiceFactory,
+    "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
+  >;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
@@ -117,17 +120,19 @@ export const agentVaultProxyServiceFactory = ({
     return proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy)));
   };
 
+  const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
+    type: ctx.actor,
+    id: ctx.actorId,
+    orgId: ctx.actorOrgId,
+    rootOrgId: ctx.actorOrgId,
+    parentOrgId: ctx.actorOrgId,
+    authMethod: ctx.actorAuthMethod
+  });
+
   const $issueEnrollmentToken = async (proxyId: string, ctx: TCreateProxyDTO["ctx"]) => {
     const enrollment = await resourceAuthMethodService.mintToken({
       resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxyId },
-      actor: {
-        type: ctx.actor,
-        id: ctx.actorId,
-        orgId: ctx.actorOrgId,
-        rootOrgId: ctx.actorOrgId,
-        parentOrgId: ctx.actorOrgId,
-        authMethod: ctx.actorAuthMethod
-      }
+      actor: $resourceActor(ctx)
     });
     return { token: enrollment.token, expiresAt: enrollment.expiresAt };
   };
@@ -193,15 +198,17 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   // The kill switch. tokenVersion is what the auth plugin checks on every proxy request, so bumping it
-  // stops the proxy at its next call rather than at its next restart.
+  // stops the proxy at its next call rather than at its next restart. Through the shared revoke, as
+  // gateway, relay and KMIP do, because it also deletes an enrollment token still waiting to be used:
+  // bumping the version alone left a token minted before the revoke able to enroll straight after it.
   const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Revoke);
     const proxy = await $findProxyOr404({ projectId, proxyId });
-    const updated = await agentVaultProxyDAL.updateById(proxy.id, {
-      $incr: { tokenVersion: 1 },
-      heartbeat: null
+    await resourceAuthMethodService.revokeAccess({
+      resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxy.id },
+      actor: $resourceActor(ctx)
     });
-    return toAdminView(updated);
+    return toAdminView({ ...proxy, heartbeat: null });
   };
 
   const enroll = async ({ enrollmentToken, rootCaCertificate }: TEnrollProxyDTO) => {
