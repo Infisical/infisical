@@ -2874,6 +2874,7 @@ const OverviewPageContent = () => {
       <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
+            className="mb-6 md:mb-10"
             scope={ProjectType.SecretManager}
             title="Project Overview"
             description={

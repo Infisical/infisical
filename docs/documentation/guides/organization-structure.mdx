@@ -10,7 +10,7 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 
 - **Best Practice**: In most cases, a single Infisical instance or cluster is sufficient. Multiple clusters are typically only necessary for large, globally distributed organizations.
 - **Use Cases**:
-    - **Cloud-hosted** deployments typically use a single cluster. While technically possible, using multiple clusters is not a common practice and is generally unnecessary.
+    - **Cloud-hosted** deployments typically use a single cluster. While technically possible, using multiple clusters isn't a common practice and is generally unnecessary.
     - **Self-hosted** deployments can be configured with multiple clusters if needed.
 
 
@@ -27,7 +27,7 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 - **Hierarchy**: One level of nesting is supported (root organization to sub-organizations). Each sub-organization works like a regular organization with its own projects, groups, and machine identities.
 - **Resource Sharing**: Users, groups, and machine identities from the root organization can be pulled into sub-organizations. Resources flow downward only and must be explicitly added to a sub-organization before use.
 - **Project Ownership**: Projects belong to the organization you're in. In a sub-organization, you only see projects for that sub-organization—not root organization projects.
-- **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only. No default sub-organization exists—they are created when needed.
+- **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only. No default sub-organization exists—they're created when needed.
 
 For detailed information on resource inheritance, project ownership, and enterprise examples, see the [Sub-organizations documentation](/documentation/platform/sub-organizations).
 
@@ -59,7 +59,7 @@ For detailed information on resource inheritance, project ownership, and enterpr
 - **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
 - **Scope**: The constructs described below — environments, folders, and imports — are specific to **Secrets Management** projects. Other products expose their own resources and workflows.
 
-<Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
+<Note>Projects are isolated from one another. Secrets, certificates, and other resources can't be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
 
 ### 3. Environments
 
@@ -75,7 +75,7 @@ For detailed information on resource inheritance, project ownership, and enterpr
 ### 5. Imports
 
 - **Purpose and Benefits**: To promote reusability and avoid redundancy within a project, Infisical supports the use of imports and references. This allows secrets, folders, or entire environments to be referenced within the same project as needed.
-- **Project Isolation**: Imports and references only work within a single project. Secrets cannot be imported or referenced across different projects, as projects are isolated from one another.
+- **Project Isolation**: Imports and references only work within a single project. Secrets can't be imported or referenced across different projects, as projects are isolated from one another.
 - **Best Practice**: Utilizing [secret imports](/documentation/platform/secret-reference#secret-imports) or [references](/documentation/platform/secret-reference#secret-referencing) ensures consistency and minimizes manual overhead when managing secrets within a project.
 
 ### 6. Approval workflows
@@ -101,7 +101,7 @@ Infisical’s access control framework is unified for both human users and machi
 
 ### 7.2 Additional privileges
 
-[Additional privileges](/documentation/platform/access-controls/additional-privileges) can be assigned to users and machines on an ad-hoc basis for specific scenarios where roles alone are insufficient. If you find yourself using additional privileges too much, it is recommended to create custom roles. Additional privileges can be temporary or permanent.
+[Additional privileges](/documentation/platform/access-controls/additional-privileges) can be assigned to users and machines on an ad-hoc basis for specific scenarios where roles alone are insufficient. If you find yourself using additional privileges too much, it's recommended to create custom roles. Additional privileges can be temporary or permanent.
 
 
 

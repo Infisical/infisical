@@ -37,6 +37,13 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
+}
+
 export enum PamRotationStatus {
   Success = "success",
   Failed = "failed"
@@ -115,6 +122,11 @@ export enum PamResourcePermissionActions {
   ManageRotation = "manage-rotation",
   ManageMembers = "manage-members",
   ViewAuditLogs = "view-audit-logs"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow

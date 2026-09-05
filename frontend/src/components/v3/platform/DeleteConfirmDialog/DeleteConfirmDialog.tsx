@@ -72,7 +72,7 @@ export const DeleteConfirmDialog = ({
             <AlertDialogTitle>{title}</AlertDialogTitle>
             {description ? (
               <AlertDialogDescription asChild>
-                <div>{description}</div>
+                <div className="w-full">{description}</div>
               </AlertDialogDescription>
             ) : null}
           </AlertDialogHeader>

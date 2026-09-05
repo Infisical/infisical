@@ -19,7 +19,7 @@ export const SecretManagerLayout = () => {
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       <div
         ref={setScrollContainer}
-        className="flex-1 overflow-x-hidden overflow-y-auto px-12 pt-10 pb-4"
+        className="flex-1 overflow-x-hidden overflow-y-auto px-6 pt-6 pb-4 md:px-12 md:pt-10"
       >
         <SecretManagerScrollContainerContext.Provider value={scrollContainer}>
           <Outlet />

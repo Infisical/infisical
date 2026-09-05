@@ -32,7 +32,8 @@ new deps with `Pick<>`).
 ## Permissions
 
 Two tiers: **product membership** (`PamProductRole`: Admin/Member) + **resource membership** scoped to a
-folder or account (`PamResourceRole`: Admin/Connector/Auditor). Shared helpers live in
+folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator is Connector plus
+`ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
 use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
 membership. There is **no org-admin fallback**: permission needs project-scoped membership.
@@ -59,6 +60,13 @@ Gotchas:
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
+- **Session launch and credential reveal (`pamAccountService.getCredentials`) are separately approved
+  behind one switch.** The template's `requiresApproval` gates both; they share the same `PamAccess`
+  policy and approvers, told apart by `accessType` on the request data and grant attributes.
+  **A missing `accessType` means session**, so a grant predating credential access can never unlock a
+  reveal — never treat it as a wildcard. Hence `checkGrant`/`getAccessStatusBatch` take an `accessType`,
+  pending requests dedupe per (account, accessType), and `revokeGrantRow` skips session termination for a
+  credential grant.
 - PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`)
   and raising access requests (`POST /pam/access-requests`); web access stays JWT-only, as does
   reviewing/revoking (identities are never approvers). MFA-gated accounts still reject machine actors,

@@ -11,6 +11,15 @@ export const LinuxServerPkiSyncDestinationSection = ({ pkiSync }: Props) => {
 
   return (
     <>
+      {pkiSync.destinationConfig.host && (
+        <Detail>
+          <DetailLabel>Target Host</DetailLabel>
+          <DetailValue>
+            {pkiSync.destinationConfig.host}
+            {pkiSync.destinationConfig.port ? `:${pkiSync.destinationConfig.port}` : ""}
+          </DetailValue>
+        </Detail>
+      )}
       <Detail>
         <DetailLabel>Destination Directory</DetailLabel>
         <DetailValue>{pkiSync.destinationConfig.destinationPath}</DetailValue>

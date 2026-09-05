@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
 import { GcpServiceAccountAuthMethod, PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
@@ -954,14 +955,14 @@ export const isDomainQualifiedUsername = (username: string) => username.includes
 // Domain-qualifies a bare username to `NETBIOS\user` for RDP/NLA; already-qualified forms pass through
 export const qualifyUsernameWithDomain = (username: string, domainFqdn: string) => {
   if (isDomainQualifiedUsername(username)) return username;
-  return `${domainFqdn.split(".")[0].toUpperCase()}\\${username}`;
+  return `${netbiosFromDomainFqdn(domainFqdn)}\\${username}`;
 };
 
 // Normalizes any form to a NetBIOS `DOMAIN\user` login
 export const toNetbiosUsername = (username: string, domainFqdn: string) => {
   if (username.includes("\\")) return username;
   const localPart = username.includes("@") ? username.split("@")[0] : username;
-  return `${domainFqdn.split(".")[0].toUpperCase()}\\${localPart}`;
+  return `${netbiosFromDomainFqdn(domainFqdn)}\\${localPart}`;
 };
 
 // -- Account accessibility
@@ -1309,6 +1310,25 @@ export const applyForcedFields = (accountType: PamAccountType, values: TPamField
   return result;
 };
 
+// The edit form resends username and auth method with an untouched password stripped, so a credentials object
+// on its own does not mean the caller held the credential.
+export const suppliesCredentialSecret = (
+  accountType: PamAccountType,
+  rawCredentials: Record<string, unknown> | undefined
+): boolean => {
+  if (!rawCredentials) return false;
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return fieldsFromSchema(config.credentials, config.ui)
+    .filter((field) => field.secret)
+    .some((field) => {
+      const value = credentials[field.key];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+};
+
 export const isCredentialConfigured = (
   accountType: PamAccountType,
   rawCredentials: Record<string, unknown>
@@ -1326,6 +1346,38 @@ export const isCredentialConfigured = (
   if (applicableSecretFields.length === 0) return true;
 
   return applicableSecretFields.some((field) => {
+    const value = credentials[field.key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+};
+
+export const revealedCredentialsSchema = (accountType: TSupportedAccountType) => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType];
+  return config.sanitizedCredentials.extend(
+    Object.fromEntries(
+      fieldsFromSchema(config.credentials, config.ui)
+        .filter((field) => field.secret)
+        .map((field) => [field.key, z.string().optional()])
+    )
+  );
+};
+
+export const noRevealableCredentialMessage = (accountName: string) =>
+  `Account '${accountName}' has no stored credential to reveal. Its authentication method brokers access per session instead.`;
+
+export const hasRevealableCredential = (
+  accountType: PamAccountType,
+  rawCredentials?: Record<string, unknown>
+): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return false;
+
+  const secretFields = fieldsFromSchema(config.credentials, config.ui).filter((field) => field.secret);
+  if (!rawCredentials) return secretFields.length > 0;
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return secretFields.some((field) => {
+    if (field.showWhen && credentials[field.showWhen.field] !== field.showWhen.equals) return false;
     const value = credentials[field.key];
     return typeof value === "string" && value.trim().length > 0;
   });

@@ -2,12 +2,14 @@ import { OrderByDirection } from "../../generic/types";
 import {
   PamAccessRequestDecision,
   PamAccessStatus,
+  PamAccessType,
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamHeartbeatStatus,
   PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
@@ -222,8 +224,20 @@ export type TPamAccount = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  heartbeatStatus?: PamHeartbeatStatus | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TPamAccountCredentials = {
+  accountType: PamAccountType;
+  credentials: Record<string, unknown>;
+};
+
+export type TGetPamAccountCredentialsDTO = {
+  accountId: string;
+  reason?: string;
+  mfaSessionId?: string;
 };
 
 export type TPamFolder = {
@@ -339,6 +353,7 @@ export type TAccessiblePamAccount = {
   requireReason?: boolean;
   accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
+  credentialAccessStatus?: PamAccessStatus;
   disabledReason?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -636,6 +651,17 @@ export type TPamPasswordRequirements = {
   allowedSymbols?: string;
 };
 
+export type TPamAccountHeartbeat = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  status: PamHeartbeatStatus | null;
+  lastCheckedAt: string | null;
+  lastHealthyAt: string | null;
+  nextCheckAt: string | null;
+  templateName: string;
+  lastMessage: string | null;
+};
+
 export type TPamAccountRotation = {
   enabled: boolean;
   intervalSeconds: number | null;
@@ -686,6 +712,7 @@ export type TPamAccessRequest = {
       folderId: string;
       reason?: string;
       duration: string;
+      accessType?: PamAccessType;
     };
   } | null;
   expiresAt: string | null;
@@ -698,6 +725,7 @@ export type TPamAccessRequest = {
   accountType?: PamAccountType;
   folderName?: string;
   host?: string;
+  accessType?: PamAccessType;
   grantExpiresAt?: string | null;
   grantStatus?: string | null;
 };
@@ -737,6 +765,7 @@ export type TCreatePamAccessRequestDTO = {
   accountId: string;
   reason?: string;
   duration: string;
+  accessType?: PamAccessType;
 };
 
 export type TReviewPamAccessRequestDTO = {
