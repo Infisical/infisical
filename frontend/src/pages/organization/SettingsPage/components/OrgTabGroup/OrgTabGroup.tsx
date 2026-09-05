@@ -12,6 +12,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
+import { useHasCertManagerLegacyProjectPicker } from "@app/hooks/api/certManagerInstance";
 
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
@@ -27,6 +28,7 @@ export const OrgTabGroup = () => {
   });
   const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const hasCertManagerProjectPicker = useHasCertManagerLegacyProjectPicker();
 
   const tabs = [
     {
@@ -66,7 +68,8 @@ export const OrgTabGroup = () => {
       component: OrgProductSettingsTab,
       description: `Configure product-specific defaults and features across your ${
         isSubOrganization ? "sub-" : ""
-      }organization.`
+      }organization.`,
+      isHidden: !hasCertManagerProjectPicker
     },
     {
       name: "Sub Organizations",

@@ -13,6 +13,7 @@ import {
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SubOrgIcon } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
+import { useHasCertManagerLegacyProjectPicker } from "@app/hooks/api/certManagerInstance";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { OrgNavLink } from "./OrgNavLink";
@@ -25,6 +26,7 @@ type OrgSettingsItem = OrgNavItem & { requiresFeature?: boolean };
 export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
   const { isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const hasCertManagerProjectPicker = useHasCertManagerLegacyProjectPicker();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const items: OrgSettingsItem[] = [
@@ -75,7 +77,8 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       label: "Product Settings",
       icon: SlidersHorizontal,
       pathSuffix: "settings",
-      search: { selectedTab: "product-settings" }
+      search: { selectedTab: "product-settings" },
+      hidden: !hasCertManagerProjectPicker
     },
     {
       label: "Sub Organizations",
