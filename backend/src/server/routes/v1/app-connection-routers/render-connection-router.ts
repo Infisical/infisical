@@ -79,4 +79,33 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
       return groups;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/workflows`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listRenderWorkflows",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+      const workflows = await server.services.appConnection.render.listWorkflows(connectionId, req.permission);
+
+      return workflows;
+    }
+  });
 };
