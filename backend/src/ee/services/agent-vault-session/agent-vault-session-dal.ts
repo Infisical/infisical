@@ -16,6 +16,8 @@ export type TAgentVaultSessionListRow = {
   identityId: string | null;
   /** The person or machine the session runs as, ready to render. */
   actorName: string;
+  /** The user's email, or null for a machine identity. */
+  actorEmail: string | null;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
@@ -42,6 +44,15 @@ const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus,
       .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", now);
   });
 };
+
+// A user who never filled in their profile has no name, so the email carries the row instead.
+const userDisplayName = ({
+  userFirstName,
+  userLastName
+}: {
+  userFirstName: string | null;
+  userLastName: string | null;
+}) => [userFirstName, userLastName].filter(Boolean).join(" ") || null;
 
 export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSession);
@@ -116,6 +127,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("revokedAt").withSchema(TableName.AgentVaultSession),
           db.ref("createdAt").withSchema(TableName.AgentVaultSession),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
@@ -130,6 +143,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         revokedAt: Date | null;
         createdAt: Date;
         userUsername: string | null;
+        userFirstName: string | null;
+        userLastName: string | null;
         identityName: string | null;
         accessBundleId: string | null;
         accessBundleName: string | null;
@@ -144,7 +159,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
-            actorName: row.identityName ?? row.userUsername ?? "",
+            actorName: row.identityName ?? userDisplayName(row) ?? row.userUsername ?? "",
+            actorEmail: row.identityId ? null : row.userUsername,
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,

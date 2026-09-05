@@ -10,6 +10,8 @@ type TOverflowBadgeListProps<T> = {
   getKey: (item: T) => React.Key;
   getLabel: (item: T) => string;
   getVariant?: (item: T) => TBadgeProps["variant"];
+  getTooltip?: (item: T) => React.ReactNode;
+  getClassName?: (item: T) => string | undefined;
   appearance?: "badge" | "text";
   onItemClick?: (item: T) => void;
   maxBadgeWidth?: number;
@@ -26,6 +28,8 @@ export const OverflowBadgeList = <T,>({
   getKey,
   getLabel,
   getVariant,
+  getTooltip,
+  getClassName,
   appearance = "badge",
   onItemClick,
   maxBadgeWidth = 160,
@@ -104,10 +108,11 @@ export const OverflowBadgeList = <T,>({
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [getLabel, getVariant, items, maxBadgeWidth]);
+  }, [getLabel, getVariant, getClassName, items, maxBadgeWidth]);
 
   const renderItem = (item: T, width?: number) => {
     const label = getLabel(item);
+    const tooltip = getTooltip?.(item) ?? label;
 
     if (appearance === "text") {
       return (
@@ -125,7 +130,7 @@ export const OverflowBadgeList = <T,>({
               {label}
             </button>
           </TooltipTrigger>
-          <TooltipContent>{label}</TooltipContent>
+          <TooltipContent>{tooltip}</TooltipContent>
         </Tooltip>
       );
     }
@@ -135,6 +140,7 @@ export const OverflowBadgeList = <T,>({
         <TooltipTrigger asChild>
           <Badge
             variant={getVariant?.(item) ?? "neutral"}
+            className={getClassName?.(item)}
             isTruncatable
             style={{
               maxWidth: width ?? maxBadgeWidth
@@ -143,7 +149,7 @@ export const OverflowBadgeList = <T,>({
             <span>{label}</span>
           </Badge>
         </TooltipTrigger>
-        <TooltipContent>{label}</TooltipContent>
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     );
   };
@@ -206,6 +212,7 @@ export const OverflowBadgeList = <T,>({
               key={getKey(item)}
               data-overflow-badge-measure
               variant={getVariant?.(item) ?? "neutral"}
+              className={getClassName?.(item)}
               isTruncatable
               style={{ maxWidth: maxBadgeWidth }}
             >

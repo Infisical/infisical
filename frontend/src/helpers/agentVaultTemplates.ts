@@ -359,7 +359,6 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     description: "Gmail, Calendar, Sheets, and Drive.",
     hostPattern: "gmail.googleapis.com, sheets.googleapis.com, www.googleapis.com",
     aliases: ["workspace", "gsuite", "gmail", "calendar", "sheets", "drive", "gdrive"],
-    caveat: "www.googleapis.com covers every Google API, not just Calendar and Drive.",
     credential: { type: AgentVaultCredentialType.Bearer }
   },
   {

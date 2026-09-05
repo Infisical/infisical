@@ -109,6 +109,7 @@ export const AgentVaultSessionsPage = () => {
     return sessions.filter(
       (session) =>
         session.actorName.toLowerCase().includes(term) ||
+        Boolean(session.actorEmail?.toLowerCase().includes(term)) ||
         session.accessBundles.some((bundle) => bundle.name.toLowerCase().includes(term))
     );
   }, [sessions, search]);
@@ -259,14 +260,23 @@ export const AgentVaultSessionsPage = () => {
                 displayedSessions.map((session) => (
                   <TableRow key={session.id}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {session.identityId ? (
-                          <BotIcon className="size-4 text-muted" />
-                        ) : (
-                          <UserIcon className="size-4 text-muted" />
-                        )}
-                        {session.actorName}
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex w-fit items-center gap-2">
+                            {session.identityId ? (
+                              <BotIcon className="size-4 text-muted" />
+                            ) : (
+                              <UserIcon className="size-4 text-muted" />
+                            )}
+                            {session.actorName}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {session.identityId
+                            ? `${session.identityId} (machine identity)`
+                            : session.actorEmail}
+                        </TooltipContent>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <div className="max-w-72">
@@ -274,7 +284,10 @@ export const AgentVaultSessionsPage = () => {
                           items={session.accessBundles}
                           getKey={(bundle) => bundle.id ?? bundle.name}
                           getLabel={(bundle) => bundle.name}
-                          getVariant={(bundle) => (bundle.id ? "av" : "neutral")}
+                          getClassName={(bundle) => (bundle.id ? undefined : "line-through")}
+                          getTooltip={(bundle) =>
+                            bundle.id ? bundle.name : `${bundle.name} (deleted)`
+                          }
                         />
                       </div>
                     </TableCell>

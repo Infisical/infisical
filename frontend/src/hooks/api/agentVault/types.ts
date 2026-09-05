@@ -93,6 +93,7 @@ export type TAgentVaultSession = {
   userId: string | null;
   identityId: string | null;
   actorName: string;
+  actorEmail: string | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
