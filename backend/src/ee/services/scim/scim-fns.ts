@@ -84,18 +84,20 @@ export const buildScimUser = ({
 export const buildScimGroupList = ({
   scimGroups,
   startIndex,
-  limit
+  limit,
+  totalResults
 }: {
   scimGroups: TScimGroup[];
   startIndex: number;
   limit: number;
+  totalResults: number;
 }): TListScimGroups => {
   return {
     Resources: scimGroups,
     itemsPerPage: limit,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
     startIndex,
-    totalResults: scimGroups.length
+    totalResults
   };
 };
 
