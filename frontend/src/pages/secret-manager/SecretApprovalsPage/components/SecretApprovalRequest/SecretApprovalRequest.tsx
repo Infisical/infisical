@@ -13,11 +13,13 @@ import {
   GitPullRequestIcon,
   HourglassIcon,
   LucideIcon,
+  PlusIcon,
   SearchIcon
 } from "lucide-react";
 
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -30,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -56,6 +59,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -69,6 +73,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useGetSecretApprovalPolicies,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
@@ -90,7 +95,11 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-export const SecretApprovalRequest = () => {
+type Props = {
+  onConfigurePolicies: () => void;
+};
+
+export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const { currentProject, projectId } = useProject();
   const queryClient = useQueryClient();
 
@@ -159,6 +168,24 @@ export const SecretApprovalRequest = () => {
 
   const { permission } = useProjectPermission();
   const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
+
+  // Change requests are only ever created by change policies. When the project
+  // has none, point users at the Policies tab so the empty state is actionable.
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const { data: secretPolicies, isSuccess: arePoliciesLoaded } = useGetSecretApprovalPolicies({
+    projectId,
+    options: { enabled: canReadPolicies }
+  });
+  const showConfigurePoliciesCta =
+    canCreatePolicies && arePoliciesLoaded && secretPolicies?.length === 0;
+
   const { requestId } = search;
   const handleCloseRequestDetail = () => {
     navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
@@ -322,6 +349,14 @@ export const SecretApprovalRequest = () => {
                     : "Merged and rejected change requests will appear here."}
                 </EmptyDescription>
               </EmptyHeader>
+              {showConfigurePoliciesCta && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
             </Empty>
           )}
           {Boolean(!secretApprovalRequests.length && isFiltered && !isApprovalRequestLoading) && (
