@@ -164,6 +164,8 @@ func (h *Handler) getSecretByName(ctx context.Context, opts *getSecretByNameInte
 		}
 
 		expander := secretsvc.NewSecretExpander(allSecrets, secretsvc.ExpandOpts{
+			BoardEnv:  opts.Environment,
+			BoardPath: opts.SecretPath,
 			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef, tags []string) bool {
 				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, tags)
 			},
