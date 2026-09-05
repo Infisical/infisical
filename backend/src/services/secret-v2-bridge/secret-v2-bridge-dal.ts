@@ -463,9 +463,17 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc")
           .orderBy(`${TableName.ResourceMetadata}.id`, "asc");
 
+        // Deduplicate tags by tagId per secret: the junction table has no unique
+        // constraint on the FK pair, and the PIT update path can reinsert duplicates.
         const tagsBySecretId = new Map<string, { id: string; color: string; slug: string; name: string }[]>();
+        const seenTags = new Set<string>();
         for (const t of tagRows) {
           const sid = t.secretId;
+          const dedupeKey = `${sid}:${t.tagId}`;
+          // eslint-disable-next-line no-continue
+          if (seenTags.has(dedupeKey)) continue;
+          seenTags.add(dedupeKey);
+
           let arr = tagsBySecretId.get(sid);
           if (!arr) {
             arr = [];
@@ -483,8 +491,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           string,
           { id: string; key: string; value: string | null; encryptedValue: Buffer | null }[]
         >();
+        const seenMeta = new Set<string>();
         for (const m of metadataRows) {
           const sid = m.secretId as string;
+          const dedupeKey = `${sid}:${m.metadataId}`;
+          // eslint-disable-next-line no-continue
+          if (seenMeta.has(dedupeKey)) continue;
+          seenMeta.add(dedupeKey);
+
           let arr = metaBySecretId.get(sid);
           if (!arr) {
             arr = [];
