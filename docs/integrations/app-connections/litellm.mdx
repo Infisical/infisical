@@ -9,7 +9,7 @@ description: "Learn how to configure a LiteLLM connection for Infisical."
 ## Prerequisites
 
 - A running **LiteLLM proxy** that Infisical can reach over the network, along with its base URL (e.g. `https://litellm.example.com`).
-- A **management-capable API key** for that proxy. Infisical uses this key to create, list, and delete keys on your behalf, so it must be the proxy **master key** or an admin/management key with key-management permissions. A standard virtual key limited to model completions will not work.
+- A **management-capable API key** for that proxy. Infisical uses this key to create, list, and delete keys on your behalf, so it must be the proxy **master key** or an admin/management key with key-management permissions. A standard virtual key limited to model completions won't work.
 
 <Tip>
     See LiteLLM's [Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys) documentation for details on the proxy master key and key management.
@@ -69,7 +69,7 @@ description: "Learn how to configure a LiteLLM connection for Infisical."
                 Use the generated key as your **API Key** and your instance address as the **Instance URL** when creating the connection below.
             </Step>
             <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Organization Settings** → **App Connections** (or the **Integrations** → **App Connections** tab in your project).
+                In your Infisical dashboard, go to **Integrations** → **App Connections**, either in your organization or in a project.
 
                 ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
             </Step>

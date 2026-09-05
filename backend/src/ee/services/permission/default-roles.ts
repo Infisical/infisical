@@ -302,7 +302,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.ImportCertificates,
       ProjectPermissionPkiSyncActions.RemoveCertificates,
       ProjectPermissionPkiSyncActions.SetPostSyncCommand,
-      ProjectPermissionPkiSyncActions.SetHealthCheckCommand
+      ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+      ProjectPermissionPkiSyncActions.SetTargetHost
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -871,7 +872,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.ImportCertificates,
       ResourcePermissionPkiSyncActions.RemoveCertificates,
       ResourcePermissionPkiSyncActions.SetPostSyncCommand,
-      ResourcePermissionPkiSyncActions.SetHealthCheckCommand
+      ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
+      ResourcePermissionPkiSyncActions.SetTargetHost
     ],
     ResourcePermissionSub.PkiSyncs
   );
@@ -1122,6 +1124,20 @@ const buildPamResourceAdminPermissionRules = () => {
   return rules;
 };
 
+const buildPamResourceOperatorPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
+  can(
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      ResourcePermissionPamResourceActions.ViewCredentials
+    ],
+    ResourcePermissionSub.PamResource
+  );
+  return rules;
+};
+
 const buildPamResourceConnectorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
@@ -1153,5 +1169,6 @@ const buildPamResourceAuditorPermissionRules = () => {
 export const pamProjectAdminPermissions = projectAdminPermissions;
 export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
+export const pamResourceOperatorPermissions = buildPamResourceOperatorPermissionRules();
 export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();
 export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();

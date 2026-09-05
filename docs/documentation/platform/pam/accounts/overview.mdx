@@ -35,7 +35,7 @@ Accounts live inside [folders](/documentation/platform/pam/folders/overview). To
 
 <Steps>
   <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+    Go to **Privileged Access Management → Accounts** and select **Add Account**.
   </Step>
   <Step title="Select a folder and template">
     Choose which folder to add the account to, then select a [template](/documentation/platform/pam/templates/overview). The template determines the account type and all the rules that apply.
@@ -47,7 +47,7 @@ Accounts live inside [folders](/documentation/platform/pam/folders/overview). To
     Provide the username and password (or SSH key/certificate settings).
   </Step>
   <Step title="Save">
-    Click **Create**.
+    Select **Create**.
   </Step>
 </Steps>
 
@@ -58,7 +58,7 @@ Once an account exists, anyone with access can connect: people in the browser or
 
 ### Web access
 
-Go to **Privileged Access Management → Accounts**, find the account, and click the rocket icon (or select **Launch Session** from the menu), then click **Connect in Browser**. This opens:
+Go to **Privileged Access Management → Accounts**, find the account, and select the rocket icon (or select **Launch Session** from the menu), then select **Connect in Browser**. This opens:
 - **PostgreSQL / MySQL** — a Data Explorer for browsing tables and a SQL Editor for running queries
 - **SSH** — an interactive terminal
 - **AWS IAM** — opens the AWS Console with federated credentials
@@ -85,6 +85,18 @@ Every other account type starts a local proxy and outputs the port to connect to
 
 To let an [AI agent](/documentation/platform/pam/ai-agents/overview) reach an account, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead.
 
+### Viewing credentials
+
+Some work needs the password itself, not a session: pasting it into a desktop client Infisical doesn't broker, or configuring an appliance by hand. Select **View Credentials** from the account's menu, give a reason, and the stored fields are shown with secrets masked until revealed.
+
+This needs the **Operator** or **Admin** [role](/documentation/platform/pam/concepts/access-control) on the folder or account, and an approval when the template requires one — the entry reads **Request Credentials** until you hold one. Sessions and credentials are approved separately, so an approved session request never reveals the credential. Accounts whose auth method stores no secret (SSH certificate, AWS IAM, PostgreSQL AWS IAM) have nothing to reveal and say so.
+
+Every reveal writes a **View PAM Account Credentials** entry to the [audit log](/documentation/platform/pam/auditing) with the member, account, and reason.
+
+<Warning>
+  A revealed credential is outside Infisical: no session recording, no command blocking, and revoking the grant stops further reveals but can't take back a copied password. Prefer a session where one will do, and [rotate](/documentation/platform/pam/accounts/overview) the account after a checkout.
+</Warning>
+
 ## Direct account memberships
 
 Most access is granted at the folder level — if you have access to the folder, you have access to all accounts in it.
@@ -92,9 +104,9 @@ Most access is granted at the folder level — if you have access to the folder,
 But sometimes you need to grant access to just one account. For that, use direct account memberships:
 
 1. Open the account and go to the **Permissions** tab
-2. Click **Assign Access**
+2. Select **Assign Access**
 3. Select the user, group, or machine identity, then set the role and an optional expiration
-4. Click **Add**
+4. Select **Add**
 
 Direct memberships are for exceptions: a contractor who needs one specific database, temporary elevated access to a single account, or a job that should reach one account and nothing else.
 

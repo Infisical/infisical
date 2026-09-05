@@ -32,10 +32,10 @@ Organization Admins can enter PAM as a Product Admin without being explicitly ad
 
 1. Go to **Privileged Access Management → Access Control**
 2. Select the **Users**, **Groups**, or **Identities** tab
-3. Click **Add**
+3. Select **Add**
 4. Select from users, groups, or machine identities in your organization
 5. Choose **Product Admin** or **Product Member**
-6. Click **Add**
+6. Select **Add**
 
 The **Identities** tab can also create a new machine identity for PAM instead of adding an existing one. See [AI Agents](/documentation/platform/pam/ai-agents/overview) for the agent workflow that uses it.
 
@@ -48,8 +48,13 @@ Once someone is a product member, they still need to be granted access to specif
 | Role | What they can do |
 |------|------------------|
 | **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Operator** | Launch sessions and [view account credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
 | **Connector** | Launch sessions and connect to accounts |
 | **Auditor** | View audit logs and session recordings |
+
+<Note>
+  **Operator** is Connector plus the right to read an account's stored password or key. Grant it only where someone genuinely needs the credential in hand, since a revealed credential leaves no session recording.
+</Note>
 
 ### Folder vs account memberships
 
@@ -63,9 +68,9 @@ You can assign roles at two levels:
 
 For folders:
 1. Open the folder and go to **Permissions**
-2. Click **Assign Access**
+2. Select **Assign Access**
 3. Select a user, group, or machine identity, then set the role and an optional expiration
-4. Click **Add**
+4. Select **Add**
 
 For accounts:
 1. Open the account and go to **Permissions**
@@ -80,7 +85,7 @@ Two things stay with users and groups:
 - **Web Access.** Connecting in the browser is for users. Machine identities connect through the [CLI](/cli/commands/pam-agentic).
 - **Approving [access requests](/documentation/platform/pam/access-requests/overview).** A machine identity can file a request, but only users and groups can approve one.
 
-An account whose [template](/documentation/platform/pam/templates/overview) requires MFA also stays with people: a machine identity can never complete the challenge, and [agent runs](/documentation/platform/pam/ai-agents/overview) do not support it yet.
+An account whose [template](/documentation/platform/pam/templates/overview) requires MFA also stays with people: a machine identity can never complete the challenge, and [agent runs](/documentation/platform/pam/ai-agents/overview) don't support it yet.
 
 ## Putting it together
 

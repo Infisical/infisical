@@ -11,6 +11,10 @@ import StartApplication from "/snippets/cli/local-development/start-application.
 
 This guide shows you how to inject secrets from Infisical into your local application without using a `.env` file. You'll install the [Infisical CLI](/cli/overview), link your codebase to your Infisical project, and start your application through `infisical run`.
 
+<Note>
+  `infisical run` injects secrets as environment variables, so it works with any language or framework. To read secrets from inside your application code instead, use a [framework integration](/integrations/all?type=Framework).
+</Note>
+
 ## Prerequisites
 
 - An Infisical project with secrets in its **Development** environment. If you don't have one yet, follow the [quickstart](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret) first.

@@ -19,7 +19,8 @@ export const AppConnectionOption = ({
   children,
   ...props
 }: OptionProps<TAvailableAppConnection>) => {
-  const isCreateOption = props.data.id === "_create";
+  const isCreateOption = props.data.id === "_create" || props.data.id.startsWith("_create:");
+  const isPerAppCreateOption = isCreateOption && props.data.id !== "_create";
   const isOnlyOption = isCreateOption && props.selectProps.options.length === 1;
 
   const { isSubOrganization } = useOrganization();
@@ -32,7 +33,9 @@ export const AppConnectionOption = ({
             className={`flex items-center gap-x-1 ${isOnlyOption ? "text-foreground" : "text-accent"}`}
           >
             <FontAwesomeIcon icon={faPlus} size="sm" />
-            <span className="mr-auto">Create New Connection</span>
+            <span className="mr-auto">
+              {isPerAppCreateOption ? children : "Create New Connection"}
+            </span>
           </div>
         ) : (
           <>

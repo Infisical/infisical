@@ -8,7 +8,7 @@ description: "Learn how to deliver secrets to Amazon Elastic Container Service."
 This guide will go over the steps needed to access secrets stored in Infisical from Amazon Elastic Container Service (ECS).
 
 At a high level, the steps involve setting up an ECS task with an [Infisical Agent](/integrations/platforms/infisical-agent) as a sidecar container. This sidecar container uses [AWS Auth](/documentation/platform/identities/aws-auth) to authenticate with Infisical to fetch secrets/access tokens.
-Once the secrets/access tokens are retrieved, they are then stored in a shared [Amazon Elastic File System](https://aws.amazon.com/efs/) (EFS) volume. This volume is then made accessible to your application and all of its replicas.
+Once the secrets/access tokens are retrieved, they're then stored in a shared [Amazon Elastic File System](https://aws.amazon.com/efs/) (EFS) volume. This volume is then made accessible to your application and all of its replicas.
 
 This guide primarily focuses on integrating Infisical Cloud with Amazon ECS on AWS Fargate and Amazon EFS.
 However, the principles and steps can be adapted for use with any instance of Infisical (on premise or cloud) and different ECS launch configurations.
@@ -32,7 +32,7 @@ File Browser plays a key role in this context because it enables us to view all 
 This feature is important for our demonstration, as it allows us to verify whether the Infisical agent is depositing the expected files into the designated file volume and if those files are accessible to the application.
 
 <Warning>
-  Volumes that contain sensitive secrets should not be publicly accessible. The
+  Volumes that contain sensitive secrets shouldn't be publicly accessible. The
   use of File Browser here is solely for demonstration and verification
   purposes.
 </Warning>
@@ -40,7 +40,7 @@ This feature is important for our demonstration, as it allows us to verify wheth
 ## Configure authentication with Infisical
 
 In order for the Infisical agent to fetch credentials from Infisical, we'll first need to authenticate with Infisical. Follow the documentation to configure a machine identity with AWS Auth [here](/documentation/platform/identities/aws-auth).
-Take note of the Machine Identity ID as you will be needing this in the preceding steps.
+Take note of the Machine Identity ID as you'll be needing this in the preceding steps.
 
 ## Clone guide assets repository
 
@@ -61,7 +61,7 @@ This encoding step is necessary as it allows the agent configuration file to be 
 
 #### Full agent configuration file
 
-Inside the `aws-ecs-with-agent` directory, you will find a sample `agent-config.yaml` file. This agent config file will connect with Infisical Cloud using AWS Auth and deposit access tokens at path `/infisical-agent/access-token` and render secrets to file `/infisical-agent/secrets`.
+Inside the `aws-ecs-with-agent` directory, you'll find a sample `agent-config.yaml` file. This agent config file will connect with Infisical Cloud using AWS Auth and deposit access tokens at path `/infisical-agent/access-token` and render secrets to file `/infisical-agent/secrets`.
 
 ```yaml agent-config.yaml
 infisical:
@@ -200,7 +200,7 @@ resource "aws_efs_mount_target" "mount" {
 
 ## Configure AWS credentials
 
-Because we'll be deploying the example file browser application to AWS via Terraform, you will need to obtain a set of `AWS Access Key` and `Secret Key`.
+Because we'll be deploying the example file browser application to AWS via Terraform, you'll need to obtain a set of `AWS Access Key` and `Secret Key`.
 Once you have generated these credentials, export them to your terminal.
 
 1. Export the AWS Access Key ID:

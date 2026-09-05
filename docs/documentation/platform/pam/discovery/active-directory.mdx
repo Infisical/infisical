@@ -6,7 +6,7 @@ description: "Scan an Active Directory environment for domain and local Windows 
 
 Active Directory discovery scans an AD environment to enumerate privileged accounts, stages them for review, and lets you import them into PAM. It finds two kinds of accounts:
 
-| Discovered type | What it is | When it is found |
+| Discovered type | What it is | When it's found |
 |-----------------|------------|------------------|
 | **Windows AD** | Domain user accounts from Active Directory | Always |
 | **Windows** | Local accounts on domain-joined Windows servers | Only when local account discovery is enabled and the server is reachable |
@@ -38,7 +38,7 @@ To discover local Windows accounts or account dependencies, the credential accou
 
 <Steps>
   <Step title="Start adding a source">
-    Go to **Privileged Access Manager → Discovery** and click **Add Source**, then choose **Active Directory**.
+    Go to **Privileged Access Manager → Discovery** and select **Add Source**, then choose **Active Directory**.
   </Step>
   <Step title="Configure the source">
     | Field | Description |
@@ -59,7 +59,7 @@ To discover local Windows accounts or account dependencies, the credential accou
     When either is on, discovery locates your Windows servers and connects to them over WinRM. See [Server WinRM Options](#server-winrm-options) for the connection settings.
   </Step>
   <Step title="Save">
-    Click **Create**. The source appears in the Discovery table.
+    Select **Create**. The source appears in the Discovery table.
   </Step>
 </Steps>
 
@@ -77,7 +77,7 @@ Both use the same WinRM connection options:
 | **CA Certificate** | Optional PEM certificate, needed only when WinRM HTTPS uses a private CA |
 
 <Note>
-If a scan cannot reach WinRM on a particular server, that server is skipped and the failure is reported on the run. The rest of the scan still completes.
+If a scan can't reach WinRM on a particular server, that server is skipped and the failure is reported on the run. The rest of the scan still completes.
 </Note>
 
 ## Running a scan
@@ -88,7 +88,7 @@ If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it 
 
 ## Importing accounts
 
-From the **Staged Accounts** tab, select the accounts you want and click **Import Accounts**. Then choose:
+From the **Staged Accounts** tab, select the accounts you want and select **Import Accounts**. Then choose:
 
 | Field | Description |
 |-------|-------------|
@@ -102,7 +102,7 @@ Imported accounts arrive without a credential because discovery finds accounts w
 </Warning>
 
 <Note>
-  Enabling **Discover account dependencies** also connects to each Windows server over WinRM and records the services, scheduled tasks, and IIS application pools that run as a discovered account. These are stored as [dependencies](/documentation/platform/pam/dependencies/overview) so they stay in sync when the account's password rotates. It is off by default and independent of **Discover local accounts**.
+  Enabling **Discover account dependencies** also connects to each Windows server over WinRM and records the services, scheduled tasks, and IIS application pools that run as a discovered account. These are stored as [dependencies](/documentation/platform/pam/dependencies/overview) so they stay in sync when the account's password rotates. It's off by default and independent of **Discover local accounts**.
 </Note>
 
 ## Next steps

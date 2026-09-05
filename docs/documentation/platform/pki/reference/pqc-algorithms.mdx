@@ -60,5 +60,5 @@ You can create a Certificate Authority with a PQC key algorithm through the Infi
 
 When using PQC algorithms, keep the following constraints in mind:
 
-- **Signature-only**: PQC algorithms are digital signature algorithms. Key usages like `keyEncipherment`, `keyAgreement`, and `dataEncipherment` are not valid for PQC certificates. Requesting these usages will return an error.
+- **Signature-only**: PQC algorithms are digital signature algorithms. Key usages like `keyEncipherment`, `keyAgreement`, and `dataEncipherment` aren't valid for PQC certificates. Requesting these usages will return an error.
 - **Larger keys and signatures**: PQC keys and signatures are significantly larger than RSA/ECDSA equivalents. Plan for increased certificate sizes in bandwidth-constrained environments.

@@ -407,6 +407,7 @@ tables:
       - updatedAt
       - claimMetadataMapping
       - accessTokenPeriod
+      - templateId
 
   - name: identity_tls_cert_auths
     source: public.identity_tls_cert_auths

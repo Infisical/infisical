@@ -50,7 +50,7 @@ In order to sign requests, you must have an Alibaba Cloud user with credentials 
 <Accordion title="Creating an Alibaba Cloud user">
     <Steps>
         <Step title="Click 'Create User'">
-            Visit https://ram.console.aliyun.com/users to get to the Users page and click **Create User**.
+            Visit https://ram.console.aliyun.com/users to get to the Users page and select **Create User**.
 
             ![Users Page](/images/platform/identities/alicloud/users-page.png)
         </Step>
@@ -84,11 +84,11 @@ access the Infisical API using request signing.
 
 ### Creating an identity
 
-To create an identity, head to your Organization Settings > Access Control > [Identities](https://app.infisical.com/organization/access-management?selectedTab=identities) and press **Create identity**.
+To create an identity, go to **Access Control** > [**Machine Identities**](https://app.infisical.com/organization/access-management?selectedTab=identities) in your organization and select **Create**.
 
 ![identities organization](/images/platform/identities/identities-org.png)
 
-When creating an identity, you specify an organization-level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > [Organization Roles](https://app.infisical.com/organization/access-management?selectedTab=roles).
+When creating an identity, you specify an organization-level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in **Access Control** > [Roles](https://app.infisical.com/organization/access-management?selectedTab=roles).
 
 ![identities organization create](/images/platform/identities/identities-org-create.png)
 
@@ -100,7 +100,7 @@ Once you've created an identity, you'll be redirected to a page where you can ma
 
 ![identities page](/images/platform/identities/identities-page.png)
 
-Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use Alibaba Cloud Auth instead. To do this, click the cog next to **Universal Auth** and then select **Delete** in the options dropdown.
+Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use Alibaba Cloud Auth instead. To do this, select the three dot menu next to **Universal Auth**, then select **Remove Auth Method**.
 
 ![identities press cog](/images/platform/identities/identities-press-cog.png)
 
@@ -121,7 +121,7 @@ Here's some information about each field:
 
 In order to allow an identity to access project-level resources such as secrets, you must add it to the relevant projects.
 
-To do this, head over to the project you want to add the identity to and navigate to Project Settings > Access Control > Machine Identities and press **Add Identity**.
+To do this, open the project you want to add the identity to, go to **Access Control** > **Machine Identities**, and select **Add Machine Identity to Project**.
 
 ![identities project](/images/platform/identities/identities-project.png)
 

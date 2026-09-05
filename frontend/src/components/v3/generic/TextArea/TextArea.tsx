@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "../../utils";
 
 const textAreaVariants = cva(
-  "placeholder:text-muted-foreground flex min-h-16 thin-scrollbar w-full rounded-md border border-border bg-transparent px-2.5 py-2 text-sm text-foreground shadow-xs disabled:cursor-not-allowed disabled:opacity-50",
+  "placeholder:text-muted flex min-h-16 thin-scrollbar w-full rounded-md border border-border bg-transparent px-2.5 py-2 text-sm text-foreground shadow-xs disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
