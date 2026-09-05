@@ -35,8 +35,6 @@ import {
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
 
-export const AGENT_VAULT_PROXY_ENROLLMENT_TOKEN_PREFIX = "avp_";
-
 // Health is derived, not stored: a proxy is healthy while its last heartbeat is inside three poll
 // intervals. Do not add an isHealthy column — there are already three divergent client-side staleness
 // rules in this codebase and a fourth would be worse.

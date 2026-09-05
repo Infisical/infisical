@@ -117,12 +117,15 @@ const parseSegment = (segment: string): TParseResult => {
 
     // A trailing dot is the same name to DNS, so normalize it away rather than storing two spellings.
     host = host.replace(/\.$/, "");
-    if (!HOST_LABELS_RE.test(host)) return { error: `"${raw}" is not a valid host pattern` };
-    host = host.toLowerCase();
 
-    if (host === "*" || host === "*.") {
+    // Ahead of the grammar check, which rejects a bare wildcard too but can only say the pattern is
+    // malformed. Someone who typed `*` meant something, and this tells them what to do instead.
+    if (host === "*") {
       return { error: `"${raw}" is too broad. A connection must name specific hosts.` };
     }
+
+    if (!HOST_LABELS_RE.test(host)) return { error: `"${raw}" is not a valid host pattern` };
+    host = host.toLowerCase();
   }
 
   const resolvedPort = port || AGENT_VAULT_DEFAULT_PORT;

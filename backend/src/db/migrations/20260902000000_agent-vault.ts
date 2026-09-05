@@ -130,8 +130,6 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("expiresAt", { useTz: true }); // NULL means never
       t.timestamp("revokedAt", { useTz: true });
 
-      // sha256 of the last returned connection-id set, so session-resolve is audited on change, not per poll.
-
       t.timestamps(true, true, true);
 
       t.index(["projectId", "createdAt"]);
