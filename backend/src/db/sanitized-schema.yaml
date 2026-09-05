@@ -203,6 +203,8 @@ tables:
       - relayId
       - name
       - heartbeat
+      - directAddress
+      - directHeartbeat
       - healthAlertedAt
 
   - name: groups

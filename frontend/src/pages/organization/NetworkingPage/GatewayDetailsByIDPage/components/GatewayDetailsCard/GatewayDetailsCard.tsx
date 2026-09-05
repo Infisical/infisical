@@ -40,7 +40,13 @@ import {
 } from "../../../components/NetworkingAuthMethodForm";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
-  if (!gateway.heartbeat && !gateway.heartbeatTTL) {
+  const heartbeat = gateway.directAddress ? gateway.directHeartbeat : gateway.heartbeat;
+  if (
+    !heartbeat &&
+    gateway.heartbeatTTL === null &&
+    gateway.directAddress === null &&
+    gateway.relayId === null
+  ) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
   if (isGatewayHealthy(gateway)) {
@@ -59,6 +65,12 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
 
   const { authMethod } = gateway;
   const isIdentityGateway = authMethod.method === "identity";
+  const effectiveHeartbeat = gateway.directAddress ? gateway.directHeartbeat : gateway.heartbeat;
+  const connection = gateway.directAddress
+    ? `${gateway.relayId ? "Direct + Relay" : "Direct"} (${gateway.directAddress})`
+    : gateway.relayId
+      ? "Relay"
+      : "Not configured";
 
   return (
     <Card className="w-full">
@@ -97,16 +109,20 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
             </DetailValue>
           </Detail>
           <Detail>
+            <DetailLabel>Connection</DetailLabel>
+            <DetailValue>{connection}</DetailValue>
+          </Detail>
+          <Detail>
             <DetailLabel>Last Seen</DetailLabel>
             <DetailValue>
-              {gateway.heartbeat ? (
+              {effectiveHeartbeat ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="cursor-default">
-                      {format(new Date(gateway.heartbeat), "PPpp")}
+                      {format(new Date(effectiveHeartbeat), "PPpp")}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{new Date(gateway.heartbeat).toUTCString()}</TooltipContent>
+                  <TooltipContent>{new Date(effectiveHeartbeat).toUTCString()}</TooltipContent>
                 </Tooltip>
               ) : (
                 <span className="text-muted">—</span>

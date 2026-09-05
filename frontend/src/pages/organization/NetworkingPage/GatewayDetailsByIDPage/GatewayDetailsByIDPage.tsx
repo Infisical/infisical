@@ -60,6 +60,7 @@ const Page = () => {
           <GatewayDeploySection
             gatewayId={gatewayId}
             gatewayName={gateway.name}
+            directAddress={gateway.directAddress}
             authMethod={gateway.authMethod}
           />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />

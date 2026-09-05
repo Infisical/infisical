@@ -11,10 +11,13 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
+  relayId: true,
   name: true,
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
+  directAddress: true,
+  directHeartbeat: true,
   heartbeatTTL: true,
   capabilities: true
 });
@@ -26,23 +29,27 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "registerGateway",
       body: z.object({
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional(),
+        directAddress: z.string().trim().min(3).max(255).optional(),
         name: slugSchema({ min: 1, max: 64, field: "name" })
       }),
       response: {
         200: z.object({
           gatewayId: z.string(),
-          relayHost: z.string(),
+          directAddress: z.string().optional(),
+          relayHost: z.string().optional(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
             clientCertificateChain: z.string()
           }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
+          ssh: z
+            .object({
+              clientCertificate: z.string(),
+              clientPrivateKey: z.string(),
+              serverCAPublicKey: z.string()
+            })
+            .optional()
         })
       }
     },
@@ -57,6 +64,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
+        directAddress: req.body.directAddress,
         name: req.body.name
       });
     }

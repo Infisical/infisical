@@ -18,6 +18,8 @@ type Props = {
   gatewayName: string;
   enrollmentToken: string;
   expiresAt: string;
+  isDirect: boolean;
+  listenAddress: string;
   onCommandDirtyChange: (isDirty: boolean) => void;
 };
 
@@ -40,6 +42,8 @@ export const EnrollmentTokenContent = ({
   gatewayName,
   enrollmentToken,
   expiresAt,
+  isDirect,
+  listenAddress,
   onCommandDirtyChange
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -73,14 +77,20 @@ export const EnrollmentTokenContent = ({
   const isExpired = expiryLabel === "Expired";
 
   const cliCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
-  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
+    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const directPart = isDirect
+      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
+      : "";
+    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
-  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
+    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const directPart = isDirect
+      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
+      : "";
+    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
   const commandLabel = (
@@ -112,34 +122,36 @@ export const EnrollmentTokenContent = ({
         />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      <Field>
-        <Select
-          value={relay.id}
-          onValueChange={(id) =>
-            setRelay(
-              [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
-                AUTO_RELAY_OPTION
-            )
-          }
-          disabled={isRelaysLoading}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select relay" />
-          </SelectTrigger>
-          <SelectContent>
-            {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {relay.id !== "_auto" && (
-          <FieldDescription>
-            * Auto Select chooses a healthy relay and fails over if needed.
-          </FieldDescription>
-        )}
-      </Field>
+      {!isDirect && (
+        <Field>
+          <Select
+            value={relay.id}
+            onValueChange={(id: string) =>
+              setRelay(
+                [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
+                  AUTO_RELAY_OPTION
+              )
+            }
+            disabled={isRelaysLoading}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select relay" />
+            </SelectTrigger>
+            <SelectContent>
+              {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {relay.id !== "_auto" && (
+            <FieldDescription>
+              * Auto Select chooses a healthy relay and fails over if needed.
+            </FieldDescription>
+          )}
+        </Field>
+      )}
     </div>
   );
 };

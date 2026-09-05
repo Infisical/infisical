@@ -3,7 +3,7 @@ import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection, destroyGatewayTunnel } from "@app/lib/gateway-v2/gateway-v2";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -103,9 +103,6 @@ export const sendPamSessionCancellationSignal = ({
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
   void (async () => {
-    let relayConn: net.Socket | null = null;
-    let cancelConn: net.Socket | null = null;
-    const tunnelId = sessionId;
     try {
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId,
@@ -122,26 +119,19 @@ export const sendPamSessionCancellationSignal = ({
         );
         return;
       }
-      relayConn = await createRelayConnection({
-        relayHost: certs.relayHost,
-        clientCertificate: certs.relay.clientCertificate,
-        clientPrivateKey: certs.relay.clientPrivateKey,
-        serverCertificateChain: certs.relay.serverCertificateChain,
-        tunnelId
-      });
-      cancelConn = await createGatewayConnection(
-        relayConn,
-        certs.gateway,
-        GatewayProxyProtocol.PamSessionCancellation,
-        tunnelId
+      await withGatewayV2Proxy(
+        (port) =>
+          new Promise<void>((resolve, reject) => {
+            const socket = net.connect(port, "127.0.0.1", () => {
+              socket.end();
+              resolve();
+            });
+            socket.on("error", reject);
+          }),
+        { ...certs, protocol: GatewayProxyProtocol.PamSessionCancellation }
       );
-      cancelConn.end();
     } catch (err) {
       logger.error({ sessionId, err }, `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`);
-    } finally {
-      // end() leaves the inner TLS session reading the gateway's close_notify through relayConn, so
-      // the transport must not be destroyed first.
-      destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
     }
   })();
 };

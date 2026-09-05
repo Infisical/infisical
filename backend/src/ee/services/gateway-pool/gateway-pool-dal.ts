@@ -14,6 +14,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
 
   const findByOrgIdWithDetails = async (orgId: string) => {
     try {
+      const effectiveHeartbeat = `CASE WHEN ${TableName.GatewayV2}."directAddress" IS NOT NULL THEN ${TableName.GatewayV2}."directHeartbeat" ELSE ${TableName.GatewayV2}."heartbeat" END`;
       const pools = await db
         .replicaNode()(TableName.GatewayPool)
         .where(`${TableName.GatewayPool}.orgId`, orgId)
@@ -27,7 +28,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
         .select(
           db.raw(`COUNT(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") AS "memberCount"`),
           db.raw(
-            `COUNT(DISTINCT CASE WHEN COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) > 0 AND ${TableName.GatewayV2}."heartbeat" + make_interval(secs => COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW() THEN ${TableName.GatewayPoolMembership}."gatewayId" END) AS "healthyMemberCount"`
+            `COUNT(DISTINCT CASE WHEN COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) > 0 AND ${effectiveHeartbeat} + make_interval(secs => COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW() THEN ${TableName.GatewayPoolMembership}."gatewayId" END) AS "healthyMemberCount"`
           ),
           db.raw(
             `COALESCE(array_agg(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") FILTER (WHERE ${TableName.GatewayPoolMembership}."gatewayId" IS NOT NULL), '{}') AS "memberGatewayIds"`

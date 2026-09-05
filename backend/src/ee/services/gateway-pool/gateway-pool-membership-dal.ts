@@ -12,12 +12,13 @@ export const gatewayPoolMembershipDalFactory = (db: TDbClient) => {
 
   const findHealthyGatewaysByPoolId = async (poolId: string): Promise<TGatewaysV2[]> => {
     try {
+      const effectiveHeartbeat = `CASE WHEN "${TableName.GatewayV2}"."directAddress" IS NOT NULL THEN "${TableName.GatewayV2}"."directHeartbeat" ELSE "${TableName.GatewayV2}"."heartbeat" END`;
       const gateways = await db
         .replicaNode()(TableName.GatewayPoolMembership)
         .where(`${TableName.GatewayPoolMembership}.gatewayPoolId`, poolId)
         .join(TableName.GatewayV2, `${TableName.GatewayPoolMembership}.gatewayId`, `${TableName.GatewayV2}.id`)
         .whereRaw(
-          `COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) > 0 AND "${TableName.GatewayV2}"."heartbeat" + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW()`
+          `COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) > 0 AND ${effectiveHeartbeat} + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW()`
         )
         .select(`${TableName.GatewayV2}.*`);
 
