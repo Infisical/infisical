@@ -79,8 +79,10 @@ def bootstrap_infisical(context: Context):
         )
         resp.raise_for_status()
         workspaces = resp.json()["workspaces"]
+        # The org bootstrap creates one project per org-scoped product, and this endpoint
+        # sorts them by name, so the first one is not the Cert Manager project.
         project = next(
-            (w for w in workspaces if w["type"] == "cert-manager"),
+            (w for w in workspaces if w["slug"].startswith("cert-manager-")),
             None,
         )
         if project is None:
