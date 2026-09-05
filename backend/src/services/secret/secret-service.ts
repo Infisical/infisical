@@ -100,6 +100,7 @@ import {
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretAccessListDTO,
+  TGetSecretMetadataDTO,
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
@@ -1429,6 +1430,10 @@ export const secretServiceFactory = ({
     });
 
     return secrets;
+  };
+
+  const getSecretMetadata = async (dto: TGetSecretMetadataDTO) => {
+    return secretV2BridgeService.getSecretMetadata(dto);
   };
 
   const getSecretsRaw = async ({
@@ -3903,6 +3908,7 @@ export const secretServiceFactory = ({
     getSecretAccessList,
     getSecretByIdRaw,
     getAccessibleSecrets,
+    getSecretMetadata,
     getSecretVersionsV2ByIds,
     getChangeVersions,
     redactSecretVersionValue,

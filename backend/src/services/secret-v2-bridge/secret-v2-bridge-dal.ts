@@ -596,6 +596,74 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findMetadataByFolderIds = async ({
+    folderIds,
+    afterId,
+    limit
+  }: {
+    folderIds: string[];
+    afterId?: string;
+    limit: number;
+  }) => {
+    try {
+      // Page secret rows before loading tags. Joining tags before LIMIT would
+      // split one secret across pages; paging distinct keys would be unbounded
+      // when many folders contain the same key. No encrypted columns are read.
+      const query = db
+        .replicaNode()(TableName.SecretV2)
+        .select("id", "key", "folderId", "type")
+        .select<
+          (Pick<TSecretsV2, "id" | "key" | "folderId" | "type"> & {
+            isHoneyTokenSecret: boolean;
+            isRotatedSecret: boolean;
+          })[]
+        >(
+          db.raw<{ isHoneyTokenSecret: boolean; isRotatedSecret: boolean }[]>(
+            `EXISTS (SELECT 1 FROM ?? WHERE ??."secretId" = ??."id") AS "isHoneyTokenSecret",
+           EXISTS (SELECT 1 FROM ?? WHERE ??."secretId" = ??."id") AS "isRotatedSecret"`,
+            [
+              TableName.HoneyTokenSecretMapping,
+              TableName.HoneyTokenSecretMapping,
+              TableName.SecretV2,
+              TableName.SecretRotationV2SecretMapping,
+              TableName.SecretRotationV2SecretMapping,
+              TableName.SecretV2
+            ]
+          )
+        )
+        .whereIn("folderId", folderIds)
+        .where("type", SecretType.Shared)
+        .whereNull("userId")
+        .orderBy("id", "asc")
+        .limit(limit);
+
+      if (afterId) void query.where("id", ">", afterId);
+      const secrets = await query;
+      if (!secrets.length) return [];
+      const tags = await db
+        .replicaNode()(TableName.SecretV2JnTag)
+        .join(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .whereIn(
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`,
+          secrets.map(({ id }) => id)
+        )
+        .select<{ secretId: string; slug: string }[]>(
+          db.ref(`${TableName.SecretV2}Id`).withSchema(TableName.SecretV2JnTag).as("secretId"),
+          db.ref("slug").withSchema(TableName.SecretTag)
+        );
+      const tagsBySecretId = new Map<string, string[]>();
+      tags.forEach((tag) => {
+        const { secretId } = tag;
+        const slugs = tagsBySecretId.get(secretId) ?? [];
+        slugs.push(tag.slug);
+        tagsBySecretId.set(secretId, slugs);
+      });
+      return secrets.map((secret) => ({ ...secret, tagSlugs: tagsBySecretId.get(secret.id) ?? [] }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findMetadataByFolderIds" });
+    }
+  };
+
   // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
@@ -1519,6 +1587,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOneWithTags,
     findByFolderId,
     findByFolderIds,
+    findMetadataByFolderIds,
     findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,

@@ -72,6 +72,7 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -214,6 +215,13 @@ export const secretV2BridgeServiceFactory = ({
   orgDAL,
   licenseService
 }: TSecretV2BridgeServiceFactoryDep) => {
+  const { getSecretMetadata } = secretMetadataServiceFactory({
+    permissionService,
+    folderDAL,
+    projectEnvDAL,
+    projectDAL,
+    secretDAL
+  });
   const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
@@ -3948,6 +3956,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsByFolderMappings,
     getSecretById,
     getAccessibleSecrets,
+    getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
     $validateSecretReferences,

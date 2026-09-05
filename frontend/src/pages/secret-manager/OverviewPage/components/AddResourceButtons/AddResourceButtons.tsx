@@ -38,13 +38,14 @@ type Props = {
   onAddProxiedService: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
-  onReplicateSecrets: () => void;
+  onCopySecrets: () => void;
+  isCopySecretsDisabled: boolean;
+  copySecretsDisabledReason?: string;
   onImportFromVault: () => void;
   onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isHoneyTokenAvailable: boolean;
-  isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
@@ -63,13 +64,14 @@ export function AddResourceButtons({
   onAddProxiedService,
   onAddSecretImport,
   onImportSecrets,
-  onReplicateSecrets,
+  onCopySecrets,
+  isCopySecretsDisabled,
+  copySecretsDisabledReason,
   onImportFromVault,
   onImportFromDoppler,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isHoneyTokenAvailable,
-  isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
@@ -197,20 +199,15 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access Restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={!isReplicateSecretsAvailable || !canCreateFolders ? undefined : false}>
+          <Tooltip open={isCopySecretsDisabled ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <DropdownMenuItem
-                onClick={onReplicateSecrets}
-                isDisabled={!isReplicateSecretsAvailable || !canCreateFolders}
-              >
+              <DropdownMenuItem onClick={onCopySecrets} isDisabled={isCopySecretsDisabled}>
                 <ClipboardPasteIcon className="text-accent" />
-                Replicate Secrets
+                Copy Secrets
               </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">
-              {!isReplicateSecretsAvailable
-                ? "Select a single environment to replicate secrets"
-                : "Access Denied"}
+              {copySecretsDisabledReason ?? "Copy secrets is unavailable"}
             </TooltipContent>
           </Tooltip>
           {(hasVaultConnection || hasDopplerConnection) && (
