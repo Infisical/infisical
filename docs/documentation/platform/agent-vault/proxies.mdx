@@ -63,7 +63,7 @@ Under **Allow** the list changes nothing, since those hosts are reachable anyway
 
 How often, in seconds, the proxy re-checks each active session with Infisical and picks up settings changes. The default is 60, and the range is 10 to 300. Everything on this page and on [Sessions](/documentation/platform/agent-vault/sessions) that says "within one poll interval" means this number.
 
-If Infisical is unreachable, the proxy keeps serving what it last knew for five poll intervals, then stops attaching credentials until it can check again. A session that comes back revoked, expired, or removed is dropped on the poll that says so.
+If Infisical is unreachable, the proxy keeps serving what it last knew for five poll intervals, then stops serving those sessions until it can check again. A session that comes back revoked, expired, or removed is dropped on the poll that says so.
 
 The Proxies page marks a proxy unhealthy sooner than that, after three missed check-ins. The two counts measure different things: three is when the dashboard stops believing the proxy is up, five is how long the proxy itself keeps working without an answer.
 
