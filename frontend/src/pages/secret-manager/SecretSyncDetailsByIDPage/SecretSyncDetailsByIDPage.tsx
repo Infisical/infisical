@@ -1,8 +1,6 @@
 import { Helmet } from "react-helmet";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
-import { BanIcon } from "lucide-react";
+import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -82,15 +80,15 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between font-inter text-white">
+      <div className="container mx-auto flex flex-col justify-between font-inter text-foreground">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
             to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
             params={{ orgId, projectId }}
             search={{ selectedTab: IntegrationsListPageTabs.SecretSyncs }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-foreground"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
+            <ChevronLeftIcon className="size-4" />
             Secret Syncs
           </Link>
           <div className="mb-6 flex w-full items-center gap-3">
@@ -100,7 +98,7 @@ const PageContent = () => {
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-white">{secretSync.name}</p>
+              <p className="truncate text-2xl font-medium text-foreground">{secretSync.name}</p>
               <p className="mt-1 leading-3 text-accent">
                 {secretSync.description || `${destinationDetails.name} Sync`}
               </p>

@@ -194,7 +194,11 @@ export const RedisConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="flex-1">
                     <FieldLabel>Password</FieldLabel>
-                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                    <SecretInput
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
                     <FieldError errors={[error]} />
                   </Field>
                 )}
@@ -212,6 +216,7 @@ export const RedisConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       <Label htmlFor="ssl-enabled">Enable SSL</Label>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="ssl-enabled"
                       variant={scopeVariant}
                       checked={value}
@@ -255,6 +260,7 @@ export const RedisConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       </FieldDescription>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={sslEnabled ? value : false}

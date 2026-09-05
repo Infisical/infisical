@@ -145,7 +145,12 @@ export const DigiCertConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="api-key">CertCentral API Key</FieldLabel>
-              <SecretInput id="api-key" value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                isError={Boolean(error)}
+                id="api-key"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
               {!error && (
                 <FieldDescription>
                   Generate an API key in CertCentral under Automation &gt; API Keys.

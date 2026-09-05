@@ -1,5 +1,3 @@
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
 import { PauseIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
@@ -49,7 +47,7 @@ export const CredentialRotationStatusBadge = ({ appConnection }: Props) => {
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
               <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+                <XIcon className="mr-1.5 ml-1 size-3 shrink-0" />
                 <div className="text-xs">Failure Reason</div>
               </div>
               <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">

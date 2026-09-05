@@ -118,6 +118,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
+  isError?: boolean;
   onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
@@ -139,6 +140,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       canEditButNotView,
       isLoadingValue,
       isErrorLoadingValue,
+      isError,
       onClickSegment,
       placeholder,
       ...props
@@ -182,9 +184,11 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div
+        data-invalid={isError}
         className={cn(
           "no-scrollbar min-h-9 w-full overflow-auto rounded-md border border-border bg-transparent transition-[color,box-shadow]",
           "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+          "data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
@@ -246,6 +250,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
+            aria-invalid={isError || props["aria-invalid"]}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>

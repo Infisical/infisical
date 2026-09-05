@@ -9,7 +9,10 @@ export const TravisCISyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.object({
       repositoryId: z.string().min(1, "Repository required"),
       repositorySlug: z.string().min(1, "Repository required"),
-      branch: z.string().optional()
+      branch: z
+        .string()
+        .nullish()
+        .transform((value) => value || undefined)
     })
   })
 );

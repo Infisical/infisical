@@ -242,7 +242,7 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
             render={({ field, fieldState: { error } }) => (
               <Field className="mb-4">
                 <FieldLabel>Access Token</FieldLabel>
-                <SecretInput {...field} />
+                <SecretInput isError={Boolean(error)} {...field} />
                 <FieldError errors={[error]} />
               </Field>
             )}
@@ -273,7 +273,7 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
               render={({ field, fieldState: { error } }) => (
                 <Field className="mb-4">
                   <FieldLabel>Secret ID</FieldLabel>
-                  <SecretInput {...field} />
+                  <SecretInput isError={Boolean(error)} {...field} />
                   <FieldError errors={[error]} />
                 </Field>
               )}

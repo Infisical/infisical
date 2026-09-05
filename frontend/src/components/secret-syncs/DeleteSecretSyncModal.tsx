@@ -1,23 +1,22 @@
 import { useEffect, useState } from "react";
-import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel,
   FieldTitle,
-  Input,
   Switch
 } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -33,11 +32,9 @@ type Props = {
 export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComplete }: Props) => {
   const deleteSync = useDeleteSecretSync();
   const { syncOption } = useSecretSyncOption(secretSync?.destination);
-  const [inputData, setInputData] = useState("");
   const [removeSecrets, setRemoveSecrets] = useState(false);
 
   useEffect(() => {
-    setInputData("");
     setRemoveSecrets(false);
   }, [isOpen]);
 
@@ -45,11 +42,8 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
 
   const { id: syncId, name, destination, projectId } = secretSync;
   const destinationName = SECRET_SYNC_MAP[destination].name;
-  const isConfirmed = inputData === name;
 
   const handleDeleteSecretSync = async () => {
-    if (!isConfirmed) return;
-
     await deleteSync.mutateAsync({
       syncId,
       destination,
@@ -67,35 +61,21 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={isOpen} confirmationValue={name} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogMedia>
-            <Trash2Icon />
-          </AlertDialogMedia>
           <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>This action is irreversible.</AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleDeleteSecretSync();
+        <AlertDialogConfirmationField
+          onConfirm={() => {
+            if (!deleteSync.isPending) handleDeleteSecretSync().catch(() => undefined);
           }}
-        >
-          <Field>
-            <FieldLabel>
-              Type <span className="font-bold">{name}</span> to confirm
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                placeholder={`Type ${name} here`}
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-        </form>
+        />
         {syncOption?.canRemoveSecretsOnDeletion && (
           <Field orientation="horizontal">
             <FieldContent>
@@ -113,11 +93,14 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
           </Field>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel isDisabled={deleteSync.isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            onClick={handleDeleteSecretSync}
-            disabled={!isConfirmed}
+            isPending={deleteSync.isPending}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!deleteSync.isPending) handleDeleteSecretSync().catch(() => undefined);
+            }}
           >
             Delete
           </AlertDialogAction>

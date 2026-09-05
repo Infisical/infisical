@@ -1,8 +1,6 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info } from "lucide-react";
+import { CheckIcon, CopyIcon, Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -119,6 +117,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="group mb-4">
               <FieldLabel htmlFor="service-account-email">Service Account Email</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="service-account-email"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -149,11 +148,11 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                           }}
                           className="ml-1"
                         >
-                          <FontAwesomeIcon
-                            icon={!isCopied ? faCopy : faCheck}
-                            size="sm"
-                            className="cursor-pointer"
-                          />
+                          {isCopied ? (
+                            <CheckIcon className="size-4" />
+                          ) : (
+                            <CopyIcon className="size-4" />
+                          )}
                         </IconButton>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">Copy</TooltipContent>

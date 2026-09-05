@@ -121,6 +121,7 @@ export const FireworksConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <Input
+                isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="Account ID"
@@ -146,7 +147,11 @@ export const FireworksConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
               <FieldError errors={[error]} />
             </Field>
           )}

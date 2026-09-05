@@ -89,7 +89,7 @@ export const AwsIamUserSecretRotationParametersFields = () => {
             >
               Region <span className="font-normal text-muted">(optional)</span>
             </FieldLabelWithTooltip>
-            <AwsRegionSelect value={value ?? ""} onChange={onChange} />
+            <AwsRegionSelect value={value ?? ""} onChange={onChange} isError={Boolean(error)} />
             <FieldError>{error?.message}</FieldError>
           </Field>
         )}

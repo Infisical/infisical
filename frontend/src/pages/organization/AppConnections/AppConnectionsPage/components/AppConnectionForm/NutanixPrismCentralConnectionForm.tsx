@@ -276,6 +276,7 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                       </Tooltip>
                     </FieldLabel>
                     <SecretInput
+                      isError={Boolean(error)}
                       id="api-key"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
@@ -311,6 +312,7 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                     <Field className="mb-4">
                       <FieldLabel htmlFor="password">Password</FieldLabel>
                       <SecretInput
+                        isError={Boolean(error)}
                         id="password"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
@@ -357,6 +359,7 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
                       </FieldDescription>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={value}

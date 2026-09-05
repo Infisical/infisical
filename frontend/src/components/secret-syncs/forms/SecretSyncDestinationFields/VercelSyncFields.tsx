@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
+import { SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -8,6 +8,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Combobox,
   CreatableSelect,
   Field,
   FieldContent,
@@ -15,7 +16,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Label,
   Select,
   SelectContent,
@@ -29,6 +29,7 @@ import {
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
+  TVercelConnectionApp,
   TVercelConnectionOrganization,
   useVercelConnectionListOrganizations
 } from "@app/hooks/api/appConnections/vercel";
@@ -61,9 +62,11 @@ export const VercelSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentApp = watch("destinationConfig.app");
+  const currentAppName = watch("destinationConfig.appName");
   const currentEnv = watch("destinationConfig.env");
   const scope = watch("destinationConfig.scope");
   const teamId = watch("destinationConfig.teamId");
+  const teamName = watch("destinationConfig.teamName");
   const targetEnvironments = watch("destinationConfig.targetEnvironments");
 
   const isProjectDevTargeted =
@@ -80,20 +83,47 @@ export const VercelSyncFields = () => {
     }
   );
 
-  const selectedProject = teams
-    ?.find((team) => team.apps.some((app) => app.id === currentApp))
-    ?.apps.find((app) => app.id === currentApp);
+  const allApps = useMemo(
+    () =>
+      teams?.flatMap((team) =>
+        team.apps.map((project) => ({ ...project, teamName: team.name, teamId: team.id }))
+      ) ?? [],
+    [teams]
+  );
 
-  const allApps =
-    teams?.flatMap((team) =>
-      team.apps.map((project) => ({ ...project, teamName: team.name, teamId: team.id }))
-    ) || [];
+  const selectedProject = allApps.find((app) => app.id === currentApp);
 
   const availableApps = useMemo(() => {
     if (scope !== VercelSyncScope.Team) return allApps;
 
     return allApps.filter((app) => app.teamId === teamId);
-  }, [allApps, teamId]);
+  }, [allApps, scope, teamId]);
+
+  const teamOptions = useMemo(() => {
+    const options = teams ?? [];
+    if (teamId && teamName && !options.some((team) => team.id === teamId)) {
+      return [{ id: teamId, name: teamName, slug: teamName, apps: [] }, ...options];
+    }
+    return options;
+  }, [teamId, teamName, teams]);
+
+  const projectOptions = useMemo(() => {
+    if (
+      currentApp &&
+      currentAppName &&
+      !availableApps.some((project) => project.id === currentApp)
+    ) {
+      const selectedFallback: TVercelConnectionApp & { teamId: string; teamName: string } = {
+        id: currentApp,
+        projectId: currentApp,
+        name: currentAppName,
+        teamId,
+        teamName: teamName || "Selected Team"
+      };
+      return [selectedFallback, ...availableApps];
+    }
+    return availableApps;
+  }, [availableApps, currentApp, currentAppName, teamId, teamName]);
 
   const environmentOptions = useMemo(() => {
     return standardVercelEnvironments
@@ -109,13 +139,16 @@ export const VercelSyncFields = () => {
           name: env.slug
         })) || []
       );
-  }, [currentApp]);
+  }, [selectedProject]);
 
-  const previewBranchOptions =
-    selectedProject?.previewBranches?.map((branch) => ({
-      id: branch,
-      name: branch
-    })) || [];
+  const previewBranchOptions = useMemo(
+    () =>
+      selectedProject?.previewBranches?.map((branch) => ({
+        id: branch,
+        name: branch
+      })) ?? [],
+    [selectedProject]
+  );
 
   const isPreviewEnvironment = currentEnv === "preview";
   const isTeamScope = scope === VercelSyncScope.Team;
@@ -190,18 +223,18 @@ export const VercelSyncFields = () => {
               <Field>
                 <FieldLabel>Team</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
-                    value={teams?.find((team) => team.id === value) ?? null}
-                    onChange={(option) => {
-                      const selectedOption = option as SingleValue<TVercelConnectionOrganization>;
-
-                      onChange(selectedOption?.id ?? null);
-                      setValue("destinationConfig.teamName", selectedOption?.name || "");
+                  <Combobox
+                    isError={Boolean(error)}
+                    value={teamOptions.find((team) => team.id === value) ?? null}
+                    onValueChange={(option: TVercelConnectionOrganization) => {
+                      onChange(option.id);
+                      setValue("destinationConfig.teamName", option.name);
                     }}
-                    options={teams}
+                    options={teamOptions}
                     placeholder="Select a team..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -216,20 +249,16 @@ export const VercelSyncFields = () => {
               <Field>
                 <FieldLabel>Target Environments</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
-                    isMulti
+                  <Combobox
+                    isError={Boolean(error)}
+                    multiple
                     value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
-                    onChange={(option) =>
-                      onChange(
-                        (option as MultiValue<(typeof teamVercelEnvironments)[number]>).map(
-                          (o) => o.slug
-                        )
-                      )
-                    }
+                    onValueChange={(options) => onChange(options.map((option) => option.slug))}
                     options={teamVercelEnvironments}
                     placeholder="Select target environments..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.slug}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -244,18 +273,16 @@ export const VercelSyncFields = () => {
               <Field>
                 <FieldLabel>Target Projects (Optional)</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
-                    isMulti
+                  <Combobox
+                    isError={Boolean(error)}
+                    multiple
                     value={availableApps.filter((app) => (value || []).includes(app.id))}
-                    onChange={(option) =>
-                      onChange(
-                        (option as MultiValue<(typeof availableApps)[number]>).map((o) => o.id)
-                      )
-                    }
+                    onValueChange={(options) => onChange(options.map((option) => option.id))}
                     options={availableApps}
                     placeholder="Select target projects..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -317,29 +344,31 @@ export const VercelSyncFields = () => {
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
-                    noOptionsMessage={({ inputValue }) => {
+                  <Combobox
+                    isError={Boolean(error)}
+                    emptyMessage={(inputValue) => {
                       return inputValue
                         ? "No projects found matching your search."
                         : "No projects found.";
                     }}
                     isLoading={isTeamsLoading && Boolean(connectionId)}
                     isDisabled={!connectionId}
-                    value={availableApps.find((app) => app.id === value) ?? null}
-                    onChange={(option) => {
-                      const selected = option as SingleValue<(typeof availableApps)[number]>;
-                      onChange(selected?.id ?? null);
+                    value={projectOptions.find((app) => app.id === value) ?? null}
+                    onValueChange={(selected) => {
+                      onChange(selected.id);
                       setValue("destinationConfig.branch", "");
-                      setValue("destinationConfig.teamId", selected?.teamId || "");
-                      setValue("destinationConfig.appName", selected?.name || "");
+                      setValue("destinationConfig.teamId", selected.teamId);
+                      setValue("destinationConfig.teamName", selected.teamName);
+                      setValue("destinationConfig.appName", selected.name);
                     }}
-                    onInputChange={(newValue) => setProjectSearch(newValue)}
-                    filterOption={null}
-                    options={availableApps}
+                    onInputValueChange={setProjectSearch}
+                    shouldFilter={false}
+                    options={projectOptions}
                     placeholder="Search for a project..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id.toString()}
-                    groupBy="teamName"
+                    getOptionGroup={(option) => option.teamName}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -354,7 +383,8 @@ export const VercelSyncFields = () => {
               <Field>
                 <FieldLabel>Vercel Project Environment</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
+                    isError={Boolean(error)}
                     isDisabled={!connectionId || !currentApp}
                     value={
                       value
@@ -365,8 +395,8 @@ export const VercelSyncFields = () => {
                           }
                         : null
                     }
-                    onChange={(option) => {
-                      const envKey = (option as any)?.key ?? null;
+                    onValueChange={(option) => {
+                      const envKey = option.key;
                       onChange(envKey);
 
                       setValue("destinationConfig.branch", "");
@@ -379,6 +409,7 @@ export const VercelSyncFields = () => {
                     placeholder="Select an environment..."
                     getOptionLabel={(option) => option.name || option.key || ""}
                     getOptionValue={(option) => option.key || ""}
+                    modal
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
@@ -395,37 +426,34 @@ export const VercelSyncFields = () => {
                   <FieldLabel>Vercel Preview Branch (Optional)</FieldLabel>
                   <FieldContent>
                     <CreatableSelect
+                      isError={Boolean(error)}
                       className="w-full"
                       placeholder="Select a branch..."
                       isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
                       isDisabled={!connectionId || !currentApp}
                       options={previewBranchOptions}
-                      value={previewBranchOptions.find((branch) => branch.id === value) ?? null}
+                      value={
+                        value
+                          ? (previewBranchOptions.find((branch) => branch.id === value) ?? {
+                              id: value,
+                              name: value
+                            })
+                          : null
+                      }
                       onChange={(option) =>
                         onChange((option as SingleValue<{ id: string }>)?.id || "")
                       }
-                      onCreateOption={(option) => {
-                        onChange(option);
-                        if (!option || option.trim() === "") return;
-                        previewBranchOptions.push({ id: option, name: option });
-                      }}
-                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      getNewOptionData={(inputValue, _optionLabel) => {
-                        return {
-                          id: inputValue,
-                          name: `${inputValue} - press Enter`
-                        };
-                      }}
+                      onCreateOption={onChange}
+                      getNewOptionData={(inputValue) => ({
+                        id: inputValue,
+                        name: `${inputValue} - press Enter`
+                      })}
                       getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option?.id || ""}
-                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      isValidNewOption={(inputValue, _value, _options, _accessors) => {
-                        return (
-                          inputValue.trim().length > 0 &&
-                          previewBranchOptions.filter((branch) => branch.id === inputValue)
-                            .length === 0
-                        );
-                      }}
+                      getOptionValue={(option) => option.id}
+                      isValidNewOption={(inputValue) =>
+                        inputValue.trim().length > 0 &&
+                        !previewBranchOptions.some((branch) => branch.id === inputValue)
+                      }
                     />
                     <FieldError errors={[error]} />
                   </FieldContent>

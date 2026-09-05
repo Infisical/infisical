@@ -112,6 +112,7 @@ export const FlyioConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="access-token">Access Token</FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="access-token"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

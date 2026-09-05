@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { Info } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
+import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -74,6 +73,10 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   );
 
   const appName = APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
+  const connectionOptions = [
+    ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+    ...allowedConnections
+  ];
 
   return (
     <>
@@ -94,10 +97,10 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 value={value}
-                onChange={(newValue) => {
-                  if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                onValueChange={(newValue) => {
+                  if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
                     onChange(null);
                     // store for oauth callback connections
@@ -111,14 +114,17 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                 }}
                 isLoading={isPending}
                 isError={Boolean(error)}
-                options={[
-                  ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                  ...allowedConnections
-                ]}
+                options={connectionOptions}
                 placeholder="Select connection..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
-                components={{ Option: AppConnectionOption }}
+                renderOption={(option) => (
+                  <AppConnectionOptionContent
+                    data={option}
+                    isOnlyOption={option.id === "_create" && connectionOptions.length === 1}
+                  />
+                )}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

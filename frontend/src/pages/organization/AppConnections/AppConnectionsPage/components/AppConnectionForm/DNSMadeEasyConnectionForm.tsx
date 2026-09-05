@@ -132,7 +132,11 @@ export const DNSMadeEasyConnectionForm = ({ appConnection, onSubmit }: Props) =>
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="secret-key">Secret Key</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
               <FieldError errors={[error]} />
             </Field>
           )}

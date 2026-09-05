@@ -260,6 +260,7 @@ export const F5BigIpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   <Field className="mb-4">
                     <FieldLabel htmlFor="password">Password</FieldLabel>
                     <SecretInput
+                      isError={Boolean(error)}
                       id="password"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
@@ -305,6 +306,7 @@ export const F5BigIpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       </FieldDescription>
                     </FieldContent>
                     <Switch
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={value}

@@ -50,7 +50,11 @@ export const AwsPcaFields = ({ control, availableConnections, isPending }: Props
           <FieldLabel>
             Region <span className="text-danger">*</span>
           </FieldLabel>
-          <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
+          <AwsRegionSelect
+            value={value}
+            onChange={(v) => onChange(v || "")}
+            isError={Boolean(error)}
+          />
           <FieldError errors={[error]} />
         </Field>
       )}

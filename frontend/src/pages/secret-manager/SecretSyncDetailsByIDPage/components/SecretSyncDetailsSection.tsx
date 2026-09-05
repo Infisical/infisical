@@ -61,9 +61,9 @@ export const SecretSyncDetailsSection = ({ secretSync }: Props) => {
       )}
       {syncStatus === SecretSyncStatus.Failed && failureMessage && (
         <Detail>
-          <DetailLabel className="text-red">Last Sync Error</DetailLabel>
+          <DetailLabel className="text-danger">Last Sync Error</DetailLabel>
           <DetailValue>
-            <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{failureMessage}</p>
+            <p className="rounded-sm bg-ring p-2 text-xs break-words">{failureMessage}</p>
           </DetailValue>
         </Detail>
       )}

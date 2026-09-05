@@ -124,6 +124,7 @@ export const SqlConnectionFields = ({
                 <Field className="flex-1">
                   <FieldLabel>Password</FieldLabel>
                   <SecretInput
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     isDisabled={isPlatformManagedCredentials}
@@ -145,6 +146,7 @@ export const SqlConnectionFields = ({
                     <Label htmlFor="ssl-enabled">Enable SSL</Label>
                   </FieldContent>
                   <Switch
+                    aria-invalid={Boolean(error)}
                     id="ssl-enabled"
                     variant={scopeVariant}
                     checked={value}
@@ -189,6 +191,7 @@ export const SqlConnectionFields = ({
                     </FieldDescription>
                   </FieldContent>
                   <Switch
+                    aria-invalid={Boolean(error)}
                     id="ssl-reject-unauthorized"
                     variant={scopeVariant}
                     checked={sslEnabled ? value : false}
@@ -217,6 +220,7 @@ export const SqlConnectionFields = ({
                   </FieldDescription>
                 </FieldContent>
                 <Switch
+                  aria-invalid={Boolean(error)}
                   id="platform-managed"
                   variant={scopeVariant}
                   checked={value}

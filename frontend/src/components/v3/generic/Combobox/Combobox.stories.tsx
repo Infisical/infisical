@@ -49,6 +49,12 @@ const PROJECTS = Array.from({ length: 18 }, (_, index) => ({
     index % 4 === 0 ? `Project ${index + 1} with a long descriptive name` : `Project ${index + 1}`
 }));
 
+const VAULTS = [
+  { id: "engineering", name: "Engineering", items: 42 },
+  { id: "infrastructure", name: "Infrastructure", items: 18 },
+  { id: "security", name: "Security", items: 7 }
+] as const;
+
 const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 
 const StoryCombobox = <TOption,>(props: ComboboxProps<TOption>) => {
@@ -183,6 +189,47 @@ export const RichOptions: Story = {
     }
   },
   render: () => <RichOptionsRender />
+};
+
+const OpaqueOptionFieldsRender = () => {
+  const [value, setValue] = useState<(typeof VAULTS)[number] | null>(VAULTS[0]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-vault">Vault</FieldLabel>
+      <StoryCombobox
+        id="combobox-vault"
+        options={VAULTS}
+        value={value}
+        onValueChange={setValue}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        getOptionKeywords={(option) => [`${option.items} items`]}
+        placeholder="Select vault..."
+        searchPlaceholder="Search vaults..."
+        searchAriaLabel="Search vaults"
+        renderOption={(option) => (
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <span className="truncate">{option.name}</span>
+            <span className="shrink-0 text-xs text-muted">{option.items} items</span>
+          </div>
+        )}
+      />
+    </Field>
+  );
+};
+
+export const OpaqueOptionFields: Story = {
+  name: "Example: Opaque Option Fields",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Consumer option objects are opaque to the underlying primitive. Fields such as a numeric `items` count cannot be mistaken for the combobox's internal grouped-item structure."
+      }
+    }
+  },
+  render: () => <OpaqueOptionFieldsRender />
 };
 
 const MultipleRender = () => {

@@ -120,7 +120,12 @@ export const DevinConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput id="api-key" value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                isError={Boolean(error)}
+                id="api-key"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
               <FieldError errors={[error]} />
             </Field>
           )}

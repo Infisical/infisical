@@ -12,10 +12,11 @@ type ComboboxRenderOptionState = {
 };
 
 type ComboboxSharedProps<TOption> = {
-  options: readonly TOption[];
+  options?: readonly TOption[];
   getOptionValue: (option: TOption) => string;
   getOptionLabel: (option: TOption) => string;
   getOptionKeywords?: (option: TOption) => readonly string[];
+  getOptionGroup?: (option: TOption) => string;
   isOptionDisabled?: (option: TOption) => boolean;
   renderOption?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
   renderValue?: (option: TOption) => React.ReactNode;
@@ -23,7 +24,7 @@ type ComboboxSharedProps<TOption> = {
   placeholder?: string;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
-  emptyMessage?: React.ReactNode;
+  emptyMessage?: React.ReactNode | ((inputValue: string) => React.ReactNode);
   loadingMessage?: React.ReactNode;
   isDisabled?: boolean;
   isLoading?: boolean;
@@ -31,6 +32,8 @@ type ComboboxSharedProps<TOption> = {
   modal?: boolean;
   portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
   contentClassName?: string;
+  onInputValueChange?: (inputValue: string) => void;
+  shouldFilter?: boolean;
 };
 
 type ComboboxSingleProps<TOption> = ComboboxSharedProps<TOption> &
@@ -100,17 +103,65 @@ const useComboboxItems = <TOption,>(
     return stableOptions;
   }, [getOptionValue, options, selectedOptions]);
 
-type ComboboxListProps<TOption> = Pick<
-  ComboboxSharedProps<TOption>,
-  | "emptyMessage"
-  | "getOptionLabel"
-  | "getOptionValue"
-  | "isLoading"
-  | "isOptionDisabled"
-  | "loadingMessage"
-  | "renderOption"
+type ComboboxItem<TOption> = {
+  option: TOption;
+};
+
+type ComboboxGroup<TOption> = {
+  value: string;
+  items: ComboboxItem<TOption>[];
+};
+
+const usePrimitiveComboboxItems = <TOption,>(
+  items: readonly TOption[],
+  getOptionValue: (option: TOption) => string,
+  getOptionGroup?: (option: TOption) => string
+) =>
+  React.useMemo(() => {
+    // Base UI treats any object with an `items` property as a group. Wrapping every
+    // consumer option keeps provider-specific fields opaque to the primitive and
+    // reserves the grouped shape for groups created explicitly below.
+    const flatItems = items.map((option) => ({ option }));
+    const itemsByValue = new Map(
+      flatItems.map((item) => [getOptionValue(item.option), item] as const)
+    );
+
+    if (!getOptionGroup) return { itemsByValue, rootItems: flatItems };
+
+    const groupedItems = new Map<string, ComboboxItem<TOption>[]>();
+    flatItems.forEach((item) => {
+      const group = getOptionGroup(item.option);
+      const groupItems = groupedItems.get(group);
+      if (groupItems) groupItems.push(item);
+      else groupedItems.set(group, [item]);
+    });
+
+    return {
+      itemsByValue,
+      rootItems: Array.from(groupedItems, ([value, groupItems]) => ({
+        value,
+        items: groupItems
+      }))
+    };
+  }, [getOptionGroup, getOptionValue, items]);
+
+type ComboboxListProps<TOption> = Omit<
+  Pick<
+    ComboboxSharedProps<TOption>,
+    | "emptyMessage"
+    | "getOptionLabel"
+    | "getOptionGroup"
+    | "getOptionValue"
+    | "isLoading"
+    | "isOptionDisabled"
+    | "loadingMessage"
+    | "renderOption"
+  >,
+  "emptyMessage"
 > & {
+  emptyMessage?: React.ReactNode;
   ariaLabel: string;
+  isEmpty: boolean;
   selectedValues: ReadonlySet<string>;
   maxHeight: string;
 };
@@ -118,56 +169,88 @@ type ComboboxListProps<TOption> = Pick<
 const ComboboxList = <TOption,>({
   emptyMessage,
   getOptionLabel,
+  getOptionGroup,
   getOptionValue,
   isLoading,
   isOptionDisabled,
   loadingMessage,
   renderOption,
   ariaLabel,
+  isEmpty,
   selectedValues,
   maxHeight
-}: ComboboxListProps<TOption>) => (
-  <>
-    <ComboboxPrimitive.List
-      aria-label={ariaLabel}
-      aria-busy={isLoading || undefined}
-      onWheel={(event) => event.stopPropagation()}
-      className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
-      style={{ maxHeight }}
-    >
-      {(option: TOption) => {
-        const optionValue = getOptionValue(option);
-        const isSelected = selectedValues.has(optionValue);
+}: ComboboxListProps<TOption>) => {
+  const renderItem = (item: ComboboxItem<TOption>) => {
+    const { option } = item;
+    const optionValue = getOptionValue(option);
+    const isSelected = selectedValues.has(optionValue);
 
-        return (
-          <ComboboxPrimitive.Item
-            key={optionValue}
-            value={option}
-            disabled={isOptionDisabled?.(option)}
-            className={cn(
-              COMBOBOX_ROW_CLASS,
-              "relative pr-8 pl-2",
-              "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
-            )}
-          >
-            <span className="min-w-0 flex-1">
-              {renderOption?.(option, { isSelected }) ?? (
-                <span className="block truncate">{getOptionLabel(option)}</span>
-              )}
-            </span>
-            <ComboboxPrimitive.ItemIndicator className="absolute right-2 flex size-4 items-center justify-center">
-              <CheckIcon className="size-4" />
-            </ComboboxPrimitive.ItemIndicator>
-            {isSelected && <span className="sr-only">Current selection</span>}
-          </ComboboxPrimitive.Item>
-        );
-      }}
-    </ComboboxPrimitive.List>
-    <ComboboxPrimitive.Empty className="py-6 text-center text-sm text-muted empty:hidden">
-      {isLoading ? loadingMessage : emptyMessage}
-    </ComboboxPrimitive.Empty>
-  </>
-);
+    return (
+      <ComboboxPrimitive.Item
+        key={optionValue}
+        value={item}
+        disabled={isOptionDisabled?.(option)}
+        className={cn(
+          COMBOBOX_ROW_CLASS,
+          "relative pr-8 pl-2",
+          "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
+        )}
+      >
+        <span className="min-w-0 flex-1">
+          {renderOption?.(option, { isSelected }) ?? (
+            <span className="block truncate">{getOptionLabel(option)}</span>
+          )}
+        </span>
+        <ComboboxPrimitive.ItemIndicator className="absolute right-2 flex size-4 items-center justify-center">
+          <CheckIcon className="size-4" />
+        </ComboboxPrimitive.ItemIndicator>
+        {isSelected && <span className="sr-only">Current selection</span>}
+      </ComboboxPrimitive.Item>
+    );
+  };
+
+  return (
+    <>
+      <ComboboxPrimitive.List
+        aria-label={ariaLabel}
+        aria-busy={isLoading || undefined}
+        onWheel={(event) => event.stopPropagation()}
+        className={() =>
+          cn(
+            "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
+            (isLoading || isEmpty) && "hidden"
+          )
+        }
+        style={{ maxHeight }}
+      >
+        {getOptionGroup
+          ? (group: ComboboxGroup<TOption>) => (
+              <ComboboxPrimitive.Group key={group.value} items={group.items}>
+                <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
+                  {group.value}
+                </ComboboxPrimitive.GroupLabel>
+                <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
+              </ComboboxPrimitive.Group>
+            )
+          : renderItem}
+      </ComboboxPrimitive.List>
+      {isLoading ? (
+        <div
+          role="status"
+          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+        >
+          <span>{loadingMessage}</span>
+        </div>
+      ) : (
+        isEmpty && (
+          <div role="status" className="py-6 text-center text-sm text-muted">
+            {emptyMessage}
+          </div>
+        )
+      )}
+    </>
+  );
+};
 
 type ComboboxSelectAllProps = {
   areAllSelected: boolean;
@@ -261,12 +344,13 @@ const useComboboxFilter = <TOption,>({
   );
 
 const SingleCombobox = <TOption,>({
-  options,
+  options = [],
   value,
   onValueChange,
   getOptionValue,
   getOptionLabel,
   getOptionKeywords,
+  getOptionGroup,
   isOptionDisabled,
   renderOption,
   renderValue,
@@ -284,39 +368,88 @@ const SingleCombobox = <TOption,>({
   portalContainer: portalContainerProp,
   className,
   contentClassName,
+  onInputValueChange,
+  shouldFilter = true,
   id,
   onKeyDown,
   ...inputProps
 }: ComboboxSingleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
+  const selectedLabel = value == null ? "" : getOptionLabel(value);
+  const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
+  const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
+    items,
+    getOptionValue,
+    getOptionGroup
+  );
+  const selectedItem =
+    value == null ? null : (itemsByValue.get(getOptionValue(value)) ?? { option: value });
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const primitiveFilter = React.useCallback(
+    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    [filter]
+  );
+  const visibleOptions = React.useMemo(
+    () => items.filter((option) => !shouldFilter || filter(option, search)),
+    [filter, items, search, shouldFilter]
+  );
+  const selectableOptions = React.useMemo(
+    () => visibleOptions.filter((option) => !isOptionDisabled?.(option)),
+    [isOptionDisabled, visibleOptions]
+  );
   const selectedValues = React.useMemo(
     () => new Set(value == null ? [] : [getOptionValue(value)]),
     [getOptionValue, value]
   );
 
   return (
-    <ComboboxPrimitive.Root<TOption, false>
-      items={items}
-      value={value ?? null}
+    <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
+      items={rootItems}
+      value={selectedItem}
       onValueChange={(nextValue, eventDetails) => {
         if (nextValue == null) {
-          if (eventDetails.reason === "clear-press") onClear?.();
+          if (eventDetails.reason === "clear-press") {
+            setSearch("");
+            onClear?.();
+          }
           return;
         }
-        onValueChange(nextValue);
+        onValueChange(nextValue.option);
       }}
       open={open}
-      onOpenChange={setOpen}
-      itemToStringLabel={getOptionLabel}
-      itemToStringValue={getOptionValue}
+      onOpenChange={(nextOpen, eventDetails) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          // Clicking into a selected combobox starts from its current label. When
+          // typing itself opens the popup, preserve the query emitted just before
+          // this event instead of replacing the user's first keystroke.
+          if (eventDetails.reason !== "input-change") setSearch(selectedLabel);
+        } else {
+          highlightedOptionValueRef.current = null;
+          setSearch("");
+          onInputValueChange?.("");
+        }
+      }}
+      onItemHighlighted={(item) => {
+        highlightedOptionValueRef.current = item ? getOptionValue(item.option) : null;
+      }}
+      inputValue={open ? search : selectedLabel}
+      onInputValueChange={(nextValue, eventDetails) => {
+        if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+          setSearch(nextValue);
+          onInputValueChange?.(nextValue);
+        }
+      }}
+      itemToStringLabel={(item) => getOptionLabel(item.option)}
+      itemToStringValue={(item) => getOptionValue(item.option)}
       isItemEqualToValue={(option, selectedOption) =>
-        getOptionValue(option) === getOptionValue(selectedOption)
+        getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={filter}
+      filter={shouldFilter ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
       autoHighlight
@@ -332,6 +465,24 @@ const SingleCombobox = <TOption,>({
           placeholder={open ? searchPlaceholder : placeholder}
           onKeyDown={(event) => {
             onKeyDown?.(event);
+
+            const hasHighlightedOption = selectableOptions.some(
+              (option) => getOptionValue(option) === highlightedOptionValueRef.current
+            );
+            if (
+              !event.defaultPrevented &&
+              event.key === "Enter" &&
+              open &&
+              !isLoading &&
+              !hasHighlightedOption &&
+              selectableOptions[0]
+            ) {
+              onValueChange(selectableOptions[0]);
+              setOpen(false);
+              setSearch("");
+              onInputValueChange?.("");
+            }
+
             preventComboboxFormSubmit(event);
           }}
           className={cn(
@@ -389,14 +540,16 @@ const SingleCombobox = <TOption,>({
         portalContainer={portalContainerProp}
       >
         <ComboboxList
-          emptyMessage={emptyMessage}
+          emptyMessage={typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage}
           loadingMessage={loadingMessage}
           isLoading={isLoading}
           getOptionValue={getOptionValue}
           getOptionLabel={getOptionLabel}
+          getOptionGroup={getOptionGroup}
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
           ariaLabel={`${searchAriaLabel} suggestions`}
+          isEmpty={visibleOptions.length === 0}
           selectedValues={selectedValues}
           maxHeight={SINGLE_LIST_MAX_HEIGHT}
         />
@@ -406,12 +559,13 @@ const SingleCombobox = <TOption,>({
 };
 
 const MultipleCombobox = <TOption,>({
-  options,
+  options = [],
   value = [],
   onValueChange,
   getOptionValue,
   getOptionLabel,
   getOptionKeywords,
+  getOptionGroup,
   isOptionDisabled,
   renderOption,
   renderValue,
@@ -431,6 +585,8 @@ const MultipleCombobox = <TOption,>({
   portalContainer: portalContainerProp,
   className,
   contentClassName,
+  onInputValueChange,
+  shouldFilter = true,
   id,
   onKeyDown,
   ...inputProps
@@ -444,19 +600,33 @@ const MultipleCombobox = <TOption,>({
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
+  const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
+    items,
+    getOptionValue,
+    getOptionGroup
+  );
+  const selectedItems = React.useMemo(
+    () => selectedOptions.map((option) => itemsByValue.get(getOptionValue(option)) ?? { option }),
+    [getOptionValue, itemsByValue, selectedOptions]
+  );
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const primitiveFilter = React.useCallback(
+    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    [filter]
+  );
   const selectedValues = React.useMemo(
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
-  // Select all only covers the options matching the current search, so a filtered
-  // list toggles what is on screen instead of the entire option set.
+  const visibleOptions = React.useMemo(
+    () => items.filter((option) => !shouldFilter || filter(option, search)),
+    [filter, items, search, shouldFilter]
+  );
+  // Select all only covers the visible result set. External-search consumers
+  // provide an already-filtered list, so do not apply the local filter again.
   const selectAllOptions = React.useMemo(
-    () =>
-      isSelectAll
-        ? items.filter((option) => !isOptionDisabled?.(option) && filter(option, search))
-        : [],
-    [filter, isOptionDisabled, isSelectAll, items, search]
+    () => (isSelectAll ? visibleOptions.filter((option) => !isOptionDisabled?.(option)) : []),
+    [isOptionDisabled, isSelectAll, visibleOptions]
   );
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
@@ -476,10 +646,10 @@ const MultipleCombobox = <TOption,>({
   };
 
   return (
-    <ComboboxPrimitive.Root<TOption, true>
+    <ComboboxPrimitive.Root<ComboboxItem<TOption>, true>
       multiple
-      items={items}
-      value={selectedOptions}
+      items={rootItems}
+      value={selectedItems}
       onValueChange={(nextValue, eventDetails) => {
         if (eventDetails.reason === "item-press") {
           eventDetails.cancel();
@@ -493,21 +663,29 @@ const MultipleCombobox = <TOption,>({
           return;
         }
 
-        onValueChange(nextValue);
+        onValueChange(nextValue.map((item) => item.option));
       }}
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (!nextOpen) setSearch("");
+        if (!nextOpen) {
+          setSearch("");
+          onInputValueChange?.("");
+        }
       }}
       inputValue={search}
-      onInputValueChange={setSearch}
-      itemToStringLabel={getOptionLabel}
-      itemToStringValue={getOptionValue}
+      onInputValueChange={(nextValue, eventDetails) => {
+        setSearch(nextValue);
+        if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+          onInputValueChange?.(nextValue);
+        }
+      }}
+      itemToStringLabel={(item) => getOptionLabel(item.option)}
+      itemToStringValue={(item) => getOptionValue(item.option)}
       isItemEqualToValue={(option, selectedOption) =>
-        getOptionValue(option) === getOptionValue(selectedOption)
+        getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={filter}
+      filter={shouldFilter ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
       autoHighlight
@@ -537,9 +715,9 @@ const MultipleCombobox = <TOption,>({
           data-scrollable-end={scrollEdges.end}
         >
           <ComboboxPrimitive.Value>
-            {(selectedValue: TOption[]) => (
+            {(selectedValue: ComboboxItem<TOption>[]) => (
               <>
-                {selectedValue.map((option) => {
+                {selectedValue.map(({ option }) => {
                   const label = getOptionLabel(option);
                   return (
                     <ComboboxPrimitive.Chip
@@ -615,14 +793,16 @@ const MultipleCombobox = <TOption,>({
           />
         )}
         <ComboboxList
-          emptyMessage={emptyMessage}
+          emptyMessage={typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage}
           loadingMessage={loadingMessage}
           isLoading={isLoading}
           getOptionValue={getOptionValue}
           getOptionLabel={getOptionLabel}
+          getOptionGroup={getOptionGroup}
           isOptionDisabled={isOptionDisabled}
           renderOption={renderOption}
           ariaLabel={`${searchAriaLabel} suggestions`}
+          isEmpty={visibleOptions.length === 0}
           selectedValues={selectedValues}
           maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
         />

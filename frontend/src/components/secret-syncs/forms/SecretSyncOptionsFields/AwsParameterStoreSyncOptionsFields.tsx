@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { CircleHelp, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -9,12 +8,12 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Label,
@@ -23,10 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TAwsConnectionKmsKey,
-  useListAwsConnectionKmsKeys
-} from "@app/hooks/api/appConnections/aws";
+import { useListAwsConnectionKmsKeys } from "@app/hooks/api/appConnections/aws";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -176,46 +172,31 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     isLoading={isKmsKeysPending && Boolean(connectionId && region)}
                     isDisabled={!connectionId}
                     value={kmsKeys.find((org) => org.alias === value) ?? null}
-                    onChange={(option) =>
-                      onChange((option as SingleValue<TAwsConnectionKmsKey>)?.alias ?? null)
-                    }
+                    onValueChange={(option) => onChange(option.alias ?? null)}
                     isError={Boolean(error)}
-                    // eslint-disable-next-line react/no-unstable-nested-components
-                    noOptionsMessage={({ inputValue }) =>
-                      inputValue ? undefined : (
-                        <p>
-                          To configure a KMS key, ensure the following permissions are present on
-                          the selected IAM role:{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
-                            &#34;kms:ListAliases&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
-                            &#34;kms:DescribeKey&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
-                            &#34;kms:Encrypt&#34;
-                          </span>
-                          ,{" "}
-                          <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
-                            &#34;kms:Decrypt&#34;
-                          </span>
-                          .
-                        </p>
-                      )
+                    emptyMessage={(inputValue) =>
+                      inputValue ? "No KMS keys match your search." : "No KMS keys found."
                     }
                     options={kmsKeys}
                     placeholder="Leave blank to use default KMS key"
+                    searchPlaceholder="Search KMS keys..."
+                    searchAriaLabel="Search KMS keys"
                     getOptionLabel={(option) =>
                       option.alias === "alias/aws/ssm" ? `${option.alias} (Default)` : option.alias
                     }
                     getOptionValue={(option) => option.alias}
+                    modal
                   />
+                  <FieldDescription>
+                    Custom keys require <span className="font-mono">kms:ListAliases</span>,{" "}
+                    <span className="font-mono">kms:DescribeKey</span>,{" "}
+                    <span className="font-mono">kms:Encrypt</span>, and{" "}
+                    <span className="font-mono">kms:Decrypt</span> on the selected IAM role.
+                  </FieldDescription>
                 </FieldContent>
                 <FieldError errors={[error]} />
               </Field>

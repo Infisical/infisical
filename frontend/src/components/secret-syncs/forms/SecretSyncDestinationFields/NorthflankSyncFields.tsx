@@ -1,22 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  TNorthflankProject,
-  TNorthflankSecretGroup,
   useNorthflankConnectionListProjects,
   useNorthflankConnectionListSecretGroups
 } from "@app/hooks/api/appConnections/northflank";
@@ -72,12 +69,13 @@ export const NorthflankSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNorthflankProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.projectName", v?.name ?? "");
                   setValue("destinationConfig.secretGroupId", "");
@@ -87,6 +85,7 @@ export const NorthflankSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -111,12 +110,13 @@ export const NorthflankSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                isError={Boolean(error)}
                 isLoading={isSecretGroupsLoading && Boolean(projectId)}
                 isDisabled={!projectId}
                 value={secretGroups.find((sg) => sg.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNorthflankSecretGroup>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.secretGroupName", v?.name ?? "");
                 }}
@@ -124,6 +124,7 @@ export const NorthflankSyncFields = () => {
                 placeholder="Select a secret group..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>

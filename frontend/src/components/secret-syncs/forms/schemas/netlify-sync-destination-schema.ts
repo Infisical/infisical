@@ -18,9 +18,15 @@ export const NetlifySyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.object({
       accountId: z.string(),
       accountName: z.string(),
-      siteId: z.string().optional(),
+      siteId: z
+        .string()
+        .nullish()
+        .transform((value) => value || undefined),
       siteName: z.string().optional(),
-      context: z.nativeEnum(NetlifySyncContext).optional()
+      context: z
+        .nativeEnum(NetlifySyncContext)
+        .nullish()
+        .transform((value) => value || undefined)
     })
   })
 );

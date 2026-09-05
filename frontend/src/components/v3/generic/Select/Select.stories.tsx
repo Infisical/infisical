@@ -31,9 +31,9 @@ import {
  * you would for `Input` — the `id` belongs on the **trigger**, not the root.
  *
  * Reach for `Select` when the option list is short and known. For searchable
- * single-select lists use `Combobox`. Existing multi-select, grouped, and
- * creatable use cases remain on `ReactSelect` while their replacement APIs are
- * introduced — `Select` is single-value by design.
+ * object lists, multi-selects, or grouped options, use `Combobox`. Creatable
+ * use cases remain on `ReactSelect` until their replacement API is introduced.
+ * `Select` is single-value by design.
  */
 const meta = {
   title: "Generic/Select",
@@ -98,6 +98,29 @@ export const Default: Story = {
         <SelectItem value="qa">QA</SelectItem>
         <SelectItem value="prod">Production</SelectItem>
         <SelectItem value="dr">Disaster recovery</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+};
+
+export const ShortPopperList: Story = {
+  name: "Example: Short Popper List",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use popper positioning when the menu should align to the trigger while remaining collision-aware. A short list expands to fit its options without showing inactive scroll controls."
+      }
+    }
+  },
+  render: () => (
+    <Select defaultValue="dotenv">
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Choose a file format" />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        <SelectItem value="dotenv">.env File</SelectItem>
+        <SelectItem value="file">One Secret Per File</SelectItem>
       </SelectContent>
     </Select>
   )

@@ -1,10 +1,10 @@
 /* eslint-disable no-await-in-loop */
-import { GitbeakerRequestError, Gitlab } from "@gitbeaker/rest";
-import { AxiosError } from "axios";
+import { GitbeakerRequestError, GitbeakerRetryError, Gitlab } from "@gitbeaker/rest";
+import { AxiosError, HttpStatusCode } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -314,6 +314,33 @@ export const getGitLabConnectionClient = async (
   return client;
 };
 
+const throwGitLabListError = (error: unknown, resource: "groups" | "projects"): never => {
+  const isRateLimited =
+    (error instanceof GitbeakerRequestError && error.cause?.response.status === HttpStatusCode.TooManyRequests) ||
+    (error instanceof GitbeakerRetryError &&
+      error.message.includes(`last status code: ${HttpStatusCode.TooManyRequests}`));
+
+  if (isRateLimited) {
+    throw new RateLimitError({
+      message: `GitLab rate limit reached while loading ${resource}. Wait a moment and try again.`
+    });
+  }
+
+  if (error instanceof GitbeakerRequestError) {
+    throw new BadRequestError({
+      message: `Failed to fetch GitLab ${resource}: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+    });
+  }
+
+  if (error instanceof InternalServerError) {
+    throw error;
+  }
+
+  throw new InternalServerError({
+    message: `Unable to fetch GitLab ${resource}`
+  });
+};
+
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
@@ -369,19 +396,7 @@ export const listGitLabProjects = async ({
       id: project.id.toString()
     }));
   } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to fetch GitLab projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-
-    if (error instanceof InternalServerError) {
-      throw error;
-    }
-
-    throw new InternalServerError({
-      message: "Unable to fetch GitLab projects"
-    });
+    return throwGitLabListError(error, "projects");
   }
 };
 
@@ -419,18 +434,6 @@ export const listGitLabGroups = async ({
       fullPath: group.fullPath
     }));
   } catch (error: unknown) {
-    if (error instanceof GitbeakerRequestError) {
-      throw new BadRequestError({
-        message: `Failed to fetch GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
-      });
-    }
-
-    if (error instanceof InternalServerError) {
-      throw error;
-    }
-
-    throw new InternalServerError({
-      message: "Unable to fetch GitLab groups"
-    });
+    return throwGitLabListError(error, "groups");
   }
 };

@@ -186,6 +186,7 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
                 Machine Identity Client Secret
               </FieldLabel>
               <SecretInput
+                isError={Boolean(error)}
                 id="machine-identity-client-secret"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
