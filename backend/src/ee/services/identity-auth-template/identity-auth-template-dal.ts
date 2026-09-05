@@ -74,6 +74,17 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
           );
         const kubernetesDocs = await kubernetesQuery;
         return kubernetesDocs;
+      case IdentityAuthTemplateMethod.OIDC:
+        const oidcQuery = (tx || db.replicaNode())(TableName.IdentityOidcAuth)
+          .join(TableName.Identity, `${TableName.IdentityOidcAuth}.identityId`, `${TableName.Identity}.id`)
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          .where(buildFindFilter({ templateId }, TableName.IdentityOidcAuth))
+          .select(
+            db.ref("identityId").withSchema(TableName.IdentityOidcAuth),
+            db.ref("name").withSchema(TableName.Identity).as("identityName")
+          );
+        const oidcDocs = await oidcQuery;
+        return oidcDocs;
       default:
         // fail loudly so a future auth method cannot silently report zero usages
         throw new BadRequestError({ message: `Templates with auth method '${authMethod}' are not supported` });

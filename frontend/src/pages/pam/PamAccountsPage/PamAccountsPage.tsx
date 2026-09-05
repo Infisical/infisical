@@ -41,6 +41,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization } from "@app/context";
 import {
+  PamAccessType,
   PamAccountType,
   PamResourcePermissionActions,
   TAccessiblePamAccount,
@@ -67,6 +68,7 @@ import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
+import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
@@ -95,6 +97,18 @@ export const PamAccountsPage = () => {
 
   // For regular users - request access flow
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
+  const [requestAccessType, setRequestAccessType] = useState(PamAccessType.Session);
+  const [credentialAccount, setCredentialAccount] = useState<TAccessiblePamAccount | null>(null);
+
+  const requestSessionAccess = (account: TAccessiblePamAccount) => {
+    setRequestAccessType(PamAccessType.Session);
+    setRequestAccount(account);
+  };
+
+  const requestCredentialAccess = (account: TAccessiblePamAccount) => {
+    setRequestAccessType(PamAccessType.Credential);
+    setRequestAccount(account);
+  };
 
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "createAccount",
@@ -330,7 +344,9 @@ export const PamAccountsPage = () => {
                   }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
-                  onRequestAccess={setRequestAccount}
+                  onRequestAccess={requestSessionAccess}
+                  onViewCredentials={setCredentialAccount}
+                  onRequestCredentialAccess={requestCredentialAccess}
                   onDeleteAccount={(accountId, accountName, accountType) =>
                     handlePopUpOpen("deleteAccount", {
                       accountId,
@@ -433,9 +449,21 @@ export const PamAccountsPage = () => {
 
       <RequestAccessSheet
         account={requestAccount}
+        accessType={requestAccessType}
         isOpen={!!requestAccount}
         onOpenChange={(open) => {
           if (!open) setRequestAccount(null);
+        }}
+      />
+
+      <ViewCredentialsModal
+        accountId={credentialAccount?.id}
+        accountName={credentialAccount?.name}
+        accountType={credentialAccount?.accountType}
+        requireReason={Boolean(credentialAccount?.requireReason)}
+        isOpen={credentialAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setCredentialAccount(null);
         }}
       />
     </div>

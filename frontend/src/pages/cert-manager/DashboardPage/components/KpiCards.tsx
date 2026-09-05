@@ -3,6 +3,8 @@ import { AlertTriangle, FileCheck, FileClock, FileKey, FileX } from "lucide-reac
 import { Badge, Card, CardContent } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 
+import { formatShare } from "./chart-theme";
+
 type Props = {
   stats: TDashboardStats;
   onNavigate: (filters: Record<string, string | undefined>) => void;
@@ -60,10 +62,9 @@ const getBadge = (key: string, stats: TDashboardStats) => {
   const { total, active } = stats.totals;
 
   if (key === "total" && total > 0) {
-    const pct = Math.round((active / total) * 100);
     return {
       variant: "org" as const,
-      label: `${pct}% active`
+      label: `${formatShare(active, total)} active`
     };
   }
   if (key === "active" && total > 0) {

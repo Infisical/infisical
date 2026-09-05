@@ -23,6 +23,7 @@ infisical/
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
+├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
 ├── docker-compose.bdd.yml        # BDD testing environment
@@ -51,6 +52,12 @@ Infisical supports self-hosted deployment via Docker. Key considerations:
 - New backend dependencies should be evaluated carefully — they affect container size, FIPS compliance, and the encryption boundary. Check `docs/` for self-hosted deployment documentation when in doubt.
 
 ### Dependency Policy
+
+`build-versions.env` holds versions that several Dockerfiles install, currently the bundled
+Infisical CLI. Each Dockerfile keeps a matching `ARG` default so external builders (Northflank,
+Render, a plain `docker build`) work without passing anything, and CI and compose override it from
+that file. `check-dockerfile-pins.yml` fails a PR when the defaults drift from it, so change the
+file and the `ARG` defaults together.
 
 Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
 

@@ -5,6 +5,9 @@ const parseName = (certificateNameSchema: string) =>
 
 const parsePath = (destinationPath: string) => LinuxServerPkiSyncConfigSchema.safeParse({ destinationPath }).success;
 
+const parseHost = (host: string) =>
+  LinuxServerPkiSyncConfigSchema.safeParse({ destinationPath: "/etc/ssl/certs", host }).success;
+
 describe("Linux Server certificateNameSchema validation", () => {
   test("accepts a fixed name with no placeholder (single-certificate sync)", () => {
     expect(parseName("server")).toBe(true);
@@ -87,5 +90,35 @@ describe("Linux Server postSyncCommand validation", () => {
 
   test("is optional", () => {
     expect(LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server" }).success).toBe(true);
+  });
+});
+
+describe("Linux Server target host validation", () => {
+  test("accepts a host name, an FQDN and an IPv4 address", () => {
+    expect(parseHost("server01")).toBe(true);
+    expect(parseHost("server01.corp.example.com")).toBe(true);
+    expect(parseHost("10.0.0.5")).toBe(true);
+  });
+
+  test("accepts a config with no host, because SSH connections carry their own", () => {
+    expect(LinuxServerPkiSyncConfigSchema.safeParse({ destinationPath: "/etc/ssl/certs" }).success).toBe(true);
+  });
+
+  test("rejects a host carrying a scheme, port or path", () => {
+    expect(parseHost("ssh://server01")).toBe(false);
+    expect(parseHost("server01:22")).toBe(false);
+    expect(parseHost("server01/certs")).toBe(false);
+  });
+
+  test("rejects a host with characters that are not valid in a host name", () => {
+    expect(parseHost("server 01")).toBe(false);
+    expect(parseHost("server_01")).toBe(false);
+    expect(parseHost("-server01")).toBe(false);
+    expect(parseHost("server01-")).toBe(false);
+  });
+
+  test("rejects an empty or whitespace-only host", () => {
+    expect(parseHost("")).toBe(false);
+    expect(parseHost("   ")).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -22,6 +23,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -243,6 +245,22 @@ export const identityServiceFactory = ({
               "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
           });
       }
+      const targetRoles = resolveMembershipRoleSlugs(
+        await membershipRoleDAL.findRolesByMembershipIds([identityOrgMembership.id])
+      );
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionIdentityActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Identity,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged identity"
+      });
+
       const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.GrantPrivileges,
@@ -373,6 +391,23 @@ export const identityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+
+    const targetRoles = resolveMembershipRoleSlugs(identityOrgMembership.roles);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionIdentityActions.Delete,
+      opSubject: OrgPermissionSubjects.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged identity from the organization"
+    });
 
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 

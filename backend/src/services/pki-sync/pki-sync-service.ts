@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { deepEqual } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -47,7 +48,7 @@ import {
   formatHostCommandVariables,
   HostCommandKind
 } from "./pki-sync-host-command-fns";
-import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
+import { getPkiSyncConnectionApps, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import {
   applyPostSyncCommandUpdate,
   getPostSyncCommand,
@@ -55,6 +56,11 @@ import {
   POST_SYNC_COMMAND_OPTION_KEY
 } from "./pki-sync-post-sync-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
+import {
+  assertTargetHostMatchesConnection,
+  getPkiSyncTargetHost,
+  TPkiSyncDeliveryTarget
+} from "./pki-sync-target-host-fns";
 import {
   TAddCertificatesToPkiSyncDTO,
   TClearDefaultCertificateDTO,
@@ -72,16 +78,6 @@ import {
   TTriggerPkiSyncSyncCertificatesByIdDTO,
   TUpdatePkiSyncDTO
 } from "./pki-sync-types";
-
-const getDestinationAppType = (destination: PkiSync): AppConnection => {
-  const appConnection = PKI_SYNC_CONNECTION_MAP[destination];
-  if (!appConnection) {
-    throw new BadRequestError({
-      message: `Unsupported PKI sync destination: ${destination}`
-    });
-  }
-  return appConnection;
-};
 
 type TPkiSyncServiceFactoryDep = {
   pkiSyncDAL: Pick<
@@ -107,7 +103,10 @@ type TPkiSyncServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  pkiSyncHealthCheckQueue: Pick<TPkiSyncHealthCheckQueueFactory, "runHealthCheckNow" | "testHealthCheckCommand">;
+  pkiSyncHealthCheckQueue: Pick<
+    TPkiSyncHealthCheckQueueFactory,
+    "runHealthCheckNow" | "testHealthCheckCommand" | "testTargetHostReachable"
+  >;
   pkiSyncQueue: Pick<
     TPkiSyncQueueFactory,
     "queuePkiSyncSyncCertificatesById" | "queuePkiSyncImportCertificatesById" | "queuePkiSyncRemoveCertificatesById"
@@ -232,6 +231,63 @@ export const pkiSyncServiceFactory = ({
     if (!isCommandChanging && !isCommandBeingRetargeted) return;
 
     await $assertSyncAction(actions.project, actions.resource, pkiSync, subscriberName, actor);
+  };
+
+  const $deliveryTarget = (destinationConfig: Record<string, unknown> | null | undefined) => {
+    const config = destinationConfig as TPkiSyncDeliveryTarget | undefined;
+    return JSON.stringify([
+      config?.host?.toLowerCase(),
+      config?.port,
+      config?.sslEnabled,
+      config?.sslRejectUnauthorized,
+      config?.sslCertificate,
+      config?.sshHostKeys
+    ]);
+  };
+
+  const $assertMaySetTargetHost = async ({
+    nextConfig,
+    currentConfig,
+    pkiSync,
+    subscriberName,
+    actor,
+    isRetargetedByConnection = false
+  }: {
+    nextConfig: Record<string, unknown> | null | undefined;
+    currentConfig: Record<string, unknown> | null | undefined;
+    pkiSync: { projectId: string; applicationId?: string | null; name: string };
+    subscriberName: string | undefined;
+    actor: OrgServiceActor;
+    isRetargetedByConnection?: boolean;
+  }) => {
+    if (!isRetargetedByConnection && $deliveryTarget(nextConfig) === $deliveryTarget(currentConfig)) return;
+
+    await $assertSyncAction(
+      ProjectPermissionPkiSyncActions.SetTargetHost,
+      ResourcePermissionPkiSyncActions.SetTargetHost,
+      pkiSync,
+      subscriberName,
+      actor
+    );
+  };
+
+  const $assertTargetHostReachable = async ({
+    destination,
+    connection,
+    destinationConfig
+  }: {
+    destination: PkiSync;
+    connection: { id: string; app: AppConnection };
+    destinationConfig: Record<string, unknown> | null | undefined;
+  }) => {
+    if (connection.app !== AppConnection.LDAP) return;
+    if (!getPkiSyncTargetHost(destinationConfig)) return;
+
+    await pkiSyncHealthCheckQueue.testTargetHostReachable({
+      destination,
+      connectionId: connection.id,
+      destinationConfig: destinationConfig as Record<string, unknown>
+    });
   };
 
   const HOST_COMMAND_ACTIONS = {
@@ -418,11 +474,20 @@ export const pkiSyncServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    // Get the destination app type based on PKI sync destination
-    const destinationApp = getDestinationAppType(destination);
+    const destinationApps = getPkiSyncConnectionApps(destination);
 
     // Validates permission to connect and app is valid for sync destination
-    const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+    const connection = await appConnectionService.connectAppConnectionById(destinationApps, connectionId, actor);
+
+    assertTargetHostMatchesConnection({ destination, connection, destinationConfig });
+
+    await $assertMaySetTargetHost({
+      nextConfig: destinationConfig,
+      currentConfig: undefined,
+      pkiSync: { projectId, applicationId, name },
+      subscriberName: undefined,
+      actor
+    });
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
     const resolvedSyncOptions = normalizeNewHealthCheckCommand(
@@ -448,6 +513,8 @@ export const pkiSyncServiceFactory = ({
       assertSyncOptionsAllowCertificateCount(resolvedSyncOptions, certificateIds.length);
       assertPkiSyncDestinationConfigAllowsCertificateCount(destination, destinationConfig, certificateIds.length);
     }
+
+    await $assertTargetHostReachable({ destination, connection, destinationConfig });
 
     const encryptedCredentials = credentials?.exportPassword
       ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
@@ -561,6 +628,7 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
+    // main's per-destination merge hook; a passthrough for every destination except GCP
     const resolvedDestinationConfig = destinationConfig
       ? resolvePkiSyncDestinationConfigUpdate(
           pkiSync.destination as PkiSync,
@@ -569,14 +637,50 @@ export const pkiSyncServiceFactory = ({
         )
       : undefined;
 
-    let effectiveConnection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined;
-    if (connectionId && connectionId !== pkiSync.connectionId) {
-      const destinationApp = getDestinationAppType(pkiSync.destination);
-      effectiveConnection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+    // Swapping the connection re-runs the App Connection Connect check, as it always has. Editing the
+    // sync's own fields must not: the delivery target is gated by SetTargetHost below, and the sync row
+    // already carries enough of its current connection to validate against.
+    let resolvedConnection: Awaited<ReturnType<typeof appConnectionService.connectAppConnectionById>> | undefined;
+    const resolveConnection = async () => {
+      resolvedConnection ??= await appConnectionService.connectAppConnectionById(
+        getPkiSyncConnectionApps(pkiSync.destination),
+        connectionId ?? pkiSync.connectionId,
+        actor
+      );
+      return resolvedConnection;
+    };
+
+    const isConnectionChanging = Boolean(connectionId && connectionId !== pkiSync.connectionId);
+
+    // Compared structurally, not by JSON text: the stored value comes back from a jsonb column with its
+    // keys reordered, so stringify never matches once the config has more than one key.
+    const isDestinationConfigChanging =
+      Boolean(destinationConfig) && !deepEqual(resolvedDestinationConfig, pkiSync.destinationConfig);
+
+    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
+      | (Record<string, unknown> & { host?: string })
+      | undefined;
+
+    if (isConnectionChanging || destinationConfig !== undefined) {
+      assertTargetHostMatchesConnection({
+        destination: pkiSync.destination,
+        connection: isConnectionChanging
+          ? await resolveConnection()
+          : { ...pkiSync.connection, app: pkiSync.connection.app as AppConnection },
+        destinationConfig: effectiveDestinationConfig
+      });
     }
 
-    const isDestinationConfigChanging =
-      Boolean(destinationConfig) && JSON.stringify(destinationConfig) !== JSON.stringify(pkiSync.destinationConfig);
+    await $assertMaySetTargetHost({
+      nextConfig: effectiveDestinationConfig,
+      currentConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined,
+      pkiSync,
+      subscriberName: currentSubscriber?.name,
+      actor,
+      isRetargetedByConnection:
+        isConnectionChanging &&
+        (pkiSync.connection.app === AppConnection.LDAP || (await resolveConnection()).app === AppConnection.LDAP)
+    });
 
     const storedSyncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
     let resolvedSyncOptions = syncOptions;
@@ -601,10 +705,17 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
+    if (isConnectionChanging || isDestinationConfigChanging) {
+      await $assertTargetHostReachable({
+        destination: pkiSync.destination,
+        connection: isConnectionChanging
+          ? await resolveConnection()
+          : { id: pkiSync.connectionId, app: pkiSync.connection.app as AppConnection },
+        destinationConfig: effectiveDestinationConfig
+      });
+    }
+
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
-    const effectiveDestinationConfig = (resolvedDestinationConfig ?? pkiSync.destinationConfig) as
-      | Record<string, unknown>
-      | undefined;
 
     await $assertHostCommandWrite({
       destination: pkiSync.destination,
@@ -613,14 +724,8 @@ export const pkiSyncServiceFactory = ({
       pkiSync,
       subscriberName: currentSubscriber?.name,
       actor,
-      isExecutionTargetChanging: Boolean(effectiveConnection) || isDestinationConfigChanging,
-      resolveConnection: async () =>
-        effectiveConnection ??
-        appConnectionService.connectAppConnectionById(
-          getDestinationAppType(pkiSync.destination),
-          pkiSync.connectionId,
-          actor
-        )
+      isExecutionTargetChanging: isConnectionChanging || isDestinationConfigChanging,
+      resolveConnection
     });
 
     if (syncOptions || destinationConfig) {
@@ -883,7 +988,12 @@ export const pkiSyncServiceFactory = ({
         throw new NotFoundError({ message: `PKI sync with id "${args.syncId}" not found` });
       }
 
-      return { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId, name: pkiSync.name };
+      return {
+        projectId: pkiSync.projectId,
+        applicationId: pkiSync.applicationId,
+        name: pkiSync.name,
+        destinationConfig: pkiSync.destinationConfig as Record<string, unknown> | undefined
+      };
     }
 
     if (!args.applicationId) {
@@ -893,7 +1003,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    return { projectId: args.projectId, applicationId: args.applicationId, name: "" };
+    return { projectId: args.projectId, applicationId: args.applicationId, name: "", destinationConfig: undefined };
   };
 
   const testPkiSyncHealthCheckCommand = async (
@@ -910,10 +1020,12 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor,
     auditLogInfo?: AuditLogInfo
   ) => {
+    const testTarget = await $resolveHealthCheckTestTarget(args);
+
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
       ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
-      await $resolveHealthCheckTestTarget(args),
+      testTarget,
       undefined,
       actor
     );
@@ -928,10 +1040,24 @@ export const pkiSyncServiceFactory = ({
     }
 
     const connection = await appConnectionService.connectAppConnectionById(
-      getDestinationAppType(args.destination),
+      getPkiSyncConnectionApps(args.destination),
       args.connectionId,
       actor
     );
+
+    assertTargetHostMatchesConnection({
+      destination: args.destination,
+      connection,
+      destinationConfig: args.destinationConfig
+    });
+
+    await $assertMaySetTargetHost({
+      nextConfig: args.destinationConfig,
+      currentConfig: testTarget.destinationConfig,
+      pkiSync: testTarget,
+      subscriberName: undefined,
+      actor
+    });
 
     $assertHostCommandsAreSupported(args.destination, args.syncOptions, connection);
 

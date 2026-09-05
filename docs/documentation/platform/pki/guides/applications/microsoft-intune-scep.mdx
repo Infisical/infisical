@@ -15,7 +15,7 @@ By the end, your Intune-managed devices will hold certificates from a CA you own
 <Accordion title="How it works">
   Three systems are involved, and each has one job:
 
-  - **Infisical** is the certificate authority. Of the three, it is the only one that signs certificates.
+  - **Infisical** is the certificate authority. Of the three, it's the only one that signs certificates.
   - **Intune** decides which devices should get a certificate and confirms that each request is genuine. It never issues a certificate itself.
   - **The device** generates a key pair, keeps the private key, and asks Infisical for a certificate covering the public half. The device does the asking. Nothing is pushed onto it.
 
