@@ -180,65 +180,94 @@ export const orgDALFactory = (db: TDbClient) => {
       const orderBy = dto.orderBy ?? "name";
       const orderDirection = dto.orderDirection ?? "asc";
 
-      const buildBaseQuery = () => {
-        if (dto.isAccessible) {
-          const subOrgIdsSubquery = conn(TableName.Organization)
-            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-            .select(db.ref("id").withSchema(TableName.Organization));
+      const isUserActor = dto.actorType === ActorType.USER;
+      const directActorColumn = isUserActor
+        ? (`${TableName.Membership}.actorUserId` as const)
+        : (`${TableName.Membership}.actorIdentityId` as const);
 
-          const userGroupIdsSubquery = conn(TableName.Groups)
-            .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-            .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
-            .select(db.ref("id").withSchema(TableName.Groups));
+      // A factory, not a shared builder: knex builders carry mutable state, and the explicit return
+      // type collapses the two branches knex's whereIn overloads cannot resolve as a union.
+      const actorGroupIdsSubquery = (): Knex.QueryBuilder =>
+        isUserActor
+          ? conn(TableName.Groups)
+              .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+              .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
+              .select(db.ref("id").withSchema(TableName.Groups))
+          : conn(TableName.Groups)
+              .join(
+                TableName.IdentityGroupMembership,
+                `${TableName.IdentityGroupMembership}.groupId`,
+                `${TableName.Groups}.id`
+              )
+              .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
+              .select(db.ref("id").withSchema(TableName.Groups));
 
-          const identityGroupIdsSubquery = conn(TableName.Groups)
-            .join(
-              TableName.IdentityGroupMembership,
-              `${TableName.IdentityGroupMembership}.groupId`,
-              `${TableName.Groups}.id`
-            )
-            .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
-            .select(db.ref("id").withSchema(TableName.Groups));
-
-          const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
-            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
-            .andWhere((qb) => {
-              if (dto.actorType === ActorType.USER) {
-                void qb
-                  .where(`${TableName.Membership}.actorUserId`, dto.actorId)
-                  .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
-              } else {
-                void qb
-                  .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
-                  .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupIdsSubquery);
-              }
-            })
-            .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
-
-          return conn(TableName.Organization)
-            .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-            .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery);
+      const whereActorIsMember = (qb: Knex.QueryBuilder) => {
+        if (isUserActor) {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, actorGroupIdsSubquery());
+        } else {
+          void qb
+            .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, actorGroupIdsSubquery());
         }
-
-        return conn(TableName.Organization).where(`${TableName.Organization}.rootOrgId`, dto.orgId);
       };
 
-      const baseQuery = buildBaseQuery();
+      const subOrgIdsSubquery = (): Knex.QueryBuilder =>
+        conn(TableName.Organization)
+          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+          .select(db.ref("id").withSchema(TableName.Organization));
+
+      // distinctOn keeps this to one membership per sub-org, so joining it cannot fan the result
+      // out; ordering the direct row first makes the isActive we surface the one
+      // findEffectiveOrgMembership gates on, rather than an arbitrary group row.
+      const actorMembershipSubquery = (): Knex.QueryBuilder =>
+        conn(TableName.Membership)
+          .distinctOn(`${TableName.Membership}.scopeOrgId`)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery())
+          .andWhere(whereActorIsMember)
+          .orderBy(`${TableName.Membership}.scopeOrgId`)
+          .orderByRaw("?? IS NULL ASC", [directActorColumn])
+          .select(
+            db.ref("scopeOrgId").withSchema(TableName.Membership),
+            db.ref("isActive").withSchema(TableName.Membership)
+          )
+          .as("actorMembership");
+
+      const applyMembershipJoin = (qb: Knex.QueryBuilder) => {
+        if (dto.isAccessible) {
+          void qb.innerJoin(actorMembershipSubquery(), "actorMembership.scopeOrgId", `${TableName.Organization}.id`);
+        } else {
+          void qb.leftJoin(actorMembershipSubquery(), "actorMembership.scopeOrgId", `${TableName.Organization}.id`);
+        }
+      };
+
+      const baseQuery = conn(TableName.Organization).where(`${TableName.Organization}.rootOrgId`, dto.orgId);
       if (dto.search)
         void baseQuery.whereILike(`${TableName.Organization}.name`, `%${sanitizeSqlLikeString(dto.search)}%`);
 
+      const countQuery = baseQuery.clone();
+      applyMembershipJoin(countQuery);
+
+      const orgsQuery = baseQuery.clone();
+      applyMembershipJoin(orgsQuery);
+
       const [totalResult, orgs] = await Promise.all([
-        baseQuery.clone().count({ count: "*" }).first(),
-        baseQuery
-          .clone()
+        countQuery.count({ count: "*" }).first(),
+        orgsQuery
           .select(selectAllTableCols(TableName.Organization))
+          .select(db.ref("isActive").withSchema("actorMembership"))
           .orderBy(`${TableName.Organization}.${orderBy}`, orderDirection)
           .limit(dto.limit ?? 25)
           .offset(dto.offset ?? 0)
       ]);
 
-      return { orgs, totalCount: Number(totalResult?.count ?? 0) };
+      return {
+        orgs: orgs as (TOrganizations & { isActive: boolean | null })[],
+        totalCount: Number(totalResult?.count ?? 0)
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "List sub organization" });
     }
@@ -278,6 +307,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.Organization),
           db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.ref("isActive").withSchema(TableName.Membership),
           db.raw(`
             CASE
               WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
@@ -285,7 +315,7 @@ export const orgDALFactory = (db: TDbClient) => {
               ELSE ''
             END as "orgAuthMethod"
         `)
-        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null })[];
+        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null; isActive: boolean })[];
 
       if (rootOrgs.length === 0) return [];
 
@@ -314,10 +344,18 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Organization),
           db.ref("slug").withSchema(TableName.Organization),
           db.ref("rootOrgId").withSchema(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.ref("isActive").withSchema(TableName.Membership),
+          db.ref("actorUserId").withSchema(TableName.Membership)
         );
 
-      const uniqueSubOrgs = unique(subOrgs, (s) => s.id);
+      // The join above can match both a direct membership and a group one for the same sub-org.
+      // Order direct first so the row kept here is the one findEffectiveOrgMembership gates on,
+      // otherwise isActive and userJoinedAt come from whichever row Postgres returned first.
+      const uniqueSubOrgs = unique(
+        [...subOrgs].sort((a, b) => Number(Boolean(b.actorUserId)) - Number(Boolean(a.actorUserId))),
+        (s) => s.id
+      );
       const subOrgsByRootId = groupBy(uniqueSubOrgs, (s) => s.rootOrgId as string);
 
       return rootOrgs.map((org) => ({
@@ -327,7 +365,8 @@ export const orgDALFactory = (db: TDbClient) => {
           id: s.id,
           name: s.name,
           slug: s.slug,
-          userJoinedAt: s.userJoinedAt ?? null
+          userJoinedAt: s.userJoinedAt ?? null,
+          isActive: s.isActive
         }))
       }));
     } catch (error) {
@@ -415,7 +454,13 @@ export const orgDALFactory = (db: TDbClient) => {
   const findAllOrgsByUserId = async (
     userId: string
   ): Promise<
-    (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
+    (TOrganizations & {
+      orgAuthMethod: string;
+      userRole: string;
+      userStatus: string;
+      userJoinedAt: Date;
+      isActive: boolean;
+    })[]
   > => {
     try {
       const org = (await db
@@ -444,6 +489,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(db.ref("role").withSchema(TableName.MembershipRole).as("userRole"))
         .select(db.ref("status").withSchema(TableName.Membership).as("userStatus"))
         .select(db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"))
+        .select(db.ref("isActive").withSchema(TableName.Membership))
         .select(
           db.raw(`
             CASE
@@ -457,6 +503,7 @@ export const orgDALFactory = (db: TDbClient) => {
         userRole: string;
         userStatus: string;
         userJoinedAt: Date;
+        isActive: boolean;
       })[];
 
       return org;

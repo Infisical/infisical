@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ChevronRight, Search } from "lucide-react";
+import { ArrowRight, ChevronRight, CircleSlash, Search } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
@@ -22,6 +22,7 @@ import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { ContentLoader, Spinner } from "@app/components/v2";
 import {
+  Badge,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -55,12 +56,13 @@ type OrgCardProps = {
   name: string;
   label?: string;
   joinedAt?: string | null;
+  isMembershipInactive?: boolean;
   onClick: () => void;
   footer?: ReactNode;
 };
 
 const OrgCard = forwardRef<HTMLButtonElement, OrgCardProps>(
-  ({ name, label, joinedAt, onClick, footer }, ref) => (
+  ({ name, label, joinedAt, isMembershipInactive, onClick, footer }, ref) => (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <button
         ref={ref}
@@ -70,7 +72,15 @@ const OrgCard = forwardRef<HTMLButtonElement, OrgCardProps>(
         className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
       >
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-foreground">{name}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-medium text-foreground">{name}</span>
+            {isMembershipInactive && (
+              <Badge variant="neutral">
+                <CircleSlash />
+                Inactive
+              </Badge>
+            )}
+          </span>
           {(label || joinedAt) && (
             <span className="block text-sm leading-relaxed text-muted">
               {label}
@@ -355,6 +365,7 @@ export const SelectOrgPage = () => {
             <OrgCard
               name={org.name}
               joinedAt={org.userJoinedAt}
+              isMembershipInactive={org.isActive === false}
               onClick={() => handleSelectOrganization(org)}
               footer={
                 !isSearching && org.subOrganizations.length > 0 ? (
@@ -392,6 +403,7 @@ export const SelectOrgPage = () => {
                     key={sub.id}
                     name={sub.name}
                     joinedAt={sub.userJoinedAt}
+                    isMembershipInactive={sub.isActive === false}
                     onClick={() => handleSelectOrganization(org, sub.id)}
                   />
                 ))}
@@ -413,6 +425,7 @@ export const SelectOrgPage = () => {
           name={selectedRootOrg.name}
           label="Root organization"
           joinedAt={selectedRootOrg.userJoinedAt}
+          isMembershipInactive={selectedRootOrg.isActive === false}
           onClick={() => handleSelectOrganization(selectedRootOrg)}
         />
         <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
@@ -426,6 +439,7 @@ export const SelectOrgPage = () => {
               key={sub.id}
               name={sub.name}
               joinedAt={sub.userJoinedAt}
+              isMembershipInactive={sub.isActive === false}
               onClick={() => handleSelectOrganization(selectedRootOrg, sub.id)}
             />
           ))

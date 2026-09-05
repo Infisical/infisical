@@ -27,6 +27,8 @@ export type Organization = {
   userTokenExpiration?: string;
   userRole: string;
   userJoinedAt: string;
+  // membership state, not an org column: only the membership-scoped list endpoints return it
+  isActive?: boolean;
   secretsProductEnabled: boolean;
   pkiProductEnabled: boolean;
   kmsProductEnabled: boolean;

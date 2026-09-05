@@ -8,6 +8,7 @@ import {
   Check,
   ChevronLeft,
   CircleHelp,
+  CircleSlash,
   Clipboard,
   ExternalLink,
   Github,
@@ -66,6 +67,7 @@ import {
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
+import { verifyOrgStillAccessible } from "@app/helpers/organization";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -177,6 +179,11 @@ export const Navbar = () => {
     : currentOrg;
 
   const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
+
+  // isActive is membership state, and only the membership-scoped list endpoints return it. rootOrg
+  // falls back to currentOrg, which comes from GET /organization/:id and never carries the field, so
+  // read the membership out of the list instead of off rootOrg.
+  const rootOrgMembership = orgs?.find((org) => org.id === rootOrg.id);
 
   useEffect(() => {
     if (isModalIntrusive) {
@@ -312,6 +319,15 @@ export const Navbar = () => {
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
+
+    // the SSO branches below destroy the session before the server is ever asked about this org, so
+    // a stale cache entry for one the user was removed from would sign them out of a working session
+    if (
+      (org.authEnforced || org.googleSsoAuthEnforced) &&
+      !(await verifyOrgStillAccessible(queryClient, org))
+    ) {
+      return;
+    }
 
     if (org.authEnforced) {
       // org has an org-level auth method enabled (e.g. SAML)
@@ -465,6 +481,12 @@ export const Navbar = () => {
                         >
                           <Check className={!isSubOrganization ? "opacity-100" : "opacity-0"} />
                           <span className="truncate">{rootOrg.name}</span>
+                          {rootOrgMembership?.isActive === false && (
+                            <Badge variant="neutral" className="ml-auto">
+                              <CircleSlash />
+                              Inactive
+                            </Badge>
+                          )}
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
@@ -524,6 +546,12 @@ export const Navbar = () => {
                                   }
                                 />
                                 <span className="truncate">{subOrg.name}</span>
+                                {subOrg.isActive === false && (
+                                  <Badge variant="neutral" className="ml-auto">
+                                    <CircleSlash />
+                                    Inactive
+                                  </Badge>
+                                )}
                               </CommandItem>
                             ))}
                             <OrgPermissionCan
@@ -563,6 +591,12 @@ export const Navbar = () => {
                               }}
                             >
                               <span className="truncate">{org.name}</span>
+                              {org.isActive === false && (
+                                <Badge variant="neutral" className="ml-auto">
+                                  <CircleSlash />
+                                  Inactive
+                                </Badge>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>

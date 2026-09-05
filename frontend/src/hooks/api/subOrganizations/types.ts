@@ -11,6 +11,9 @@ export type TSubOrganization = {
   createdAt: string;
   updatedAt: string;
   parentOrgId: string;
+  // membership state, not an org column: only the list endpoint returns it, and it is null when
+  // the caller has no membership in the sub-org
+  isActive?: boolean | null;
 };
 
 export type TCreateSubOrganizationDTO = {

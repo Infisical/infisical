@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
+import { ORGANIZATIONS } from "@app/lib/api-docs";
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   id: true,
@@ -41,11 +42,15 @@ export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
   // derived from the active SAML/OIDC config, not a column
   orgAuthMethod: z.string(),
   userJoinedAt: z.date().optional().nullable(),
+  isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive),
   subOrganizations: OrganizationsSchema.pick({
     id: true,
     name: true,
     slug: true
   })
-    .extend({ userJoinedAt: z.date().optional().nullable() })
+    .extend({
+      userJoinedAt: z.date().optional().nullable(),
+      isActive: z.boolean().optional().describe(ORGANIZATIONS.LIST_ORGANIZATIONS.isActive)
+    })
     .array()
 });

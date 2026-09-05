@@ -18,7 +18,13 @@ import {
 
 export type TOrgWithSubOrgs = Organization & {
   userJoinedAt?: string | null;
-  subOrganizations: { id: string; name: string; slug: string; userJoinedAt?: string | null }[];
+  subOrganizations: {
+    id: string;
+    name: string;
+    slug: string;
+    userJoinedAt?: string | null;
+    isActive?: boolean;
+  }[];
 };
 
 export const organizationKeys = {
