@@ -719,6 +719,8 @@ export const OIDC_AUTH = {
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
+    templateId:
+      "The ID of the OIDC auth template to source identity provider settings from. When provided, the OIDC discovery URL, issuer, audiences, and CA certificate are taken from the template and cannot be set individually.",
     oidcDiscoveryUrl: "The URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
@@ -733,6 +735,8 @@ export const OIDC_AUTH = {
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
+    templateId:
+      "The ID of the OIDC auth template to link. While linked, identity provider settings are managed by the template and cannot be set individually. Pass null to unlink the template; the settings copied from it are kept.",
     oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
@@ -2876,6 +2880,9 @@ export const AppConnections = {
     },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
+    DAYTONA: {
+      apiKey: "The Daytona API key used to authenticate with Daytona. It must carry the manage:secrets permission."
     },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",

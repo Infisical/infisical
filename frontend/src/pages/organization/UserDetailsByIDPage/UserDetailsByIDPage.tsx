@@ -16,7 +16,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -143,7 +143,7 @@ const Page = withPermission(
                       Copy User ID
                     </DropdownMenuItem>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -163,7 +163,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -193,7 +193,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Delete}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -268,7 +268,7 @@ const Page = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
+    action: OrgPermissionMemberActions.Read,
     subject: OrgPermissionSubjects.Member,
     accessRestrictedMode: "dialog"
   }

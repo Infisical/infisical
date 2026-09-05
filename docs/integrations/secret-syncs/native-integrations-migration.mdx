@@ -31,7 +31,7 @@ The differences that matter most in day-to-day use:
 **Key Schemas.** Native Integrations let you add a prefix or a suffix to your secret names, and
 nothing more. A [Key Schema](/integrations/secret-syncs/overview#key-schemas) is a full template, so
 you decide exactly how keys are named in the destination. It also scopes what Infisical manages: any
-secret in the destination that does not match the schema is left alone, so a sync can share a
+secret in the destination that doesn't match the schema is left alone, so a sync can share a
 destination with secrets managed elsewhere.
 
 **App Connections.** A Native Integration's credentials belonged to one project. Rotating a token
@@ -164,12 +164,12 @@ deletion**, verify, then remove the Native Integration. See the
 [Secret Syncs](/integrations/secret-syncs/overview) section for the field reference for your
 destination.
 
-Some destinations can read secrets back; GitHub cannot. For those, **Initial Sync Behavior** lets you
+Some destinations can read secrets back; GitHub can't. For those, **Initial Sync Behavior** lets you
 pull what is already in the destination into Infisical before anything is overwritten, choosing
 whether Infisical or the destination wins on a conflict. If your Native Integration has drifted from
 Infisical, importing first is the safer starting point.
 
 <Note>
-  If you need help planning a migration, or the service you use is not yet
+  If you need help planning a migration, or the service you use isn't yet
   available as a Secret Sync, contact us at support@infisical.com.
 </Note>

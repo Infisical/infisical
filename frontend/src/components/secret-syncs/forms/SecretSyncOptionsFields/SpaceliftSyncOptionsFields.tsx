@@ -56,8 +56,8 @@ export const SpaceliftSyncOptionsFields = () => {
           <AlertTitle>Secret values cannot be read back</AlertTitle>
           <AlertDescription>
             Existing secret values in the Spacelift context cannot be read by Infisical. Any secret
-            values not present in Infisical will be deleted during sync. Enable secret deletion
-            protection to prevent this.
+            values not present in Infisical will be deleted during sync. Turn on &quot;Prevent
+            secret deletion&quot; above to keep them.
           </AlertDescription>
         </Alert>
       )}

@@ -24,7 +24,7 @@ When you give a single user or machine identity a role on a folder, that role ta
 A folder role only applies to the exact folder you set it on.
 
 <Warning>
-  Folder access is not recursive. If you have a certain role on `/payments`, the same role doesn't automatically apply to `/payments/keys`. Inside a subfolder, the user or identity falls back to
+  Folder access isn't recursive. If you have a certain role on `/payments`, the same role doesn't automatically apply to `/payments/keys`. Inside a subfolder, the user or identity falls back to
   whatever their project roles allow.
 </Warning>
 
@@ -93,7 +93,7 @@ Access can be time-bound so you can choose a duration when you add it, or open t
 ![Remaining time on a temporary grant](/images/platform/access-controls/folder-rbac/temporary-access-remaining-time.png)
 
 <Note>
-  Full Access cannot be temporary. A Full Access holder can grant folder
+  Full Access can't be temporary. A Full Access holder can grant folder
   access to other people, and those accesses would outlive their own expiration.
   Grant Full Access permanently, or use Manage for time-bound access.
 </Note>

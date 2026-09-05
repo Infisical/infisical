@@ -309,7 +309,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         schemas: error.schemas,
         status: error.status,
         detail: error.detail,
-        mutability: error.mutability
+        mutability: error.mutability,
+        scimType: error.scimType
       });
     } else if (error instanceof OidcAuthError) {
       void res.status(HttpStatusCodes.InternalServerError).send({

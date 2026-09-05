@@ -1,8 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -11,21 +12,28 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
+import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TOrgMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
 };
 
 export const newOrgMembershipIdentityFactory = ({
   permissionService,
   orgDAL,
-  identityDAL
+  identityDAL,
+  membershipIdentityDAL
 }: TOrgMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -69,7 +77,7 @@ export const newOrgMembershipIdentityFactory = ({
     }
 
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       dto.permission.orgId
     );
 
@@ -78,25 +86,23 @@ export const newOrgMembershipIdentityFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.GrantPrivileges,
-          OrgPermissionSubjects.Identity,
-          permission,
-          permissionRole.permission
-        );
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to update identity org membership",
-              shouldUseNewPrivilegeSystem,
-              OrgPermissionIdentityActions.GrantPrivileges,
-              OrgPermissionSubjects.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GrantPrivileges,
+        OrgPermissionSubjects.Identity,
+        permission,
+        permissionRole.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update identity org membership",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GrantPrivileges,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
   };
 
@@ -114,7 +120,7 @@ export const newOrgMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       dto.permission.orgId
     );
 
@@ -122,26 +128,43 @@ export const newOrgMembershipIdentityFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: dto.scopeData,
+      identityId: dto.selector.identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      ignoreUnresolvedRoles: true
+    });
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionIdentityActions.GrantPrivileges,
+      opSubject: OrgPermissionSubjects.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged identity"
+    });
+
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.GrantPrivileges,
-          OrgPermissionSubjects.Identity,
-          permission,
-          permissionRole.permission
-        );
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to update identity org membership",
-              shouldUseNewPrivilegeSystem,
-              OrgPermissionIdentityActions.GrantPrivileges,
-              OrgPermissionSubjects.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GrantPrivileges,
+        OrgPermissionSubjects.Identity,
+        permission,
+        permissionRole.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update identity org membership",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GrantPrivileges,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
@@ -180,6 +203,28 @@ export const newOrgMembershipIdentityFactory = ({
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
     }
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: dto.scopeData,
+      identityId: dto.selector.identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionIdentityActions.Delete,
+      opSubject: OrgPermissionSubjects.Identity,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged identity from the organization"
+    });
   };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (

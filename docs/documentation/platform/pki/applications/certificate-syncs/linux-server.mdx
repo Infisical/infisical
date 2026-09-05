@@ -25,7 +25,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **Linux Server** option.
 
@@ -126,7 +126,7 @@ Set each on the sync's **Commands** step. Leaving a field empty means nothing ru
 <Note>
   Your [Infisical Gateway](/documentation/platform/gateways/overview) runs both commands, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
 
-  The Gateway must be running Infisical CLI **v0.43.120 or later**. Earlier Gateways either cannot run the command at all or cannot unlock an SSH Connection's passphrase-protected private key, so the command fails. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. Earlier Gateways either can't run the command at all or can't unlock an SSH Connection's passphrase-protected private key, so the command fails. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>
 
 ### Available variables
@@ -139,7 +139,7 @@ Each command is limited to 8192 characters, counted as you write it, before vari
 
 ### Least privilege
 
-Both commands run as the account the SSH Connection authenticates with, so constraining that account bounds what either can do. A service reload does not need root. Grant the connection user a `sudoers` rule for that one command instead:
+Both commands run as the account the SSH Connection authenticates with, so constraining that account bounds what either can do. A service reload doesn't need root. Grant the connection user a `sudoers` rule for that one command instead:
 
 ```text
 svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
@@ -153,7 +153,7 @@ Only Application Admins can set either command, so treat that role as access to 
 
 ### Health check
 
-A sync can only tell you the host was not ready once it has already tried. If the destination directory was renamed or the service that owns it is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+A sync can only tell you the host wasn't ready once it has already tried. If the destination directory was renamed or the service that owns it is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
 
 A health check moves that discovery earlier. It runs on the target server before any certificate is written. If it exits non-zero, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs.
 
@@ -168,7 +168,7 @@ Write a check that answers a question rather than one that changes something. `t
     Edit the sync and select **Commands**.
   </Step>
   <Step title="Write the check">
-    Anything that exits non-zero when the host is not ready works. The variables resolve to the files
+    Anything that exits non-zero when the host isn't ready works. The variables resolve to the files
     this run is about to write, so a check can look at where a certificate is going:
 
     ```bash
@@ -193,9 +193,9 @@ Write a check that answers a question rather than one that changes something. `t
 
 ### Post-sync command
 
-Delivering a certificate file does not make the service use it. NGINX keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
+Delivering a certificate file doesn't make the service use it. NGINX keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
 
-It runs once per sync run that delivers at least one file. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+It runs once per sync run that delivers at least one file. If a sync run doesn't complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
 
 <PostSyncCommandFlow />
 
@@ -246,16 +246,16 @@ It runs once per sync run that delivers at least one file. If a sync run does no
     The check's limit is deliberately much shorter, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer, and give a post-sync command that needs longer than thirty seconds a script on the server that starts the work in the background.
   </Accordion>
   <Accordion title="Can a command run twice for the same certificate?">
-    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service reload or restart is.
+    Yes, in some cases. If a sync run doesn't complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service reload or restart is.
   </Accordion>
   <Accordion title="Does a failed health check get retried?">
-    Not within the run. A host that is not ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
+    Not within the run. A host that isn't ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
   </Accordion>
   <Accordion title="Where do I see the result of the daily health check?">
-    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It doesn't change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
   </Accordion>
   <Accordion title="Can I use the health check to prepare the host instead of just checking it?">
-    You can, since it is a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
+    You can, since it's a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
   </Accordion>
 </AccordionGroup>
 
@@ -267,7 +267,7 @@ When certificate removal is enabled and a certificate is removed from the sync, 
 
 <AccordionGroup>
   <Accordion title="Can I import certificates from a Linux server back into Infisical?">
-    No. The Linux Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+    No. The Linux Server sync only delivers certificates to the server. It doesn't read certificates back into Infisical.
   </Accordion>
   <Accordion title="What happens if the destination directory does not exist?">
     The sync fails with a clear error. Create the directory and grant the connection user write access, then run the sync again.

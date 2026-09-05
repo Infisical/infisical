@@ -122,6 +122,7 @@ export const IntegrationsBrowser = () => {
     { name: "Qovery", path: "/integrations/secret-syncs/qovery", description: "Learn how to sync secrets from Infisical to Qovery.", type: "Secret Sync", tag: "DevOps Tools" },
     { name: "Cloud 66", path: "/integrations/secret-syncs/cloud-66", description: "Learn how to sync secrets from Infisical to Cloud66.", type: "Secret Sync", tag: "DevOps Tools" },
     { name: "Hasura Cloud", path: "/integrations/secret-syncs/hasura-cloud", description: "Learn how to sync secrets from Infisical to Hasura Cloud.", type: "Secret Sync", tag: "Hosting" },
+    { name: "Daytona", path: "/integrations/secret-syncs/daytona", description: "Learn how to sync secrets from Infisical to a Daytona organization.", type: "Secret Sync", tag: "DevOps Tools" },
     { name: "Devin", path: "/integrations/secret-syncs/devin", description: "Learn how to sync secrets from Infisical to Devin.", type: "Secret Sync", tag: "DevOps Tools" },
   ].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 

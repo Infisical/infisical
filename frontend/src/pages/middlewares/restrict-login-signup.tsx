@@ -96,10 +96,14 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       if (isOnSelectOrg || (!data.organizationId && location.pathname.endsWith("verify-email")))
         return;
 
+      // org_id makes the select-org page auto-select, so a CLI login must not inherit
+      // this browser's org: it would skip the picker the user is waiting on.
+      const inheritedOrgId = search?.callback_port ? undefined : data.organizationId;
+
       throw redirect({
         to: "/login/select-organization",
         search: {
-          org_id: search?.org_id || data.organizationId,
+          org_id: search?.org_id || inheritedOrgId,
           callback_port: search?.callback_port
         }
       });

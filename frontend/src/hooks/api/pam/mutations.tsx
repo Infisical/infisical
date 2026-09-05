@@ -781,6 +781,23 @@ export const useCreatePamAccessRequest = () => {
   });
 };
 
+export const useCheckPamAccountHeartbeat = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: { accountId: string }) => {
+      const { data } = await apiRequest.post<{ heartbeatStatus: string; message?: string }>(
+        `/api/v1/pam/accounts/${accountId}/health/check`
+      );
+      return data;
+    },
+    onSettled: (_, __, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountHeartbeat(accountId) });
+      // The row badge reads its status from lists keyed by filters this caller doesn't know.
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
 export const usePamAccountCredentials = () => {
   return useMutation({
     meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },

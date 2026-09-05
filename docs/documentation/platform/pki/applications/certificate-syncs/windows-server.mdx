@@ -28,7 +28,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **Windows Server** option.
 
@@ -126,7 +126,7 @@ When certificate removal is enabled and a certificate is removed from the sync, 
 
 A sync can run two optional commands as PowerShell on the target server:
 
-- A **health check** runs before any certificate is written and gates the delivery, for example `if ((Get-Service W3SVC).Status -ne "Running") { throw "W3SVC is not running" }`.
+- A **health check** runs before any certificate is written and gates the delivery, for example `if ((Get-Service W3SVC).Status -ne "Running") { throw "W3SVC isn't running" }`.
 - A **post-sync command** runs after the delivery has finished, so the service that uses the certificate picks up the new file, for example `Restart-Service -Name W3SVC`.
 
 Set each on the sync's **Commands** step. Leaving a field empty means nothing runs, so neither has a separate toggle. Both accept a whole script, so several steps can run in one go: put each on its own line. Both run with `$ErrorActionPreference` set to `Stop`, so a failing cmdlet is enough to fail the command.
@@ -149,15 +149,15 @@ Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or late
 
 ### Least privilege
 
-Both commands run as the account the WinRM Connection authenticates with, so constraining that account bounds what either can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
+Both commands run as the account the WinRM Connection authenticates with, so constraining that account bounds what either can do. Restarting one service doesn't need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
 
-Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right cannot be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical does not block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
+Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right can't be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical doesn't block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
 
 Only Application Admins can set either command, so treat that role as access to the target server.
 
 ### Health check
 
-A sync can only tell you the host was not ready once it has already tried. If the destination folder was renamed or the service that owns the certificate is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
+A sync can only tell you the host wasn't ready once it has already tried. If the destination folder was renamed or the service that owns the certificate is stopped, you find out from a failed sync, and on a renewal that is the day the certificate was going to expire anyway.
 
 A health check moves that discovery earlier. The Gateway runs it on the target server before any certificate is written. If it fails, the sync stops there: no files are delivered, no removals happen, and no post-sync command runs.
 
@@ -172,7 +172,7 @@ Write a check that answers a question rather than one that changes something. Te
     Edit the sync and select **Commands**.
   </Step>
   <Step title="Write the check">
-    Use `throw "reason"` when you want to say why the host is not ready:
+    Use `throw "reason"` when you want to say why the host isn't ready:
 
     ```powershell
     if (-not (Test-Path {{certificateDirectory}})) { throw "destination folder is missing" }
@@ -194,9 +194,9 @@ Write a check that answers a question rather than one that changes something. Te
 
 ### Post-sync command
 
-Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
+Delivering a `.pfx` to `C:\certs` doesn't make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
 
-It runs once per sync run that delivers at least one file. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+It runs once per sync run that delivers at least one file. If a sync run doesn't complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
 
 <PostSyncCommandFlow />
 
@@ -230,7 +230,7 @@ It runs once per sync run that delivers at least one file. If a sync run does no
     What is left on the host differs. When the **health check** fails, every certificate in the run is reported as skipped with that same reason, so it is clear nothing reached the host, and files already on the server from an earlier run are left exactly as they are, because the sync never wrote or deleted anything. When the **post-sync command** fails, the delivered files stay in place, because they were written before the command ran.
   </Accordion>
   <Accordion title="How do I fail a command deliberately?">
-    Use `throw "reason"`, in either field. Avoid `exit`: PowerShell stops the script there before it can report its result, so the command is failed with a message saying the outcome could not be read rather than with your reason.
+    Use `throw "reason"`, in either field. Avoid `exit`: PowerShell stops the script there before it can report its result, so the command is failed with a message saying the outcome couldn't be read rather than with your reason.
   </Accordion>
   <Accordion title="Can I run several commands, and what happens if one of them fails?">
     Yes, in either field. Write one per line.
@@ -251,16 +251,16 @@ It runs once per sync run that delivers at least one file. If a sync run does no
     On Windows the limit bounds how long Infisical waits, not the host. WinRM gives no way to cancel a command once it has started, so a command that hangs is reported as a timeout and the sync fails, but the command itself keeps running on the server until it finishes. This is the other reason to keep a check to a cheap question rather than real work.
   </Accordion>
   <Accordion title="Can a command run twice for the same certificate?">
-    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service restart is.
+    Yes, in some cases. If a sync run doesn't complete, Infisical may attempt it again, and both commands run as part of that attempt. Prefer commands that are safe to run more than once. A service restart is.
   </Accordion>
   <Accordion title="Does a failed health check get retried?">
-    Not within the run. A host that is not ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
+    Not within the run. A host that isn't ready is usually not ready a few seconds later either, so retrying only delays the report. The next sync or the next daily check is the retry.
   </Accordion>
   <Accordion title="Where do I see the result of the daily health check?">
-    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It does not change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
+    A failing daily check records the failure and its reason against the sync's health check, shown as Last Checked on the sync's page, and notifies the application's administrators. It doesn't change the sync's own status, which continues to report the last delivery. Either way the run is recorded in the sync's logs with the command and the first part of its output.
   </Accordion>
   <Accordion title="Can I use the health check to prepare the host instead of just checking it?">
-    You can, since it is a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
+    You can, since it's a free-text command, but prefer not to. A check that also does work runs before every sync and has fifteen seconds to finish, and if it fails halfway you have changed the host and delivered nothing. Keep preparation in the post-sync command, or in a script the check only verifies the result of.
   </Accordion>
 </AccordionGroup>
 
@@ -290,7 +290,7 @@ These are IIS requirements, configured once on the Windows host (the CCS feature
 
 <AccordionGroup>
   <Accordion title="Can I import certificates from a Windows server back into Infisical?">
-    No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+    No. The Windows Server sync only delivers certificates to the server. It doesn't read certificates back into Infisical.
   </Accordion>
 </AccordionGroup>
 

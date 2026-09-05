@@ -15,6 +15,7 @@ import {
   PamAccessType,
   PamAccountType,
   PamApproverType,
+  PamHeartbeatStatus,
   PamResourcePermissionActions,
   PamResourcePermissionSub
 } from "./enums";
@@ -26,6 +27,7 @@ import {
   TPamAccessRequest,
   TPamAccount,
   TPamAccountDependency,
+  TPamAccountHeartbeat,
   TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
@@ -103,6 +105,7 @@ export const pamKeys = {
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "stale", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  accountHeartbeat: (accountId: string) => [...pamKeys.account(), "heartbeat", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
   rotationCandidates: (accountId: string) =>
@@ -210,6 +213,8 @@ export type TPamAccountListItem = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  heartbeatStatus?: PamHeartbeatStatus | null;
+  heartbeatEnabled?: boolean;
   requiresApproval: boolean;
   supportsCredentialReveal: boolean;
   requireReason: boolean;
@@ -311,6 +316,19 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountHeartbeat = (accountId?: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pamKeys.accountHeartbeat(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ heartbeat: TPamAccountHeartbeat }>(
+        `/api/v1/pam/accounts/${accountId}/health`
+      );
+      return data.heartbeat;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
   });
 };
 
