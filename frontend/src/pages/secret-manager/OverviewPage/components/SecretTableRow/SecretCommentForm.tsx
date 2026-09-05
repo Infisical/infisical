@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +25,33 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onCommentChange?: (comment: string) => void;
+  isReadOnly?: boolean;
+  autoFocus?: boolean;
+  headerContent?: ReactNode;
 };
+
+type SecretCommentViewProps = {
+  comment?: string;
+  footer?: ReactNode;
+  headerContent?: ReactNode;
+};
+
+const SecretCommentHeader = ({ headerContent }: { headerContent?: ReactNode }) => (
+  <div className="flex items-center justify-between gap-3">
+    <p className="text-sm font-medium">Comment</p>
+    {headerContent}
+  </div>
+);
+
+export const SecretCommentView = ({ comment, footer, headerContent }: SecretCommentViewProps) => (
+  <div className="space-y-3">
+    <SecretCommentHeader headerContent={headerContent} />
+    <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words whitespace-pre-wrap opacity-100">
+      {comment?.trim() ? comment : <span className="text-muted-foreground">No comment</span>}
+    </p>
+    {footer}
+  </div>
+);
 
 export const SecretCommentForm = ({
   comment,
@@ -34,21 +60,26 @@ export const SecretCommentForm = ({
   secretPath,
   onClose,
   isBatchMode,
-  onCommentChange
+  onCommentChange,
+  isReadOnly = false,
+  autoFocus = true,
+  headerContent
 }: Props) => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
 
-  const canEdit = permission.can(
-    ProjectPermissionSecretActions.Edit,
-    subject(ProjectPermissionSub.Secrets, {
-      environment,
-      secretPath,
-      secretName: secretKey,
-      secretTags: ["*"]
-    })
-  );
+  const canEdit =
+    !isReadOnly &&
+    permission.can(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: secretKey,
+        secretTags: ["*"]
+      })
+    );
 
   const {
     handleSubmit,
@@ -114,31 +145,31 @@ export const SecretCommentForm = ({
 
   if (!canEdit) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm font-medium">Comment</p>
-        <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words whitespace-pre-wrap opacity-100">
-          {comment}
-        </p>
-        <div className="flex justify-end">
-          <Button variant="ghost" size="xs" type="button" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
+      <SecretCommentView
+        comment={comment}
+        headerContent={headerContent}
+        footer={
+          <div className="flex justify-end">
+            <Button variant="ghost" size="xs" type="button" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        }
+      />
     );
   }
 
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium">Comment</p>
+        <SecretCommentHeader headerContent={headerContent} />
         <Controller
           name="comment"
           control={control}
           render={({ field }) => (
             <TextArea
               {...field}
-              autoFocus
+              autoFocus={autoFocus}
               placeholder="Add a comment..."
               className="max-h-48 min-h-24 resize-none"
             />
@@ -155,14 +186,14 @@ export const SecretCommentForm = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-      <p className="text-sm font-medium">Comment</p>
+      <SecretCommentHeader headerContent={headerContent} />
       <Controller
         name="comment"
         control={control}
         render={({ field }) => (
           <TextArea
             {...field}
-            autoFocus
+            autoFocus={autoFocus}
             placeholder="Add a comment..."
             className="max-h-48 min-h-24 resize-none"
           />

@@ -48,6 +48,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { SecretCommentControl, SecretCommentSummaryBadge } from "./SecretCommentDisplay";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -130,6 +131,7 @@ export const SecretTableRow = ({
 
   const isSingleEnvView = environments.length === 1;
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
   // Pre-compute single-env data
@@ -151,6 +153,40 @@ export const SecretTableRow = ({
     ? creatingOverrideEnvs.has(singleEnvSlug)
     : false;
   const singleEnvShowOverride = singleEnvHasOverride || singleEnvIsCreatingOverride;
+  const singleEnvComment = singleEnvIsImported
+    ? singleEnvImportedSecret?.secret?.comment
+    : singleEnvSecret?.comment;
+  const multiEnvCommentEnvironments = isSingleEnvView
+    ? []
+    : environments.flatMap(({ name, slug }) => {
+        const secret = getSecretByKey(slug, secretKey);
+        const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
+        const importedSecret = isImportedSecret
+          ? getImportedSecretByKey(slug, secretKey)
+          : undefined;
+        const comment = isImportedSecret ? importedSecret?.secret?.comment : secret?.comment;
+
+        if (!secret && !importedSecret?.secret) return [];
+
+        return [
+          {
+            slug,
+            name,
+            comment,
+            isReadOnly:
+              isImportedSecret ||
+              !permission.can(
+                ProjectPermissionSecretActions.Edit,
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: slug,
+                  secretPath,
+                  secretName: secretKey,
+                  secretTags: ["*"]
+                })
+              )
+          }
+        ];
+      });
 
   const handleSecretRename = async (newName: string) => {
     if (!isSingleEnvView || !singleEnvSecret) return;
@@ -195,8 +231,6 @@ export const SecretTableRow = ({
     navigator.clipboard.writeText(secretKey);
     setIsSecNameCopied.on();
   };
-
-  const { permission } = useProjectPermission();
 
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
@@ -330,6 +364,7 @@ export const SecretTableRow = ({
             importedBy={importedBy}
             isSecretPresent={Boolean(singleEnvSecret)}
             comment={singleEnvSecret?.comment}
+            commentPreview={singleEnvComment}
             tags={singleEnvSecret?.tags}
             secretMetadata={singleEnvSecret?.secretMetadata}
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
@@ -352,6 +387,11 @@ export const SecretTableRow = ({
               >
                 {secretKey}
               </span>
+              <SecretCommentSummaryBadge
+                environments={multiEnvCommentEnvironments}
+                secretKey={secretKey}
+                secretPath={secretPath}
+              />
               {!isFormExpanded &&
                 environments.some(
                   ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
@@ -528,6 +568,18 @@ export const SecretTableRow = ({
 
                     const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
                     const importedSecret = getImportedSecretByKey(slug, secretKey);
+                    const secretComment = isImportedSecret
+                      ? importedSecret?.secret?.comment
+                      : secret?.comment;
+                    const canEditComment = permission.can(
+                      ProjectPermissionSecretActions.Edit,
+                      subject(ProjectPermissionSub.Secrets, {
+                        environment: slug,
+                        secretPath,
+                        secretName: secretKey,
+                        secretTags: ["*"]
+                      })
+                    );
 
                     const hasOverride = Boolean(secret?.idOverride);
                     const isCreatingOverride = creatingOverrideEnvs.has(slug);
@@ -540,7 +592,7 @@ export const SecretTableRow = ({
                             isTruncatable
                             className={hasOverride ? "border-b-border/50" : undefined}
                           >
-                            <div className="flex h-8 items-center space-x-2">
+                            <div className="flex h-8 min-w-0 items-center space-x-2">
                               <Tooltip disableHoverableContent>
                                 <TooltipTrigger asChild>
                                   <span className="truncate">{name}</span>
@@ -549,6 +601,14 @@ export const SecretTableRow = ({
                                   {name}
                                 </TooltipContent>
                               </Tooltip>
+                              <SecretCommentControl
+                                comment={secretComment}
+                                secretKey={secretKey}
+                                environment={slug}
+                                secretPath={secretPath}
+                                isReadOnly={isImportedSecret || !canEditComment}
+                                isUnavailable={isCreatable && !isImportedSecret}
+                              />
                               {isImportedSecret && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
