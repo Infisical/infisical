@@ -44,7 +44,8 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
-      }
+      },
+      timeout: 30_000
     });
 
     if (response.data.error) {
@@ -86,7 +87,8 @@ export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
-      }
+      },
+      timeout: 30_000
     });
 
     return response.data.result
