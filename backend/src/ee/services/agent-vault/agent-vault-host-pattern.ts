@@ -71,6 +71,20 @@ const expandIpv6 = (address: string): string => {
     .join(":");
 };
 
+// An IPv4-mapped IPv6 address names an IPv4 host, so it is compared as one. Go's net.ParseIP already
+// treats ::ffff:192.0.2.1 and 192.0.2.1 as equal, and the conflict check has to agree with the proxy or
+// two connections for one address can share a bundle and leave the credential to the name tiebreak.
+const MAPPED_IPV4_PREFIX = "0000:0000:0000:0000:0000:ffff:";
+
+const collapseMappedIpv4 = (expanded: string): string | null => {
+  if (!expanded.startsWith(MAPPED_IPV4_PREFIX)) return null;
+  const [high, low] = expanded
+    .slice(MAPPED_IPV4_PREFIX.length)
+    .split(":")
+    .map((group) => parseInt(group, 16));
+  return [Math.floor(high / 256), high % 256, Math.floor(low / 256), low % 256].join(".");
+};
+
 type TParseResult = { pattern: TAgentVaultHostPattern } | { error: string };
 
 // Parses one comma-separated segment. Returns a message written for the person who typed it.
@@ -96,7 +110,9 @@ const parseSegment = (segment: string): TParseResult => {
     if (!IPV6_SCHEMA.safeParse(inner).success) return { error: `"${raw}" is not a valid IPv6 address` };
 
     host = expandIpv6(inner);
-    isIpv6 = true;
+    const mappedIpv4 = collapseMappedIpv4(host);
+    if (mappedIpv4) host = mappedIpv4;
+    else isIpv6 = true;
 
     const afterBracket = raw.slice(closingIdx + 1);
     if (afterBracket) {
@@ -187,7 +203,10 @@ export const matchesHost = (pattern: TAgentVaultHostPattern, host: string, port:
 
   let candidate = host.trim().replace(/\.$/, "").toLowerCase();
   if (candidate.startsWith("[") && candidate.endsWith("]")) candidate = candidate.slice(1, -1);
-  if (IPV6_SCHEMA.safeParse(candidate).success) candidate = expandIpv6(candidate);
+  if (IPV6_SCHEMA.safeParse(candidate).success) {
+    candidate = expandIpv6(candidate);
+    candidate = collapseMappedIpv4(candidate) ?? candidate;
+  }
 
   if (!pattern.isWildcard) return pattern.host === candidate;
 

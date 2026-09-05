@@ -17,6 +17,8 @@
     { "pattern": "[0:0:0:0:0:0:0:1]:8200", "host": "::1", "port": "8200", "expected": true, "why": "same address written the long way" },
     { "pattern": "[2001:db8::1]", "host": "2001:db8::2", "port": "443", "expected": false, "why": "different addresses" },
     { "pattern": "10.0.1.5:8200", "host": "10.0.1.5", "port": "8200", "expected": true, "why": "IPv4 literals are plain hosts" },
+    { "pattern": "[::ffff:192.0.2.1]", "host": "192.0.2.1", "port": "443", "expected": true, "why": "an IPv4-mapped IPv6 address names the IPv4 host" },
+    { "pattern": "192.0.2.1", "host": "::ffff:192.0.2.1", "port": "443", "expected": true, "why": "and the other way round, as the proxy compares by address" },
     { "pattern": "api.github.com, registry.npmjs.org", "host": "registry.npmjs.org", "port": "443", "expected": true, "why": "a column is a set; any member matching is a match" }
   ],
   "reject": [
@@ -39,7 +41,7 @@
     { "pattern": "api.github.com.", "normalized": "api.github.com:443" },
     { "pattern": " api.github.com , registry.npmjs.org:8443 ", "normalized": "api.github.com:443,registry.npmjs.org:8443" },
     { "pattern": "[::1]", "normalized": "[0000:0000:0000:0000:0000:0000:0000:0001]:443" },
-    { "pattern": "[::ffff:10.0.1.5]:8200", "normalized": "[0000:0000:0000:0000:0000:ffff:0a00:0105]:8200" }
+    { "pattern": "[::ffff:10.0.1.5]:8200", "normalized": "10.0.1.5:8200" }
   ],
   "relate": [
     { "a": "api.foo.com", "b": "api.foo.com", "relation": "identical" },
