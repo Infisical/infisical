@@ -84,7 +84,7 @@ Not driving an interactive agent? Run the check directly:
 infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
 ```
 
-The CLI prints which hosts the session can reach before the agent starts, so a `401` from GitHub with `api.github.com:443` missing from that list means the bundle no longer covers it, and a `401` with it present means the token itself is wrong.
+If GitHub answers `401` through the agent, open the `coding-agent` bundle and check that a connection still covers `api.github.com`. If one does, the token stored on it is wrong; if none does, the bundle no longer covers the host.
 
 ## Where to go from here
 
