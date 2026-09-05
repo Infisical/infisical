@@ -676,7 +676,7 @@ export const CmekTable = () => {
                                   <PencilIcon className="mr-2 size-4" />
                                   Edit Key
                                 </DropdownMenuItem>
-                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && algorithm != AsymmetricKeyAlgorithm.RSA_4096 && (
                                   <DropdownMenuItem
                                     onClick={() => handlePopUpOpen("rotateKey", cmek)}
                                     isDisabled={cannotRotateKey || isDisabled}
