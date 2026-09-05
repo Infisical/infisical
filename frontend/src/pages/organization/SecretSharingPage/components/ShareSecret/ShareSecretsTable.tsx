@@ -35,7 +35,7 @@ type Props = {
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isPending, data } = useGetSharedSecrets({
+  const { isPending, isError, data } = useGetSharedSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -43,15 +43,15 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      {(isPending || hasSecrets) && (
+      {(isPending || hasSecrets) && !isError && (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-5" />
               <TableHead className="w-1/4">Name</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Expires</TableHead>
-              <TableHead>Views Left</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Expires At</TableHead>
+              <TableHead>Views Remaining</TableHead>
               <TableHead>Status</TableHead>
               <TableHead aria-label="button" className="w-5" />
             </TableRow>
@@ -76,20 +76,33 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           </TableBody>
         </Table>
       )}
-      {hasSecrets && data.totalCount >= perPage && data.totalCount !== undefined && (
+      {hasSecrets && data.totalCount > perPage && (
         <Pagination
           count={data.totalCount}
           page={page}
           perPage={perPage}
           onChangePage={(newPage) => setPage(newPage)}
-          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          onChangePerPage={(newPerPage) => {
+            setPerPage(newPerPage);
+            setPage(1);
+          }}
         />
       )}
-      {!isPending && !data?.secrets?.length && (
+      {!isPending && isError && (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No secrets shared yet</EmptyTitle>
-            <EmptyDescription>Share a secret to get started</EmptyDescription>
+            <EmptyTitle>Could Not Load Shared Secrets</EmptyTitle>
+            <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+      {!isPending && !isError && !data?.secrets?.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No Shared Secrets</EmptyTitle>
+            <EmptyDescription>
+              Create a secure link to share sensitive information.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}
