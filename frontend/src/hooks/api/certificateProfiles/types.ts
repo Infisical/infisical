@@ -1,3 +1,10 @@
+export type TProfileCustomExtension = {
+  oid: string;
+  label?: string;
+  critical?: boolean;
+  value?: string;
+};
+
 export enum EnrollmentType {
   API = "api",
   EST = "est",
@@ -31,6 +38,7 @@ export type TCertificateProfileDefaults = {
   locality?: string;
   subjectAltNames?: { type: string; value: string }[];
   domainComponents?: string[];
+  customExtensions?: TProfileCustomExtension[];
 };
 
 export type TCertificateProfile = {

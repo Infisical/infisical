@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { domainComponentSchema } from "@app/services/certificate-common/certificate-constants";
+import {
+  domainComponentSchema,
+  resolvedCustomExtensionSchema
+} from "@app/services/certificate-common/certificate-constants";
 
 import {
   BaseApprovalPolicySchema,
@@ -57,7 +60,8 @@ export const CertRequestPolicyRequestDataSchema = z.object({
         isCA: z.boolean(),
         pathLength: z.number().optional()
       })
-      .optional()
+      .optional(),
+    customExtensions: z.array(resolvedCustomExtensionSchema).optional()
   }),
   certificateRequestId: z.string().uuid()
 });

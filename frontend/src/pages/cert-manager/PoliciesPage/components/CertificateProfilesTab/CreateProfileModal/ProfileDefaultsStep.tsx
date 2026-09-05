@@ -31,6 +31,7 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertExtensionCriticality,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   formatSANType,
@@ -38,6 +39,8 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { FormData } from "../CreateProfileModal";
+import { CustomExtensionDefaults } from "./CustomExtensionDefaults";
+import { SectionHeading } from "./SectionHeading";
 
 export type PolicyConstraints = {
   allowedKeyUsages: string[];
@@ -50,6 +53,11 @@ export type PolicyConstraints = {
   shouldShowSubjectSection: boolean;
   allowedSanTypes: CertSubjectAlternativeNameType[];
   shouldShowSanSection: boolean;
+  allowedCustomExtensions: Array<{
+    oid: string;
+    label?: string;
+    critical?: CertExtensionCriticality;
+  }> | null;
   policyAllowsCA: boolean;
   maxPathLength: number | undefined;
 };
@@ -79,13 +87,6 @@ const subjectAttrPlaceholder = (type: CertSubjectAttributeType): string => {
       return "";
   }
 };
-
-const SectionHeading = ({ title, description }: { title: string; description: string }) => (
-  <div>
-    <p className="text-sm font-medium text-foreground">{title}</p>
-    <p className="mt-0.5 text-xs text-muted">{description}</p>
-  </div>
-);
 
 type EditableEntry<T extends string> = { type: T; value: string };
 
@@ -238,6 +239,7 @@ type Props = {
   policyConstraints: PolicyConstraints;
   isAwsAcmPublicCa: boolean;
   isExternalAdcsCa: boolean;
+  caSupportsCustomExtensions: boolean;
   caKeyAlgorithm?: string | null;
 };
 
@@ -251,12 +253,14 @@ export const ProfileDefaultsStep = ({
   policyConstraints,
   isAwsAcmPublicCa,
   isExternalAdcsCa,
+  caSupportsCustomExtensions,
   caKeyAlgorithm
 }: Props) => {
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
   const watchedDefaultSubjectAttrs = watch("defaults.subjectAttributes") || [];
   const watchedDefaultSans = watch("defaults.subjectAltNames") || [];
+  const watchedCustomExtensions = watch("defaults.customExtensions") || [];
   const watchedDefaultSigAlg = watch("defaults.signatureAlgorithm") ?? null;
   const watchedDefaultKeyAlg = watch("defaults.keyAlgorithm") ?? null;
   const watchedDefaultKeyUsages = watch("defaults.keyUsages") || {};
@@ -369,6 +373,14 @@ export const ProfileDefaultsStep = ({
               { type: availableAttributeTypes[0], value: "" }
             ])
           }
+        />
+      )}
+
+      {caSupportsCustomExtensions && (
+        <CustomExtensionDefaults
+          allowedCustomExtensions={policyConstraints.allowedCustomExtensions}
+          extensions={watchedCustomExtensions}
+          onChange={(next) => setValue("defaults.customExtensions", next)}
         />
       )}
 

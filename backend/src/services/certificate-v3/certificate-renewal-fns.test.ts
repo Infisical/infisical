@@ -9,6 +9,7 @@ import {
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { encodeCustomExtensionValue } from "../certificate-common/certificate-extension-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   assertCsrRenewalAttributes,
@@ -70,6 +71,12 @@ describe("resolveRenewalKeySource", () => {
 describe("assertCsrRenewalAttributes", () => {
   it("allows validity and basic constraints", () => {
     expect(() => assertCsrRenewalAttributes({ ttl: "30d", basicConstraints: { isCA: false } })).not.toThrow();
+  });
+
+  it("allows custom extensions, which a CSR never supplies on its own", () => {
+    expect(() =>
+      assertCsrRenewalAttributes({ customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "ops-prod" }] })
+    ).not.toThrow();
   });
 
   it("rejects anything the CSR already carries, naming the fields", () => {
@@ -257,6 +264,48 @@ describe("buildRenewalAuditChanges", () => {
 
   it("records nothing when the renewal reproduces the certificate", () => {
     expect(buildRenewalAuditChanges(cert, unchangedRequest)).toEqual([]);
+  });
+
+  it("records a custom extension change with the readable values, not their DER", () => {
+    const withExtension = {
+      ...cert,
+      customExtensions: [
+        {
+          oid: "1.3.6.1.4.1.99001.1",
+          critical: false,
+          value: encodeCustomExtensionValue("1.3.6.1.4.1.99001.1", "before")
+        }
+      ]
+    };
+
+    const changes = buildRenewalAuditChanges(withExtension, {
+      ...unchangedRequest,
+      customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "after" }]
+    });
+
+    expect(changes).toEqual([
+      { field: "customExtensions", from: "1.3.6.1.4.1.99001.1=before", to: "1.3.6.1.4.1.99001.1=after" }
+    ]);
+  });
+
+  it("records nothing when the custom extensions are unchanged", () => {
+    const withExtension = {
+      ...cert,
+      customExtensions: [
+        {
+          oid: "1.3.6.1.4.1.99001.1",
+          critical: false,
+          value: encodeCustomExtensionValue("1.3.6.1.4.1.99001.1", "same")
+        }
+      ]
+    };
+
+    expect(
+      buildRenewalAuditChanges(withExtension, {
+        ...unchangedRequest,
+        customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "same" }]
+      })
+    ).toEqual([]);
   });
 
   it("does not report a change when stored legacy usage names resolve to the same usages", () => {

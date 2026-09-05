@@ -27,6 +27,7 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "./certificate-constants";
+import { appendCustomExtensions, TResolvedCustomExtension } from "./certificate-extension-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -351,13 +352,15 @@ export const generateSelfSignedCertificate = async ({
   policy,
   effectiveSignatureAlgorithm,
   effectiveKeyAlgorithm,
-  existingKeyPair
+  existingKeyPair,
+  customExtensions
 }: {
   certificateRequest: TSelfSignedCertificateRequest;
   policy?: TCertificatePolicy | null;
   effectiveSignatureAlgorithm: CertSignatureAlgorithm;
   effectiveKeyAlgorithm: CertKeyAlgorithm;
   existingKeyPair?: CryptoKeyPair;
+  customExtensions?: TResolvedCustomExtension[];
 }): Promise<TSelfSignedCertificateResult> => {
   const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
   const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
@@ -411,6 +414,46 @@ export const generateSelfSignedCertificate = async ({
     domainComponents: certificateRequest.domainComponents
   });
 
+  const selfSignedExtensions: x509.Extension[] = [
+    new x509.BasicConstraintsExtension(false, undefined, false),
+    ...(certificateRequest.keyUsages?.length
+      ? [
+          new x509.KeyUsagesExtension(
+            combineKeyUsageFlags(convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || []),
+            false
+          )
+        ]
+      : []),
+    ...(certificateRequest.extendedKeyUsages?.length
+      ? [
+          new x509.ExtendedKeyUsageExtension(
+            (convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || []).map(
+              (eku) => CertExtendedKeyUsageNameToOID[eku]
+            ),
+            false
+          )
+        ]
+      : []),
+    ...(subjectAlternativeNames
+      ? [
+          new x509.SubjectAlternativeNameExtension(
+            certificateRequest.altNames?.map((san) => {
+              const generalNameType = CERT_SUBJECT_ALTERNATIVE_NAMES[san.type]?.generalNameType;
+              if (!generalNameType) {
+                throw new BadRequestError({
+                  message: `Unsupported Subject Alternative Name type: ${san.type as string}`
+                });
+              }
+              return { type: generalNameType, value: san.value };
+            }) || [],
+            false
+          )
+        ]
+      : [])
+  ];
+
+  appendCustomExtensions(selfSignedExtensions, customExtensions);
+
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     name: dn,
     serialNumber,
@@ -418,43 +461,7 @@ export const generateSelfSignedCertificate = async ({
     notAfter: notAfterDate,
     signingAlgorithm: signatureAlgorithmConfig,
     keys: keyPair,
-    extensions: [
-      new x509.BasicConstraintsExtension(false, undefined, false),
-      ...(certificateRequest.keyUsages?.length
-        ? [
-            new x509.KeyUsagesExtension(
-              combineKeyUsageFlags(convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || []),
-              false
-            )
-          ]
-        : []),
-      ...(certificateRequest.extendedKeyUsages?.length
-        ? [
-            new x509.ExtendedKeyUsageExtension(
-              (convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || []).map(
-                (eku) => CertExtendedKeyUsageNameToOID[eku]
-              ),
-              false
-            )
-          ]
-        : []),
-      ...(subjectAlternativeNames
-        ? [
-            new x509.SubjectAlternativeNameExtension(
-              certificateRequest.altNames?.map((san) => {
-                const generalNameType = CERT_SUBJECT_ALTERNATIVE_NAMES[san.type]?.generalNameType;
-                if (!generalNameType) {
-                  throw new BadRequestError({
-                    message: `Unsupported Subject Alternative Name type: ${san.type as string}`
-                  });
-                }
-                return { type: generalNameType, value: san.value };
-              }) || [],
-              false
-            )
-          ]
-        : [])
-    ]
+    extensions: selfSignedExtensions
   });
 
   const certificatePem = cert.toString("pem");

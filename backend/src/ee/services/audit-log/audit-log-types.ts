@@ -3564,6 +3564,7 @@ interface CreateCertificatePolicy {
         certificatePolicyId: string;
         name: string;
         projectId: string;
+        customExtensionOids?: string[];
       }
     | {
         certificatePolicyId: string;
@@ -3583,6 +3584,7 @@ interface UpdateCertificatePolicy {
     | {
         certificatePolicyId: string;
         name: string;
+        customExtensionOids?: string[];
       }
     | {
         certificatePolicyId: string;

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -21,6 +22,8 @@ import {
   certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
+  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
+  resolvedCustomExtensionSchema,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
@@ -89,6 +92,7 @@ interface CertificateRequestForService {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: Array<{ oid: string; value?: string; critical?: boolean }>;
 }
 
 const validateTtlAndDateFields = (data: {
@@ -178,6 +182,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { csr, attributes, metadata, ...requestBody } = req.body;
+
+      if (csr && attributes?.customExtensions?.length) {
+        throw new BadRequestError({ message: CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE });
+      }
+
       const profile = await server.services.certificateProfile.getProfileById({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -217,7 +226,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           organizationalUnit: attributes?.organizationalUnit ?? undefined,
           country: attributes?.country ?? undefined,
           state: attributes?.state ?? undefined,
-          locality: attributes?.locality ?? undefined
+          locality: attributes?.locality ?? undefined,
+          customExtensions: attributes?.customExtensions
         };
 
         const data = await server.services.certificateV3.orderCertificate({
@@ -328,7 +338,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         notAfter: attributes?.notAfter ? new Date(attributes.notAfter) : undefined,
         signatureAlgorithm: attributes?.signatureAlgorithm,
         keyAlgorithm: attributes?.keyAlgorithm,
-        basicConstraints: attributes?.basicConstraints
+        basicConstraints: attributes?.basicConstraints,
+        customExtensions: attributes?.customExtensions
       };
 
       // Only include subject fields when explicitly provided (null or string).
@@ -437,6 +448,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .nullable()
             .optional(),
           metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+          customExtensions: z.array(resolvedCustomExtensionSchema).nullable().optional(),
           createdAt: z.date(),
           updatedAt: z.date()
         })

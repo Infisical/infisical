@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
+  CertExtensionCriticality,
+  CertExtensionRuleKind,
   CertKeyUsageType,
   CertPolicyState,
   CertSanInclude,
@@ -72,6 +74,14 @@ export const uiPresetSchema = z
   ])
   .default(POLICY_PRESET_IDS.CUSTOM);
 
+export const uiCustomExtensionSchema = z.object({
+  oid: z.string().trim(),
+  label: z.string().trim().max(64).optional(),
+  critical: z.union([z.literal(""), z.nativeEnum(CertExtensionCriticality)]).optional(),
+  rule: z.nativeEnum(CertExtensionRuleKind),
+  value: z.string().trim()
+});
+
 export const policySchema = z.object({
   preset: uiPresetSchema,
   name: z
@@ -95,7 +105,8 @@ export const policySchema = z.object({
   extendedKeyUsages: uiExtendedKeyUsagesSchema.optional(),
   validity: uiValiditySchema.optional(),
   signatureAlgorithm: uiSignatureAlgorithmSchema.optional(),
-  keyAlgorithm: uiKeyAlgorithmSchema.optional()
+  keyAlgorithm: uiKeyAlgorithmSchema.optional(),
+  customExtensions: z.array(uiCustomExtensionSchema).optional()
 });
 
 export type PolicyFormData = z.infer<typeof policySchema>;

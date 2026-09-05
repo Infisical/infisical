@@ -32,8 +32,12 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
@@ -123,6 +127,14 @@ import {
  * Keep this above the queue's retry budget in `certificate-issuance-queue.ts` if that changes.
  */
 const STALE_PROCESSING_ORDER_TIMEOUT_MS = 60 * 60 * 1000;
+
+const assertAcmeCaSupportsCustomExtensions = (caType: CaType, count: number): void => {
+  if (!count || caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) return;
+
+  throw new AcmeBadCSRError({
+    message: `Invalid CSR: ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${count} of them.`
+  });
+};
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
@@ -1080,11 +1092,13 @@ export const pkiAcmeServiceFactory = ({
     // so forwarding a defaulted one would replace the identifier the client just validated.
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
-      applyProfileDefaults(updatedCertificateRequest, profile.defaults)
+      applyProfileDefaults(updatedCertificateRequest, profile.defaults),
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
       throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
     }
+    assertAcmeCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
     const certRequest = await certificateRequestService.createCertificateRequest({
       actor: ActorType.ACME_ACCOUNT,
@@ -1106,6 +1120,7 @@ export const pkiAcmeServiceFactory = ({
       status: CertificateRequestStatus.PENDING,
       acmeOrderId: orderId,
       csr,
+      customExtensions: validationResult.resolvedCustomExtensions,
       ttl: updatedCertificateRequest.validity?.ttl,
       enrollmentType: EnrollmentType.ACME,
       organization: updatedCertificateRequest.organization || undefined,
@@ -1123,6 +1138,7 @@ export const pkiAcmeServiceFactory = ({
         certificateId: orderId,
         profileId: profile.id,
         caId: profile.caId || "",
+        customExtensions: validationResult.resolvedCustomExtensions,
         ttl: updatedCertificateRequest.validity?.ttl || "47d",
         signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
         keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
@@ -1234,6 +1250,8 @@ export const pkiAcmeServiceFactory = ({
 
       assertCaInProfileProject(ca, profile);
 
+      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+
       const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
       const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
         ?.applicationProfileId;
@@ -1264,15 +1282,21 @@ export const pkiAcmeServiceFactory = ({
             // key actually is, which would fail a policy the CSR itself satisfies.
             const validationResult = await certificatePolicyService.validateCertificateRequest(
               policy.id,
-              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults)
+              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults),
+              { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
               throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
             }
+            assertAcmeCaSupportsCustomExtensions(
+              finalizeCaType,
+              validationResult.resolvedCustomExtensions?.length ?? 0
+            );
 
             return {
               approvalPolicy: matchedApprovalPolicy,
               policy,
+              resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
               policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
             };
           })()
@@ -1342,6 +1366,9 @@ export const pkiAcmeServiceFactory = ({
               ttl,
               enrollmentType: EnrollmentType.ACME,
               status: CertificateRequestStatus.PENDING_APPROVAL,
+              customExtensions: approvalContext?.resolvedCustomExtensions
+                ? JSON.stringify(approvalContext.resolvedCustomExtensions)
+                : null,
               organization: certificateRequest.organization || null,
               organizationalUnit: certificateRequest.organizationalUnit || null,
               country: certificateRequest.country || null,
@@ -1431,7 +1458,7 @@ export const pkiAcmeServiceFactory = ({
           return claimedOrder;
         });
 
-        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+        const caType = finalizeCaType;
         // Set once the certificate and its order-linked request are durably committed, which happens
         // inside processCertificateIssuanceForOrder rather than here. Anything that fails after that
         // point must not invalidate the order, or a real certificate is stranded.

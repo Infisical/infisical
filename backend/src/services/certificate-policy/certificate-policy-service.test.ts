@@ -192,6 +192,84 @@ describe("CertificatePolicyService", () => {
     // - Default key algorithm not in allowed list (now schema-level validation)
   });
 
+  describe("custom extension rules", () => {
+    const SID_OID = "1.3.6.1.4.1.311.25.2";
+    const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
+
+    const createWith = (customExtensions: unknown) =>
+      service.createPolicy({
+        ...mockActor,
+        projectId: "project-123",
+        data: { name: "ext-policy", customExtensions } as never
+      });
+
+    beforeEach(() => {
+      mockCertificatePolicyDAL.create.mockResolvedValue(sampleTemplate);
+    });
+
+    it("accepts a rule for an unmanaged OID", async () => {
+      await expect(createWith([{ oid: CUSTOM_OID, rule: "allow", value: "*" }])).resolves.toBeDefined();
+    });
+
+    it("rejects a reserved OID", async () => {
+      await expect(createWith([{ oid: "2.5.29.17", rule: "allow", value: "*" }])).rejects.toThrow(
+        "standard X.509 extension that Infisical manages"
+      );
+    });
+
+    it("rejects the UPN otherName OID with a pointer to SANs", async () => {
+      await expect(createWith([{ oid: "1.3.6.1.4.1.311.20.2.3", rule: "allow", value: "*" }])).rejects.toThrow(
+        "Use a UPN subject alternative name"
+      );
+    });
+
+    it("rejects duplicate OIDs", async () => {
+      await expect(
+        createWith([
+          { oid: CUSTOM_OID, rule: "allow", value: "*" },
+          { oid: CUSTOM_OID, rule: "deny", value: "x" }
+        ])
+      ).rejects.toThrow("Duplicate custom extension rule");
+    });
+
+    it("rejects constraining criticality on a preset OID, whose spec fixes it", async () => {
+      await expect(createWith([{ oid: SID_OID, rule: "allow", value: "*", critical: "critical" }])).rejects.toThrow(
+        "always emitted as non-critical"
+      );
+    });
+
+    const extensionOnlyPolicy = (value: string) =>
+      ({
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        customExtensions: [{ oid: SID_OID, rule: "allow", value }]
+      }) as never;
+
+    it("resolves declarations through validateRequestAgainstPolicy", () => {
+      const result = service.validateRequestAgainstPolicy(
+        extensionOnlyPolicy("S-1-5-21-1-2-3-*"),
+        {},
+        { profileCustomExtensions: [{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103" }] }
+      );
+
+      expect(result.isValid).toBe(true);
+      expect(result.resolvedCustomExtensions).toHaveLength(1);
+      expect(result.resolvedCustomExtensions?.[0].oid).toBe(SID_OID);
+    });
+
+    it("rejects a declared value the policy forbids", () => {
+      const result = service.validateRequestAgainstPolicy(
+        extensionOnlyPolicy("S-1-5-21-1-2-3-*"),
+        {},
+        { profileCustomExtensions: [{ oid: SID_OID, value: "S-1-5-21-9-9-9-1103" }] }
+      );
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors.join(" ")).toContain("is not allowed by this policy");
+    });
+  });
+
   describe("updatePolicy", () => {
     it("should update policy with valid data", async () => {
       const updateData = { name: "updated-template-name" };

@@ -163,7 +163,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | `attributes.key-algorithm` | Optional | The algorithm for the certificate key pair. One of: `RSA_2048`, `RSA_3072`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`, `EC_secp521r1` |
 | `attributes.signature-algorithm` | Optional | The algorithm used to sign the certificate. One of: `RSA-SHA256`, `RSA-SHA384`, `RSA-SHA512`, `ECDSA-SHA256`, `ECDSA-SHA384`, `ECDSA-SHA512` |
 | `attributes.key-usages` | Optional | The list of key usage values. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only` |
-| `attributes.extended-key-usages` | Optional | The list of extended key usage values. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing` |
+| `attributes.extended-key-usages` | Optional | The list of extended key usage values. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`, `smart_card_logon` |
 | `csr-path` | Conditional | The path to a pre-generated certificate signing request (CSR) file (e.g. `/etc/ssl/csr.pem`). See [Using a pre-generated CSR](#one-time-issuance-from-a-pre-generated-csr) |
 | `csr` | Conditional | The CSR content inline, as an alternative to `csr-path` |
 | `file-output.private-key.path` | Required unless using `csr-path`/`csr` | The path to store the private key |

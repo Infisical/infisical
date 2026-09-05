@@ -12,6 +12,7 @@ type ManagedFormData = Extract<FormData, { requestMethod: "managed" }>;
 type ManagedIssuanceRequest = Omit<TUnifiedCertificateIssuanceDTO, "attributes"> & {
   attributes: NonNullable<TUnifiedCertificateIssuanceDTO["attributes"]> & {
     basicConstraints?: { isCA: boolean; pathLength?: number };
+    customExtensions?: { oid: string; value: string }[];
   };
 };
 
@@ -40,6 +41,7 @@ export const buildManagedRequest = ({
     keyAlgorithm,
     keyUsages,
     extendedKeyUsages,
+    customExtensions,
     metadata
   } = formData;
 
@@ -111,6 +113,13 @@ export const buildManagedRequest = ({
     } else if (constraints.templateAllowsCA) {
       request.attributes.basicConstraints = { isCA: false };
     }
+  }
+
+  const suppliedExtensions = (customExtensions ?? [])
+    .filter((entry) => entry.oid?.trim() && entry.value?.trim())
+    .map((entry) => ({ oid: entry.oid.trim(), value: entry.value.trim() }));
+  if (suppliedExtensions.length) {
+    request.attributes.customExtensions = suppliedExtensions;
   }
 
   return request;

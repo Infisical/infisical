@@ -49,6 +49,7 @@ export enum CertExtendedKeyUsage {
   EMAIL_PROTECTION = "email_protection",
   TIMESTAMPING = "time_stamping",
   OCSP_SIGNING = "ocsp_signing",
+  SMART_CARD_LOGON = "smart_card_logon",
   ANY_PURPOSE = "any_purpose"
 }
 

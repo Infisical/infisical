@@ -30,7 +30,8 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
   [CaType.INTERNAL]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.ACME]: [
     CaCapability.ISSUE_CERTIFICATES,
@@ -41,12 +42,14 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
   [CaType.ADCS]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.DIGICERT]: [
     CaCapability.ISSUE_CERTIFICATES,

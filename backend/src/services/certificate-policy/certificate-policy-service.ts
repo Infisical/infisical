@@ -20,8 +20,17 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY
 } from "../certificate-common/certificate-constants";
+import {
+  CUSTOM_EXTENSION_PRESETS_BY_OID,
+  describeReservedExtensionOid,
+  isReservedExtensionOid,
+  resolveCustomExtensions,
+  TCustomExtensionRule,
+  validateCustomExtensionValue
+} from "../certificate-common/certificate-extension-fns";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   isDomainComponentRule,
@@ -34,6 +43,7 @@ import {
   TCertificatePolicyInsert,
   TCertificatePolicyUpdate,
   TCertificateRequest,
+  TPolicyValidationOptions,
   TPolicyValidationResult,
   TSubjectRule
 } from "./certificate-policy-types";
@@ -151,6 +161,44 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
+  const validateCustomExtensionPolicy = (customExtensions: TCustomExtensionRule[]) => {
+    if (customExtensions.length > MAX_CUSTOM_EXTENSION_RULES_PER_POLICY) {
+      throw new BadRequestError({
+        message: `A policy cannot have more than ${MAX_CUSTOM_EXTENSION_RULES_PER_POLICY} custom extension rules`
+      });
+    }
+
+    const seenOids = new Set<string>();
+    for (const rule of customExtensions) {
+      if (seenOids.has(rule.oid)) {
+        throw new BadRequestError({
+          message: `Duplicate custom extension rule for OID '${rule.oid}'. Each OID must appear only once.`
+        });
+      }
+      seenOids.add(rule.oid);
+
+      if (isReservedExtensionOid(rule.oid)) {
+        throw new BadRequestError({ message: describeReservedExtensionOid(rule.oid) });
+      }
+
+      if (!isWildcardPattern(rule.value)) {
+        const invalid = validateCustomExtensionValue(rule.oid, rule.value);
+        if (invalid) {
+          throw new BadRequestError({
+            message: `Custom extension rule for OID '${rule.oid}' has a value this extension can never take, so the rule would never apply. ${invalid}`
+          });
+        }
+      }
+
+      const preset = CUSTOM_EXTENSION_PRESETS_BY_OID[rule.oid];
+      if (preset && rule.critical) {
+        throw new BadRequestError({
+          message: `Custom extension '${rule.oid}' is always emitted as ${preset.critical ? "critical" : "non-critical"}, so its criticality cannot be constrained.`
+        });
+      }
+    }
+  };
+
   const generateTemplateSlug = (baseName?: string): string => {
     if (baseName) {
       return slugify(baseName);
@@ -201,7 +249,7 @@ export const certificatePolicyServiceFactory = ({
     if (!keyUsages) return;
 
     if (!keyUsages.allowed && !keyUsages.required && !keyUsages.denied) {
-      throw new ForbiddenRequestError({
+      throw new BadRequestError({
         message: "Key usages must have at least one allowed, required, or denied value"
       });
     }
@@ -216,7 +264,7 @@ export const certificatePolicyServiceFactory = ({
       if (values && values.length > 0) {
         const uniqueValues = new Set(values);
         if (uniqueValues.size !== values.length) {
-          throw new ForbiddenRequestError({
+          throw new BadRequestError({
             message: `Duplicate values found in ${name} key usages list`
           });
         }
@@ -232,7 +280,7 @@ export const certificatePolicyServiceFactory = ({
     if (!extendedKeyUsages) return;
 
     if (!extendedKeyUsages.allowed && !extendedKeyUsages.required && !extendedKeyUsages.denied) {
-      throw new ForbiddenRequestError({
+      throw new BadRequestError({
         message: "Extended key usages must have at least one allowed, required, or denied value"
       });
     }
@@ -247,7 +295,7 @@ export const certificatePolicyServiceFactory = ({
       if (values && values.length > 0) {
         const uniqueValues = new Set(values);
         if (uniqueValues.size !== values.length) {
-          throw new ForbiddenRequestError({
+          throw new BadRequestError({
             message: `Duplicate values found in ${name} extended key usages list`
           });
         }
@@ -298,7 +346,7 @@ export const certificatePolicyServiceFactory = ({
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
     request: TCertificateRequest,
-    options?: { skipRequired?: boolean }
+    options?: TPolicyValidationOptions
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -650,10 +698,19 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
+    const { extensions: resolvedCustomExtensions, errors: customExtensionErrors } = resolveCustomExtensions({
+      declarations: options?.profileCustomExtensions,
+      rules: template.customExtensions,
+      requestExtensions: request.customExtensions,
+      skipRequired: options?.skipRequired
+    });
+    errors.push(...customExtensionErrors);
+
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
+      resolvedCustomExtensions
     };
   };
 
@@ -715,8 +772,12 @@ export const certificatePolicyServiceFactory = ({
     }
 
     // Generate slug from name and ensure it's unique within project
+    if (consolidatedData.customExtensions) {
+      validateCustomExtensionPolicy(consolidatedData.customExtensions);
+    }
+
     if (!data.name) {
-      throw new ForbiddenRequestError({ message: "Template name is required" });
+      throw new BadRequestError({ message: "Template name is required" });
     }
 
     const slug = generateTemplateSlug(data.name);
@@ -787,6 +848,27 @@ export const certificatePolicyServiceFactory = ({
 
     if (consolidatedData.extendedKeyUsages) {
       validateExtendedKeyUsagePolicy(consolidatedData.extendedKeyUsages);
+    }
+
+    if (consolidatedData.customExtensions) {
+      validateCustomExtensionPolicy(consolidatedData.customExtensions);
+
+      const boundProfiles = await certificatePolicyDAL.getProfilesUsingPolicy(policyId);
+      for (const boundProfile of boundProfiles) {
+        const declarations = boundProfile.defaults?.customExtensions;
+        if (declarations?.length) {
+          const { errors } = resolveCustomExtensions({
+            declarations,
+            rules: consolidatedData.customExtensions,
+            skipRequired: true
+          });
+          if (errors.length) {
+            throw new BadRequestError({
+              message: `Certificate profile '${boundProfile.slug}' uses this policy and would no longer be valid. ${errors.join(" ")}`
+            });
+          }
+        }
+      }
     }
 
     const updateData = { ...consolidatedData };
@@ -1017,14 +1099,15 @@ export const certificatePolicyServiceFactory = ({
 
   const validateCertificateRequest = async (
     policyId: string,
-    request: TCertificateRequest
+    request: TCertificateRequest,
+    options?: TPolicyValidationOptions
   ): Promise<TPolicyValidationResult> => {
     const policy = await certificatePolicyDAL.findById(policyId);
     if (!policy) {
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    return validateRequestAgainstPolicy(policy, request);
+    return validateRequestAgainstPolicy(policy, request, options);
   };
 
   return {
