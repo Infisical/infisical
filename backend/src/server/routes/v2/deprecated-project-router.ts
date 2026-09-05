@@ -185,7 +185,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to delete.")
+        slug: slugSchema({ min: 5, max: 64, allowUnderscore: true }).describe("The slug of the project to delete.")
       }),
       response: {
         200: SanitizedProjectSchema
@@ -238,7 +238,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
+        slug: slugSchema({ max: 64, allowUnderscore: true }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
