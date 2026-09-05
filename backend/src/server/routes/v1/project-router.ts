@@ -80,6 +80,31 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/accessible-with-sub-orgs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listAccessibleProjectsWithSubOrgs",
+      response: {
+        200: z.object({
+          projects: SanitizedProjectSchema.pick({ id: true, orgId: true, name: true, slug: true, type: true }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projects = await server.services.project.getAccessibleProjectsWithSubOrgs({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId
+      });
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/me/project-access-requests",
     config: {
       rateLimit: readLimit
