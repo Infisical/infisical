@@ -173,3 +173,6 @@ Not sure where to get started? You can:
 If you're reading this, there is a strong chance you like the products we created.
 
 You might also make a great addition to our team. We're growing fast and would love for you to [join us](https://infisical.com/careers).
+
+
+<!-- Formatting update -->
