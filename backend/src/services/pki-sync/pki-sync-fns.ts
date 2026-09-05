@@ -4,6 +4,7 @@ import { z, ZodSchema } from "zod";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -50,6 +51,7 @@ import {
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { THostCommandResult } from "./pki-sync-host-command-fns";
+import { getPkiSyncConnectionApps } from "./pki-sync-maps";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
@@ -88,7 +90,14 @@ export const enterprisePkiSyncCheck = async (
 };
 
 export const listPkiSyncOptions = () => {
-  return Object.values(PKI_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+  return Object.values(PKI_SYNC_LIST_OPTIONS)
+    .map((option) => {
+      const additionalConnections = getPkiSyncConnectionApps(option.destination).filter(
+        (app) => app !== option.connection
+      );
+      return additionalConnections.length ? { ...option, additionalConnections } : option;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
@@ -262,8 +271,9 @@ export const PkiSyncFns = {
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+      keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
   ): Promise<TPkiSyncSyncResult> => {
     switch (pkiSync.destination) {
@@ -358,7 +368,8 @@ export const PkiSyncFns = {
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         return linuxServerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -370,7 +381,8 @@ export const PkiSyncFns = {
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         return windowsServerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -402,8 +414,9 @@ export const PkiSyncFns = {
     certificateMap: TCertificateMap,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+      keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
   ): Promise<THostCommandResult | undefined> => {
     switch (pkiSync.destination) {
@@ -411,7 +424,8 @@ export const PkiSyncFns = {
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         return linuxServerPkiSync.runHealthCheck(pkiSync, certificateMap);
       }
@@ -425,12 +439,50 @@ export const PkiSyncFns = {
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         return windowsServerPkiSync.runHealthCheck(pkiSync, certificateMap);
       }
       default:
         return undefined;
+    }
+  },
+
+  testReachability: async (
+    pkiSync: THealthCheckTarget,
+    dependencies: {
+      certificateSyncDAL: TCertificateSyncDALFactory;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
+      gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+      keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+    }
+  ): Promise<void> => {
+    if (pkiSync.destination === PkiSync.LinuxServer) {
+      const linuxServerPkiSync = linuxServerPkiSyncFactory({
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService,
+        keyStore: dependencies.keyStore
+      });
+      await linuxServerPkiSync.testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
+      return;
+    }
+
+    if (pkiSync.destination === PkiSync.WindowsServer) {
+      if (!dependencies.gatewayV2Service) {
+        throw new PkiSyncError({
+          shouldRetry: false,
+          message: "Windows Server sync requires a gateway to reach the host."
+        });
+      }
+      const windowsServerPkiSync = windowsServerPkiSyncFactory({
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService,
+        keyStore: dependencies.keyStore
+      });
+      await windowsServerPkiSync.testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
     }
   },
 
@@ -443,8 +495,9 @@ export const PkiSyncFns = {
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
-      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+      gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+      keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
   ): Promise<void> => {
     switch (pkiSync.destination) {
@@ -572,7 +625,8 @@ export const PkiSyncFns = {
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         await linuxServerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -588,7 +642,8 @@ export const PkiSyncFns = {
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
-          gatewayPoolService: dependencies.gatewayPoolService
+          gatewayPoolService: dependencies.gatewayPoolService,
+          keyStore: dependencies.keyStore
         });
         await windowsServerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateMap: dependencies.certificateMap

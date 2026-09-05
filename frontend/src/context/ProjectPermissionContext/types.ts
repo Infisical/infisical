@@ -78,6 +78,7 @@ export enum ProjectPermissionPkiSyncActions {
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
   SetPostSyncCommand = "set-post-sync-command",
+  SetTargetHost = "set-target-host",
   SetHealthCheckCommand = "set-health-check-command"
 }
 
