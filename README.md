@@ -166,10 +166,10 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 
 Not sure where to get started? You can:
 
-- Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
+- Join our [Slack](https://infisical.com/slack) and ask us any questions there.
 
 ## We are hiring!
 
 If you're reading this, there is a strong chance you like the products we created.
 
-You might also make a great addition to our team. We're growing fast and would love for you to [join us](https://infisical.com/careers).
+You could be a great addition to our team. We're growing fast and would love for you to [join us](https://infisical.com/careers).
