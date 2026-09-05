@@ -2,6 +2,7 @@ import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport, deleteSecretImport } from "e2e-test/testUtils/secret-imports";
 import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
 
+import { SecretType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
 describe("Secret Import Router", async () => {
@@ -806,3 +807,89 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
     });
   }
 );
+
+// Regression test for personal overrides on imported secrets (issue #4842):
+// a personal override on a secret in the source folder must be respected when the
+// secret is read through an import (e.g. CLI export of a folder that imports it).
+describe("Secret import personal override testing", () => {
+  // Setup and teardown live in beforeAll so cleanup runs unconditionally, even if an
+  // assertion in the test below fails.
+  beforeAll(async () => {
+    const devImportFromStaging = await createSecretImport({
+      authToken: jwtAuthToken,
+      secretPath: "/",
+      environmentSlug: seedData1.environment.slug,
+      workspaceId: seedData1.projectV3.id,
+      importPath: "/",
+      importEnv: "staging"
+    });
+
+    // shared secret living in the imported (staging) folder
+    await createSecretV2({
+      environmentSlug: "staging",
+      workspaceId: seedData1.projectV3.id,
+      secretPath: "/",
+      authToken: jwtAuthToken,
+      key: "OVERRIDE_KEY",
+      value: "shared-value"
+    });
+
+    // personal override of that secret for the requesting user
+    await createSecretV2({
+      environmentSlug: "staging",
+      workspaceId: seedData1.projectV3.id,
+      secretPath: "/",
+      authToken: jwtAuthToken,
+      key: "OVERRIDE_KEY",
+      value: "personal-value",
+      type: SecretType.Personal
+    });
+
+    return async () => {
+      await deleteSecretV2({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "OVERRIDE_KEY",
+        type: SecretType.Personal
+      });
+
+      await deleteSecretV2({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "OVERRIDE_KEY"
+      });
+
+      await deleteSecretImport({
+        id: devImportFromStaging.id,
+        workspaceId: seedData1.projectV3.id,
+        environmentSlug: seedData1.environment.slug,
+        secretPath: "/",
+        authToken: jwtAuthToken
+      });
+    };
+  });
+
+  test("Personal override on an imported secret is respected", async () => {
+    // dev imports from staging; the personal override must surface through the import.
+    // expandSecretReferences is disabled to mirror the CLI export scenario from the bug report.
+    const listSecrets = await getSecretsV2({
+      environmentSlug: seedData1.environment.slug,
+      workspaceId: seedData1.projectV3.id,
+      secretPath: "/",
+      authToken: jwtAuthToken,
+      expandSecretReferences: false
+    });
+
+    const importedSecrets = listSecrets.imports.flatMap((importGroup) => importGroup.secrets);
+    const personalOverride = importedSecrets.find(
+      (secret) => secret.secretKey === "OVERRIDE_KEY" && secret.type === SecretType.Personal
+    );
+
+    expect(personalOverride).toBeDefined();
+    expect(personalOverride?.secretValue).toBe("personal-value");
+  });
+});
