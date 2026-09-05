@@ -35,35 +35,39 @@ export const credentialPreview = (form: {
 
 type Props = {
   isUpdate: boolean;
-  /** Whether the connection being edited already has a password sealed. Meaningless on create. */
-  storedHasPassword: boolean;
   /** The credential type as stored, so a switch away from it can invalidate the sealed secret. */
   storedType?: AgentVaultCredentialType;
 };
 
-export const CredentialFields = ({ isUpdate, storedHasPassword, storedType }: Props) => {
+export const CredentialFields = ({ isUpdate, storedType }: Props) => {
   const { control, watch, setValue } = useFormContext<TConnectionForm>();
   const credentialType = watch("credentialType");
   const secret = watch("secret");
+  const username = watch("username");
 
   const isBasic = credentialType === AgentVaultCredentialType.Basic;
   const isUntouched = secret === UNCHANGED_SECRET;
+  const isUsernameUntouched = username === UNCHANGED_SECRET;
 
-  // Switching type strands the sealed secret, which belongs to the type being replaced, so the box
-  // stops claiming to hold anything.
+  // Switching type strands the sealed secret, which belongs to the type being replaced, so the boxes
+  // stop claiming to hold anything.
   useEffect(() => {
-    if (isUntouched && storedType && credentialType !== storedType) setValue("secret", "");
-  }, [isUntouched, credentialType, storedType, setValue]);
+    if (!storedType || credentialType === storedType) return;
+    if (isUntouched) setValue("secret", "");
+    if (isUsernameUntouched) setValue("username", "");
+  }, [isUntouched, isUsernameUntouched, credentialType, storedType, setValue]);
+
+  const usernameDescription = () => {
+    if (!isUpdate) return "Some services put the whole key here and take no password.";
+    return "Type to replace it, or clear the field to remove the username.";
+  };
 
   const secretDescription = () => {
     if (!isUpdate) {
       return isBasic ? "Leave blank if the service carries the whole key in the username." : null;
     }
-    if (isBasic && !storedHasPassword) {
-      return "No password is stored. This connection authenticates by username alone.";
-    }
     if (isBasic) {
-      return "Type to replace it, or clear the field to remove the password.";
+      return "Type to replace it, or clear the field to remove the password. One of the two halves has to stay.";
     }
     return "Type to replace it. A token cannot be removed — use Pass-through for a connection that sends nothing.";
   };
@@ -136,7 +140,17 @@ export const CredentialFields = ({ isUpdate, storedHasPassword, storedType }: Pr
             <Field>
               <FieldLabel>Username</FieldLabel>
               <FieldContent>
-                <Input {...field} placeholder="bot@acme.dev" />
+                <Input
+                  {...field}
+                  // Masked because the username can be the whole key, and never returned by the API.
+                  type="password"
+                  onFocus={(e) => {
+                    if (isUsernameUntouched) e.target.select();
+                  }}
+                  placeholder="Enter the username"
+                  isError={Boolean(fieldState.error)}
+                />
+                <FieldDescription>{usernameDescription()}</FieldDescription>
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>

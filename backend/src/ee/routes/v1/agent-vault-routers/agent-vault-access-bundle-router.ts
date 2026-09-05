@@ -330,13 +330,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             name: req.body.name,
             hostPattern: req.body.hostPattern,
             credentialType: req.body.credential?.type,
-            // The config half can now be patched on its own, so the presence of `credential` no longer
-            // implies the secret moved. Only the secret's own key does.
+            // The config half can be patched on its own, so the presence of `credential` does not imply
+            // the secret moved. For basic both halves are sealed together, so either one re-seals it.
             credentialReplaced:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.value !== undefined
                 : req.body.credential?.type === AgentVaultCredentialType.Basic &&
-                  req.body.credential.password !== undefined
+                  (req.body.credential.username !== undefined || req.body.credential.password !== undefined)
           }
         }
       });

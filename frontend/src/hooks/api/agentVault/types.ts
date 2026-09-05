@@ -8,7 +8,7 @@ import {
 
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-  | { type: AgentVaultCredentialType.Basic; username: string; hasPassword: boolean }
+  | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type TAgentVaultCredentialInput =

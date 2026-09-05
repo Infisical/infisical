@@ -14,7 +14,6 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
-  AgentVaultBasicConfigSchema,
   AgentVaultBearerConfigSchema,
   TAgentVaultCredentialConfig
 } from "../agent-vault/agent-vault-credential-schemas";
@@ -115,11 +114,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         if (!credential.username && !credential.password) {
           throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
         }
-        const config = AgentVaultBasicConfigSchema.parse({
-          username: credential.username,
-          hasPassword: credential.password.length > 0
-        });
-        return { config: { type: credential.type, ...config }, secret: { password: credential.password } };
+        return {
+          config: { type: credential.type },
+          secret: { username: credential.username, password: credential.password }
+        };
       }
       default:
         return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
@@ -133,7 +131,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
    */
   const mergeCredential = (
     credential: TAgentVaultCredentialUpdate,
-    stored: TAgentVaultConnections
+    stored: TAgentVaultConnections,
+    storedSecret: Record<string, string> | null
   ): TCredentialWrite => {
     // A different type has no stored config to merge onto, and the sealed secret belongs to the type
     // being replaced, so the credential has to arrive whole.
@@ -151,12 +150,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
     }
 
-    const prev = (stored.credentialConfig ?? {}) as {
-      headerName?: string;
-      headerPrefix?: string;
-      username?: string;
-      hasPassword?: boolean;
-    };
+    const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string };
 
     switch (credential.type) {
       case AgentVaultCredentialType.Bearer:
@@ -169,17 +163,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           secret: credential.value === undefined ? undefined : { value: credential.value }
         };
       case AgentVaultCredentialType.Basic: {
-        const username = credential.username ?? prev.username ?? "";
-        // Rows written before hasPassword existed always carried a non-empty password, so they read as true.
-        const hasPassword =
-          credential.password === undefined ? (prev.hasPassword ?? true) : credential.password.length > 0;
-        if (!username && !hasPassword) {
+        // Both halves live in the sealed blob, so a patch to either one re-seals the pair with the
+        // other half taken from what is stored.
+        if (credential.username === undefined && credential.password === undefined) {
+          return { config: { type: credential.type }, secret: undefined };
+        }
+        const username = credential.username ?? storedSecret?.username ?? "";
+        const password = credential.password ?? storedSecret?.password ?? "";
+        if (!username && !password) {
           throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
         }
-        return {
-          config: { type: credential.type, username, hasPassword },
-          secret: credential.password === undefined ? undefined : { password: credential.password }
-        };
+        return { config: { type: credential.type }, secret: { username, password } };
       }
       default:
         return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
@@ -196,11 +190,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           headerPrefix: config.headerPrefix
         };
       case AgentVaultCredentialType.Basic:
-        return {
-          type: AgentVaultCredentialType.Basic,
-          username: config.username,
-          hasPassword: Boolean(config.hasPassword ?? true)
-        };
+        return { type: AgentVaultCredentialType.Basic };
       default:
         return { type: AgentVaultCredentialType.Passthrough };
     }
@@ -430,22 +420,35 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     // An omitted credential leaves both halves alone. A present one patches the config, and touches the
-    // sealed secret only when the payload actually carried it.
+    // sealed secret only when the payload actually carried part of it.
     let credentialUpdate = {};
     if (credential) {
-      const { config, secret } = mergeCredential(credential, connection);
+      // A basic patch naming one half needs the other from the sealed pair, so this is the one place on
+      // the write path that opens a stored secret.
+      const needsStoredSecret =
+        credential.type === AgentVaultCredentialType.Basic &&
+        connection.credentialType === AgentVaultCredentialType.Basic &&
+        (credential.username === undefined) !== (credential.password === undefined) &&
+        Boolean(connection.encryptedCredential);
+      const cipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
+      const storedSecret = cipher
+        ? (JSON.parse(
+            cipher.decryptor({ cipherTextBlob: connection.encryptedCredential! }).toString("utf-8")
+          ) as Record<string, string>)
+        : null;
+
+      const { config, secret } = mergeCredential(credential, connection, storedSecret);
+      let encryptedCredential: Buffer | null | undefined;
+      if (secret === null) encryptedCredential = null;
+      if (secret) {
+        const { encryptor } = cipher ?? (await getProjectCipher(rest.projectId));
+        encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
+      }
+
       credentialUpdate = {
         credentialType: credential.type,
         credentialConfig: config,
-        ...(secret === undefined
-          ? {}
-          : {
-              encryptedCredential: secret
-                ? (await getProjectCipher(rest.projectId)).encryptor({
-                    plainText: Buffer.from(JSON.stringify(secret))
-                  }).cipherTextBlob
-                : null
-            })
+        ...(encryptedCredential === undefined ? {} : { encryptedCredential })
       };
     }
 

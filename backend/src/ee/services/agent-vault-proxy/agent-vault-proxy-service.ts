@@ -266,7 +266,7 @@ export const agentVaultProxyServiceFactory = ({
         value: secret.value
       };
     }
-    return { type: "basic", username: config.username, password: secret.password };
+    return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
   };
 
   /**

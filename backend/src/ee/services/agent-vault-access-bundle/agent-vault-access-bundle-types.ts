@@ -12,10 +12,10 @@ export type TAgentVaultCredentialUpdate =
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-/** The non-secret half, as every read path returns it. */
+/** The non-secret half, as every read path returns it. A basic credential has none: its username can be the key. */
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-  | { type: AgentVaultCredentialType.Basic; username: string; hasPassword: boolean }
+  | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TAgentVaultActorContext };

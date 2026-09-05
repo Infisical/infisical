@@ -5,9 +5,10 @@ import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 /**
- * Seeded into the secret field on edit so the box can show that something is stored without the
+ * Seeded into a secret field on edit so the box can show that something is stored without the
  * server ever returning it. Never sent: the sheet maps it back to an omitted key. It is the one value
  * a real secret cannot be, which is the price of letting a single field mean keep, replace and remove.
+ * Both halves of a basic credential are secret fields, since the username can be the key.
  */
 export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
 
@@ -49,9 +50,9 @@ export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
 };
 
 // The secret is write-only, so the form has to say what should happen to it rather than infer that
-// from an empty box. On create there is nothing stored and the field means itself. On edit, blank
-// keeps the stored secret and `clearPassword` is the only way to remove one, so tabbing through the
-// field can never wipe a credential.
+// from an empty box. On create there is nothing stored and the field means itself. On edit, a field
+// left alone keeps what is stored and an emptied one removes that half, so tabbing through a field
+// can never wipe a credential.
 export const buildConnectionSchema = (connection?: TAgentVaultConnection | null) =>
   z
     .object({
@@ -111,17 +112,18 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
         return;
       }
 
-      if (typeChanged && !data.username && !data.secret) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["username"],
-          message: "Enter a username, a password, or both."
-        });
+      // Neither half is ever returned, so on edit an untouched box may hold either something or
+      // nothing. Only two emptied boxes are refused here; one emptied box beside an untouched one is
+      // left to the server, which has the stored pair.
+      const willHaveUsername = data.username === UNCHANGED_SECRET ? true : Boolean(data.username);
+      const willHavePassword = isUnchanged ? true : Boolean(data.secret);
+      if (
+        typeChanged
+          ? Boolean(data.username) || Boolean(data.secret)
+          : willHaveUsername || willHavePassword
+      ) {
         return;
       }
-
-      const willHavePassword = isUnchanged ? true : Boolean(data.secret);
-      if (data.username || willHavePassword) return;
 
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

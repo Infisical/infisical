@@ -96,13 +96,9 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
     headerName: z.string().describe(AGENT_VAULT.CONNECTION.headerName),
     headerPrefix: z.string().describe(AGENT_VAULT.CONNECTION.headerPrefix)
   }),
-  z.object({
-    type: z.literal(AgentVaultCredentialType.Basic),
-    username: z.string().describe(AGENT_VAULT.CONNECTION.username),
-    // Whether, never what. The sheet needs it to know if clearing the username would leave the
-    // credential with no halves at all, and to say "set" or "none" instead of guessing.
-    hasPassword: z.boolean().describe(AGENT_VAULT.CONNECTION.hasPassword)
-  }),
+  // Nothing beyond the type: the username is sealed with the password, because for Stripe-style
+  // services the username is the key.
+  z.object({ type: z.literal(AgentVaultCredentialType.Basic) }),
   z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
 

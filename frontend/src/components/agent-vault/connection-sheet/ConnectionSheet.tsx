@@ -56,9 +56,6 @@ type Props = {
 
 export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connection }: Props) => {
   const isUpdate = Boolean(connection);
-  const storedHasPassword =
-    connection?.credential.type === AgentVaultCredentialType.Basic &&
-    connection.credential.hasPassword;
   const createConnection = useCreateAgentVaultConnection();
   const updateConnection = useUpdateAgentVaultConnection();
 
@@ -112,14 +109,10 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerName : undefined,
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
-        username:
-          credential.type === AgentVaultCredentialType.Basic ? credential.username : undefined,
-        // A username-only basic credential has nothing sealed, so its box starts genuinely empty.
-        secret:
-          credential.type === AgentVaultCredentialType.Passthrough ||
-          (credential.type === AgentVaultCredentialType.Basic && !credential.hasPassword)
-            ? ""
-            : UNCHANGED_SECRET
+        // Both halves of a basic credential are sealed and never returned, so each box starts as
+        // "keep what is stored" whether or not that half is empty.
+        username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
       });
     } else {
       reset({
@@ -173,10 +166,11 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  // The update is a patch, and the secret box carries all three intents. The sentinel means the field
-  // was never touched, so the key is left off and the stored secret survives. An empty box means the
-  // user deleted what was there, which removes a basic password — a bearer token has no removed state,
-  // so an empty box there keeps what is stored rather than writing a header that authenticates nobody.
+  // The update is a patch, and each secret box carries all three intents. The sentinel means the field
+  // was never touched, so the key is left off and the stored value survives. An empty box means the
+  // user deleted what was there, which removes that half of a basic credential — a bearer token has no
+  // removed state, so an empty box there keeps what is stored rather than writing a header that
+  // authenticates nobody.
   const buildCredentialPatch = (data: TConnectionForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
@@ -186,11 +180,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     if (data.credentialType === AgentVaultCredentialType.Basic) {
       return {
         type: AgentVaultCredentialType.Basic as const,
-        username: data.username ?? "",
-        // Writing "" over a credential that never had a password is a no-op that would still re-seal
-        // the blob and log a credential replacement, so it is left off too.
-        password:
-          untouched || (!data.secret && !storedHasPassword) ? undefined : (data.secret ?? "")
+        username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
+        password: untouched ? undefined : (data.secret ?? "")
       };
     }
     return {
@@ -385,13 +376,10 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   {current.step === ConnectionStep.Credential && (
                     <CredentialFields
                       isUpdate={isUpdate}
-                      storedHasPassword={storedHasPassword}
                       storedType={connection?.credential.type}
                     />
                   )}
-                  {current.step === ConnectionStep.Review && (
-                    <ReviewFields isUpdate={isUpdate} storedHasPassword={storedHasPassword} />
-                  )}
+                  {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">

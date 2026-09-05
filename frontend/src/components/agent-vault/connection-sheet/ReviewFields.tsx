@@ -14,26 +14,23 @@ import { credentialPreview } from "./CredentialFields";
 
 type Props = {
   isUpdate: boolean;
-  /** Whether the connection being edited already has a password sealed. Meaningless on create. */
-  storedHasPassword: boolean;
 };
 
-export const ReviewFields = ({ isUpdate, storedHasPassword }: Props) => {
+export const ReviewFields = ({ isUpdate }: Props) => {
   const { watch } = useFormContext<TConnectionForm>();
   const form = watch();
 
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const secretLabel = isBasic ? "Password" : "Token";
 
-  // On an edit the secret is a patch, so what matters is what will happen to the stored one. An
-  // emptied box removes a basic password; a bearer token has no removed state and simply stays.
-  const secretOutcome = () => {
-    if (!isUpdate) return form.secret ? "Set" : "None";
-    if (form.secret === UNCHANGED_SECRET) return "Unchanged";
-    if (form.secret) return "Replaced";
-    // An empty box on a credential that never had a password removes nothing.
-    if (!isBasic) return "Unchanged";
-    return storedHasPassword ? "Removed" : "None";
+  // On an edit each secret is a patch, so what matters is what will happen to the stored one. An
+  // emptied box clears that half of a basic credential; a bearer token has no removed state and stays.
+  // Neither half is ever returned, so "Cleared" is the most an emptied box can promise.
+  const outcome = (value: string | undefined, canClear: boolean) => {
+    if (!isUpdate) return value ? "Set" : "None";
+    if (value === UNCHANGED_SECRET) return "Unchanged";
+    if (value) return "Replaced";
+    return canClear ? "Cleared" : "Unchanged";
   };
 
   return (
@@ -63,10 +60,16 @@ export const ReviewFields = ({ isUpdate, storedHasPassword }: Props) => {
             <DetailLabel>Sends</DetailLabel>
             <DetailValue className="font-mono">{credentialPreview(form)}</DetailValue>
           </Detail>
+          {isBasic && (
+            <Detail>
+              <DetailLabel>Username</DetailLabel>
+              <DetailValue>{outcome(form.username, true)}</DetailValue>
+            </Detail>
+          )}
           {form.credentialType !== AgentVaultCredentialType.Passthrough && (
             <Detail>
               <DetailLabel>{secretLabel}</DetailLabel>
-              <DetailValue>{secretOutcome()}</DetailValue>
+              <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
             </Detail>
           )}
         </div>

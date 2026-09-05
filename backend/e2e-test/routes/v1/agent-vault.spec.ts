@@ -225,25 +225,43 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(created.statusCode).toBe(200);
       const { connection } = JSON.parse(created.payload) as { connection: { id: string; credential: Record<string, unknown> } };
-      expect(connection.credential).toEqual({ type: "basic", username: "sk_live_key", hasPassword: false });
+      // The username is the key for Stripe-style services, so it is sealed and never comes back.
+      expect(connection.credential).toEqual({ type: "basic" });
+      expect(created.payload).not.toContain("sk_live_key");
 
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+      const sealedPair = async () => {
+        const row = await testDb("agent_vault_connections").where({ id: connection.id }).first();
+        expect(JSON.stringify(row.credentialConfig)).not.toContain("sk_live_key");
+        return row.encryptedCredential as Buffer;
+      };
+      const before = await sealedPair();
 
       // The username-only credential has nothing else to authenticate with, so clearing it is refused.
       const emptied = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
       expect(emptied.statusCode).toBe(400);
+      expect((await sealedPair()).equals(before)).toBe(true);
 
       // Supplying a password first makes the same edit legal: the flip to password-only.
       const flipped = await inject("PATCH", url, { credential: { type: "basic", username: "", password: "hunter2" } });
       expect(flipped.statusCode).toBe(200);
-      expect(JSON.parse(flipped.payload).connection.credential).toEqual({ type: "basic", username: "", hasPassword: true });
+      expect((await sealedPair()).equals(before)).toBe(false);
 
-      // An empty string removes the password, where an omission would have kept it.
+      // Naming one half re-seals the pair with the other half kept, so a password-only credential can
+      // regain a username without re-sending the password, and then lose the password by clearing it.
       const named = await inject("PATCH", url, { credential: { type: "basic", username: "sk_live_key" } });
-      expect(JSON.parse(named.payload).connection.credential.hasPassword).toBe(true);
+      expect(named.statusCode).toBe(200);
       const cleared = await inject("PATCH", url, { credential: { type: "basic", password: "" } });
       expect(cleared.statusCode).toBe(200);
-      expect(JSON.parse(cleared.payload).connection.credential.hasPassword).toBe(false);
+      // And with only the username left, clearing it is refused again.
+      const emptiedAgain = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
+      expect(emptiedAgain.statusCode).toBe(400);
+
+      // A patch that touches neither half leaves the sealed pair exactly as it is.
+      const afterClear = await sealedPair();
+      const renamed = await inject("PATCH", url, { name: "stripe-live" });
+      expect(renamed.statusCode).toBe(200);
+      expect((await sealedPair()).equals(afterClear)).toBe(true);
     });
 
     test("changing the credential type requires whatever the new type needs", async () => {
