@@ -14,6 +14,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -39,7 +40,7 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -140,6 +141,7 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
+  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -167,6 +169,7 @@ export const scimServiceFactory = ({
   additionalPrivilegeDAL,
   approvalPolicyDAL,
   alertChannelRecipientDAL,
+  agentVaultAccessBundleMemberDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
@@ -1005,12 +1008,14 @@ export const scimServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      agentVaultAccessBundleMemberDAL
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
     usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
     usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, AgentVaultIdentities.key);
 
     await scimEventsDAL.create({
       orgId,

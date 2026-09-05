@@ -3,6 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  AgentVaultMemberKind,
+  TAgentVaultMembershipCleanupServiceFactory
+} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -12,7 +16,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
@@ -73,6 +77,10 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
+  agentVaultMembershipCleanupService: Pick<
+    TAgentVaultMembershipCleanupServiceFactory,
+    "cleanupActorAgentVaultMemberships" | "cleanupUsersAgentVaultMemberships"
+  >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
@@ -100,6 +108,7 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
+  agentVaultMembershipCleanupService,
   usageMeteringService,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
@@ -377,6 +386,7 @@ export const projectMembershipServiceFactory = ({
     }
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return orgMembers;
   };
 
@@ -486,6 +496,14 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await agentVaultMembershipCleanupService.cleanupUsersAgentVaultMemberships(
+        {
+          projectId,
+          userIds: projectMembers.map(({ user }) => user.id)
+        },
+        tx
+      );
+
       await secretReminderRecipientsDAL.delete(
         {
           projectId,
@@ -524,6 +542,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -606,6 +625,15 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
+        {
+          projectId: project.id,
+          actorKind: AgentVaultMemberKind.User,
+          actorId
+        },
+        tx
+      );
+
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actorId] }, tx);
 
       return membership;
@@ -617,6 +645,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 

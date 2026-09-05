@@ -1,0 +1,259 @@
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
+import { z } from "zod";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import {
+  AgentVaultUnmatchedHost,
+  useCreateAgentVaultProxy,
+  useUpdateAgentVaultProxy
+} from "@app/hooks/api/agentVault";
+import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { slugSchema } from "@app/lib/schemas";
+
+const UNMATCHED_HOST_CHOICES = [
+  {
+    value: AgentVaultUnmatchedHost.Allow,
+    title: "Allow",
+    description: "The agent reaches them, with no credential attached."
+  },
+  {
+    value: AgentVaultUnmatchedHost.Deny,
+    title: "Deny",
+    description: "The agent reaches only the hosts in its access bundles."
+  }
+];
+
+const schema = z.object({
+  name: slugSchema({ max: 64, field: "Name" }),
+  unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
+  bypassHosts: z.string().trim().max(1024).optional(),
+  pollInterval: z.coerce
+    .number({ invalid_type_error: "Poll interval is required" })
+    .int("Poll interval must be a whole number of seconds")
+    .min(10, "Poll interval must be at least 10 seconds")
+    .max(300, "Poll interval must be at most 300 seconds")
+});
+
+type FormData = z.infer<typeof schema>;
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  // Present in edit mode; absent when registering a new proxy.
+  proxy?: TAgentVaultProxy;
+  onCreated?: (enrollment: TAgentVaultEnrollment) => void;
+};
+
+export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
+  const createProxy = useCreateAgentVaultProxy();
+  const updateProxy = useUpdateAgentVaultProxy();
+  const isUpdate = Boolean(proxy);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Under allow every host is reachable already, so the list has nothing left to do. The stored value
+  // is left alone rather than cleared, so switching back to deny brings it back.
+  const isDenying = watch("unmatchedHost") === AgentVaultUnmatchedHost.Deny;
+
+  // A proxy that has never checked in has nothing to update, so the delay is only worth raising once
+  // one has.
+  const saveDelayNote = (() => {
+    if (!proxy?.heartbeat) return null;
+    return proxy.isHealthy
+      ? "This proxy picks up the change on its next poll."
+      : "This proxy is not connected right now. It picks up the change when it reconnects.";
+  })();
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    reset({
+      name: proxy?.name ?? "",
+      unmatchedHost: proxy?.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
+      bypassHosts: proxy?.bypassHosts ?? "",
+      pollInterval: proxy?.pollInterval ?? 60
+    });
+  }, [isOpen, proxy, reset]);
+
+  const onSubmit = async (data: FormData) => {
+    const payload = {
+      name: data.name,
+      unmatchedHost: data.unmatchedHost,
+      bypassHosts: data.bypassHosts ? data.bypassHosts : null,
+      pollInterval: data.pollInterval
+    };
+
+    if (proxy) {
+      await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
+      createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
+    } else {
+      const result = await createProxy.mutateAsync(payload);
+      createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
+      onCreated?.(result.enrollment);
+    }
+
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {/* DialogContent spaces its own children; the form is the only one, so it has to carry the layout. */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          <DialogHeader>
+            <DialogTitle>{isUpdate ? "Edit Proxy" : "Create Proxy"}</DialogTitle>
+            <DialogDescription>
+              Set how this proxy handles your agents&apos; traffic.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Name</FieldLabel>
+                  <FieldContent>
+                    <Input {...field} placeholder="egress-1" />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="unmatchedHost"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Uncovered Hosts</FieldLabel>
+                  <FieldContent>
+                    <RadioGroup value={field.value} onValueChange={field.onChange}>
+                      {UNMATCHED_HOST_CHOICES.map((choice) => {
+                        const id = `unmatched-${choice.value}`;
+
+                        return (
+                          <FieldLabel key={choice.value} htmlFor={id} variant="av">
+                            <Field orientation="horizontal">
+                              <FieldContent>
+                                <FieldTitle>{choice.title}</FieldTitle>
+                                <FieldDescription>{choice.description}</FieldDescription>
+                              </FieldContent>
+                              <RadioGroupItem id={id} value={choice.value} />
+                            </Field>
+                          </FieldLabel>
+                        );
+                      })}
+                    </RadioGroup>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            {isDenying && (
+              <Controller
+                control={control}
+                name="bypassHosts"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>
+                      Bypass Hosts
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          Hosts listed here are reached even though no access bundle covers them,
+                          with nothing added to the request. If a bundle does cover the same host,
+                          its credential still applies. To open a host for one bundle only, add a
+                          Pass-through connection to that bundle instead.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
+                      <FieldDescription>
+                        Reachable under Deny without naming them in an access bundle.
+                      </FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            )}
+            <Controller
+              control={control}
+              name="pollInterval"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>
+                    Poll Interval
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        How often the proxy asks for its configuration, in seconds. It is how long a
+                        change here takes to reach a running agent.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input {...field} type="number" />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            {saveDelayNote && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertDescription>{saveDelayNote}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="av" isPending={isSubmitting}>
+              {isUpdate ? "Save" : "Create Proxy"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

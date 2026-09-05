@@ -5,6 +5,7 @@ import { QueueJobs, QueueName } from "@app/queue";
 import { featureReaderFactory } from "../feature-reader";
 import {
   ActiveCerts,
+  AgentVaultIdentities,
   IdentitiesMeter,
   InternalCas,
   PamIdentities,
@@ -239,7 +240,8 @@ describe("buildMeteredFeatures", () => {
       countActiveCerts: vi.fn(async () => 2),
       countPamResources: vi.fn(async () => 3),
       countSecretManagementIdentities: vi.fn(async () => 4),
-      countPamIdentities: vi.fn(async () => 5)
+      countPamIdentities: vi.fn(async () => 5),
+      countAgentVaultIdentities: vi.fn(async () => 6)
     };
     const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true });
 
@@ -251,6 +253,7 @@ describe("buildMeteredFeatures", () => {
         ActiveCerts.key,
         SecretIdentities.key,
         PamIdentities.key,
+        AgentVaultIdentities.key,
         UserIdentities.key
       ].sort()
     );
@@ -260,11 +263,13 @@ describe("buildMeteredFeatures", () => {
     expect(await byKey[ActiveCerts.key](ORG_ID)).toBe(2);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
+    expect(await byKey[AgentVaultIdentities.key](ORG_ID)).toBe(6);
     expect(await byKey[UserIdentities.key](ORG_ID)).toBe(8);
     expect(licenseDAL.countOrgUsersAndIdentities).toHaveBeenCalledWith(ORG_ID);
     // Cloud scopes the identity meters to the org.
     expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(ORG_ID);
     expect(usageCounterDAL.countPamIdentities).toHaveBeenCalledWith(ORG_ID);
+    expect(usageCounterDAL.countAgentVaultIdentities).toHaveBeenCalledWith(ORG_ID);
     expect(licenseDAL.countOfOrgMembers).toHaveBeenCalledWith(ORG_ID);
   });
 
@@ -278,7 +283,8 @@ describe("buildMeteredFeatures", () => {
       countActiveCerts: vi.fn(async () => 0),
       countPamResources: vi.fn(async () => 0),
       countSecretManagementIdentities: vi.fn(async () => 9),
-      countPamIdentities: vi.fn(async () => 6)
+      countPamIdentities: vi.fn(async () => 6),
+      countAgentVaultIdentities: vi.fn(async () => 0)
     };
     const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
     const secret = metered.find((m) => m.feature.key === SecretIdentities.key);
@@ -492,7 +498,8 @@ describe("canUse enforcement (using the framework from a call site)", () => {
       countActiveCerts: async () => 0,
       countPamResources: async () => 0,
       countSecretManagementIdentities: async () => 0,
-      countPamIdentities: async () => 0
+      countPamIdentities: async () => 0,
+      countAgentVaultIdentities: async () => 0
     };
     buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true }).forEach(({ feature, count }) =>
       reader.registerCounter(feature, count)

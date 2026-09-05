@@ -67,6 +67,7 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import {
   adminQueryKeys,
@@ -78,6 +79,7 @@ import {
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
@@ -304,9 +306,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
+  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
+  const isPamScope = orgScopedProduct === ProjectType.PAM;
+  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
   const isProjectScope =
-    isPamScope ||
+    Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
       location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
@@ -344,7 +348,8 @@ export const Navbar = () => {
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
+        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
+        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}

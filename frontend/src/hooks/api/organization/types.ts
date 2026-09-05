@@ -40,6 +40,7 @@ export type Organization = {
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
   pamProjectId: string | null;
+  agentVaultProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -117,5 +118,10 @@ export type TOrgProductStats = {
     accountsCount: number;
     accountTemplatesCount: number;
     foldersCount: number;
+  };
+  agentVault: {
+    accessBundlesCount: number;
+    connectionsCount: number;
+    proxiesCount: number;
   };
 };

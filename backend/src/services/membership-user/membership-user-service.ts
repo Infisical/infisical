@@ -8,6 +8,11 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
+import {
+  AgentVaultMemberKind,
+  TAgentVaultMembershipCleanupServiceFactory
+} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -22,7 +27,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -85,12 +90,17 @@ type TMembershipUserServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
+  agentVaultMembershipCleanupService: Pick<
+    TAgentVaultMembershipCleanupServiceFactory,
+    "cleanupActorAgentVaultMemberships"
+  >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -112,12 +122,14 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
+  agentVaultMembershipCleanupService,
   approvalPolicyDAL,
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  agentVaultAccessBundleMemberDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -412,6 +424,7 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -592,7 +605,8 @@ export const membershipUserServiceFactory = ({
           membershipRoleDAL,
           additionalPrivilegeDAL,
           approvalPolicyDAL,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          agentVaultAccessBundleMemberDAL
         });
         return doc;
       }
@@ -610,6 +624,15 @@ export const membershipUserServiceFactory = ({
           {
             projectId: dto.scopeData.projectId,
             actorKind: ApplicationMemberKind.User,
+            actorId: dto.selector.userId
+          },
+          tx
+        );
+
+        await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
+          {
+            projectId: dto.scopeData.projectId,
+            actorKind: AgentVaultMemberKind.User,
             actorId: dto.selector.userId
           },
           tx
@@ -635,9 +658,11 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { membership: membershipDoc };
   };

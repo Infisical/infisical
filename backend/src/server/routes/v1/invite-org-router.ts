@@ -34,7 +34,9 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         // Signup-created projects the invitees get member access to.
         projectIds: z.string().trim().array().max(5).optional(),
         // Grants membership on the org's consolidated PAM project (PAM has no signup-created project).
-        grantPamAccess: z.boolean().optional()
+        grantPamAccess: z.boolean().optional(),
+        // Same for Agent Vault, which is org-scoped over one implicit project.
+        grantAgentVaultAccess: z.boolean().optional()
       }),
       response: {
         200: z.object({
@@ -51,7 +53,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           grantFailures: z
             .object({
               projectIds: z.string().array(),
-              pamAccess: z.boolean()
+              pamAccess: z.boolean(),
+              agentVaultAccess: z.boolean()
             })
             .optional()
         })
@@ -77,6 +80,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       // the request. Failures are still reported back so the client can tell the inviter.
       const failedProjectIds: string[] = [];
       let pamAccessFailed = false;
+      let agentVaultAccessFailed = false;
 
       if (req.body.projectIds?.length) {
         for await (const projectId of req.body.projectIds) {
@@ -157,6 +161,43 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      // Agent Vault goes through its product-membership service, as PAM does, so the invite path and
+      // the product agree on role validation, SSO-alias resolution and metering.
+      if (req.body.grantAgentVaultAccess) {
+        try {
+          const agentVaultProjectId = await server.services.agentVaultProjectResolver.resolve(req.permission.orgId);
+          const { memberships } = await server.services.agentVaultMembership.addProductUserMembers({
+            projectId: agentVaultProjectId,
+            ctx: {
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              actorOrgId: req.permission.orgId,
+              actorAuthMethod: req.permission.authMethod
+            },
+            userIds: [],
+            emails: req.body.inviteeEmails,
+            role: ProjectMembershipRole.Member
+          });
+
+          // The product's own event, as PAM writes here and as every other Agent Vault membership path
+          // writes, so filtering the Agent Vault audit log on it finds invitees too.
+          for await (const membership of memberships) {
+            await server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              orgId: req.permission.orgId,
+              projectId: agentVaultProjectId,
+              event: {
+                type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+                metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
+              }
+            });
+          }
+        } catch (err) {
+          logger.error(err, "Failed to grant invitees Agent Vault access");
+          agentVaultAccessFailed = true;
+        }
+      }
+
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
@@ -168,11 +209,19 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      const hasGrantFailures = failedProjectIds.length > 0 || pamAccessFailed;
+      const hasGrantFailures = failedProjectIds.length > 0 || pamAccessFailed || agentVaultAccessFailed;
       return {
         completeInviteLinks,
         message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`,
-        ...(hasGrantFailures ? { grantFailures: { projectIds: failedProjectIds, pamAccess: pamAccessFailed } } : {})
+        ...(hasGrantFailures
+          ? {
+              grantFailures: {
+                projectIds: failedProjectIds,
+                pamAccess: pamAccessFailed,
+                agentVaultAccess: agentVaultAccessFailed
+              }
+            }
+          : {})
       };
     }
   });

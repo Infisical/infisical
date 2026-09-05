@@ -94,6 +94,10 @@ export default function SignupCompleteStep({
         navigate({ to: "/organizations/$orgId/pam/access", params: { orgId } });
         return;
       }
+      if (launchTarget === ProjectType.AgentVault) {
+        navigate({ to: "/organizations/$orgId/agent-vault/sessions", params: { orgId } });
+        return;
+      }
 
       const project = projects[launchTarget];
       if (project) {

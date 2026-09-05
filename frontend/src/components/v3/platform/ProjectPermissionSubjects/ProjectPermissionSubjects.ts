@@ -24,11 +24,13 @@ import {
   LayersIcon,
   LockIcon,
   type LucideIcon,
+  PackageIcon,
   PenLineIcon,
   PuzzleIcon,
   RadarIcon,
   RadioIcon,
   RefreshCwIcon,
+  RouteIcon,
   ScaleIcon,
   ScrollTextIcon,
   SearchIcon,
@@ -40,6 +42,7 @@ import {
   StampIcon,
   TableIcon,
   TagIcon,
+  TicketIcon,
   UndoIcon,
   UserCheckIcon,
   UsersIcon,
@@ -64,7 +67,8 @@ export const ProjectPermissionSubjectFamily = {
   ProjectAdmin: "project-admin",
   CertificateManager: "certificate-manager",
   Kms: "kms",
-  SecretScanning: "secret-scanning"
+  SecretScanning: "secret-scanning",
+  AgentVault: "agent-vault"
 } as const;
 
 export type ProjectPermissionSubjectFamily =
@@ -156,6 +160,8 @@ const kms = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.Kms, Ic
 
 const scanning = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.SecretScanning, Icon);
 
+const agentVault = (Icon: LucideIcon) => present(ProjectPermissionSubjectFamily.AgentVault, Icon);
+
 export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.Secrets]: smResource(KeyIcon, PERMISSION_SUBJECT_SECRET_COLOR),
   [ProjectPermissionSub.SecretFolders]: smResource(FolderIcon, PERMISSION_SUBJECT_FOLDER_COLOR),
@@ -219,7 +225,10 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.HsmConnectors]: kms(CpuIcon),
   [ProjectPermissionSub.SecretScanningDataSources]: scanning(DatabaseIcon),
   [ProjectPermissionSub.SecretScanningFindings]: scanning(SearchIcon),
-  [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon)
+  [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon),
+  [ProjectPermissionSub.AgentVaultAccessBundles]: agentVault(PackageIcon),
+  [ProjectPermissionSub.AgentVaultSessions]: agentVault(TicketIcon),
+  [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon)
 } as const satisfies Record<ProjectPermissionSub, ProjectPermissionSubjectPresentation>;
 
 export const getProjectPermissionSubjectPresentation = (

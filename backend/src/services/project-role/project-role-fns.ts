@@ -10,7 +10,17 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
+// Agent Vault resolves every slug except admin to its member set (see buildProjectPermissionRules), so
+// offering Viewer or No Access would promise less access than the role grants.
+//
+// PAM does the same and has the same misleading pickers, but it is left as it is: this list feeds the
+// roles API, the org-admin invite flow's project list, and project templates, and narrowing all three
+// for PAM is its own change to make deliberately rather than a side effect of shipping Agent Vault.
+const NARROWED_ROLE_PROJECT_TYPES = new Set<string>([ProjectType.AgentVault]);
+const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
+
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
+  const isNarrowed = NARROWED_ROLE_PROJECT_TYPES.has(projectType);
   return [
     {
       id: uuidv4(),
@@ -63,5 +73,10 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ].filter(({ slug, type }) => (type ? type === projectType : true) && (!roleFilter || roleFilter === slug));
+  ].filter(
+    ({ slug, type }) =>
+      (type ? type === projectType : true) &&
+      (!roleFilter || roleFilter === slug) &&
+      (!isNarrowed || NARROWED_ROLE_SLUGS.has(slug))
+  );
 };

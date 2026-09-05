@@ -33,6 +33,7 @@ export const AUDIT_LOG_STREAM_PRODUCT_LABELS: Record<AuditLogStreamProduct, stri
   [AuditLogStreamProduct.KMS]: "KMS",
   [AuditLogStreamProduct.SecretScanning]: "Secret Scanning",
   [AuditLogStreamProduct.PAM]: "PAM",
+  [AuditLogStreamProduct.AgentVault]: "Agent Vault",
   [AuditLogStreamProduct.Organization]: "Organization"
 };
 
@@ -44,6 +45,7 @@ export const PRODUCT_ICONS: Record<AuditLogStreamProduct, LucideIcon> = {
   [AuditLogStreamProduct.KMS]: getProjectLucideIcon(ProjectType.KMS),
   [AuditLogStreamProduct.SecretScanning]: getProjectLucideIcon(ProjectType.SecretScanning),
   [AuditLogStreamProduct.PAM]: getProjectLucideIcon(ProjectType.PAM),
+  [AuditLogStreamProduct.AgentVault]: getProjectLucideIcon(ProjectType.AgentVault),
   [AuditLogStreamProduct.Organization]: Building2Icon
 };
 
@@ -53,7 +55,8 @@ const PRODUCTS = [
   AuditLogStreamProduct.CertificateManager,
   AuditLogStreamProduct.KMS,
   AuditLogStreamProduct.SecretScanning,
-  AuditLogStreamProduct.PAM
+  AuditLogStreamProduct.PAM,
+  AuditLogStreamProduct.AgentVault
 ];
 
 // Sentinel for the pinned "All products" entry — the default (no filter = stream everything).

@@ -1,6 +1,10 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AgentVaultMemberKind,
+  TAgentVaultMembershipCleanupServiceFactory
+} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -11,7 +15,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -51,6 +55,10 @@ type TMembershipIdentityServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
+  agentVaultMembershipCleanupService: Pick<
+    TAgentVaultMembershipCleanupServiceFactory,
+    "cleanupActorAgentVaultMemberships"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
@@ -73,6 +81,7 @@ export const membershipIdentityServiceFactory = ({
   identityDAL,
   licenseService,
   applicationMembershipCleanupService,
+  agentVaultMembershipCleanupService,
   projectDAL,
   keyStore,
   usageMeteringService,
@@ -231,6 +240,7 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -437,6 +447,15 @@ export const membershipIdentityServiceFactory = ({
             },
             tx
           );
+
+          await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
+            {
+              projectId: projectScopeFields.scopeProjectId,
+              actorKind: AgentVaultMemberKind.Identity,
+              actorId: dto.selector.identityId
+            },
+            tx
+          );
         }
       }
 
@@ -479,9 +498,11 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
 
     if (needsRevocationBump && externalTx) {

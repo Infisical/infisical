@@ -21,6 +21,7 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
   [ProjectType.CertificateManager]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.KMS]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.PAM]: { className: "text-product-pam", icon: ProjectIcon },
+  [ProjectType.AgentVault]: { className: "text-product-av", icon: ProjectIcon },
   [ProjectType.SecretScanning]: { className: "text-project", icon: ProjectIcon },
   namespace: { className: "text-sub-org", icon: SubOrgIcon },
   instance: { className: "text-neutral", icon: InstanceIcon }
@@ -40,7 +41,9 @@ export const PageHeader = ({ title, description, children, className, scope, ico
               scope === "instance" && "decoration-neutral/90",
               scope === "namespace" && "decoration-sub-org/90",
               scope === ProjectType.PAM && "decoration-product-pam/90",
+              scope === ProjectType.AgentVault && "decoration-product-av/90",
               scope !== ProjectType.PAM &&
+                scope !== ProjectType.AgentVault &&
                 Object.values(ProjectType).includes((scope as ProjectType) ?? "") &&
                 "decoration-project/90",
               !scope && "no-underline"

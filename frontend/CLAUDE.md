@@ -80,6 +80,10 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
+### Org-scoped products
+
+PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. `useProject()` and `useProjectPermission()` resolve that project through `useImplicitProjectId()`, which maps the product in the pathname to the org's `<product>ProjectId`. A new org-scoped product therefore needs three things: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id and patches it into the cached org (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
+
 ## Conventions
 
 - ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.

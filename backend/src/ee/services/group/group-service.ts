@@ -28,7 +28,7 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
@@ -749,6 +749,7 @@ export const groupServiceFactory = ({
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, SecretIdentities.key);
       usageMeteringService.emit(actorOrgId, PamIdentities.key);
+      usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
@@ -756,6 +757,7 @@ export const groupServiceFactory = ({
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -1093,6 +1095,7 @@ export const groupServiceFactory = ({
     // The user may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1197,6 +1200,7 @@ export const groupServiceFactory = ({
     // The identity may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1286,6 +1290,7 @@ export const groupServiceFactory = ({
     // The user may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1373,6 +1378,7 @@ export const groupServiceFactory = ({
     // The identity may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

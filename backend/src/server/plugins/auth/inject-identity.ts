@@ -16,6 +16,7 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
+  TAgentVaultProxyAccessTokenJwtPayload,
   TGatewayAccessTokenJwtPayload,
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
@@ -112,6 +113,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TKmipServerAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN;
+      actor: ActorType.AGENT_VAULT_PROXY;
+      agentVaultProxyId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TAgentVaultProxyAccessTokenJwtPayload;
     };
 
 // A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
@@ -199,6 +210,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
         token: decodedToken as TKmipServerAccessTokenJwtPayload,
         actor: ActorType.KMIP_SERVER
+      } as const;
+    case AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+        token: decodedToken as TAgentVaultProxyAccessTokenJwtPayload,
+        actor: ActorType.AGENT_VAULT_PROXY
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -496,6 +513,33 @@ export const injectIdentity = fp(
             authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
             actor,
             kmipServerId: token.kmipServerId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN: {
+          const proxy = await server.services.agentVaultProxy.getProxyForAuth(token.agentVaultProxyId);
+
+          // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route
+          // may skip it. Bumped on enroll and by the revoke route.
+          if (!proxy || proxy.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "Agent Vault proxy token has been revoked" });
+          }
+
+          if (proxy.orgId !== token.orgId) {
+            throw new UnauthorizedError({ message: "Agent Vault proxy token org mismatch" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+            actor,
+            agentVaultProxyId: token.agentVaultProxyId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

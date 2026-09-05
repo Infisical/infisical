@@ -5,9 +5,14 @@ import { ChevronLeft } from "lucide-react";
 
 import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
+import {
+  hasIntermediateProjectsView,
+  isOrgScopedProduct,
+  projectTypeToUrlSlug
+} from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AgentVaultNav } from "./AgentVaultNav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
@@ -33,7 +38,8 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.KMS]: KmsNav,
   [ProjectType.CertificateManager]: CertManagerNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.SecretScanning]: SecretScanningNav
+  [ProjectType.SecretScanning]: SecretScanningNav,
+  [ProjectType.AgentVault]: AgentVaultNav
 };
 
 // --- Project nav wrapper ---
@@ -72,6 +78,8 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
+    // Agent Vault renders access control as in-page tabs (no secondary submenu).
+    if (isOnAccessControl && currentProject.type === ProjectType.AgentVault) return null;
     // PAM navigation is handled separately by PamNav.
     if (currentProject.type === ProjectType.PAM) return null;
     // Secret manager renders access control as in-page tabs (no secondary submenu).
@@ -96,17 +104,17 @@ export const ProjectNav = () => {
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
     const typePath = PROJECT_TYPE_PATH[currentProject.type];
-    const isPam = currentProject.type === ProjectType.PAM;
+    const isOrgScoped = isOrgScopedProduct(currentProject.type);
     // Already on this submenu's page (e.g. after collapsing via the "< back" button):
     // re-navigating to the same URL would push a duplicate history entry, so just re-expand.
-    const submenuPath = isPam
-      ? `/organizations/${currentOrg.id}/pam/${submenu.pathSuffix}`
+    const submenuPath = isOrgScoped
+      ? `/organizations/${currentOrg.id}/${typePath}/${submenu.pathSuffix}`
       : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: isPam
-        ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+      to: isOrgScoped
+        ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
         : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,

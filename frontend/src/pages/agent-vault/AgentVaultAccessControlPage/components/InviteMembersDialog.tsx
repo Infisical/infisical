@@ -1,0 +1,114 @@
+import { useMemo, useState } from "react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
+import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useAddAgentVaultProductUserMembers } from "@app/hooks/api/agentVault";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
+import { ProductRoleField } from "./ProductRoleField";
+
+type TCandidate = { value: string; label: string; email: string };
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+};
+
+export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
+  const { data: projectUsers = [] } = useGetWorkspaceUsers(currentProject.id);
+  const addMembers = useAddAgentVaultProductUserMembers();
+
+  const [selected, setSelected] = useState<TCandidate[]>([]);
+  const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
+
+  // Only org members who are not already in Agent Vault, so the list never offers a no-op.
+  const candidates = useMemo(() => {
+    const attached = new Set(projectUsers.map((member) => member.user.id));
+    return orgUsers
+      .filter((orgUser) => !attached.has(orgUser.user.id))
+      .map((orgUser) => {
+        const name = `${orgUser.user.firstName ?? ""} ${orgUser.user.lastName ?? ""}`.trim();
+        const email = orgUser.user.email || orgUser.user.username || "";
+        return { value: orgUser.user.id, label: name || email, email };
+      });
+  }, [orgUsers, projectUsers]);
+
+  const handleAdd = async () => {
+    const { addedCount } = await addMembers.mutateAsync({
+      projectId: currentProject.id,
+      userIds: selected.map((candidate) => candidate.value),
+      emails: [],
+      role
+    });
+    createNotification({
+      text: `${addedCount} user${addedCount === 1 ? "" : "s"} added`,
+      type: "success"
+    });
+    setSelected([]);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Users</DialogTitle>
+          <DialogDescription>Add existing members of {currentOrg.name}.</DialogDescription>
+        </DialogHeader>
+
+        <Field>
+          <FieldLabel>Users</FieldLabel>
+          <FieldContent>
+            <FilterableSelect
+              isMulti
+              value={selected}
+              onChange={(value) => setSelected((value ?? []) as TCandidate[])}
+              options={candidates}
+              placeholder="Search by name or email..."
+              getOptionLabel={(option) => option.label}
+              getOptionValue={(option) => option.value}
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>Product Role</FieldLabel>
+          <FieldContent>
+            <ProductRoleField value={role} onChange={setRole} idPrefix="invite-role" />
+          </FieldContent>
+        </Field>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="av"
+            isPending={addMembers.isPending}
+            isDisabled={selected.length === 0}
+            onClick={handleAdd}
+          >
+            Add Users
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};

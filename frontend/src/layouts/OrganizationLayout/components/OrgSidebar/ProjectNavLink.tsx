@@ -10,7 +10,7 @@ import {
   useSidebarScope
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { isOrgScopedProduct } from "@app/helpers/project";
 
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -30,9 +30,9 @@ export const ProjectNavLink = ({
   const sidebarScope = useSidebarScope();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const isPam = currentProject.type === ProjectType.PAM;
-  const basePath = isPam
-    ? `/organizations/${currentOrg.id}/pam`
+  const isOrgScoped = isOrgScopedProduct(currentProject.type);
+  const basePath = isOrgScoped
+    ? `/organizations/${currentOrg.id}/${typePath}`
     : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
 
@@ -89,8 +89,8 @@ export const ProjectNavLink = ({
         <Link
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           to={
-            isPam
-              ? (`/organizations/$orgId/pam/${item.pathSuffix}` as any)
+            isOrgScoped
+              ? (`/organizations/$orgId/${typePath}/${item.pathSuffix}` as any)
               : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -7,6 +7,7 @@ export enum ActorType {
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
+  AGENT_VAULT_PROXY = "agentVaultProxy",
   UNKNOWN_USER = "unknownUser"
 }
 
@@ -450,5 +451,27 @@ export enum EventType {
   // Secret folder access (folder RBAC)
   CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
   UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
-  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access"
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access",
+
+  AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
+  AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
+  AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
+  AGENT_VAULT_CONNECTION_CREATE = "agent-vault-connection-create",
+  AGENT_VAULT_CONNECTION_UPDATE = "agent-vault-connection-update",
+  AGENT_VAULT_CONNECTION_DELETE = "agent-vault-connection-delete",
+  AGENT_VAULT_PRODUCT_MEMBER_ADD = "agent-vault-product-member-add",
+  AGENT_VAULT_PRODUCT_MEMBER_UPDATE = "agent-vault-product-member-update",
+  AGENT_VAULT_PRODUCT_MEMBER_REMOVE = "agent-vault-product-member-remove",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+
+  AGENT_VAULT_SESSION_EXPIRE = "agent-vault-session-expire",
+  AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
+  AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
+  AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
+  AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete"
 }

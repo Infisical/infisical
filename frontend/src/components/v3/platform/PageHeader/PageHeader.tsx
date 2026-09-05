@@ -61,6 +61,11 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
     icon: ProjectIcon,
     iconClassName: "text-product-pam",
     titleClassName: "decoration-product-pam/90"
+  },
+  [ProjectType.AgentVault]: {
+    icon: ProjectIcon,
+    iconClassName: "text-product-av",
+    titleClassName: "decoration-product-av/90"
   }
 };
 

@@ -5,7 +5,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 
 import {
   TAddIdentitiesToGroup,
@@ -307,6 +307,7 @@ export const addUsersToGroupByUserIds = async ({
     // These users may now be in a secret-manager or PAM project through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -382,6 +383,7 @@ export const addIdentitiesToGroup = async ({
     // These identities may now be in a secret-manager or PAM project through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -581,6 +583,7 @@ export const removeUsersFromGroupByUserIds = async ({
     // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
   };
 
@@ -704,6 +707,7 @@ export const removeIdentitiesFromGroup = async ({
     // These identities may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };

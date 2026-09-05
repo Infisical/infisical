@@ -14,7 +14,8 @@ export const ResourceAuthMethodsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   relayId: z.string().uuid().nullable().optional(),
-  kmipServerId: z.string().uuid().nullable().optional()
+  kmipServerId: z.string().uuid().nullable().optional(),
+  agentVaultProxyId: z.string().uuid().nullable().optional()
 });
 
 export type TResourceAuthMethods = z.infer<typeof ResourceAuthMethodsSchema>;

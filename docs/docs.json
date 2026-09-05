@@ -410,11 +410,6 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
@@ -747,6 +742,27 @@
                   },
                   "documentation/platform/pam/auditing",
                   "documentation/platform/pam/architecture"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "sparkles",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Agent Vault",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/agent-vault/access-bundles",
+                      "documentation/platform/agent-vault/sessions",
+                      "documentation/platform/agent-vault/proxies"
+                    ]
+                  }
                 ]
               }
             ]
@@ -1252,6 +1268,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/av",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",

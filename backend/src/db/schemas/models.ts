@@ -270,6 +270,12 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
+  AgentVaultAccessBundle = "agent_vault_access_bundles",
+  AgentVaultConnection = "agent_vault_connections",
+  AgentVaultAccessBundleMember = "agent_vault_access_bundle_members",
+  AgentVaultSession = "agent_vault_sessions",
+  AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultProxy = "agent_vault_proxies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
@@ -459,7 +465,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AgentVault = "agent-vault"
 }
 
 export enum ActionProjectType {
@@ -468,6 +475,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AgentVault = ProjectType.AgentVault,
   // project operations that happen on all types
   Any = "any"
 }

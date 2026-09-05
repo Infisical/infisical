@@ -120,15 +120,24 @@ export type SignupOnboardingDTO = {
     | "kms"
     | "secret-scanning"
     | "pam"
+    | "agent-vault"
     | "exploring";
   /** An empty array means "just exploring". */
-  selectedProducts?: ("secret-manager" | "cert-manager" | "kms" | "secret-scanning" | "pam")[];
+  selectedProducts?: (
+    | "secret-manager"
+    | "cert-manager"
+    | "kms"
+    | "secret-scanning"
+    | "pam"
+    | "agent-vault"
+  )[];
   launchDestination?:
     | "secret-manager"
     | "cert-manager"
     | "kms"
     | "secret-scanning"
     | "pam"
+    | "agent-vault"
     | "organization-overview";
   attributionSource?: string;
 };

@@ -26,6 +26,7 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { isOrgScopedProduct } from "@app/helpers/project";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -146,7 +147,7 @@ const LogsSectionComponent = ({
           <CardDescription>
             Search and review a detailed history of events
             {!project && " across your organization"}
-            {project && project.type !== ProjectType.PAM && " in this project"}.
+            {project && !isOrgScopedProduct(project.type) && " in this project"}.
           </CardDescription>
           {showFilters && (
             <CardAction>

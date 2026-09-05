@@ -33,7 +33,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -155,13 +155,21 @@ export const identityV2ServiceFactory = ({
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
         projectDAL.findById(scopeData.projectId)
       );
-      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+      const adminMemberOnlyProductLabels: Partial<Record<ProjectType, string>> = {
+        [ProjectType.CertificateManager]: "Certificate Manager",
+        [ProjectType.PAM]: "PAM",
+        [ProjectType.AgentVault]: "Agent Vault"
+      };
+      const adminMemberOnlyLabel = project?.type
+        ? adminMemberOnlyProductLabels[project.type as ProjectType]
+        : undefined;
+      if (adminMemberOnlyLabel) {
         const invalidRoles = data.roles.filter(
           (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
         );
         if (invalidRoles.length > 0) {
           throw new BadRequestError({
-            message: `${project.type === ProjectType.PAM ? "PAM" : "Certificate Manager"} only supports Admin and Member roles.`
+            message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
           });
         }
       }
@@ -245,8 +253,13 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      // PAM's project membership IS its product membership, so NoAccess would be meaningless there
-      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
+      // PAM's and Agent Vault's project membership IS their product membership, so NoAccess would be
+      // meaningless there
+      if (
+        project?.type === ProjectType.CertificateManager ||
+        project?.type === ProjectType.PAM ||
+        project?.type === ProjectType.AgentVault
+      ) {
         projectMemberRole = ProjectMembershipRole.Member;
       }
     }
@@ -319,6 +332,7 @@ export const identityV2ServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -341,8 +355,11 @@ export const identityV2ServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
+      // Compared against undefined, not truthiness: hasDeleteProtection: false on its own is a real
+      // update, and a truthiness check skipped it while still answering 200, so the flag could be
+      // turned on but never off.
       const updatedIdentity =
-        data?.name || data?.hasDeleteProtection
+        data?.name !== undefined || data?.hasDeleteProtection !== undefined
           ? await identityDAL.updateById(
               dto.selector.identityId,
               { name: data.name, hasDeleteProtection: data.hasDeleteProtection },
@@ -421,6 +438,7 @@ export const identityV2ServiceFactory = ({
     usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);
     usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
     usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
 
     return { identity: deletedIdentity };
   };
