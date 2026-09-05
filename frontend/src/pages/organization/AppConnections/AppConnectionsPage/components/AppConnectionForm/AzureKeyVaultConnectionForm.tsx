@@ -46,7 +46,7 @@ import {
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -201,6 +201,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 
