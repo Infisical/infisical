@@ -20,7 +20,8 @@ export type TAcmeCertificateAuthority = {
     dnsAppConnectionId: string;
     dnsProviderConfig: {
       provider: AcmeDnsProvider;
-      hostedZoneId: string;
+      hostedZoneId?: string;
+      hostedZoneIds?: string[];
     };
     directoryUrl: string;
     accountEmail: string;

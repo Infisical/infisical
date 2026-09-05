@@ -21,7 +21,9 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
+import { listCloudflareZones } from "@app/services/app-connection/cloudflare/cloudflare-connection-fns";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
+import { listDNSMadeEasyZones } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-fns";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -46,7 +48,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
-import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
+import { route53DeleteRecord, route53GetHostedZoneName, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 import { throwIfAcmeOrderAborted } from "./acme-certificate-authority-errors";
@@ -171,10 +173,19 @@ type DBConfigurationColumn = {
   dnsProvider: string;
   directoryUrl: string;
   accountEmail: string;
-  hostedZoneId: string;
+  hostedZoneId?: string;
+  hostedZoneIds?: string[];
   eabKid?: string;
   eabHmacKey?: string;
   dnsResolver?: string;
+};
+
+export const getConfiguredHostedZoneIds = (dnsProviderConfig: {
+  hostedZoneId?: string;
+  hostedZoneIds?: string[];
+}): string[] => {
+  if (dnsProviderConfig.hostedZoneIds?.length) return dnsProviderConfig.hostedZoneIds;
+  return dnsProviderConfig.hostedZoneId ? [dnsProviderConfig.hostedZoneId] : [];
 };
 
 export const castDbEntryToAcmeCertificateAuthority = (
@@ -185,6 +196,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
   }
 
   const dbConfigurationCol = ca.externalCa.configuration as DBConfigurationColumn;
+  const hostedZoneIds = getConfiguredHostedZoneIds(dbConfigurationCol);
 
   return {
     id: ca.id,
@@ -197,7 +209,8 @@ export const castDbEntryToAcmeCertificateAuthority = (
       dnsAppConnectionId: ca.externalCa.dnsAppConnectionId as string,
       dnsProviderConfig: {
         provider: dbConfigurationCol.dnsProvider as AcmeDnsProvider,
-        hostedZoneId: dbConfigurationCol.hostedZoneId
+        hostedZoneId: hostedZoneIds[0],
+        hostedZoneIds
       },
       directoryUrl: dbConfigurationCol.directoryUrl,
       accountEmail: dbConfigurationCol.accountEmail,
@@ -284,6 +297,84 @@ const getAcmeChallengeRecord = async (
 
   const recordValue = `"${keyAuthorization}"`; // must be double quoted
   return { recordName, recordValue };
+};
+
+type TAppConnectionForDns = Awaited<ReturnType<typeof decryptAppConnection>>;
+
+const listConfiguredZones = async (
+  provider: AcmeDnsProvider,
+  hostedZoneIds: string[],
+  connection: TAppConnectionForDns
+): Promise<{ id: string; name: string }[]> => {
+  switch (provider) {
+    case AcmeDnsProvider.Route53: {
+      return Promise.all(
+        hostedZoneIds.map(async (id) => ({
+          id,
+          name: await route53GetHostedZoneName(connection as TAwsConnection, id)
+        }))
+      );
+    }
+    case AcmeDnsProvider.Cloudflare: {
+      const zones = await listCloudflareZones(connection as TCloudflareConnection);
+      return zones.filter((zone) => hostedZoneIds.includes(zone.id));
+    }
+    case AcmeDnsProvider.DNSMadeEasy: {
+      const zones = await listDNSMadeEasyZones(connection as TDNSMadeEasyConnection);
+      return zones.filter((zone) => hostedZoneIds.includes(zone.id));
+    }
+    case AcmeDnsProvider.AzureDNS: {
+      // Azure DNS zone IDs are ARM resource IDs ending in the zone name, e.g.
+      // /subscriptions/.../providers/Microsoft.Network/dnszones/example.com
+      return hostedZoneIds.map((id) => ({ id, name: id.slice(id.lastIndexOf("/") + 1) }));
+    }
+    default: {
+      throw new BadRequestError({ message: `Unsupported DNS provider: ${provider as string}` });
+    }
+  }
+};
+
+const createHostedZoneIdResolver = (
+  provider: AcmeDnsProvider,
+  hostedZoneIds: string[],
+  connection: TAppConnectionForDns
+): ((domain: string) => Promise<string>) => {
+  if (hostedZoneIds.length <= 1) {
+    return async () => {
+      if (!hostedZoneIds.length) {
+        throw new BadRequestError({ message: "No DNS zones are configured on this ACME certificate authority" });
+      }
+      return hostedZoneIds[0];
+    };
+  }
+
+  let zonesPromise: Promise<{ id: string; name: string }[]> | undefined;
+
+  return async (domain: string) => {
+    if (!zonesPromise) {
+      zonesPromise = listConfiguredZones(provider, hostedZoneIds, connection);
+    }
+    const zones = await zonesPromise;
+
+    const normalizedDomain = domain.toLowerCase();
+    let match: { id: string; name: string } | undefined;
+    for (const zone of zones) {
+      const zoneName = zone.name.toLowerCase();
+      if (normalizedDomain === zoneName || normalizedDomain.endsWith(`.${zoneName}`)) {
+        if (!match || zoneName.length > match.name.length) {
+          match = { id: zone.id, name: zoneName };
+        }
+      }
+    }
+
+    if (!match) {
+      throw new BadRequestError({
+        message: `None of the DNS zones configured on this ACME certificate authority match the domain '${domain}'. Add the DNS zone for this domain to the certificate authority configuration.`
+      });
+    }
+
+    return match.id;
+  };
 };
 
 export const executeAcmeOrder = async (
@@ -420,6 +511,12 @@ export const executeAcmeOrder = async (
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
   const connection = await decryptAppConnection(appConnection, kmsService);
 
+  const resolveHostedZoneId = createHostedZoneIdResolver(
+    acmeCa.configuration.dnsProviderConfig.provider,
+    getConfiguredHostedZoneIds(acmeCa.configuration.dnsProviderConfig),
+    connection
+  );
+
   await reportProgress("Submitting order to the certificate authority");
 
   const pem = await acmeClient.auto({
@@ -444,9 +541,11 @@ export const executeAcmeOrder = async (
         keyAuthorization
       );
 
+      const hostedZoneId = await resolveHostedZoneId(authz.identifier.value);
+
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+          await route53UpsertRecord(connection as TAwsConnection, hostedZoneId, {
             name: recordName,
             type: "TXT",
             value: recordValue,
@@ -456,30 +555,15 @@ export const executeAcmeOrder = async (
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
-          await cloudflareInsertTxtRecord(
-            connection as TCloudflareConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await cloudflareInsertTxtRecord(connection as TCloudflareConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         case AcmeDnsProvider.DNSMadeEasy: {
-          await dnsMadeEasyInsertTxtRecord(
-            connection as TDNSMadeEasyConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await dnsMadeEasyInsertTxtRecord(connection as TDNSMadeEasyConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         case AcmeDnsProvider.AzureDNS: {
-          await azureDnsInsertTxtRecord(
-            connection as TAzureDnsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await azureDnsInsertTxtRecord(connection as TAzureDnsConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         default: {
@@ -504,9 +588,11 @@ export const executeAcmeOrder = async (
         keyAuthorization
       );
 
+      const hostedZoneId = await resolveHostedZoneId(authz.identifier.value);
+
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+          await route53DeleteRecord(connection as TAwsConnection, hostedZoneId, {
             name: recordName,
             type: "TXT",
             value: recordValue,
@@ -516,30 +602,15 @@ export const executeAcmeOrder = async (
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
-          await cloudflareDeleteTxtRecord(
-            connection as TCloudflareConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await cloudflareDeleteTxtRecord(connection as TCloudflareConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         case AcmeDnsProvider.DNSMadeEasy: {
-          await dnsMadeEasyDeleteTxtRecord(
-            connection as TDNSMadeEasyConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await dnsMadeEasyDeleteTxtRecord(connection as TDNSMadeEasyConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         case AcmeDnsProvider.AzureDNS: {
-          await azureDnsDeleteTxtRecord(
-            connection as TAzureDnsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await azureDnsDeleteTxtRecord(connection as TAzureDnsConnection, hostedZoneId, recordName, recordValue);
           break;
         }
         default: {
@@ -735,6 +806,8 @@ export const AcmeCertificateAuthorityFns = ({
           tx
         );
 
+        const hostedZoneIds = getConfiguredHostedZoneIds(dnsProviderConfig);
+
         await externalCertificateAuthorityDAL.create(
           {
             caId: ca.id,
@@ -744,7 +817,8 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              hostedZoneId: hostedZoneIds[0],
+              hostedZoneIds,
               eabKid,
               eabHmacKey,
               dnsResolver
@@ -852,6 +926,8 @@ export const AcmeCertificateAuthorityFns = ({
           resolvedEabHmacKey = undefined;
         }
 
+        const hostedZoneIds = getConfiguredHostedZoneIds(dnsProviderConfig);
+
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -863,7 +939,8 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              hostedZoneId: hostedZoneIds[0],
+              hostedZoneIds,
               eabKid,
               eabHmacKey: resolvedEabHmacKey,
               dnsResolver

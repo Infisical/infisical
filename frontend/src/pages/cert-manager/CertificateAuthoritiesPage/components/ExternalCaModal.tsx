@@ -65,7 +65,7 @@ const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 type ExternalCaConfigurationPayload =
   | {
-      dnsProviderConfig: { provider: AcmeDnsProvider; hostedZoneId: string };
+      dnsProviderConfig: { provider: AcmeDnsProvider; hostedZoneIds: string[] };
       directoryUrl: string;
       accountEmail: string;
       dnsAppConnectionId: string;
@@ -323,7 +323,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           status: CaStatus.ACTIVE,
           configuration: {
             dnsAppConnection: { id: "", name: "" },
-            dnsProviderConfig: { provider: AcmeDnsProvider.ROUTE53, hostedZoneId: "" },
+            dnsProviderConfig: { provider: AcmeDnsProvider.ROUTE53, hostedZoneIds: [] },
             directoryUrl: "",
             accountEmail: "",
             eabKid: "",
@@ -496,7 +496,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             },
             dnsProviderConfig: {
               provider: ca.configuration.dnsProviderConfig.provider,
-              hostedZoneId: ca.configuration.dnsProviderConfig.hostedZoneId
+              hostedZoneIds:
+                ca.configuration.dnsProviderConfig.hostedZoneIds ??
+                (ca.configuration.dnsProviderConfig.hostedZoneId
+                  ? [ca.configuration.dnsProviderConfig.hostedZoneId]
+                  : [])
             },
             directoryUrl: ca.configuration.directoryUrl,
             accountEmail: ca.configuration.accountEmail,

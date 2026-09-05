@@ -1,8 +1,9 @@
 import { Control, Controller } from "react-hook-form";
-import { SingleValue } from "react-select";
+import { MultiValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
+  CreatableSelect,
   Field,
   FieldError,
   FieldLabel,
@@ -102,14 +103,30 @@ export const AcmeFields = ({
     {dnsProvider === AcmeDnsProvider.ROUTE53 && (
       <Controller
         control={control}
-        defaultValue=""
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        render={({ field, fieldState: { error } }) => (
+        name="configuration.dnsProviderConfig.hostedZoneIds"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
             <FieldLabel>
-              Hosted Zone ID <span className="text-danger">*</span>
+              Hosted Zone IDs <span className="text-danger">*</span>
             </FieldLabel>
-            <Input {...field} placeholder="Z040441124N1GOOMCQYX1" isError={Boolean(error)} />
+            <CreatableSelect
+              isMulti
+              value={(value ?? []).map((id) => ({ id, name: id }))}
+              onChange={(options) => {
+                onChange((options as MultiValue<{ id: string; name: string }>).map((o) => o.id));
+              }}
+              onCreateOption={(input) => {
+                onChange([...(value ?? []), input.trim()]);
+              }}
+              options={[]}
+              placeholder="Z040441124N1GOOMCQYX1"
+              noOptionsMessage={() => "Type a hosted zone ID and press enter to add it"}
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+              getNewOptionData={(inputValue) => ({ id: inputValue, name: inputValue })}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+              isError={Boolean(error)}
+            />
             <FieldError errors={[error]} />
           </Field>
         )}
@@ -117,23 +134,23 @@ export const AcmeFields = ({
     )}
     {dnsProvider === AcmeDnsProvider.Cloudflare && (
       <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
+        name="configuration.dnsProviderConfig.hostedZoneIds"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
+            <FieldLabel>Zones</FieldLabel>
             <FilterableSelect
+              isMulti
               isLoading={isZonesPending && !!dnsAppConnection.id}
               isDisabled={!dnsAppConnection.id}
-              value={
-                cloudflareZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
+              value={(value ?? []).map(
+                (id) => cloudflareZones.find((zone) => zone.id === id) ?? { id, name: id }
+              )}
+              onChange={(options) => {
+                onChange((options as MultiValue<TCloudflareZone>).map((option) => option.id));
               }}
               options={cloudflareZones}
-              placeholder="Select a zone..."
+              placeholder="Select zones..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               isError={Boolean(error)}
@@ -145,23 +162,23 @@ export const AcmeFields = ({
     )}
     {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
       <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
+        name="configuration.dnsProviderConfig.hostedZoneIds"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
+            <FieldLabel>Zones</FieldLabel>
             <FilterableSelect
+              isMulti
               isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
               isDisabled={!dnsAppConnection.id}
-              value={
-                dnsMadeEasyZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
+              value={(value ?? []).map(
+                (id) => dnsMadeEasyZones.find((zone) => zone.id === id) ?? { id, name: id }
+              )}
+              onChange={(options) => {
+                onChange((options as MultiValue<TDNSMadeEasyZone>).map((option) => option.id));
               }}
               options={dnsMadeEasyZones}
-              placeholder="Select a zone..."
+              placeholder="Select zones..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               isError={Boolean(error)}
@@ -173,23 +190,23 @@ export const AcmeFields = ({
     )}
     {dnsProvider === AcmeDnsProvider.AzureDNS && (
       <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
+        name="configuration.dnsProviderConfig.hostedZoneIds"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
+            <FieldLabel>Zones</FieldLabel>
             <FilterableSelect
+              isMulti
               isLoading={isAzureDNSZonesPending && !!dnsAppConnection.id}
               isDisabled={!dnsAppConnection.id}
-              value={
-                azureDnsZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TAzureDNSZone>)?.id ?? null);
+              value={(value ?? []).map(
+                (id) => azureDnsZones.find((zone) => zone.id === id) ?? { id, name: id }
+              )}
+              onChange={(options) => {
+                onChange((options as MultiValue<TAzureDNSZone>).map((option) => option.id));
               }}
               options={azureDnsZones}
-              placeholder="Select a zone..."
+              placeholder="Select zones..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               isError={Boolean(error)}

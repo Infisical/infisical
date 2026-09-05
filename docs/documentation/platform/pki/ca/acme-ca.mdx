@@ -143,7 +143,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
               - Name: A slug-friendly name for the ACME-compatible CA such as `lets-encrypt-production`.
               - DNS App Connection: The App Connection from Step 1 used for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge in ACME.
-              - Zone / Zone ID: Enter the Zone / Zone ID for the domain(s) you'll be requesting certificates for.
+              - Zones / Hosted Zone IDs: Select one or more zones for the domains you'll be requesting certificates for. When multiple zones are configured, Infisical automatically uses the zone matching each certificate domain during DNS validation.
               - Directory URL: Enter the **ACME Directory URL** for your desired upstream ACME-compatible CA such as `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt.
               - Account Email: The email address to associate with your ACME account. This email will receive important notifications about your certificates.
               - EAB Key Identifier (KID): (Optional) The Key Identifier (KID) provided by your ACME CA for External Account Binding (EAB). This is required by some ACME providers (e.g., ZeroSSL, DigiCert) to link your ACME account to an external account you've pre-registered with them.
@@ -172,7 +172,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                   },
                   "dnsProviderConfig": {
                     "provider": "route53",
-                    "hostedZoneId": "Z040441124N1GOOMCQYX1"
+                    "hostedZoneIds": ["Z040441124N1GOOMCQYX1"]
                   },
                   "directoryUrl": "https://acme-v02.api.letsencrypt.org/directory",
                   "accountEmail": "admin@example.com",
@@ -200,7 +200,8 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
                     "dnsAppConnectionId": "1e5f8c0d-09d2-492c-9b28-469acd8e841b",
                     "dnsProviderConfig": {
                     "provider": "route53",
-                    "hostedZoneId": "Z040441124N1GOOMCQYX1"
+                    "hostedZoneId": "Z040441124N1GOOMCQYX1",
+                    "hostedZoneIds": ["Z040441124N1GOOMCQYX1"]
                     }
                 }
             }
