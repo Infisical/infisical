@@ -498,6 +498,25 @@ export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("
   unit: "s"
 });
 
+// error.type buckets every rejected credential into "auth", which cannot tell a spent or
+// out-of-policy credential from a wrong one. The throw sites already carry a reasonCode, so this
+// surfaces it as a label. The list is the label's cardinality bound: add a code here to see it
+// broken out, and anything unlisted reports as "other".
+const AUTH_ATTEMPT_REASONS = new Set([
+  "invalid_client_secret",
+  "client_secret_expired",
+  "client_secret_usage_limit_reached",
+  "client_secret_usage_limit_raced",
+  "temporarily_locked",
+  "sub_org_unauthorized"
+]);
+
+const classifyAuthReason = (err: unknown): string | undefined => {
+  const reason = (err as { detail?: { reasonCode?: unknown } } | null)?.detail?.reasonCode;
+  if (typeof reason !== "string") return undefined;
+  return AUTH_ATTEMPT_REASONS.has(reason) ? reason : "other";
+};
+
 export const recordAuthAttemptMetric = (params: {
   startTime: number;
   method: AuthAttemptAuthMethod;
@@ -510,7 +529,11 @@ export const recordAuthAttemptMetric = (params: {
     "infisical.auth.method": params.method,
     "infisical.auth.result": params.result
   };
-  if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
+  if (params.error !== undefined) {
+    attributes["error.type"] = classifyError(params.error);
+    const reason = classifyAuthReason(params.error);
+    if (reason) attributes["infisical.auth.failure_reason"] = reason;
+  }
   authAttemptDurationHistogram.record((performance.now() - params.startTime) / 1000, attributes);
 };
 
