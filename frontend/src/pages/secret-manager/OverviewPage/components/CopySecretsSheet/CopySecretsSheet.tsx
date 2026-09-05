@@ -622,6 +622,11 @@ const CopySecretsSession = ({
                         {bulkSelectionSummary}
                       </FieldDescription>
                     )}
+                    {unavailableValueCount > 0 && (
+                      <p className="text-xs text-muted" aria-live="polite">
+                        {`${unavailableValueCount} selected ${unavailableValueCount === 1 ? "key has" : "keys have"} no value access and will be copied without values. Existing destination values are preserved.`}
+                      </p>
+                    )}
                   </div>
                   <div className="min-h-0 flex-1">{sourceContent}</div>
                 </section>
@@ -777,13 +782,6 @@ const CopySecretsSession = ({
                 </TooltipTrigger>
                 <TooltipContent>{disabledReason}</TooltipContent>
               </Tooltip>
-              {(unavailableValueCount > 0 || disabledReason) && (
-                <p className="w-full text-xs text-muted" aria-live="polite">
-                  {disabledReason && `${disabledReason}. `}
-                  {unavailableValueCount > 0 &&
-                    `${unavailableValueCount} selected ${unavailableValueCount === 1 ? "key has" : "keys have"} no value access and will be copied without values. Existing destination values are preserved. `}
-                </p>
-              )}
             </SheetFooter>
           </form>
         </SheetContent>
