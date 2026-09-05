@@ -175,6 +175,8 @@ type Props = {
   // that is outstanding so it can keep the row mounted instead of discarding the edit on scroll.
   unsavedChangeId?: string;
   onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
+  /** False while the owning row is idle, which keeps the hover action bar out of the DOM. */
+  shouldRenderHoverActions?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -214,7 +216,8 @@ export const SecretEditTableRow = ({
   pendingKeyName,
   revokedProjectFolderGrant,
   unsavedChangeId,
-  onUnsavedChange
+  onUnsavedChange,
+  shouldRenderHoverActions = true
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -918,6 +921,9 @@ export const SecretEditTableRow = ({
 
   const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
   const showMenuWhileFocused = isHoveringActionZone || shouldStayExpanded;
+  // Hover is not the only thing that opens the bar, so keep it mounted whenever a popover, the
+  // dropdown or the focused-field affordance is holding it open.
+  const shouldMountActionBar = shouldRenderHoverActions || showMenuWhileFocused;
 
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
@@ -1080,7 +1086,7 @@ export const SecretEditTableRow = ({
           />
         </div>
         {!isDirtyState && !isFieldActive && (
-          <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-hover:pointer-events-none group-hover:opacity-0">
+          <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-focus-within:pointer-events-none group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:opacity-0">
             <div className="flex items-center gap-1">
               {comment && !isImportedSecret && (
                 <Tooltip>
@@ -1141,7 +1147,8 @@ export const SecretEditTableRow = ({
           <div
             className={twMerge(
               "ml-auto flex shrink-0 items-center",
-              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView &&
+                "transition-[margin] duration-300 group-focus-within:mr-16 group-hover:mr-16",
               isSingleEnvView && isFieldActive && "mr-8"
             )}
           >
@@ -1221,12 +1228,7 @@ export const SecretEditTableRow = ({
             <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
           </div>
         )}
-      {!(
-        isDirty &&
-        (dirtyFields.key || dirtyFields.value) &&
-        !isImportedSecret &&
-        !isBatchMode
-      ) && (
+      {shouldMountActionBar && !isDirtyState && (
         <div
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}
@@ -1234,11 +1236,11 @@ export const SecretEditTableRow = ({
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:opacity-100",
+            "group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100",
             shouldStayExpanded && "pointer-events-auto opacity-100",
             isFieldActive &&
               !showMenuWhileFocused &&
-              "group-hover:pointer-events-none group-hover:opacity-0",
+              "group-focus-within:pointer-events-none group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:opacity-0",
             isFieldActive && showMenuWhileFocused && "pointer-events-auto opacity-100",
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}

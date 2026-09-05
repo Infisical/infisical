@@ -48,6 +48,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -157,6 +158,18 @@ export const SecretTableRow = ({
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
 
   const isSingleEnvView = environments.length === 1;
+  // The single-environment row renders the secret's name and value inputs, which mount the bar on
+  // focus; only the multi-environment row, which is labels and status cells, needs a tab stop.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: !isSingleEnvView
+  });
+  // The override row always renders its own value input.
+  const {
+    shouldRenderActions: shouldRenderOverrideActions,
+    groupClassName: overrideGroupClassName,
+    rowHoverProps: overrideRowHoverProps
+  } = useRowHoverActions({ needsRowTabStop: false });
+
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -282,7 +295,12 @@ export const SecretTableRow = ({
         ref={setRowRef}
         data-index={virtualIndex}
         onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
-        className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
+        className={twMerge(
+          groupClassName,
+          "hover:z-10",
+          pendingActionRowClass(singleEnvPendingAction)
+        )}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -354,6 +372,7 @@ export const SecretTableRow = ({
             isSingleEnvView
             unsavedChangeId={singleEnvSlug}
             onUnsavedChange={handleEditorUnsavedChange}
+            shouldRenderHoverActions={shouldRenderActions}
             isBatchMode={isBatchMode}
             onBatchRevert={onBatchRevert}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -424,49 +443,51 @@ export const SecretTableRow = ({
                   </Badge>
                 )}
             </div>
-            <div
-              className={twMerge(
-                "absolute z-20",
-                "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                "pointer-events-none opacity-0 transition-all duration-300",
-                "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
-                "top-1/2 right-[3px] -translate-y-1/2"
-              )}
-            >
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      copyTokenToClipboard();
-                    }}
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  >
-                    {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Secret Name</TooltipContent>
-              </Tooltip>
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      setIsEditSecretNameOpen(true);
-                      e.stopPropagation();
-                    }}
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Edit Secret Name</TooltipContent>
-              </Tooltip>
-            </div>
+            {shouldRenderActions && (
+              <div
+                className={twMerge(
+                  "absolute z-20",
+                  "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+                  "pointer-events-none opacity-0 transition-all duration-300",
+                  "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+                  "top-1/2 right-[3px] -translate-y-1/2"
+                )}
+              >
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        copyTokenToClipboard();
+                      }}
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
+                    >
+                      {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy Secret Name</TooltipContent>
+                </Tooltip>
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      onClick={(e) => {
+                        setIsEditSecretNameOpen(true);
+                        e.stopPropagation();
+                      }}
+                      className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit Secret Name</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </TableCell>
         )}
         {environments.length > 1 &&
@@ -504,7 +525,11 @@ export const SecretTableRow = ({
       {isSingleEnvView && singleEnvShowOverride && (
         <TableRow
           data-index={virtualIndex}
-          className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+          className={twMerge(
+            overrideGroupClassName,
+            "bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+          )}
+          {...overrideRowHoverProps}
         >
           <TableCell>
             <GitBranchIcon className="text-override" />
@@ -515,6 +540,7 @@ export const SecretTableRow = ({
               isSingleEnvView
               unsavedChangeId={`${singleEnvSlug}-override`}
               onUnsavedChange={handleEditorUnsavedChange}
+              shouldRenderHoverActions={shouldRenderOverrideActions}
               secretName={secretKey}
               environment={singleEnvSlug}
               secretPath={secretPath}
