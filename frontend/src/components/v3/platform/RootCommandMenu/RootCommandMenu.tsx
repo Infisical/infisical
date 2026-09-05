@@ -20,7 +20,6 @@ import {
   UsersIcon
 } from "lucide-react";
 
-import { Badge } from "@app/components/v3/generic/Badge";
 import {
   GlobalCommandMenu,
   type GlobalCommandMenuGroup,
@@ -182,8 +181,6 @@ const useEntityCommandGroups = ({
 
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
     const organization = organizationsById.get(project.orgId);
-    const isSubOrganization =
-      project.orgId !== currentOrganizationId || organization?.isSubOrganization;
     const organizationPath = [
       organization?.rootOrganizationName,
       organization?.name ?? "Organization"
@@ -197,12 +194,6 @@ const useEntityCommandGroups = ({
       breadcrumb: `${organizationPath} / ${getProjectTitle(project.type)}`,
       icon: getProjectLucideIcon(project.type),
       iconClassName: projectIconClassNames[project.type],
-      badge: isSubOrganization ? (
-        <Badge variant="sub-org">
-          <SubOrgIcon aria-hidden="true" />
-          Sub-organization
-        </Badge>
-      ) : undefined,
       keywords: [project.slug, project.type, getProjectTitle(project.type), "project"],
       priority: project.orgId === currentOrganizationId ? 20 : 0,
       onSelect: () => navigateToProject(navigate, project)
