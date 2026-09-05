@@ -92,7 +92,10 @@ export const diff = <T>(
   identity: (item: T) => string | number | symbol = (t: T) => t as unknown as string | number | symbol
 ): T[] => {
   if (!root?.length && !other?.length) return [];
-  if (root?.length === undefined) return [...other];
+  // A missing/empty root means "no items", so the diff is empty. This also
+  // guards the `.filter` below against a nullish root. (Previously this
+  // returned `other`, so a null root behaved differently from an empty one.)
+  if (!root?.length) return [];
   if (!other?.length) return [...root];
   const bKeys = other.reduce(
     (acc, item) => {
