@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -62,7 +63,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -1392,6 +1398,8 @@ export const ConfigureEnrollmentModal = ({
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
 
+  const { subscription } = useSubscription();
+
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
     (m) => configuredMethods.includes(m) || pendingMethods.includes(m)
@@ -1399,6 +1407,11 @@ export const ConfigureEnrollmentModal = ({
   const addableMethods = ALL_ORDER.filter(
     (m) => !configuredMethods.includes(m) && !pendingMethods.includes(m)
   );
+  // API and ACME are available on every plan.
+  const lockedMethods: Partial<Record<EnrollmentMethod, boolean>> = {
+    est: !subscription.pkiEst,
+    scep: !subscription.pkiScep
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -1511,16 +1524,26 @@ export const ConfigureEnrollmentModal = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {addableMethods.map((m) => (
-                      <DropdownMenuItem key={m} onClick={() => handleAdd(m)}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{METHOD_LABELS[m]}</span>
-                          <span className="text-xs text-accent">
-                            <MethodDescription method={m} />
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
+                    {addableMethods.map((m) => {
+                      const isLocked = lockedMethods[m] ?? false;
+                      return (
+                        <DropdownMenuItem
+                          key={m}
+                          isDisabled={isLocked}
+                          onClick={() => handleAdd(m)}
+                        >
+                          <div className="flex flex-col">
+                            <span className="flex items-center gap-2 font-medium">
+                              {METHOD_LABELS[m]}
+                              {isLocked && <Badge variant="info">Enterprise</Badge>}
+                            </span>
+                            <span className="text-xs text-accent">
+                              <MethodDescription method={m} />
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}

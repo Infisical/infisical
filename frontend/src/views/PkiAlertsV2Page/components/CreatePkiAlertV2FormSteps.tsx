@@ -51,7 +51,7 @@ import {
   AccordionTrigger,
   Badge
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
@@ -110,6 +110,7 @@ export const CreatePkiAlertV2FormSteps = ({
     formState: { errors }
   } = useFormContext<TCreatePkiAlertV2>();
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const [certificatesPage, setCertificatesPage] = useState(1);
   const certificatesPerPage = 6;
@@ -185,9 +186,11 @@ export const CreatePkiAlertV2FormSteps = ({
   };
 
   const isChannelLimitReached = watchedChannels.length >= MAX_CHANNELS;
+  const isEnterpriseAlertingAllowed = Boolean(subscription?.pkiEnterpriseAlerting);
 
   const addChannel = (type: PkiAlertChannelTypeV2) => {
     if (isChannelLimitReached) return;
+    if (type !== PkiAlertChannelTypeV2.EMAIL && !isEnterpriseAlertingAllowed) return;
     justAddedRef.current = true;
 
     let config:
@@ -717,17 +720,35 @@ export const CreatePkiAlertV2FormSteps = ({
                   <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
                   Email
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.WEBHOOK)}>
-                  <FontAwesomeIcon icon={faLink} className="mr-2" />
-                  Webhook
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.WEBHOOK)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faLink} />
+                    Webhook
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.SLACK)}>
-                  <FontAwesomeIcon icon={faSlack} className="mr-2" />
-                  Slack
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.SLACK)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faSlack} />
+                    Slack
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.PAGERDUTY)}>
-                  <FontAwesomeIcon icon={faBell} className="mr-2" />
-                  PagerDuty
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.PAGERDUTY)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faBell} />
+                    PagerDuty
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

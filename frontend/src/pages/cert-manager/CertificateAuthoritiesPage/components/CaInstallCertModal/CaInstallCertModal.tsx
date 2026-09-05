@@ -9,6 +9,7 @@ import {
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { Badge, Button } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { AdcsCaInstallForm } from "./AdcsCaInstallForm";
@@ -100,6 +101,7 @@ type RadioCardProps = {
   name: string;
   description: string;
   badge?: string;
+  isLocked?: boolean;
   className?: string;
 };
 
@@ -110,15 +112,17 @@ const RadioCard = ({
   name,
   description,
   badge,
+  isLocked,
   className
 }: RadioCardProps) => (
   <button
     type="button"
     onClick={onClick}
-    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
+    disabled={isLocked}
+    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600"
+        : "border-mineshaft-600 bg-mineshaft-700 enabled:hover:bg-mineshaft-600"
     } ${className ?? ""}`}
   >
     {icon}
@@ -126,6 +130,7 @@ const RadioCard = ({
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-mineshaft-100">{name}</span>
         {badge && <Badge variant="neutral">{badge}</Badge>}
+        {isLocked && <Badge variant="info">Enterprise</Badge>}
       </div>
       <p className="mt-0.5 text-xs text-mineshaft-400">{description}</p>
     </div>
@@ -142,6 +147,15 @@ const RadioCard = ({
 export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const popupData = popUp?.installCaCert?.data as { caId: string } | undefined;
   const caId = popupData?.caId ?? "";
+
+  const { subscription } = useSubscription();
+
+  // Signing an intermediate outside Infisical: Manual is the CSR/import flow, Automated connects a
+  // third-party provider. Infisical CA stays available on every plan.
+  const lockedMethods: Partial<Record<SigningMethod, boolean>> = {
+    [SigningMethod.Manual]: !subscription.pkiExternalIntermediateCa,
+    [SigningMethod.Automated]: !subscription.pkiEnterpriseCaIntegrations
+  };
 
   const [step, setStep] = useState<Step>(Step.ChooseMethod);
   const [selectedMethod, setSelectedMethod] = useState<SigningMethod | null>(null);
@@ -203,6 +217,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
           <RadioCard
             key={option.value}
             isSelected={selectedMethod === option.value}
+            isLocked={lockedMethods[option.value]}
             onClick={() => setSelectedMethod(option.value)}
             icon={
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-mineshaft-600">

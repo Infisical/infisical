@@ -421,10 +421,8 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    // pkiCodeSigning is ignored when null (no restriction); only an explicit boolean gates the feature,
-    // blocking creation when it is explicitly false.
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (typeof plan.pkiCodeSigning === "boolean" && !plan.pkiCodeSigning) {
+    if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
       });

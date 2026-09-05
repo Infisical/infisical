@@ -5,6 +5,7 @@ import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucid
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   Field,
   FieldDescription,
@@ -20,7 +21,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   TAvailableAppConnection,
   useListAvailableAppConnections
@@ -175,13 +176,22 @@ const CA_TYPE_MEDIA: Partial<Record<CaType, Pick<ExternalCaOption, "image" | "ic
     EXTERNAL_CA_OPTIONS.map((option) => [option.type, { image: option.image, icon: option.icon }])
   );
 
-const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: () => void }) => {
+const CaTypeCard = ({
+  option,
+  onClick,
+  isLocked
+}: {
+  option: ExternalCaOption;
+  onClick: () => void;
+  isLocked?: boolean;
+}) => {
   const Icon = option.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      disabled={isLocked}
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-card"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
@@ -195,9 +205,13 @@ const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: ()
             Icon && <Icon className="h-5 w-5 text-foreground" />
           )}
         </div>
-        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
-          {option.category}
-        </span>
+        {isLocked ? (
+          <Badge variant="info">Enterprise</Badge>
+        ) : (
+          <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
+            {option.category}
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{option.name}</p>
@@ -209,6 +223,7 @@ const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: ()
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
@@ -334,7 +349,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   };
 
+  const isCaTypeLocked = (type: CaType) =>
+    type !== CaType.ACME && !subscription.pkiEnterpriseCaIntegrations;
+
   const handleSelectType = (type: CaType) => {
+    if (isCaTypeLocked(type)) return;
     reset(getInitialValuesForType(type));
     setSelectedType(type);
   };
@@ -877,6 +896,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   key={option.type}
                   option={option}
                   onClick={() => handleSelectType(option.type)}
+                  isLocked={isCaTypeLocked(option.type)}
                 />
               ))}
             </div>

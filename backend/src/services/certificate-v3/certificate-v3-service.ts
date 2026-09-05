@@ -14,6 +14,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -40,12 +41,14 @@ import { assertCaInProfileProject } from "@app/services/certificate-authority/ce
 import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -84,7 +87,7 @@ import {
   mapEnumsForValidation,
   normalizeDateForApi,
   removeRootCaFromChain,
-  validatePqcLicense
+  validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
@@ -172,6 +175,11 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -332,8 +340,16 @@ export const certificateV3ServiceFactory = ({
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   licenseService,
+  usageCounterDAL,
+  keyStore,
   telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
+  const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
+
+  // Called once the certificate row exists, never at the check.
+  const $recordQuotaUsage = async (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => {
+    if (usage?.isNewQuotaKey) await recordNewCertificateQuotaKey(usage.orgId, { keyStore }, usage.isWildcard);
+  };
   const $reportCertificateIssued = async ({
     orgId,
     projectId,
@@ -538,23 +554,6 @@ export const certificateV3ServiceFactory = ({
       EnrollmentType.API
     );
 
-    if (certificateRequest.keyAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.keyAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
-    if (certificateRequest.signatureAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.signatureAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
-
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
       approvalPolicyDAL as TApprovalPolicyDALFactory,
@@ -566,6 +565,16 @@ export const certificateV3ServiceFactory = ({
     )) as TCertRequestPolicy | null;
 
     const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+
+    const quotaUsage = await validateCertificateRequestLicense({
+      request: certificateRequestWithDefaults,
+      // This flow issues from altNames; the CSR flows below issue from subjectAlternativeNames.
+      altNames: (certificateRequestWithDefaults.altNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
 
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
@@ -1187,6 +1196,8 @@ export const certificateV3ServiceFactory = ({
       actorId
     });
 
+    await $recordQuotaUsage(quotaUsage);
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: bufferToString(certificate),
@@ -1276,6 +1287,17 @@ export const certificateV3ServiceFactory = ({
 
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
+
+    // Also the gate for the ACME and SCEP internal-CA branches, which sign through here. Their
+    // external-CA branches queue issuance instead and are gated in their own services.
+    const quotaUsage = await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
 
     // When notAfter is explicitly provided, validate using date range (notAfter overrides TTL in cert generation).
     // Otherwise, validate using TTL. These are mutually exclusive to avoid "Cannot specify both" validation error.
@@ -1638,6 +1660,8 @@ export const certificateV3ServiceFactory = ({
       actorId
     });
 
+    await $recordQuotaUsage(quotaUsage);
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: certificateString,
@@ -1746,6 +1770,17 @@ export const certificateV3ServiceFactory = ({
       mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     }
+
+    // Not recorded here: the issuance queue creates the certificate later, once the external CA
+    // responds, so the cached count picks it up on its next refresh.
+    await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
@@ -2130,6 +2165,8 @@ export const certificateV3ServiceFactory = ({
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     licenseService,
+    quotaDeps: $quotaDeps,
+    recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
     reportCertificateIssued: $reportCertificateIssued
   });

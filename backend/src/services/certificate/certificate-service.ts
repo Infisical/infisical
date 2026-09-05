@@ -14,6 +14,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -25,11 +26,16 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import {
+  assertCertificateQuotaForProject,
+  recordNewCertificateQuotaKey
+} from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -109,6 +115,11 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
@@ -136,6 +147,8 @@ export const certificateServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationDAL,
   licenseService,
+  usageCounterDAL,
+  keyStore,
   usageMeteringService,
   hsmConnectorService
 }: TCertificateServiceFactoryDep) => {
@@ -945,6 +958,15 @@ export const certificateServiceFactory = ({
       ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
       : null;
 
+    // Imported certificates count toward the quota, so import is gated like issuance. Before the
+    // transaction, since this reads the plan and may run a count.
+    const { quotaOrgId, isNewQuotaKey, isWildcard } = await assertCertificateQuotaForProject({
+      projectId,
+      commonName,
+      altNames,
+      deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+    });
+
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
         // Extract certificate fields for storage
@@ -1011,6 +1033,8 @@ export const certificateServiceFactory = ({
         throw error;
       }
     });
+
+    if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
     usageMeteringService.emitForProject(projectId, ActiveCerts.key);
 

@@ -80,6 +80,8 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -132,6 +134,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
     | "countInternalCasByOrgId"
+    | "countCasByOrgId"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
@@ -326,18 +329,24 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+      throw new BadRequestError({
+        message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
+      });
+    }
+
+    // Internal CAs are gated inside internalCertificateAuthorityService.createCa, which every internal
+    // creation path funnels through, so only the external types are checked here.
+    if (type !== CaType.INTERNAL) {
+      await assertCertificateAuthorityQuota({
+        projectId,
+        isInternal: false,
+        deps: { projectDAL, licenseService, certificateAuthorityDAL }
+      });
+    }
+
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
-
-      if (typeof plan.maxInternalCas === "number") {
-        const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
-        if (currentInternalCaCount >= plan.maxInternalCas) {
-          throw new BadRequestError({
-            message:
-              "Failed to create internal certificate authority due to plan limit reached. Upgrade plan to add more internal certificate authorities."
-          });
-        }
-      }
 
       if (internalConfig.keySource === CertKeySource.Hsm) {
         if (!internalConfig.hsmConnectorId) {

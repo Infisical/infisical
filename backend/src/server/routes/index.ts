@@ -2784,6 +2784,7 @@ export const registerRoutes = async (
     pkiAlertChannelDAL,
     pkiAlertHistoryDAL,
     permissionService,
+    licenseService,
     smtpService,
     kmsService,
     notificationService,
@@ -3079,6 +3080,7 @@ export const registerRoutes = async (
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
     appConnectionService,
+    licenseService,
     approvalPolicyDAL,
     certificateProfileDAL,
     certificateAuthorityDAL,
@@ -3275,7 +3277,6 @@ export const registerRoutes = async (
     notificationService,
     pkiApplicationDAL,
     projectDAL,
-    licenseService,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3389,6 +3390,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     permissionService,
+    licenseService,
     appConnectionDAL,
     appConnectionService,
     caAutoRenewalQueue
@@ -3459,6 +3461,8 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3546,6 +3550,9 @@ export const registerRoutes = async (
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
+    licenseService,
+    usageCounterDAL,
+    keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
     acmeAccountDAL,
@@ -3572,6 +3579,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     permissionService,
+    licenseService,
     projectMembershipDAL,
     membershipDAL,
     pkiApplicationDAL,
@@ -3590,6 +3598,8 @@ export const registerRoutes = async (
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -3678,6 +3688,7 @@ export const registerRoutes = async (
 
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
+    usageCounterDAL,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -3713,6 +3724,8 @@ export const registerRoutes = async (
 
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
+    licenseService,
+    usageCounterDAL,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
@@ -3792,6 +3805,7 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
     permissionService,
+    licenseService,
     gatewayV2DAL,
     gatewayPoolDAL,
     gatewayPoolService,
