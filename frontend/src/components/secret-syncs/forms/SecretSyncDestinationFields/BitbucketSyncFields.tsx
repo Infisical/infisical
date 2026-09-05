@@ -77,7 +77,7 @@ export const BitbucketSyncFields = () => {
                 isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={workspaces.find((w) => w.slug === value) ?? null}
+                value={workspaces.find((w) => w.slug === value) ?? (value ? { slug: value } : null)}
                 onValueChange={(option) => {
                   const v = option as TBitbucketWorkspace;
                   onChange(v?.slug ?? "");

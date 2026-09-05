@@ -83,8 +83,7 @@ const preventComboboxFormSubmit = (event: React.KeyboardEvent<HTMLInputElement>)
 const useComboboxItems = <TOption,>(
   options: readonly TOption[],
   selectedOptions: readonly TOption[],
-  getOptionValue: (option: TOption) => string,
-  includeMissingSelectedOptions: boolean
+  getOptionValue: (option: TOption) => string
 ) =>
   React.useMemo(() => {
     const selectedByValue = new Map(
@@ -97,14 +96,12 @@ const useComboboxItems = <TOption,>(
       return selectedByValue.get(optionValue) ?? option;
     });
 
-    if (includeMissingSelectedOptions) {
-      selectedOptions.forEach((option) => {
-        if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
-      });
-    }
+    selectedOptions.forEach((option) => {
+      if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
+    });
 
     return stableOptions;
-  }, [getOptionValue, includeMissingSelectedOptions, options, selectedOptions]);
+  }, [getOptionValue, options, selectedOptions]);
 
 type ComboboxItem<TOption> = {
   option: TOption;
@@ -383,9 +380,7 @@ const SingleCombobox = <TOption,>({
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
-  // Locally-filtered lists retain missing selections so the primitive can filter
-  // them normally. Externally-filtered lists must reflect only provider results.
-  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
+  const items = useComboboxItems(options, selectedOptions, getOptionValue);
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,
@@ -604,7 +599,7 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
+  const items = useComboboxItems(options, selectedOptions, getOptionValue);
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,
